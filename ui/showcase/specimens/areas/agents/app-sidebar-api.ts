@@ -66,17 +66,22 @@ export const APP_SIDEBAR_PROPS: readonly SpecimenProp[] = [
   {
     name: "collapsed",
     type: "boolean",
-    note: "The 56px icon rail. Defaults to false. Grouping is expanded-only — the rail always renders the flat list.",
+    note: "The icon rail is 56px, or 84px with windowControlsInset. Defaults to false. Grouping is expanded-only; the icon rail renders the flat list.",
   },
   {
     name: "onToggleCollapsed",
     type: "() => void",
-    note: "Adds the always-visible collapse button; also fires on a click anywhere non-interactive on the collapsed rail.",
+    note: "Adds the always-visible collapse or expand button. Only the button toggles the rail.",
   },
   {
     name: "header",
     type: "ReactNode",
-    note: "Top slot — the WorkspaceSwitcher. Shares its row with the collapse button.",
+    note: "Top slot for the WorkspaceSwitcher. Without an inset, it shares its expanded row with the collapse button; with an inset, it sits below the controls row.",
+  },
+  {
+    name: "windowControlsInset",
+    type: "boolean",
+    note: "Reserves a 40px controls row and an 84px zone at the top of the rail. The collapsed rail is 84px wide. Defaults to false.",
   },
   {
     name: "headerBelow",
@@ -121,7 +126,7 @@ export const APP_SIDEBAR_PROPS: readonly SpecimenProp[] = [
   {
     name: "labels",
     type: "SidebarLabels",
-    note: "The two strings the rail renders itself: `addItem` (the add-agent row, and its tooltip on the icon rail) and `collapseSidebar` (the collapse button). English defaults, so a host that passes nothing still gets readable words. Everything else on the rail is a name or a node the host composed.",
+    note: "Labels for the add row and the collapse/expand control. English defaults keep both states readable.",
   },
   {
     name: "addItemDataAttrs",

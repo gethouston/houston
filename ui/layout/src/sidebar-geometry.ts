@@ -126,3 +126,10 @@ export const sidebarRowType = {
   item: "text-[13px] leading-5 font-weight-510",
   band: "text-xs leading-4 font-weight-510",
 } as const;
+
+/** The 40px top row and 84px host window controls zone reserve space for
+ *  native controls while keeping the icon rail centred below them. */
+export const sidebarWindowControlsHeight = "h-10";
+export const sidebarWindowControlsWidth = "w-[84px]";
+export const sidebarCollapsedWidth = "w-[56px]";
+export const sidebarExpandedWidth = "w-[220px]";

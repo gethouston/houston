@@ -1,4 +1,5 @@
 import {
+  cn,
   DropdownMenu,
   DropdownMenuContent,
   DropdownMenuItem,
@@ -8,7 +9,12 @@ import {
   TooltipContent,
   TooltipTrigger,
 } from "@houston-ai/core";
-import { ChevronDown, PanelLeftOpen, Plus } from "lucide-react";
+import { ChevronDown, Plus } from "lucide-react";
+import { sidebarRowType } from "./sidebar-geometry";
+import {
+  sidebarRowButtonClasses as row,
+  sidebarRowState,
+} from "./sidebar-paint";
 
 export interface WorkspaceSwitcherProps {
   workspaces: { id: string; name: string }[];
@@ -16,24 +22,33 @@ export interface WorkspaceSwitcherProps {
   currentName: string;
   onSwitch: (workspaceId: string) => void;
   onCreate: () => void;
-  /** Icon-only rail: render a compact monogram button instead of the name row. */
+  /** Icon-only rail: render the workspace avatar alone instead of the name row. */
   collapsed?: boolean;
+  /** Tight top spacing when the host reserves a controls row above the header. */
+  compactTop?: boolean;
   /** Label for the "create workspace" action (defaults to English). */
   createLabel?: string;
-  /**
-   * Collapsed rail only: the monogram becomes the expand-sidebar button —
-   * it shows the workspace initial at rest and swaps to the expand icon on
-   * hover/focus. Clicking expands instead of opening the switcher menu
-   * (the menu is reachable once expanded).
-   */
-  onExpand?: () => void;
-  /** Label for the expand-sidebar action (defaults to English). */
-  expandLabel?: string;
 }
 
 function workspaceMonogram(name: string): string {
   const trimmed = name.trim();
   return trimmed ? trimmed.charAt(0).toUpperCase() : "?";
+}
+
+/**
+ * The workspace's mark, the same object in both rail states: collapsing hides
+ * the name beside it, never the mark itself. It is the rail's 20px glyph size,
+ * so it sits in the column the nav icons below it use.
+ */
+function WorkspaceAvatar({ name }: { name: string }) {
+  return (
+    <span
+      aria-hidden="true"
+      className="flex size-5 shrink-0 items-center justify-center rounded-md border border-ink-muted text-[11px] font-semibold leading-none text-ink"
+    >
+      {workspaceMonogram(name)}
+    </span>
+  );
 }
 
 export function WorkspaceSwitcher({
@@ -43,9 +58,8 @@ export function WorkspaceSwitcher({
   onSwitch,
   onCreate,
   collapsed = false,
+  compactTop = false,
   createLabel = "Create workspace",
-  onExpand,
-  expandLabel = "Expand sidebar",
 }: WorkspaceSwitcherProps) {
   const menu = (
     <DropdownMenuContent align="start" className="w-48">
@@ -66,51 +80,34 @@ export function WorkspaceSwitcher({
     </DropdownMenuContent>
   );
 
-  if (collapsed && onExpand) {
-    return (
-      <div
-        className="flex justify-center px-2 pt-3 pb-1"
-        data-tauri-drag-region
-      >
-        <Tooltip>
-          <TooltipTrigger asChild>
-            <button
-              type="button"
-              aria-label={expandLabel}
-              onClick={onExpand}
-              className="group flex size-9 items-center justify-center rounded-lg bg-hover text-sm font-semibold text-ink transition-colors hover:bg-hover/80 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-focus"
-            >
-              <span className="group-hover:hidden group-focus-visible:hidden">
-                {workspaceMonogram(currentName)}
-              </span>
-              <PanelLeftOpen className="hidden size-4 group-hover:block group-focus-visible:block" />
-            </button>
-          </TooltipTrigger>
-          <TooltipContent side="right" sideOffset={8}>
-            {expandLabel}
-          </TooltipContent>
-        </Tooltip>
-      </div>
-    );
-  }
-
   if (collapsed) {
     return (
       <div
-        className="flex justify-center px-2 pt-3 pb-1"
+        className={cn(
+          "flex justify-center px-2 pt-3 pb-1",
+          compactTop && "pt-0",
+        )}
         data-tauri-drag-region
       >
+        {/* The collapsed nav items' own 36px box, rest and hover, so the
+            avatar reads as a control of the same family as the icons below. */}
         <DropdownMenu>
-          <DropdownMenuTrigger asChild>
-            <button
-              type="button"
-              aria-label={currentName}
-              title={currentName}
-              className="flex size-9 items-center justify-center rounded-lg bg-hover text-sm font-semibold text-ink transition-colors hover:bg-hover/80"
-            >
-              {workspaceMonogram(currentName)}
-            </button>
-          </DropdownMenuTrigger>
+          <Tooltip>
+            <TooltipTrigger asChild>
+              <DropdownMenuTrigger asChild>
+                <button
+                  type="button"
+                  aria-label={currentName}
+                  className="flex size-9 items-center justify-center rounded-lg transition-colors hover:bg-hover focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-focus"
+                >
+                  <WorkspaceAvatar name={currentName} />
+                </button>
+              </DropdownMenuTrigger>
+            </TooltipTrigger>
+            <TooltipContent side="right" sideOffset={8}>
+              {currentName}
+            </TooltipContent>
+          </Tooltip>
           {menu}
         </DropdownMenu>
       </div>
@@ -119,21 +116,38 @@ export function WorkspaceSwitcher({
 
   return (
     <div
-      className="flex items-center gap-1 px-2 pt-3 pb-1"
+      className={cn("flex items-center px-2 pt-3 pb-0.5", compactTop && "pt-0")}
       data-tauri-drag-region
     >
-      <DropdownMenu>
-        <DropdownMenuTrigger asChild>
-          <button
-            type="button"
-            className="flex items-center gap-1 text-sm font-medium text-ink hover:bg-hover rounded-lg py-1.5 px-2.5 transition-colors flex-1 min-w-0"
-          >
-            <span className="truncate">{currentName}</span>
-            <ChevronDown className="h-3.5 w-3.5 text-ink-muted flex-shrink-0" />
-          </button>
-        </DropdownMenuTrigger>
-        {menu}
-      </DropdownMenu>
+      {/* Built from the rail row's own anatomy (height, glyph column, type,
+          hover pill), so the workspace reads as the first row of the rail;
+          only the chevron says it opens a menu. Not `SidebarRowButton` itself:
+          a menu trigger needs the button element, which that row keeps. */}
+      <div className={cn(row.root, "h-10 md:h-7", sidebarRowState.hover)}>
+        <DropdownMenu>
+          <DropdownMenuTrigger asChild>
+            <button
+              type="button"
+              className={cn(
+                row.button,
+                "h-10 md:h-7",
+                row.depthBlock,
+                sidebarRowType.item,
+                sidebarRowState.restText,
+              )}
+            >
+              <span className={row.icon}>
+                <WorkspaceAvatar name={currentName} />
+              </span>
+              <span className={row.labelGroup}>
+                <span className={row.label}>{currentName}</span>
+                <ChevronDown className="size-3.5 shrink-0 text-ink-muted" />
+              </span>
+            </button>
+          </DropdownMenuTrigger>
+          {menu}
+        </DropdownMenu>
+      </div>
     </div>
   );
 }

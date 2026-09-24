@@ -145,6 +145,9 @@ export interface SidebarProps {
   labels?: SidebarLabels;
   /** Icon-only rail: hide all text labels, reveal them via hover/focus flyouts. */
   collapsed?: boolean;
+  /** The host window controls occupy the rail's top-left corner; the rail
+   *  reserves a clear row for them. */
+  windowControlsInset?: boolean;
   /** Toggle between expanded and collapsed. The button is always visible. */
   onToggleCollapsed?: () => void;
   children?: ReactNode;

@@ -20,6 +20,8 @@ export interface LiveSidebarProps {
   startCollapsed?: boolean;
   /** The full shell chrome: workspace switcher header, nav items, footer. */
   chrome?: boolean;
+  /** Reserve a top row for host window controls. */
+  windowControlsInset?: boolean;
   /** Which agent opens selected — how a row starts on an already-folded team. */
   initialSelectedId?: string | null;
 }
@@ -43,6 +45,7 @@ export function LiveSidebar({
   teams = false,
   startCollapsed = false,
   chrome = false,
+  windowControlsInset = false,
   initialSelectedId = "inbox-zero",
 }: LiveSidebarProps) {
   const [items, setItems] = useState(agentItems);
@@ -73,6 +76,7 @@ export function LiveSidebar({
 
   return (
     <AppSidebar
+      windowControlsInset={windowControlsInset}
       collapsed={collapsed}
       onToggleCollapsed={() => setCollapsed((on) => !on)}
       header={
@@ -84,7 +88,7 @@ export function LiveSidebar({
             onSwitch={setWorkspaceId}
             onCreate={() => setWorkspaceId("personal")}
             collapsed={collapsed}
-            onExpand={collapsed ? () => setCollapsed(false) : undefined}
+            compactTop={windowControlsInset || collapsed}
           />
         ) : undefined
       }

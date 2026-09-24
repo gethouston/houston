@@ -3,7 +3,10 @@ import { type ReactNode, useState } from "react";
 import { useTranslation } from "react-i18next";
 import { useCanCreateAgents } from "../../hooks/use-can-create-agents";
 import { useCapabilities } from "../../hooks/use-capabilities";
+import { useWindowControlsInset } from "../../hooks/use-window-controls-inset";
 import { hasAgentTeams } from "../../lib/org-roles";
+import { osIsTauri } from "../../lib/os-bridge";
+import { isMac } from "../../lib/platform";
 import { useAgentStore } from "../../stores/agents";
 import { useUIStore } from "../../stores/ui";
 import { useWorkspaceStore } from "../../stores/workspaces";
@@ -51,6 +54,7 @@ export function Sidebar({ children }: { children: ReactNode }) {
   // anything that navigates still closes that menu, so the content is
   // immediately visible.
   const isMobile = useIsMobile();
+  const windowControlsInset = useWindowControlsInset();
   const setMobileMoreOpen = useUIStore((s) => s.setMobileMoreOpen);
   const closeMobileMenu = () => setMobileMoreOpen(false);
 
@@ -133,7 +137,10 @@ export function Sidebar({ children }: { children: ReactNode }) {
      frame at all — one flat background edge to edge — so the padding is a
      desktop layer. */
   const gutter = (
-    <div className="flex h-full min-w-0 flex-1 flex-col overflow-hidden p-0 md:p-2">
+    <div
+      data-tauri-drag-region={osIsTauri() && isMac ? true : undefined}
+      className="flex h-full min-w-0 flex-1 flex-col overflow-hidden p-0 md:p-2"
+    >
       {children}
     </div>
   );
@@ -159,6 +166,7 @@ export function Sidebar({ children }: { children: ReactNode }) {
             model={model}
             t={t}
             mobile={false}
+            windowControlsInset={windowControlsInset}
             gutterChildren={gutter}
           />
         )}

@@ -11,15 +11,15 @@ import { useUpdatePreview } from "./update-preview";
  * download has landed. A background download in flight, or one that failed
  * and will retry on the next check, shows nothing at all.
  *
- * Mounted inside the shell's top strip: the overlay is fixed and covers the
- * window from anywhere, while the pill is in-flow and the strip sizes to it.
+ * Mounted above the sidebar footer destinations. The overlay is fixed and
+ * covers the window from here; the pill follows the rail’s collapsed state.
  */
-export function UpdateChecker() {
+export function UpdateChecker({ collapsed = false }: { collapsed?: boolean }) {
   const { status, installAndRelaunch, relaunchInstalledApp } =
     useUpdateChecker();
 
   // Dev-only console harness (`__HOUSTON_UPDATE_PREVIEW__`); null in prod.
-  const preview = useUpdatePreview();
+  const preview = useUpdatePreview(collapsed);
   if (preview) return preview;
 
   if (status.state === "idle" || status.state === "available") return null;
@@ -43,6 +43,7 @@ export function UpdateChecker() {
 
   return (
     <UpdatePill
+      collapsed={collapsed}
       status={status}
       onInstall={() => void installAndRelaunch("user")}
       onRelaunch={() => void relaunchInstalledApp()}

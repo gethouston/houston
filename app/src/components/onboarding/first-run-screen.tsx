@@ -1,7 +1,6 @@
 import { cn } from "@houston-ai/core";
 import type { ReactNode } from "react";
-import { osIsTauri } from "../../lib/os-bridge";
-import { isMac } from "../../lib/platform";
+import { WindowDragStrip } from "../shell/window-drag-strip";
 
 /**
  * The shared full-screen layout for every first-run / migration surface (the
@@ -32,17 +31,7 @@ export function FirstRunScreen({
         className,
       )}
     >
-      {/* macOS titleBarStyle: Overlay draws no native bar, so without a drag
-          region the window can't be moved from these full-screen surfaces. Same
-          strip as the workspace shell's, floated over the top edge so the
-          layouts don't shift; consumers keep their content below 28px. Gated
-          like the shell's: only the macOS desktop build uses the overlay bar. */}
-      {osIsTauri() && isMac && (
-        <div
-          data-tauri-drag-region
-          className="absolute inset-x-0 top-0 z-20 h-7"
-        />
-      )}
+      <WindowDragStrip />
       <div className="relative z-10 flex min-h-0 flex-1 flex-col">
         {children}
       </div>

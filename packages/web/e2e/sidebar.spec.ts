@@ -2,25 +2,19 @@ import { expect, test } from "./support/fixtures";
 import { agentRow, navRow } from "./support/team-nav";
 
 /**
- * Collapsed-sidebar expand affordances (HOU-657): the workspace monogram at
- * the TOP of the rail doubles as the expand button (hover swaps the initial
- * for the expand icon), clicking empty rail space also expands, and clicks on
- * interactive rail elements (nav, agents) keep their own action.
+ * The collapsed rail has one visible expand control above the workspace menu.
  */
-test("collapsed sidebar expands from the top monogram and rail clicks", async ({
-  page,
-}) => {
+test("collapsed sidebar expands from its visible toggle", async ({ page }) => {
   await page.goto("/");
   await expect(navRow(page, "integrations")).toBeVisible();
 
   const sidebar = page.locator("[data-tour-target='sidebar']");
 
-  // Collapse via the (unchanged) top-right collapse button.
+  // Collapse via the top-right toggle.
   await page.getByRole("button", { name: "Collapse sidebar" }).click();
   await expect(sidebar).toHaveCSS("width", "56px");
 
-  // Exactly one expand button, and it sits at the TOP of the rail (the
-  // monogram slot) — not at the bottom where the old toggle lived.
+  // Exactly one expand button sits above the workspace monogram.
   const expandBtn = page.getByRole("button", { name: "Expand sidebar" });
   await expect(expandBtn).toHaveCount(1);
   const btnBox = await expandBtn.boundingBox();
@@ -28,21 +22,24 @@ test("collapsed sidebar expands from the top monogram and rail clicks", async ({
   if (!btnBox || !asideBox) throw new Error("missing bounding boxes");
   expect(btnBox.y - asideBox.y).toBeLessThan(30);
 
-  // Hover swaps the monogram for the expand icon; click expands.
-  await expandBtn.hover();
   await expect(expandBtn.locator("svg")).toBeVisible();
+  const workspaceButton = page
+    .locator('[data-tour-target="spaceSwitcher"] button')
+    .first();
+  await expect(workspaceButton).toBeVisible();
   await expandBtn.click();
   await expect(sidebar).toHaveCSS("width", "220px");
 
-  // Clicking an EMPTY spot on the collapsed rail expands too.
+  // The monogram opens its menu and empty rail space leaves the rail closed.
   await page.getByRole("button", { name: "Collapse sidebar" }).click();
   await expect(sidebar).toHaveCSS("width", "56px");
+  await workspaceButton.click();
+  await expect(page.getByRole("menuitem").first()).toBeVisible();
+  await page.keyboard.press("Escape");
   await page.mouse.click(asideBox.x + 28, asideBox.y + asideBox.height - 200);
-  await expect(sidebar).toHaveCSS("width", "220px");
-
-  // Clicking an interactive rail element (a nav button) must NOT expand.
-  await page.getByRole("button", { name: "Collapse sidebar" }).click();
   await expect(sidebar).toHaveCSS("width", "56px");
+
+  // Nav buttons keep their own action.
   await sidebar.locator("nav button").first().click();
   await expect(sidebar).toHaveCSS("width", "56px");
 });

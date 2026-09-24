@@ -32,13 +32,7 @@ function RailTop({
 }
 
 /** Switching workspaces actually switches — the trigger renames itself. */
-function LiveSwitcher({
-  collapsed,
-  onExpand,
-}: {
-  collapsed?: boolean;
-  onExpand?: () => void;
-}) {
+function LiveSwitcher({ collapsed }: { collapsed?: boolean }) {
   const [currentId, setCurrentId] = useState("personal");
   const current =
     workspaces.find((one) => one.id === currentId) ?? workspaces[0];
@@ -50,13 +44,11 @@ function LiveSwitcher({
       onSwitch={setCurrentId}
       onCreate={() => setCurrentId("personal")}
       collapsed={collapsed}
-      onExpand={onExpand}
     />
   );
 }
 
 function WorkspaceSwitcherSpecimen() {
-  const [expanded, setExpanded] = useState(false);
   return (
     <TooltipProvider>
       <SpecimenPage
@@ -65,30 +57,17 @@ function WorkspaceSwitcherSpecimen() {
       >
         <SpecimenSection
           title="Variants"
-          note="Three renders, chosen by two props. Expanded is the name row; `collapsed` is a monogram that still opens the menu; `collapsed` plus `onExpand` retargets that monogram at expanding the rail, because in a 56px rail the switcher's job is to give the sidebar back."
+          note="The expanded row and the collapsed avatar both open the workspace menu, and both wear the same 20px avatar. The sidebar header owns its separate collapse and expand control."
         >
           <SpecimenRow label="Expanded — open the menu">
             <RailTop>
               <LiveSwitcher />
             </RailTop>
           </SpecimenRow>
-          <SpecimenRow label="Collapsed — monogram opens the same menu">
+          <SpecimenRow label="Collapsed — the avatar opens the same menu">
             <RailTop collapsed>
               <LiveSwitcher collapsed />
             </RailTop>
-          </SpecimenRow>
-          <SpecimenRow label="Collapsed + onExpand — hover the monogram">
-            <RailTop collapsed={!expanded}>
-              <LiveSwitcher
-                collapsed={!expanded}
-                onExpand={expanded ? undefined : () => setExpanded(true)}
-              />
-            </RailTop>
-            <span className="text-ink-muted text-xs">
-              {expanded
-                ? "Expanded. The menu is reachable again."
-                : "The initial swaps to the panel icon on hover or focus; clicking expands instead of opening the menu."}
-            </span>
           </SpecimenRow>
         </SpecimenSection>
 
@@ -112,7 +91,7 @@ function WorkspaceSwitcherSpecimen() {
               />
             </RailTop>
           </SpecimenRow>
-          <SpecimenRow label="Monogram falls back to ? on a blank name">
+          <SpecimenRow label="Avatar falls back to ? on a blank name">
             <RailTop collapsed>
               <WorkspaceSwitcher
                 workspaces={[...workspaces]}
@@ -128,9 +107,9 @@ function WorkspaceSwitcherSpecimen() {
 
         <SpecimenSection
           title="Sizes"
-          note="One size in each mode: a full-width row expanded, a 36px monogram square collapsed. Both carry `data-tauri-drag-region`, so on the desktop this strip is also the window's drag handle."
+          note="One size in each mode: a full-width row expanded, a 36px avatar button collapsed. The empty padding around each control carries `data-tauri-drag-region`; buttons keep their clicks. On macOS desktop, the rail reserves a separate 40px controls row above the compact switcher, and the content gutter also drags the window."
         >
-          <SpecimenRow label="220px row vs. 36px monogram">
+          <SpecimenRow label="220px row vs. 36px avatar button">
             <RailTop>
               <LiveSwitcher />
             </RailTop>

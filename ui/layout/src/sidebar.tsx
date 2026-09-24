@@ -1,13 +1,17 @@
 import { cn, ScrollArea } from "@houston-ai/core";
-import type { MouseEvent } from "react";
 import { SidebarBand } from "./sidebar-band";
 import { SidebarFlatList } from "./sidebar-flat-list";
-import { sidebarBandInset } from "./sidebar-geometry";
+import {
+  sidebarBandInset,
+  sidebarCollapsedWidth,
+  sidebarExpandedWidth,
+  sidebarWindowControlsWidth,
+} from "./sidebar-geometry";
 import { SidebarGroupedList } from "./sidebar-grouped-list";
+import { SidebarHeader } from "./sidebar-header";
 import { DEFAULT_SIDEBAR_LABELS } from "./sidebar-labels";
 import type { SidebarProps } from "./sidebar-props";
-import { SidebarCollapseToggle, SidebarNavList } from "./sidebar-rail-chrome";
-import { shouldExpandFromRailClick } from "./sidebar-rail-expand";
+import { SidebarNavList } from "./sidebar-rail-chrome";
 import type { SidebarBaseRowContext } from "./sidebar-row-context";
 
 export type { SidebarLabels } from "./sidebar-labels";
@@ -43,6 +47,7 @@ export function AppSidebar({
   footer,
   labels,
   collapsed = false,
+  windowControlsInset = false,
   onToggleCollapsed,
   children,
 }: SidebarProps) {
@@ -90,43 +95,29 @@ export function AppSidebar({
     </ScrollArea>
   );
 
-  const toggleButton = onToggleCollapsed ? (
-    <SidebarCollapseToggle
-      label={l.collapseSidebar}
-      onToggle={onToggleCollapsed}
-    />
-  ) : null;
-
-  const handleRailClick = (e: MouseEvent<HTMLElement>) => {
-    if (!collapsed || !onToggleCollapsed) return;
-    if (!shouldExpandFromRailClick(e.target as HTMLElement)) return;
-    onToggleCollapsed();
-  };
-
   return (
     <>
-      {/* Rail click-to-expand is a redundant convenience affordance; keyboard
-          users expand via the always-focusable header button. */}
-      {/* biome-ignore lint/a11y/useKeyWithClickEvents: see above */}
       <aside
         data-tour-target="sidebar"
-        onClick={handleRailClick}
         className={cn(
           "flex h-full shrink-0 flex-col overflow-hidden bg-sidebar text-sidebar-text",
           "transition-[width] duration-200 ease-out",
-          collapsed ? "w-[56px] cursor-pointer" : "w-[220px]",
+          collapsed
+            ? windowControlsInset
+              ? sidebarWindowControlsWidth
+              : sidebarCollapsedWidth
+            : sidebarExpandedWidth,
         )}
       >
-        {collapsed ? (
-          header
-        ) : (
-          <div className="flex items-center">
-            <div className="min-w-0 flex-1">{header}</div>
-            {toggleButton && (
-              <div className="shrink-0 pr-2">{toggleButton}</div>
-            )}
-          </div>
-        )}
+        <SidebarHeader
+          collapsed={collapsed}
+          windowControlsInset={windowControlsInset}
+          collapseLabel={l.collapseSidebar}
+          expandLabel={l.expandSidebar}
+          onToggleCollapsed={onToggleCollapsed}
+        >
+          {header}
+        </SidebarHeader>
 
         {headerBelow}
 
