@@ -14,10 +14,12 @@ import { systemPrefersDarkAfterRelease } from "../src/lib/theme-boot.ts";
  *
  *  - the OS appearance is read only AFTER the window has been handed back
  *    (`systemPrefersDarkAfterRelease`, exercised against a fake webview);
- *  - the apply path passes `null` to release it and reports a release that
- *    fails. That module reaches `@tauri-apps/api/window` and the Sentry /
- *    PostHog reporters, which only the bundler resolves, so it is asserted on
- *    source text, the same reason `os-bridge-barrel.test.ts` reads source.
+ *  - the apply path passes `null` to release it, reaches the window through the
+ *    serialized slot alone (`theme-native.test.ts` drives that slot's ordering),
+ *    and reports either native call failing. That module reaches
+ *    `@tauri-apps/api/window` and the Sentry / PostHog reporters, which only the
+ *    bundler resolves, so it is asserted on source text, the same reason
+ *    `os-bridge-barrel.test.ts` reads source.
  */
 
 const DARK_QUERY = "(prefers-color-scheme: dark)";
@@ -109,10 +111,10 @@ describe("the native window the apply path asks for", () => {
   it("releases the window under system and pins an explicit mode", () => {
     assert.match(
       src,
-      /setTheme\(null\)/,
+      /setNativeTheme\(null\)/,
       "`null` is Tauri's follow-the-OS value",
     );
-    assert.match(src, /\.setTheme\(mode\)/);
+    assert.match(src, /setNativeTheme\(mode\)/);
     assert.match(
       src,
       /followsSystem\(pref\)/,
@@ -120,12 +122,25 @@ describe("the native window the apply path asks for", () => {
     );
   });
 
+  it("reaches the window ONLY through the serialized slot", () => {
+    assert.equal(
+      src.match(/getCurrentWindow\(\)/g)?.length,
+      1,
+      "a second call site could race the slot and leave the window behind",
+    );
+    assert.match(src, /serializeNativeTheme\(\s*\(theme\) =>/);
+  });
+
   it("reports a failed release instead of swallowing it", () => {
     assert.match(src, /logAndReportError\(\s*"release_window_theme"/);
+  });
+
+  it("reports a failed pin too — a title bar stuck on the old mode is a bug", () => {
+    assert.match(src, /logAndReportError\(\s*"sync_window_theme"/);
     assert.equal(
       src.match(/\.catch\(\(\) => \{\}\)/g)?.length,
-      1,
-      "the one silent catch is the cosmetic pin, never the release",
+      undefined,
+      "neither native call is allowed to swallow its failure",
     );
   });
 });

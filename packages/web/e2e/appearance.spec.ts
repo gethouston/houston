@@ -16,9 +16,10 @@ import { screen } from "./support/team-nav";
  *    words;
  * 2. the menu changes the mode immediately;
  * 3. Customize opens Palettes, a pick there paints at once and SURVIVES a
- *    reload — the device mirror (`houston.theme.cache`) repaints it on the first
- *    frame, long before the engine preference read answers — and the X closes
- *    the dialog with nothing to confirm;
+ *    reload — the device mirror (`houston.theme.cache`) repaints it on the FIRST
+ *    frame, which {@link recordFirstFrame} proves rather than infers, long before
+ *    the engine preference read answers — and the X closes the dialog with
+ *    nothing to confirm;
  * 4. `system` tracks the OS appearance live, in both directions;
  * 5. the arrow keys walk a section, which is the whole keyboard contract of a
  *    radio group.
@@ -40,6 +41,58 @@ const DARK_PALETTES = 6;
 
 function html(page: Page): Locator {
   return page.locator("html");
+}
+
+/** What `<html>` wore the moment something first painted it. */
+interface FirstFrame {
+  /** `"loading"` is the proof: the document was still parsing, so no module ran. */
+  readyState: DocumentReadyState;
+  theme: string | null;
+  palette: string | null;
+  background: string;
+}
+
+type CapturingWindow = Window & { __houstonFirstFrame?: FirstFrame };
+
+/**
+ * Capture the FIRST frame's theme, for every navigation from here on.
+ *
+ * Reading the attributes after a reload cannot prove the pre-paint script in
+ * index.html painted them: the preference read repairs the same two attributes a
+ * moment later, so an assertion that merely waits would pass on a repair and a
+ * broken first frame alike. The observer below is registered at document-start,
+ * before `<html>` exists (hence observing `document`, not `documentElement`), and
+ * its callback runs at the microtask checkpoint that follows the parser-blocking
+ * pre-paint script — the first attribute write in the document, and the last one
+ * before the deferred app bundle executes. `readyState` is recorded with it so
+ * the assertion can state that provenance instead of assuming it.
+ */
+async function recordFirstFrame(page: Page): Promise<void> {
+  await page.addInitScript(() => {
+    new MutationObserver(() => {
+      const self = window as CapturingWindow;
+      if (self.__houstonFirstFrame) return;
+      const el = document.documentElement;
+      self.__houstonFirstFrame = {
+        readyState: document.readyState,
+        theme: el.getAttribute("data-theme"),
+        palette: el.getAttribute("data-palette"),
+        background: el.style.background,
+      };
+    }).observe(document, { attributes: true, subtree: true });
+  });
+}
+
+async function firstFrame(page: Page): Promise<FirstFrame> {
+  const captured = await page.evaluate(
+    () => (window as CapturingWindow).__houstonFirstFrame ?? null,
+  );
+  if (captured === null) {
+    throw new Error(
+      "nothing painted <html> before the app bundle ran: there was no themed first frame",
+    );
+  }
+  return captured;
 }
 
 /** The mode menu, named by the row it sits in. */
@@ -155,8 +208,24 @@ test("a dark palette paints under dark mode and survives a reload", async ({
   await expect(html(page)).toHaveAttribute("data-palette", "nord");
   await expect(html(page)).toHaveAttribute("data-theme", "dark");
 
+  // The gutter the pick put on `<html>`, as THIS browser serializes it: the
+  // reload's first frame has to be wearing the very same one.
+  const gutter = await page.evaluate(
+    () => document.documentElement.style.background,
+  );
+  expect(gutter).not.toBe("");
+
+  await recordFirstFrame(page);
   await page.reload();
-  // The mirror, not the engine: this holds from the first frame.
+  // The mirror, not the engine: the pick is already painted on the frame the
+  // pre-paint script produced, while the document was still parsing.
+  expect(await firstFrame(page)).toEqual({
+    readyState: "loading",
+    theme: "dark",
+    palette: "nord",
+    background: gutter,
+  });
+  // ...and the preference read that lands after it agrees, so nothing flashes.
   await expect(html(page)).toHaveAttribute("data-palette", "nord");
   await expect(html(page)).toHaveAttribute("data-theme", "dark");
   await openSettings(page);

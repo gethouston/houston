@@ -33,6 +33,16 @@ import {
   resolveTheme,
   type ThemePreference,
 } from "./theme-model";
+import { serializeNativeTheme } from "./theme-native";
+
+/**
+ * The one way this module reaches the native window. Serialized, because two
+ * `setTheme` calls in flight can land in either order and the LAST one is what
+ * the window wears: see `./theme-native`.
+ */
+const setNativeTheme = serializeNativeTheme((theme) =>
+  getCurrentWindow().setTheme(theme),
+);
 
 /**
  * The last preference applied: what the OS-appearance watcher re-resolves, what a
@@ -64,15 +74,16 @@ function paintTheme(
  * Pin the native window chrome (the macOS title bar) to an explicitly picked
  * mode, so the title bar tracks the app background instead of the OS appearance.
  *
- * Best-effort and purely cosmetic: the CSS `data-theme` set by
- * {@link applyThemePreference} is what actually drives the UI; if this native
- * call fails the only consequence is the title bar not recolouring, which has
- * nothing actionable to surface. No-op on web (the window shim ignores it).
+ * The CSS `data-theme` set by {@link applyThemePreference} is what drives the UI,
+ * so the user still gets the mode they picked; a pin that fails leaves the title
+ * bar wearing the previous one, which is a visibly broken window we can only fix
+ * if we hear about it — hence the report, exactly like the release path. No-op on
+ * web (the window shim ignores it).
  */
 function pinWindowChrome(mode: ResolvedMode): void {
-  void getCurrentWindow()
-    .setTheme(mode)
-    .catch(() => {});
+  void setNativeTheme(mode).catch((err: unknown) => {
+    logAndReportError("sync_window_theme", err);
+  });
 }
 
 /**
@@ -87,7 +98,7 @@ async function followOsAppearance(pref: ThemePreference): Promise<void> {
   let prefersDark: boolean;
   try {
     prefersDark = await systemPrefersDarkAfterRelease(() =>
-      getCurrentWindow().setTheme(null),
+      setNativeTheme(null),
     );
   } catch (err) {
     logAndReportError("release_window_theme", err);
