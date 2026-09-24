@@ -1,4 +1,9 @@
 import {
+  parseThemeMode,
+  type ResolvedMode,
+  type ThemePreference,
+} from "@houston/sdk/appearance";
+import {
   Button,
   Select,
   SelectContent,
@@ -10,15 +15,14 @@ import { Palette } from "lucide-react";
 import { useState } from "react";
 import { useTranslation } from "react-i18next";
 import { logAndReportError } from "../../../lib/error-report";
-import { applyThemePreference, setThemePreference } from "../../../lib/theme";
-import { currentThemePreference } from "../../../lib/theme-apply";
 import {
-  parseThemeMode,
-  type ResolvedMode,
-  type ThemePreference,
-} from "../../../lib/theme-model";
+  applyThemePreference,
+  currentThemePreference,
+  setThemePreference,
+} from "../../../lib/theme";
 import { useIsDarkTheme } from "../../../lib/use-is-dark-theme";
 import { SettingsControlRow } from "../settings-row";
+import { createAppearanceCommitter } from "./appearance-commit";
 import { MODE_LABEL_KEY, MODE_ORDER, summaryParts } from "./appearance-model";
 import { PalettesDialog } from "./appearance-palettes";
 
@@ -41,26 +45,19 @@ export function AppearanceSection() {
   // sit the row on the defaults while the screen wore the real picks, so the
   // next pick would persist a combination the user never chose.
   const [pref, setPref] = useState<ThemePreference>(currentThemePreference);
+  // Built once, from the preference the row opened on: the committer owns the
+  // debounce and both mirrors (painted, saved), so a re-render must not reset it.
+  const [committer] = useState(() =>
+    createAppearanceCommitter(pref, setPref, {
+      apply: applyThemePreference,
+      persist: setThemePreference,
+      report: logAndReportError,
+    }),
+  );
   const [palettesOpen, setPalettesOpen] = useState(false);
   // The mode ON SCREEN, which is what `system` makes ambiguous: it follows the
   // OS live, so only the painted attribute knows which section is in force.
   const resolved: ResolvedMode = useIsDarkTheme() ? "dark" : "light";
-
-  /**
-   * Optimistic: the pick paints and the control moves at once. A failed write
-   * reverts both — the engine still holds the previous choice, so leaving the
-   * new colours up would show a preference nobody saved. `applyThemePreference`
-   * repaints without writing, so the revert cannot fail in turn.
-   */
-  const commit = (patch: Partial<ThemePreference>) => {
-    const previous = pref;
-    setPref({ ...previous, ...patch });
-    void setThemePreference(patch).catch((err: unknown) => {
-      logAndReportError("set_theme_preference", err);
-      setPref(previous);
-      applyThemePreference(previous);
-    });
-  };
 
   const summary = summaryParts(pref);
 
@@ -83,7 +80,7 @@ export function AppearanceSection() {
             // than casting keeps that a fact the types check.
             onValueChange={(value) => {
               const mode = parseThemeMode(value);
-              if (mode) commit({ mode });
+              if (mode) committer.commit({ mode });
             }}
           >
             {/* `min-h-11` is the phone thumb target; the desktop control keeps
@@ -117,7 +114,7 @@ export function AppearanceSection() {
         pref={pref}
         resolved={resolved}
         onPick={(mode, id) =>
-          commit(mode === "dark" ? { dark: id } : { light: id })
+          committer.commit(mode === "dark" ? { dark: id } : { light: id })
         }
       />
     </>

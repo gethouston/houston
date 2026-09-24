@@ -21,6 +21,7 @@
  */
 
 import { HoustonSdk, type KeyValueStore, type SdkLogger } from "@houston/sdk";
+import { createDevicePrefsStore } from "./client/device-prefs";
 // The barrel, never `cp/transient-retry` directly: the web suite mocks
 // `./control-plane` wholesale and a submodule import would bypass the mock.
 import { transientRetryFetch } from "./control-plane";
@@ -118,6 +119,11 @@ export function createEngineSdk(opts: EngineSdkOptions): HoustonSdk {
     ports: {
       fetch: transientRetryFetch(opts.fetch),
       storage: createWebStorage(),
+      // The DEVICE's own preferences, in the layout the adapter has always
+      // written (`houston.pref.*`): an SDK module that owns a device preference
+      // reads back the value the user picked before it moved into the SDK, and a
+      // blocked or full store rejects rather than quietly storing nothing.
+      devicePreferences: createDevicePrefsStore(),
       clock: {
         now: () => Date.now(),
         setTimeout: (fn, ms) => setTimeout(fn, ms) as unknown as number,

@@ -28,7 +28,8 @@ The kernel never touches a global directly. Every side effect arrives through
 | Port | Shape | Purpose |
 | --- | --- | --- |
 | `fetch` | `typeof fetch` | HTTP/SSE transport for the engine client |
-| `storage` | `KeyValueStore` (`get`/`set`/`delete`, async) | persistent strings (tokens, prefs) |
+| `storage` | `KeyValueStore` (`get`/`set`/`delete`, async) | the SDK's OWN persisted state (the session token), namespaced by the host |
+| `devicePreferences` | `KeyValueStore` | this DEVICE's UI preferences, in the app's own key names (the appearance). A blocked or full store rejects rather than degrading to memory: the user acted, so a failure has to surface |
 | `clock` | `Clock` (`now`/`setTimeout`/`clearTimeout`) | time + scheduling, mockable |
 | `logger` | `SdkLogger` (`debug`/`info`/`warn`/`error`) | structured, leveled diagnostics |
 
@@ -49,6 +50,14 @@ the reactive ones own these scopes:
 | agents | `"agents"` | `AgentsViewModel` `{ loaded, items[] }` | `agents/refresh` · `create` · `rename` · `delete` |
 | conversations | `"conversations/<agentId>"` | `ConversationListVM` `{ loaded, items[] }` (the LIST) | `conversations/refresh` · `rename` · `delete` |
 | turns | `"conversation/<id>"` | `ConversationVM` `{ feed[], running, sessionStatus }` (the live feed) | `turns/send` · `turns/cancel` |
+
+One module is not a gateway family at all: `appearance` owns the theme mode and
+the palette each mode wears, which are this DEVICE's state — read and written
+through the `devicePreferences` port, with no route, no wire test and no entry in
+the assistant catalog (an operation there is derived from the request it issues,
+and a coordinator in an engine pod cannot reach the screen a person is sitting
+at). Its vocabulary and rules are also published as `@houston/sdk/appearance`,
+because a surface resolves a theme on its first frame, before any kernel exists.
 
 Note the conversations module owns the per-agent LIST scope
 (`conversations/<agentId>`); the turns module owns each conversation's live feed

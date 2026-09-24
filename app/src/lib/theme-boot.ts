@@ -23,11 +23,10 @@
 import {
   followsSystem,
   paletteSwatch,
-  parseThemeMirror,
   type ResolvedTheme,
-  serializeThemeMirror,
   type ThemePreference,
-} from "./theme-model";
+} from "@houston/sdk/appearance";
+import { parseThemeMirror, serializeThemeMirror } from "./theme-model";
 
 /**
  * Boot-time cache key in localStorage. Used ONLY to avoid a flash of the wrong

@@ -16,6 +16,14 @@
  * release lands.
  */
 
+import {
+  DEFAULT_THEME_PREFERENCE,
+  followsSystem,
+  type ResolvedMode,
+  type ResolvedTheme,
+  resolveTheme,
+  type ThemePreference,
+} from "@houston/sdk/appearance";
 import { getCurrentWindow } from "@tauri-apps/api/window";
 import { logAndReportError } from "./error-report";
 import {
@@ -25,14 +33,6 @@ import {
   systemPrefersDarkAfterRelease,
   writeCachedTheme,
 } from "./theme-boot";
-import {
-  DEFAULT_THEME_PREFERENCE,
-  followsSystem,
-  type ResolvedMode,
-  type ResolvedTheme,
-  resolveTheme,
-  type ThemePreference,
-} from "./theme-model";
 import { serializeNativeTheme } from "./theme-native";
 
 /**

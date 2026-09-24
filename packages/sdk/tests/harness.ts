@@ -29,6 +29,7 @@ import {
   type SdkPorts,
   type SessionStatusValue,
 } from "@houston/sdk";
+import { memoryKv } from "../src/test-ports";
 
 export const sleep = (ms: number): Promise<void> =>
   new Promise((resolve) => setTimeout(resolve, ms));
@@ -52,15 +53,14 @@ export interface Harness {
  */
 export function makeSdk(baseUrl: string, logger?: SdkLogger): Harness {
   const storage = new Map<string, string>();
-  const kv = {
-    get: async (k: string) => storage.get(k) ?? null,
-    set: async (k: string, v: string) => void storage.set(k, v),
-    delete: async (k: string) => void storage.delete(k),
-  };
+  const kv = memoryKv(storage);
   const baseFetch: typeof fetch = (input, init) => fetch(input, init);
   const ports: SdkPorts = {
     fetch: createAuthFetch(baseFetch, kv),
     storage: kv,
+    // The device's own store: empty here, and read by no contract suite — the
+    // appearance module is unit-tested against it in `./appearance.test.ts`.
+    devicePreferences: memoryKv(),
     clock: {
       now: () => Date.now(),
       setTimeout: (fn, ms) => setTimeout(fn, ms) as unknown as number,

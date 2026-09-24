@@ -1,16 +1,14 @@
 import { describe, expect, it, vi } from "vitest";
 import type { SdkConfig, SdkPorts } from "./ports";
 import { HoustonSdk } from "./sdk";
+import { memoryKv } from "./test-ports";
 
 function fakePorts(overrides: Partial<SdkPorts> = {}): SdkPorts {
   const storage = new Map<string, string>();
   return {
     fetch: vi.fn(async () => new Response("{}", { status: 200 })),
-    storage: {
-      get: async (k) => storage.get(k) ?? null,
-      set: async (k, v) => void storage.set(k, v),
-      delete: async (k) => void storage.delete(k),
-    },
+    storage: memoryKv(storage),
+    devicePreferences: memoryKv(),
     clock: {
       now: () => 0,
       setTimeout: () => 0,

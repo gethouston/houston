@@ -1,6 +1,12 @@
 import assert from "node:assert/strict";
 import { afterEach, beforeEach, test } from "node:test";
 import {
+  DEFAULT_PALETTE,
+  paletteSwatch,
+  type ResolvedTheme,
+  type ThemePreference,
+} from "@houston/sdk/appearance";
+import {
   applyBootTheme,
   applyThemeAttribute,
   readCachedTheme,
@@ -9,12 +15,6 @@ import {
   watchSystemTheme,
   writeCachedTheme,
 } from "../src/lib/theme-boot.ts";
-import {
-  DEFAULT_PALETTE,
-  paletteSwatch,
-  type ResolvedTheme,
-  type ThemePreference,
-} from "../src/lib/theme-model.ts";
 
 const KEY = "houston.theme.cache";
 

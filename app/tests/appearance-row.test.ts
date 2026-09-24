@@ -34,6 +34,15 @@ describe("the Appearance row's preference", () => {
     assert.match(src, /useState<ThemePreference>\(currentThemePreference\)/);
   });
 
+  it("writes through the committer, so a burst of picks stores once", () => {
+    assert.match(src, /createAppearanceCommitter\(/);
+    assert.doesNotMatch(
+      src,
+      /void setThemePreference\(/,
+      "the debounce, both mirrors and the revert live in the committer",
+    );
+  });
+
   it("never reads the preference again as it mounts", () => {
     assert.doesNotMatch(
       src,

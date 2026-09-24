@@ -18,7 +18,7 @@
  * keeps this module free of Tauri and drivable by a fake in tests.
  */
 
-import type { ResolvedMode } from "./theme-model";
+import type { ResolvedMode } from "@houston/sdk/appearance";
 
 /** `null` is Tauri's follow-the-OS value; a mode pins the window to it. */
 export type NativeTheme = ResolvedMode | null;

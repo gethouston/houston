@@ -1,3 +1,8 @@
+import type {
+  PaletteId,
+  ResolvedMode,
+  ThemePreference,
+} from "@houston/sdk/appearance";
 import {
   Dialog,
   DialogContent,
@@ -7,11 +12,6 @@ import {
 } from "@houston-ai/core";
 import { useId } from "react";
 import { useTranslation } from "react-i18next";
-import type {
-  PaletteId,
-  ResolvedMode,
-  ThemePreference,
-} from "../../../lib/theme-model";
 import { chosenPalette, needsModeHint } from "./appearance-model";
 import { PaletteTileGroup } from "./appearance-tiles";
 

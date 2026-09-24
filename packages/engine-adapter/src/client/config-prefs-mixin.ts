@@ -3,6 +3,9 @@ import type { ProjectConfig } from "@houston/wire-types";
 import { emitLocalEcho } from "../bus";
 import * as controlPlane from "../control-plane";
 import { DEFAULT_AGENT_ID, DEFAULT_WORKSPACE_ID } from "../synthetic";
+// The device layout lives in ONE module: the SDK reads the same keys through its
+// `devicePreferences` port, and a store that refuses still throws from there.
+import { clearLocalPref, readLocalPref, writeLocalPref } from "./device-prefs";
 import type { BaseCtor } from "./mixin";
 import { viaSdk } from "./sdk-error";
 
@@ -33,30 +36,6 @@ const ACCOUNT_PREF_KEYS = new Set([
   "houston_onboarding_survey",
   "onboarding_completed",
 ]);
-
-/**
- * The device mirror of a preference, straight from `localStorage`: a store that
- * is blocked (hardened webview), or full (quota), THROWS out of
- * `getPreference` / `setPreference`.
- *
- * Suppressing it let `setPreference` resolve having stored nothing: Settings
- * kept the palette the user had just picked on screen, the next boot lost it,
- * and neither the caller's optimistic revert nor any reporting path ever ran. A
- * failed READ is the same fact from the other side — "unknown", never "unset" —
- * and the callers that hold a mirror of their own act on the difference (the
- * theme loader keeps the boot mirror rather than repainting a guess).
- */
-function readLocalPref(key: string): string | null {
-  return localStorage.getItem(`houston.pref.${key}`);
-}
-
-function writeLocalPref(key: string, value: string): void {
-  localStorage.setItem(`houston.pref.${key}`, value);
-}
-
-function clearLocalPref(key: string): void {
-  localStorage.removeItem(`houston.pref.${key}`);
-}
 
 /** The raw diagnostic of a store that refused, for the two notes below. */
 function storageReason(err: unknown): string {

@@ -27,6 +27,7 @@ import { ActivitiesMixin } from "./client/activities-mixin";
 import { AgentFilesMixin } from "./client/agent-files-mixin";
 import { AgentsMixin } from "./client/agents-mixin";
 import { ApiKeysMixin } from "./client/api-keys-mixin";
+import { AppearanceMixin } from "./client/appearance-mixin";
 import { AssistantMixin } from "./client/assistant-mixin";
 import { HoustonClientBase } from "./client/base";
 import { BillingMixin } from "./client/billing-mixin";
@@ -89,6 +90,7 @@ export const MIXINS = [
   AgentFilesMixin,
   ActivitiesMixin,
   ConfigPrefsMixin,
+  AppearanceMixin,
   AgentsMixin,
   WorkspacesMixin,
   AssistantMixin,

@@ -1,124 +1,23 @@
 /**
- * The theme model: modes, palettes, resolution, and the boot mirror's wire form.
+ * The boot mirror's wire form: the resolved theme as the FIRST frame reads it.
  *
- * Pure data: design tokens in, plain values out, no DOM and no engine, so the
- * pre-paint path (`./theme-boot`) and the preference path (`./theme`) resolve a
- * theme through the same code, and every rule here is unit-testable without a
+ * The vocabulary and every rule over it — the modes, the palette library,
+ * validation, resolution — live in `@houston/sdk/appearance`, so the engine path,
+ * this mirror and the AI Manager all answer the same way. What is left here is
+ * the mirror alone: device-local, JSON, and read by the pre-paint script in both
+ * index.html files before any module graph exists.
+ *
+ * Pure data, no DOM and no engine, so the pre-paint path (`./theme-boot`) and the
+ * preference path (`./theme`) share it and it stays unit-testable without a
  * document.
- *
- * A preference is three independent choices: the MODE the app runs in (`light`,
- * `dark`, or `system`, which follows the OS appearance live) plus one palette
- * per mode, so switching mode keeps the palette chosen for the other one.
- * Resolution collapses them into the pair the DOM wears: a resolved mode and
- * exactly one palette.
  */
 
-import { type PaletteId, palettes } from "@houston/design-tokens";
-
-export type { PaletteId };
-
-/** What the user chose. `system` means "follow the OS appearance". */
-export type ThemeMode = "light" | "dark" | "system";
-
-/** A mode the DOM can wear: `system` has already been resolved away. */
-export type ResolvedMode = Exclude<ThemeMode, "system">;
-
-/** The saved choice, one field per preference key (`theme`, `theme.{light,dark}`). */
-export interface ThemePreference {
-  mode: ThemeMode;
-  light: PaletteId;
-  dark: PaletteId;
-}
-
-/** The choice collapsed against the live OS appearance: what gets painted. */
-export interface ResolvedTheme {
-  mode: ResolvedMode;
-  palette: PaletteId;
-}
-
-type Palette = (typeof palettes)[number];
-
-/** A palette's four representative colours (see `@houston/design-tokens`). */
-export type PaletteSwatch = Palette["swatch"];
-
-/**
- * Every shipped palette by id. The token export is exhaustive over `PaletteId`,
- * so this lookup is total; the cast records that fact and widens nothing.
- */
-const PALETTE_BY_ID = Object.fromEntries(
-  palettes.map((palette) => [palette.id, palette]),
-) as Record<PaletteId, Palette>;
-
-/** The palette a mode falls back to: Houston's own, shipped since day one. */
-export const DEFAULT_PALETTE: Readonly<Record<ResolvedMode, PaletteId>> = {
-  light: "houston-light",
-  dark: "houston-dark",
-};
-
-/**
- * What a device with nothing saved runs. The mode stays `light` rather than
- * `system` so an install that never picked a theme keeps the appearance it has
- * always had. `system` is a choice the user makes, not one made for them.
- */
-export const DEFAULT_THEME_PREFERENCE: ThemePreference = {
-  mode: "light",
-  light: DEFAULT_PALETTE.light,
-  dark: DEFAULT_PALETTE.dark,
-};
-
-/** The palette's swatch, the source of every hex the theme paints outside CSS. */
-export function paletteSwatch(id: PaletteId): PaletteSwatch {
-  return PALETTE_BY_ID[id].swatch;
-}
-
-/** A stored `theme` value, or null when it is absent or not a mode we ship. */
-export function parseThemeMode(value: string | null): ThemeMode | null {
-  return value === "light" || value === "dark" || value === "system"
-    ? value
-    : null;
-}
-
-/**
- * A stored `theme.light` / `theme.dark` value, or null when it is absent,
- * unknown, or a palette of the OTHER mode: a dark palette saved under
- * `theme.light` would paint dark colours in light mode, so it is unusable and
- * the key falls back to its default.
- */
-export function parsePaletteId(
-  value: string | null,
-  mode: ResolvedMode,
-): PaletteId | null {
-  if (value === null || !(value in PALETTE_BY_ID)) return null;
-  const id = value as PaletteId;
-  return PALETTE_BY_ID[id].mode === mode ? id : null;
-}
-
-/**
- * Collapse a preference against the OS appearance. Pure: the caller passes the
- * live `prefers-color-scheme` answer, which is why a preference that is not
- * `system` resolves identically whatever the OS is doing.
- */
-export function resolveTheme(
-  pref: ThemePreference,
-  systemPrefersDark: boolean,
-): ResolvedTheme {
-  const mode: ResolvedMode =
-    pref.mode === "system" ? (systemPrefersDark ? "dark" : "light") : pref.mode;
-  const chosen = mode === "dark" ? pref.dark : pref.light;
-  const palette =
-    chosen in PALETTE_BY_ID && PALETTE_BY_ID[chosen].mode === mode
-      ? chosen
-      : DEFAULT_PALETTE[mode];
-  return { mode, palette };
-}
-
-/**
- * A system appearance change only moves the app while the user asked to follow
- * the OS; an explicit light or dark choice is immune to it.
- */
-export function followsSystem(pref: ThemePreference): boolean {
-  return pref.mode === "system";
-}
+import {
+  DEFAULT_PALETTE,
+  paletteSwatch,
+  parsePaletteId,
+  type ResolvedTheme,
+} from "@houston/sdk/appearance";
 
 /**
  * The boot mirror: the resolved theme plus the two hexes the first frame needs

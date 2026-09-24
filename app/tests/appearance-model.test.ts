@@ -1,6 +1,7 @@
 import assert from "node:assert/strict";
 import { test } from "node:test";
 import { palettes } from "@houston/design-tokens";
+import { DEFAULT_PALETTE, type ThemePreference } from "@houston/sdk/appearance";
 import {
   arrowStep,
   chosenPalette,
@@ -12,10 +13,6 @@ import {
   summaryParts,
   wrapIndex,
 } from "../src/components/settings/sections/appearance-model.ts";
-import {
-  DEFAULT_PALETTE,
-  type ThemePreference,
-} from "../src/lib/theme-model.ts";
 
 /** A preference with a non-default palette on each side, so a mix-up shows. */
 const PREF: ThemePreference = {

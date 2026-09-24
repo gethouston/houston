@@ -8,16 +8,20 @@
  * rendering the row or opening the dialog.
  */
 
-import { palettes } from "@houston/design-tokens";
-import type {
-  PaletteId,
-  ResolvedMode,
-  ThemeMode,
-  ThemePreference,
-} from "../../../lib/theme-model";
+import {
+  listPalettes,
+  type Palette,
+  type PaletteId,
+  type ResolvedMode,
+  type ThemeMode,
+  type ThemePreference,
+} from "@houston/sdk/appearance";
 
 /** One entry of the shipped library, with its id kept as a literal `PaletteId`. */
-export type PaletteEntry = (typeof palettes)[number];
+export type PaletteEntry = Palette;
+
+/** The library, read once through the capability that owns it. */
+const palettes = listPalettes();
 
 /**
  * The palettes of each mode, in the token export's own order — Houston's

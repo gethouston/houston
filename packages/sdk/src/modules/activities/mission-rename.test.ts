@@ -1,5 +1,6 @@
 import { describe, expect, it, vi } from "vitest";
 import type { SdkPorts } from "../../ports";
+import { memoryKv } from "../../test-ports";
 import { moduleScope } from "../http";
 import { ActivitiesHttpError } from "./http";
 import { renameMission } from "./mission-rename";
@@ -34,11 +35,8 @@ function makeScope(respond: () => Response) {
   );
   const ports = {
     fetch: fetchImpl as unknown as typeof fetch,
-    storage: {
-      get: async () => null,
-      set: async () => {},
-      delete: async () => {},
-    },
+    storage: memoryKv(),
+    devicePreferences: memoryKv(),
     clock: { now: () => 0, setTimeout: () => 0, clearTimeout: () => {} },
     logger: { debug: vi.fn(), info: vi.fn(), warn: vi.fn(), error: vi.fn() },
   } satisfies SdkPorts;

@@ -30,7 +30,8 @@ import type {
   SkillsManifest,
 } from "@houston/engine-adapter";
 import type { IntegrationProviderId } from "@houston/protocol";
-import type { DismissInteractionOutcome } from "@houston/sdk";
+import type { DismissInteractionOutcome, ThemeReading } from "@houston/sdk";
+import type { ThemePreference } from "@houston/sdk/appearance";
 import { shouldUseClaudeDesktopLogin } from "../components/shell/provider-login-url";
 import { actingUser } from "./acting-user";
 import {
@@ -1376,6 +1377,33 @@ export const tauriPreferences = {
     call<string | null>("get_preference", () => getEngine().getPreference(key)),
   set: (key: string, value: string | null) =>
     call<void>("set_preference", () => getEngine().setPreference(key, value)),
+};
+
+// ─── Appearance (this device's theme) ─────────────────────────────────
+
+/**
+ * The device's appearance, whose whole contract is the SDK's appearance module.
+ *
+ * Neither call toasts or captures: both have their own report path in `./theme`
+ * — the boot read reports and keeps the mirror on screen, and a refused write
+ * reports and reverts the colours. A red bug toast on top of a reverted palette
+ * would name a failure the user cannot act on, twice.
+ */
+export const tauriTheme = {
+  get: () =>
+    call<ThemeReading>(
+      "get_theme_preference",
+      () => getEngine().getThemePreference(),
+      undefined,
+      { toast: false, capture: false },
+    ),
+  set: (patch: Partial<ThemePreference>, previous: ThemePreference) =>
+    call<ThemePreference>(
+      "set_theme_preference",
+      () => getEngine().setThemePreference(patch, previous),
+      undefined,
+      { toast: false, capture: false },
+    ),
 };
 
 // ─── Sidebar layout ───────────────────────────────────────────────────
