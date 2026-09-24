@@ -7,6 +7,10 @@
 // optional, every failure silent. The ids and the hashing live in the sibling
 // asset `houston-analytics-identity.js`, which must load first.
 //
+// It also publishes `HoustonAnalytics.appLink(baseUrl)`, the link to the web
+// app carrying this browser's visitor id (`?hv=`), so the app's own analytics
+// batches join the funnel back to the visit that sent them.
+//
 // Modern syntax (const, arrow functions, optional chaining) is deliberate: the
 // site has no ES5 floor, and the older `var`/`function` assets beside this one
 // are history, not a rule.
@@ -163,10 +167,33 @@
     return Promise.resolve();
   }
 
+  /**
+   * The web app's link with this browser's visitor id on it (`?hv=`). The app
+   * runs on another origin, so that id can reach it no other way, and it is
+   * what joins the app's own analytics back to this visit.
+   *
+   * Returns `baseUrl` untouched whenever there is no id to carry — Do Not
+   * Track, a browser with no usable randomness, a blocked identity asset. The
+   * link always works; only the attribution is optional.
+   */
+  const appLink = (baseUrl) => {
+    try {
+      if (doNotTrack()) return baseUrl;
+      const visitor = identity?.visitorId();
+      if (!visitor) return baseUrl;
+      const url = new window.URL(baseUrl, window.location?.href);
+      url.searchParams.set("hv", visitor);
+      return url.toString();
+    } catch (_error) {
+      return baseUrl;
+    }
+  };
+
   window.HoustonAnalytics = {
     track,
     visitorId: () => identity?.visitorId() ?? null,
     isInstallId,
+    appLink,
   };
 
   // Landing pages are the funnel's entry. Driven by the layout flag rather than

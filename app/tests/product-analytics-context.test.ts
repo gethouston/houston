@@ -11,8 +11,9 @@ import type {
 } from "../src/lib/product-analytics/wire.ts";
 
 const INSTALL_ID = "8f0c3b1a-2d4e-4a6b-9c8d-7e5f4a3b2c1d";
+const VISITOR_ID = "2b0f7a1c-9d3e-4f5a-8b6c-1d2e3f4a5b6c";
 
-function harness() {
+function harness(options: { visitorId?: string } = {}) {
   let reads = 0;
   let resolveRead: (id: string) => void = () => {};
 
@@ -26,6 +27,7 @@ function harness() {
         resolveRead = resolve;
       });
     },
+    readVisitorId: () => options.visitorId ?? null,
   });
 
   /** Let the resolved read's continuation run before the next assertion. */
@@ -83,6 +85,7 @@ describe("the product-analytics batch context", () => {
       appVersion: "1.2.3",
       platform: () => (desktop ? "desktop" : "web"),
       readInstallId: () => Promise.resolve(INSTALL_ID),
+      readVisitorId: () => null,
     });
     strictEqual(context().session_id, "first");
     session = "second";
@@ -109,6 +112,7 @@ describe("the install id the batches carry", () => {
       appVersion: "1.2.3",
       platform: () => "desktop",
       readInstallId,
+      readVisitorId: () => null,
     });
 
     context();
@@ -135,6 +139,43 @@ describe("the install id the batches carry", () => {
     const id = readInstallId();
     ready();
     strictEqual(await id, INSTALL_ID);
+  });
+});
+
+describe("the visitor id the batches carry", () => {
+  it("rides the very first batch", () => {
+    // Unlike the install id: it comes out of the boot URL, so it is known
+    // before any event exists — and the first batch is the one an acquisition
+    // funnel is counting.
+    const h = harness({ visitorId: VISITOR_ID });
+    deepStrictEqual(h.context(), {
+      session_id: "session-1",
+      app_version: "1.2.3",
+      platform: "desktop",
+      visitor_id: VISITOR_ID,
+    });
+  });
+
+  it("is absent, never null, on a visit that brought none", () => {
+    // Desktop, and any web visit that did not arrive through a site link.
+    const h = harness();
+    ok(!Object.hasOwn(h.context(), "visitor_id"));
+  });
+
+  it("is read on every batch, not captured once here", () => {
+    // The capture (and the one-time URL strip) belongs to
+    // `web-visitor-landing.ts`; this only asks it.
+    let visitor: string | null = null;
+    const context = createProductAnalyticsContext({
+      sessionId: () => "session-1",
+      appVersion: "1.2.3",
+      platform: () => "web",
+      readInstallId: () => Promise.resolve(INSTALL_ID),
+      readVisitorId: () => visitor,
+    });
+    strictEqual(context().visitor_id, undefined);
+    visitor = VISITOR_ID;
+    strictEqual(context().visitor_id, VISITOR_ID);
   });
 });
 
@@ -172,5 +213,18 @@ describe("what the gateway receives", () => {
     );
     strictEqual(bodies[0]?.context.install_id, undefined);
     strictEqual(bodies[1]?.context.install_id, INSTALL_ID);
+  });
+
+  it("carries the visitor id from the batch the launch starts with", async () => {
+    const h = harness({ visitorId: VISITOR_ID });
+    const { bodies, queue } = batching(h.context);
+
+    queue.enqueue("session_started");
+    await queue.flush();
+
+    // The install id is still a hop away; the visitor id is already there, so
+    // a visit that signs in and does nothing else still joins the funnel.
+    strictEqual(bodies[0]?.context.install_id, undefined);
+    strictEqual(bodies[0]?.context.visitor_id, VISITOR_ID);
   });
 });

@@ -186,4 +186,16 @@ describe("what transport.ts wires in", () => {
     ok(source.includes("reportError"));
     ok(source.includes("isNetworkTransportError"));
   });
+
+  it("looks for a visitor id on the web surface only", () => {
+    // Desktop lands on no link, so there is nothing to read there — and the
+    // same `osIsTauri` that decides the platform decides this.
+    ok(source.includes("readWebVisitorId"));
+    ok(
+      /readVisitorId:\s*\(\)\s*=>\s*\(osIsTauri\(\)\s*\?\s*null\s*:\s*readWebVisitorId\(\)\)/.test(
+        source,
+      ),
+      "desktop must read null, never the window's location",
+    );
+  });
 });

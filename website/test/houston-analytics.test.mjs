@@ -338,3 +338,50 @@ test("the page answers Do Not Track once, above every sink", () => {
   const sink = base.indexOf('src="/assets/houston-analytics.js"');
   assert.ok(identity > 0 && sink > identity, "the pair loads in order");
 });
+
+const VISITOR = "2b0f7a1c-9d3e-4f5a-8b6c-1d2e3f4a5b6c";
+
+test("hands the web app this browser's visitor id in the link", () => {
+  const site = load({ stored: { houston_visitor_id: VISITOR } });
+  // The app is on another origin, so its localStorage is not this one's: the
+  // id can only travel in the link (app/src/lib/web-visitor-landing.ts reads
+  // it back out).
+  assert.equal(
+    site.api.appLink("https://app.gethouston.ai/"),
+    `https://app.gethouston.ai/?hv=${VISITOR}`,
+  );
+});
+
+test("keeps the rest of the app link intact", () => {
+  const site = load({ stored: { houston_visitor_id: VISITOR } });
+  const link = site.api.appLink("https://app.gethouston.ai/home?plan=pro#top");
+  assert.equal(
+    link,
+    `https://app.gethouston.ai/home?plan=pro&hv=${VISITOR}#top`,
+  );
+});
+
+test("links to the app unchanged when there is no id to carry", () => {
+  // Do Not Track: the link still works, only the attribution is dropped.
+  const optedOut = load({
+    doNotTrack: "1",
+    stored: { houston_visitor_id: VISITOR },
+  });
+  assert.equal(
+    optedOut.api.appLink("https://app.gethouston.ai/"),
+    "https://app.gethouston.ai/",
+  );
+  assert.equal(optedOut.storage.map.get("houston_visitor_id"), VISITOR);
+
+  // A browser with no usable randomness mints no id in the first place.
+  const anonymous = load({ crypto: {} });
+  assert.equal(
+    anonymous.api.appLink("https://app.gethouston.ai/"),
+    "https://app.gethouston.ai/",
+  );
+});
+
+test("gives back the link it was handed rather than throwing into the page", () => {
+  const site = load({ stored: { houston_visitor_id: VISITOR } });
+  assert.equal(site.api.appLink("not a url"), "not a url");
+});

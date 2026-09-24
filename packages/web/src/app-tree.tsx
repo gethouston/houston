@@ -21,7 +21,6 @@ import { LanguageGate } from "@houston/app/components/shell/language-gate";
 import { QueryPersistenceProvider } from "@houston/app/components/shell/query-persistence-provider";
 import { WorkspaceLoading } from "@houston/app/components/shell/workspace-loading";
 import { useLocalePreference } from "@houston/app/hooks/use-locale-preference";
-import { useProductAnalyticsSink } from "@houston/app/hooks/use-product-analytics-sink";
 import { useSession } from "@houston/app/hooks/use-session";
 import { useUsageAccrual } from "@houston/app/hooks/use-usage-accrual";
 import { IdentityKeyedApp } from "@houston/app/identity-keyed-app";
@@ -39,6 +38,10 @@ import { TooltipProvider } from "@houston-ai/core";
 import { QueryClientProvider } from "@tanstack/react-query";
 import { Component, type ReactNode, useEffect, useState } from "react";
 import { I18nextProvider } from "react-i18next";
+import {
+  ProductAnalyticsSinkMount,
+  WebSessionStartMount,
+} from "./boot-analytics";
 import { PreviewBadge } from "./preview-badge";
 import "@houston/app/styles/globals.css";
 
@@ -181,16 +184,6 @@ function LocaleSyncOnce() {
   return null;
 }
 
-// The first-party product-analytics pipe listens on the same bus as the usage
-// economy, with the same whole-page life span, but it reads the session through
-// a query, so it must sit INSIDE QueryClientProvider — still above every gate
-// and outside <App/>, so one instance pays each event once (mirrors
-// `StartupEffects` in app/src/main.tsx, which is already inside the provider).
-function ProductAnalyticsSinkMount() {
-  useProductAnalyticsSink();
-  return null;
-}
-
 // No StrictMode — matches app/src/main.tsx (portal/listener double-mount churn).
 export default function AppTree() {
   useEngineTheme();
@@ -217,6 +210,7 @@ export default function AppTree() {
   return (
     <QueryClientProvider client={queryClient}>
       <ProductAnalyticsSinkMount />
+      <WebSessionStartMount />
       <ErrorBoundary>
         <TooltipProvider>
           <EngineGate>
