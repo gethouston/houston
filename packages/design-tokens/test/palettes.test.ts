@@ -3,6 +3,8 @@ import { fileURLToPath } from "node:url";
 import { describe, expect, it } from "vitest";
 // @ts-expect-error -- plain .mjs build helper, no type declarations needed here.
 import { composite, contrast, parseColor, withAlpha } from "../build/color.mjs";
+// @ts-expect-error -- plain .mjs build helper, no type declarations needed here.
+import { loadPalette } from "../build/omarchy.mjs";
 import { palettes } from "../dist/ts/tokens.ts";
 
 /**
@@ -95,6 +97,21 @@ describe("the palette library", () => {
       }
     });
   }
+
+  // An import wears its own accent as the CTA and the focus ring; Houston's own
+  // two sets keep the ink CTA the identity is built on, so the accent rule must
+  // not leak into the base blocks it is derived alongside.
+  for (const mode of ["light", "dark"] as const) {
+    it(`Houston ${mode} keeps a monochrome action and focus`, () => {
+      const action = parseColor(base[mode]["ht-action"]) as Rgba;
+      expect(base[mode]["ht-focus"]).toBe(base[mode]["ht-action"]);
+      expect(
+        new Set([action.r, action.g, action.b]).size,
+        `--ht-action (${base[mode]["ht-action"]}) is a hue, not ink`,
+      ).toBe(1);
+      expect(action.a).toBe(1);
+    });
+  }
 });
 
 describe.each(imported)("palette $id", (palette) => {
@@ -147,6 +164,24 @@ describe.each(imported)("palette $id", (palette) => {
       });
     }
   }
+
+  it("wears its own accent as the CTA and the focus ring", () => {
+    // Read from the vendored file, not from the build's own maths: the palette
+    // IS its accent, and a derivation that quietly substituted another hue
+    // would still be self-consistent.
+    const accent = parseColor(loadPalette(palette).accent) as Rgba;
+    expect(parseColor(vars["ht-action"])).toEqual(accent);
+    expect(parseColor(vars["ht-focus"])).toEqual(accent);
+  });
+
+  it("--ht-action-text clears 4.5:1 on the CTA", () => {
+    const fill = composite(vars["ht-action"], screen) as Rgba;
+    const ratio = contrast(vars["ht-action-text"], fill) as number;
+    expect(
+      ratio,
+      `--ht-action-text (${vars["ht-action-text"]}) measures ${ratio.toFixed(2)}:1 on --ht-action`,
+    ).toBeGreaterThanOrEqual(4.5);
+  });
 
   for (const status of ["danger", "success", "warning"] as const) {
     it(`${status}'s label reads on its fill`, () => {

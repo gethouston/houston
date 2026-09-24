@@ -27,9 +27,10 @@ Houston **authors** five families that no palette gets a say in, and an import i
 | `line-input` | mix(bg, fg, 12%) | mix(bg, fg, 15%) |
 | `hover` · `chip` · `chip-subtle` · `tab-track` · `sidebar-line` · `sidebar-hover` · `sidebar-active` | rgba(fg, 0.06 · 0.035 · 0.035 · 0.06 · 0.06 · 0.06 · 0.10) | rgba(fg, 0.08 · 0.05 · 0.045 · 0.06 · 0.08 · 0.06 · 0.10) |
 | `sidebar` | transparent | transparent |
-| `ink` · `card-text` · `popover-text` · `chip-text` · `sidebar-text` · `sidebar-hover-text` · `hover-text` · `action` · `focus` | P.foreground | P.foreground |
+| `ink` · `card-text` · `popover-text` · `chip-text` · `sidebar-text` · `sidebar-hover-text` · `hover-text` | P.foreground | P.foreground |
 | `prose-text` | P.foreground | P.bright_foreground |
-| `action-text` | P.background | P.background |
+| `action` · `focus` | P.accent | P.accent |
+| `action-text` | whichever of P.background, P.bright_foreground, black, white reads best on `action`; below 4.5:1 is a build error | same |
 | `bubble` / `bubble-text` | P.foreground / P.background | rgba(fg, 0.045) / P.bright_foreground |
 | `bubble-chip` / `bubble-chip-text` | rgba(P.background, 0.20) / P.background | rgba(fg, 0.10) / P.foreground |
 | `danger` · `success` · `warning` | P.red · P.green · P.yellow | same |
@@ -40,7 +41,7 @@ Houston **authors** five families that no palette gets a say in, and an import i
 
 The alpha constants are Houston's own, per mode, with the palette's foreground as the colour: a wash is ink laid thinly, so it re-tints itself when the surface moves. Houston's light `hover`, `field-hover` and `chip-solid` ship as opaque grays (`#efefef` is ink at ~6% on white), so the light ladder spends the same 6% as an explicit mix and those tiers stay opaque.
 
-Two rules deserve their reason. The **screen-tone rule**: a dark `card-solid` is the frosted screen's own composited tone, so a board card reads as the screen showing through its column tray rather than a slab laid on it. And the **light chip fallback**: Omarchy's `lighter_background` means "one step in the dark direction", so in a light palette it is usually the *darker* neighbour, and `white` sets it to `#c0c0c0`, far too heavy for a chip. When luminance says it sits below the background, the chip falls back to Houston's own recess. All five light palettes take that fallback today; the build prints one note per palette when they do.
+Three rules deserve their reason. The **accent CTA**: an import is a colour identity, and the accent is the one hue its author chose to stand for it, so the filled CTA and the focus ring wear it. Houston's own two sets keep an ink CTA, because near-monochrome content with brand-coloured chrome IS the Houston identity, and they never pass through this table: they are the base blocks. The accent is tuned for a terminal prompt rather than for a button, so its label is measured rather than assumed, from the same four candidates a status fill uses, and a palette whose best label misses 4.5:1 is a build error. The **screen-tone rule**: a dark `card-solid` is the frosted screen's own composited tone, so a board card reads as the screen showing through its column tray rather than a slab laid on it. And the **light chip fallback**: Omarchy's `lighter_background` means "one step in the dark direction", so in a light palette it is usually the *darker* neighbour, and `white` sets it to `#c0c0c0`, far too heavy for a chip. When luminance says it sits below the background, the chip falls back to Houston's own recess. All five light palettes take that fallback today; the build prints one note per palette when they do.
 
 ## Contrast floors
 

@@ -60,12 +60,35 @@ function nudge(from, toward, surfaces, floor, label) {
   );
 }
 
-/** The label printed ON a status fill: whichever candidate reads best on it. */
+/** The label printed ON a filled surface: whichever candidate reads best on it. */
 function labelOn(fill, p) {
   const candidates = [p.background, p.bright_foreground, "#000000", "#ffffff"];
   return candidates.reduce((best, c) =>
     contrast(c, fill) > contrast(best, fill) ? c : best,
   );
+}
+
+/**
+ * The label printed ON the CTA. An import wears its own accent as `action`, and
+ * that accent is a hue tuned for a terminal prompt rather than for a button, so
+ * the label is measured rather than assumed: whichever candidate reads best, and
+ * a build error when even the best one misses the body floor, because a CTA is
+ * the one surface a user cannot avoid reading.
+ */
+function actionText(accent, p, notes) {
+  const label = labelOn(accent, p);
+  const ratio = contrast(label, accent);
+  if (ratio < BODY_FLOOR) {
+    throw new Error(
+      `${p.id}: --ht-action-text reads ${ratio.toFixed(2)}:1 on the accent (${formatColor(accent)}), below ${BODY_FLOOR}:1`,
+    );
+  }
+  if (label === "#000000" || label === "#ffffff") {
+    notes.push(
+      `${p.id}: action-text is ${label} (${ratio.toFixed(2)}:1 on accent ${formatColor(accent)}); no palette colour reads better`,
+    );
+  }
+  return label;
 }
 
 /**
@@ -119,9 +142,12 @@ export function paletteText(p, surfaces, notes) {
     "sidebar-hover-text": fg,
     "hover-text": fg,
     "prose-text": dark ? p.bright_foreground : fg,
-    action: fg,
-    "action-text": bg,
-    focus: fg,
+    // An import is a colour identity, so its CTA and its focus ring wear the
+    // palette's own accent. Houston's authored sets keep an ink CTA by doctrine,
+    // and they never reach this derivation: they ARE the base blocks.
+    action: p.accent,
+    "action-text": actionText(p.accent, p, notes),
+    focus: p.accent,
     link: step("link", p.blue, BODY_FLOOR),
     // The user's own bubble inverts in light (ink fill, background text) and is a
     // faint ink wash in dark; the chip inside it is the bubble's TEXT colour at
