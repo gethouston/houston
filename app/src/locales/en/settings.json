@@ -56,7 +56,11 @@
   "appearance": {
     "title": "Appearance",
     "light": "Light",
-    "dark": "Dark"
+    "dark": "Dark",
+    "system": "System",
+    "lightPalette": "Light palette",
+    "darkPalette": "Dark palette",
+    "paletteHint": "Only the palette for the current mode shows."
   },
   "notifications": {
     "title": "Notifications",

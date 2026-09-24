@@ -56,7 +56,11 @@
   "appearance": {
     "title": "Aparência",
     "light": "Claro",
-    "dark": "Escuro"
+    "dark": "Escuro",
+    "system": "Sistema",
+    "lightPalette": "Paleta clara",
+    "darkPalette": "Paleta escura",
+    "paletteHint": "Só aparece a paleta do modo atual."
   },
   "notifications": {
     "title": "Notificações",
