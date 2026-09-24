@@ -58,9 +58,14 @@
     "light": "Claro",
     "dark": "Escuro",
     "system": "Sistema",
-    "lightPalette": "Paleta clara",
-    "darkPalette": "Paleta escura",
-    "paletteHint": "Só aparece a paleta do modo atual."
+    "summary": "{{mode}} · {{light}} / {{dark}}",
+    "customize": "Personalizar",
+    "palettesTitle": "Paletas",
+    "palettesDescription": "Escolha uma paleta para o modo claro e outra para o escuro. O que você vê atrás desta janela é o resultado ao vivo.",
+    "lightSection": "Claro",
+    "darkSection": "Escuro",
+    "showsInLight": "Aparece quando o app está no modo claro",
+    "showsInDark": "Aparece quando o app está no modo escuro"
   },
   "notifications": {
     "title": "Notificações",

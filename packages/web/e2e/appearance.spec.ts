@@ -4,22 +4,24 @@ import { openSettings } from "./support/settings-nav";
 import { screen } from "./support/team-nav";
 
 /**
- * Settings > Appearance: the mode the app runs in, and the palette each mode
- * wears.
+ * Settings > Appearance: ONE row for the whole look of the app — a menu for the
+ * mode, and Customize for the palette each mode wears.
  *
- * Three independent choices (`app/src/lib/theme-model.ts`) collapse into the
- * one pair `<html>` paints — `data-theme` for the resolved mode, `data-palette`
- * for the palette of that mode — so every assertion here reads those two
- * attributes rather than pixels. What each test defends:
+ * Three independent choices (`app/src/lib/theme-model.ts`) collapse into the one
+ * pair `<html>` paints — `data-theme` for the resolved mode, `data-palette` for
+ * the palette of that mode — so every assertion here reads those two attributes
+ * rather than pixels. What each test defends:
  *
- * 1. the section offers all three modes and one swatch row per mode, Houston's
- *    own palette leading each;
- * 2. a dark palette paints the moment dark is the mode, and SURVIVES a reload —
- *    the device mirror (`houston.theme.cache`) repaints it on the first frame,
- *    long before the engine preference read answers;
- * 3. `system` tracks the OS appearance live, in both directions;
- * 4. the arrow keys walk a row, which is the whole keyboard contract of a radio
- *    group.
+ * 1. the row offers the mode menu and Customize, and says the current state in
+ *    words;
+ * 2. the menu changes the mode immediately;
+ * 3. Customize opens Palettes, a pick there paints at once and SURVIVES a
+ *    reload — the device mirror (`houston.theme.cache`) repaints it on the first
+ *    frame, long before the engine preference read answers — and the X closes
+ *    the dialog with nothing to confirm;
+ * 4. `system` tracks the OS appearance live, in both directions;
+ * 5. the arrow keys walk a section, which is the whole keyboard contract of a
+ *    radio group.
  *
  * Preferences: `theme`, `theme.light` and `theme.dark` are DEVICE keys, so the
  * adapter stores them in this tab's localStorage (`houston.pref.*`) and the fake
@@ -27,11 +29,12 @@ import { screen } from "./support/team-nav";
  * gives every test a fresh context, so nothing leaks between tests.
  */
 
-/** The palette Houston ships as the dark default, and the one this spec picks. */
+/** The palettes Houston ships as defaults, and the one this spec picks. */
+const HOUSTON_LIGHT = "Houston Light";
 const HOUSTON_DARK = "Houston Dark";
 const NORD = "Nord";
 
-/** Every shipped palette of one mode, as the rows paint them. */
+/** Every shipped palette of one mode, as a section paints them. */
 const LIGHT_PALETTES = 6;
 const DARK_PALETTES = 6;
 
@@ -39,81 +42,116 @@ function html(page: Page): Locator {
   return page.locator("html");
 }
 
-/** One segment of the mode control. Scoped to the fieldset, which its sr-only
- *  legend names, so "Dark" cannot match the "Dark palette" row below it. */
-function modeSegment(page: Page, name: string): Locator {
-  return screen(page)
-    .getByRole("group", { name: "Appearance" })
-    .getByRole("button", { name, exact: true });
+/** The mode menu, named by the row it sits in. */
+function modeMenu(page: Page): Locator {
+  return screen(page).getByRole("combobox", { name: "Appearance" });
 }
 
-/** A mode's swatch row, named by the row's own title. */
-function paletteRow(page: Page, name: string): Locator {
-  return screen(page).getByRole("radiogroup", { name });
+/** Pick a mode: the menu's options are portalled, hence the page-level lookup. */
+async function chooseMode(page: Page, name: string): Promise<void> {
+  await modeMenu(page).click();
+  await page.getByRole("option", { name, exact: true }).click();
 }
 
-function swatch(page: Page, row: string, palette: string): Locator {
-  return paletteRow(page, row).getByRole("radio", { name: palette });
+function customize(page: Page): Locator {
+  return screen(page).getByRole("button", { name: "Customize" });
+}
+
+function palettesDialog(page: Page): Locator {
+  return page.getByRole("dialog", { name: "Palettes" });
+}
+
+/** A mode's tiles, named by the section heading above them ("Light" / "Dark"). */
+function paletteSection(page: Page, name: string): Locator {
+  return palettesDialog(page).getByRole("radiogroup", { name, exact: true });
+}
+
+function tile(page: Page, section: string, palette: string): Locator {
+  return paletteSection(page, section).getByRole("radio", { name: palette });
 }
 
 async function openAppearance(page: Page): Promise<void> {
   await page.goto("/");
   await openSettings(page);
-  await expect(modeSegment(page, "Light")).toBeVisible();
+  await expect(modeMenu(page)).toBeVisible();
 }
 
-test("Appearance offers three modes and one palette row per mode", async ({
+async function openPalettes(page: Page): Promise<void> {
+  await customize(page).click();
+  await expect(palettesDialog(page)).toBeVisible();
+}
+
+test("the Appearance row offers the mode menu, Customize, and the state in words", async ({
   page,
 }) => {
   await openAppearance(page);
 
-  for (const mode of ["Light", "Dark", "System"]) {
-    await expect(modeSegment(page, mode)).toBeVisible();
-  }
-
+  await expect(customize(page)).toBeVisible();
+  // An untouched install: light mode, Houston's own palette on each side.
+  await expect(modeMenu(page)).toHaveText("Light");
   await expect(
-    paletteRow(page, "Light palette").getByRole("radio"),
-  ).toHaveCount(LIGHT_PALETTES);
-  await expect(paletteRow(page, "Dark palette").getByRole("radio")).toHaveCount(
+    screen(page).getByText(`Light · ${HOUSTON_LIGHT} / ${HOUSTON_DARK}`),
+  ).toBeVisible();
+
+  await openPalettes(page);
+  await expect(paletteSection(page, "Light").getByRole("radio")).toHaveCount(
+    LIGHT_PALETTES,
+  );
+  await expect(paletteSection(page, "Dark").getByRole("radio")).toHaveCount(
     DARK_PALETTES,
   );
 
-  // Houston's own set leads each row, and is what an untouched install wears.
+  // Houston's own set leads each section, and is what an untouched install wears.
   await expect(
-    paletteRow(page, "Light palette").getByRole("radio").first(),
-  ).toHaveAccessibleName("Houston Light");
+    paletteSection(page, "Light").getByRole("radio").first(),
+  ).toHaveAccessibleName(HOUSTON_LIGHT);
   await expect(
-    paletteRow(page, "Dark palette").getByRole("radio").first(),
+    paletteSection(page, "Dark").getByRole("radio").first(),
   ).toHaveAccessibleName(HOUSTON_DARK);
-  await expect(swatch(page, "Light palette", "Houston Light")).toHaveAttribute(
+  await expect(tile(page, "Light", HOUSTON_LIGHT)).toHaveAttribute(
     "aria-checked",
     "true",
   );
-  await expect(swatch(page, "Dark palette", HOUSTON_DARK)).toHaveAttribute(
+  await expect(tile(page, "Dark", HOUSTON_DARK)).toHaveAttribute(
     "aria-checked",
     "true",
   );
+
+  // Nothing to confirm: the X is the only way out, and the picks are saved.
+  await palettesDialog(page).getByRole("button", { name: "Close" }).click();
+  await expect(palettesDialog(page)).toHaveCount(0);
+});
+
+test("the mode menu repaints the app at once", async ({ page }) => {
+  await openAppearance(page);
+
+  await chooseMode(page, "Dark");
+  await expect(html(page)).toHaveAttribute("data-theme", "dark");
+  await expect(html(page)).toHaveAttribute("data-palette", "houston-dark");
+
+  // Light is the document default, carried by the attribute being ABSENT.
+  await chooseMode(page, "Light");
+  await expect(html(page)).not.toHaveAttribute("data-theme", /.*/);
+  await expect(html(page)).toHaveAttribute("data-palette", "houston-light");
 });
 
 test("a dark palette paints under dark mode and survives a reload", async ({
   page,
 }) => {
   await openAppearance(page);
+  await chooseMode(page, "Dark");
+  await openPalettes(page);
 
-  await modeSegment(page, "Dark").click();
-  await expect(html(page)).toHaveAttribute("data-theme", "dark");
-  await expect(html(page)).toHaveAttribute("data-palette", "houston-dark");
-
-  await swatch(page, "Dark palette", NORD).click();
+  await tile(page, "Dark", NORD).click();
   await expect(html(page)).toHaveAttribute("data-palette", "nord");
-  await expect(swatch(page, "Dark palette", NORD)).toHaveAttribute(
+  await expect(tile(page, "Dark", NORD)).toHaveAttribute(
     "aria-checked",
     "true",
   );
 
   // Choosing a LIGHT palette while dark is on screen is a valid, silent pick:
-  // the row is dimmed, never disabled, and nothing repaints.
-  await swatch(page, "Light palette", "Catppuccin Latte").click();
+  // the section is hinted, never disabled, and nothing repaints.
+  await tile(page, "Light", "Catppuccin Latte").click();
   await expect(html(page)).toHaveAttribute("data-palette", "nord");
   await expect(html(page)).toHaveAttribute("data-theme", "dark");
 
@@ -122,13 +160,18 @@ test("a dark palette paints under dark mode and survives a reload", async ({
   await expect(html(page)).toHaveAttribute("data-palette", "nord");
   await expect(html(page)).toHaveAttribute("data-theme", "dark");
   await openSettings(page);
-  await expect(swatch(page, "Dark palette", NORD)).toHaveAttribute(
+  await expect(
+    screen(page).getByText(`Dark · Catppuccin Latte / ${NORD}`),
+  ).toBeVisible();
+  await openPalettes(page);
+  await expect(tile(page, "Dark", NORD)).toHaveAttribute(
     "aria-checked",
     "true",
   );
-  await expect(
-    swatch(page, "Light palette", "Catppuccin Latte"),
-  ).toHaveAttribute("aria-checked", "true");
+  await expect(tile(page, "Light", "Catppuccin Latte")).toHaveAttribute(
+    "aria-checked",
+    "true",
+  );
 });
 
 test("System follows the OS appearance in both directions", async ({
@@ -136,45 +179,45 @@ test("System follows the OS appearance in both directions", async ({
 }) => {
   await openAppearance(page);
 
-  await modeSegment(page, "System").click();
+  await chooseMode(page, "System");
   await page.emulateMedia({ colorScheme: "dark" });
   await expect(html(page)).toHaveAttribute("data-theme", "dark");
   await expect(html(page)).toHaveAttribute("data-palette", "houston-dark");
 
-  // Light is the document default, carried by the attribute being ABSENT.
   await page.emulateMedia({ colorScheme: "light" });
   await expect(html(page)).not.toHaveAttribute("data-theme", /.*/);
   await expect(html(page)).toHaveAttribute("data-palette", "houston-light");
 
   // An explicit mode is immune to the OS: the watcher is gated on `system`.
-  await modeSegment(page, "Dark").click();
+  await chooseMode(page, "Dark");
   await page.emulateMedia({ colorScheme: "light" });
   await expect(html(page)).toHaveAttribute("data-theme", "dark");
 });
 
-test("the arrow keys walk a swatch row and wrap at its ends", async ({
+test("the arrow keys walk a palette section and wrap at its ends", async ({
   page,
 }) => {
   await openAppearance(page);
-  await modeSegment(page, "Dark").click();
+  await chooseMode(page, "Dark");
+  await openPalettes(page);
 
-  // The row is ONE tab stop: the checked swatch holds it, the arrows move both
+  // The section is ONE tab stop: the checked tile holds it, the arrows move both
   // the selection and the focus.
-  await swatch(page, "Dark palette", HOUSTON_DARK).focus();
+  await tile(page, "Dark", HOUSTON_DARK).focus();
   await page.keyboard.press("ArrowRight");
-  const second = paletteRow(page, "Dark palette").getByRole("radio").nth(1);
+  const second = paletteSection(page, "Dark").getByRole("radio").nth(1);
   await expect(second).toHaveAttribute("aria-checked", "true");
   await expect(second).toBeFocused();
 
   await page.keyboard.press("ArrowLeft");
-  await expect(swatch(page, "Dark palette", HOUSTON_DARK)).toHaveAttribute(
+  await expect(tile(page, "Dark", HOUSTON_DARK)).toHaveAttribute(
     "aria-checked",
     "true",
   );
 
   // Wraps: one step back from the first lands on the last.
   await page.keyboard.press("ArrowLeft");
-  const last = paletteRow(page, "Dark palette").getByRole("radio").last();
+  const last = paletteSection(page, "Dark").getByRole("radio").last();
   await expect(last).toHaveAttribute("aria-checked", "true");
   await expect(last).toBeFocused();
 });

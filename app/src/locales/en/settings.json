@@ -58,9 +58,14 @@
     "light": "Light",
     "dark": "Dark",
     "system": "System",
-    "lightPalette": "Light palette",
-    "darkPalette": "Dark palette",
-    "paletteHint": "Only the palette for the current mode shows."
+    "summary": "{{mode}} · {{light}} / {{dark}}",
+    "customize": "Customize",
+    "palettesTitle": "Palettes",
+    "palettesDescription": "Pick a palette for light and one for dark. What you see behind this window is the live result.",
+    "lightSection": "Light",
+    "darkSection": "Dark",
+    "showsInLight": "Shows when the app is in light mode",
+    "showsInDark": "Shows when the app is in dark mode"
   },
   "notifications": {
     "title": "Notifications",
