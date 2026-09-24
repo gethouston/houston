@@ -12,6 +12,7 @@ import { gatewayFetch, liveGatewayDeps } from "../gateway-fetch.ts";
 import { getInstallId } from "../install-id";
 import { isNetworkTransportError } from "../network-transport-error.ts";
 import { osIsTauri } from "../os-bridge";
+import { readWebVisitorId } from "../web-visitor-landing.ts";
 import {
   createInstallIdReader,
   createProductAnalyticsContext,
@@ -30,6 +31,9 @@ const productAnalyticsContext = createProductAnalyticsContext({
     whenEngineReady,
     readStoredId: async () => (await getInstallId()).id,
   }),
+  // Desktop has no link to land on, so it never even looks: reading the id
+  // there would only reach a `window.location` that no website ever wrote.
+  readVisitorId: () => (osIsTauri() ? null : readWebVisitorId()),
 });
 
 /** POSTs one batch. Resolves for every expected outcome; see `post.ts`. */

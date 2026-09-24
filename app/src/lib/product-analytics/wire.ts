@@ -30,6 +30,15 @@ export interface ProductAnalyticsContext {
    * (`context.ts`), and a flush never waits for it.
    */
   readonly install_id?: string;
+  /**
+   * The marketing site's visitor id (`lib/web-visitor-landing.ts`), carried
+   * into the app by the link the site builds. It is what joins a signed-in
+   * session back to the landing page it came from, so it rides EVERY batch
+   * like the install id does. Optional because only the web surface can have
+   * one: the desktop app has no link to land on, and a visit that reached the
+   * app any other way brings no id.
+   */
+  readonly visitor_id?: string;
 }
 
 export interface RejectedProductEvent {

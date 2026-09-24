@@ -1,8 +1,11 @@
 /**
  * The device identity stamped on every batch.
  *
- * Three of its four fields are known the moment the app is running. The
- * fourth, `install_id`, is BEST-EFFORT: it lives in the preference store and is
+ * Every field but one is known the moment the app is running — the session,
+ * the version, the platform, and on web the visitor id the link brought
+ * (`lib/web-visitor-landing.ts`), all read synchronously on each batch.
+ * `install_id` is the exception, and it is BEST-EFFORT: it lives in the
+ * preference store and is
  * read through the engine, so it lands one async hop later — and a flush must
  * never wait for it, because a quit-time goodbye has milliseconds and an event
  * that misses its ride is gone for good. So the first batch of a launch starts
@@ -28,6 +31,13 @@ export interface ProductAnalyticsContextDeps {
    * simply never answers and every batch ships without the field.
    */
   readInstallId(): Promise<string>;
+  /**
+   * This tab's marketing-site visitor id, or null when there is none. Read on
+   * every batch and SYNCHRONOUSLY, unlike the install id: it comes out of the
+   * boot URL, so it is known before the first event exists and the first batch
+   * — the one an acquisition funnel is actually counting — carries it.
+   */
+  readVisitorId(): string | null;
 }
 
 export interface InstallIdReaderDeps {
@@ -80,12 +90,14 @@ export function createProductAnalyticsContext(
 
   return () => {
     startReading();
+    const visitorId = deps.readVisitorId();
     return {
       session_id: deps.sessionId(),
       app_version: deps.appVersion,
       platform: deps.platform(),
       // Omitted, never null: the route reads an absent id as "not known yet".
       ...(installId === undefined ? {} : { install_id: installId }),
+      ...(visitorId === null ? {} : { visitor_id: visitorId }),
     };
   };
 }
