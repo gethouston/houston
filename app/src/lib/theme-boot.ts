@@ -2,9 +2,9 @@
  * The DOM side of theming: the one place a theme is painted, and the boot mirror
  * that paints it on the FIRST frame.
  *
- * The engine preferences (`theme`, `theme.light`, `theme.dark`, see `./theme`)
- * are the source of truth, but they read through `tauriPreferences ->
- * getEngine()`, which only answers after the engine handshake. The boot splash
+ * The stored preference (`theme`, `theme.light`, `theme.dark`, see `./theme`) is
+ * the source of truth, but it reads through the SDK's appearance module via the
+ * engine adapter, which only answers after the engine handshake. The boot splash
  * renders DURING that handshake and is themed (`bg-background`), so without a
  * device-local mirror a dark-mode user stares at the light surface for the whole
  * handshake (seconds on a cold start) and then snaps to dark.

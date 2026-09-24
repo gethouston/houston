@@ -12,7 +12,31 @@ import { afterEach, beforeEach, expect, test, vi } from "vitest";
  * These tests pin the rejection, and its boundary: an ACCOUNT key's pre-fix
  * device copy is a best-effort cleanup behind a host that already answered, so
  * a store refusing to give it up can never fail a preference that DID land.
+ *
+ * The last block pins the READ side's one hard rule at the other end of the
+ * wire: a boot reader takes an unreadable device preference as UNSET and reports
+ * it, never as a failed load. A blocked store would otherwise cost a user their
+ * whole workspace list — the load and the preference read resolve together, so
+ * the rejection reached the list's catch and painted the failure screen.
  */
+
+const appMocks = vi.hoisted(() => ({
+  prefGet: vi.fn<(key: string) => Promise<string | null>>(),
+  list: vi.fn(),
+  report: vi.fn(),
+}));
+
+vi.mock("../../../app/src/lib/tauri", () => ({
+  tauriPreferences: { get: appMocks.prefGet, set: vi.fn() },
+  tauriWorkspaces: { list: appMocks.list },
+}));
+vi.mock("../../../app/src/lib/engine", () => ({ setActiveOrg: () => false }));
+vi.mock("../../../app/src/lib/analytics", () => ({
+  analytics: { track: () => {} },
+}));
+vi.mock("../../../app/src/lib/error-report", () => ({
+  logAndReportError: appMocks.report,
+}));
 
 const originalFetch = globalThis.fetch;
 
@@ -128,4 +152,81 @@ test("an account read the host answers survives a device copy the store will not
 
   await expect(client().getPreference("timezone")).resolves.toBeNull();
   expect(warn).toHaveBeenCalledOnce();
+});
+
+// ── The boot readers: unreadable is UNSET, and it is reported ─────────
+
+const personal = {
+  id: "ws-default",
+  name: "Personal",
+  isDefault: true,
+  createdAt: "2026-01-01T00:00:00Z",
+};
+
+const blockedRead = () => new Error("storage read blocked");
+
+test("a boot preference read that rejects answers unset and reports once", async () => {
+  appMocks.report.mockImplementation(() => {});
+  appMocks.prefGet.mockRejectedValue(blockedRead());
+
+  const { readBootPreference } = await import(
+    "../../../app/src/lib/boot-preference"
+  );
+
+  await expect(readBootPreference("last_agent_id")).resolves.toBeNull();
+  expect(appMocks.report).toHaveBeenCalledOnce();
+  expect(appMocks.report.mock.calls[0]?.[0]).toBe(
+    "device_pref_unreadable:last_agent_id",
+  );
+});
+
+test("a boot preference read the store answers is passed through unreported", async () => {
+  appMocks.report.mockImplementation(() => {});
+  appMocks.prefGet.mockResolvedValue("agent-7");
+
+  const { readBootPreference } = await import(
+    "../../../app/src/lib/boot-preference"
+  );
+
+  await expect(readBootPreference("last_agent_id")).resolves.toBe("agent-7");
+  expect(appMocks.report).not.toHaveBeenCalled();
+});
+
+test("loadWorkspaces keeps the list when the device store cannot answer", async () => {
+  appMocks.report.mockImplementation(() => {});
+  appMocks.list.mockResolvedValue([personal]);
+  appMocks.prefGet.mockRejectedValue(blockedRead());
+
+  const { useWorkspaceStore } = await import(
+    "../../../app/src/stores/workspaces"
+  );
+  await useWorkspaceStore.getState().loadWorkspaces();
+
+  const state = useWorkspaceStore.getState();
+  expect(state.workspaces).toEqual([personal]);
+  expect(state.current?.id).toBe(personal.id);
+  // The failure screen (workspaceGateState `failed`) is what this must never be.
+  expect(state.loadError).toBe(false);
+  expect(state.loaded).toBe(true);
+  expect(state.loading).toBe(false);
+  expect(appMocks.report).toHaveBeenCalledOnce();
+});
+
+test("loadWorkspaces still fails loudly when the LIST is what rejected", async () => {
+  appMocks.report.mockImplementation(() => {});
+  appMocks.list.mockRejectedValue(new Error("host unreachable"));
+  appMocks.prefGet.mockResolvedValue(personal.id);
+
+  const { useWorkspaceStore } = await import(
+    "../../../app/src/stores/workspaces"
+  );
+  // The store is a module singleton shared with the test above.
+  useWorkspaceStore.setState({ workspaces: [], current: null });
+  await useWorkspaceStore.getState().loadWorkspaces();
+
+  const state = useWorkspaceStore.getState();
+  expect(state.loadError).toBe(true);
+  expect(state.current).toBeNull();
+  // The wire layer (`call`) already logged, toasted and captured that one.
+  expect(appMocks.report).not.toHaveBeenCalled();
 });

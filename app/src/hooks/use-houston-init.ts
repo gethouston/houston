@@ -1,7 +1,8 @@
 import { useEffect, useRef } from "react";
 import { analytics } from "../lib/analytics";
+import { readBootPreference } from "../lib/boot-preference";
 import { providerNotConfirmedDisconnected } from "../lib/provider-connection";
-import { tauriPreferences, tauriProvider } from "../lib/tauri";
+import { tauriProvider } from "../lib/tauri";
 import { useAgentCatalogStore } from "../stores/agent-catalog";
 import { useAgentStore } from "../stores/agents";
 import { useUIStore } from "../stores/ui";
@@ -29,29 +30,23 @@ export function useHoustonInit() {
 
       const wsState = useWorkspaceStore.getState();
       let currentWorkspace = wsState.current;
-      try {
-        const lastWsId = await tauriPreferences.get("last_workspace_id");
-        if (lastWsId) {
-          const saved = wsState.workspaces.find((w) => w.id === lastWsId);
-          if (saved) {
-            useWorkspaceStore.getState().setCurrent(saved);
-            currentWorkspace = saved;
-          }
+      // Both restores read through `readBootPreference`: a device store that
+      // refuses the read answers "unset" and is reported, so boot continues into
+      // the resolved space with its agents instead of stopping on a convenience.
+      const lastWsId = await readBootPreference("last_workspace_id");
+      if (lastWsId) {
+        const saved = wsState.workspaces.find((w) => w.id === lastWsId);
+        if (saved) {
+          useWorkspaceStore.getState().setCurrent(saved);
+          currentWorkspace = saved;
         }
-      } catch (e) {
-        console.error("[init] Failed to restore last workspace:", e);
       }
 
       // Read BEFORE loadAgents: its auto-selection of agents[0] runs the
       // same side effects a user selection does, which OVERWRITE this
       // preference — reading it afterwards always restored agents[0]
       // (surfaced by HOU-693's relaunch-mid-warm-up flow, but generic).
-      let lastAgentId: string | null = null;
-      try {
-        lastAgentId = await tauriPreferences.get("last_agent_id");
-      } catch (e) {
-        console.error("[init] Failed to read last agent:", e);
-      }
+      const lastAgentId = await readBootPreference("last_agent_id");
 
       if (currentWorkspace) {
         await loadAgents(currentWorkspace.id);
