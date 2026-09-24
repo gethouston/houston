@@ -2,6 +2,7 @@ import { readFileSync } from "node:fs";
 import { describe, expect, it, vi } from "vitest";
 import type { SdkConfig, SdkPorts } from "../../ports";
 import { HoustonSdk } from "../../sdk";
+import { memoryKv } from "../../test-ports";
 import { AgentSkillsHttpError } from "./index";
 
 /**
@@ -67,6 +68,7 @@ function agentHost(
   const store = new Map<string, string>();
   const ports: SdkPorts = {
     fetch: fetchImpl as unknown as typeof fetch,
+    devicePreferences: memoryKv(),
     storage: {
       get: async (k) => store.get(k) ?? null,
       set: async (k, v) => void store.set(k, v),

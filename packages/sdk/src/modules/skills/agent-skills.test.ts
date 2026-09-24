@@ -216,6 +216,7 @@ function manifestHost(options: { failFirstPut?: boolean } = {}) {
   const store = new Map<string, string>();
   const ports: SdkPorts = {
     fetch: fetchImpl as unknown as typeof fetch,
+    devicePreferences: memoryKv(),
     storage: {
       get: async (k) => store.get(k) ?? null,
       set: async (k, v) => void store.set(k, v),
