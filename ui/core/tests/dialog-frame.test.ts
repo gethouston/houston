@@ -431,6 +431,31 @@ describe("the shared stylesheets", () => {
     }
   });
 
+  it("keeps the keyboard focus ring visible on the primary button", () => {
+    // DESIGN.md §7: focus is a ≥2px ring drawn as a box-shadow so it follows
+    // the radius. Button's base ring is Tailwind's `ring-[3px]`, itself a
+    // box-shadow, so §4's unlayered rim shadow replaces it outright, and the
+    // `focus-visible:border-focus` beside it colours a border with no width:
+    // the primary button showed no focus at all. One box-shadow slot holds
+    // both, so §4 paints the rim and the ring together.
+    const rule = [...canvasSection(4).matchAll(/([^{}]+)\{([^{}]*)\}/g)].find(
+      (match) => match[1].includes(":focus-visible"),
+    );
+    assert.ok(rule, "section 4 draws no focus ring on the primary button");
+    assert.match(rule[1], /\[data-variant="default"\]:is\(button, a\)/);
+    const declarations = rule[2].replace(/\s+/g, " ");
+    assert.match(
+      declarations,
+      /box-shadow:[^;]*\binset 0 0 0 1px var\(--ht-cta-rim\)/,
+      "the focus rule drops the rim the base rule paints",
+    );
+    assert.match(
+      declarations,
+      /box-shadow:[^;]*\b0 0 0 3px var\(--ht-focus\)/,
+      "the focus rule paints no ring in the focus token",
+    );
+  });
+
   it("masks the running ring with a colour of its own", () => {
     // A mask reads the ALPHA channel only, so any opaque colour does the job,
     // but `currentColor` resolves to the host's TEXT colour, alpha included, so
