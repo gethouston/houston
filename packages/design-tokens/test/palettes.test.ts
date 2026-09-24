@@ -63,6 +63,29 @@ const EXPECTED = [
 
 const imported = palettes.filter((p) => !p.id.startsWith("houston-"));
 
+/**
+ * The primary button as Houston ships it: a near-ink solid with no rim in light,
+ * a white frost with a hairline rim in dark. Pinned as literals because this
+ * pair IS the Houston identity the palette library is measured against — a
+ * derivation rule must never reach the base blocks and repaint it.
+ */
+const HOUSTON_CTA = {
+  light: {
+    "ht-cta": "#1b1b1e",
+    "ht-cta-text": "#ffffff",
+    "ht-cta-hover": "#2a2a2d",
+    "ht-cta-rim": "transparent",
+    "ht-cta-rim-hover": "transparent",
+  },
+  dark: {
+    "ht-cta": "rgba(255, 255, 255, 0.08)",
+    "ht-cta-text": "#ffffff",
+    "ht-cta-hover": "rgba(255, 255, 255, 0.13)",
+    "ht-cta-rim": "rgba(255, 255, 255, 0.2)",
+    "ht-cta-rim-hover": "rgba(255, 255, 255, 0.3)",
+  },
+} as const;
+
 /** Body text owes 4.5:1; `ink-muted` is secondary and owes the 3:1 floor. */
 const NUDGED = [
   ["ht-ink-muted", 3],
@@ -110,6 +133,15 @@ describe("the palette library", () => {
         `--ht-action (${base[mode]["ht-action"]}) is a hue, not ink`,
       ).toBe(1);
       expect(action.a).toBe(1);
+    });
+
+    it(`Houston ${mode} keeps its own primary button`, () => {
+      for (const [name, value] of Object.entries(HOUSTON_CTA[mode])) {
+        expect(
+          parseColor(base[mode][name]),
+          `--${name} (${base[mode][name]}) moved off the shipped ${value}`,
+        ).toEqual(parseColor(value));
+      }
     });
   }
 });
@@ -165,7 +197,23 @@ describe.each(imported)("palette $id", (palette) => {
     }
   }
 
-  it("wears its own accent as the CTA and the focus ring", () => {
+  it("paints the primary button with its own accent", () => {
+    // The button is the palette's loudest surface, so `cta` IS the accent: a
+    // Houston near-ink fill surviving here is the bug this pair exists for.
+    const accent = parseColor(loadPalette(palette).accent) as Rgba;
+    expect(parseColor(vars["ht-cta"])).toEqual(accent);
+  });
+
+  it("--ht-cta-text clears 4.5:1 on the primary button", () => {
+    const fill = composite(vars["ht-cta"], screen) as Rgba;
+    const ratio = contrast(vars["ht-cta-text"], fill) as number;
+    expect(
+      ratio,
+      `--ht-cta-text (${vars["ht-cta-text"]}) measures ${ratio.toFixed(2)}:1 on --ht-cta`,
+    ).toBeGreaterThanOrEqual(4.5);
+  });
+
+  it("wears its own accent as the action colour and the focus ring", () => {
     // Read from the vendored file, not from the build's own maths: the palette
     // IS its accent, and a derivation that quietly substituted another hue
     // would still be self-consistent.

@@ -52,6 +52,21 @@
     "action-text": {
       "$value": "{color.base.white}"
     },
+    "cta": {
+      "$value": "{color.neutral.850}"
+    },
+    "cta-text": {
+      "$value": "{color.base.white}"
+    },
+    "cta-hover": {
+      "$value": "{color.neutral.775}"
+    },
+    "cta-rim": {
+      "$value": "{color.base.transparent}"
+    },
+    "cta-rim-hover": {
+      "$value": "{color.base.transparent}"
+    },
     "link": {
       "$value": "{color.status.link}"
     },

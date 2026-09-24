@@ -72,9 +72,10 @@ complete `--ht-*` role set by one table of rules:
 - `build/palette-text.mjs` derives ink, the status hues, and the contrast
   nudging: the six roles worn AS TEXT step toward the palette's own ink in 2%
   mixes until they clear 4.5:1 (3:1 for `ink-muted`) on the field, the screen, the
-  recessed row and, for a status ink, its own wash. It also gives the CTA and the
-  focus ring (`action`, `focus`) the palette's own accent, with `action-text`
-  measured on that accent at 4.5:1 or the build fails.
+  recessed row and, for a status ink, its own wash. It also gives the filled
+  primary button, the action colour and the focus ring (`cta`, `action`,
+  `focus`) the palette's own accent, with `cta-text` and `action-text` measured
+  on that accent at 4.5:1 or the build fails.
 
 The build prints one note per fallback and per nudge it applies. The full role →
 formula table, the two named rules (the dark screen-tone card, the light chip

@@ -81,6 +81,19 @@ function splitSelectorList(list: string): string[] {
 const code = (css: string): string => css.replace(/\/\*[\s\S]*?\*\//g, "");
 
 /**
+ * The RULES of one numbered canvas.css section, comments stripped: the slice
+ * starts after the section header's own comment closes, so what comes back is
+ * only what the browser reads for that section.
+ */
+const canvasSection = (n: number): string => {
+  const css = sheet("canvas.css");
+  const heading = css.indexOf(`─ ${n}. `);
+  const next = css.indexOf(`─ ${n + 1}. `);
+  assert.ok(heading > 0 && next > heading, `canvas.css has no section ${n}`);
+  return code(css.slice(css.indexOf("*/", heading) + 2, next));
+};
+
+/**
  * Every selector a stylesheet declares, one per element a rule paints, written
  * on one line: whitespace collapsed, and the padding a wrapped `:not(…)` picks
  * up removed, so a selector compares the same however it is formatted. The regex
@@ -393,6 +406,28 @@ describe("the shared stylesheets", () => {
         selector.includes(LIGHT_PIN_GUARD),
         `${selector} leaks the dark look into a light-pinned subtree`,
       );
+    }
+  });
+
+  it("paints the primary button from the cta tokens alone", () => {
+    // DESIGN.md §4: `bg-cta`/`text-cta-text` (plus the rim pair) ARE the filled
+    // primary button, so an imported palette repaints it by declaring its own
+    // values. A literal in this section is Houston's look nailed into every
+    // palette — the bug where "New task" stayed near-ink on an imported set.
+    const section = canvasSection(4);
+    assert.doesNotMatch(
+      section,
+      /#[0-9a-fA-F]{3,8}\b|(?<![a-zA-Z])rgba?\(/,
+      "section 4 carries a raw colour; the button's colours are tokens",
+    );
+    for (const role of [
+      "cta",
+      "cta-text",
+      "cta-hover",
+      "cta-rim",
+      "cta-rim-hover",
+    ]) {
+      assert.match(section, new RegExp(`var\\(--ht-${role}\\)`), role);
     }
   });
 

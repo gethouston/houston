@@ -69,23 +69,24 @@ function labelOn(fill, p) {
 }
 
 /**
- * The label printed ON the CTA. An import wears its own accent as `action`, and
- * that accent is a hue tuned for a terminal prompt rather than for a button, so
- * the label is measured rather than assumed: whichever candidate reads best, and
- * a build error when even the best one misses the body floor, because a CTA is
- * the one surface a user cannot avoid reading.
+ * The label printed ON the accent: `action-text` and `cta-text` alike, since an
+ * import wears its accent for both. That accent is a hue tuned for a terminal
+ * prompt rather than for a button, so the label is measured rather than assumed:
+ * whichever candidate reads best, and a build error when even the best one
+ * misses the body floor, because a CTA is the one surface a user cannot avoid
+ * reading.
  */
-function actionText(accent, p, notes) {
+function accentText(accent, p, notes) {
   const label = labelOn(accent, p);
   const ratio = contrast(label, accent);
   if (ratio < BODY_FLOOR) {
     throw new Error(
-      `${p.id}: --ht-action-text reads ${ratio.toFixed(2)}:1 on the accent (${formatColor(accent)}), below ${BODY_FLOOR}:1`,
+      `${p.id}: the accent's label reads ${ratio.toFixed(2)}:1 on the accent (${formatColor(accent)}), below ${BODY_FLOOR}:1`,
     );
   }
   if (label === "#000000" || label === "#ffffff") {
     notes.push(
-      `${p.id}: action-text is ${label} (${ratio.toFixed(2)}:1 on accent ${formatColor(accent)}); no palette colour reads better`,
+      `${p.id}: the accent's label is ${label} (${ratio.toFixed(2)}:1 on accent ${formatColor(accent)}); no palette colour reads better`,
     );
   }
   return label;
@@ -114,6 +115,9 @@ export function paletteText(p, surfaces, notes) {
   const bg = p.background;
   const { screen, all, washes } = surfaceStack(surfaces);
   const highlight = withAlpha(p.yellow, dark ? 0.34 : 0.45);
+  // `action` and `cta` are both the accent here, so one measurement serves both
+  // labels — and the build prints one note, not the same note twice.
+  const accentLabel = accentText(p.accent, p, notes);
 
   const step = (role, from, floor, extra = []) => {
     const { value, steps } = nudge(
@@ -146,8 +150,19 @@ export function paletteText(p, surfaces, notes) {
     // palette's own accent. Houston's authored sets keep an ink CTA by doctrine,
     // and they never reach this derivation: they ARE the base blocks.
     action: p.accent,
-    "action-text": actionText(p.accent, p, notes),
+    "action-text": accentLabel,
     focus: p.accent,
+    // The filled primary button is its own pair, because Houston's two sets
+    // spend a near-ink solid in light and a white frost in dark where `action`
+    // is the ink the progress bar and the status dots wear. An import has one
+    // accent for both jobs: the button IS the accent, its hover steps 12%
+    // toward ink, and it carries no rim — the frost rim belongs to Houston
+    // dark's glass, not to a solid accent fill.
+    cta: p.accent,
+    "cta-text": accentLabel,
+    "cta-hover": mix(p.accent, fg, 0.12),
+    "cta-rim": "transparent",
+    "cta-rim-hover": "transparent",
     link: step("link", p.blue, BODY_FLOOR),
     // The user's own bubble inverts in light (ink fill, background text) and is a
     // faint ink wash in dark; the chip inside it is the bubble's TEXT colour at

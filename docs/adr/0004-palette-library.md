@@ -31,6 +31,10 @@ Houston **authors** five families that no palette gets a say in, and an import i
 | `prose-text` | P.foreground | P.bright_foreground |
 | `action` · `focus` | P.accent | P.accent |
 | `action-text` | whichever of P.background, P.bright_foreground, black, white reads best on `action`; below 4.5:1 is a build error | same |
+| `cta` | P.accent | same |
+| `cta-text` | the same measured label as `action-text`, since both sit on the accent | same |
+| `cta-hover` | mix(P.accent, fg, 12%) | same |
+| `cta-rim` · `cta-rim-hover` | transparent | transparent |
 | `bubble` / `bubble-text` | P.foreground / P.background | rgba(fg, 0.045) / P.bright_foreground |
 | `bubble-chip` / `bubble-chip-text` | rgba(P.background, 0.20) / P.background | rgba(fg, 0.10) / P.foreground |
 | `danger` · `success` · `warning` | P.red · P.green · P.yellow | same |

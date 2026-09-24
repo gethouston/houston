@@ -83,6 +83,7 @@ Text · interactive · lines:
 | `text-ink` | primary text |
 | `text-ink-muted` | secondary text |
 | `bg-action` / `text-action-text` | filled CTA fill/label (also progress, tab underline, switches, status dots) |
+| `bg-cta` / `text-cta-text` (+ `cta-hover`, `cta-rim`, `cta-rim-hover`) | the filled primary Button's own pair — Houston: near-ink solid in light, white frost in dark; an import: its accent — distinct from `action`, which also paints progress, switches and status dots. Worn by `canvas.css` §4, never by a call site |
 | `text-link` (+ `bg-link/10` tint) | inline link chips in chat/prose — Slack-blue text on a soft tint, underline on hover; the ONE sanctioned blue |
 | `bg-bubble` | the user chat bubble's fill — near-ink in light, the subtle white wash in dark |
 | `text-bubble-text` | the user chat bubble's text — pure white in BOTH themes (the near-white grays read dull over the bubble fill) |

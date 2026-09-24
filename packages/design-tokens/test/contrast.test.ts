@@ -8,7 +8,9 @@ import { parseColor } from "../build/color.mjs";
  * WCAG guard for every colour Houston paints as INFORMATION, where a
  * washed-out hue is not a style slip but something the user cannot read: the
  * two families that carry a sender's NAME in chat, the file-type tints the
- * Files list paints its icon glyphs with, and the status hues set as text.
+ * Files list paints its icon glyphs with, the status hues set as text, and the
+ * label on the primary button, whose dark fill is a frost the surface below
+ * shows through.
  *
  * Chat attributes every message to its sender WhatsApp-group style: the name
  * renders inside the bubble in that sender's stable tone. Text has to clear
@@ -158,6 +160,19 @@ function washSurface(
   );
 }
 
+/**
+ * The two places a primary button sits: on a field-tone pane and on the bare
+ * window gutter. Houston's dark button is a white FROST, so what is behind it
+ * is part of its fill and its label is measured on the composite, never on the
+ * token alone.
+ */
+function buttonSurfaces(theme: Theme): [string, Rgba][] {
+  return [
+    ["pane", contentSurface(theme, "ht-input")],
+    ["gutter", token(theme, "ht-base")],
+  ];
+}
+
 const AGENT_TONES = [
   "charcoal",
   "forest",
@@ -268,6 +283,20 @@ describe.each([
         });
       }
     }
+  }
+
+  for (const [surfaceName, surface] of buttonSurfaces(theme)) {
+    it(`the primary button's label clears ${CONTRAST_FLOOR}:1 over the ${surfaceName}`, () => {
+      const fill = over(token(theme, "ht-cta"), surface);
+      const ratio = contrastRatio(
+        over(token(theme, "ht-cta-text"), fill),
+        fill,
+      );
+      expect(
+        ratio,
+        `--ht-cta-text (${theme}) measures ${ratio.toFixed(2)}:1 on --ht-cta over the ${surfaceName}, below the ${CONTRAST_FLOOR}:1 body-text floor`,
+      ).toBeGreaterThanOrEqual(CONTRAST_FLOOR);
+    });
   }
 
   for (const tone of AGENT_TONES) {
