@@ -57,14 +57,14 @@ function WorkspaceSwitcherSpecimen() {
       >
         <SpecimenSection
           title="Variants"
-          note="The expanded name row and collapsed monogram both open the workspace menu. The sidebar header owns its separate collapse and expand control."
+          note="The expanded row and the collapsed avatar both open the workspace menu, and both wear the same 20px avatar. The sidebar header owns its separate collapse and expand control."
         >
           <SpecimenRow label="Expanded — open the menu">
             <RailTop>
               <LiveSwitcher />
             </RailTop>
           </SpecimenRow>
-          <SpecimenRow label="Collapsed — monogram opens the same menu">
+          <SpecimenRow label="Collapsed — the avatar opens the same menu">
             <RailTop collapsed>
               <LiveSwitcher collapsed />
             </RailTop>
@@ -91,7 +91,7 @@ function WorkspaceSwitcherSpecimen() {
               />
             </RailTop>
           </SpecimenRow>
-          <SpecimenRow label="Monogram falls back to ? on a blank name">
+          <SpecimenRow label="Avatar falls back to ? on a blank name">
             <RailTop collapsed>
               <WorkspaceSwitcher
                 workspaces={[...workspaces]}
@@ -107,9 +107,9 @@ function WorkspaceSwitcherSpecimen() {
 
         <SpecimenSection
           title="Sizes"
-          note="One size in each mode: a full-width row expanded, a 36px monogram square collapsed. The empty padding around each control carries `data-tauri-drag-region`; buttons keep their clicks. On macOS desktop, the rail reserves a separate 40px controls row above the compact switcher, and the content gutter also drags the window."
+          note="One size in each mode: a full-width row expanded, a 36px avatar button collapsed. The empty padding around each control carries `data-tauri-drag-region`; buttons keep their clicks. On macOS desktop, the rail reserves a separate 40px controls row above the compact switcher, and the content gutter also drags the window."
         >
-          <SpecimenRow label="220px row vs. 36px monogram">
+          <SpecimenRow label="220px row vs. 36px avatar button">
             <RailTop>
               <LiveSwitcher />
             </RailTop>

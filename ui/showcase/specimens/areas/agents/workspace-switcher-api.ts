@@ -15,7 +15,7 @@ export const WORKSPACE_SWITCHER_PROPS: readonly SpecimenProp[] = [
   {
     name: "currentName",
     type: "string",
-    note: "The trigger label, and the source of the collapsed monogram.",
+    note: "The trigger label, and the source of the avatar letter.",
   },
   {
     name: "onSwitch",
@@ -30,7 +30,7 @@ export const WORKSPACE_SWITCHER_PROPS: readonly SpecimenProp[] = [
   {
     name: "collapsed",
     type: "boolean",
-    note: "Monogram button instead of the name row. Defaults to false.",
+    note: "The avatar alone, in a 36px rail button, instead of the name row. Defaults to false.",
   },
   {
     name: "createLabel",

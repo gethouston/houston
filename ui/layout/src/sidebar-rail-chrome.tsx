@@ -85,10 +85,11 @@ export function SidebarNavList({
     // carried it too, these bands' labels were inset twice (16px) while "Your
     // teams" was inset once, and the rail read as two lists. The COLLAPSED rail
     // keeps its own padding — it renders no bands, only a centred glyph column.
+    // Expanded, the nav adds no top padding either: the workspace row above
+    // ends on the rows' own 2px step, so it reads as the first row of this run.
     <nav
       className={cn(
-        "py-1",
-        collapsed && "flex flex-col items-center gap-0.5 px-2",
+        collapsed ? "flex flex-col items-center gap-0.5 px-2 py-1" : "pb-1",
       )}
     >
       {sections.map((section) => {

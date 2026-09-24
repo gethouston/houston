@@ -40,9 +40,9 @@ describe("sidebar window controls inset", () => {
     assert.ok(!markup.includes("data-window-controls-row"));
     assert.match(
       markup,
-      /Workspace<\/span>.*<div class="shrink-0 pr-2"><button[^>]*aria-label="Collapse sidebar"/,
+      /Workspace<\/span>.*<div class="shrink-0 pt-3 pr-2 pb-0.5"><button[^>]*aria-label="Collapse sidebar"/,
     );
-    assert.ok(markup.includes("px-2 pt-3 pb-1"));
+    assert.ok(markup.includes("px-2 pt-3 pb-0.5"));
     const collapsed = render(false, true);
     assert.ok(collapsed.includes("w-[56px]"));
     assert.match(
@@ -71,7 +71,7 @@ describe("sidebar window controls inset", () => {
       markup.indexOf('aria-label="Collapse sidebar"') <
         markup.indexOf("Workspace</span>"),
     );
-    assert.ok(!markup.includes("shrink-0 pr-2"));
+    assert.ok(!markup.includes("shrink-0 pt-3 pr-2 pb-0.5"));
     assert.ok(markup.includes("pt-0"));
     assert.ok(markup.includes("transition-[width]"));
   });

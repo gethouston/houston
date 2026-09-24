@@ -73,7 +73,9 @@ export function SidebarHeader({
   ) : (
     <div className="flex items-center">
       <div className="min-w-0 flex-1">{children}</div>
-      {toggle && <div className="shrink-0 pr-2">{toggle}</div>}
+      {/* The switcher row's own pt-3 pb-0.5, mirrored so the toggle centres on
+          the switcher button rather than on the padded row. */}
+      {toggle && <div className="shrink-0 pt-3 pr-2 pb-0.5">{toggle}</div>}
     </div>
   );
 }
