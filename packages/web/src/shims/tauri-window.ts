@@ -5,12 +5,14 @@
  *  - `close()`        — DisclaimerGate "Decline" (use-legal-acceptance.ts)
  *  - `isFocused()`    — notification nav arming (session-notifications.ts)
  *  - `onFocusChanged` — notification click-to-navigate (macOS focus proxy)
- *  - `setTheme()`     — sync the native title bar to the app theme (theme.ts)
+ *  - `setTheme()`     — pin the native title bar to the app theme, or hand the
+ *                       window back to the OS with `null` (theme-apply.ts)
  *
  * Browser equivalents: window.close() (only effective for script-opened tabs,
  * a benign no-op otherwise), document.hasFocus(), and window focus/blur events.
- * A browser tab has no window chrome to theme, so setTheme is a no-op (the CSS
- * data-theme on <html> already drives the UI).
+ * A browser tab has no window chrome to theme, so setTheme is a no-op: the CSS
+ * data-theme on <html> already drives the UI, and a browser's
+ * prefers-color-scheme follows the OS with nothing to release.
  */
 
 type UnlistenFn = () => void;

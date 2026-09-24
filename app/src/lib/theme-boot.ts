@@ -122,6 +122,25 @@ export function systemPrefersDark(): boolean {
 }
 
 /**
+ * The OS appearance for a preference that follows the system, read only once the
+ * native window has been handed back to the OS.
+ *
+ * The webview derives `prefers-color-scheme` from the native window, so while
+ * the window is pinned to a mode the query answers THAT mode and the OS change
+ * event never arrives: releasing the window is part of resolving `system`, not
+ * chrome, and the read has to wait for it. A release that fails rejects here
+ * too, because the value after it would be the pinned one. The window itself is
+ * the caller's to reach (`./theme-apply`), which is what keeps this module free
+ * of Tauri.
+ */
+export async function systemPrefersDarkAfterRelease(
+  releaseWindow: () => Promise<void>,
+): Promise<boolean> {
+  await releaseWindow();
+  return systemPrefersDark();
+}
+
+/**
  * Watch the OS appearance. Returns an unsubscribe; a host without `matchMedia`
  * never fires, so the unsubscribe is a no-op there.
  */

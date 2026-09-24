@@ -8,30 +8,22 @@
  * falls back to that key's default and is reported: a preference we cannot read
  * is a bug we want to see, never a silent repaint.
  *
- * Every path that changes the theme goes through `applyThemePreference`, so the
- * DOM, the boot mirror (`./theme-boot`) and the native window chrome can never
- * drift from each other, and the OS-appearance watcher stays installed exactly
- * once.
+ * Every path that changes the theme goes through `applyThemePreference`, which
+ * lives in `./theme-apply` (the DOM, the boot mirror and the native window in one
+ * ordered step) and is re-exported here as the theming entry point.
  */
 
-import { getCurrentWindow } from "@tauri-apps/api/window";
 import { logAndReportError, reportError } from "./error-report";
 import { tauriPreferences } from "./tauri";
-import {
-  applyThemeAttribute,
-  startSystemThemeSync,
-  systemPrefersDark,
-  writeCachedTheme,
-} from "./theme-boot";
+import { applyThemePreference, currentThemePreference } from "./theme-apply";
 import {
   DEFAULT_THEME_PREFERENCE,
   parsePaletteId,
   parseThemeMode,
-  type ResolvedMode,
-  type ResolvedTheme,
-  resolveTheme,
   type ThemePreference,
 } from "./theme-model";
+
+export { applyThemePreference };
 
 /** The engine preference keys, one per field of a {@link ThemePreference}. */
 const KEYS = {
@@ -39,54 +31,6 @@ const KEYS = {
   light: "theme.light",
   dark: "theme.dark",
 } as const;
-
-/**
- * The last preference applied: what the OS-appearance watcher re-resolves and
- * what a partial update patches. It holds the documented defaults until the
- * engine read lands, which is also why the first `applyThemePreference` is what
- * installs the watcher: before that there is no preference to gate on.
- */
-let current: ThemePreference = DEFAULT_THEME_PREFERENCE;
-let watching = false;
-
-/**
- * Match the native window chrome (the macOS title bar) to the app theme, so the
- * title bar tracks the app background instead of following the OS appearance.
- *
- * Best-effort and purely cosmetic: the CSS `data-theme` set by
- * {@link applyThemePreference} is what actually drives the UI; if this native
- * call fails the only consequence is the title bar not recolouring, which has
- * nothing actionable to surface. No-op on web (the window shim ignores it).
- */
-function syncWindowChrome(mode: ResolvedMode): void {
-  void getCurrentWindow()
-    .setTheme(mode)
-    .catch(() => {});
-}
-
-/**
- * Apply a preference everywhere it is observable: the `<html>` attributes, the
- * device-local mirror the next boot paints from, and the native window chrome.
- * Resolves against the LIVE OS appearance, so `system` lands on what the OS says
- * at this instant.
- */
-export function applyThemePreference(pref: ThemePreference): ResolvedTheme {
-  current = pref;
-  const resolved = resolveTheme(pref, systemPrefersDark());
-  applyThemeAttribute(resolved);
-  writeCachedTheme(resolved);
-  syncWindowChrome(resolved.mode);
-  if (!watching) {
-    watching = true;
-    startSystemThemeSync(
-      () => current,
-      (live) => {
-        applyThemePreference(live);
-      },
-    );
-  }
-  return resolved;
-}
 
 /**
  * One key's stored value, or its default. A value that is present but unusable
@@ -159,7 +103,7 @@ export async function loadThemePreference(): Promise<ThemePreference | null> {
 export async function setThemePreference(
   patch: Partial<ThemePreference>,
 ): Promise<ThemePreference> {
-  const previous = current;
+  const previous = currentThemePreference();
   const next: ThemePreference = { ...previous, ...patch };
   applyThemePreference(next);
   const writes: Promise<void>[] = [];
