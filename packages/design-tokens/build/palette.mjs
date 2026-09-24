@@ -1,6 +1,7 @@
 import { composite, formatColor } from "./color.mjs";
 import { colors } from "./model.mjs";
 import { loadPalette, PALETTE_ORDER } from "./omarchy.mjs";
+import { paletteCta } from "./palette-cta.mjs";
 import { paletteSurfaces } from "./palette-surfaces.mjs";
 import { paletteText } from "./palette-text.mjs";
 
@@ -49,7 +50,11 @@ export function derivePalette(base, p) {
   /** @type {string[]} */
   const notes = [];
   const surfaces = paletteSurfaces(p, notes);
-  const derived = { ...surfaces, ...paletteText(p, surfaces, notes) };
+  const text = paletteText(p, surfaces, notes);
+  // The light primary button IS the accent fill, the same one `action-text` was
+  // measured on, so the button reuses that measurement rather than repeating it.
+  const cta = paletteCta(p, surfaces, text["action-text"], notes);
+  const derived = { ...surfaces, ...text, ...cta };
   for (const role of Object.keys(derived)) {
     if (!base.some((entry) => entry.name === role)) {
       throw new Error(

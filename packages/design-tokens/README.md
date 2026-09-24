@@ -69,13 +69,17 @@ complete `--ht-*` role set by one table of rules:
   cannot silently keep a Houston hex inside someone else's scheme.
 - `build/palette-surfaces.mjs` keeps Houston's ladder structure and alpha washes
   with the palette's hexes.
-- `build/palette-text.mjs` derives ink, the status hues, and the contrast
+- `build/palette-text.mjs` derives ink, the status hues, the action colour and
+  the focus ring (`action` and `focus` are the palette's own accent, with
+  `action-text` measured on it at 4.5:1 or the build fails), and the contrast
   nudging: the six roles worn AS TEXT step toward the palette's own ink in 2%
   mixes until they clear 4.5:1 (3:1 for `ink-muted`) on the field, the screen, the
-  recessed row and, for a status ink, its own wash. It also gives the filled
-  primary button, the action colour and the focus ring (`cta`, `action`,
-  `focus`) the palette's own accent, with `cta-text` and `action-text` measured
-  on that accent at 4.5:1 or the build fails.
+  recessed row and, for a status ink, its own wash.
+- `build/palette-cta.mjs` derives the filled primary button in the grammar of the
+  palette's mode: a solid accent pill in light, wearing the same measured label as
+  `action-text`, and Houston dark's frost pill tinted with the accent in dark,
+  whose label steps from the palette's bright foreground toward white until it
+  clears 4.5:1 on that pill over the field and over the gutter.
 
 The build prints one note per fallback and per nudge it applies. The full role →
 formula table, the two named rules (the dark screen-tone card, the light chip

@@ -8,7 +8,7 @@ import { composite, contrast, formatColor, mix, withAlpha } from "./color.mjs";
 // washed with that hue itself, so the roles worn AS TEXT are stepped toward the
 // palette's own ink until they clear the WCAG floor on every one of them.
 
-const BODY_FLOOR = 4.5;
+export const BODY_FLOOR = 4.5;
 const MUTED_FLOOR = 3;
 const STEP = 0.02;
 const STEPS = 50;
@@ -40,15 +40,16 @@ function surfaceStack(surfaces) {
 }
 
 /**
- * Step `from` toward `toward` (the palette's ink) in 2% mixes until it clears
- * `floor` on every surface. Moving toward ink always raises contrast — ink is
- * the darkest thing in a light palette and the brightest in a dark one — so the
- * ladder is monotone and its last rung is ink itself. A palette whose own ink
- * misses the floor is a build error, not a silently unreadable block.
+ * Step `from` toward `toward` in 2% mixes until it clears `floor` on every
+ * surface. `toward` is the palette's own ink for a role worn on a surface, and
+ * white for the label on the dark frost button; either way it is the extreme the
+ * role is heading for, so contrast rises monotonically and the ladder's last
+ * rung is that extreme itself. A palette that misses the floor even there is a
+ * build error, not a silently unreadable block.
  *
  * @returns {{ value: import("./color.mjs").Rgba, steps: number }}
  */
-function nudge(from, toward, surfaces, floor, label) {
+export function nudge(from, toward, surfaces, floor, label) {
   for (let step = 0; step <= STEPS; step += 1) {
     const value = mix(from, toward, step * STEP);
     if (surfaces.every((s) => contrast(value, s) >= floor)) {
@@ -56,7 +57,7 @@ function nudge(from, toward, surfaces, floor, label) {
     }
   }
   throw new Error(
-    `${label}: cannot reach ${floor}:1 on every surface, even at the palette's own ink`,
+    `${label}: cannot reach ${floor}:1 on every surface, even at ${formatColor(toward)}`,
   );
 }
 
@@ -69,12 +70,12 @@ function labelOn(fill, p) {
 }
 
 /**
- * The label printed ON the accent: `action-text` and `cta-text` alike, since an
- * import wears its accent for both. That accent is a hue tuned for a terminal
- * prompt rather than for a button, so the label is measured rather than assumed:
- * whichever candidate reads best, and a build error when even the best one
- * misses the body floor, because a CTA is the one surface a user cannot avoid
- * reading.
+ * The label printed ON the accent: `action-text`, and the light primary button's
+ * `cta-text`, which is the same accent fill (`palette-cta.mjs`). That accent is a
+ * hue tuned for a terminal prompt rather than for a button, so the label is
+ * measured rather than assumed: whichever candidate reads best, and a build error
+ * when even the best one misses the body floor, because an accent fill carries
+ * text a user cannot avoid reading.
  */
 function accentText(accent, p, notes) {
   const label = labelOn(accent, p);
@@ -115,8 +116,8 @@ export function paletteText(p, surfaces, notes) {
   const bg = p.background;
   const { screen, all, washes } = surfaceStack(surfaces);
   const highlight = withAlpha(p.yellow, dark ? 0.34 : 0.45);
-  // `action` and `cta` are both the accent here, so one measurement serves both
-  // labels — and the build prints one note, not the same note twice.
+  // Measured once, and returned as `action-text`: the light button wears the same
+  // label, so the build prints one note rather than the same note twice.
   const accentLabel = accentText(p.accent, p, notes);
 
   const step = (role, from, floor, extra = []) => {
@@ -146,23 +147,13 @@ export function paletteText(p, surfaces, notes) {
     "sidebar-hover-text": fg,
     "hover-text": fg,
     "prose-text": dark ? p.bright_foreground : fg,
-    // An import is a colour identity, so its CTA and its focus ring wear the
-    // palette's own accent. Houston's authored sets keep an ink CTA by doctrine,
-    // and they never reach this derivation: they ARE the base blocks.
+    // An import is a colour identity, so the action colour and the focus ring
+    // wear the palette's own accent, and so does the primary button
+    // (`palette-cta.mjs`). Houston's authored sets keep an ink action by
+    // doctrine, and they never reach this derivation: they ARE the base blocks.
     action: p.accent,
     "action-text": accentLabel,
     focus: p.accent,
-    // The filled primary button is its own pair, because Houston's two sets
-    // spend a near-ink solid in light and a white frost in dark where `action`
-    // is the ink the progress bar and the status dots wear. An import has one
-    // accent for both jobs: the button IS the accent, its hover steps 12%
-    // toward ink, and it carries no rim — the frost rim belongs to Houston
-    // dark's glass, not to a solid accent fill.
-    cta: p.accent,
-    "cta-text": accentLabel,
-    "cta-hover": mix(p.accent, fg, 0.12),
-    "cta-rim": "transparent",
-    "cta-rim-hover": "transparent",
     link: step("link", p.blue, BODY_FLOOR),
     // The user's own bubble inverts in light (ink fill, background text) and is a
     // faint ink wash in dark; the chip inside it is the bubble's TEXT colour at

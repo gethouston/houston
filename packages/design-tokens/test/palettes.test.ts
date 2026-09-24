@@ -121,9 +121,10 @@ describe("the palette library", () => {
     });
   }
 
-  // An import wears its own accent as the CTA and the focus ring; Houston's own
-  // two sets keep the ink CTA the identity is built on, so the accent rule must
-  // not leak into the base blocks it is derived alongside.
+  // An import wears its own accent as the action colour, the focus ring and the
+  // primary button; Houston's own two sets keep the monochrome action and their
+  // authored buttons, so the accent rule must never leak into the base blocks it
+  // is derived alongside.
   for (const mode of ["light", "dark"] as const) {
     it(`Houston ${mode} keeps a monochrome action and focus`, () => {
       const action = parseColor(base[mode]["ht-action"]) as Rgba;
@@ -197,21 +198,73 @@ describe.each(imported)("palette $id", (palette) => {
     }
   }
 
-  it("paints the primary button with its own accent", () => {
-    // The button is the palette's loudest surface, so `cta` IS the accent: a
-    // Houston near-ink fill surviving here is the bug this pair exists for.
-    const accent = parseColor(loadPalette(palette).accent) as Rgba;
-    expect(parseColor(vars["ht-cta"])).toEqual(accent);
-  });
+  // The primary button is the palette's loudest surface, and it speaks its mode's
+  // grammar: a solid accent pill in light, Houston dark's frost pill tinted with
+  // the accent in dark. Either way a Houston near-ink fill surviving here is the
+  // bug this pair exists for.
+  if (palette.mode === "light") {
+    it("fills the primary button with its own accent, rimless", () => {
+      const accent = parseColor(loadPalette(palette).accent) as Rgba;
+      expect(parseColor(vars["ht-cta"])).toEqual(accent);
+      for (const name of ["ht-cta-rim", "ht-cta-rim-hover"] as const) {
+        expect(
+          parseColor(vars[name]).a,
+          `--${name} (${vars[name]}) rims a solid fill`,
+        ).toBe(0);
+      }
+    });
 
-  it("--ht-cta-text clears 4.5:1 on the primary button", () => {
-    const fill = composite(vars["ht-cta"], screen) as Rgba;
-    const ratio = contrast(vars["ht-cta-text"], fill) as number;
-    expect(
-      ratio,
-      `--ht-cta-text (${vars["ht-cta-text"]}) measures ${ratio.toFixed(2)}:1 on --ht-cta`,
-    ).toBeGreaterThanOrEqual(4.5);
-  });
+    it("--ht-cta-text clears 4.5:1 on the primary button", () => {
+      const fill = composite(vars["ht-cta"], screen) as Rgba;
+      const ratio = contrast(vars["ht-cta-text"], fill) as number;
+      expect(
+        ratio,
+        `--ht-cta-text (${vars["ht-cta-text"]}) measures ${ratio.toFixed(2)}:1 on --ht-cta`,
+      ).toBeGreaterThanOrEqual(4.5);
+    });
+  } else {
+    it("frosts the primary button with its own accent", () => {
+      const accent = parseColor(loadPalette(palette).accent) as Rgba;
+      expect(parseColor(vars["ht-cta"])).toEqual(withAlpha(accent, 0.14));
+      const rim = parseColor(vars["ht-cta-rim"]) as Rgba;
+      const rimHover = parseColor(vars["ht-cta-rim-hover"]) as Rgba;
+      for (const [name, value] of [
+        ["ht-cta-rim", rim],
+        ["ht-cta-rim-hover", rimHover],
+      ] as const) {
+        expect(
+          value,
+          `--${name} (${vars[name]}) is not the accent`,
+        ).toMatchObject({ r: accent.r, g: accent.g, b: accent.b });
+        expect(
+          value.a,
+          `--${name} (${vars[name]}) is not a translucent hairline`,
+        ).toBeGreaterThan(0);
+        expect(value.a).toBeLessThan(1);
+      }
+      expect(
+        rimHover.a,
+        "the hover rim is no denser than the resting rim",
+      ).toBeGreaterThan(rim.a);
+    });
+
+    // The frost is translucent, so what it sits on is part of its colour: the
+    // label owes the body floor on both surfaces a primary button sits on.
+    for (const [name, under] of [
+      ["field", "ht-input"],
+      ["gutter", "ht-base"],
+    ] as const) {
+      it(`--ht-cta-text clears 4.5:1 on the frost over the ${name}`, () => {
+        const fill = composite(vars["ht-cta"], vars[under]) as Rgba;
+        expect(fill.a, `--${under} (${vars[under]}) is not opaque`).toBe(1);
+        const ratio = contrast(vars["ht-cta-text"], fill) as number;
+        expect(
+          ratio,
+          `--ht-cta-text (${vars["ht-cta-text"]}) measures ${ratio.toFixed(2)}:1 on the frost over the ${name}`,
+        ).toBeGreaterThanOrEqual(4.5);
+      });
+    }
+  }
 
   it("wears its own accent as the action colour and the focus ring", () => {
     // Read from the vendored file, not from the build's own maths: the palette
