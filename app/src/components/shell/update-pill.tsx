@@ -26,7 +26,7 @@ const ENTRANCE: Transition = { duration: 0.2, ease: [0.16, 1, 0.3, 1] };
  *
  * It wears the solid `action` fill (dark ink on light, light ink on dark),
  * not a bordered dialog surface: the surface it holds is the sidebar,
- * and a sidebar-coloured pill with a hairline was invisible in dark mode. It
+ * and a gutter-coloured pill with a hairline was invisible in dark mode. It
  * is a plain button rather than the core `Button` primitive on purpose: the
  * canvas theme restyles the primitive's default variant into a translucent
  * frost pill in dark mode (`ui/core/src/canvas.css`), which on the sidebar is

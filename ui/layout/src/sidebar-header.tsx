@@ -7,9 +7,9 @@ import {
 import { SidebarCollapseToggle } from "./sidebar-rail-chrome";
 
 /**
- * With windowControlsInset, the host draws its own macOS traffic lights over
+ * With windowControlsInset, the host draws its own window controls over
  * the rail's top-left. The first row is a drag region that reserves their zone:
- * expanded it carries the collapse toggle after the lights, and collapsed it
+ * expanded it carries the collapse toggle after the controls, and collapsed it
  * stays empty with the expand toggle on the next row. Without the inset, the
  * expanded switcher row ends with the toggle and the collapsed toggle leads.
  */
@@ -58,7 +58,9 @@ export function SidebarHeader({
           )}
         </div>
         {collapsed && (
-          <div className="flex justify-center pt-3 pb-1">{toggle}</div>
+          <div data-tauri-drag-region className="flex justify-center pt-3 pb-1">
+            {toggle}
+          </div>
         )}
         {children}
       </>

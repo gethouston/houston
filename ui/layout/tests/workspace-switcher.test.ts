@@ -42,10 +42,13 @@ describe("workspace switcher", () => {
       .replaceAll("&gt;", ">");
     const root = sidebarRowButtonClasses.root.split(" ");
     const button = sidebarRowButtonClasses.button.split(" ");
-    for (const cls of [...root, sidebarRowState.hover]) {
+    for (const cls of [
+      ...root.filter((cls) => cls !== "h-7"),
+      sidebarRowState.hover,
+    ]) {
       assert.ok(markup.includes(cls), `row root carries ${cls}`);
     }
-    for (const cls of button) {
+    for (const cls of button.filter((cls) => cls !== "h-7")) {
       assert.ok(markup.includes(cls), `row button carries ${cls}`);
     }
   });
@@ -58,5 +61,18 @@ describe("workspace switcher", () => {
     assert.match(button[0], /hover:bg-hover/);
     assert.doesNotMatch(button[0], /class="[^"]*(?<!hover:)bg-hover/);
     assert.match(button[0], /focus-visible:ring-2/);
+  });
+
+  it("renders a 40px phone row and a 28px desktop row on root and button", () => {
+    const markup = render(false);
+    const root = markup.match(/<div class="([^"]*group\/row[^"]*)"/);
+    const button = markup.match(/<button[^>]*class="([^"]*)"/);
+    assert.ok(root);
+    assert.ok(button);
+    for (const classes of [root[1], button[1]]) {
+      assert.ok(classes.split(" ").includes("h-10"), classes);
+      assert.ok(classes.split(" ").includes("md:h-7"), classes);
+      assert.ok(!classes.split(" ").includes("h-7"), classes);
+    }
   });
 });

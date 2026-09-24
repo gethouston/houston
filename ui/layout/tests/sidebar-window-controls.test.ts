@@ -87,12 +87,20 @@ describe("sidebar window controls inset", () => {
     assert.ok(markup.includes('aria-label="Expand sidebar"'));
     assert.match(
       markup,
-      /data-window-controls-row="true" class="[^"]*h-10"><\/div><div class="flex justify-center pt-3 pb-1"><button[^>]*aria-label="Expand sidebar"/,
+      /data-window-controls-row="true" class="[^"]*h-10"><\/div><div data-tauri-drag-region="true" class="flex justify-center pt-3 pb-1"><button[^>]*aria-label="Expand sidebar"/,
     );
     assert.ok(
       markup.indexOf('aria-label="Expand sidebar"') <
         markup.indexOf('aria-label="Workspace"'),
     );
     assert.ok(!markup.includes("cursor-pointer"));
+  });
+
+  it("marks the collapsed inset toggle row as a direct drag region", () => {
+    const markup = render(true, true);
+    assert.match(
+      markup,
+      /data-window-controls-row="true"[^>]*><\/div><div data-tauri-drag-region="true" class="flex justify-center pt-3 pb-1"><button/,
+    );
   });
 });

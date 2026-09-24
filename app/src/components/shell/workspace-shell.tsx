@@ -5,6 +5,8 @@ import { useKeyboardShortcuts } from "../../hooks/use-keyboard-shortcuts";
 import { useSettingsLanding } from "../../hooks/use-settings-landing";
 import { useSurfaceGates } from "../../hooks/use-surface-gates";
 import { phoneChromeHidden } from "../../lib/mobile-tabs";
+import { osIsTauri } from "../../lib/os-bridge";
+import { isMac } from "../../lib/platform";
 import { useUIStore } from "../../stores/ui";
 import { useWorkspaceStore } from "../../stores/workspaces";
 import { LessonRunner } from "../academy/lessons/lesson-runner";
@@ -112,7 +114,10 @@ export function WorkspaceShell({
               reads against it. The phone has no gutter, so no gap and no
               rounding. `relative` anchors the phone's full-screen mission
               panel overlay. */}
-            <div className="relative flex min-w-0 flex-1 gap-0 overflow-hidden md:gap-2">
+            <div
+              data-tauri-drag-region={osIsTauri() && isMac ? true : undefined}
+              className="relative flex min-w-0 flex-1 gap-0 overflow-hidden md:gap-2"
+            >
               <main
                 {...tourAnchor("main")}
                 data-panel-wide={panelWide ? "true" : undefined}

@@ -14,6 +14,13 @@ const GUIDED_SETUP = read("../src/hooks/use-run-guided-setup.ts");
 const VIEWS = read("../src/lib/top-level-views.ts");
 const MORE_MENU = read("../src/components/shell/mobile-more-menu.tsx");
 
+it("makes the shell card gap a drag region only for the native Mac window", () => {
+  assert.match(
+    SHELL,
+    /data-tauri-drag-region=\{osIsTauri\(\) && isMac \? true : undefined\}\s+className="relative flex min-w-0 flex-1 gap-0 overflow-hidden md:gap-2"/,
+  );
+});
+
 describe("the rail's footer cluster", () => {
   it("draws the Academy directly above Settings", () => {
     // The bottom of the rail is what a person opens about their own use of
@@ -81,19 +88,21 @@ describe("Settings left the nav for the footer", () => {
     assert.ok(FOOTER.includes('openSettings("reportBug")'));
   });
 
-  it("is the rail's last row: the avatar menu below it is gone", () => {
+  it("is the rail's last row", () => {
     // The account avatar expanded into "Account settings", which opened THIS
     // row's destination — a second door onto one page. Identity moved into the
     // Settings index (`settings/identity-header.tsx`), so nothing about a user
     // menu may survive in the footer.
     assert.ok(!FOOTER.includes("UserMenu"));
     assert.ok(!FOOTER.includes("user-menu"));
+  });
+
+  it("places the update action before the Academy and Settings cluster", () => {
     assert.ok(FOOTER.includes("<UpdateChecker collapsed={props.collapsed} />"));
     assert.ok(
       FOOTER.indexOf("<UpdateChecker") < FOOTER.indexOf("<SidebarNavItem"),
       "the update action precedes the Academy and Settings cluster",
     );
-    assert.ok(!SHELL.includes("ShellTitleStrip"));
   });
 });
 

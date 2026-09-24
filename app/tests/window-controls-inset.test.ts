@@ -118,4 +118,41 @@ describe("native window fullscreen listener", () => {
       ["window_controls_resize", error],
     ]);
   });
+
+  it("reports one fullscreen failure until a successful read resets the latch", async () => {
+    let resize: (() => void) | undefined;
+    let fail = true;
+    const reports: string[] = [];
+    const stop = watchFullscreen(
+      {
+        isFullscreen: async () => {
+          if (fail) throw new Error("native window unavailable");
+          return false;
+        },
+        onResized: async (handler) => {
+          resize = handler;
+          return () => undefined;
+        },
+      },
+      () => undefined,
+      (code) => reports.push(code),
+    );
+    await settle();
+    assert.ok(resize);
+    resize();
+    resize();
+    await settle();
+    assert.deepEqual(reports, ["window_controls_fullscreen"]);
+    fail = false;
+    resize();
+    await settle();
+    fail = true;
+    resize();
+    await settle();
+    assert.deepEqual(reports, [
+      "window_controls_fullscreen",
+      "window_controls_fullscreen",
+    ]);
+    stop();
+  });
 });

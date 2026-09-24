@@ -33,6 +33,11 @@ export const WORKSPACE_SWITCHER_PROPS: readonly SpecimenProp[] = [
     note: "The avatar alone, in a 36px rail button, instead of the name row. Defaults to false.",
   },
   {
+    name: "compactTop",
+    type: "boolean",
+    note: "Removes top padding when the switcher sits below a reserved controls row. Defaults to false.",
+  },
+  {
     name: "createLabel",
     type: "string",
     note: '"Create workspace". Pass a translation.',

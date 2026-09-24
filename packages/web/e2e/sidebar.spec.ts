@@ -23,7 +23,9 @@ test("collapsed sidebar expands from its visible toggle", async ({ page }) => {
   expect(btnBox.y - asideBox.y).toBeLessThan(30);
 
   await expect(expandBtn.locator("svg")).toBeVisible();
-  const workspaceButton = sidebar.locator("button[title]").first();
+  const workspaceButton = page
+    .locator('[data-tour-target="spaceSwitcher"] button')
+    .first();
   await expect(workspaceButton).toBeVisible();
   await expandBtn.click();
   await expect(sidebar).toHaveCSS("width", "220px");

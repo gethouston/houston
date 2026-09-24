@@ -127,12 +127,8 @@ export const sidebarRowType = {
   band: "text-xs leading-4 font-weight-510",
 } as const;
 
-/** Coupled to trafficLightPosition { x: 12, y: 22 } in app/src-tauri/tauri.conf.json.
- *  y is the height tao gives the native title-bar container, not the lights'
- *  top edge; y 22 is what lands their centres on this 40px row's centre line
- *  (measured on macOS against the collapse toggle).
- *  macOS 26 lights are 14pt circles on a 23pt pitch, spanning 60pt from x 12;
- *  the 84px zone leaves 12px clear on both sides and centres the icon rail. */
+/** The 40px top row and 84px host window controls zone reserve space for
+ *  native controls while keeping the icon rail centred below them. */
 export const sidebarWindowControlsHeight = "h-10";
 export const sidebarWindowControlsWidth = "w-[84px]";
 export const sidebarCollapsedWidth = "w-[56px]";

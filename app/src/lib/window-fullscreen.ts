@@ -11,15 +11,22 @@ export function watchFullscreen(
 ): () => void {
   let disposed = false;
   let revision = 0;
+  let fullscreenFailureReported = false;
   let unlisten: (() => void) | undefined;
 
   const refresh = async () => {
     const current = ++revision;
     try {
       const value = await win.isFullscreen();
-      if (!disposed && current === revision) onChange(value);
+      if (!disposed && current === revision) {
+        fullscreenFailureReported = false;
+        onChange(value);
+      }
     } catch (err) {
-      report("window_controls_fullscreen", err);
+      if (!fullscreenFailureReported) {
+        fullscreenFailureReported = true;
+        report("window_controls_fullscreen", err);
+      }
     }
   };
 

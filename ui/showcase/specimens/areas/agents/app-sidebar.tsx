@@ -43,6 +43,12 @@ function AppSidebarSpecimen() {
               <LiveSidebar chrome grouped teams />
             </SidebarStage>
           </SpecimenRow>
+          <SpecimenRow label="Window controls inset — expand and collapse the rail">
+            <SidebarStage>
+              <LiveSidebar chrome windowControlsInset />
+              <LiveSidebar chrome windowControlsInset startCollapsed />
+            </SidebarStage>
+          </SpecimenRow>
         </SpecimenSection>
 
         <SpecimenSection
@@ -94,7 +100,7 @@ function AppSidebarSpecimen() {
 
         <SpecimenSection
           title="Sizes"
-          note="Two widths, and they are the component's own: 220px expanded, 56px collapsed, with a 200ms width transition between them. Height always comes from the parent."
+          note="The expanded rail is 220px. The collapsed rail is 56px, or 84px with a window controls inset. Width changes use a 200ms transition. Height comes from the parent."
         >
           <SpecimenRow label="220px ↔ 56px — click the panel button to switch">
             <SidebarStage>

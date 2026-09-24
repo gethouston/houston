@@ -123,13 +123,14 @@ export function WorkspaceSwitcher({
           hover pill), so the workspace reads as the first row of the rail;
           only the chevron says it opens a menu. Not `SidebarRowButton` itself:
           a menu trigger needs the button element, which that row keeps. */}
-      <div className={cn(row.root, sidebarRowState.hover)}>
+      <div className={cn(row.root, "h-10 md:h-7", sidebarRowState.hover)}>
         <DropdownMenu>
           <DropdownMenuTrigger asChild>
             <button
               type="button"
               className={cn(
                 row.button,
+                "h-10 md:h-7",
                 row.depthBlock,
                 sidebarRowType.item,
                 sidebarRowState.restText,
