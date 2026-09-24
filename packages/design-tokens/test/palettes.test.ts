@@ -86,15 +86,48 @@ const HOUSTON_CTA = {
   },
 } as const;
 
-/** Body text owes 4.5:1; `ink-muted` is secondary and owes the 3:1 floor. */
-const NUDGED = [
-  ["ht-ink-muted", 3],
-  ["ht-link", 4.5],
-  ["ht-success-ink", 4.5],
-  ["ht-warning-ink", 4.5],
-  ["ht-danger-ink", 4.5],
-  ["ht-highlight-text", 4.5],
-] as const;
+/** A nudged role: the floor it owes, and the wash it is printed on. */
+type Nudged = {
+  name: string;
+  floor: number;
+  wash?: { hue: string; alphas: number[] };
+};
+
+/**
+ * Every role the derivation nudges, with the floor it owes and, when the role is
+ * printed on a wash of a hue, the token that wash is made of and the alphas it
+ * wears. A wash is not a neutral surface: it tints the backdrop TOWARDS the ink
+ * sitting on it, so a role measured only on the plain rows is measured against
+ * the easiest case. Body text owes 4.5:1; `ink-muted` is secondary and owes 3:1.
+ *
+ * `--ht-link` washes ITSELF (`bg-link/10`, the chat link chip), the status inks
+ * wash their own hue (`bg-success/15`, `bg-danger/10`), and `--ht-highlight` is
+ * already translucent, so it washes at full strength.
+ */
+const NUDGED: Nudged[] = [
+  { name: "ht-ink-muted", floor: 3 },
+  { name: "ht-link", floor: 4.5, wash: { hue: "ht-link", alphas: [0.1] } },
+  {
+    name: "ht-success-ink",
+    floor: 4.5,
+    wash: { hue: "ht-success", alphas: [0.15, 0.1] },
+  },
+  {
+    name: "ht-warning-ink",
+    floor: 4.5,
+    wash: { hue: "ht-warning", alphas: [0.15, 0.1] },
+  },
+  {
+    name: "ht-danger-ink",
+    floor: 4.5,
+    wash: { hue: "ht-danger", alphas: [0.15, 0.1] },
+  },
+  {
+    name: "ht-highlight-text",
+    floor: 4.5,
+    wash: { hue: "ht-highlight", alphas: [1] },
+  },
+];
 
 describe("the palette library", () => {
   it("lists every palette once, in picker order", () => {
@@ -178,16 +211,19 @@ describe.each(imported)("palette $id", (palette) => {
     expect(screen.a).toBe(1);
   });
 
-  for (const [name, floor] of NUDGED) {
-    const measured: [string, Rgba][] =
-      name === "ht-highlight-text"
-        ? // The highlight ink is only ever printed on the highlight wash.
-          [
-            ...surfaces,
-            ["highlight wash", composite(vars["ht-highlight"], screen) as Rgba],
-          ]
-        : surfaces;
-    for (const [surfaceName, surface] of measured) {
+  // Every composite the derivation guards, re-measured from the CSS: the four
+  // plain rows, plus each wash over each of those rows. A regression at any one
+  // of them is a role the user cannot read on a surface Houston paints it on.
+  for (const { name, floor, wash } of NUDGED) {
+    const washes: [string, Rgba][] = wash
+      ? wash.alphas.flatMap((alpha) =>
+          surfaces.map(([surfaceName, surface]): [string, Rgba] => [
+            `${alpha * 100}% --${wash.hue} wash over the ${surfaceName}`,
+            composite(withAlpha(vars[wash.hue], alpha), surface) as Rgba,
+          ]),
+        )
+      : [];
+    for (const [surfaceName, surface] of [...surfaces, ...washes]) {
       it(`--${name} clears ${floor}:1 on the ${surfaceName}`, () => {
         const ratio = contrast(vars[name], surface) as number;
         expect(
@@ -292,23 +328,6 @@ describe.each(imported)("palette $id", (palette) => {
         ratio,
         `--ht-${status}-text measures ${ratio.toFixed(2)}:1 on --ht-${status}`,
       ).toBeGreaterThanOrEqual(3);
-    });
-  }
-
-  for (const status of ["danger", "success", "warning"] as const) {
-    it(`--ht-${status}-ink clears 4.5:1 on its own 15% wash`, () => {
-      // A status chip washes its OWN hue behind its ink, which tints the backdrop
-      // towards that ink — the densest wash on the most recessed row is the real
-      // floor, and it is the one Houston's own contrast test already holds.
-      const wash = composite(
-        withAlpha(vars[`ht-${status}`], 0.15),
-        surfaces[2][1],
-      ) as Rgba;
-      const ratio = contrast(vars[`ht-${status}-ink`], wash) as number;
-      expect(
-        ratio,
-        `--ht-${status}-ink measures ${ratio.toFixed(2)}:1 on its own 15% wash`,
-      ).toBeGreaterThanOrEqual(4.5);
     });
   }
 });

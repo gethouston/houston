@@ -285,6 +285,24 @@ describe.each([
     }
   }
 
+  // The link colour worn AS TEXT: every URL in chat and every link in a rendered
+  // markdown document. It sits on the page, in a field, on a recessed row and
+  // inside a teammate's chip bubble, and it owes body text's floor on each.
+  for (const [surfaceName, surface] of [
+    ["field", contentSurface(theme, "ht-input")],
+    ["page", contentSurface(theme, "ht-background")],
+    ["recessed row", contentSurface(theme, "ht-chip-subtle")],
+    ["chat bubble", bubbleSurface(theme)],
+  ] as [string, Rgba][]) {
+    it(`the link colour clears ${CONTRAST_FLOOR}:1 on the ${surfaceName}`, () => {
+      const ratio = contrastRatio(token(theme, "ht-link"), surface);
+      expect(
+        ratio,
+        `--ht-link (${theme}) measures ${ratio.toFixed(2)}:1 on the ${surfaceName}, below the ${CONTRAST_FLOOR}:1 body-text floor`,
+      ).toBeGreaterThanOrEqual(CONTRAST_FLOOR);
+    });
+  }
+
   for (const [surfaceName, surface] of buttonSurfaces(theme)) {
     it(`the primary button's label clears ${CONTRAST_FLOOR}:1 over the ${surfaceName}`, () => {
       const fill = over(token(theme, "ht-cta"), surface);

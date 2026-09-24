@@ -1,5 +1,5 @@
 import { composite, formatColor, mix, withAlpha } from "./color.mjs";
-import { BODY_FLOOR, nudge } from "./palette-text.mjs";
+import { BODY_FLOOR, nudge } from "./palette-ladder.mjs";
 
 // The filled primary button, the one surface a palette shouts from. Houston's
 // two authored sets set the grammar per mode: a near-ink solid pill in light, a
@@ -21,7 +21,7 @@ function frostLabel(p, fill, surfaces, notes) {
   const { value, steps } = nudge(
     p.bright_foreground,
     "#ffffff",
-    [composite(fill, surfaces.input), composite(fill, surfaces.base)],
+    () => [composite(fill, surfaces.input), composite(fill, surfaces.base)],
     BODY_FLOOR,
     `${p.id}: --ht-cta-text`,
   );

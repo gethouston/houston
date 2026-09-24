@@ -1,65 +1,21 @@
-import { composite, contrast, formatColor, mix, withAlpha } from "./color.mjs";
+import { contrast, formatColor, mix, withAlpha } from "./color.mjs";
+import { BODY_FLOOR, nudge, surfaceStack } from "./palette-ladder.mjs";
 
 // The text half of the palette derivation: ink, the roles that simply ARE the
-// palette's foreground or background, the status hues, and the contrast nudging
-// that makes an imported hue legible on Houston's surfaces. An imported palette
-// is tuned for a terminal, where text sits on one flat background; Houston sets
-// the same hue on a field, a translucent screen, a recessed row and a chip
-// washed with that hue itself, so the roles worn AS TEXT are stepped toward the
-// palette's own ink until they clear the WCAG floor on every one of them.
+// palette's foreground or background, the status hues, and the roles worn AS TEXT,
+// which the ladder in `palette-ladder.mjs` steps toward the palette's own ink
+// until they clear their WCAG floor on every surface Houston prints them on.
 
-export const BODY_FLOOR = 4.5;
 const MUTED_FLOOR = 3;
-const STEP = 0.02;
-const STEPS = 50;
 
 /** The alphas a status chip washes its own hue at (`bg-success/15`, `bg-danger/10`). */
-const WASH_ALPHAS = [0.15, 0.1];
+const STATUS_WASH_ALPHAS = [0.15, 0.1];
 
-/** The surfaces Houston paints information on, flattened to opaque colours. */
-function surfaceStack(surfaces) {
-  const screen = composite(surfaces.background, surfaces.base);
-  const rows = [
-    screen,
-    composite(surfaces.input, screen),
-    composite(surfaces.chip, screen),
-  ];
-  return {
-    screen,
-    all: [screen, ...rows.slice(1), composite(surfaces["chip-subtle"], screen)],
-    /**
-     * A status chip washes its OWN hue behind its ink, which tints the backdrop
-     * TOWARDS that ink — an ink measured only against the plain rows is measured
-     * against the easiest case, so the wash is part of its floor.
-     */
-    washes: (hue) =>
-      WASH_ALPHAS.flatMap((alpha) =>
-        rows.map((row) => composite(withAlpha(hue, alpha), row)),
-      ),
-  };
-}
+/** The alpha the chat link chip washes the link colour at (`bg-link/10`). */
+const LINK_WASH_ALPHAS = [0.1];
 
-/**
- * Step `from` toward `toward` in 2% mixes until it clears `floor` on every
- * surface. `toward` is the palette's own ink for a role worn on a surface, and
- * white for the label on the dark frost button; either way it is the extreme the
- * role is heading for, so contrast rises monotonically and the ladder's last
- * rung is that extreme itself. A palette that misses the floor even there is a
- * build error, not a silently unreadable block.
- *
- * @returns {{ value: import("./color.mjs").Rgba, steps: number }}
- */
-export function nudge(from, toward, surfaces, floor, label) {
-  for (let step = 0; step <= STEPS; step += 1) {
-    const value = mix(from, toward, step * STEP);
-    if (surfaces.every((s) => contrast(value, s) >= floor)) {
-      return { value, steps: step };
-    }
-  }
-  throw new Error(
-    `${label}: cannot reach ${floor}:1 on every surface, even at ${formatColor(toward)}`,
-  );
-}
+/** The alphas `--ht-highlight` wears: it is already translucent, so full strength. */
+const HIGHLIGHT_WASH_ALPHAS = [1];
 
 /** The label printed ON a filled surface: whichever candidate reads best on it. */
 function labelOn(fill, p) {
@@ -114,17 +70,21 @@ export function paletteText(p, surfaces, notes) {
   const dark = p.mode === "dark";
   const fg = p.foreground;
   const bg = p.background;
-  const { screen, all, washes } = surfaceStack(surfaces);
+  const { all, washes } = surfaceStack(surfaces);
   const highlight = withAlpha(p.yellow, dark ? 0.34 : 0.45);
   // Measured once, and returned as `action-text`: the light button wears the same
   // label, so the build prints one note rather than the same note twice.
   const accentLabel = accentText(p.accent, p, notes);
 
-  const step = (role, from, floor, extra = []) => {
+  /**
+   * @param {(value: import("./color.mjs").Rgba) => import("./color.mjs").Rgba[]} extra
+   *   the washes this role is printed on, given the candidate under test.
+   */
+  const step = (role, from, floor, extra = () => []) => {
     const { value, steps } = nudge(
       from,
       fg,
-      [...all, ...extra],
+      (value) => [...all, ...extra(value)],
       floor,
       `${p.id}: --ht-${role}`,
     );
@@ -154,7 +114,12 @@ export function paletteText(p, surfaces, notes) {
     action: p.accent,
     "action-text": accentLabel,
     focus: p.accent,
-    link: step("link", p.blue, BODY_FLOOR),
+    // The chat link chip prints the link colour on a 10% wash OF ITSELF
+    // (`text-link bg-link/10`), so the link is stepped against that wash as it
+    // moves, not only against the plain rows it also sits on as bare text.
+    link: step("link", p.blue, BODY_FLOOR, (value) =>
+      washes(value, LINK_WASH_ALPHAS),
+    ),
     // The user's own bubble inverts in light (ink fill, background text) and is a
     // faint ink wash in dark; the chip inside it is the bubble's TEXT colour at
     // Houston's alpha, so it stays legible against the fill either way.
@@ -166,18 +131,24 @@ export function paletteText(p, surfaces, notes) {
     "danger-text": labelOn(p.red, p),
     "danger-fill": dark ? withAlpha(p.red, 0.6) : p.red,
     "danger-ring": withAlpha(p.red, dark ? 0.4 : 0.2),
-    "danger-ink": step("danger-ink", p.red, BODY_FLOOR, washes(p.red)),
+    "danger-ink": step("danger-ink", p.red, BODY_FLOOR, () =>
+      washes(p.red, STATUS_WASH_ALPHAS),
+    ),
     success: p.green,
     "success-text": labelOn(p.green, p),
-    "success-ink": step("success-ink", p.green, BODY_FLOOR, washes(p.green)),
+    "success-ink": step("success-ink", p.green, BODY_FLOOR, () =>
+      washes(p.green, STATUS_WASH_ALPHAS),
+    ),
     warning: p.yellow,
     "warning-text": labelOn(p.yellow, p),
-    "warning-ink": step("warning-ink", p.yellow, BODY_FLOOR, washes(p.yellow)),
+    "warning-ink": step("warning-ink", p.yellow, BODY_FLOOR, () =>
+      washes(p.yellow, STATUS_WASH_ALPHAS),
+    ),
     highlight,
-    // The highlight ink also owes 4.5:1 on the wash it is printed on, which is
-    // the only surface that token is ever used against.
-    "highlight-text": step("highlight-text", highlightSeed(p), BODY_FLOOR, [
-      composite(highlight, screen),
-    ]),
+    // The highlight ink also owes 4.5:1 on the highlight wash it is printed on,
+    // over every row a marked span or a mention chip can sit in.
+    "highlight-text": step("highlight-text", highlightSeed(p), BODY_FLOOR, () =>
+      washes(highlight, HIGHLIGHT_WASH_ALPHAS),
+    ),
   };
 }
