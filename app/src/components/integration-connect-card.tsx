@@ -92,7 +92,7 @@ function ConnectStatusSlot({
 
   if (view === "connected") {
     return (
-      <span className="inline-flex h-7 shrink-0 items-center gap-1 rounded-full bg-emerald-50 px-2.5 font-medium text-emerald-700 text-xs dark:bg-emerald-950 dark:text-emerald-400">
+      <span className="inline-flex h-7 shrink-0 items-center gap-1 rounded-full bg-success/15 px-2.5 font-medium text-success-ink text-xs">
         <Check className="size-3" />
         {t("composio.connected")}
       </span>

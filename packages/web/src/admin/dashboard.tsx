@@ -6,10 +6,16 @@ import {
   fetchOverview,
   type Overview,
 } from "./api";
-import { OrphansPanel, SpendPanel, StatCards, UsersTable } from "./components";
+import { OrphansPanel, StatCards } from "./components";
+import { SpendPanel } from "./components-spend";
+import { UsersTable } from "./components-users";
 import { AdminSignIn } from "./sign-in";
-import { btn, C, ghostBtn, page } from "./styles";
+import { btn, C, ghostBtn, page, tint } from "./styles";
 import { useAdminAuth } from "./use-admin-auth";
+// /admin never mounts the app tree, so the token CSS must reach THIS chunk or
+// the --ht-* vars the palette reads do not exist. The app's globals.css is NOT
+// that stylesheet: it locks the body's scroll for the pane-scrolling shell.
+import "./admin.css";
 
 // The /admin entry (packages/web/src/main.tsx) renders this dashboard directly,
 // NOT through app-tree.tsx, so it must install the identity log sink + window
@@ -17,6 +23,12 @@ import { useAdminAuth } from "./use-admin-auth";
 // (e.g. a malformed ID token) would only reach console. Idempotent + safe on web
 // (the underlying write is a no-op shim there).
 initFrontendLogging();
+
+// An operator tool, deliberately dark whatever the device prefers (DESIGN.md §3
+// rule 4). The pin sits on the DOCUMENT root as well as the dashboard's own root
+// so <body> resolves the dark ladder too — otherwise the frame behind the page
+// paints the light base for an operator whose app theme is light.
+document.documentElement.dataset.theme = "dark";
 
 /**
  * Houston Cloud operator dashboard (served at /admin). Self-contained, like the
@@ -87,7 +99,9 @@ function Dashboard({
   }, [load]);
 
   return (
-    <div style={page}>
+    // An operator tool, deliberately dark regardless of the app theme
+    // (DESIGN.md §3 rule 4).
+    <div style={page} data-theme="dark">
       <div
         style={{
           display: "flex",
@@ -101,7 +115,7 @@ function Dashboard({
           <div style={{ fontSize: 20, fontWeight: 800 }}>
             Houston Cloud · Operations
           </div>
-          <div style={{ fontSize: 12, color: C.faint, marginTop: 2 }}>
+          <div style={{ fontSize: 12, color: C.muted, marginTop: 2 }}>
             {loadedAt
               ? `Updated ${new Date(loadedAt).toLocaleTimeString()}`
               : "Loading…"}
@@ -129,8 +143,8 @@ function Dashboard({
             marginTop: 14,
             padding: 12,
             borderRadius: 10,
-            background: `${C.red}1a`,
-            border: `1px solid ${C.red}55`,
+            background: tint(C.red, 10),
+            border: `1px solid ${tint(C.red, 33)}`,
             color: C.red,
             fontSize: 13,
           }}
@@ -151,7 +165,7 @@ function Dashboard({
           </>
         ) : (
           !error && (
-            <div style={{ color: C.dim, marginTop: 24 }}>
+            <div style={{ color: C.text, marginTop: 24 }}>
               Loading cluster state…
             </div>
           )

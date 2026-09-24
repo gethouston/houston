@@ -717,6 +717,9 @@ importers:
       '@houston-ai/skills':
         specifier: workspace:*
         version: link:../../ui/skills
+      '@houston/design-tokens':
+        specifier: workspace:*
+        version: link:../design-tokens
       '@houston/domain':
         specifier: workspace:*
         version: link:../domain

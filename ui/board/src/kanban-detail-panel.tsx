@@ -90,11 +90,11 @@ export const KanbanDetailPanel = forwardRef<
           engages below max-w-3xl, so a normal 45%-width mission panel looks
           exactly as before. */}
       {/* Borderless header on the chat canvas tone: it reads as part of the
-          chat surface rather than a separate bar (`bg-background` is the SAME
-          token ChatPanel and the panes wear, so header, chat, and pane are
-          one color — no seam on the light canvas / dark transparent). */}
+          chat surface rather than a separate bar. `bg-pane` is the SAME token
+          ChatPanel and the setup panes wear, so header, chat, and pane are one
+          colour and there is no seam in either theme. */}
       {!hideHeader && (
-        <div className="@container relative flex shrink-0 items-center gap-3 bg-background px-4 py-3 dark:bg-transparent">
+        <div className="@container relative flex shrink-0 items-center gap-3 bg-pane px-4 py-3">
           {/* The leading slot (a Back control) belongs to the panel's frame,
               not to the reading column, so it sits at the panel's own left
               edge. Once the header is wide enough that the capped row leaves
@@ -122,7 +122,7 @@ export const KanbanDetailPanel = forwardRef<
                       {(agentName ? missionLabel : subtitle) && (
                         <span className="mx-1">&middot;</span>
                       )}
-                      <span className={cn(isRunning && "text-blue-500")}>
+                      <span className={cn(isRunning && "text-action")}>
                         {labels[status] ?? status}
                       </span>
                     </>
@@ -149,7 +149,7 @@ export const KanbanDetailPanel = forwardRef<
             )}
             <div className="min-w-0 flex-1" />
             {isRunning && (
-              <Loader2 className="size-4 animate-spin text-blue-500 shrink-0" />
+              <Loader2 className="size-4 animate-spin text-action shrink-0" />
             )}
             {actions}
             {onClose && (

@@ -54,7 +54,7 @@ function KanbanDetailPanelSpecimen() {
 
         <SpecimenSection
           title="States"
-          note="Status is a word, not a badge — it trails the mission line after a middot. Only a running status adds anything: a spinner joins the right-hand cluster and the word is tinted, with the one raw colour left in this component (`text-blue-500`, not a token). Unknown statuses render verbatim, so a consumer's own vocabulary never shows a blank."
+          note="Status is a word, not a badge — it trails the mission line after a middot. Only a running status adds anything: a spinner joins the right-hand cluster and the word is tinted `text-action`, the status tone. Unknown statuses render verbatim, so a consumer's own vocabulary never shows a blank."
         >
           {STATUSES.map((status) => (
             <SpecimenRow key={status} label={status}>

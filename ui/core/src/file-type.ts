@@ -26,6 +26,7 @@ export const IMAGE_EXT = new Set([
   "ico",
   "bmp",
   "tiff",
+  "tif",
   "heic",
 ]);
 

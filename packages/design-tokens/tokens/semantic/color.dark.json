@@ -7,8 +7,17 @@
     "background": {
       "$value": "{color.glass.screen-55}"
     },
+    "pane": {
+      "$value": "{color.base.transparent}"
+    },
     "input": {
       "$value": "{color.neutral.800}"
+    },
+    "field": {
+      "$value": "{color.alpha.neutral700-a30}"
+    },
+    "field-hover": {
+      "$value": "{color.alpha.neutral700-a50}"
     },
     "card": {
       "$value": "{color.glass.neutral-50}"
@@ -17,7 +26,7 @@
       "$value": "{color.glass.neutral-58}"
     },
     "card-solid": {
-      "$value": "{color.neutral.750}"
+      "$value": "{color.cool.card-dark}"
     },
     "card-text": {
       "$value": "{color.neutral.150}"
@@ -71,10 +80,19 @@
       "$value": "{color.alpha.white-a06}"
     },
     "tab-active": {
-      "$value": "{color.neutral.700}"
+      "$value": "{color.cool.card-dark}"
+    },
+    "bubble": {
+      "$value": "{color.alpha.white-a045}"
     },
     "bubble-text": {
       "$value": "{color.base.white}"
+    },
+    "bubble-chip": {
+      "$value": "{color.alpha.neutral150-a10}"
+    },
+    "bubble-chip-text": {
+      "$value": "{color.neutral.150}"
     },
     "prose-text": {
       "$value": "{color.base.white}"
@@ -94,11 +112,23 @@
     "danger-text": {
       "$value": "{color.base.white}"
     },
+    "danger-fill": {
+      "$value": "{color.alpha.danger-bright-a60}"
+    },
+    "danger-ring": {
+      "$value": "{color.alpha.danger-bright-a40}"
+    },
+    "danger-ink": {
+      "$value": "{color.status.danger-ink-bright}"
+    },
     "success": {
       "$value": "{color.status.success-bright}"
     },
     "success-text": {
       "$value": "{color.base.black}"
+    },
+    "success-ink": {
+      "$value": "{color.status.success-bright}"
     },
     "warning": {
       "$value": "{color.status.warning-bright}"
@@ -106,11 +136,17 @@
     "warning-text": {
       "$value": "{color.base.black}"
     },
+    "warning-ink": {
+      "$value": "{color.status.warning-bright}"
+    },
     "highlight": {
       "$value": "{color.brand.highlight-34}"
     },
     "highlight-text": {
       "$value": "{color.status.highlight-ink-dark}"
+    },
+    "flash": {
+      "$value": "{color.alpha.white-a14}"
     },
     "sidebar": {
       "$value": "{color.base.transparent}"
@@ -129,6 +165,26 @@
     },
     "sidebar-active": {
       "$value": "{color.alpha.white-a10}"
+    },
+    "glow": {
+      "blue": {
+        "$value": "{color.glow.blue}"
+      },
+      "indigo": {
+        "$value": "{color.glow.indigo}"
+      },
+      "orange": {
+        "$value": "{color.glow.orange}"
+      },
+      "amber": {
+        "$value": "{color.glow.amber}"
+      },
+      "blue-wash": {
+        "$value": "{color.glow.blue-a15}"
+      },
+      "blue-shadow": {
+        "$value": "{color.glow.blue-a12}"
+      }
     },
     "agent": {
       "charcoal": {

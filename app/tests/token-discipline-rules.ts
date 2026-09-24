@@ -23,18 +23,24 @@ const ROOTS = [
  * DESIGN.md §3.1, verbatim: the ONLY files allowed a raw colour.
  *
  * Brand marks (a logo's colour is the logo), the pre-boot frame that paints
- * before any token CSS exists, and the effects layer — aurora and glass sheen
- * are authored values, not semantic roles. Anything else wanting one is a
- * missing token.
+ * before any token CSS exists, the effects layer and the specimen that
+ * documents it (aurora and glass sheen are authored values, not semantic
+ * roles), the colour maths that parses and formats every colour form, and the
+ * social share image that next/og renders to a PNG with no CSS variables to
+ * read. Anything else wanting one is a missing token.
  */
 export const SANCTIONED = [
   "app/src/components/shell/provider-brand-colors.ts",
   "app/src/components/provider-browser/brand-mark.tsx",
   "app/src/components/auth/provider-brand-icons.tsx",
+  "ui/chat/src/channel-brand-colors.ts",
   "app/src/main.tsx",
   "packages/web/src/new-engine/styles.ts",
   "ui/core/src/canvas.css",
   "app/src/styles/futuristic.css",
+  "ui/showcase/specimens/foundations/effects-parts.ts",
+  "ui/core/src/color-contrast.ts",
+  "agentstore/src/lib/og-card.tsx",
 ];
 
 export interface Rule {
@@ -62,6 +68,17 @@ export const RULES: Rule[] = [
       /#[0-9a-fA-F]{3}(?:[0-9a-fA-F]{5}|[0-9a-fA-F]{3}|[0-9a-fA-F])?\b|(?<![a-zA-Z])rgba?\(/,
     remedy:
       "a visual change is a token edit (packages/design-tokens/tokens/*.json), never a literal — DESIGN.md §3.1",
+  },
+  {
+    name: "raw Tailwind palette colour",
+    // `text-red-400`, `bg-emerald-950`, `border-zinc-700`: Tailwind's own
+    // palette, which no Houston token feeds. It bypasses the theme exactly as a
+    // hex does — the hue is frozen at the value the author typed and neither
+    // theme can move it.
+    pattern:
+      /\b(?:bg|text|border(?:-[trblxyse])?|ring(?:-offset)?|inset-ring|inset-shadow|outline|divide(?:-[xy])?|fill|stroke|from|via|to|placeholder|caret|decoration|shadow|accent)-(?:slate|gray|zinc|neutral|stone|red|orange|amber|yellow|lime|green|emerald|teal|cyan|sky|blue|indigo|violet|purple|fuchsia|pink|rose)-\d{2,3}\b/,
+    remedy:
+      "status wears the semantic pair (danger/success/warning plus their -text and -ink), neutrals wear ink, ink-muted, chip and line — DESIGN.md §4",
   },
   {
     name: "undefined CSS variable",
@@ -118,6 +135,8 @@ export function sourceRoots(): string[] {
 export function walk(dir: string, out: string[] = []): string[] {
   for (const name of readdirSync(dir)) {
     const full = join(dir, name);
+    // Fixture data is not a pixel: it never renders.
+    if (name === "__fixtures__") continue;
     if (statSync(full).isDirectory()) walk(full, out);
     else if (/\.(tsx?|css)$/.test(full)) out.push(full);
   }

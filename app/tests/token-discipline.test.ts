@@ -78,57 +78,16 @@ const DEAD_CLASS = new RegExp(
 );
 
 /**
- * Files that predate this guard and still hold a raw colour or a `vh` height.
+ * The inventory of files still holding a raw colour. It is EMPTY: every surface
+ * Houston renders draws its visual values from the token set.
  *
- * Not an exemption and not a TODO: the list may only SHRINK. A new offender
- * fails the guard, and a file cleaned without being struck from this list
- * fails it too — so the inventory cannot rot into a permanent allowlist the
- * way a plain ignore file does. Several of these are arguably the effects
- * layer or a brand-mark map and belong in DESIGN.md §3.1 instead; that is a
- * doctrine call, and until it is made they are counted here.
+ * It stays here because an empty list is the only honest way to take a future
+ * offender: the list may only SHRINK, a new offender fails the guard, and a
+ * file cleaned without being struck from the list fails it too. So a raw colour
+ * that has to land is inventoried deliberately, with the decision it waits on
+ * named, and can never be exempted the way a plain ignore file exempts things.
  */
-const UNTOKENIZED = [
-  "agentstore/src/app/a/[slug]/page.tsx",
-  "agentstore/src/app/creators/[handle]/page.tsx",
-  "agentstore/src/app/layout.tsx",
-  "agentstore/src/app/me/page.tsx",
-  "agentstore/src/app/me/profile/page.tsx",
-  "agentstore/src/app/page.tsx",
-  "agentstore/src/components/site-header.tsx",
-  "agentstore/src/lib/export/__fixtures__/example-ir.ts",
-  "agentstore/src/lib/og-card.tsx",
-  "app/src/components/agent-picker-dialog.tsx",
-  "app/src/components/agent/automation-intake/trigger-app-grid.tsx",
-  "app/src/components/agent/learning-card.tsx",
-  "app/src/components/auth/sign-in-screen.tsx",
-  "app/src/components/new-mission-picker-dialog.tsx",
-  "app/src/components/onboarding/cloud-migration/offer-screen.tsx",
-  "app/src/components/onboarding/cloud-migration/progress-screen.tsx",
-  "app/src/components/onboarding/cloud-migration/space-invaders.tsx",
-  "app/src/components/onboarding/setup-card.tsx",
-  "packages/engine-adapter/src/synthetic.ts",
-  "packages/web/src/admin/sign-in.tsx",
-  "packages/web/src/admin/styles.ts",
-  "packages/web/src/app-tree.tsx",
-  "ui/board/src/board-drag-dom.ts",
-  "ui/board/src/board.css",
-  "ui/board/src/kanban-card.tsx",
-  "ui/board/src/kanban-column-parts.tsx",
-  "ui/chat/src/ai-elements/prompt-input.tsx",
-  "ui/chat/src/channel-brand-colors.ts",
-  "ui/chat/src/chat-suggest-reusable-card.tsx",
-  "ui/chat/src/dictation-waveform-envelope.ts",
-  "ui/chat/src/dictation-waveform.tsx",
-  "ui/chat/src/file-type-colors.ts",
-  "ui/chat/src/interaction-modal.tsx",
-  "ui/core/src/color-contrast.ts",
-  "ui/core/src/globals.css",
-  "ui/review/src/deliverable-card.tsx",
-  "ui/review/src/review-empty.tsx",
-  "ui/routines/src/styles.css",
-  "ui/showcase/specimens/foundations/effects-parts.ts",
-  "ui/store/src/components/skill-list.tsx",
-];
+const UNTOKENIZED: string[] = [];
 
 describe("no dead theme tokens in the app or the ui packages", () => {
   it("every guarded name really is undefined in the token set", () => {
@@ -184,7 +143,7 @@ describe("no raw visual values outside the sanctioned files", () => {
     for (const rule of RULES) ok(rule.remedy.length > 20, rule.name);
   });
 
-  it("finds no raw hex, rgba, undefined var, vh height, max-md: or bare dialog width", () => {
+  it("finds no raw hex, rgba, palette class, undefined var, vh height, max-md: or bare dialog width", () => {
     const known = new Set(UNTOKENIZED);
     const offences = guardedFiles()
       .filter((file) => !known.has(file))
@@ -252,6 +211,41 @@ describe("the dialog-width rule", () => {
   });
 });
 
+/**
+ * Tailwind's palette scales are as hardcoded as a hex: `text-red-400` names a
+ * frozen hue no `[data-theme]` can move. The rule has to tell them apart from
+ * Houston's own numbered-looking families, which are token-backed identities.
+ */
+describe("the raw-palette rule", () => {
+  const rule = RULES.find((r) => r.name === "raw Tailwind palette colour");
+  const offends = (text: string) => {
+    ok(rule, "the rule is still registered");
+    return rule.pattern.test(text);
+  };
+
+  it("catches a Tailwind palette scale on any colour utility", () => {
+    ok(offends('<p className="text-red-400">'));
+    ok(offends('<div className="bg-emerald-950 border-zinc-700">'));
+    ok(offends('<div className="border-t-red-500 ring-offset-red-500">'));
+    ok(offends('<ul className="divide-y divide-y-gray-200">'));
+    ok(offends('<p className="hover:text-red-400/50">'));
+  });
+
+  it("is not fooled by a keyword colour or a non-colour scale", () => {
+    ok(
+      !offends(
+        '<p className="text-white bg-black/50 ring-offset-2 border-b-2">',
+      ),
+    );
+  });
+
+  it("leaves Houston's semantic and identity tokens alone", () => {
+    ok(!offends('<p className="text-danger">'));
+    ok(!offends('<p className="text-filetype-pdf">'));
+    ok(!offends('<p className="text-success-ink bg-warning/10 border-line">'));
+  });
+});
+
 describe("the walker", () => {
   it("reads TS, TSX and CSS, and nothing else", () => {
     const files = walk(join(REPO, "ui", "core", "src"));
@@ -261,5 +255,11 @@ describe("the walker", () => {
     );
     ok(files.some((f) => f.endsWith(".tsx")));
     ok(!files.some((f) => /\.(json|md|svg)$/.test(f)));
+  });
+
+  it("skips __fixtures__, whose data never renders", () => {
+    const files = walk(join(REPO, "agentstore", "src", "lib", "export"));
+    ok(files.length > 0, "the export dir still has sources to walk");
+    ok(!files.some((f) => f.includes("__fixtures__")));
   });
 });

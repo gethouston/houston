@@ -103,7 +103,7 @@ export function ReconnectBanner({
   const { t } = useTranslation("integrations");
   return (
     <div className="flex items-start gap-2 rounded-xl bg-chip p-4 text-sm text-ink-muted">
-      <ShieldCheck className="mt-0.5 size-4 shrink-0 text-emerald-600" />
+      <ShieldCheck className="mt-0.5 size-4 shrink-0 text-success-ink" />
       <span className="flex-1">{t("reconnectNotice")}</span>
       <AsyncButton
         variant="ghost"

@@ -3,6 +3,13 @@
 Every `version` bump in `inventory.yaml` needs a matching entry here (enforced by
 `pnpm check:parity`). Newest first. Use `## vN` headings.
 
+## v100 - 2026-09-23
+
+The composer lists its attachments as chips, and a chip's icon slot carries the
+shared file-type glyph: the bare mark in its file-type tone, the same one the
+Files list rows and chat's file chips wear. A folder keeps the monochrome folder
+glyph.
+
 ## v99 - 2026-09-23
 
 A skill row opens that skill's full-page editor in place of the list: no

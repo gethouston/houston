@@ -2,6 +2,7 @@ import { strict as assert } from "node:assert";
 import { readFileSync } from "node:fs";
 import { join } from "node:path";
 import { describe, it } from "node:test";
+import { shadow } from "@houston/design-tokens";
 import * as React from "react";
 import { renderToStaticMarkup } from "react-dom/server";
 import {
@@ -52,6 +53,57 @@ const { createElement } = React;
  * breakpoint, a media slot), so they are left out of the comparison.
  */
 const FRAME_ASPECT = /^(rounded|border|shadow|p|px|py|gap|text|font|bg)(-|$)/;
+
+/** A stylesheet ui/core ships, read from disk: the cascade is the assertion. */
+const sheet = (name: string): string =>
+  readFileSync(join(import.meta.dirname, "../src", name), "utf8");
+
+/** Split a selector LIST on its top-level commas, so `:where(a, b)` stays whole. */
+function splitSelectorList(list: string): string[] {
+  const out: string[] = [];
+  let depth = 0;
+  let current = "";
+  for (const char of list) {
+    if (char === "(") depth += 1;
+    else if (char === ")") depth -= 1;
+    if (char === "," && depth === 0) {
+      out.push(current);
+      current = "";
+      continue;
+    }
+    current += char;
+  }
+  out.push(current);
+  return out;
+}
+
+/** A stylesheet with its comments removed: what the browser actually reads. */
+const code = (css: string): string => css.replace(/\/\*[\s\S]*?\*\//g, "");
+
+/**
+ * Every selector a stylesheet declares, one per element a rule paints, written
+ * on one line: whitespace collapsed, and the padding a wrapped `:not(…)` picks
+ * up removed, so a selector compares the same however it is formatted. The regex
+ * matches the INNERMOST blocks, so a rule nested in an `@media` query is read as
+ * its own selector rather than hiding behind the query's prelude.
+ */
+const selectors = (css: string): string[] =>
+  [...code(css).matchAll(/([^{}]+)\{[^{}]*\}/g)]
+    .flatMap((rule) => splitSelectorList(rule[1]))
+    .map((selector) =>
+      selector
+        .trim()
+        .replace(/\s+/g, " ")
+        .replace(/\(\s+/g, "(")
+        .replace(/\s+\)/g, ")"),
+    )
+    .filter(Boolean);
+
+/** The dark-scoped rules that paint a DESCENDANT (not the [data-theme] host). */
+const darkDescendants = (css: string): string[] =>
+  selectors(css).filter((selector) =>
+    /^\[data-theme="dark"\]\s\S/.test(selector),
+  );
 
 const frameTokens = (classes: string): string[] =>
   classes
@@ -131,26 +183,55 @@ describe("the dialog frame", () => {
     ]);
   });
 
-  it("takes its depth from the effects layer, split light from dark", () => {
+  it("takes its depth from the `dialog` elevation tier, themed by the token", () => {
     // DESIGN.md §6 bans a dark-mode drop shadow laid over the aurora, so the
     // frame cannot wear one shadow tinted twice. `shadow-lg` (shadcn's) has no
     // dark rule at all, and an arbitrary `shadow-[…rgba…]` would be a raw
-    // colour literal inside `ui/` (§3.1) — both are how the frame drifted.
-    const css = readFileSync(
-      join(import.meta.dirname, "../src/canvas.css"),
-      "utf8",
-    );
+    // colour literal inside `ui/` (§3.1) — both are how the frame drifted. The
+    // token carries a light AND a dark value and re-resolves inside a pinned
+    // subtree, so the class is ONE rule reading it.
+    const css = sheet("canvas.css");
     for (const content of [DialogContent, AlertDialogContent]) {
       const classes = contentClass(content);
       assert.match(classes, /\bht-shadow-dialog\b/);
       assert.doesNotMatch(classes, /\bshadow-lg\b/);
       assert.doesNotMatch(classes, /shadow-\[/, "no raw shadow literal in ui/");
     }
-    assert.match(css, /^\.ht-shadow-dialog \{/m, "the light rule");
     assert.match(
       css,
-      /\[data-theme="dark"\]\s*\n\s*\.ht-shadow-dialog:not\(/,
-      "dark needs its own rule, guarded against a pinned-light subtree",
+      /^\.ht-shadow-dialog \{\n\s*box-shadow: var\(--ht-shadow-dialog\);\n\}/m,
+      "one rule, reading the themed token",
+    );
+    assert.doesNotMatch(
+      css,
+      /\.ht-shadow-dialog:not\(/,
+      "a dark fork means the token stopped carrying the dark value",
+    );
+  });
+
+  it("keeps that depth in dark, with the glass sheen inside the tier", () => {
+    // `.ht-shadow-dialog` is specificity (0,1,0); `[data-theme="dark"]
+    // .bg-dialog` is (0,2,0) and box-shadow does not accumulate, so the sheen
+    // rule REPLACED the whole tier and a framed dark dialog floated on nothing
+    // but a 1px highlight. So the sheen is the tier's own first layer, and the
+    // rule that paints an UNFRAMED dark dialog surface excludes the framed one.
+    assert.match(
+      shadow.dark.dialog,
+      /^inset 0 1px 0 0 rgba\(255, 255, 255, 0\.06\)/,
+      "the dark tier opens with the sheen",
+    );
+    assert.match(
+      shadow.dark.dialog,
+      /0 4px 80px 8px/,
+      "the ambient depth is still under it",
+    );
+    const sheen = darkDescendants(sheet("canvas.css")).filter((selector) =>
+      selector.includes(".bg-dialog"),
+    );
+    assert.equal(sheen.length, 1, "one dark rule paints the dialog surface");
+    assert.ok(
+      sheen[0].includes(".bg-dialog:not(:where(.ht-shadow-dialog))"),
+      `${sheen[0]} still outranks .ht-shadow-dialog`,
     );
   });
 
@@ -286,6 +367,46 @@ describe("the frame's breakpoints", () => {
     assert.match(
       ALERT_DIALOG_FOOTER_CLASS,
       /group-data-\[size=sm\]\/alert-dialog-content:grid-cols-2/,
+    );
+  });
+});
+
+/**
+ * The two stylesheets the frame shares with the rest of ui/core. The dialog's
+ * own dark sheen is one of the rules swept here, which is why the invariants sit
+ * beside it rather than in a sheet-shaped test of their own.
+ */
+describe("the shared stylesheets", () => {
+  const LIGHT_PIN_GUARD =
+    ':not(:where([data-theme="light"], [data-theme="light"] *))';
+
+  it("pins every dark rule inside the tree against a light-pinned subtree", () => {
+    // DESIGN.md §3.4: a subtree pinned with data-theme="light" (the sign-in
+    // card, the first-run canvas) must get the LIGHT chrome, and a dark
+    // descendant rule keeps matching through the <html data-theme="dark">
+    // ancestor unless it says otherwise.
+    for (const selector of darkDescendants(sheet("canvas.css"))) {
+      // The aurora paints the page backdrop; a pinned subtree cannot contain
+      // <body>, so those rules need no guard.
+      if (/^\[data-theme="dark"\] (body|html)\b/.test(selector)) continue;
+      assert.ok(
+        selector.includes(LIGHT_PIN_GUARD),
+        `${selector} leaks the dark look into a light-pinned subtree`,
+      );
+    }
+  });
+
+  it("masks the running ring with a colour of its own", () => {
+    // A mask reads the ALPHA channel only, so any opaque colour does the job,
+    // but `currentColor` resolves to the host's TEXT colour, alpha included, so
+    // a `text-ink/70` ancestor faded the comet to 70% with it. A keyword is not
+    // a raw colour literal (§3.1 bans hex/rgba), and it is always opaque.
+    const css = code(sheet("motion.css"));
+    assert.doesNotMatch(css, /currentColor/);
+    assert.equal(
+      (css.match(/linear-gradient\(black 0 0\)/g) ?? []).length,
+      4,
+      "both mask declarations, two layers each",
     );
   });
 });

@@ -1,6 +1,6 @@
 export function ReviewEmpty() {
   return (
-    <div className="flex-1 flex flex-col items-center pt-[20vh] gap-4 px-8">
+    <div className="flex-1 flex flex-col items-center pt-[20dvh] gap-4 px-8">
       <div className="space-y-2 text-center max-w-md">
         <h1 className="text-2xl font-semibold text-ink tracking-tight">
           All caught up

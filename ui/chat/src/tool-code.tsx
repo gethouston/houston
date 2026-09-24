@@ -9,13 +9,11 @@ export const TruncatedCode = memo(
     content,
     maxLines,
     isError,
-    dark,
     showActions = true,
   }: {
     content: string;
     maxLines: number;
     isError?: boolean;
-    dark?: boolean;
     showActions?: boolean;
   }) => {
     const [expanded, setExpanded] = useState(false);
@@ -23,26 +21,19 @@ export const TruncatedCode = memo(
     const needsTruncation = lines.length > maxLines;
     const display = expanded ? content : lines.slice(0, maxLines).join("\n");
     const remaining = lines.length - maxLines;
-    const toolbarClass = dark
-      ? "flex justify-end border-b border-zinc-800 px-2 py-1"
-      : "flex justify-end border-b border-line/30 bg-chip-subtle/50 px-2 py-1";
 
     return (
       <div>
         {showActions && (
-          <div className={toolbarClass}>
-            <CodeBlockActions code={content} dark={dark} />
+          <div className="flex justify-end border-b border-line/30 bg-chip-subtle/50 px-2 py-1">
+            <CodeBlockActions code={content} />
           </div>
         )}
         <pre
           className={`select-text px-3 py-2 text-xs font-mono whitespace-pre-wrap break-words overflow-x-auto ${
-            dark
-              ? isError
-                ? "text-red-400"
-                : "text-zinc-300"
-              : isError
-                ? "text-red-600 bg-red-50 dark:text-red-300 dark:bg-red-950/40"
-                : "text-ink bg-chip-subtle/50"
+            isError
+              ? "text-danger-ink bg-danger/10"
+              : "text-ink bg-chip-subtle/50"
           }`}
         >
           {display}
@@ -51,11 +42,7 @@ export const TruncatedCode = memo(
           <button
             type="button"
             onClick={() => setExpanded(true)}
-            className={`w-full px-3 py-1 text-[10px] text-center transition-colors ${
-              dark
-                ? "text-zinc-500 hover:text-zinc-300 border-t border-zinc-800"
-                : "text-ink-muted hover:text-ink border-t border-line/30"
-            }`}
+            className="w-full px-3 py-1 text-[10px] text-center transition-colors text-ink-muted hover:text-ink border-t border-line/30"
           >
             {remaining} more lines
           </button>

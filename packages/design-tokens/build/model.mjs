@@ -55,9 +55,16 @@ export function px(value) {
   return Number.parseFloat(m[1]);
 }
 
-/** Render one shadow layer to a CSS box-shadow fragment. */
+/**
+ * Render one shadow layer to a CSS box-shadow fragment.
+ *
+ * `inset: true` (a DTCG shadow layer's own flag) emits the CSS `inset` keyword,
+ * which is what lets a tier carry an inner sheen as one of its layers instead of
+ * a separate rule that would replace the whole box-shadow.
+ */
 export function shadowLayerCss(layer) {
-  return `${layer.offsetX} ${layer.offsetY} ${layer.blur} ${layer.spread} ${layer.color}`
+  const geometry = `${layer.offsetX} ${layer.offsetY} ${layer.blur} ${layer.spread} ${layer.color}`;
+  return `${layer.inset ? "inset " : ""}${geometry}`
     .replace(/\s+/g, " ")
     .trim();
 }

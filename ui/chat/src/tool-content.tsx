@@ -3,7 +3,9 @@
 import { memo } from "react";
 import { CodeBlockActions } from "./code-block-actions";
 import type { ToolEntry } from "./feed-to-messages";
-import { TruncatedCode, truncateStr } from "./tool-code";
+import { TruncatedCode } from "./tool-code";
+import { EditContent } from "./tool-content-edit";
+import { CodeResult } from "./tool-content-result";
 
 export const ToolContent = memo(({ tool }: { tool: ToolEntry }) => {
   const short = tool.name.includes("__")
@@ -52,14 +54,14 @@ function BashContent({
   const output = result?.content ? result : undefined;
   if (!command && !output) return null;
   return (
-    <div className="rounded-lg bg-zinc-900 text-zinc-100 overflow-hidden">
+    <div className="rounded-lg border border-line/50 overflow-hidden">
       {command && (
-        <div className="flex items-center gap-3 border-b border-zinc-800 px-3 py-1.5 text-xs font-mono">
+        <div className="flex items-center gap-3 border-b border-line/30 bg-chip-subtle/50 px-3 py-1.5 text-xs font-mono text-ink">
           <div className="min-w-0 flex-1 truncate">
-            <span className="text-zinc-500">$ </span>
+            <span className="text-ink-muted">$ </span>
             {command}
           </div>
-          {output && <CodeBlockActions code={output.content} dark />}
+          {output && <CodeBlockActions code={output.content} />}
         </div>
       )}
       {output && (
@@ -67,7 +69,6 @@ function BashContent({
           content={output.content}
           maxLines={15}
           isError={output.is_error}
-          dark
           showActions={!command}
         />
       )}
@@ -89,79 +90,6 @@ function FileContent({
   return (
     <div className="rounded-lg border border-line/50 overflow-hidden">
       <TruncatedCode content={result.content} maxLines={20} />
-    </div>
-  );
-}
-
-function EditContent({
-  input,
-  result,
-}: {
-  input?: Record<string, unknown> | null;
-  result?: ToolEntry["result"];
-}) {
-  if (result?.is_error) {
-    return (
-      <div className="rounded-lg border border-red-200 bg-red-50 px-3 py-2 text-xs text-red-700 dark:border-red-900/60 dark:bg-red-950/40 dark:text-red-300">
-        {result.content}
-      </div>
-    );
-  }
-  // Claude's Edit carries old_string/new_string; pi's edit carries
-  // edits: [{ oldText, newText }] — normalize both to diff pairs.
-  const pairs: { old?: string; new?: string }[] = [];
-  const oldStr = input?.old_string as string | undefined;
-  const newStr = input?.new_string as string | undefined;
-  if (oldStr || newStr) pairs.push({ old: oldStr, new: newStr });
-  const piEdits = input?.edits;
-  if (Array.isArray(piEdits)) {
-    for (const e of piEdits as { oldText?: string; newText?: string }[]) {
-      if (e?.oldText || e?.newText)
-        pairs.push({ old: e.oldText, new: e.newText });
-    }
-  }
-  if (pairs.length === 0) return <CodeResult result={result} maxLines={10} />;
-  return (
-    <div className="rounded-lg border border-line/50 overflow-hidden text-xs font-mono">
-      {pairs.map((p, i) => (
-        // Order is the render identity here: pairs are derived per render.
-        // biome-ignore lint/suspicious/noArrayIndexKey: static derived list
-        <div key={i}>
-          {p.old && <DiffLine sign="-" text={p.old} tone="red" />}
-          {p.new && <DiffLine sign="+" text={p.new} tone="green" />}
-        </div>
-      ))}
-    </div>
-  );
-}
-
-function DiffLine({
-  sign,
-  text,
-  tone,
-}: {
-  sign: string;
-  text: string;
-  tone: "red" | "green";
-}) {
-  return (
-    <div
-      className={`${tone === "red" ? "bg-red-50 dark:bg-red-950/40 border-b" : "bg-green-50 dark:bg-green-950/40"} px-3 py-1.5 border-line/30`}
-    >
-      <span
-        className={`${tone === "red" ? "text-red-400" : "text-green-400"} select-none`}
-      >
-        {sign}{" "}
-      </span>
-      <span
-        className={
-          tone === "red"
-            ? "text-red-700 dark:text-red-300"
-            : "text-green-700 dark:text-green-300"
-        }
-      >
-        {truncateStr(text, 200)}
-      </span>
     </div>
   );
 }
@@ -197,19 +125,4 @@ function formatArgs(input: unknown): string | null {
   } catch {
     return null;
   }
-}
-
-function CodeResult({
-  result,
-  maxLines,
-}: {
-  result?: ToolEntry["result"];
-  maxLines: number;
-}) {
-  if (!result?.content) return null;
-  return (
-    <div className="rounded-lg border border-line/50 overflow-hidden">
-      <TruncatedCode content={result.content} maxLines={maxLines} />
-    </div>
-  );
 }

@@ -7,6 +7,9 @@
    below re-exports these to Tailwind's --color-* utilities. */
 @import "@houston/design-tokens/css";
 
+/* The motion recipes (running comet, typing dots, entrance keyframes). */
+@import "./motion.css";
+
 /* The app toggles dark mode via data-theme="dark" on <html> (see
    app/src/lib/theme.ts) — NOT a .dark class. The variant must key on the
    attribute or every `dark:` utility silently never applies.
@@ -81,6 +84,13 @@
    `var(--color-*)` directly; all direct consumers reference `var(--ht-*)`. */
 @theme inline {
   --color-input: var(--ht-input);
+  /* The FIELD pair: a control's resting fill (`bg-field`) and its hover step
+     (`hover:bg-field-hover`). Light is the recessed `input` tone over the
+     screen; dark is the field border colour at 30% / 50%, the wash that reads
+     as a recess against the glass canvas. One token per state, so a control
+     never spells a `dark:` fill of its own. */
+  --color-field: var(--ht-field);
+  --color-field-hover: var(--ht-field-hover);
   --color-ink: var(--ht-ink);
   /* The standard main-canvas surface: the light gray the content panes float
      cards on (dark = the frosted "screen" glass). Backs the Arc `.canvas-screen`
@@ -92,8 +102,14 @@
      (invisible on a matching surface, both themes). */
   --color-gutter: var(--ht-base);
   --color-background: var(--ht-background);
+  /* The chrome a chat pane's own header/footer wears: the screen tone in light,
+     nothing at all in dark, where the glass canvas must show through unbroken
+     (a second `background` layer there composites to a visible seam). Same two
+     values `background`/transparent carried as ONE token. */
+  --color-pane: var(--ht-pane);
   --color-card: var(--ht-card);
   --color-card-hover: var(--ht-card-hover);
+  --color-card-solid: var(--ht-card-solid);
   --color-card-text: var(--ht-card-text);
   --color-dialog: var(--ht-dialog);
   --color-popover: var(--ht-popover);
@@ -108,9 +124,18 @@
   --color-chip-subtle: var(--ht-chip-subtle);
   --color-tab-track: var(--ht-tab-track);
   --color-tab-active: var(--ht-tab-active);
+  /* The user chat bubble's fill: near-ink in light, the subtle white wash in
+     dark — two very different tones for the SAME role, which is exactly why it
+     is a token and not a `dark:` fork on the bubble. */
+  --color-bubble: var(--ht-bubble);
   /* The user chat bubble's text: pure white in BOTH themes (PRODUCT-1217) —
      the near-white grays (input / ink) read dull over the bubble fill. */
   --color-bubble-text: var(--ht-bubble-text);
+  /* A chip INSIDE the user bubble (a mention, a link): the fill and label are
+     measured against the bubble, not against the canvas, so they invert with
+     the bubble rather than with the page. */
+  --color-bubble-chip: var(--ht-bubble-chip);
+  --color-bubble-chip-text: var(--ht-bubble-chip-text);
   /* The AGENT's long-form chat prose (PRODUCT-1217). Identical to `ink` in
      light; in dark it steps up to pure white, where `ink`'s #e5e5e5 reads
      dim beside the user bubble. Scoped to chat so the app's primary text
@@ -121,6 +146,23 @@
   --color-hover-text: var(--ht-hover-text);
   --color-danger: var(--ht-danger);
   --color-danger-text: var(--ht-danger-text);
+  /* Destructive FILL (`bg-danger-fill`) and the invalid/destructive focus RING
+     (`ring-danger-ring`). Dark softens both — a 60% fill and a 40% ring — so
+     the red does not glare on the dark canvas; each is one token, never
+     `bg-danger dark:bg-danger/60`. */
+  --color-danger-fill: var(--ht-danger-fill);
+  --color-danger-ring: var(--ht-danger-ring);
+  /* The status hues AS TEXT (`text-success-ink`, `text-warning-ink`,
+     `text-danger-ink`): a count of failures, a warning line under a field. The
+     fills above are tuned to carry a white or black label, so on the light
+     canvas they read at 3.4:1 (success) and 2.1:1 (warning), under the
+     4.5:1 body-text floor. These are the same hues retuned per theme to clear
+     it on `input`, `background` and `chip-subtle`, guarded by
+     packages/design-tokens/test/contrast.test.ts. A status FILL keeps its
+     `-text` label colour; text on a surface takes the `-ink`. */
+  --color-success-ink: var(--ht-success-ink);
+  --color-warning-ink: var(--ht-warning-ink);
+  --color-danger-ink: var(--ht-danger-ink);
   --color-line: var(--ht-line);
   --color-line-input: var(--ht-line-input);
   --color-focus: var(--ht-focus);
@@ -190,6 +232,15 @@
   --color-person-initials: var(--ht-person-initials);
   --color-person-overflow: var(--ht-person-overflow);
   --color-person-overflow-text: var(--ht-person-overflow-text);
+  /* --shadow-* is Tailwind v4's box-shadow namespace: each tier IS the
+     `shadow-<tier>` utility, themed by its token, so no `dark:` fork exists. */
+  --shadow-edge: var(--ht-shadow-edge);
+  --shadow-field: var(--ht-shadow-field);
+  --shadow-field-focus: var(--ht-shadow-field-focus);
+  --shadow-card: var(--ht-shadow-card);
+  --shadow-raised: var(--ht-shadow-raised);
+  --shadow-drag: var(--ht-shadow-drag);
+  --shadow-dialog: var(--ht-shadow-dialog);
   --animate-caret-blink: caret-blink 1.2s ease-out infinite;
 }
 
@@ -281,194 +332,6 @@ body {
   -moz-osx-font-smoothing: grayscale;
   overflow: hidden;
   margin: 0;
-}
-
-/* Running card glow border — light traces around the edge */
-@property --glow-angle {
-  syntax: "<angle>";
-  initial-value: 0deg;
-  inherits: false;
-}
-
-@keyframes glow-spin {
-  to {
-    --glow-angle: 360deg;
-  }
-}
-
-.card-running-glow {
-  --glow-angle: 0deg;
-  --glow-bg: var(--ht-input, #ffffff);
-  position: relative;
-  background:
-    linear-gradient(var(--glow-bg), var(--glow-bg)) padding-box,
-    conic-gradient(
-      from var(--glow-angle),
-      transparent 60%,
-      rgba(59, 130, 246, 0.15) 68%,
-      #3b82f6 74%,
-      #818cf8 78%,
-      #f97316 82%,
-      #fbbf24 84%,
-      transparent 88%
-    ) border-box;
-  border: 1.5px solid transparent;
-  animation: glow-spin 2.5s linear infinite;
-}
-
-/* Same comet trace as .card-running-glow, but masked to the ring only.
- * .card-running-glow hides the conic's interior behind an opaque
- * --glow-bg fill, so on a transparent/translucent surface (the glass
- * sidebar) the sweep leaks into the middle and reads as a radar dish.
- * This variant needs no backdrop: the mask keeps just the 1.5px line. */
-.avatar-running-ring {
-  --glow-angle: 0deg;
-  position: relative;
-}
-
-.avatar-running-ring::before {
-  content: "";
-  position: absolute;
-  inset: 0;
-  border-radius: inherit;
-  padding: 1.5px;
-  background: conic-gradient(
-    from var(--glow-angle),
-    transparent 60%,
-    rgba(59, 130, 246, 0.15) 68%,
-    #3b82f6 74%,
-    #818cf8 78%,
-    #f97316 82%,
-    #fbbf24 84%,
-    transparent 88%
-  );
-  -webkit-mask:
-    linear-gradient(#000 0 0) content-box,
-    linear-gradient(#000 0 0);
-  -webkit-mask-composite: xor;
-  mask:
-    linear-gradient(#000 0 0) content-box,
-    linear-gradient(#000 0 0);
-  mask-composite: exclude;
-  animation: glow-spin 2.5s linear infinite;
-  pointer-events: none;
-}
-
-
-/* Indeterminate progress line — the same comet palette as
- * .card-running-glow, flattened into a thin bar for sections that wait on
- * one finite operation (e.g. the export wizard's anonymize pass). Give the
- * element a track color yourself (e.g. `bg-ink/5`); the comet sweeps
- * left to right on the glow's 2.5s clock. */
-@keyframes glow-line-sweep {
-  from {
-    transform: translateX(-100%);
-  }
-  to {
-    /* -100% start + 250% (track/self width) travel + 100% exit */
-    transform: translateX(350%);
-  }
-}
-
-.running-glow-line {
-  position: relative;
-  height: 2px;
-  border-radius: 9999px;
-  overflow: hidden;
-}
-
-.running-glow-line::before {
-  content: "";
-  position: absolute;
-  inset: 0;
-  width: 40%;
-  border-radius: inherit;
-  background: linear-gradient(
-    90deg,
-    transparent,
-    rgba(59, 130, 246, 0.15),
-    #3b82f6,
-    #818cf8,
-    #f97316,
-    #fbbf24,
-    transparent
-  );
-  animation: glow-line-sweep 2.5s linear infinite;
-}
-
-/* Typing dots — WhatsApp-style "•••" bouncing while an agent is
- * working. Apply `.typing-dot` to three sibling elements; the
- * `nth-child` rules stagger them so the bounce travels across. */
-@keyframes typing-bounce {
-  0%, 60%, 100% { transform: translateY(0); opacity: 0.35; }
-  30% { transform: translateY(-3px); opacity: 1; }
-}
-
-.typing-dot {
-  animation: typing-bounce 1.2s ease-in-out infinite both;
-}
-.typing-dot:nth-child(1) { animation-delay: 0s; }
-.typing-dot:nth-child(2) { animation-delay: 0.15s; }
-.typing-dot:nth-child(3) { animation-delay: 0.3s; }
-
-
-/* Pulsing dot for active tool */
-@keyframes tool-pulse {
-  0%, 100% { opacity: 1; transform: scale(1); }
-  50% { opacity: 0.4; transform: scale(0.8); }
-}
-
-.tool-active-dot {
-  animation: tool-pulse 1s ease-in-out infinite;
-}
-
-/* The Files list's selection bar taking the column header's slot the instant a
-   file is checked. Entrance only, transform + opacity only, 200ms on the
-   entrance curve — a swap this small must be noticed, never waited for. */
-@keyframes files-selection-bar-in {
-  from { opacity: 0; transform: translateY(-4px); }
-  to { opacity: 1; transform: none; }
-}
-.files-selection-bar-in {
-  animation: files-selection-bar-in 200ms cubic-bezier(0.16, 1, 0.3, 1);
-}
-@media (prefers-reduced-motion: reduce) {
-  .files-selection-bar-in { animation: none; }
-}
-
-/* The Files loading skeleton's entrance, once its 150ms mount delay (see
-   files-skeleton.tsx) has decided a read is genuinely slow: opacity only, no
-   base opacity and no fill-mode, so reduced-motion (or any dropped animation)
-   still lands on a fully visible skeleton. */
-@keyframes files-skeleton-in {
-  from { opacity: 0; }
-  to { opacity: 1; }
-}
-.files-skeleton-in {
-  animation: files-skeleton-in 150ms linear;
-}
-@media (prefers-reduced-motion: reduce) {
-  .files-skeleton-in { animation: none; }
-}
-
-/* A sidebar disclosure opening: the "Your teams" section, and every team block
-   under it. Entrance only, transform + opacity only, 200ms on the entrance
-   curve — the rail must feel like it unfolded, never like it waited.
-
-   Deliberately NOT a height animation: height is layout, and DESIGN.md allows
-   only transform + opacity per frame. The closing direction carries no
-   animation at all, which is both the honest reading of "exits faster than
-   entrances" and what keeps a collapsed team's drop target from lingering
-   mounted-but-invisible under the cursor. */
-@keyframes sidebar-disclosure-in {
-  from { opacity: 0; transform: translateY(-4px); }
-  to { opacity: 1; transform: none; }
-}
-.sidebar-disclosure-in {
-  animation: sidebar-disclosure-in 200ms cubic-bezier(0.16, 1, 0.3, 1);
-}
-@media (prefers-reduced-motion: reduce) {
-  .sidebar-disclosure-in { animation: none; }
 }
 
 /* Custom scrollbars */

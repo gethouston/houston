@@ -71,7 +71,7 @@ export function LearningCard({
   };
 
   return (
-    <article className="rounded-xl border border-ink/[0.05] bg-chip px-4 py-3 shadow-[0_1px_0_rgba(0,0,0,0.03)]">
+    <article className="rounded-xl border border-ink/[0.05] bg-chip px-4 py-3 shadow-edge">
       {editing ? (
         <LearningEditor
           value={value}

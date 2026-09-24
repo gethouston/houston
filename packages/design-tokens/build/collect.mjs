@@ -48,8 +48,8 @@ function register() {
 
 /**
  * Resolve every token for one theme through Style Dictionary and return the
- * non-primitive tokens (semantic colours + theme-independent scales). Primitives
- * exist only to be referenced, never emitted.
+ * non-primitive tokens (semantic colours + elevation + theme-independent
+ * scales). Primitives exist only to be referenced, never emitted.
  *
  * @param {"light" | "dark"} theme
  */
@@ -62,6 +62,7 @@ export async function collect(theme) {
         posixGlob(ROOT, "tokens/primitive/**/*.json"),
         posixGlob(ROOT, "tokens/scale/**/*.json"),
         posixGlob(ROOT, `tokens/semantic/color.${theme}.json`),
+        posixGlob(ROOT, `tokens/semantic/elevation.${theme}.json`),
       ],
       platforms: {
         flat: {

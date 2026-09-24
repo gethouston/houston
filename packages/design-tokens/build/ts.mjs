@@ -26,6 +26,16 @@ const strLit = (entries, indent) =>
     indent,
   );
 
+/** One theme's elevation tiers, each as a single box-shadow string. */
+const boxShadows = (tokens, indent) =>
+  strLit(
+    shadows(tokens).map(({ name, layers }) => ({
+      name,
+      value: layers.map(shadowLayerCss).join(", "),
+    })),
+    indent,
+  );
+
 export function buildTs(light, dark) {
   const durations = scale(light, "duration");
   const parts = [
@@ -64,13 +74,11 @@ export function buildTs(light, dark) {
     "/** Cubic-bezier control points [x1, y1, x2, y2]. */",
     `export const easing = ${lit(easings(light).map((e) => [e.name, `[${e.value.join(", ")}]`]))} as const;`,
     "",
-    "/** Ready-to-use CSS box-shadow strings. */",
-    `export const shadow = ${lit(
-      shadows(light).map((s) => [
-        s.name,
-        JSON.stringify(s.layers.map(shadowLayerCss).join(", ")),
-      ]),
-    )} as const;`,
+    "/** Elevation tiers as ready-to-use CSS box-shadow strings, per theme. */",
+    `export const shadow = {\n  light: ${boxShadows(light, "    ")},\n  dark: ${boxShadows(
+      dark,
+      "    ",
+    )},\n} as const;`,
     "",
   ];
   return parts.join("\n");

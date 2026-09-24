@@ -6,13 +6,10 @@ import { copyTextToClipboard } from "./clipboard";
 
 const COPY_RESET_MS = 1600;
 
-export function CodeBlockActions({
-  code,
-  dark,
-}: {
-  code: string;
-  dark?: boolean;
-}) {
+const BUTTON_CLASS =
+  "inline-flex size-7 items-center justify-center rounded-md text-ink-muted transition-colors hover:bg-chip-subtle hover:text-ink focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-focus";
+
+export function CodeBlockActions({ code }: { code: string }) {
   const [copied, setCopied] = useState(false);
 
   useEffect(() => {
@@ -21,14 +18,10 @@ export function CodeBlockActions({
     return () => window.clearTimeout(timer);
   }, [copied]);
 
-  const buttonClass = dark
-    ? "inline-flex size-7 items-center justify-center rounded-md text-zinc-400 transition-colors hover:bg-zinc-800 hover:text-zinc-100 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-zinc-500"
-    : "inline-flex size-7 items-center justify-center rounded-md text-ink-muted transition-colors hover:bg-chip-subtle hover:text-ink focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-focus";
-
   return (
     <button
       type="button"
-      className={buttonClass}
+      className={BUTTON_CLASS}
       onClick={() => {
         void copyTextToClipboard(code).then(() => setCopied(true));
       }}

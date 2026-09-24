@@ -112,7 +112,7 @@ function IconButton({
       className={cn(
         "size-7 rounded-lg flex items-center justify-center text-ink-muted",
         "hover:bg-ink/[0.04] transition-colors",
-        danger ? "hover:text-red-500" : "hover:text-ink",
+        danger ? "hover:text-danger-ink" : "hover:text-ink",
       )}
       aria-label={label}
       title={title}

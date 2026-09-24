@@ -50,7 +50,7 @@ Columns with `onAdd` render a visible plus button under the last card.
 
 ## The Glow
 
-Cards matching `runningStatuses` get the `card-running-glow` CSS class: a `conic-gradient` border animated with `@property --glow-angle`, spinning at 2.5s. Blue, indigo, orange, gold. Pure CSS, no JS animation loop.
+Cards matching `runningStatuses` get the `card-running-glow` CSS class: a `conic-gradient` border animated with `@property --glow-angle`, spinning at 2.5s. Blue, indigo, orange, gold, from the `--ht-glow-*` tokens. Pure CSS, no JS animation loop. The recipe lives in `@houston-ai/core`'s `motion.css`, which its `globals.css` imports.
 
 ## Peer Dependencies
 

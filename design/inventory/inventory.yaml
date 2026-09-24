@@ -36,7 +36,7 @@
 #   a11y     roles / labels / focus expectations the surface must honor
 #   since    inventory version this component first appeared in
 
-version: 99
+version: 100
 
 components:
   - id: custom-integration-details
@@ -308,7 +308,7 @@ components:
   - id: composer
     title: Composer
     purpose: The signature message-input surface -- text, attachments, send/stop.
-    anatomy: [leading-attach, textarea, footer-slot, queued-list, trailing-send-stop]
+    anatomy: [leading-attach, attachment-chips, textarea, footer-slot, queued-list, trailing-send-stop]
     states: [ready, submitted, streaming, has-attachments, drag-over, disabled, replaced-by-override]
     variants: [single-line, multiline-expanded, phone]
     behavior: >-
@@ -329,6 +329,12 @@ components:
       rule, sit the conversation commands (compact context, clear context);
       they send the command as an ordinary message and are inert while the
       chat is empty or a turn is running.
+      (v100) An attachment chip is a card holding a fixed icon slot, the file's
+      name, its type line and a remove button. The slot draws the file's
+      identity the way every other surface draws it: the bare file glyph in its
+      file-type tone, the SAME mark the Files list rows and chat's file chips
+      wear, so a chip and a row never disagree about what a file is. A folder
+      keeps the monochrome folder glyph, since a folder has no file type.
     a11y: labeled textarea; send/stop button state-labeled; drop zone announced; phone pickers are titled dialogs.
     since: 1
 

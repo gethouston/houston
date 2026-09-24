@@ -40,7 +40,8 @@ function parseBlock(css: string, selector: string): Vars {
   const re = /--(ht-[a-z0-9-]+)\s*:\s*([^;]+);/g;
   let m: RegExpExecArray | null = re.exec(block[1]);
   while (m) {
-    vars[m[1]] = m[2].trim();
+    // Elevation is not a colour and has no pre-adoption baseline to pin.
+    if (!m[1].startsWith("ht-shadow-")) vars[m[1]] = m[2].trim();
     m = re.exec(block[1]);
   }
   return vars;

@@ -65,17 +65,24 @@
       "gutter-dark": {
         "$value": "#141416"
       },
+      "card-dark": {
+        "$value": "#1e1e20"
+      },
       "surface": {
         "$value": "#f4f6fc"
       }
     },
     "status": {
       "$type": "color",
+      "$description": "The status hues. The plain and `-bright` values are FILLS (a dot, a badge, a destructive button) and carry a white or black label; the `-ink` values are the same hues retuned to be legible AS TEXT on a light surface, where amber-on-white measures ~2:1, and on a chip washed with their OWN hue (`bg-success/15`), which tints the backdrop towards the ink.",
       "success": {
         "$value": "#00a240"
       },
       "success-bright": {
         "$value": "#22c55e"
+      },
+      "success-ink": {
+        "$value": "#00742d"
       },
       "warning": {
         "$value": "#e0ac00"
@@ -83,11 +90,20 @@
       "warning-bright": {
         "$value": "#eab308"
       },
+      "warning-ink": {
+        "$value": "#856500"
+      },
       "danger": {
         "$value": "#e02e2a"
       },
       "danger-bright": {
         "$value": "#ef4444"
+      },
+      "danger-ink": {
+        "$value": "#bb2321"
+      },
+      "danger-ink-bright": {
+        "$value": "#f87171"
       },
       "link": {
         "$value": "#1264a3"
@@ -100,6 +116,28 @@
       },
       "highlight-ink-dark": {
         "$value": "#fde68a"
+      }
+    },
+    "glow": {
+      "$type": "color",
+      "$description": "The brand comet the running-card glow, avatar ring and progress line sweep with. Four fixed hues, deliberately identical in both themes.",
+      "blue": {
+        "$value": "#3b82f6"
+      },
+      "indigo": {
+        "$value": "#818cf8"
+      },
+      "orange": {
+        "$value": "#f97316"
+      },
+      "amber": {
+        "$value": "#fbbf24"
+      },
+      "blue-a15": {
+        "$value": "rgba(59, 130, 246, 0.15)"
+      },
+      "blue-a12": {
+        "$value": "rgba(59, 130, 246, 0.12)"
       }
     },
     "agent": {

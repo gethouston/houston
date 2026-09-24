@@ -16,7 +16,7 @@ export const metadata: Metadata = {
 
 export default function ProfilePage() {
   return (
-    <main className="canvas-screen min-h-screen bg-background text-ink">
+    <main className="canvas-screen min-h-dvh bg-background text-ink">
       <StoreNav />
       <div className="mx-auto w-full max-w-2xl px-6 pt-6 pb-16">
         <ProfileClient />

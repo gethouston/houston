@@ -29,11 +29,15 @@
 
 /* ── 1. Aurora glow behind everything ──────────────────────────
    Fixed, full-bleed, painted on body::before so it sits behind
-   the React tree (#root) but in front of the body's own base
-   color. The shell root is transparent (see workspace-shell.tsx),
-   so this bleeds up through the whole content area. Any surface
-   that wants the canvas must keep its own page plane transparent
-   for the same reason — an opaque wrapper seals the glow off. */
+   the React tree (#root). Its z-index: -1 paints in the ROOT
+   stacking context: above the html background, below every
+   in-flow block background. That is why the gutter colour lives
+   on html and body stays transparent (section 6): the pre-paint
+   frame in index.html gives html its own background, which stops
+   body's from propagating to the canvas, and an opaque body then
+   covers this layer entirely. The shell root is transparent too
+   (see workspace-shell.tsx), so the glow bleeds up through the
+   whole content area; an opaque wrapper anywhere seals it off. */
 body::before {
   content: "";
   position: fixed;
@@ -128,8 +132,19 @@ body::before {
    over arbitrary content and must never bleed it through; WebView2 in the
    desktop shell doesn't reliably composite backdrop-filter anyway (the dark
    "New agent" modal bled the Settings page through, and light washed out
-   too). Only the subtle top sheen remains. */
-[data-theme="dark"] .bg-dialog {
+   too). Only the subtle top sheen remains.
+
+   Excludes `.ht-shadow-dialog` (the modal frame, section 8): box-shadow does
+   not accumulate across rules, and this descendant rule at (0,2,0) outranks
+   that class at (0,1,0): a framed dark dialog wore this sheen INSTEAD of
+   its elevation tier and floated on nothing. The framed surface gets the same
+   sheen as the tier's own first layer
+   (tokens/semantic/elevation.dark.json), which leaves this rule for the
+   unframed dialog surfaces. */
+[data-theme="dark"]
+  .bg-dialog:not(:where(.ht-shadow-dialog)):not(
+    :where([data-theme="light"], [data-theme="light"] *)
+  ) {
   box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.06);
 }
 
@@ -235,14 +250,20 @@ body::before {
 
    For the screen to read as RAISED, the window background sits one
    step BELOW the screen tone — otherwise it's white-on-white. So the
-   body (the gutter + sidebar surface) is a hair darker than
-   --ht-background (the screen). The aurora still paints over it and
-   frames the screen.
+   window background (html: the gutter + sidebar surface) is a hair
+   darker than --ht-background (the screen). The aurora paints over it
+   and frames the screen.
 
    Knob: these two colours vs --ht-background — widen the gap for more
    separation, narrow it for a subtler float. */
-body {
+html {
   background-color: var(--ht-base);
+}
+
+/* Transparent so body::before (the aurora) is not painted over; the gutter
+   colour is html's, one layer below. */
+body {
+  background-color: transparent;
 }
 
 /* The screen itself: translucent + frosted so the window background and
@@ -264,12 +285,15 @@ body {
 
 /* ── 7. Kanban card resting fill ────────────────────────────────
    The resting (non-selected) card uses a palette token, --ht-card-solid:
-   #2C2C2B in dark (sampled from the running card), white in light.
-   Solid, not translucent. Running cards use the SAME fill for their
-   center (--glow-bg) so every non-selected card reads uniformly — only
-   the running card's animated border marks it. Selected/highlighted
-   cards use bg-hover (and selected-running keeps its inline accent
-   tint), so they're untouched.
+   white in light, the frosted screen's own composited tone in
+   dark (#1e1e20: the card is the screen showing through the lighter column
+   tray, the same logic as light). Solid, not translucent: glass on the
+   already-frosted screen goes muddy and a board of blurred cards is a
+   GPU cost. Running cards use the SAME fill for their center (--glow-bg)
+   so every non-selected card reads uniformly — only the running card's
+   animated border marks it. Selected/highlighted cards use bg-hover (and
+   selected-running keeps its inline accent tint), so they're untouched.
+   The column's "+" bar wears the same token (`bg-card-solid`).
    Knob: the --ht-card-solid values in the palette (section 2). */
 .kanban-card.bg-input:not(.card-running-glow) {
   background-color: var(--ht-card-solid);
@@ -319,26 +343,12 @@ body {
     0 24px 64px rgba(0, 0, 0, 0.5);
 }
 
-/* The dialog's depth: the ONE modal frame (`dialog-frame.ts`).
-   Light carries the ambient pair plus a near-ink 1px seat, so a white
-   surface still reads as lifted off a white screen. Dark drops the seat to
-   a 10% white ring and darkens the ambient instead — the same posture as
-   `.ht-shadow-modal`, and the reason the two themes need separate rules
-   rather than one shadow tinted twice.
-   These rgba are effect values (the sanctioned effects layer, like the glass
-   sheen and the modal depth above); every colour a dialog CAN tokenize —
-   surface, border, text — is a --ht-* token in `dialog-frame.ts`. */
+/* The dialog's depth: the ONE modal frame (`dialog-frame.ts`), carried by the
+   `dialog` elevation tier. Light is the ambient pair plus a near-ink 1px seat,
+   so a white surface reads as lifted off a white screen; dark trades that seat
+   for a 10% white ring over a darker ambient. Both live in the token
+   (`tokens/semantic/elevation.{light,dark}.json`), which re-resolves inside a
+   [data-theme]-pinned subtree — one rule covers every theme. */
 .ht-shadow-dialog {
-  box-shadow:
-    0 4px 4px rgba(0, 0, 0, 0.04),
-    0 4px 80px 8px rgba(0, 0, 0, 0.04),
-    0 0 1px rgba(0, 0, 0, 0.62);
-}
-
-[data-theme="dark"]
-  .ht-shadow-dialog:not(:where([data-theme="light"], [data-theme="light"] *)) {
-  box-shadow:
-    0 4px 4px rgba(0, 0, 0, 0.1),
-    0 4px 80px 8px rgba(0, 0, 0, 0.2),
-    0 0 1px rgba(255, 255, 255, 0.1);
+  box-shadow: var(--ht-shadow-dialog);
 }

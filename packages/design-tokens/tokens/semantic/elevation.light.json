@@ -1,0 +1,110 @@
+{
+  "shadow": {
+    "$type": "shadow",
+    "edge": {
+      "$value": [
+        {
+          "offsetX": "0",
+          "offsetY": "1px",
+          "blur": "0",
+          "spread": "0",
+          "color": "{color.alpha.black-a05}"
+        }
+      ]
+    },
+    "field": {
+      "$value": [
+        {
+          "offsetX": "0",
+          "offsetY": "1px",
+          "blur": "2px",
+          "spread": "0",
+          "color": "{color.alpha.black-a02}"
+        },
+        {
+          "offsetX": "0",
+          "offsetY": "1px",
+          "blur": "4px",
+          "spread": "0",
+          "color": "{color.alpha.black-a03}"
+        }
+      ]
+    },
+    "field-focus": {
+      "$value": [
+        {
+          "offsetX": "0",
+          "offsetY": "1px",
+          "blur": "2px",
+          "spread": "0",
+          "color": "{color.alpha.black-a03}"
+        },
+        {
+          "offsetX": "0",
+          "offsetY": "2px",
+          "blur": "6px",
+          "spread": "0",
+          "color": "{color.alpha.black-a04}"
+        }
+      ]
+    },
+    "card": {
+      "$value": [
+        {
+          "offsetX": "0",
+          "offsetY": "1px",
+          "blur": "6px",
+          "spread": "0",
+          "color": "{color.alpha.black-a06}"
+        }
+      ]
+    },
+    "raised": {
+      "$value": [
+        {
+          "offsetX": "0",
+          "offsetY": "4px",
+          "blur": "24px",
+          "spread": "0",
+          "color": "{color.alpha.black-a06}"
+        }
+      ]
+    },
+    "drag": {
+      "$value": [
+        {
+          "offsetX": "0",
+          "offsetY": "12px",
+          "blur": "32px",
+          "spread": "0",
+          "color": "{color.alpha.black-a22}"
+        }
+      ]
+    },
+    "dialog": {
+      "$value": [
+        {
+          "offsetX": "0",
+          "offsetY": "4px",
+          "blur": "4px",
+          "spread": "0",
+          "color": "{color.alpha.black-a04}"
+        },
+        {
+          "offsetX": "0",
+          "offsetY": "4px",
+          "blur": "80px",
+          "spread": "8px",
+          "color": "{color.alpha.black-a04}"
+        },
+        {
+          "offsetX": "0",
+          "offsetY": "0",
+          "blur": "1px",
+          "spread": "0",
+          "color": "{color.alpha.black-a62}"
+        }
+      ]
+    }
+  }
+}

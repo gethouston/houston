@@ -16,10 +16,14 @@ Houston is a calm, futuristic desktop AI product — "quiet expert," not flashy,
 1. **Semantic tokens only. Never a raw hex/rgba/px literal** in `app/` or `ui/`. A visual change is a token edit (`packages/design-tokens/tokens/*.json`), never a hardcoded value. Sanctioned raw-hex exceptions (the ONLY ones):
    - `app/src/components/shell/provider-brand-colors.ts` — brand-mark hex map (AI Hub candy store)
    - `app/src/components/provider-browser/brand-mark.tsx`, `app/src/components/auth/provider-brand-icons.tsx` — full-colour brand marks
+   - `ui/chat/src/channel-brand-colors.ts` — the messaging channels' official brand colours (Slack, Telegram): a logo's colour is the logo
    - `app/src/main.tsx` — pre-boot fallback colour before tokens load
    - `app/index.html` + `packages/web/index.html` — the pre-paint theme frame + cache script (light screen `#fcfcfc` / dark gutter `#141416`; keep the two blocks identical)
    - `packages/web/src/new-engine/styles.ts` — entry-chunk boot-gate styles (render before any token CSS loads; gate surfaces mirror the same frame values)
    - the effects layer — aurora / glass-sheen rgba in `ui/core/src/canvas.css`, `.ht-live-glow` + onboarding effects in `app/src/styles/futuristic.css` (sanctioned effect values, not tokenized)
+   - `ui/showcase/specimens/foundations/effects-parts.ts` — the showcase specimen documenting that effects layer's authored values; it mirrors `canvas.css`, which wins any disagreement
+   - `ui/core/src/color-contrast.ts` — the colour maths: it parses and formats every colour form, so the format strings live there and nowhere else
+   - `agentstore/src/lib/og-card.tsx` — the social share image: a rendered PNG with its own art direction, drawn by next/og without CSS variables
 2. **Use `@houston-ai/core` primitives** (§ inventory). Never invent a parallel component; never import another component library. Search core + the shadcn registry before building.
 3. **Lucide icons only**, `currentColor`, 20px standard (`h-5 w-5`), 16px small, 24px large, stroke 2px. **No emoji as icons, ever.**
 4. **Every screen ships light AND dark** via `[data-theme]`. Pin a subtree with `data-theme="light|dark"` on a wrapper when it must defy the app theme (e.g. the first-run flow pins its calm light setup canvas). Keep the `:not(:where([data-theme="light"], …))` guard on any new dark-scoped descendant rule.
@@ -52,7 +56,7 @@ Every dialog surface wears `xxl` (`rounded-2xl`): `Dialog` and `AlertDialog` sha
 
 **Motion** (`scale/motion.json`): durations `fast 200ms` · `elegant 582ms` · `common 667ms` · `bounce 833ms` · `ambient 32000ms`. Easings `standard [0.25,0.1,0.25,1]` · `entrance [0.16,1,0.3,1]`.
 
-**Elevation** (`scale/elevation.json`): `edge` = `0 1px 0 rgba(0,0,0,0.05)` (default flat depth) · `composer` = the signature multi-shadow. In **dark mode use NO drop shadows** — depth comes from the surface ladder + `.ht-hairline` inset ring + glass sheen.
+**Elevation** (`semantic/elevation.{light,dark}.json` → `--ht-shadow-*`, one themed value per tier, so a utility needs no `dark:` fork): `shadow-edge` (default flat depth) · `shadow-field` / `focus-within:shadow-field-focus` (composer, inputs) · `shadow-card` (floating card) · `shadow-raised` (sign-in card) · `shadow-drag` (the board's drag ghost, read as `var(--ht-shadow-drag)`) · `shadow-dialog`, worn by the ONE modal frame as `.ht-shadow-dialog` (`canvas.css`). The tiers are the ONLY drop shadows dark mode carries: outside them, dark depth is the surface ladder + `.ht-hairline` inset ring + glass sheen. A tier's dark value may also hold that sheen as an inset layer (the `dialog` tier opens with it), because a separate `[data-theme="dark"]` sheen rule would REPLACE the tier rather than add to it; box-shadow does not accumulate across rules.
 
 **Semantic colour roles** (token | use for). Live values: `packages/design-tokens/tokens/*.json`, or component showcase → Colors (`pnpm --filter @houston-ai/showcase dev`).
 
@@ -61,8 +65,11 @@ Surface ladder (bottom → top):
 |---|---|
 | `bg-gutter` (`--ht-base`) | window frame / gutter the sidebar melts into |
 | `bg-background` (`--ht-background`) | the floating "screen" — **standard main pane** (via `.canvas-screen`) |
+| `bg-pane` (`--ht-pane`) | a chat pane's own header/footer chrome: the screen tone in light, nothing in dark so the glass shows through |
 | `bg-input` (`--ht-input`) | fields, composer, pills — slightly recessed on the screen |
+| `bg-field` / `hover:bg-field-hover` (`--ht-field`) | a CONTROL's resting and hover fill (outline button, active tab pill): `input` in light, the field-border wash in dark |
 | `bg-card` (`--ht-card`) | cards/panels that **float above** the canvas |
+| `bg-card-solid` (`--ht-card-solid`) | the board's resting cards and its "+" bar: opaque, the screen tone in both themes so a card reads as the screen showing through the column tray, never glass (a board of blurred cards is muddy and a GPU cost) |
 | `bg-popover` / `bg-dialog` | menus / modals — **SOLID both themes, never blur, never alpha** |
 | `bg-chip` / `bg-chip-subtle` | recessed panels below the card tier (board columns, rows) |
 
@@ -73,7 +80,9 @@ Text · interactive · lines:
 | `text-ink-muted` | secondary text |
 | `bg-action` / `text-action-text` | filled CTA fill/label (also progress, tab underline, switches, status dots) |
 | `text-link` (+ `bg-link/10` tint) | inline link chips in chat/prose — Slack-blue text on a soft tint, underline on hover; the ONE sanctioned blue |
+| `bg-bubble` | the user chat bubble's fill — near-ink in light, the subtle white wash in dark |
 | `text-bubble-text` | the user chat bubble's text — pure white in BOTH themes (the near-white grays read dull over the bubble fill) |
+| `bg-bubble-chip` / `text-bubble-chip-text` | a chip INSIDE the user bubble (mention, link) — measured against the bubble, not the canvas |
 | `text-prose-text` | the AGENT's long-form chat prose — same as `ink` in light, pure white in dark. Chat only; app primary text stays `text-ink` |
 | `bg-hover` / `text-hover-text` | row + menu hover fill |
 | `bg-chip` / `text-chip-text` | soft chips / badges |
@@ -81,13 +90,16 @@ Text · interactive · lines:
 | `border-line-input` | field borders |
 | `ring-focus` (`--ht-focus`) | focus ring — **near-ink, NOT blue** |
 
-Status (each has a `-text`): `danger` · `success` · `warning` · `highlight` (brand wash + ink `-text`).
+Status: `danger` · `success` · `warning` · `highlight` (brand wash). Each has a `-text` (the label ON the fill) and an `-ink` (the hue AS text on a surface: `text-danger-ink` / `text-success-ink` / `text-warning-ink`, contrast-guarded against `input`, `background` and `chip-subtle` in both themes by `packages/design-tokens/test/contrast.test.ts`). A fill is tuned to carry its `-text`, so it does NOT clear 4.5:1 as text: never set a status fill as a text colour. `highlight`'s `-text` is already that ink.
+Destructive chrome carries its own pair so no `dark:` fork exists: `bg-danger-fill` (the destructive button/badge fill, softened to 60% in dark) and `ring-danger-ring` (the invalid / destructive focus ring, 20% light and 40% dark).
 
 Reserved families — do not reach for outside their home:
 - `sidebar*` (`-text`/`-line`/`-hover`/`-active`): sidebar is transparent; `sidebar-active` is the selected-row fill, a clear step above hover.
 - `agent.{charcoal,forest,navy,purple,crimson,orange,golden}`: AGENT avatar palette — resolve stored ids via `resolveAgentColor` from `@houston-ai/core`, never app-local helpers. Use `HoustonAvatar`. The same tokens are bridged as `text-agent-*` utilities for the agent's NAME in chat; pick that class with `agentNameToneClass(stored)` (`@houston-ai/core`), which measures the colour against each theme's chat surface and falls back to `text-ink` below 4.5:1 — never hand-write a `text-agent-*` class.
 - `filetype.{pdf,doc,sheet,slide,image,video,audio,archive,code,generic}`: FILE-TYPE identity palette — one muted hue per family, themed both ways, worn ONLY by the bare Lucide file glyph (`FileTypeGlyphInline`, `@houston-ai/core` — the Files list rows and chat's file chips) via a `text-filetype-*` utility. Identity like an agent's helmet, never status; folders stay `text-ink-muted`. Contrast against `input`, `background` and `chip-subtle` is guarded by `packages/design-tokens/test/contrast.test.ts`.
 - `person-{slate,sage,mauve,taupe,indigo}` + `person-initials` + `person-overflow`/`person-overflow-text`: HUMAN avatar palette (mission face stacks). Deliberately desaturated so teammates never compete with agent helmets. Pick a tone with `personToneClass(id)` from `@houston-ai/board` — never by list index, or a person's colour changes when the roster does.
+- `glow-{blue,indigo,orange,amber}` + `glow-blue-wash`/`glow-blue-shadow`: the running comet (card glow, avatar ring, progress line), theme-invariant, consumed only by the `.card-running-glow` / `.avatar-running-ring` / `.running-glow-line` recipes in `ui/core/src/motion.css`; never as decorative colour elsewhere.
+- `flash`: the routines section flash wash (`ui/routines`), a white alpha in both themes.
 - `person-name-{slate,sage,mauve,taupe,indigo}`: the same five hues retuned for TEXT (the avatar fills carry white initials and land at ~3:1 as text). One person, one tone: `personNameToneClass(id)` from `@houston-ai/board` indexes the same hash as `personToneClass`. Text-only — never use these as fills.
 
 ## 5. Motion rules
@@ -108,7 +120,7 @@ Merge the tokenized scale (§4) with these craft rules:
 - Reflexive `01 / 02 / 03` step numbering as decoration.
 - `rounded-lg` + 1px gray border card grid as filler chrome (use the flat "plane" row language: transparent rows, `hover:bg-hover`).
 - `transition: all`.
-- **Drop shadows in dark mode** — use the surface ladder + `.ht-hairline` + glass sheen.
+- **An ad-hoc drop shadow in dark mode.** Dark depth is the surface ladder + `.ht-hairline` + glass sheen; the only dark drop shadows are the elevation tiers (§4), which carry their dark values in the token. Wear a tier, never a new shadow of your own.
 - Decorative colour on content. Colour must be semantic (status/link) or a sanctioned brand mark.
 
 ## 7. Polish checklist (pro-tells — apply before "done")

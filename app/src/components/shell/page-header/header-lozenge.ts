@@ -4,9 +4,11 @@ import { cn } from "@houston-ai/core";
  * The Safari tab, as one class list — and the TRACK the cluster sits in.
  *
  * Safari's grammar, deliberately: the tabs sit ON a quietly darker contained
- * track (`tab-track`), and only the OPEN one is painted — a white pill
- * (`tab-active`; an elevated gray in the dark theme, where white would
- * glare). The track is what holds the cluster together as one control, so
+ * track (`tab-track`), and only the OPEN one is painted with the SCREEN's
+ * own tone (`tab-active`: white in light, the frosted screen's composited
+ * tone in dark), so the open tab reads as the screen showing through the
+ * track, the same grammar as a board card in its column. The track is what
+ * holds the cluster together as one control, so
  * the tabs themselves carry no borders and no container of their own, and
  * everything is fully rounded — the pill's radius is half its height, never
  * a squared corner.

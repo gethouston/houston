@@ -8,22 +8,41 @@
  * string — only alpha varies, so it themes without hardcoded hex.
  */
 
+// Imported by deep path, on the same rule as `action-labels.ts`: the core barrel
+// is the React component library, and this module stays loadable under
+// `node --test` (the colour maths is the part worth testing).
+import {
+  formatColor,
+  parseColor,
+} from "@houston-ai/core/src/color-contrast.ts";
 import {
   catmullRomToBezier,
   envelopeHalfHeight,
   type Point,
   type WaveformLayout,
-} from "./dictation-waveform-math";
+} from "./dictation-waveform-math.ts";
 
 const MIN_HALF_PX = 0.75; // silence hairline (half-height)
 const OLDEST_FADE_FRACTION = 0.1; // gentle alpha falloff on the oldest slice
 export const EDGE_ALPHA = 0.9; // solid envelope body (one shape, one alpha)
 
-/** Replace the alpha of a `rgb(...)`/`rgba(...)` color string. */
+/**
+ * Replace the alpha of a CSS colour, through `@houston-ai/core`'s parser (the
+ * repo's one colour maths). `parseColor` throws on a form it does not model
+ * (`color-mix()`, a named colour): a canvas fill is not the place to fail a
+ * frame, so the input is handed back unchanged and the stroke keeps its own
+ * opacity.
+ *
+ * The one alpha that cannot fall back to the input is zero: a fully transparent
+ * gradient stop handed back opaque inverts the fade it exists to draw, so the
+ * oldest slice would slam to full colour instead of vanishing off the left edge.
+ */
 export function withAlpha(color: string, alpha: number): string {
-  const m = color.match(/-?\d+\.?\d*/g);
-  if (!m || m.length < 3) return color;
-  return `rgba(${m[0]}, ${m[1]}, ${m[2]}, ${alpha})`;
+  try {
+    return formatColor({ ...parseColor(color), a: alpha });
+  } catch {
+    return alpha <= 0 ? "transparent" : color;
+  }
 }
 
 function topPoints(

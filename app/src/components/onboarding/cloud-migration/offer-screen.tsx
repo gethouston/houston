@@ -37,7 +37,7 @@ export function OfferScreen({
           hairline would read as a gap between the full-bleed image and the
           card edge. The image takes a side column so the pitch keeps a
           comfortable measure beside it. */}
-      <div className="relative flex w-full max-w-[820px] overflow-hidden rounded-2xl bg-card text-ink shadow-[0_16px_60px_rgba(0,0,0,0.12)]">
+      <div className="relative flex w-full max-w-[820px] overflow-hidden rounded-2xl bg-card text-ink shadow-raised">
         {/* The semantic gutter underlay catches any subpixel sliver left by the
             cover crop at the rounded edge. */}
         <div className="relative hidden w-[360px] shrink-0 self-stretch bg-gutter sm:block">

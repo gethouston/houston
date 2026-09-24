@@ -1,12 +1,12 @@
 import type { CSSProperties } from "react";
 import { useState } from "react";
-import { btn, C, page } from "./styles";
+import { btn, C, page, secondaryBtn } from "./styles";
 import type { AdminAuth } from "./use-admin-auth";
 
 const input: CSSProperties = {
   padding: "10px 12px",
   borderRadius: 10,
-  border: "1px solid #34343f",
+  border: `1px solid ${C.border}`,
   background: C.panel2,
   color: C.text,
 };
@@ -23,6 +23,7 @@ export function AdminSignIn({ auth }: { auth: AdminAuth }) {
 
   return (
     <div
+      data-theme="dark"
       style={{
         ...page,
         display: "flex",
@@ -44,7 +45,7 @@ export function AdminSignIn({ auth }: { auth: AdminAuth }) {
         }}
       >
         <div style={{ fontSize: 20, fontWeight: 700 }}>Houston Cloud · Ops</div>
-        <div style={{ opacity: 0.6, fontSize: 13, marginBottom: 4 }}>
+        <div style={{ color: C.muted, fontSize: 13, marginBottom: 4 }}>
           {ready ? "Operator sign in." : "Loading…"}
         </div>
         <button
@@ -55,7 +56,7 @@ export function AdminSignIn({ auth }: { auth: AdminAuth }) {
         >
           Continue with Google
         </button>
-        <div style={{ textAlign: "center", opacity: 0.4, fontSize: 12 }}>
+        <div style={{ textAlign: "center", color: C.muted, fontSize: 12 }}>
           or
         </div>
         <form
@@ -82,7 +83,7 @@ export function AdminSignIn({ auth }: { auth: AdminAuth }) {
             autoComplete="current-password"
           />
           <button
-            style={{ ...btn, background: "#26262f" }}
+            style={secondaryBtn}
             type="submit"
             disabled={busy || !email || !password}
           >

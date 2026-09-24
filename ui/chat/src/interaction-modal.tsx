@@ -133,9 +133,8 @@ export function InteractionModal({
         // Solid `bg-input` in BOTH themes (white light / neutral.800 dark) —
         // a floating card must never bleed the content behind it through.
         "overflow-clip rounded-2xl border border-line bg-input p-5",
-        "shadow-[0_1px_2px_rgba(0,0,0,0.02),0_1px_4px_rgba(0,0,0,0.03)]",
-        "focus-within:shadow-[0_1px_2px_rgba(0,0,0,0.03),0_2px_6px_rgba(0,0,0,0.04)]",
-        "dark:shadow-[0_1px_2px_rgba(0,0,0,0.25)]",
+        "shadow-field",
+        "focus-within:shadow-field-focus",
         "transition-shadow",
         disabled && "opacity-50",
       )}
@@ -189,7 +188,7 @@ export function InteractionModal({
       )}
 
       <CollapsibleContent>
-        <ScrollArea viewportClassName="max-h-[40vh]">
+        <ScrollArea viewportClassName="max-h-[40dvh]">
           <div
             className={cn(
               showHeader && "mt-3",

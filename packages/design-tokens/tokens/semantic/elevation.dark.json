@@ -1,0 +1,113 @@
+{
+  "shadow": {
+    "$type": "shadow",
+    "edge": {
+      "$value": [
+        {
+          "offsetX": "0",
+          "offsetY": "1px",
+          "blur": "0",
+          "spread": "0",
+          "color": "{color.alpha.black-a05}"
+        }
+      ]
+    },
+    "field": {
+      "$value": [
+        {
+          "offsetX": "0",
+          "offsetY": "1px",
+          "blur": "2px",
+          "spread": "0",
+          "color": "{color.alpha.black-a25}"
+        }
+      ]
+    },
+    "field-focus": {
+      "$description": "What a focused field HAS worn in dark: the composer spelled its focus depth as an unprefixed arbitrary shadow, which outranked the `dark:` variant beside it, so both themes resolved to these two layers.",
+      "$value": [
+        {
+          "offsetX": "0",
+          "offsetY": "1px",
+          "blur": "2px",
+          "spread": "0",
+          "color": "{color.alpha.black-a03}"
+        },
+        {
+          "offsetX": "0",
+          "offsetY": "2px",
+          "blur": "6px",
+          "spread": "0",
+          "color": "{color.alpha.black-a04}"
+        }
+      ]
+    },
+    "card": {
+      "$value": [
+        {
+          "offsetX": "0",
+          "offsetY": "1px",
+          "blur": "6px",
+          "spread": "0",
+          "color": "{color.alpha.black-a20}"
+        }
+      ]
+    },
+    "raised": {
+      "$value": [
+        {
+          "offsetX": "0",
+          "offsetY": "4px",
+          "blur": "24px",
+          "spread": "0",
+          "color": "{color.alpha.black-a06}"
+        }
+      ]
+    },
+    "drag": {
+      "$value": [
+        {
+          "offsetX": "0",
+          "offsetY": "12px",
+          "blur": "32px",
+          "spread": "0",
+          "color": "{color.alpha.black-a22}"
+        }
+      ]
+    },
+    "dialog": {
+      "$description": "The modal frame's depth. The glass sheen is the tier's FIRST layer, not a `.bg-dialog` rule: a descendant rule replaces the whole box-shadow, which left a framed dark dialog wearing the sheen alone.",
+      "$value": [
+        {
+          "offsetX": "0",
+          "offsetY": "1px",
+          "blur": "0",
+          "spread": "0",
+          "color": "{color.alpha.white-a06}",
+          "inset": true
+        },
+        {
+          "offsetX": "0",
+          "offsetY": "4px",
+          "blur": "4px",
+          "spread": "0",
+          "color": "{color.alpha.black-a10}"
+        },
+        {
+          "offsetX": "0",
+          "offsetY": "4px",
+          "blur": "80px",
+          "spread": "8px",
+          "color": "{color.alpha.black-a20}"
+        },
+        {
+          "offsetX": "0",
+          "offsetY": "0",
+          "blur": "1px",
+          "spread": "0",
+          "color": "{color.alpha.white-a10}"
+        }
+      ]
+    }
+  }
+}

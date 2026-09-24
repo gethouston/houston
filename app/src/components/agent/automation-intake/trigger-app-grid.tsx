@@ -85,7 +85,7 @@ export function TriggerAppGrid({
             value={query}
             onChange={(e) => onQueryChange(e.target.value)}
             placeholder={t("triggerStep.searchPlaceholder")}
-            className="w-full rounded-lg border border-ink/[0.08] bg-input py-2 pr-3 pl-8 text-ink text-sm outline-none transition-shadow focus:shadow-[0_1px_2px_rgba(0,0,0,0.04)]"
+            className="w-full rounded-lg border border-ink/[0.08] bg-input py-2 pr-3 pl-8 text-ink text-sm outline-none transition-shadow focus:shadow-field"
           />
         </div>
       )}

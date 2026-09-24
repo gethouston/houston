@@ -144,7 +144,7 @@ export function SignInScreen() {
         {/* A plain white card, hairline + soft shadow, floating on the grey
             first-run background. The FirstRunScreen wrapper pins light, so the
             login reads the same bright way in both app themes. */}
-        <div className="grid w-full max-w-3xl grid-cols-1 overflow-hidden rounded-2xl border border-line bg-card text-ink shadow-[0_4px_24px_rgba(0,0,0,0.06)] md:grid-cols-3">
+        <div className="grid w-full max-w-3xl grid-cols-1 overflow-hidden rounded-2xl border border-line bg-card text-ink shadow-raised md:grid-cols-3">
           <div className="flex flex-col gap-5 bg-card p-6 md:col-span-2 md:p-8">
             <h1 className="text-lg font-medium">{tAuth("title")}</h1>
 
