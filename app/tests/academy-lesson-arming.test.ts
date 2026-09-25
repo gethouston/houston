@@ -1,49 +1,21 @@
-import { strictEqual } from "node:assert";
-import { afterEach, describe, it } from "node:test";
+import { ok, strictEqual } from "node:assert";
+import { describe, it } from "node:test";
 import {
   lessonBeatArmed,
   lessonExitKey,
 } from "../src/components/academy/lessons/lesson-arming.ts";
 import {
+  ACADEMY_LESSONS,
+  EMPLOYEE_EMAIL_LESSON_ID,
+} from "../src/components/academy/lessons/registry.ts";
+import {
   type LessonSignals,
+  lessonAdvance,
   lessonSignalMet,
 } from "../src/lib/academy/lesson-signals.ts";
 import type { LessonStepSpec } from "../src/lib/academy/lesson-spec.ts";
-import { useUIStore } from "../src/stores/ui.ts";
 
-// A lesson and the guided setup both play OVER the real app, spotlighting real
-// controls. Two of them at once would point at two different things and teach
-// neither, so the setup wins: arming it disarms the lesson. The other
-// direction (a lesson armed while the setup is already up) is a render rule in
-// `components/shell/workspace-shell.tsx`.
-
-afterEach(() => useUIStore.getState().reset());
-
-describe("the guided setup and an Academy lesson", () => {
-  it("disarms a running lesson when the setup is armed", () => {
-    const s = useUIStore.getState();
-    s.setActiveLessonId("send-first-task");
-
-    s.setInAppOnboardingActive(true);
-
-    strictEqual(useUIStore.getState().activeLessonId, null);
-    strictEqual(useUIStore.getState().inAppOnboardingActive, true);
-  });
-
-  it("leaves a lesson armed after the setup ended alone", () => {
-    const s = useUIStore.getState();
-    s.setInAppOnboardingActive(true);
-    s.setActiveLessonId("send-first-task");
-
-    s.setInAppOnboardingActive(false);
-
-    // Finishing the setup is not a reason to throw away what the user asked
-    // for next; the shell simply starts rendering it.
-    strictEqual(useUIStore.getState().activeLessonId, "send-first-task");
-  });
-});
-
-// The other half of arming: WHEN a beat may expose the real control it points
+// Arming: WHEN a beat may expose the real control it points
 // at. A beat that compares the world against a snapshot is blind until that
 // snapshot exists, so opening its target first is how a lesson gets stranded.
 
@@ -53,6 +25,8 @@ function world(over: Partial<LessonSignals> = {}): LessonSignals {
     hostEventsSinceArmed: new Set(),
     conversationCount: null,
     conversationBaseline: null,
+    activeToolkits: null,
+    companionReady: false,
     ...over,
   };
 }
@@ -115,6 +89,77 @@ describe("a beat that snapshots nothing", () => {
     };
     strictEqual(lessonBeatArmed(viewBeat, world()), true);
     strictEqual(lessonBeatArmed(eventBeat, world()), true);
+  });
+
+  it("arms a tour stop and a connection wait at once", () => {
+    // Neither compares against a snapshot: a Next waits on nothing, and a
+    // connection made before the list answers is simply in the list.
+    const tourStop: LessonStepSpec = {
+      ...newTask,
+      advanceOn: { type: "acknowledged" },
+    };
+    const connectionBeat: LessonStepSpec = {
+      ...newTask,
+      advanceOn: { type: "integrationConnected", toolkits: ["gmail"] },
+    };
+    strictEqual(lessonBeatArmed(tourStop, world()), true);
+    strictEqual(lessonBeatArmed(connectionBeat, world()), true);
+  });
+
+  it("holds the email lesson's Send shut until its companion has noted the sender's tasks", () => {
+    // The user presses the real composer's Send: a press before the note
+    // would make the new task one the lesson already knew, stranding it.
+    const ask = ACADEMY_LESSONS[EMPLOYEE_EMAIL_LESSON_ID].steps.find(
+      (step) => step.id === "ask",
+    );
+    ok(ask);
+    const settled = world({ conversationCount: 3, conversationBaseline: 3 });
+    strictEqual(lessonBeatArmed(ask, settled), false);
+    strictEqual(
+      lessonBeatArmed(ask, { ...settled, companionReady: true }),
+      true,
+    );
+  });
+
+  it("never moves the email lesson's ask on someone else's conversation", () => {
+    // Only the companion, which knows the sender, ends the ask: a routine
+    // firing elsewhere, or old tasks a partial sweep fills in later, grow the
+    // count without the user pressing Send.
+    const ask = ACADEMY_LESSONS[EMPLOYEE_EMAIL_LESSON_ID].steps.find(
+      (step) => step.id === "ask",
+    );
+    ok(ask);
+    const grown = world({
+      conversationCount: 9,
+      conversationBaseline: 3,
+      companionReady: true,
+    });
+    strictEqual(lessonAdvance(ask, grown).kind, "stay");
+  });
+
+  it("waits on the user's own press to leave the email lesson's watch", () => {
+    // Its companion may finish it early; the world alone never does.
+    const watch = ACADEMY_LESSONS[EMPLOYEE_EMAIL_LESSON_ID].steps.find(
+      (step) => step.id === "watch",
+    );
+    ok(watch);
+    strictEqual(lessonBeatArmed(watch, world()), true);
+    strictEqual(
+      lessonAdvance(
+        watch,
+        world({ conversationCount: 9, conversationBaseline: 1 }),
+      ).kind,
+      "stay",
+    );
+  });
+
+  it("arms a panel, which points at nothing", () => {
+    const panel: LessonStepSpec = {
+      kind: "panel",
+      id: "sender",
+      panel: "emailSender",
+    };
+    strictEqual(lessonBeatArmed(panel, world()), true);
   });
 
   it("arms narration beats, which point at nothing", () => {

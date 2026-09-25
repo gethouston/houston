@@ -2,13 +2,12 @@ import { cn } from "@houston-ai/core";
 import { Check } from "lucide-react";
 import type { ReactNode } from "react";
 
-interface OptionCardProps {
+interface OptionCardBaseProps {
   /** Leading media (e.g. a provider logo or a coloured tile) shown before the
    *  label. Rendered as-is, so the caller owns any tile styling. */
   leading?: ReactNode;
   label: string;
   description?: string;
-  selected: boolean;
   onSelect?: () => void;
   disabled?: boolean;
   /** Replaces the radio indicator (e.g. a connected pill / chevron / spinner). */
@@ -21,6 +20,18 @@ interface OptionCardProps {
 }
 
 /**
+ * `select` (the default) is one answer of a single-select question: it carries
+ * `selected` and reports it as a toggle (`aria-pressed`). `navigate` is a
+ * choice that moves the person on (the team card's two ways forward): pressing
+ * it IS the answer, so it has no selected state to report.
+ */
+type OptionCardProps = OptionCardBaseProps &
+  (
+    | { variant?: "select"; selected: boolean }
+    | { variant: "navigate"; selected?: never }
+  );
+
+/**
  * A single-select row styled as an instructional step, not a filled button: no
  * background at rest, a faint hover wash, and a left accent bar to mark the pick
  * (never a full ring around the box, which read as a UI control). Selection is
@@ -31,22 +42,24 @@ export function OptionCard({
   leading,
   label,
   description,
-  selected,
   onSelect,
   disabled,
   trailing,
   children,
   size = "md",
+  ...choice
 }: OptionCardProps) {
+  const toggle = choice.variant !== "navigate";
+  const selected = choice.selected === true;
   // The right-side radio only carries selection when nothing on the left does
   // (the plain label rows). Leading-media rows carry it via their own visuals.
-  const showRadio = trailing === undefined && leading == null;
+  const showRadio = toggle && trailing === undefined && leading == null;
   return (
     <button
       type="button"
       onClick={onSelect}
       disabled={disabled}
-      aria-pressed={selected}
+      aria-pressed={toggle ? selected : undefined}
       className={cn(
         "flex w-full flex-col gap-3 rounded-lg border-l-2 text-left transition-colors outline-none focus-visible:ring-2 focus-visible:ring-focus",
         size === "lg" ? "px-4 py-5" : "py-3 pr-3 pl-3",

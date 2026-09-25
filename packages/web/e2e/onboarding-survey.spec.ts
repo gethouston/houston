@@ -3,6 +3,7 @@ import {
   answerGoalStep,
   answerIndustryStep,
   answerJobStep,
+  connectAiHeading,
   legacySegmentPreference,
   resetToFirstRun,
   seedLegacySegmentMirror,
@@ -14,15 +15,15 @@ import {
  * the one thing they would love to automate.
  *
  * It is mounted from two places, and both are guarded here:
- *   - FIRST RUN — all three questions, ahead of the create-your-assistant flow.
- *     Answers persist to the account preference, so a reload never re-asks.
+ *   - FIRST RUN — all three questions, ahead of the "Connect your AI" and
+ *     "Build your team" cards. Answers persist to the account preference, so a
+ *     reload never re-asks.
  *   - PROFILE COMPLETION — the in-app prompt for someone who answered the job
  *     question before the other two existed (the shipped
  *     `houston_onboarding_segment` preference, lifted). It asks only the gaps,
  *     and "Not now" is remembered.
  */
 
-const WELCOME_STEP = "Welcome to Houston!";
 const JOB_QUESTION = "What best describes your work?";
 const INDUSTRY_QUESTION = "What industry do you work in?";
 const GOAL_QUESTION = "What would you love to automate?";
@@ -58,14 +59,13 @@ test("first run walks the three questions and never asks again", async ({
   ).toBeVisible();
   await answerGoalStep(page, "Triage my inbox every morning.");
 
-  // The survey hands off to the IN-APP onboarding: the shell mounts with the
-  // welcome overlay armed over it (in-app-onboarding.tsx).
-  await expect(page.getByRole("heading", { name: WELCOME_STEP })).toBeVisible();
+  // The survey hands off to the next first-run card: "Connect your AI".
+  await expect(connectAiHeading(page)).toBeVisible();
 
-  // Answered is answered: a reload lands back on the welcome overlay, with no
+  // Answered is answered: a reload lands back on the connect card, with no
   // question of the three re-asked.
   await page.reload();
-  await expect(page.getByRole("heading", { name: WELCOME_STEP })).toBeVisible();
+  await expect(connectAiHeading(page)).toBeVisible();
   for (const question of [JOB_QUESTION, INDUSTRY_QUESTION, GOAL_QUESTION]) {
     await expect(page.getByRole("heading", { name: question })).toHaveCount(0);
   }
@@ -93,6 +93,53 @@ test('"Something else" opens a required field that captures the answer', async (
 
   // A named pick shows no field.
   await expect(page.getByPlaceholder("Tell us in a few words")).toHaveCount(0);
+});
+
+test("the industry question filters the catalog and takes an answer it lacks", async ({
+  page,
+  request,
+}) => {
+  // The industries ARE the hire catalog's contexts, so the create flow starts
+  // an AI Employee from the same answer. Fifty chips need a filter, and an
+  // industry the catalog lacks still has to be answerable.
+  await resetToFirstRun(request);
+  await page.goto("/");
+  await answerJobStep(page);
+  await expect(
+    page.getByRole("heading", { name: INDUSTRY_QUESTION }),
+  ).toBeVisible();
+
+  const search = page.getByPlaceholder("Search industries");
+  await search.fill("manufact");
+  await expect(
+    page.getByRole("radio", { name: "Manufacturing" }),
+  ).toBeVisible();
+  await expect(
+    page.getByRole("radio", { name: "Finance", exact: true }),
+  ).toHaveCount(0);
+
+  // No chip matches: the typed words become the answer in one press, carried
+  // into the free-text field rather than asked for twice.
+  await search.fill("Artisanal cheese caves");
+  await expect(page.getByText("No industries match that.")).toBeVisible();
+  await page
+    .getByRole("button", {
+      name: 'Use "Artisanal cheese caves" as the industry',
+    })
+    .click();
+  await expect(page.getByPlaceholder("Tell us in a few words")).toHaveValue(
+    "Artisanal cheese caves",
+  );
+  await expect(page.getByRole("button", { name: "Continue" })).toBeEnabled();
+
+  // "Back to the list" hands the question back to the chips.
+  await page.getByRole("button", { name: "Back to the list" }).click();
+  await expect(page.getByPlaceholder("Search industries")).toBeVisible();
+
+  await answerIndustryStep(page);
+  await expect(
+    page.getByRole("heading", { name: GOAL_QUESTION }),
+  ).toBeVisible();
 });
 
 test("an answer whose push failed rides along on the next one", async ({

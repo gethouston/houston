@@ -10,11 +10,6 @@ import { isTauri } from "@tauri-apps/api/core";
 import { toUrlOpenFailure, UrlOpenError } from "../url-open-failure.ts";
 import { invokeNative } from "./invoke.ts";
 
-/** macOS folder picker (osascript). */
-export function osPickDirectory(): Promise<string | null> {
-  return invokeNative<string | null>("pick_directory");
-}
-
 /**
  * Open a URL in the user's default browser. Resolves `false` when the browser
  * REFUSED the open — the web build's popup blocker after an async hop — so a

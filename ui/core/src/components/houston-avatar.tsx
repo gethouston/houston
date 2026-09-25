@@ -1,6 +1,7 @@
 /**
- * HoustonAvatar — the colored Houston helmet glyph, optionally wrapped in
- * the "avatar-running-ring" comet halo when an agent is actively working.
+ * HoustonAvatar — an AI Employee's helmet on the employee metal disc,
+ * optionally wrapped in the "avatar-running-ring" comet halo when an agent is
+ * actively working.
  *
  * This is the single source of truth for rendering an agent's avatar
  * across every Houston surface (desktop, web, any third-party frontend
@@ -10,14 +11,15 @@
  * Pair `running` with the `.avatar-running-ring` rule shipped from
  * `globals.css` so the halo animation stays in lockstep with the
  * kanban card / detail panel variants. Colors resolve from the `--ht-*`
- * design tokens (default helmet = `--ht-ink-muted`, badge tint = `--ht-chip`),
- * so the host must load `@houston/design-tokens`; without the core globals the
- * halo is simply inert.
+ * design tokens through the employee metal recipe (`employee-metal.ts`, the
+ * same one the badge header wears), so the host must load
+ * `@houston/design-tokens`; without the core globals the halo is simply inert.
  */
+import { employeeAvatarPaint } from "../employee-metal";
 import { cn } from "../utils";
 
-/** Default helmet/badge tint when no agent color is supplied: the muted-neutral
- *  semantic token (light ≈ #8e8e8e, dark ≈ #9a9a9a), so it tracks the theme. */
+/** Default identity when no agent color is supplied: the muted-neutral semantic
+ *  token, so a colourless avatar tracks the theme. */
 const HOUSTON_GRAY = "var(--ht-ink-muted)";
 
 interface HelmetProps {
@@ -59,46 +61,72 @@ export function HoustonHelmet({
   );
 }
 
+/**
+ * The helmet's pixel size inside a disc of `diameter`: 65% of it, with
+ * the leftover space an even number of pixels. An odd remainder puts the
+ * glyph on a half pixel, which reads off-center.
+ */
+export function avatarHelmetSize(diameter: number): number {
+  const inset = Math.round((diameter * 0.35) / 2);
+  return Math.max(diameter - inset * 2, 1);
+}
+
 interface HoustonAvatarProps {
   /** Agent's themed CSS color (typically a var(--ht-agent-*) reference from
-   *  resolveAgentColor). Drives both the helmet fill AND the faint circle
-   *  tint behind it. */
+   *  resolveAgentColor), mixed into the disc's deep gradient and the light
+   *  helmet relief. */
   color?: string;
-  /** Outer circle diameter in pixels. Helmet sizes itself to ~65% of
-   *  this to match the existing desktop look. */
+  /** Outer diameter in pixels. */
   diameter?: number;
-  /** When true, wraps the badge in a `.avatar-running-ring` halo — the
+  /** When true, wraps the avatar in a `.avatar-running-ring` halo — the
    *  same comet-trail effect the desktop uses on kanban cards and the
    *  chat panel header when a session is mid-flight. */
   running?: boolean;
   className?: string;
 }
 
-/** Agent avatar badge: colored circle + Houston helmet. Flip `running`
- *  to `true` and the badge grows a spinning comet border without any
- *  other code change required. */
-export function HoustonAvatar({
-  color,
-  diameter = 40,
-  running = false,
+function MetalAvatar({
+  identity,
+  diameter,
   className,
-}: HoustonAvatarProps) {
-  const bg = color ?? HOUSTON_GRAY;
-  const innerDiameter = running ? Math.max(diameter - 4, 1) : diameter;
-  const inner = (
+}: {
+  identity: string;
+  diameter: number;
+  className?: string;
+}) {
+  const paint = employeeAvatarPaint(identity);
+  return (
     <div
       className={cn(
         "shrink-0 rounded-full flex items-center justify-center",
         className,
       )}
       style={{
-        width: innerDiameter,
-        height: innerDiameter,
-        backgroundColor: `color-mix(in srgb, var(--ht-chip) 82%, ${bg} 18%)`,
+        width: diameter,
+        height: diameter,
+        background: paint.background,
+        boxShadow: paint.boxShadow,
       }}
     >
-      <HoustonHelmet color={bg} size={Math.round(innerDiameter * 0.65)} />
+      <HoustonHelmet color={paint.helmet} size={avatarHelmetSize(diameter)} />
     </div>
+  );
+}
+
+export function HoustonAvatar({
+  color,
+  diameter = 40,
+  running = false,
+  className,
+}: HoustonAvatarProps) {
+  const identity = color ?? HOUSTON_GRAY;
+  const innerDiameter = running ? Math.max(diameter - 4, 1) : diameter;
+  const inner = (
+    <MetalAvatar
+      identity={identity}
+      diameter={innerDiameter}
+      className={className}
+    />
   );
   if (!running) return inner;
   return (

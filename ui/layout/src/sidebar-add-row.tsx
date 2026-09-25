@@ -28,7 +28,7 @@ export function SidebarAddRow({
     <SidebarRowButton
       label={label}
       muted
-      icon={<Plus className="size-4" />}
+      icon={<Plus />}
       onActivate={onClick}
       dataAttrs={{ "data-sidebar-add-row": "", ...(dataAttrs ?? {}) }}
     />

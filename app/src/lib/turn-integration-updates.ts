@@ -4,6 +4,10 @@ import {
   externalUrlOf,
   synthesizedUrl,
 } from "./integration-artifact-url.ts";
+import {
+  integrationExecuteSucceeded,
+  isIntegrationExecuteCall,
+} from "./integration-execute.ts";
 
 /**
  * External-artifact rows for the turn-end "Updates made" summary
@@ -86,11 +90,9 @@ export function isExternalWriteAction(action: string): boolean {
 }
 
 /**
- * The external-artifact rows of a turn. Only SUCCESSFUL write actions qualify;
- * the execute tool also returns non-error guidance texts (app turned off,
- * stale slug) — those are prose, never the `{`/`[` JSON (or bare "Done.") a
- * real success emits, so they are filtered by shape. Identical (action, url)
- * repeats collapse into one row; distinct artifacts keep their own.
+ * The external-artifact rows of a turn. Only SUCCESSFUL write actions qualify
+ * ({@link integrationExecuteSucceeded}). Identical (action, url) repeats
+ * collapse into one row; distinct artifacts keep their own.
  */
 export function integrationUpdatesOf(
   tools: ToolEntry[],
@@ -98,18 +100,11 @@ export function integrationUpdatesOf(
   const updates: TurnIntegrationUpdate[] = [];
   const seen = new Set<string>();
   for (const tool of tools) {
-    if (!tool.result || tool.result.is_error) continue;
-    const short = tool.name.includes("__")
-      ? (tool.name.split("__").at(-1) ?? tool.name)
-      : tool.name;
-    if (short !== "integration_execute") continue;
+    if (!isIntegrationExecuteCall(tool.name)) continue;
+    if (!tool.result || !integrationExecuteSucceeded(tool.result)) continue;
     const input = asRecord(tool.input);
     const action = input.action;
     if (typeof action !== "string" || !isExternalWriteAction(action)) continue;
-    const content = tool.result.content.trimStart();
-    const succeeded =
-      content.startsWith("{") || content.startsWith("[") || content === "Done.";
-    if (!succeeded) continue;
     let data: Record<string, unknown> = {};
     try {
       data = asRecord(JSON.parse(tool.result.content));

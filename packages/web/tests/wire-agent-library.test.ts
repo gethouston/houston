@@ -99,6 +99,24 @@ test("listAgents maps the wire agent to the UI shape the app renders", async () 
   expect(agent.access).toBe("manager");
 });
 
+test("the role rides the listing: one GET /agents, no job description read", async () => {
+  listAndPrefs([
+    { ...WIRE_AGENT, role: "Bookkeeper" },
+    { ...WIRE_AGENT, id: "bbbb111122223333", name: "Bo" },
+  ]);
+
+  const [ada, bo] = await client().listAgents("Houston");
+
+  expect(ada.role).toBe("Bookkeeper");
+  expect(bo.role).toBeUndefined();
+  // Naming every row's job costs nothing past the list itself: no per-agent
+  // CLAUDE.md read, which on a hosted gateway woke each employee's pod.
+  expect(calls.map((call) => `${call.method} ${call.url}`)).toEqual([
+    `GET ${BASE}/agents`,
+    `GET ${PREF_URL}`,
+  ]);
+});
+
 test("a failed agent list propagates — never swallowed", async () => {
   stubFetch((url) =>
     url === PREF_URL

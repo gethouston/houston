@@ -27,7 +27,7 @@
  */
 
 import type { ActivityStatus, MessageMention } from "@houston/engine-adapter";
-import type { PendingWarmingSend } from "./agent-provisioning";
+import type { PendingWarmingSend } from "./agent-provisioning/entry";
 
 /** The persistable half of a queued send: everything but the closures. */
 export interface WarmingSendInput {

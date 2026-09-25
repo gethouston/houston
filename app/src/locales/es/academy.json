@@ -22,16 +22,18 @@
   },
   "path": {
     "title": "Tu camino",
-    "earned": "{{points}} de experiencia"
+    "earned": "{{points}} de experiencia",
+    "chapterProgress": "{{done}} de {{total}} listas",
+    "chapterDone": "Completado"
   },
   "chapters": {
-    "setup": {
-      "title": "Configura Houston",
-      "description": "Un recorrido guiado por la app, desde tu primer empleado de IA hasta tu primera misión."
+    "getting-started": {
+      "title": "Primeros pasos"
     }
   },
   "actions": {
     "start": "Empezar",
+    "continue": "Continuar",
     "replay": "Repetir"
   },
   "locked": {
@@ -52,21 +54,78 @@
       "continue": "Continuar",
       "comingSoon": "El video está en camino. Puedes empezar ahora."
     },
-    "send-first-task": {
-      "title": "Envía tu primera tarea",
-      "description": "Pídele algo a un empleado de IA y mira cómo lo resuelve.",
+    "houston-tour": {
+      "title": "Recorre Houston",
+      "description": "Descubre dónde está todo en menos de un minuto.",
       "steps": {
-        "watch": {
-          "title": "Envía tu primera tarea",
-          "body": "Mira cómo una tarea viaja de ti a tu empleado de IA."
+        "team": {
+          "body": "Aquí viven tus empleados de IA. Abre uno cuando quieras para ver en qué está trabajando.",
+          "cta": "Siguiente"
         },
-        "intro": {
-          "title": "Te toca",
-          "body": "Abre una tarea nueva y dile a tu empleado de IA qué necesitas.",
-          "cta": "Muéstrame"
+        "board": {
+          "body": "Este es el tablero de tu equipo. Cada tarea aparece aquí, con su estado.",
+          "cta": "Siguiente"
         },
         "newTask": {
-          "body": "Haz clic en Tarea nueva para abrir una para tu empleado de IA."
+          "body": "Usa Nueva tarea cuando necesites algo. Tu empleado de IA se encarga desde ahí.",
+          "cta": "Siguiente"
+        },
+        "aiModels": {
+          "body": "En Modelos de IA conectas tu IA o cambias a otra.",
+          "cta": "Siguiente"
+        },
+        "integrations": {
+          "body": "Integraciones conecta las apps que ya usas, como Gmail o Slack, para que tus empleados de IA trabajen en ellas.",
+          "cta": "Siguiente"
+        },
+        "skills": {
+          "body": "Las Skills son conocimientos que comparten tus empleados de IA. Agrega una y todos pueden usarla.",
+          "cta": "Siguiente"
+        },
+        "academy": {
+          "body": "Y esta es la Academia. Vuelve cuando quieras para aprender más y subir de nivel.",
+          "cta": "Listo"
+        }
+      }
+    },
+    "employee-email": {
+      "title": "Pídele a un empleado de IA que te escriba",
+      "description": "Conecta tu correo y recibe un correo real de tu empleado de IA.",
+      "steps": {
+        "intro": {
+          "title": "Tu empleado de IA, haciendo trabajo real",
+          "body": "Conecta tu correo, elige un empleado de IA y pídele que te escriba. Toma más o menos un minuto.",
+          "cta": "Vamos"
+        },
+        "connect": {
+          "title": "Conecta tu correo",
+          "body": "Elige el correo que usas. Puedes administrarlo cuando quieras en Integraciones.",
+          "connect": "Conectar",
+          "connecting": "Conectando…",
+          "cancel": "Cancelar",
+          "connected": "Conectado",
+          "unavailable": "Las apps de correo todavía no están disponibles en este Houston.",
+          "loading": "Revisando tus apps de correo…"
+        },
+        "sender": {
+          "title": "¿Quién te escribe?",
+          "body": "Elige el empleado de IA que lo envía.",
+          "cta": "Continuar",
+          "empty": {
+            "title": "Contrata tu primer empleado de IA",
+            "body": "Necesitas un empleado de IA para enviar el correo. Contrata uno y la lección sigue desde aquí.",
+            "askAdmin": "Tu equipo todavía no tiene empleados de IA. Pídele a un administrador del espacio que agregue uno y vuelve.",
+            "cta": "Contratar un empleado de IA"
+          }
+        },
+        "ask": {
+          "body": "Tu pedido está listo. Presiona Enviar para dárselo a tu empleado de IA.",
+          "request": "Envíame un correo corto y amable para saludarme a mi propio correo, usando {{app}}.",
+          "requestAnyApp": "Envíame un correo corto y amable para saludarme a mi propio correo."
+        },
+        "watch": {
+          "body": "Tu empleado de IA ya está en eso. Revisa tu bandeja de entrada.",
+          "cta": "Ya me llegó"
         }
       }
     }

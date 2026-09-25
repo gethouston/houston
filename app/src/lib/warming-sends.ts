@@ -9,39 +9,28 @@
  * readiness probe clears (`flushWarmingSends`), with `suppressUserBubble` so
  * the bubble is never doubled.
  *
+ * The flush lands each send's board row first (`warming-send-row.ts`).
  * Which prompt the flush puts on the wire — the live builder's, the one
  * resolved at queue time, or the user's own words — is `warming-send-prompt.ts`.
  */
 
-import type { ActivityStatus } from "@houston/engine-adapter";
 import { pushPendingUserMessage } from "@houston/engine-adapter";
 import { getConversationFeed } from "../hooks/use-conversation-vm";
 import { actingUser } from "./acting-user";
-import { isAgentGoneError } from "./agent-gone";
 import type {
   PendingWarmingSend,
   ProvisioningEntry,
-} from "./agent-provisioning";
-import { getEngine } from "./engine";
+} from "./agent-provisioning/entry";
 import { reportError } from "./error-report";
-import { showErrorToast } from "./error-toast";
-import { hiddenPromptDisplayText } from "./hidden-prompt-display-text";
-import i18n from "./i18n";
 import { logger } from "./logger";
-import { refreshMissionTitle } from "./mission-title";
-import { healStaleRosterFromError } from "./roster-heal";
-import { tauriActivity, tauriChat, tauriProvider } from "./tauri";
-import {
-  preferRowPin,
-  type RowPin,
-  verifyWarmingSendPin,
-} from "./warming-send-pin";
 import {
   chooseWarmingPrompt,
   undeliverableSend,
   type WarmingSendInput,
   warmingSendRecord,
 } from "./warming-send-prompt";
+import { landWarmingRow, settleWarmingRow } from "./warming-send-row";
+import { wireWarmingSend } from "./warming-send-wire";
 
 /** Prompt builders keyed by send id — in-memory only, lost on reload. */
 const promptBuilders = new Map<string, () => Promise<string> | string>();
@@ -51,21 +40,6 @@ const flushing = new WeakSet<ProvisioningEntry>();
 
 export function isFlushingWarmingSends(entry: ProvisioningEntry): boolean {
   return flushing.has(entry);
-}
-
-/**
- * True when this refusal means the agent vanished between the readiness probe
- * and the write (deleted/unshared elsewhere, HOUSTON-APP-4ZF): every remaining
- * send is doomed to the same "agent not found" 404, so the flush stops and the
- * roster heals instead of surfacing a state the user cannot act on. The probe's
- * own gone-check catches this before the flush starts; this guards the
- * in-flight race.
- */
-function abortsFlushAsAgentGone(e: unknown): boolean {
-  if (!isAgentGoneError(e)) return false;
-  logger.warn(`[warming-sends] agent gone mid-flush, aborting: ${e}`);
-  healStaleRosterFromError(e);
-  return true;
 }
 
 export interface QueueWarmingSendArgs extends WarmingSendInput {
@@ -162,46 +136,10 @@ export async function flushWarmingSends(
         logger.error(`[warming-sends] prompt build failed: ${e}`);
       }
     }
-    // The conversation's board row lands here, not at send time: the engine
-    // is awake now, and the id-upsert makes a retry of an already-landed row
-    // a no-op. A failure loses only the card — the message still delivers.
-    let rowId: string | null = null;
-    if (send.row) {
-      try {
-        // `status` settles via the patch below — the create route can't
-        // carry it, and its zod may reject unknown keys.
-        const { status: rowStatus, ...createInput } = send.row;
-        const created = await tauriActivity.createWithId(
-          entry.agentPath,
-          createInput,
-        );
-        rowId = created.id;
-        // One patch for whatever the create couldn't carry: a non-standard
-        // session key — a `welcome-` chat, or version skew where an engine
-        // predating client-supplied ids (HOU-693) assigned its own id — so
-        // the board card still opens THIS conversation and the turn's status
-        // writes still resolve (both match session_key first); plus a status
-        // settled while queued (the welcome card's needs_you).
-        const patch: { session_key?: string; status?: ActivityStatus } = {};
-        if (send.sessionKey !== `activity-${created.id}`) {
-          patch.session_key = send.sessionKey;
-        }
-        if (rowStatus && rowStatus !== created.status) {
-          patch.status = rowStatus;
-        }
-        if (Object.keys(patch).length > 0) {
-          await getEngine().updateActivity(entry.agentPath, created.id, patch);
-        }
-      } catch (e) {
-        if (abortsFlushAsAgentGone(e)) return;
-        showErrorToast(
-          "warming_sends_row",
-          "mission row create/update failed",
-          undefined,
-          { userMessage: i18n.t("chat:errors.missionRowFailed") },
-        );
-      }
-    }
+    // The conversation's board row lands here, not at send time.
+    const landing = await landWarmingRow(entry, send);
+    if (landing.kind === "aborted") return;
+    const { rowId } = landing;
     // Row-only entry (the welcome mission): the row IS the payload.
     if (send.rowOnly) continue;
     const wire = chooseWarmingPrompt(send, built);
@@ -215,103 +153,14 @@ export async function flushWarmingSends(
       // move on to the next send.
       const undeliverable = undeliverableSend(send, rowId);
       reportError("warming_sends_prompt", undeliverable.reason);
-      if (undeliverable.settleRow) {
-        try {
-          await getEngine().updateActivity(
-            entry.agentPath,
-            undeliverable.settleRow.id,
-            { status: undeliverable.settleRow.status },
-          );
-        } catch (e) {
-          if (abortsFlushAsAgentGone(e)) return;
-          reportError(
-            "warming_sends_row_settle",
-            `settling an undeliverable mission row failed (session ${send.sessionKey})`,
-            e,
-          );
-        }
+      if (
+        undeliverable.settleRow &&
+        !(await settleWarmingRow(entry, undeliverable.settleRow, send))
+      ) {
+        return;
       }
       continue;
     }
-    const activityId =
-      rowId ??
-      (send.sessionKey.startsWith("activity-")
-        ? send.sessionKey.slice("activity-".length)
-        : undefined);
-    // A parked follow-up (no row of its own) carries the composer's guess at
-    // the mission's pin — the pod answers now, so read the row's stored pin
-    // before verifying it (PRODUCT-1643). A failed read keeps the guess: the
-    // wrapper already reported it, and the message still delivers.
-    let rowPin: RowPin | undefined;
-    if (!send.row) {
-      try {
-        rowPin = (await tauriActivity.list(entry.agentPath)).find(
-          (a) =>
-            (a.session_key ?? `activity-${a.id}`) === send.sessionKey ||
-            a.id === activityId,
-        );
-      } catch (e) {
-        logger.warn(`[warming-sends] mission pin read failed: ${e}`);
-      }
-    }
-    const pin = await verifyWarmingSendPin({
-      agentId: entry.agentPath,
-      activityId,
-      pin: preferRowPin(rowPin, {
-        provider: send.provider,
-        model: send.model,
-        effort: send.effort,
-      }),
-      probe: async (agentId, provider) => {
-        const statuses = await tauriProvider.checkAllStatusesForAgent(agentId, [
-          provider,
-        ]);
-        return statuses[provider]?.authenticated === true;
-      },
-      clearActivityPin: async (agentId, id) => {
-        try {
-          await tauriActivity.update(agentId, id, {
-            provider: null,
-            model: null,
-          });
-        } catch (error) {
-          logger.error(`[warming-sends] activity pin clear failed: ${error}`);
-        }
-      },
-    });
-    // The bubble is already on screen (pushed at queue time, or restored on
-    // rehydrate) — never double it. If the scope is somehow empty (renamed
-    // agent moved the VM scope), let the turn push it.
-    const suppress = getConversationFeed(entry.agentPath, send.sessionKey).some(
-      (f) => f.feed_type === "user_message",
-    );
-    try {
-      await tauriChat.send(entry.agentPath, wire.prompt, send.sessionKey, {
-        providerOverride: pin.provider,
-        modelOverride: pin.model,
-        effortOverride: pin.effort,
-        modeOverride: send.mode,
-        mentions: send.mentions,
-        suppressUserBubble: suppress,
-        // A prompt from either hidden source (built now, or resolved at queue
-        // time) means the bubble must show the user's words instead.
-        displayText: hiddenPromptDisplayText(send.text, wire.source !== "text"),
-      });
-      // The AI title pass this mission skipped at queue time (HOU-713): the
-      // row just landed and the engine answers now. Fire-and-forget — a
-      // failure keeps the fallback title (refreshMissionTitle logs it).
-      if (rowId && send.titleText) {
-        void refreshMissionTitle({
-          agentPath: entry.agentPath,
-          activityId: rowId,
-          text: send.titleText,
-        });
-      }
-    } catch (e) {
-      if (abortsFlushAsAgentGone(e)) return;
-      // tauriChat.send already toasted the real reason; keep flushing the
-      // rest — one refused turn must not strand the queue.
-      logger.error(`[warming-sends] deferred send failed: ${e}`);
-    }
+    if ((await wireWarmingSend(entry, send, wire, rowId)) === "abort") return;
   }
 }

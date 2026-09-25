@@ -1,10 +1,10 @@
 // The ONE way an Academy record is ever changed.
 //
 // A record is a read-modify-write over two stores, and it is written from three
-// unrelated places: the onboarding finish path (a chapter), a finished lesson,
-// and the usage economy's flush. Left to themselves they interleave — two of
-// them load the same record and the second one saves over the first's award,
-// which is a chapter or an afternoon of points silently gone. So every mutation
+// unrelated places: a finished lesson, a running lesson's saved position, and
+// the usage economy's flush. Left to themselves they interleave — two of them
+// load the same record and the second one saves over the first's write, which
+// is a lesson award or an afternoon of points silently gone. So every mutation
 // queues here instead, per account, and each one loads afresh inside its own
 // slot.
 //

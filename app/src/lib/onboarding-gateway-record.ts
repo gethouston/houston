@@ -3,6 +3,7 @@
 // window — so `app/tests` drives it directly; the HTTP client that speaks this
 // shape (and the front door consumers import) is `./onboarding-sync.ts`.
 
+import { normalizeOnboardingIndustryChoice } from "./onboarding-industry.ts";
 import {
   createOnboardingSurveyPreference,
   isOnboardingIndustryChoice,
@@ -46,7 +47,7 @@ export function parseGatewayOnboarding(
   const raw = value as Record<string, unknown>;
   return {
     segment: isOnboardingSegmentChoice(raw.segment) ? raw.segment : null,
-    industry: isOnboardingIndustryChoice(raw.industry) ? raw.industry : null,
+    industry: normalizeOnboardingIndustryChoice(raw.industry),
     automationGoal: isValidAutomationGoal(raw.automationGoal)
       ? raw.automationGoal.trim()
       : null,
@@ -125,8 +126,7 @@ export function mergeGatewayOnboarding(
       base.segment ??
       (isOnboardingSegmentChoice(remote.segment) ? remote.segment : null),
     industry:
-      base.industry ??
-      (isOnboardingIndustryChoice(remote.industry) ? remote.industry : null),
+      base.industry ?? normalizeOnboardingIndustryChoice(remote.industry),
     automationGoal: goalAnsweredLocally ? base.automationGoal : remoteGoal,
     goalSkipped: goalAnsweredLocally ? base.goalSkipped : remote.goalSkipped,
     updatedAt: local

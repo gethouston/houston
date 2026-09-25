@@ -39,6 +39,7 @@ import { ChatSendMixin } from "./client/chat-send-mixin";
 import { ConfigPrefsMixin } from "./client/config-prefs-mixin";
 import type { HoustonClientOptions } from "./client/context";
 import { CustomIntegrationsMixin } from "./client/custom-integrations-mixin";
+import { FirstDayMixin } from "./client/first-day-mixin";
 import { IntegrationsMixin } from "./client/integrations-mixin";
 import { MeProfileMixin } from "./client/me-profile-mixin";
 import type { BaseCtor } from "./client/mixin";
@@ -92,6 +93,7 @@ export const MIXINS = [
   ConfigPrefsMixin,
   AppearanceMixin,
   AgentsMixin,
+  FirstDayMixin,
   WorkspacesMixin,
   AssistantMixin,
   BootMixin,

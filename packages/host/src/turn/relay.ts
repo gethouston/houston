@@ -1,7 +1,14 @@
 import type { SequencedFrame, WireFrame } from "@houston/runtime-client";
 import { MemoryTurnBus, type TurnBus } from "./bus";
 import { RelayChannels } from "./relay-channel";
-import { TURN_DIED_MESSAGE } from "./relay-dialect";
+import {
+  cancelChannel,
+  claimLease,
+  heartbeatLease,
+  inflightKey,
+  releaseLease,
+} from "./relay-lease";
+import { pumpTurn } from "./relay-pump";
 
 /**
  * The control plane's per-conversation event relay for cloudrun workspaces.
@@ -21,14 +28,6 @@ import { TURN_DIED_MESSAGE } from "./relay-dialect";
  * cancel is a bus message the owning replica acts on, and the snapshot (with
  * its seq watermark) is a bus key.
  */
-
-/** The inflight lease: long enough to survive GC pauses, short enough that a
- *  crashed replica frees its agents in about a minute. */
-const LEASE_SEC = 90;
-const LEASE_BEAT_MS = 30_000;
-
-const inflightKey = (agentId: string) => `turn:inflight:${agentId}`;
-const cancelChannel = (agentId: string) => `turn:cancel:${agentId}`;
 
 export class TurnRelay {
   private readonly channels: RelayChannels;
@@ -73,71 +72,31 @@ export class TurnRelay {
     if (this.inflightLocal.has(agentId)) return false;
     // The lease VALUE is the conversation key, so a conversation-scoped cancel
     // (a routine-run stop) can tell whether the slot is running ITS turn.
-    if (
-      !(await this.bus.setNx(inflightKey(agentId), conversationKey, LEASE_SEC))
-    )
-      return false;
+    if (!(await claimLease(this.bus, agentId, conversationKey))) return false;
     this.inflightLocal.set(agentId, { key: conversationKey, nonce });
 
     const ctrl = new AbortController();
     const unsubCancel = this.bus.subscribe(cancelChannel(agentId), () =>
       ctrl.abort(),
     );
-    const lease = setInterval(() => {
-      this.bus.expire(inflightKey(agentId), LEASE_SEC).catch((err: unknown) => {
-        // No request to reject here; losing the lease means another replica
-        // could double-start, so this must be loud.
-        console.error(`[relay] lease heartbeat failed for ${agentId}:`, err);
-      });
-    }, LEASE_BEAT_MS);
+    const stopHeartbeat = heartbeatLease(this.bus, agentId);
 
     await this.channels.open(conversationKey);
-    const publish = (e: WireFrame) => this.publish(conversationKey, e);
-
-    // Terminal frames synthesized by the relay carry the id of the turn they
-    // terminate — read off the owned stream's snapshot (the pumped frames set
-    // it; absent when the pump died before its first frame).
-    const runningTurnId = () =>
-      this.channels.localSnapshot(conversationKey)?.turnId;
-
-    void run(publish, ctrl.signal)
-      .catch(async (err) => {
-        // Same verbatim string the runtime emits on a user stop, so the web
-        // adapter renders both as a neutral "you stopped it" (not a red error).
-        const message = ctrl.signal.aborted
-          ? "Stopped by user"
-          : err instanceof Error
-            ? err.message
-            : String(err);
-        await publish({
-          type: "error",
-          data: { message },
-          turnId: runningTurnId(),
-        });
-      })
-      .finally(async () => {
-        try {
-          if (this.channels.localSnapshot(conversationKey)?.running) {
-            await publish({
-              type: "error",
-              data: { message: TURN_DIED_MESSAGE },
-              turnId: runningTurnId(),
-            });
-          }
-        } finally {
-          clearInterval(lease);
-          unsubCancel();
-          this.channels.close(conversationKey);
-          this.inflightLocal.delete(agentId);
-          await this.bus.del(inflightKey(agentId)).catch((err: unknown) => {
-            // The lease TTL frees the slot within LEASE_SEC even if this fails.
-            console.error(
-              `[relay] inflight release failed for ${agentId}:`,
-              err,
-            );
-          });
-        }
-      });
+    pumpTurn({
+      run,
+      publish: (e) => this.publish(conversationKey, e),
+      signal: ctrl.signal,
+      runningTurnId: () => this.channels.localSnapshot(conversationKey)?.turnId,
+      stillRunning: () =>
+        this.channels.localSnapshot(conversationKey)?.running === true,
+      release: async () => {
+        stopHeartbeat();
+        unsubCancel();
+        this.channels.close(conversationKey);
+        this.inflightLocal.delete(agentId);
+        await releaseLease(this.bus, agentId);
+      },
+    });
     return true;
   }
 
@@ -169,16 +128,25 @@ export class TurnRelay {
   }
 
   /**
+   * The conversation key whose turn holds the agent's slot, on any replica;
+   * null when the slot is free.
+   */
+  async holder(agentId: string): Promise<string | null> {
+    return (
+      this.inflightLocal.get(agentId)?.key ??
+      (await this.bus.get(inflightKey(agentId)))
+    );
+  }
+
+  /**
    * Abort the agent's in-flight turn — on whichever replica owns it. With
    * `conversationKey`, only a turn on THAT conversation is aborted: the agent
    * has one slot shared by chats and routines, so a conversation-scoped cancel
    * (stopping a stale routine run) must never kill an unrelated live chat turn.
    */
   async cancel(agentId: string, conversationKey?: string): Promise<boolean> {
-    const inflight =
-      this.inflightLocal.get(agentId)?.key ??
-      (await this.bus.get(inflightKey(agentId)));
-    if (inflight === null || inflight === undefined) return false;
+    const inflight = await this.holder(agentId);
+    if (inflight === null) return false;
     if (conversationKey && inflight !== conversationKey) return false;
     await this.bus.publish(cancelChannel(agentId), "cancel");
     return true;

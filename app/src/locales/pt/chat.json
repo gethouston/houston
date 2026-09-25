@@ -3,8 +3,9 @@
     "greeting": "Olá! Eu sou {{name}}, seu novo funcionário de IA. Me conte com o que você gostaria de ajuda: você pode descrever uma tarefa com as suas palavras, compartilhar alguns detalhes sobre como gosta que as coisas sejam feitas ou anexar arquivos que me deem contexto. Quanto mais você me contar, melhor o meu trabalho vai se encaixar no que você precisa. Com o que você gostaria de começar?"
   },
   "setupGreeting": {
-    "text": "Oi, eu sou {{name}}. Me dê alguns segundos para começar. O mais importante que vamos fazer juntos é criar Skills, para você começar a automatizar o seu trabalho.",
-    "textWithRole": "Oi, eu sou {{name}}, seu {{role}}. Me dê alguns segundos para começar. O mais importante que vamos fazer juntos é criar Skills, para você começar a automatizar o seu trabalho."
+    "text": "Oi, eu sou **{{name}}**! Hoje é meu *primeiro dia*, então me ajude a aprender como posso ser mais útil para você.\n\nJuntos, vamos registrar como eu faço meu trabalho do dia a dia. No Houston, esses procedimentos passo a passo se chamam **Skills**.\n\nVamos começar com **uma tarefa que você faz todos os dias**. Vamos fazer juntos uma vez, e depois eu salvo como uma Skill para poder fazer por você sempre que quiser.\n\nAqui vão algumas tarefas para começarmos:",
+    "textWithRole": "Oi, eu sou **{{name}}**, seu {{role}}! Hoje é meu *primeiro dia*, então me ajude a aprender como posso ser mais útil para você.\n\nJuntos, vamos registrar como eu faço meu trabalho do dia a dia. No Houston, esses procedimentos passo a passo se chamam **Skills**.\n\nVamos começar com **uma tarefa que você faz todos os dias**. Vamos fazer juntos uma vez, e depois eu salvo como uma Skill para poder fazer por você sempre que quiser.\n\nAqui vão algumas tarefas para começarmos:",
+    "textRoleAsName": "Oi, eu sou seu **{{role}}**! Hoje é meu *primeiro dia*, então me ajude a aprender como posso ser mais útil para você.\n\nJuntos, vamos registrar como eu faço meu trabalho do dia a dia. No Houston, esses procedimentos passo a passo se chamam **Skills**.\n\nVamos começar com **uma tarefa que você faz todos os dias**. Vamos fazer juntos uma vez, e depois eu salvo como uma Skill para poder fazer por você sempre que quiser.\n\nAqui vão algumas tarefas para começarmos:"
   },
   "composer": {
     "placeholder": "Pergunte qualquer coisa...",

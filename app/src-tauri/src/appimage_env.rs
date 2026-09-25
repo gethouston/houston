@@ -7,8 +7,8 @@
 //! the transient squashfs mount, plus the unconditional `GDK_BACKEND=x11` and
 //! `GTK_THEME` overrides. Those values are correct ONLY for binaries inside
 //! the bundle. A child that lives outside it — the user's browser via
-//! `xdg-open` (the Google/Microsoft OAuth consent step), `zenity`, the file
-//! manager, or the engine sidecar's own descendants — loads the bundle's
+//! `xdg-open` (the Google/Microsoft OAuth consent step), the file manager,
+//! or the engine sidecar's own descendants — loads the bundle's
 //! libraries instead of the system's and typically crashes on startup. That
 //! is exactly how OAuth sign-in broke on Linux: the consent page never
 //! opened because the browser died under the bundle's `LD_LIBRARY_PATH`.
@@ -87,20 +87,6 @@ pub fn sanitized_env_overrides() -> Vec<EnvOverride> {
 
 /// Apply [`sanitized_env_overrides`] to a `std::process::Command`.
 pub fn sanitize_std_command(cmd: &mut std::process::Command) {
-    for (key, value) in sanitized_env_overrides() {
-        match value {
-            Some(v) => {
-                cmd.env(key, v);
-            }
-            None => {
-                cmd.env_remove(key);
-            }
-        }
-    }
-}
-
-/// Apply [`sanitized_env_overrides`] to a `tokio::process::Command`.
-pub fn sanitize_tokio_command(cmd: &mut tokio::process::Command) {
     for (key, value) in sanitized_env_overrides() {
         match value {
             Some(v) => {

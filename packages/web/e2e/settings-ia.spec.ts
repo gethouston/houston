@@ -29,9 +29,9 @@ import { navRow, screen } from "./support/team-nav";
  *    management. Each is asserted absent from the rail by name, so a top-level
  *    row for any of them fails here;
  * 3. Settings holds the standing setup: the general group everybody sees, the
- *    two rows that administer the space, plus Danger. The guided tour lives in
- *    the footer's help control and the Context editors in their own surfaces,
- *    so Settings carries no "Help" / "Context" / "Support" / "Team" heading;
+ *    two rows that administer the space, plus Danger. The Context editors live
+ *    in their own surfaces, so Settings carries no "Help" / "Context" /
+ *    "Support" / "Team" heading;
  * 4. Workspace management opens the Admin dashboard one level UNDER the
  *    Settings index, so the way back to that index leads the dashboard's own
  *    header strip — one top row, not a back bar stacked over it;
@@ -43,9 +43,9 @@ import { navRow, screen } from "./support/team-nav";
  *    keeps no avatar menu (edit profile / account settings / send feedback /
  *    sign out) as a second door onto the same page.
  *
- * The footer's help control is the seventh: "Guide me" and "Report a problem",
- * the two things a stuck user reaches for, behind one "?" beside the gear —
- * neither of them a destination, which is why neither is a rail row.
+ * The footer's help control is the seventh: "Report a problem", what a stuck
+ * user reaches for, behind one "?" beside the gear — not a destination, which
+ * is why it is not a rail row.
  */
 
 /**
@@ -115,9 +115,6 @@ test("the sidebar carries only the IA's top-level entries", async ({
   // may hold a rail slot as well.
   await expect(railButton(page, "About me")).toHaveCount(0);
   await expect(railButton(page, "Inbox")).toHaveCount(0);
-  // "Guide me" was never a destination: it lives behind the footer's help
-  // control now, not in the rail's lead run.
-  await expect(railButton(page, "Guide me")).toHaveCount(0);
 
   // The global mission board is gone: every board belongs to a team, and the
   // teams live in their own band below.
@@ -189,10 +186,9 @@ test("Settings holds only settings, under one heading", async ({
     main.getByRole("heading", { level: 2, name, exact: true });
   await expect(group("General")).toBeVisible();
   // The five headings that named things which are not settings. Each died with
-  // its rows: the tour is armed from the footer's help control, what the agents
-  // know about the COMPANY is a section of the Admin dashboard, Time worked is
-  // another of its sections, and the help-shaped rows sit in General rather
-  // than keeping a group of their own.
+  // its rows: what the agents know about the COMPANY is a section of the Admin
+  // dashboard, Time worked is another of its sections, and the help-shaped
+  // rows sit in General rather than keeping a group of their own.
   for (const heading of ["Help", "Context", "Support", "Workspace", "Team"]) {
     await expect(group(heading)).toHaveCount(0);
   }
@@ -265,27 +261,24 @@ test("Workspace management opens Admin with the way back in its own strip", asyn
   await expect(settingsBackInStrip(page)).toBeVisible();
 });
 
-test("the footer's help control offers exactly Guide me and Report a problem", async ({
+test("the footer's help control offers exactly Report a problem", async ({
   page,
   request,
 }) => {
   await armOwner(request);
   await page.goto("/");
 
-  // One small "?" beside the gear, named for what it is rather than for either
-  // of the two things behind it.
+  // One small "?" beside the gear, named for what it is rather than for the
+  // thing behind it.
   const help = page
     .locator("[data-tour-target='sidebar']")
     .getByRole("button", { name: "Help", exact: true });
   await expect(help).toBeVisible();
   await help.click();
 
-  // Exactly two items, in this order: being walked through the app, and telling
-  // us it went wrong. Anything else here would be a settings row in disguise.
-  await expect(page.getByRole("menuitem")).toHaveText([
-    "Guide me",
-    "Report a problem",
-  ]);
+  // Exactly one item: telling us it went wrong. Learning Houston lives in the
+  // Academy row above; anything else here would be a settings row in disguise.
+  await expect(page.getByRole("menuitem")).toHaveText(["Report a problem"]);
 
   // "Report a problem" does not duplicate the bug-report surface — it opens the
   // ONE that already exists, on its Settings section.

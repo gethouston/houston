@@ -3,8 +3,9 @@
     "greeting": "Hi! I'm {{name}}, your new AI Employee. Tell me about what you'd like help with: you can describe a task in your own words, share a few details about how you like things done, or attach files that give me context. The more you tell me, the better my work will fit what you need. What would you like to start with?"
   },
   "setupGreeting": {
-    "text": "Hi, I'm {{name}}. Give me a few seconds to get going. The most important thing we'll do together is create Skills, so you start automating your work.",
-    "textWithRole": "Hi, I'm {{name}}, your {{role}}. Give me a few seconds to get going. The most important thing we'll do together is create Skills, so you start automating your work."
+    "text": "Hi, I'm **{{name}}**! Today is my *first day*, so help me learn how I can be most useful to you.\n\nTogether we'll write down how I do my everyday work. In Houston, these step-by-step procedures are called **Skills**.\n\nLet's start with **one task you do every day**. We'll do it together once, then I'll save it as a Skill so I can do it for you anytime.\n\nHere are a few tasks we could start with:",
+    "textWithRole": "Hi, I'm **{{name}}**, your {{role}}! Today is my *first day*, so help me learn how I can be most useful to you.\n\nTogether we'll write down how I do my everyday work. In Houston, these step-by-step procedures are called **Skills**.\n\nLet's start with **one task you do every day**. We'll do it together once, then I'll save it as a Skill so I can do it for you anytime.\n\nHere are a few tasks we could start with:",
+    "textRoleAsName": "Hi, I'm your **{{role}}**! Today is my *first day*, so help me learn how I can be most useful to you.\n\nTogether we'll write down how I do my everyday work. In Houston, these step-by-step procedures are called **Skills**.\n\nLet's start with **one task you do every day**. We'll do it together once, then I'll save it as a Skill so I can do it for you anytime.\n\nHere are a few tasks we could start with:"
   },
   "composer": {
     "placeholder": "Ask anything...",

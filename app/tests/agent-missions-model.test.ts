@@ -1,7 +1,10 @@
 import assert from "node:assert/strict";
 import { describe, it } from "node:test";
 import {
+  agentMissionCount,
   agentMissionSections,
+  isCreatedMissionOf,
+  liveMissionCount,
   missionListSections,
   searchMissions,
 } from "../src/components/agents-home/agent-missions-model.ts";
@@ -134,5 +137,51 @@ describe("missionListSections", () => {
       s.missions.map((m) => m.id),
     );
     assert.ok(!ids.includes("arch"));
+  });
+});
+
+describe("mission counts", () => {
+  const sections = agentMissionSections(
+    [
+      mission({ id: "r", agent_path: "/ws/a", status: "running" }),
+      mission({ id: "d", agent_path: "/ws/a", status: "done" }),
+      mission({ id: "arch", agent_path: "/ws/a", status: "archived" }),
+    ],
+    "/ws/a",
+  );
+
+  it("counts the archive among everything the agent holds", () => {
+    assert.equal(agentMissionCount(sections), 3);
+  });
+
+  it("leaves the archive out of the live count", () => {
+    assert.equal(liveMissionCount(sections), 2);
+  });
+
+  it("counts nothing for an agent with no missions", () => {
+    const empty = agentMissionSections([], "/ws/a");
+    assert.equal(agentMissionCount(empty), 0);
+    assert.equal(liveMissionCount(empty), 0);
+  });
+});
+
+describe("isCreatedMissionOf", () => {
+  const created = { activityId: "m1", agentPath: "/ws/a" };
+
+  it("claims the mission just created for this agent", () => {
+    assert.equal(isCreatedMissionOf(created, "m1", "/ws/a"), true);
+  });
+
+  it("leaves another agent's creation to its own screen", () => {
+    assert.equal(isCreatedMissionOf(created, "m1", "/ws/b"), false);
+  });
+
+  it("leaves a published target that is not the creation to a board", () => {
+    assert.equal(isCreatedMissionOf(created, "m2", "/ws/a"), false);
+  });
+
+  it("claims nothing when nothing is published or created", () => {
+    assert.equal(isCreatedMissionOf(created, null, "/ws/a"), false);
+    assert.equal(isCreatedMissionOf(null, "m1", "/ws/a"), false);
   });
 });

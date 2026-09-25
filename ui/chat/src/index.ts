@@ -383,6 +383,7 @@ export type { SkillInvocation, SkillInvocationField } from "./skill-message";
 // (desktop, mobile) can render the same card.
 export { decodeSkillMessage, resolveSkillImage } from "./skill-message";
 export { DEFAULT_THINKING_PHRASES } from "./thinking-phrases";
+export { toolShortName } from "./tool-labels";
 export type { TurnEndSummary } from "./turn-tools";
 export type {
   AuthFailureCause,

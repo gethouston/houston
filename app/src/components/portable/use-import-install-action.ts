@@ -13,10 +13,7 @@ import { openAgentBoard } from "../../lib/open-agent";
 import { toAgent } from "../../lib/tauri";
 import { useAgentStore } from "../../stores/agents";
 import { useUIStore } from "../../stores/ui";
-import {
-  installImportedAgent,
-  startImportedAgentSetup,
-} from "./import-install";
+import { installImportedAgent } from "./import-install";
 import { runImportInstall } from "./import-install-flow";
 import { createSingleFlight } from "./single-flight";
 import type { ImportSelection } from "./use-import-package";
@@ -89,7 +86,6 @@ export function useImportInstallAction({
             openAgentBoard(installed.agent.id);
             onInstalled();
           },
-          startSetup: startImportedAgentSetup,
           reportNameProblem: (problem) =>
             addToast({ variant: "error", title: problem }),
           reportFailure: (err) =>

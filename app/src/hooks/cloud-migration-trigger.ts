@@ -47,7 +47,7 @@ export type CloudMigrationGateState = "loading" | "show" | "pass";
  * The single source of truth for the wizard gate. `pass` renders the app as
  * usual; `show` renders the wizard; `loading` holds a splash — only reachable
  * once every cheap gate holds — so a migrating user never flashes into the
- * create-your-assistant onboarding while the detection probe resolves.
+ * first-run onboarding while the detection probe resolves.
  */
 export function cloudMigrationGateState(
   i: CloudMigrationInputs,

@@ -1,6 +1,6 @@
 import { deepStrictEqual, strictEqual } from "node:assert";
 import { describe, it } from "node:test";
-import type { PendingWarmingSend } from "../src/lib/agent-provisioning.ts";
+import type { PendingWarmingSend } from "../src/lib/agent-provisioning/entry.ts";
 import {
   mergeWarmingRows,
   warmingConversations,

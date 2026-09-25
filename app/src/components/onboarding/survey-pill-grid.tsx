@@ -6,8 +6,7 @@ export interface SurveyPillOption<T extends string> {
 }
 
 /**
- * The choice grid shared by the survey's job and industry questions: three
- * columns of bordered pills on the white setup card, modeled on the ChatGPT
+ * The survey job question's choice grid: three columns of bordered pills on the white setup card, modeled on the ChatGPT
  * desktop segmentation screen.
  */
 export function SurveyPillGrid<T extends string>({

@@ -22,16 +22,18 @@
   },
   "path": {
     "title": "Your path",
-    "earned": "{{points}} experience"
+    "earned": "{{points}} experience",
+    "chapterProgress": "{{done}} of {{total}} done",
+    "chapterDone": "Completed"
   },
   "chapters": {
-    "setup": {
-      "title": "Set up Houston",
-      "description": "A guided walk through the app, from your first AI Employee to your first mission."
+    "getting-started": {
+      "title": "Getting started"
     }
   },
   "actions": {
     "start": "Start",
+    "continue": "Continue",
     "replay": "Replay"
   },
   "locked": {
@@ -52,21 +54,78 @@
       "continue": "Continue",
       "comingSoon": "The video is on its way. You can start now."
     },
-    "send-first-task": {
-      "title": "Send your first task",
-      "description": "Ask an AI Employee for something and watch it get done.",
+    "houston-tour": {
+      "title": "Take a tour of Houston",
+      "description": "See where everything lives, in under a minute.",
       "steps": {
-        "watch": {
-          "title": "Send your first task",
-          "body": "See how a task travels from you to your AI Employee."
+        "team": {
+          "body": "Your AI Employees live here. Open one any time to see what it's working on.",
+          "cta": "Next"
         },
-        "intro": {
-          "title": "Your turn",
-          "body": "Open a new task and tell your AI Employee what you need.",
-          "cta": "Show me"
+        "board": {
+          "body": "This is your team's board. Every task shows up here, with where it stands.",
+          "cta": "Next"
         },
         "newTask": {
-          "body": "Click New task to open one for your AI Employee."
+          "body": "Use New task whenever you need something done. Your AI Employee takes it from there.",
+          "cta": "Next"
+        },
+        "aiModels": {
+          "body": "AI Models is where you connect your AI, or switch to another one.",
+          "cta": "Next"
+        },
+        "integrations": {
+          "body": "Integrations connect the apps you already use, like Gmail or Slack, so your AI Employees can work in them.",
+          "cta": "Next"
+        },
+        "skills": {
+          "body": "Skills are know-how your AI Employees share. Add one and all of them can use it.",
+          "cta": "Next"
+        },
+        "academy": {
+          "body": "And this is the Academy. Come back any time to learn more and level up.",
+          "cta": "Done"
+        }
+      }
+    },
+    "employee-email": {
+      "title": "Have an AI Employee email you",
+      "description": "Connect your email and get a real email from your AI Employee.",
+      "steps": {
+        "intro": {
+          "title": "Your AI Employee, doing real work",
+          "body": "Connect your email, pick an AI Employee, and ask it to email you. It takes about a minute.",
+          "cta": "Let's go"
+        },
+        "connect": {
+          "title": "Connect your email",
+          "body": "Pick the email you use. You can manage it any time in Integrations.",
+          "connect": "Connect",
+          "connecting": "Connecting…",
+          "cancel": "Cancel",
+          "connected": "Connected",
+          "unavailable": "Email apps aren't available on this Houston yet.",
+          "loading": "Checking your email apps…"
+        },
+        "sender": {
+          "title": "Who should email you?",
+          "body": "Pick the AI Employee that sends it.",
+          "cta": "Continue",
+          "empty": {
+            "title": "Hire your first AI Employee",
+            "body": "You need an AI Employee to send the email. Hire one and this lesson picks right up.",
+            "askAdmin": "Your team has no AI Employees yet. Ask a workspace admin to add one, then come back.",
+            "cta": "Hire an AI Employee"
+          }
+        },
+        "ask": {
+          "body": "Your request is ready. Press Send to give it to your AI Employee.",
+          "request": "Send me a short, friendly hello email at my own email address, using {{app}}.",
+          "requestAnyApp": "Send me a short, friendly hello email at my own email address."
+        },
+        "watch": {
+          "body": "Your AI Employee is on it. Check your inbox.",
+          "cta": "I got it"
         }
       }
     }

@@ -30,6 +30,8 @@ export const AGENT_CONTEXT_ROLES = {
 export const AGENT_COMMON_ROLES = [
   "executive_assistant",
   "operations_coordinator",
+  "operations_manager",
+  "finance_manager",
   "researcher",
   "writer",
   "analyst",

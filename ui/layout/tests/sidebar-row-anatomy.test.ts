@@ -6,7 +6,10 @@ import { fileURLToPath } from "node:url";
 import {
   sidebarBandInset,
   sidebarClasses,
+  sidebarGlyphDiameter,
   sidebarIconBox,
+  sidebarMarkSize,
+  sidebarPersonRow,
   sidebarRowType,
 } from "../src/sidebar-geometry.ts";
 import {
@@ -147,6 +150,7 @@ describe("sidebar row anatomy", () => {
         "h-7",
         "pl-5",
         "size-5",
+        "size-4",
         "text-[13px]",
         "text-xs",
         "font-weight-510",
@@ -184,6 +188,14 @@ describe("sidebar row anatomy", () => {
     ok(sidebarRowButtonClasses.icon.startsWith(sidebarIconBox));
     ok(includes(sidebarIconBox, "size-5"));
     ok(includes(sidebarIconBox, "shrink-0"));
+    // The box sizes the bare mark it holds, so one icon node can serve the
+    // rail and the phone's More menu at their own sizes.
+    ok(sidebarIconBox.endsWith(sidebarMarkSize.slot));
+    ok(includes(sidebarMarkSize.slot, "[&>svg]:size-4"));
+    ok(includes(sidebarMarkSize.slot, "[&>img]:size-4"));
+    strictEqual(sidebarMarkSize.glyph, "size-3.5");
+    // A mark sized off the column fills it exactly.
+    strictEqual(sidebarGlyphDiameter, 20);
     // The box itself carries no gap: the gap is the ROW's, spent beside it, so
     // a consumer mounting the box elsewhere does not inherit rail spacing.
     strictEqual(/\bm[rlxe]-/.test(sidebarIconBox), false, sidebarIconBox);
@@ -418,9 +430,20 @@ describe("sidebar row anatomy", () => {
       "a row-level gap would couple the two sides again",
     );
     // Glyph EDGE to first letter is this margin plus the slack the mark leaves
-    // in the 20px box (0 for an avatar, 2px for a 16px Lucide mark, 3px for a
-    // 14px team mark): 6px lands it at 6-9px, Linear's range.
+    // in the 20px box: 0 for a mark that fills it, 2px for a 16px Lucide mark,
+    // and 3px for a 14px team mark. Every glyph kind must land in 6-9px, Linear's range.
     ok(includes(sidebarRowButtonClasses.icon, "mr-1.5"));
+    const px = (token: string) => Number(token.split("-").pop()) * 4;
+    const box = px("size-5");
+    const gap = px("mr-1.5");
+    for (const glyph of [sidebarGlyphDiameter, 16, px(sidebarMarkSize.glyph)]) {
+      const edge = gap + (box - glyph) / 2;
+      ok(
+        edge >= 6 && edge <= 9,
+        `glyph ${glyph}px sits ${edge}px off its label`,
+      );
+      strictEqual(Number.isInteger((box - glyph) / 2), true, `${glyph}px`);
+    }
     // A badge is a separate object from the name, not part of the phrase, so it
     // gets more air than the icon does — strictly more.
     ok(includes(sidebarRowButtonClasses.trailing, "ml-2"));
@@ -453,10 +476,11 @@ describe("sidebar row anatomy", () => {
     // is more over there". Local SVG, because no icon set ships this shape at
     // this weight and a dependency for one path would be absurd.
     const src = source("sidebar-row-button.tsx");
-    strictEqual(src.includes("lucide-react"), false, "no icon-set chevron");
-    ok(src.includes("<svg"));
-    ok(src.includes('viewBox="0 0 16 16"'));
-    ok(src.includes("<path"));
+    const mark = source("sidebar-row-caret.tsx");
+    strictEqual(mark.includes("lucide-react"), false, "no icon-set chevron");
+    ok(mark.includes("<svg"));
+    ok(mark.includes('viewBox="0 0 16 16"'));
+    ok(mark.includes("<path"));
     ok(includes(sidebarRowButtonClasses.caret, "fill-current"));
     // Linear's own 16px box. At 12px the same 5x7 mark was a speck.
     ok(includes(sidebarRowButtonClasses.caret, "size-4"));
@@ -524,6 +548,44 @@ describe("sidebar row anatomy", () => {
     // to sit beside and no width to be inset from.
     ok(includes(sidebarCollapsedItemClasses.trailing, "absolute"));
     ok(includes(sidebarCollapsedItemClasses.trailing, "pointer-events-none"));
+    // Where it perches is `sidebar-collapsed-item.test.ts`'s: on the avatar's
+    // shoulder.
     strictEqual("root" in sidebarCollapsedItemClasses, false);
+  });
+});
+
+describe("sidebar person row", () => {
+  const px = (token: string) => Number(token.split("-").pop()) * 4;
+
+  it("seats a 32px portrait on even padding in a fixed 44px row", () => {
+    strictEqual(sidebarPersonRow.height, "h-11");
+    strictEqual(sidebarRowButtonClasses.personHeight, "h-11");
+    ok(includes(sidebarPersonRow.iconBox, "size-8"));
+    strictEqual(px("size-8"), sidebarPersonRow.avatarDiameter);
+    const padding = (px("h-11") - sidebarPersonRow.avatarDiameter) / 2;
+    strictEqual(padding, 6);
+    ok(sidebarRowButtonClasses.personIcon.startsWith(sidebarPersonRow.iconBox));
+    ok(includes(sidebarRowButtonClasses.personIcon, sidebarPersonRow.iconGap));
+  });
+
+  it("keeps the rail's text size: a bolder name over a muted role", () => {
+    ok(includes(sidebarPersonRow.name, "text-[13px]"));
+    ok(includes(sidebarPersonRow.name, "font-semibold"));
+    ok(includes(sidebarPersonRow.role, "text-xs"));
+    ok(includes(sidebarPersonRow.role, "text-ink-muted"));
+    // Both lines fit the row with room to spare: 20px + 16px under 44px.
+    ok(px("leading-5") + px("leading-4") < px("h-11"));
+    ok(includes(sidebarRowButtonClasses.personName, "truncate"));
+    ok(includes(sidebarRowButtonClasses.personRole, "truncate"));
+  });
+
+  it("draws every AI Employee row as a person, with its role", () => {
+    const row = source("sidebar-item-row.tsx");
+    ok(row.includes('anatomy="person"'));
+    ok(row.includes("subtitle={item.subtitle}"));
+    // A missing role drops the second line, never the row's height.
+    const button = source("sidebar-row-button.tsx");
+    ok(button.includes("{subtitle && "));
+    ok(button.includes("person && c.personHeight"));
   });
 });

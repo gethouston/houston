@@ -1,54 +1,60 @@
-import { AgentBriefRecap } from "./agent-brief-recap";
-import { AgentIdentityForm } from "./agent-identity-form";
-import type { RecapSegmentId } from "./create-step-recap";
+import type { FormEvent } from "react";
+import { useRef } from "react";
+import { EditableEmployeeCard } from "../employee-card/editable-employee-card";
+import { useEmployeeNameSuggester } from "../employee-card/use-employee-name";
 import type { CreateAgentFlow } from "./use-create-agent-flow";
 
 /**
- * Step 3 of the guided setup: a name and a colour, and nothing else. The two
- * answers behind it are already made, so the screen states them as two chips
- * rather than asking again; each chip is also the way back to its question.
+ * The last step of a hire: the new AI Employee's own card, centred, to name
+ * and color. The card already carries the job and the industry the two
+ * questions before it answered, each still open to a change on its own line,
+ * so the screen asks for nothing else, and what it asks for is the frame's own
+ * title.
  *
- * The composition centres on one axis: face, answers, palette and name all
- * share it. This screen collects one short thing, so it is a standing portrait
- * in the compact frame rather than a form pinned to a left rail like the two
- * questions before it, and what it asks for is the sheet's own title. On a
- * phone the column scrolls, which is what keeps the name field clear of the
- * keyboard; the action it submits is in the sheet's bottom bar either way.
+ * The action is the frame's bottom bar, which submits this form by `formId`,
+ * so Enter in the name and a press on the bar are the same submit. A submit
+ * the name holds back puts the person back in the field, with the card saying
+ * why.
  */
 export function CustomizeStep({
   flow,
   formId,
-  onChangeAnswer,
 }: {
   flow: CreateAgentFlow;
   formId: string;
-  /** Back to the question that collected an answer, from its own chip. */
-  onChangeAnswer: (step: RecapSegmentId) => void;
 }) {
+  const suggest = useEmployeeNameSuggester();
+  const nameField = useRef<HTMLInputElement>(null);
+  const role = flow.roleState.roleLabel.trim();
+
+  const submit = (event: FormEvent) => {
+    event.preventDefault();
+    if (flow.submit() === "invalid") nameField.current?.focus();
+  };
+
   return (
-    <div className="mx-auto w-full max-w-sm">
-      <AgentIdentityForm
-        formId={formId}
-        name={flow.name}
+    <form id={formId} onSubmit={submit} className="flex justify-center">
+      <EditableEmployeeCard
+        layout="solo"
+        role={role}
+        industry={flow.roleState.contextLabel.trim()}
+        status="draft"
         color={flow.color}
-        error={flow.error}
-        existingPath={flow.existingPath}
-        nameInvalid={flow.nameInvalid}
-        showLinkProject={flow.showLinkProject}
-        onNameChange={flow.onNameChange}
         onColorChange={flow.onColorChange}
-        onExistingPathChange={flow.onExistingPathChange}
-        onSubmit={flow.onSubmit}
-        header={
-          <AgentBriefRecap
-            answers={{
-              context: flow.roleState.contextLabel,
-              role: flow.roleState.roleLabel,
-            }}
-            onChange={onChangeAnswer}
-          />
-        }
+        onBriefChange={flow.roleState.answerBrief}
+        message={flow.message}
+        invalid={flow.nameInvalid}
+        name={{
+          value: flow.name,
+          onChange: flow.onNameChange,
+          onSuggest: () =>
+            flow.onNameChange(
+              suggest({ role, current: flow.name, taken: flow.takenNames }),
+            ),
+          inputRef: nameField,
+          autoFocus: true,
+        }}
       />
-    </div>
+    </form>
   );
 }

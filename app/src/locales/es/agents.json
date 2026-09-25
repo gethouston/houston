@@ -61,7 +61,8 @@
       "role": "Rol",
       "addIndustry": "Agregar industria",
       "addRole": "Agregar rol"
-    }
+    },
+    "loadFailed": "No se pudo cargar la descripción del puesto."
   },
   "learnings": {
     "emptyTitle": "Aún no hay aprendizajes",
@@ -285,8 +286,5 @@
         "clearAll": "Quitar todo"
       }
     }
-  },
-  "rowMenu": {
-    "label": "Opciones de {{name}}"
   }
 }

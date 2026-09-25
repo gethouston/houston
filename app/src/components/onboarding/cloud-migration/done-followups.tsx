@@ -1,5 +1,4 @@
 import { Button } from "@houston-ai/core";
-import confetti from "canvas-confetti";
 import { Check, Loader2 } from "lucide-react";
 import { useEffect } from "react";
 import { useTranslation } from "react-i18next";
@@ -7,6 +6,7 @@ import {
   useIntegrationConnections,
   useIntegrationToolkits,
 } from "../../../hooks/queries";
+import { fireSetupConfetti } from "../../../lib/confetti";
 import { appDisplay } from "../../integrations/app-display";
 import { AppRow } from "../../integrations/app-row";
 import { INTEGRATION_PROVIDER } from "../../integrations/model";
@@ -18,18 +18,17 @@ import { WizardFrame } from "./wizard-frame";
 
 /**
  * Step 1 of the done-screen's two-step setup (HOU-719 redesign): reconnect
- * the AI. Reuses the SAME `<ProviderBrowser>` in the SAME `curated` mode as
- * onboarding's "Connect your AI" step (missions/connect-ai.tsx) — the featured
- * providers split into Subscription / API-key sections with a "see all" chip —
- * so the two screens read as one flow. It owns the OAuth launch, dialogs,
- * polling, and failure toasts.
+ * the AI. Reuses the SAME `<ProviderBrowser>` as onboarding's "Connect your
+ * AI" card (`../connect-ai-card.tsx`), here in its `curated` mode: the featured
+ * providers split into Subscription / API-key sections with a "see all" chip.
+ * It owns the OAuth launch, dialogs, polling, and failure toasts.
  *
- * Two deliberate departures from onboarding: we pass NEITHER `onSelect` nor
- * `selectOnMount`. The migration step must not auto-advance — the user
- * continues via the Continue button — and a pre-connected provider (e.g. a dev
- * machine with shared credentials) must stay VISIBLE rather than collapse the
- * step to a one-line "connected" confirmation; the step is titled "Connect
- * your AI", so the cards must always show. Curated mode keeps pre-connected
+ * It passes NEITHER `onSelect` nor `selectOnMount`. The migration step must
+ * not auto-advance — the user continues via the Continue button — and a
+ * pre-connected provider (e.g. a dev machine with shared credentials) must
+ * stay VISIBLE rather than collapse the step to a one-line "connected"
+ * confirmation; the step is titled "Connect your AI", so the cards must
+ * always show. Curated mode keeps pre-connected
  * providers on their cards (their connected state renders inline within the
  * sections), and the browser handles the missing `onSelect` cleanly — the
  * auto-select watcher and the local-connect dialog both no-op without it.
@@ -46,53 +45,18 @@ export function DoneStepAi() {
   );
 }
 
-function prefersReducedMotion(): boolean {
-  return (
-    typeof window !== "undefined" &&
-    typeof window.matchMedia === "function" &&
-    window.matchMedia("(prefers-reduced-motion: reduce)").matches
-  );
-}
-
-/** The onboarding's confetti payoff, mirrored exactly (setup-progress.tsx),
- *  so the wizard's celebration reads as the same voice as everywhere else. */
-function fireConfetti() {
-  if (prefersReducedMotion()) return;
-  const base = { startVelocity: 45, ticks: 220, zIndex: 9999, scalar: 0.9 };
-  confetti({
-    ...base,
-    particleCount: 140,
-    spread: 80,
-    origin: { x: 0.5, y: 0.55 },
-  });
-  confetti({
-    ...base,
-    particleCount: 70,
-    spread: 60,
-    angle: 60,
-    origin: { x: 0, y: 0.7 },
-  });
-  confetti({
-    ...base,
-    particleCount: 70,
-    spread: 60,
-    angle: 120,
-    origin: { x: 1, y: 0.7 },
-  });
-}
-
 /**
  * The wizard's final beat (HOU-719): a short congrats screen shown after the
  * two setup steps, before closing into the app. The celebratory
  * {@link SuccessCheck} (onboarding's one colour-accent moment) over the space
- * backdrop, the confetti payoff on mount (guarded by the reduced-motion
- * check), then a single "Start building" button hands control back to the
+ * backdrop, the shared setup confetti on mount (which honours reduced
+ * motion), then a single "Start building" button hands control back to the
  * caller to close the wizard.
  */
 export function DoneCongrats({ onFinish }: { onFinish: () => void }) {
   const { t } = useTranslation("migration");
   useEffect(() => {
-    fireConfetti();
+    fireSetupConfetti();
   }, []);
   return (
     <WizardFrame

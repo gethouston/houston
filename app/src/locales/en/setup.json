@@ -1,127 +1,66 @@
 {
-  "inApp": {
-    "welcomeTitle": "Welcome to Houston!",
-    "welcomeBody": "Before you start, set up the essentials below. <emph>Houston can't work without them.</emph> It takes 3 minutes.",
-    "continue": "Continue",
-    "steps": {
-      "connectAiIntro": {
-        "title": "Connect your AI",
-        "body": "Your AI Employees need a model to work. I'll show you where to connect it.",
-        "cta": "Show me"
-      },
-      "openMenu": {
-        "title": "Open the menu",
-        "hint": "Tap More at the bottom"
-      },
-      "openAiHub": {
-        "title": "Click AI Models"
-      },
-      "connectAi": {
-        "title": "Pick the AI you already use.",
-        "hint": "Your AI Employees will run on it",
-        "already": "You already have an AI connected."
-      },
-      "integrationsIntro": {
-        "title": "Connect your apps",
-        "body": "Your AI Employees act through your apps, like email and calendar. I'll show you where.",
-        "cta": "Show me"
-      },
-      "openIntegrations": {
-        "title": "Click Integrations"
-      },
-      "connectIntegration": {
-        "title": "Connect your email.",
-        "hint": "Or any app you use every day",
-        "already": "You already have an app connected."
-      },
-      "integrationConnected": {
-        "title": "App connected!",
-        "body": "That's how easy it is. Your AI Employees can reach 1000+ apps this way."
-      },
-      "createAgentIntro": {
-        "title": "Create your first AI Employee",
-        "body": "AI Employees are teammates that take work off your plate. I'll show you where to create one.",
-        "cta": "Show me"
-      },
-      "createAgent": {
-        "title": "Click New AI Employee",
-        "hint": "Start with the industry it works in",
-        "already": "You already have an AI Employee."
-      },
-      "agentCreated": {
-        "title": "AI Employee created!",
-        "body": "It's getting itself set up right now. You can talk to it already."
-      },
-      "sendMissionIntro": {
-        "title": "Give it work",
-        "body": "You ask in plain words, and your AI Employee gets to it. I'll show you where.",
-        "cta": "Show me"
-      },
-      "sendMission": {
-        "title": "Click New task",
-        "hint": "That's how you give AI Employees work",
-        "typeTitle": "Tell it what you need.",
-        "typeHint": "In your own words, then send",
-        "emailHint": "Its first task is already written",
-        "sendTitle": "Just press send.",
-        "sendHint": "We wrote your AI Employee's first task for you"
-      },
-      "missionSent": {
-        "title": "Task sent!",
-        "body": "Your AI Employee is on it. That's the whole loop: you ask, it works.",
-        "cta": "Done"
-      },
-      "createAgentDialog": {
-        "briefTitle": "Tell it what it will do.",
-        "briefHint": "Pick the industry, then the job it takes over",
-        "nameTitle": "Pick a color and give it a name.",
-        "nameHint": "Then click Create AI Employee"
-      },
-      "emailSending": {
-        "title": "Watch your AI Employee work.",
-        "hint": "It's emailing you right now",
-        "stuck": "Something went wrong? Your task was sent, so you can finish setup."
-      },
-      "emailSent": {
-        "title": "Check your inbox!",
-        "body": "Your AI Employee just sent you a real email. That's it working for you, for real."
-      },
-      "academyReveal": {
-        "title": "Chapter 1 complete!",
-        "body": "You just finished the first chapter of the Houston Academy and earned {{points}} experience.",
-        "cta": "Visit the Academy"
-      },
-      "openAgents": {
-        "hint": "Tap AI Employees at the bottom",
-        "title": "Open AI Employees"
-      }
-    },
-    "skipStep": "Skip step",
-    "welcomeCta": "Start setup",
-    "checklist": {
-      "ai": "Connect your AI",
-      "apps": "Connect your apps",
-      "agent": "Create your AI Employee",
-      "task": "Send its first task"
-    },
-    "stripFailed": "We couldn't remove the setup note from your AI Employee. Ask it to remove the Houston setup section from its instructions."
-  },
   "name": {
-    "title": "Name your workspace",
     "description": "Workspaces keep your AI Employees organized, one for personal, one for work, etc.",
     "placeholder": "e.g. Personal, Work, Acme Corp"
   },
-  "provider": {
-    "title": "Connect your AI",
-    "description": "Houston uses <emph>your own</emph> subscription. We never see your credentials.",
-    "finishPage": "Get started",
-    "finishDialog": "Create workspace"
-  },
   "migrationReconnect": {
     "title": "Welcome back",
-    "body": "Your assistants and everything you've worked on are right here. Just reconnect your AI to pick up where you left off.",
+    "body": "Your AI Employees and everything you've worked on are right here. Just reconnect your AI to pick up where you left off.",
     "skip": "I'll do this later",
     "dismissError": "We couldn't save that. Please try again."
+  },
+  "connectAi": {
+    "title": "Connect your AI",
+    "subtitle": "Your AI Employees need an AI to think with. Sign in to the one you already use, like ChatGPT or Claude.",
+    "plans": {
+      "claude": {
+        "title": "Your Claude subscription",
+        "subtitle": "Use the Claude plan you already pay for.",
+        "cancel": "Cancel Claude sign-in"
+      },
+      "chatgpt": {
+        "title": "Your ChatGPT subscription",
+        "subtitle": "Use the ChatGPT plan you already pay for.",
+        "cancel": "Cancel ChatGPT sign-in"
+      }
+    },
+    "signIn": "Sign in",
+    "waiting": "Waiting for you to sign in",
+    "cancel": "Cancel",
+    "connected": "Connected",
+    "checking": "Checking",
+    "viewMore": "View more",
+    "showFewer": "Show fewer options"
+  },
+  "team": {
+    "choice": {
+      "title": "Let's build your team",
+      "subtitle": "Your AI Employees take work off your plate. Start with a ready-made team, or hire each one yourself.",
+      "soFar_one": "You have 1 AI Employee on your team so far",
+      "soFar_other": "You have {{count}} AI Employees on your team so far",
+      "basicTitle": "Start with a basic team",
+      "basicBody": "Three AI Employees ready to go: {{roles}}.",
+      "hireTitle": "Hire your team",
+      "hireBody": "Pick an industry, a job and a name, one AI Employee at a time."
+    },
+    "hire": {
+      "submit": "Hire"
+    },
+    "hired": {
+      "title_one": "You hired your first AI Employee",
+      "title_other": "You hired {{count}} AI Employees",
+      "subtitle": "Change a name or a color anytime. Hire another, or finish and meet your team.",
+      "hireAnother": "Hire another"
+    },
+    "basic": {
+      "title": "Meet your new team",
+      "subtitle": "Three AI Employees, ready to start. Give each one a name and a color.",
+      "submit": "Hire my team",
+      "attention_one": "{{name}} couldn't join your team yet. Try again or remove them to finish.",
+      "attention_other": "{{count}} AI Employees couldn't join your team yet. Try again or remove them to finish.",
+      "unsaved_one": "We couldn't save the changes to {{name}} yet. We'll try again when you hire your team.",
+      "unsaved_other": "We couldn't save the changes to {{count}} AI Employees yet. We'll try again when you hire your team."
+    }
   },
   "onboardingSegment": {
     "title": "What best describes your work?",
@@ -145,20 +84,7 @@
     "industry": {
       "title": "What industry do you work in?",
       "subtitle": "So Houston understands the kind of work you do.",
-      "options": {
-        "technology": "Technology",
-        "finance": "Finance & Banking",
-        "legal": "Legal",
-        "healthcare": "Healthcare",
-        "education": "Education",
-        "retail": "Retail & E-commerce",
-        "manufacturing": "Manufacturing",
-        "real_estate": "Real Estate",
-        "marketing_agencies": "Marketing & Agencies",
-        "government_nonprofit": "Government & Non-profit",
-        "consulting": "Consulting & Professional Services",
-        "something_else": "Something else"
-      }
+      "backToList": "Back to the list"
     },
     "goal": {
       "title": "What would you love to automate?",
@@ -175,39 +101,5 @@
       "label": "Step {{current}} of {{total}}"
     },
     "otherPlaceholder": "Tell us in a few words"
-  },
-  "tutorial": {
-    "nav": {
-      "back": "Back"
-    },
-    "errors": {
-      "setupFailed": "We couldn't finish setting up your workspace. Please try again."
-    },
-    "defaults": {
-      "assistantName": "Personal Assistant",
-      "focus": "Help me stay organized, prepare my day, draft messages, protect focus time, and keep track of follow-ups.",
-      "approvalRule": "Ask before sending messages, creating calendar events, or changing anything in connected apps."
-    },
-    "seeds": {
-      "dailyBriefing": {
-        "name": "Morning briefing"
-      },
-      "meetingPrep": {
-        "name": "Meeting prep",
-        "description": "Pull together everything you need before your next meeting: who is on the call, what you last discussed, and anything time-sensitive, from your inbox and a quick web check, handed to you before it starts."
-      }
-    },
-    "missions": {
-      "email": {
-        "offer": {
-          "option": "Send me a hello email"
-        }
-      },
-      "aiConnected": {
-        "title": "Your AI is connected!",
-        "body": "Your AI Employee can think now. You're one step closer.",
-        "cta": "Continue"
-      }
-    }
   }
 }

@@ -105,7 +105,6 @@ function pressHarness(
       return install(args);
     },
     reveal: () => steps.push("reveal"),
-    startSetup: () => steps.push("startSetup"),
     reportNameProblem: (problem) => steps.push(`nameProblem:${problem}`),
     reportFailure: () => steps.push("failure"),
     setInstalling: (installing) => steps.push(`installing:${installing}`),
@@ -149,7 +148,6 @@ describe("the import wizard's install action", () => {
     deepStrictEqual(harness.steps, [
       "installing:true",
       "reveal",
-      "startSetup",
       "installing:false",
     ]);
   });

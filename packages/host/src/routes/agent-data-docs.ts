@@ -1,11 +1,7 @@
 import type { IncomingMessage, ServerResponse } from "node:http";
-import {
-  loadConfig,
-  loadLearnings,
-  saveConfig,
-  saveLearnings,
-} from "@houston/domain";
+import { loadConfig, loadLearnings, saveLearnings } from "@houston/domain";
 import type { Vfs } from "../vfs";
+import { writeSurfaceConfig } from "./agent-config-write";
 import { withDocLock } from "./doc-lock";
 import { json, readJson } from "./http";
 
@@ -35,10 +31,9 @@ export async function handleDocsData(
       return true;
     }
     if (method === "PUT") {
-      const body = await readJson(req);
-      await saveConfig(vfs, root, body);
+      const stored = await writeSurfaceConfig(vfs, root, await readJson(req));
       fireChange();
-      json(res, 200, body);
+      json(res, 200, stored);
       return true;
     }
     return false;

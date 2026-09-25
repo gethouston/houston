@@ -3,7 +3,7 @@
  *
  * Hosted profile only: creating an agent answers instantly while its engine
  * warms up for a couple of minutes with no readiness signal from the platform
- * (see `lib/agent-provisioning.ts`). `useAgentStore.create` marks the fresh
+ * (see `lib/agent-provisioning/`). `useAgentStore.create` marks the fresh
  * agent here; a readiness long-poll clears it the moment the agent's engine
  * answers anything. The board's optimistic mission rows
  * (`hooks/use-warming-board-rows.ts`) and the warming-write guard subscribe
@@ -17,108 +17,17 @@
  * bookkeeping beside the record itself.
  */
 
-import type { ActivityStatus } from "@houston/engine-adapter";
 import { create } from "zustand";
-import {
-  detectEngineAsleep,
-  type ProvisioningEntry,
-  parsePersistedProvisioning,
-  runProvisioningProbe,
-  warmingFlushRefetchKeys,
-} from "../lib/agent-provisioning";
+import { detectEngineAsleep } from "../lib/agent-provisioning/asleep";
 import { getEngine, isCoLocatedEngine, whenEngineReady } from "../lib/engine";
-import { reportError } from "../lib/error-report";
-import { showErrorToast } from "../lib/error-toast";
-import i18n from "../lib/i18n";
-import { logger } from "../lib/logger";
-import { queryClient } from "../lib/query-client";
-import { healStaleRosterFromError } from "../lib/roster-heal";
+import { buildWarmingSend, isFlushingWarmingSends } from "../lib/warming-sends";
 import {
-  buildWarmingSend,
-  flushWarmingSends,
-  isFlushingWarmingSends,
-  type QueueWarmingSendArgs,
-  restoreWarmingBubbles,
-} from "../lib/warming-sends";
-
-const STORAGE_KEY = "houston.agent-provisioning";
-
-interface AgentProvisioningState {
-  /** agentId → its provisioning entry, present while the engine warms up. */
-  provisioning: Record<string, ProvisioningEntry>;
-  /**
-   * Bumped on every queued send. Entries mutate in place (their identity is a
-   * live probe's exit switch), which alone never notifies subscribers — this
-   * counter is the change signal the optimistic board rows re-render on.
-   */
-  sendsVersion: number;
-  /** Start tracking a just-created agent (no-op on a co-located engine). */
-  markProvisioning: (agent: { id: string; folderPath: string }) => void;
-  /**
-   * Asleep-check an EXISTING agent on open (HOU-730, hosted only): a pod
-   * scaled to zero answers nothing until the gateway wakes it, so mark it
-   * exactly like a just-created agent — sends park with a local bubble and
-   * an optimistic mission row, and flush when the readiness probe clears.
-   */
-  detectSleepingEngine: (agent: { id: string; folderPath: string }) => void;
-  /** A rename mid-warm-up moves the agent's id/path; re-key the entry. */
-  carryRename: (
-    oldId: string,
-    agent: { id: string; folderPath: string },
-  ) => void;
-  /**
-   * Park a chat send until the engine is ready (see `lib/warming-sends.ts`):
-   * renders the bubble and appends to the entry's queue. Returns false — and
-   * renders nothing — when the agent isn't marked (or its flush already
-   * started): the caller sends normally.
-   */
-  queueWarmingSend: (agentId: string, args: QueueWarmingSendArgs) => boolean;
-  /**
-   * Flip the status a queued row will land with (the welcome mission
-   * settling to needs_you once its greeting reveals, HOU-713). False when
-   * the agent isn't marked, the flush already started, or no queued send
-   * carries that row — the caller patches the real row instead.
-   */
-  setQueuedRowStatus: (
-    agentId: string,
-    activityId: string,
-    status: ActivityStatus,
-  ) => boolean;
-  /**
-   * Stop tracking. With `onlyIf`, clears only while that exact entry is still
-   * current — a probe's own settle must not clear a newer re-mark of the id.
-   */
-  clearProvisioning: (agentId: string, onlyIf?: ProvisioningEntry) => void;
-  /**
-   * Drop every provisioning entry (and its localStorage mirror) on an identity
-   * change (HOU-903): the marks are keyed by the outgoing account's agent ids
-   * and probe its engine. Live probes self-retire (their exit switch is entry
-   * identity, now absent from the store).
-   */
-  reset: () => void;
-}
-
-/** localStorage access, surfaced to Sentry (no toast — nothing user-blocking
- *  fails here, but a broken mirror must not stay invisible in beta). */
-function storageRead(): string | null {
-  try {
-    return localStorage.getItem(STORAGE_KEY);
-  } catch (e) {
-    reportError("agent_provisioning_storage", "reading the mirror failed", e);
-    return null;
-  }
-}
-function storageWrite(state: Record<string, ProvisioningEntry>): void {
-  try {
-    const entries = Object.values(state);
-    if (entries.length === 0) localStorage.removeItem(STORAGE_KEY);
-    else localStorage.setItem(STORAGE_KEY, JSON.stringify(entries));
-  } catch (e) {
-    reportError("agent_provisioning_storage", "writing the mirror failed", e);
-  }
-}
-
-const sleep = (ms: number) => new Promise<void>((r) => setTimeout(r, ms));
+  rehydrateProvisioning,
+  sleep,
+  startEntry,
+} from "./agent-provisioning/lifecycle";
+import type { AgentProvisioningState } from "./agent-provisioning/state";
+import { storageWrite } from "./agent-provisioning/storage";
 
 /** Agent ids with an asleep-check in flight — one at a time per agent. */
 const asleepChecks = new Set<string>();
@@ -135,7 +44,7 @@ export const useAgentProvisioningStore = create<AgentProvisioningState>(
 
     markProvisioning: (agent) => {
       if (isCoLocatedEngine()) return;
-      startEntry({
+      startEntry(useAgentProvisioningStore, {
         agentId: agent.id,
         agentPath: agent.folderPath,
         since: Date.now(),
@@ -159,7 +68,7 @@ export const useAgentProvisioningStore = create<AgentProvisioningState>(
           // riding the gateway hold so its locally cached lists/transcripts
           // stay painted (see warmingReadsAnswerEmpty); sends still park and
           // writes still block, exactly like a just-created agent.
-          startEntry({
+          startEntry(useAgentProvisioningStore, {
             agentId: agent.id,
             agentPath: agent.folderPath,
             since: Date.now(),
@@ -177,7 +86,7 @@ export const useAgentProvisioningStore = create<AgentProvisioningState>(
       // restart the warm-up, and carrying `timedOut` avoids re-showing the
       // "still starting" toast for a stall the user already saw.
       // Queued sends move with the agent (their session keys are stable).
-      startEntry({
+      startEntry(useAgentProvisioningStore, {
         agentId: agent.id,
         agentPath: agent.folderPath,
         since: previous.since,
@@ -236,104 +145,7 @@ export const useAgentProvisioningStore = create<AgentProvisioningState>(
   }),
 );
 
-function startEntry(entry: ProvisioningEntry): void {
-  useAgentProvisioningStore.setState((s) => {
-    const provisioning = { ...s.provisioning, [entry.agentId]: entry };
-    storageWrite(provisioning);
-    return { provisioning };
-  });
-  startProbe(entry);
-}
-
-function startProbe(entry: ProvisioningEntry): void {
-  const store = useAgentProvisioningStore.getState();
-  void runProvisioningProbe(entry, {
-    readFile: (agentPath, relPath) =>
-      getEngine().readAgentFile(agentPath, relPath),
-    // Identity, not presence: a re-mark of the same id retires this probe.
-    isMarked: (id) =>
-      useAgentProvisioningStore.getState().provisioning[id] === entry,
-    onReady: (id) => {
-      // Deliver the queued messages FIRST (their turns register before any
-      // new composer send can). Then refetch the board BEFORE dropping the
-      // entry — and AWAIT every refetch, so the optimistic rows hand off to
-      // the real rows the flush wrote without a one-frame gap (HOU-713).
-      // Which keys that is (the cross-agent sweep the boards actually read,
-      // plus the per-agent activity list) is `warmingFlushRefetchKeys`. New
-      // sends already steer to the normal wire path once the flush started.
-      void flushWarmingSends(entry)
-        .then(() =>
-          Promise.all(
-            warmingFlushRefetchKeys(entry.agentPath).map((queryKey) =>
-              queryClient.invalidateQueries({ queryKey }),
-            ),
-          ),
-        )
-        .finally(() => store.clearProvisioning(id, entry));
-    },
-    onGone: (id, err) => {
-      // The server no longer knows this agent (deleted/unshared elsewhere
-      // while the entry — possibly rehydrated from the localStorage mirror —
-      // still tracked it, HOUSTON-APP-4ZF). Flushing would only fan the same
-      // "agent not found" 404 into every queued write; the honest surface is
-      // the roster without the agent. Silent by the agent-gone contract
-      // (`lib/agent-gone.ts`): log, heal the roster so the ghost disappears,
-      // drop the entry and its queue.
-      logger.warn(
-        `[agent-provisioning] agent gone during warm-up, dropping entry: ${id}`,
-      );
-      healStaleRosterFromError(err);
-      store.clearProvisioning(id, entry);
-    },
-    onTimeout: (id, error) => {
-      // A newer mark (rename, or a fresh create reusing the id) already
-      // retired this exact entry — nothing to do.
-      if (useAgentProvisioningStore.getState().provisioning[id] !== entry) {
-        return;
-      }
-      // HOU-693 regression: this used to clearProvisioning here, silently
-      // dropping the user's still-visible first chat the moment a cold start
-      // ran past the TTL. Never make a visible mission disappear on its own —
-      // flag it once (toast + sticky UI state) and keep waiting instead of
-      // giving up. A pod that's merely slow to schedule still comes up.
-      if (!entry.timedOut) {
-        entry.timedOut = true;
-        showErrorToast("agent_provisioning", error.message, error, {
-          userMessage: i18n.t("shell:agentProvisioning.stillStarting"),
-        });
-      }
-      entry.since = Date.now();
-      useAgentProvisioningStore.setState((s) => {
-        storageWrite(s.provisioning);
-        return { sendsVersion: s.sendsVersion + 1 };
-      });
-      startProbe(entry);
-    },
-    sleep,
-    now: () => Date.now(),
-  });
-}
-
-// Rehydrate after a relaunch: pick the still-fresh entries back up and resume
-// their probes once the engine adapter exists. Hosted profile only — on a
-// co-located engine nothing is ever marked, and stale hosted entries expire
-// via the TTL inside parsePersistedProvisioning.
-void whenEngineReady().then(() => {
-  if (isCoLocatedEngine()) return;
-  const raw = storageRead();
-  const fresh = parsePersistedProvisioning(raw, Date.now());
-  if (fresh.length === 0) {
-    if (raw !== null) storageWrite({});
-    return;
-  }
-  for (const entry of fresh) {
-    // A timed-out entry's `since` may be hours stale (kept regardless of age
-    // by the parse filter above) — re-anchor it so the resumed probe gets a
-    // fresh TTL window instead of immediately re-timing-out.
-    if (entry.timedOut) entry.since = Date.now();
-    startEntry(entry);
-    // The relaunch emptied the in-memory VM: re-render the queued bubbles so
-    // the sent-but-not-yet-delivered messages stay visible.
-    restoreWarmingBubbles(entry);
-  }
-});
+// Rehydrate after a relaunch once the engine adapter exists.
+void whenEngineReady().then(() =>
+  rehydrateProvisioning(useAgentProvisioningStore),
+);

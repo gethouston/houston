@@ -20,6 +20,11 @@ export type HoustonEvent =
   | { type: "LearningsChanged"; agentPath: string }
   | { type: "SkillsChanged"; agentPath: string }
   | { type: "ContextChanged"; agentPath: string }
+  /** The role an agent's job description names changed, and the agent listing
+   *  (`GET /agents`, its `role` field) already serves the new one. Raised only
+   *  once the listing can answer with it: on a gateway-fronted pod, after the
+   *  role document the gateway lists from is durable. */
+  | { type: "AgentRoleChanged"; agentPath: string }
   | { type: "FilesChanged"; agentPath: string }
   | { type: "ConversationsChanged"; agentPath: string }
   | { type: "WorkspacesChanged" }

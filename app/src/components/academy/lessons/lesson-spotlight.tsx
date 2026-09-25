@@ -1,4 +1,4 @@
-import { cn } from "@houston-ai/core";
+import { Button, cn } from "@houston-ai/core";
 import {
   type CardSize,
   placeCard,
@@ -11,10 +11,10 @@ import { LessonBeatChrome } from "./lesson-beat-chrome";
  * A lesson's DO-IT beat: the app dims, the real control stays lit, and ONE
  * sentence whispers beside it.
  *
- * There is no coach card. What the whisper carries is only what has to be read
- * here and now — the sentence, the count, and the way out — on a quiet popover
- * surface beside the control. No buttons that move the lesson on: the interface
- * itself is the next click.
+ * What the whisper carries is only what has to be read here and now — the sentence, the count, and the way out — on a quiet popover
+ * surface beside the control. When the interface itself is the next click there
+ * is no button that moves the lesson on; a stop that only has to be SEEN (a
+ * tour) carries its own Next, the one `action`.
  *
  * The copy area stays click-through, so the control it points at is reachable
  * even where the two overlap; the close is the one thing on it that takes a
@@ -27,19 +27,21 @@ import { LessonBeatChrome } from "./lesson-beat-chrome";
  * which is the difference between a lesson that waits a moment and a lesson
  * that strands the user on a step they already did.
  *
- * The veil is the same one the guided setup wears (composed, not restyled — the
- * mandatory setup must stay exactly as it is); this file is only the whisper
- * and the placement it needs.
+ * The veil is the tutorial family's (`../../tutorial`), composed rather than
+ * restyled; this file is only the whisper and the placement it needs.
  */
 
 /** The whisper's box: one sentence over the count-and-close row. */
 const WHISPER: CardSize = { w: 260, h: 96 };
+/** The same box with its Next row under the sentence. */
+const WHISPER_WITH_ACTION: CardSize = { w: 260, h: 136 };
 
 export function LessonSpotlight({
   selector,
   whisper,
   armed,
   inDialog,
+  action,
   position,
   total,
   onExit,
@@ -53,6 +55,8 @@ export function LessonSpotlight({
   /** The target lives inside an open modal dialog: the whole step lifts above
    *  the dialog layer and the blockers stay off (the dialog is already modal). */
   inDialog?: boolean;
+  /** The beat's own way on, for a stop the user only has to see. */
+  action?: { label: string; onClick: () => void };
   /** The beat that is playing, 1-based, and how many there are. */
   position: number;
   total: number;
@@ -67,12 +71,13 @@ export function LessonSpotlight({
   // plain scrim, and no "click here" cues, all of it the veil's own
   // target-not-there behaviour rather than a second way to draw a step.
   const hole = armed ? measured : null;
+  const size = action ? WHISPER_WITH_ACTION : WHISPER;
   const place = placeCard({
     hole,
     dialogRect,
     viewport,
     inDialog: inDialog === true,
-    size: WHISPER,
+    size,
   });
 
   // Above the z-50 dialog layer for in-dialog beats, else above shell chrome
@@ -99,7 +104,7 @@ export function LessonSpotlight({
           "ht-shadow-modal pointer-events-none fixed flex flex-col gap-1.5 rounded-xl bg-dialog px-3 py-2 duration-200 animate-in fade-in-0 motion-reduce:animate-none",
           z,
         )}
-        style={{ top: place.top, left: place.left, width: WHISPER.w }}
+        style={{ top: place.top, left: place.left, width: size.w }}
       >
         <LessonBeatChrome position={position} total={total} onExit={onExit} />
         {whisper && (
@@ -109,6 +114,16 @@ export function LessonSpotlight({
           >
             {whisper}
           </p>
+        )}
+        {action && (
+          <Button
+            autoFocus
+            size="sm"
+            className="pointer-events-auto mt-1 self-end rounded-full active:scale-[0.96]"
+            onClick={action.onClick}
+          >
+            {action.label}
+          </Button>
         )}
       </div>
     </>

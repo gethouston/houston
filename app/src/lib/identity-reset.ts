@@ -5,6 +5,7 @@ import { useDraftStore } from "../stores/drafts";
 import { useInteractionDraftStore } from "../stores/interaction-drafts";
 import { useUIStore } from "../stores/ui";
 import { useWorkspaceStore } from "../stores/workspaces";
+import { sliceCoverage } from "./all-conversations-coverage";
 import { setActiveOrg } from "./engine";
 import { resetQueryCacheForIdentityChange } from "./identity-cache-reset";
 import { queryClient } from "./query-client";
@@ -41,5 +42,6 @@ export function resetForIdentityChange(): void {
   useDraftStore.getState().reset();
   useInteractionDraftStore.getState().reset();
   useAgentProvisioningStore.getState().reset();
+  sliceCoverage.reset();
   setActiveOrg(null);
 }

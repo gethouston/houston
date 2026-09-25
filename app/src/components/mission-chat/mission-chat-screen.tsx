@@ -7,6 +7,7 @@ import type { Agent } from "../../lib/types";
 import { useAgentStore } from "../../stores/agents";
 import { useUIStore } from "../../stores/ui";
 import { useBoardChatWiring } from "../board/use-board-chat-wiring";
+import { tourAnchor } from "../shell/workspace-tour-steps.ts";
 import { useMissionChatSource } from "./use-mission-chat-source";
 
 /**
@@ -54,6 +55,7 @@ function MissionChatHost({ agent }: { agent: Agent }) {
   return (
     <div
       ref={screenRef}
+      {...tourAnchor("taskChat")}
       data-testid="mission-chat-screen"
       className="flex h-full min-h-0 flex-col pb-safe"
       style={keyboardInset > 0 ? { paddingBottom: keyboardInset } : undefined}

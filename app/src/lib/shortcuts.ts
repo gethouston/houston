@@ -120,6 +120,19 @@ export function isTypingTarget(e: KeyboardEvent): boolean {
   return tag === "INPUT" || tag === "TEXTAREA" || tag === "SELECT";
 }
 
+/** A layer drawn over the page: a dialog, or a popover / menu Radix places. */
+const OVERLAY_SELECTOR =
+  '[role="dialog"], [role="alertdialog"], [data-radix-popper-content-wrapper]';
+
+/** True if the keystroke came from inside a dialog or popover, which owns
+ *  every key it is sent over whatever sits behind it. */
+export function isOverlayTarget(e: KeyboardEvent): boolean {
+  const t = e.target as Element | null;
+  return (
+    typeof t?.closest === "function" && t.closest(OVERLAY_SELECTOR) !== null
+  );
+}
+
 /**
  * True when the typing target exists but holds no text yet. Used by
  * arrow-key shortcuts so an auto-focused, still-empty composer doesn't

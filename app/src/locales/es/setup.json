@@ -1,127 +1,66 @@
 {
-  "inApp": {
-    "welcomeTitle": "¡Te damos la bienvenida a Houston!",
-    "welcomeBody": "Antes de empezar, configura lo esencial. <emph>Houston no puede funcionar sin esto.</emph> Toma 3 minutos.",
-    "continue": "Continuar",
-    "steps": {
-      "connectAiIntro": {
-        "title": "Conecta tu IA",
-        "body": "Tus empleados de IA necesitan un modelo para trabajar. Te muestro dónde conectarlo.",
-        "cta": "Muéstrame"
-      },
-      "openMenu": {
-        "title": "Abre el menú",
-        "hint": "Toca Más, abajo"
-      },
-      "openAiHub": {
-        "title": "Haz clic en Modelos de IA"
-      },
-      "connectAi": {
-        "title": "Elige la IA que ya usas.",
-        "hint": "Tus empleados de IA funcionarán con ella",
-        "already": "Ya tienes una IA conectada."
-      },
-      "integrationsIntro": {
-        "title": "Conecta tus apps",
-        "body": "Tus empleados de IA actúan a través de tus apps, como el correo y el calendario. Te muestro dónde.",
-        "cta": "Muéstrame"
-      },
-      "openIntegrations": {
-        "title": "Haz clic en Integraciones"
-      },
-      "connectIntegration": {
-        "title": "Conecta tu correo.",
-        "hint": "O cualquier app que uses a diario",
-        "already": "Ya tienes una app conectada."
-      },
-      "integrationConnected": {
-        "title": "¡App conectada!",
-        "body": "Así de fácil. Tus empleados de IA pueden acceder a más de 1000 apps de esta forma."
-      },
-      "createAgentIntro": {
-        "title": "Crea tu primer empleado de IA",
-        "body": "Los empleados de IA son compañeros que te quitan trabajo de encima. Te muestro dónde crear uno.",
-        "cta": "Muéstrame"
-      },
-      "createAgent": {
-        "title": "Haz clic en Nuevo empleado de IA",
-        "hint": "Empieza por la industria en la que trabaja",
-        "already": "Ya tienes un empleado de IA."
-      },
-      "agentCreated": {
-        "title": "¡Empleado de IA creado!",
-        "body": "Se está configurando solo ahora mismo. Ya puedes hablar con él."
-      },
-      "sendMissionIntro": {
-        "title": "Dale trabajo",
-        "body": "Pides con tus palabras y tu empleado de IA se pone a trabajar. Te muestro dónde.",
-        "cta": "Muéstrame"
-      },
-      "sendMission": {
-        "title": "Haz clic en Nueva tarea",
-        "hint": "Así le das trabajo a los empleados de IA",
-        "typeTitle": "Dile qué necesitas.",
-        "typeHint": "Con tus palabras, y envíalo",
-        "emailHint": "Su primera tarea ya está escrita",
-        "sendTitle": "Solo presiona enviar.",
-        "sendHint": "Escribimos la primera tarea de tu empleado de IA por ti"
-      },
-      "missionSent": {
-        "title": "¡Tarea enviada!",
-        "body": "Tu empleado de IA ya está en ello. Ese es el ciclo completo: tú pides, él trabaja.",
-        "cta": "Listo"
-      },
-      "createAgentDialog": {
-        "briefTitle": "Dile qué va a hacer.",
-        "briefHint": "Elige la industria y luego el trabajo que va a tomar",
-        "nameTitle": "Elige un color y ponle un nombre.",
-        "nameHint": "Luego haz clic en Crear empleado de IA"
-      },
-      "emailSending": {
-        "title": "Mira a tu empleado de IA trabajar.",
-        "hint": "Te está enviando un correo ahora mismo",
-        "stuck": "¿Algo salió mal? Tu tarea se envió, puedes terminar la configuración."
-      },
-      "emailSent": {
-        "title": "¡Revisa tu correo!",
-        "body": "Tu empleado de IA te acaba de enviar un correo real. Así trabaja para ti, de verdad."
-      },
-      "academyReveal": {
-        "title": "¡Capítulo 1 completado!",
-        "body": "Acabas de terminar el primer capítulo de la Academia Houston y ganaste {{points}} de experiencia.",
-        "cta": "Ir a la Academia"
-      },
-      "openAgents": {
-        "hint": "Toca Empleados de IA, abajo",
-        "title": "Abrir Empleados de IA"
-      }
-    },
-    "skipStep": "Omitir paso",
-    "welcomeCta": "Empezar configuración",
-    "checklist": {
-      "ai": "Conecta tu IA",
-      "apps": "Conecta tus apps",
-      "agent": "Crea tu empleado de IA",
-      "task": "Envíale su primera tarea"
-    },
-    "stripFailed": "No pudimos quitar la nota de configuración de tu empleado de IA. Pídele que elimine la sección de configuración de Houston de sus instrucciones."
-  },
   "name": {
-    "title": "Nombra tu espacio de trabajo",
     "description": "Los espacios de trabajo mantienen tus empleados de IA organizados: uno personal, uno de trabajo, etc.",
     "placeholder": "p. ej. Personal, Trabajo, Acme Corp"
   },
-  "provider": {
-    "title": "Conecta tu IA",
-    "description": "Houston usa <emph>tu propia</emph> suscripción. Nunca vemos tus credenciales.",
-    "finishPage": "Empezar",
-    "finishDialog": "Crear espacio de trabajo"
-  },
   "migrationReconnect": {
     "title": "Bienvenido de nuevo",
-    "body": "Tus asistentes y todo lo que has trabajado están aquí. Solo vuelve a conectar tu IA para continuar donde lo dejaste.",
+    "body": "Tus empleados de IA y todo lo que has trabajado están aquí. Solo vuelve a conectar tu IA para continuar donde lo dejaste.",
     "skip": "Lo haré más tarde",
     "dismissError": "No pudimos guardar eso. Inténtalo de nuevo."
+  },
+  "connectAi": {
+    "title": "Conecta tu IA",
+    "subtitle": "Tus empleados de IA necesitan una IA para pensar. Inicia sesión en la que ya usas, como ChatGPT o Claude.",
+    "plans": {
+      "claude": {
+        "title": "Tu suscripción de Claude",
+        "subtitle": "Usa el plan de Claude que ya pagas.",
+        "cancel": "Cancelar el inicio de sesión de Claude"
+      },
+      "chatgpt": {
+        "title": "Tu suscripción de ChatGPT",
+        "subtitle": "Usa el plan de ChatGPT que ya pagas.",
+        "cancel": "Cancelar el inicio de sesión de ChatGPT"
+      }
+    },
+    "signIn": "Iniciar sesión",
+    "waiting": "Esperando a que inicies sesión",
+    "cancel": "Cancelar",
+    "connected": "Conectado",
+    "checking": "Comprobando",
+    "viewMore": "Ver más",
+    "showFewer": "Mostrar menos opciones"
+  },
+  "team": {
+    "choice": {
+      "title": "Armemos tu equipo",
+      "subtitle": "Tus empleados de IA se encargan del trabajo por ti. Empieza con un equipo listo o contrata a cada uno tú mismo.",
+      "soFar_one": "Ya tienes 1 empleado de IA en tu equipo",
+      "soFar_other": "Ya tienes {{count}} empleados de IA en tu equipo",
+      "basicTitle": "Empieza con un equipo básico",
+      "basicBody": "Tres empleados de IA listos para trabajar: {{roles}}.",
+      "hireTitle": "Contrata a tu equipo",
+      "hireBody": "Elige una industria, un puesto y un nombre, un empleado de IA a la vez."
+    },
+    "hire": {
+      "submit": "Contratar"
+    },
+    "hired": {
+      "title_one": "Contrataste a tu primer empleado de IA",
+      "title_other": "Contrataste {{count}} empleados de IA",
+      "subtitle": "Puedes cambiar un nombre o un color cuando quieras. Contrata a otro o termina y conoce a tu equipo.",
+      "hireAnother": "Contratar otro"
+    },
+    "basic": {
+      "title": "Conoce a tu nuevo equipo",
+      "subtitle": "Tres empleados de IA listos para empezar. Dale a cada uno un nombre y un color.",
+      "submit": "Contratar a mi equipo",
+      "attention_one": "{{name}} todavía no pudo unirse a tu equipo. Vuelve a intentarlo o quita a este empleado de IA para terminar.",
+      "attention_other": "{{count}} empleados de IA todavía no pudieron unirse a tu equipo. Vuelve a intentarlo o quítalos para terminar.",
+      "unsaved_one": "Aún no pudimos guardar los cambios de {{name}}. Lo intentaremos de nuevo cuando contrates a tu equipo.",
+      "unsaved_other": "Aún no pudimos guardar los cambios de {{count}} empleados de IA. Lo intentaremos de nuevo cuando contrates a tu equipo."
+    }
   },
   "onboardingSegment": {
     "title": "¿Cuál describe mejor tu trabajo?",
@@ -145,20 +84,7 @@
     "industry": {
       "title": "¿En qué industria trabajas?",
       "subtitle": "Para que Houston entienda el tipo de trabajo que haces.",
-      "options": {
-        "technology": "Tecnología",
-        "finance": "Finanzas y banca",
-        "legal": "Legal",
-        "healthcare": "Salud",
-        "education": "Educación",
-        "retail": "Retail y comercio electrónico",
-        "manufacturing": "Manufactura",
-        "real_estate": "Bienes raíces",
-        "marketing_agencies": "Marketing y agencias",
-        "government_nonprofit": "Gobierno y ONG",
-        "consulting": "Consultoría y servicios profesionales",
-        "something_else": "Otra cosa"
-      }
+      "backToList": "Volver a la lista"
     },
     "goal": {
       "title": "¿Qué te encantaría automatizar?",
@@ -175,39 +101,5 @@
       "label": "Paso {{current}} de {{total}}"
     },
     "otherPlaceholder": "Cuéntanos en pocas palabras"
-  },
-  "tutorial": {
-    "nav": {
-      "back": "Atrás"
-    },
-    "errors": {
-      "setupFailed": "No pudimos terminar de configurar tu espacio de trabajo. Inténtalo de nuevo."
-    },
-    "defaults": {
-      "assistantName": "Asistente personal",
-      "focus": "Ayúdame a estar organizado, preparar mi día, redactar mensajes, proteger tiempo de enfoque y dar seguimiento a pendientes.",
-      "approvalRule": "Pregunta antes de enviar mensajes, crear eventos de calendario o cambiar algo en las apps conectadas."
-    },
-    "seeds": {
-      "dailyBriefing": {
-        "name": "Resumen de la mañana"
-      },
-      "meetingPrep": {
-        "name": "Preparación de reuniones",
-        "description": "Reúne todo lo que necesitas antes de tu próxima reunión: quién participa, qué hablaron la última vez y cualquier cosa urgente, a partir de tu bandeja de entrada y una búsqueda rápida en la web, y te lo entrega antes de que empiece."
-      }
-    },
-    "missions": {
-      "email": {
-        "offer": {
-          "option": "Envíame un correo de saludo"
-        }
-      },
-      "aiConnected": {
-        "title": "¡Tu IA está conectada!",
-        "body": "Tu empleado de IA ya puede pensar. Estás un paso más cerca.",
-        "cta": "Continuar"
-      }
-    }
   }
 }

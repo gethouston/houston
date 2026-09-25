@@ -18,8 +18,8 @@ interface NamingStepProps {
 /**
  * The last screen of the copy-an-agent wizard: the copy's own face, color and
  * name. Its job already exists (it comes from the agent being copied), so this
- * asks for nothing else, and it is the SAME form the guided setup ends on — a
- * user who has named one agent has named them all.
+ * asks for nothing else: the same identity form an import from a friend ends
+ * on.
  */
 export function NamingStep({ heading, ...identity }: NamingStepProps) {
   const { t } = useTranslation("shell");
@@ -28,8 +28,6 @@ export function NamingStep({ heading, ...identity }: NamingStepProps) {
     <div className="mx-auto w-full max-w-sm md:my-auto">
       <AgentIdentityForm
         {...identity}
-        existingPath={null}
-        onExistingPathChange={() => undefined}
         header={
           <div className="flex flex-col gap-1">
             <p className="text-balance text-2xl font-normal">{heading}</p>

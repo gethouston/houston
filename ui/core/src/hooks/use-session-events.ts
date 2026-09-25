@@ -15,7 +15,7 @@
  */
 
 import { useEffect, useRef } from "react";
-import type { HoustonEvent } from "../types";
+import type { HoustonEvent } from "../houston-event";
 
 /** Tauri listen function signature. */
 export type TauriListenFn = <T>(

@@ -14,6 +14,7 @@
 
 import {
   isEmptyEditable,
+  isOverlayTarget,
   isTypingTarget,
   matchShortcut,
 } from "../lib/shortcuts";
@@ -59,6 +60,9 @@ function arrowDirection(e: KeyboardEvent): ArrowDir | null {
 }
 
 function handleArrow(e: KeyboardEvent, dir: ArrowDir): void {
+  // A dialog or popover over the board or the panel answers its own arrows
+  // (a color palette's radios, a menu's items).
+  if (isOverlayTarget(e)) return;
   const ui = useUIStore.getState();
   // Chat panel is open → arrows are a chat-reading affordance,
   // BUT only when focus is in the composer or outside any
@@ -86,9 +90,11 @@ function handleArrow(e: KeyboardEvent, dir: ArrowDir): void {
 }
 
 function handleBoardOpen(e: KeyboardEvent): void {
-  // Bare Enter opens the highlighted card. Yield to typing so
-  // the composer's own Enter-to-send keeps working.
-  if (isTypingTarget(e)) return;
+  // Bare Enter opens the highlighted card, even from the rail row or tab that
+  // led to the board: the highlight is where the user is. Yield to typing so
+  // the composer's own Enter-to-send keeps working, and to a dialog or popover
+  // over the board, whose controls Enter presses.
+  if (isTypingTarget(e) || isOverlayTarget(e)) return;
   const ui = useUIStore.getState();
   if (ui.missionPanelOpen || ui.paletteOpen || ui.cheatsheetOpen) return;
   // A team's Mission Control. Off a board there is no card to open, and

@@ -1,19 +1,20 @@
 import { type ReactNode, useCallback, useMemo, useState } from "react";
 import { pendingMissionSurface } from "../../lib/board-surface-nav";
-import { missionMatchesPerson } from "../../lib/mission-people";
 import type { Agent } from "../../lib/types";
 import { useUIStore } from "../../stores/ui";
-import { MissionControlToolbar } from "../mission-control-toolbar";
-import { PageHeaderTools } from "../shell/page-header/page-header-tools";
+import { useFirstDayPlacement } from "../first-day/use-first-day-placement";
 import { useMissionControl } from "../use-mission-control";
 import type { BoardSource } from "./board-source";
+import { McToolbarSlot } from "./mc-toolbar-slot";
 import {
   filteredScopeAgent,
   missionControlDraftScope,
 } from "./mission-control-scope.ts";
 import { useCrossAgentSelection } from "./use-cross-agent-selection";
+import { useGettingReadyEmpty } from "./use-getting-ready-empty";
 import { useMcActions } from "./use-mc-actions";
 import { useMcNewMission } from "./use-mc-new-mission";
+import { useMcPersonFilter } from "./use-mc-person-filter";
 import { type MissionControlScope, useMcScope } from "./use-mc-scope.ts";
 import { useMcSearch } from "./use-mc-search.tsx";
 import { usePendingMissionTarget } from "./use-pending-mission-target";
@@ -54,7 +55,6 @@ export function useMissionControlSource(
     missionPanelOpen,
   });
 
-  const [filterUserId, setFilterUserId] = useState<string | null>(null);
   const [highlightedId, setHighlightedId] = useState<string | null>(
     mc.selectedId,
   );
@@ -65,19 +65,8 @@ export function useMissionControlSource(
   const { scopedAgents, paths, agentFilteredItems, visibleAgents, filterPath } =
     useMcScope(agents, mc.items, scope);
 
-  // Person filter runs AFTER the agent filter, BEFORE text search: narrow to the
-  // missions the chosen person is on. `null` (Everyone) is a no-op. The filter
-  // menu's roster stays keyed off `agentFilteredItems` so every person is always
-  // reselectable regardless of the active person filter.
-  const personFilteredItems = useMemo(
-    () =>
-      filterUserId
-        ? agentFilteredItems.filter((i) =>
-            missionMatchesPerson(i.people, filterUserId),
-          )
-        : agentFilteredItems,
-    [agentFilteredItems, filterUserId],
-  );
+  const { filterUserId, setFilterUserId, personFilteredItems } =
+    useMcPersonFilter(agentFilteredItems);
 
   // The agent the board is NARROWED to, if any: "New task" on a pinned board
   // must not ask a question the board already answered.
@@ -90,6 +79,17 @@ export function useMissionControlSource(
     selectedId: mc.selectedId,
     setSelectedId: mc.setSelectedId,
   });
+  // The first-day offer counts the pinned employee's tasks before any search
+  // or person filter: a search that hides every task has not emptied the board.
+  const firstDay = useFirstDayPlacement({
+    agents: visibleAgents,
+    pinnedAgent,
+    pinnedTaskCount: agentFilteredItems.length,
+  });
+  const gettingReady = useGettingReadyEmpty(
+    pinnedAgent,
+    agentFilteredItems.length,
+  );
   const missionSearch = useMcSearch({
     items: personFilteredItems,
     loadHistory: mc.loadHistory,
@@ -127,29 +127,22 @@ export function useMissionControlSource(
   });
 
   const toolbar = (
-    // One row or two is the STRIP's call, not this hook's: it is the only
-    // thing that knows how much room the three zones actually have.
-    <PageHeaderTools>
-      {(oneRow) => (
-        <MissionControlToolbar
-          variant={oneRow ? "strip" : "row"}
-          items={agentFilteredItems}
-          filterUserId={filterUserId}
-          search={missionSearch.query}
-          isSearchingText={missionSearch.isSearchingText}
-          onFilterUserIdChange={setFilterUserId}
-          onSearchChange={missionSearch.setQuery}
-          modeToggle={modeToggle}
-          newMission={{
-            agents: newMission.newMissionAgents,
-            menuOpen: newMission.menuOpen,
-            onMenuOpenChange: newMission.requestNewMission,
-            onPick: newMission.pickNewMissionAgent,
-          }}
-          collapsed={missionPanelOpen}
-        />
-      )}
-    </PageHeaderTools>
+    <McToolbarSlot
+      items={agentFilteredItems}
+      filterUserId={filterUserId}
+      search={missionSearch.query}
+      isSearchingText={missionSearch.isSearchingText}
+      onFilterUserIdChange={setFilterUserId}
+      onSearchChange={missionSearch.setQuery}
+      modeToggle={modeToggle}
+      newMission={{
+        agents: newMission.newMissionAgents,
+        menuOpen: newMission.menuOpen,
+        onMenuOpenChange: newMission.requestNewMission,
+        onPick: newMission.pickNewMissionAgent,
+      }}
+      collapsed={missionPanelOpen}
+    />
   );
 
   return {
@@ -187,16 +180,19 @@ export function useMissionControlSource(
     onAutoOpenEmpty: newMission.onAutoOpenEmpty,
     autoOpenKey: `${filterPath || "all"}:${filterUserId ?? "everyone"}`,
     autoOpenItemCount: personFilteredItems.length,
-    autoOpenBlocked: newMission.agentPickerOpen,
+    autoOpenBlocked: newMission.agentPickerOpen || firstDay.holdsAutoOpen,
     search: {
       query: missionSearch.query,
       setQuery: missionSearch.setQuery,
       isSearchingText: missionSearch.isSearchingText,
     },
     hasSearchQuery: missionSearch.hasQuery,
-    emptyState: missionSearch.emptyState,
+    emptyState: missionSearch.hasQuery
+      ? missionSearch.emptyState
+      : gettingReady,
     panelAgentName: activeAgent?.name ?? selectedItem?.subtitle,
     selectedRunning: selectedItem?.status === "running",
+    firstDay: firstDay.placement,
     toolbar,
     dialogs: newMission.dialogs,
   };

@@ -1,4 +1,5 @@
 import { cn } from "@houston-ai/core";
+import { tourAnchor } from "./workspace-tour-steps.ts";
 
 /**
  * The shell's ONE detail-panel card: the portal target every panel surface
@@ -20,6 +21,7 @@ export function ShellPanelCard({
   return (
     <div
       ref={containerRef}
+      {...tourAnchor("taskChat")}
       data-testid="mission-panel"
       data-wide={wide ? "true" : undefined}
       className={cn(

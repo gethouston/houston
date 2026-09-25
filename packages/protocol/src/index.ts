@@ -6,6 +6,7 @@ export * from "./domain/activity";
 export * from "./domain/approval";
 export * from "./domain/config";
 export * from "./domain/file-refusal";
+export * from "./domain/first-day";
 export * from "./domain/interaction";
 // The closed hands-on vocabulary is a VALUE, and `./domain/interaction` may
 // only re-export types from its neighbour (see the note there), so the two

@@ -186,6 +186,20 @@ test("locale, legal_acceptance and the migration flag are account keys", async (
   ]);
 });
 
+// `first_message_sent` is armed when an account starts the first-run
+// onboarding and closed when it reports; a device-local copy would re-arm (or
+// lose) the beat on every new device.
+test("first_message_sent is an account key", async () => {
+  stubFetch(json(200, { value: "armed" }));
+
+  await expect(client(true).getPreference("first_message_sent")).resolves.toBe(
+    "armed",
+  );
+  expect(calls.map((c) => c.url)).toEqual([
+    "http://host/v1/preferences/first_message_sent",
+  ]);
+});
+
 // PRODUCT-1564: the Settings language pick goes through `setWorkspaceLocale`.
 // The adapter used to return a synthetic workspace WITHOUT persisting anything,
 // so the language reverted to the engine's stored preference on the next boot.

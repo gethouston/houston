@@ -21,6 +21,7 @@
 // package index only resolve under bundler resolution.
 import type { MessageApproval } from "@houston/protocol/approval";
 import { hasOnlySuggestionSteps } from "@houston/protocol/interaction";
+import { setupGreetingCopy } from "@houston/sdk/first-day";
 import type { AIBoardProps } from "@houston-ai/board";
 import type { ChatMessage, ChatPanelProps, FeedItem } from "@houston-ai/chat";
 import {
@@ -159,7 +160,7 @@ import {
 import { DEFAULT_TURN_MODE, type TurnMode } from "../lib/turn-mode";
 import type { Agent, SkillSummary } from "../lib/types";
 import { useAgentProvisioningStore } from "../stores/agent-provisioning";
-import { newConversationDraftKey, useDraftStore } from "../stores/drafts";
+import { useDraftStore, useNewConversationDraftKey } from "../stores/drafts";
 import { useInteractionDraftStore } from "../stores/interaction-drafts";
 import { useUIStore } from "../stores/ui";
 import {
@@ -439,7 +440,8 @@ export function useAgentChatPanel({
   // "new-conversation" translated through `useBoardDrafts`'s scope), so
   // dictating into a fresh composer lands in the same draft the user would
   // see if they typed instead.
-  const draftKey = selectedSessionKey ?? newConversationDraftKey(draftScope);
+  const newConversationKey = useNewConversationDraftKey(draftScope);
+  const draftKey = selectedSessionKey ?? newConversationKey;
   const handleDictationTranscript = useCallback(
     (text: string) => {
       const current = useDraftStore.getState().drafts[draftKey]?.text ?? "";
@@ -2167,14 +2169,13 @@ export function useAgentChatPanel({
         return [greeting, ...mapped];
       }
       if (setupHello && sessionKey === selectedSessionKey) {
+        const { variant, params } = setupGreetingCopy(
+          setupHello.name,
+          setupHello.role,
+        );
         const hello: FeedItem = {
           feed_type: "assistant_text",
-          data: setupHello.role
-            ? t("chat:setupGreeting.textWithRole", {
-                name: setupHello.name,
-                role: setupHello.role,
-              })
-            : t("chat:setupGreeting.text", { name: setupHello.name }),
+          data: t(`chat:setupGreeting.${variant}`, params),
         };
         return [hello, ...mapped];
       }

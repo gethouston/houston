@@ -1,0 +1,27 @@
+{
+  "employeeMetal": {
+    "$type": "number",
+    "$description": "Employee metal mixing ratios, shared by the badge header and every AI Employee avatar. Surface endpoints mix identity into shade; relief mixes identity into light. Sheen and engraving mix relief into the surface. Highlight is the light edge an avatar disc wears along its top.",
+    "top": {
+      "$value": 0.4
+    },
+    "bottom": {
+      "$value": 0.3
+    },
+    "relief": {
+      "$value": 0.25
+    },
+    "sheen": {
+      "$value": 0.08
+    },
+    "engraving": {
+      "$value": 0.05
+    },
+    "control": {
+      "$value": 0.1
+    },
+    "highlight": {
+      "$value": 0.12
+    }
+  }
+}

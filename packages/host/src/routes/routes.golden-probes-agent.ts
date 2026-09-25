@@ -16,6 +16,7 @@ export const AGENT_PROBES: string[] = [
   "POST /agents/:agentId/provider/openai-compatible",
   "POST /agents/:agentId/routines/:routineId/run",
   "POST /agents/:agentId/routines/:routineId/runs/:runId/cancel",
+  "POST /agents/:agentId/first-day",
   "GET /agents/:agentId/activity",
   "GET /agents/:agentId/approvals/:requestId",
   "GET /v1/agents/:agentId/approvals/:requestId",

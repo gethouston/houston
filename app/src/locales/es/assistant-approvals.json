@@ -44,6 +44,7 @@
     "saveSkill": "Guardar cambios en las instrucciones de esta habilidad.",
     "setAgentAssignments": "Elegir quién puede usar este empleado de IA, y con qué nivel de acceso.",
     "setAgentModelChoice": "Cambiar qué modelo de IA usa este empleado de IA.",
+    "startFirstDay": "Empezar el primer día de este empleado de IA: se presenta y define contigo cómo ayudarte.",
     "setAgentSettings": "Elegir qué apps y qué modelos de IA puede usar este empleado de IA.",
     "setAgentTeam": "Mover este empleado de IA a otro equipo de este espacio.",
     "setAgentTeamMemberOwner": "Darle a alguien la propiedad de este equipo, o quitársela.",

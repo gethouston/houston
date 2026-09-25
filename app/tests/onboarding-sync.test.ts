@@ -83,7 +83,7 @@ const FULL_REMOTE: GatewayOnboardingRecord = {
 };
 
 describe("parseGatewayOnboarding", () => {
-  it("keeps known ids and drops ones this build doesn't know", () => {
+  it("keeps known ids and folds an unknown industry into something_else", () => {
     deepStrictEqual(
       parseGatewayOnboarding({
         segment: "legal",
@@ -96,7 +96,7 @@ describe("parseGatewayOnboarding", () => {
       }),
       {
         segment: "legal",
-        industry: null,
+        industry: "something_else",
         automationGoal: "file my taxes",
         goalSkipped: false,
         segmentAnsweredAt: "2026-08-01T10:00:00.000Z",

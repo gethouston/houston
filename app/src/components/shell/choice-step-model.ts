@@ -43,8 +43,6 @@ export interface ChoiceStepProps {
   cancelLabel: string;
   /** Given, a filter field appears once the runs are long enough to need it. */
   search?: ChoiceStepSearch;
-  /** Stable data attributes for the chip runs (the tutorial's anchor). */
-  anchorAttrs?: Record<`data-${string}`, string>;
   onSelect: (id: string) => void;
   onSelectCustom: () => void;
   onCancelCustom: () => void;

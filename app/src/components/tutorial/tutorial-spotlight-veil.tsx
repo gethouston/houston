@@ -9,9 +9,9 @@ import {
 /**
  * Everything a spotlight paints AROUND its target: the transparent panels that
  * swallow clicks outside the hole, the dark veil cut open over it, and the cues
- * that say "here, CLICK". Not a word of copy and no interaction of its own, so
- * it lives apart from {@link import("./tutorial-spotlight")}, which is left to
- * compose this with the coach card.
+ * that say "here, CLICK". Not a word of copy and no interaction of its own: the
+ * lesson beat (`academy/lessons/lesson-spotlight.tsx`) composes it with the
+ * sentence it whispers beside the target.
  */
 export function TutorialSpotlightVeil(props: {
   hole: Rect | null;
@@ -22,11 +22,9 @@ export function TutorialSpotlightVeil(props: {
   showCues: boolean;
   /** The band the whole step rides in, resolved by the caller. */
   z: string;
-  /** Fade the dark parts in on mount instead of cutting to them. The lesson
-   *  beat (`academy/lessons/lesson-spotlight.tsx`) turns this on so the
-   *  dimming enters at the same pace as the whisper beside it; the guided
-   *  setup cuts straight to its veil. The cues keep their own looping
-   *  animations either way. */
+  /** Fade the dark parts in on mount instead of cutting to them, so the
+   *  dimming enters at the same pace as the whisper beside it. The cues keep
+   *  their own looping animations either way. */
   fadeIn?: boolean;
 }) {
   const { hole, dialogRect, inDialog, showCues, z } = props;

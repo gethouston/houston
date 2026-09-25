@@ -9,6 +9,8 @@ import { AGENT_GROUPS, type GroupsIn } from "../routes/registry/groups";
 export const OP_EXCLUSIONS = {
   "agent-crud":
     "renaming and deleting an agent is a write to the registry the gateway owns; it never reaches a pod or a worker",
+  "agent-first-day":
+    "starting a first day fires the setup task's first turn, which a file-only worker cannot do",
   "agent-credentials":
     "credential writes ride their own op kinds against the gateway's secret store — a worker's hydrated tree holds no vault",
   "routine-runs":

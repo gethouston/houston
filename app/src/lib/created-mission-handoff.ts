@@ -6,8 +6,8 @@
  * (`components/board/use-just-created-mission.ts`, wired through
  * `useMcOpenConversation`'s `rememberCreated`) so the panel it opens keeps a
  * session key and an agent path until the cross-agent sweep returns the row.
- * The agent's self-setup mission (`lib/agent-setup-mission.ts`) is created by a
- * DIALOG, from a module-level function that cannot reach that hook's setter —
+ * The agent's self-setup mission (`lib/agent-first-day.ts`) is opened from a
+ * start button, by a module-level function that cannot reach that hook's setter —
  * so it opened the panel on a card nobody could name yet: null session key,
  * null agent path, a blank welcome chat until the sweep caught up. This module
  * is the missing wire: a module-level publisher, a hook that subscribes.

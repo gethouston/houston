@@ -9,8 +9,8 @@
  *    composed from the activity id and what the app already knows. Nothing has
  *    to reach the engine for it, so the warming path resolves it the moment
  *    the id exists and PERSISTS it with the queued send — which is the only
- *    reason a relaunch mid-warm-up still delivers the mission. These missions
- *    have no user text at all, so a lost kickoff leaves nothing to send.
+ *    reason a relaunch mid-warm-up still delivers the mission. A setup chat
+ *    has no user text at all, so a lost kickoff leaves nothing to send.
  *  - `buildPrompt` writes through the engine first (it saves the composer's
  *    attachments and appends their refs). It must not run against a pod that
  *    is still coming up, so the warming path keeps it as a closure and runs it
@@ -19,15 +19,16 @@
 
 export interface MissionPromptOptions {
   /**
-   * Hidden kickoff for a setup chat — pure, synchronous, persistable.
+   * Hidden kickoff for a mission: pure, synchronous, persistable.
    *
-   * It MUST be wrapped in the auto-continue marker
-   * (`lib/auto-continue-message.ts` `encodeAutoContinueMessage`): the marker is
-   * the ONLY thing that keeps this prompt out of the transcript, because these
-   * missions carry no user text and the display-text path — the other way a
-   * hidden prompt is masked — resolves to nothing on an empty `text`
-   * (`lib/hidden-prompt-display-text.ts`). Unwrapped, the user reads Houston's
-   * instructions to the agent as a bubble they supposedly typed.
+   * Two ways keep it out of the transcript, and which one applies depends on
+   * `text`. With user text (the email lesson's own line), the display-text path
+   * (`lib/hidden-prompt-display-text.ts`) shows the user's words and masks the
+   * kickoff. With NO user text (a setup chat), that path resolves to nothing,
+   * so the kickoff MUST be wrapped in the auto-continue marker
+   * (`lib/auto-continue-message.ts` `encodeAutoContinueMessage`); unwrapped,
+   * the user reads Houston's instructions to the agent as a bubble they
+   * supposedly typed.
    */
   kickoffPrompt?: (activityId: string) => string;
   /**

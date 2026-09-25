@@ -21,7 +21,8 @@ components:
     ref: app/src/components/integrations/custom-edit-dialog.tsx
   agent-avatar:
     status: implemented
-    ref: "@houston-ai/core HoustonAvatar / AgentAvatar (resolveAgentColor)"
+    ref: "@houston-ai/core HoustonAvatar (resolveAgentColor + employeeMetalColors) / AgentAvatar"
+    notes: Metal disc with the helmet at 65% at every size; the sidebar shows each AI Employee as a person row (32px avatar, name over role).
 
   agent-list-item:
     status: partial
@@ -291,6 +292,25 @@ components:
   flow-choice-row:
     status: implemented
     ref: "@houston-ai/core FlowChoiceRow + FlowChoiceList (flow-choice-row.tsx)"
+  connect-ai-card:
+    status: implemented
+    ref: "app/src/components/onboarding/connect-ai-card.tsx (SetupCard over provider-browser/ProviderBrowser), routed by lib/onboarding-route.ts from components/onboarding/first-run-onboarding.tsx"
+  build-team-card:
+    status: implemented
+    ref: "app/src/components/onboarding/team/ (BuildTeamCard over team-card-flow.tsx: team-choice-view.tsx on onboarding/option-card.tsx's navigate variant, team-hire-view.tsx over the shell/ hire steps, team-hired-view.tsx and team-basic-view.tsx over the shared employee-card/ (roster-employee-card.tsx for hires on the roster), team-card-footer.tsx), hiring through lib/create-employee.ts; the new-workspace variant is mounted by shell/workspace-dialog.tsx"
+  employee-card:
+    status: implemented
+    notes: "v100: portrait ID badge with tinted photo panel, helmet and corner color wheel; ResponsivePopover palette in two rows of five; labeled fields and recovery retained; 1152px team frames, 320px solo, 288px phone slides; reduced-motion-safe opacity crossfades."
+    ref: "app/src/components/employee-card/ (EditableEmployeeCard over employee-card.tsx, employee-name-field.tsx, employee-brief-line.tsx (context/job-brief-question.tsx in ui/core's ResponsivePopover) employee-card-paint.tsx, employee-card-metal.tsx (employee-metal-colors.ts + employee-metal-pattern.ts), employee-card-portrait.tsx and employee-color-picker.tsx over employee-color-palette.tsx; EmployeeCardDeck for a team; pure models in employee-card-model.ts, employee-name-suggestions.ts and employee-name-validation.ts); mounted by onboarding/team/ and shell/customize-step.tsx"
+  survey-industry-picker:
+    status: implemented
+    ref: "app/src/components/onboarding/survey-industry-picker.tsx (+ survey-industry-other.tsx, survey-industry-no-matches.tsx) over shell/choice-runs.tsx + shell/choice-row.tsx and lib/onboarding-industry.ts"
+  first-day-offer:
+    status: implemented
+    ref: "app/src/components/first-day/ (FirstDayHero + FirstDayCompact + FirstDayStartButton in first-day-cta.tsx, FirstDayBanner + FirstDayLead in first-day-banner.tsx, placement in first-day-model.ts + use-first-day-placement.ts) over lib/agent-first-day.ts, mounted by board/mission-board.tsx"
+  academy-path:
+    status: implemented
+    ref: "app/src/components/academy/ (academy-path.tsx, academy-chapter-section.tsx, academy-path-node.tsx over the pure academy-path-state.ts), lessons in academy/lessons/registry.ts"
   messaging-channels-settings:
     status: implemented
     ref: app/src/components/settings/sections/channels.tsx

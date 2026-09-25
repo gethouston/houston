@@ -1,5 +1,6 @@
 /** `.houston/config/config.json` — per-agent provider/model config. */
 
+import type { AgentFirstDay } from "@houston/protocol";
 import schema from "@houston-ai/agent-schemas/config.schema.json";
 import { readAgentJson, writeAgentJson } from "./agent-file";
 
@@ -22,6 +23,8 @@ export interface Config {
    * as `modeOverride` and defaults to `execute` for a new mission.
    */
   mode?: "execute" | "plan" | "auto";
+  /** See `AgentConfig.firstDay` in `@houston/protocol`. */
+  firstDay?: AgentFirstDay;
   [extra: string]: unknown;
 }
 

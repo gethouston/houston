@@ -27,6 +27,10 @@
       "types": "./src/job-description.ts",
       "import": "./src/job-description.ts"
     },
+    "./first-day": {
+      "types": "./src/first-day.ts",
+      "import": "./src/first-day.ts"
+    },
     "./provider-catalog": {
       "types": "./src/provider-catalog.ts",
       "import": "./src/provider-catalog.ts"

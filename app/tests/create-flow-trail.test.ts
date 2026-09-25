@@ -18,7 +18,6 @@ const GATES: CreateFlowGates = {
   canCreateAgent: true,
   canCreateTeam: true,
   canCopy: true,
-  tutorialActive: false,
 };
 
 const gates = (patch: Partial<CreateFlowGates> = {}): CreateFlowGates => ({
@@ -132,10 +131,13 @@ test("losing the last copyable agent takes the copy wizard out of the trail", ()
   assert.deepEqual([...settled.dropped], ["choose", "copy"]);
 });
 
-test("the tutorial's one path drops a trail walked before it started", () => {
+test("gates closing every choice drop a trail walked before they settled", () => {
   const before = createFlowShape("choose", gates());
   const trail = walkToStep(EMPTY_CREATE_FLOW_TRAIL, before, "team");
-  const after = createFlowShape("choose", gates({ tutorialActive: true }));
+  const after = createFlowShape(
+    "choose",
+    gates({ canCopy: false, canCreateTeam: false }),
+  );
   const settled = reconcileWalkedTrail(trail, after);
   assert.equal(currentWalkedStep(settled.trail, after), "context");
   assert.deepEqual([...settled.dropped], ["add", "team"]);

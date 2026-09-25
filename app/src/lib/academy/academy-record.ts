@@ -32,9 +32,16 @@ export interface AcademyStreak {
 
 export interface AcademyRecord {
   version: 1;
+  /** Chapters awarded whole (the first-run setup chapter). Read and counted so
+   *  the experience they hold keeps paying; no path in the app awards one. */
   chapters: Partial<Record<string, AcademyChapterProgress>>;
-  /** Lessons live beside chapters and pay into the same experience pool. */
+  /** Lessons pay into the same experience pool as chapters. */
   lessons: Partial<Record<string, AcademyChapterProgress>>;
+  /**
+   * Where each started-but-unfinished lesson stands: the 0-based beat to
+   * resume on. A finished lesson has no entry (`./lesson-position.ts`).
+   */
+  lessonPositions: Partial<Record<string, number>>;
   /**
    * Usage points, kept PER DEVICE rather than as one total. Two devices that
    * earn on the same day are both right, and one total can only keep one of
@@ -98,6 +105,7 @@ export function createAcademyRecord(now: Date): AcademyRecord {
     version: ACADEMY_RECORD_VERSION,
     chapters: {},
     lessons: {},
+    lessonPositions: {},
     usageByDevice: {},
     usageDay: null,
     usageToday: 0,
@@ -123,46 +131,34 @@ export function totalExperience(record: AcademyRecord | null): number {
   return sumEntries(record.chapters) + sumEntries(record.lessons);
 }
 
-function awardOnce(
-  record: AcademyRecord | null,
-  kind: "chapters" | "lessons",
-  id: string,
-  experience: number,
-  now: Date,
-): AcademyRecord {
-  if (!id.trim()) throw new RangeError("academy id must not be empty");
-  if (!isPointCount(experience))
-    throw new RangeError("academy experience must be a non-negative number");
-  const base = record ?? createAcademyRecord(now);
-  if (base[kind][id]) return base;
-  const completedAt = now.toISOString();
-  const next = { ...base[kind], [id]: { completedAt, experience } };
-  return kind === "chapters"
-    ? { ...base, chapters: next, updatedAt: completedAt }
-    : { ...base, lessons: next, updatedAt: completedAt };
-}
-
 /**
- * Awards a chapter ONCE. A chapter already in the record is left exactly as it
- * was — completion is a fact with a date, not a counter, so replaying the
- * finish path (a retried onboarding step, a second window) can never pay twice
- * or move the moment it happened.
+ * Awards a lesson ONCE. A lesson already in the record is left exactly as it
+ * was: completion is a fact with a date, not a counter, so replaying the
+ * finish path (a retried beat, a second window) can never pay twice or move
+ * the moment it happened. Clears the lesson's resume position in the same
+ * write.
  */
-export function completeChapterRecord(
-  record: AcademyRecord | null,
-  chapterId: string,
-  experience: number,
-  now: Date,
-): AcademyRecord {
-  return awardOnce(record, "chapters", chapterId, experience, now);
-}
-
-/** A lesson, awarded under the same once-only rule as a chapter. */
 export function completeLessonRecord(
   record: AcademyRecord | null,
   lessonId: string,
   experience: number,
   now: Date,
 ): AcademyRecord {
-  return awardOnce(record, "lessons", lessonId, experience, now);
+  if (!lessonId.trim()) throw new RangeError("academy id must not be empty");
+  if (!isPointCount(experience))
+    throw new RangeError("academy experience must be a non-negative number");
+  const base = record ?? createAcademyRecord(now);
+  if (base.lessons[lessonId]) return base;
+  const completedAt = now.toISOString();
+  return {
+    ...base,
+    lessons: { ...base.lessons, [lessonId]: { completedAt, experience } },
+    // Finishing ends the run, so the place to resume it goes with it.
+    lessonPositions: Object.fromEntries(
+      Object.entries(base.lessonPositions).filter(
+        ([lesson]) => lesson !== lessonId,
+      ),
+    ),
+    updatedAt: completedAt,
+  };
 }

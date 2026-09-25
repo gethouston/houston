@@ -44,10 +44,8 @@ export function ImportNameStep({
         name={name}
         color={color}
         error={null}
-        existingPath={null}
         onNameChange={onNameChange}
         onColorChange={onColorChange}
-        onExistingPathChange={() => undefined}
         onSubmit={(e) => {
           e.preventDefault();
           onAdvance();

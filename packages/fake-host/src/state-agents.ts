@@ -3,6 +3,11 @@
  * writers plus raw agent-file read/write, all over the shared {@link state}.
  */
 
+import {
+  CONFIG_SEED_KEY,
+  keepHostOwnedConfig,
+} from "@houston/domain/first-day-config";
+import { jobDescriptionRole } from "@houston/domain/job-role";
 import { SEED_WORKSPACE_ID } from "./config";
 import { writeSkillFile } from "./state-skills";
 import {
@@ -16,15 +21,46 @@ import {
 } from "./state-store";
 
 const SKILL_FILE = /^\.agents\/skills\/([^/]+)\/SKILL\.md$/;
+const JOB_DESCRIPTION = "CLAUDE.md";
+const roleOf = (agentId: string) =>
+  jobDescriptionRole(state.files.get(fileKey(agentId, JOB_DESCRIPTION)));
+
+const objectIn = (raw: string): Record<string, unknown> | null => {
+  try {
+    const parsed: unknown = JSON.parse(raw);
+    return parsed && typeof parsed === "object" && !Array.isArray(parsed)
+      ? (parsed as Record<string, unknown>)
+      : null;
+  } catch {
+    return null;
+  }
+};
+
+/** A config write as the real host stores it: the first-day fields are the
+ *  host's (`keepHostOwnedConfig`), whatever the written document says. */
+function surfaceConfigWrite(stored: string, content: string): string {
+  const incoming = objectIn(content);
+  if (!incoming) return content;
+  return JSON.stringify(keepHostOwnedConfig(incoming, objectIn(stored) ?? {}));
+}
 
 // ---- agents ----
+/** The roster as `GET /agents` serves it: each agent with the role its job
+ *  description names, like the real host. */
 export function listAgents(): CpAgent[] {
-  return state.agents;
+  return state.agents.map((agent) => {
+    const role = roleOf(agent.id);
+    return role ? { ...agent, role } : agent;
+  });
 }
 /** `claudeMd` is the job description the create request carries (the real host
  *  writes it to `CLAUDE.md` before the agent ever runs), so a surface that
  *  reads the file back sees what creation put there. */
-export function createAgent(name: string, claudeMd?: string): CpAgent {
+export function createAgent(
+  name: string,
+  claudeMd?: string,
+  seeds?: Record<string, string>,
+): CpAgent {
   const agent: CpAgent = {
     id: `agent-${++state.agentSeq}`,
     workspaceId: SEED_WORKSPACE_ID,
@@ -33,7 +69,11 @@ export function createAgent(name: string, claudeMd?: string): CpAgent {
   };
   state.agents.push(agent);
   state.files.set(fileKey(agent.id, ACTIVITY_PATH), "[]");
-  if (claudeMd) state.files.set(fileKey(agent.id, "CLAUDE.md"), claudeMd);
+  if (claudeMd) state.files.set(fileKey(agent.id, JOB_DESCRIPTION), claudeMd);
+  // The create's seed map, written before the agent answers, like the real
+  // host: a new hire's config (its pending first day) rides it.
+  for (const [relPath, content] of Object.entries(seeds ?? {}))
+    state.files.set(fileKey(agent.id, relPath), content);
   emitDomain("AgentsChanged");
   return agent;
 }
@@ -123,9 +163,19 @@ export function writeAgentFile(
   relPath: string,
   content: string,
 ): void {
-  state.files.set(fileKey(agentId, relPath), content);
+  const roleBefore = relPath === JOB_DESCRIPTION ? roleOf(agentId) : undefined;
+  state.files.set(
+    fileKey(agentId, relPath),
+    relPath === CONFIG_SEED_KEY
+      ? surfaceConfigWrite(readAgentFile(agentId, relPath), content)
+      : content,
+  );
   // The real file watcher fires ActivityChanged when the board file is written.
   if (relPath === ACTIVITY_PATH) emitDomain("ActivityChanged", agentId);
+  // ...and the real host announces a job description whose role moved, once
+  // the listing already serves the new one (`agent-role/role-tracker.ts`).
+  if (relPath === JOB_DESCRIPTION && roleOf(agentId) !== roleBefore)
+    emitDomain("AgentRoleChanged", agentId);
   // ...and classifies a SKILL.md write as SkillsChanged: the Skills dialogs'
   // fan-out save is a plain file write, so the list must re-serve it.
   const skillSlug = relPath.match(SKILL_FILE)?.[1];

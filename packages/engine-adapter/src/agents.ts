@@ -1,3 +1,4 @@
+import { withInitialConfigSeed } from "@houston/domain";
 import type { Agent, CreateAgent } from "@houston/wire-types";
 import { writeAgentFile } from "./agent-files";
 import { DEFAULT_AGENT_COLOR, syntheticAgent } from "./synthetic";
@@ -79,7 +80,8 @@ export function createAgent(
   // does on create — otherwise AI-generated instructions (the AI-assist flow)
   // would be silently dropped.
   if (req.claudeMd) writeAgentFile(agent.folderPath, "CLAUDE.md", req.claudeMd);
-  for (const [relPath, content] of Object.entries(req.seeds ?? {})) {
+  const seeds = withInitialConfigSeed(req.seeds, req.config);
+  for (const [relPath, content] of Object.entries(seeds ?? {})) {
     writeAgentFile(agent.folderPath, relPath, content);
   }
   return { agent };

@@ -3,6 +3,40 @@
 Every `version` bump in `inventory.yaml` needs a matching entry here (enforced by
 `pnpm check:parity`). Newest first. Use `## vN` headings.
 
+## v101 - 2026-09-25
+
+First-run onboarding is the survey (its industry question asked from the hire
+catalog's industries), a Connect AI card (two subscription cards over "View
+more") and a Build your team card, which the New workspace dialog also uses.
+Every AI Employee is named on one portrait ID badge: a 160px metal header,
+seeded fine engraving, light-edge helmet relief and corner Paintbrush above
+the labeled required 16px Name
+input with dice, Role and Industry. Color opens the existing keyboard palette
+in a desktop popover or phone sheet, two rows of five 44px targets. Color
+crossfades across the badge and portrait in 200ms; reduced motion is instant.
+The old bottom color section is removed. Long brief labels wrap and narrow
+name fields use a short localized example. Progress and recovery stay on the
+badge. Team frames widen to 1152px for three comfortable columns; phones keep
+288px snap slides with peek and dots. Solo badges center at 320px in the create
+dialog. No drop shadows in either theme. Every AI Employee avatar wears the badge's
+metal: a deep 135deg disc of the employee's color, the helmet in light relief
+and a faint light line along its top, from the same recipe as the badge.
+Keyboard order remains name, dice,
+color, role, industry, and Escape returns focus from the palette. New
+AI Employees wait on their board for the person
+to start their first day. The Academy path lists chapters of lessons,
+and the help control and the phone's More menu keep only "Report a problem":
+the guided tour is two Academy lessons.
+The sidebar's rows are 28px tall around a 20px glyph column: destination
+marks at 16px and team marks at 14px, the label 6px past the column. Each AI
+Employee is a person row instead: a 32px avatar in a 44px row, the name in
+semibold at 13px over its role in muted 12px, read live from its job
+description; no role keeps the height. On the collapsed icon rail an AI
+Employee is a 24px avatar in the 36px square, so its running ring fits, with
+the needs-you chip on the avatar's shoulder.
+Every avatar is the employee metal disc with the helmet in relief at 65%,
+centered on whole pixels.
+
 ## v100 - 2026-09-23
 
 The composer lists its attachments as chips, and a chip's icon slot carries the

@@ -108,5 +108,13 @@
   },
   "dnd": {
     "moveError": "Couldn't move the task. Please try again."
+  },
+  "firstDay": {
+    "start": "Start {{name}}'s first day",
+    "heroTitle": "All set for {{name}}'s first day",
+    "explain": "{{name}} will ask you a few questions to learn the job.",
+    "compactTitle": "{{name}}'s first day hasn't started yet",
+    "bannerTitle": "Your team is ready. Pick an AI Employee and start their first day.",
+    "bannerExplain": "Each one will ask you a few questions to learn the job."
   }
 }

@@ -58,7 +58,7 @@ function AgreementScreen({
   /** Back to the language picker (clears the locale so the picker re-shows). */
   onBack: () => void;
 }) {
-  const { t } = useTranslation(["legal", "setup"]);
+  const { t } = useTranslation(["legal", "common"]);
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
@@ -84,7 +84,7 @@ function AgreementScreen({
       title={t("legal:title")}
       subtitle={t("legal:intro")}
       onBack={onBack}
-      backLabel={t("setup:tutorial.nav.back")}
+      backLabel={t("common:actions.back")}
       onNext={() => void handleAccept()}
       nextLabel={
         busy ? t("legal:buttons.accept_busy") : t("legal:buttons.accept")

@@ -18,10 +18,13 @@ describe("buildAgentSidebarItems needs-you signal", () => {
     assert.match(source, /count=\{needsYou\.count\}/);
   });
 
-  it("gives every row the '...' menu in the affordance slot, after the signal", () => {
-    // The menu is the settings page's actions re-anchored on the rail; it sits
-    // OUTSIDE the button (the affordance slot), so the needs-you count stays
-    // inside the row and reads before it: [name] (7) ...
-    assert.match(source, /affordance: <AgentRowMenu agent=\{agent\} \/>/);
+  it("keeps the row one target: its actions live in the agent's Settings", () => {
+    assert.doesNotMatch(source, /affordance:/);
+  });
+
+  it("names each row's role from the listing, never by reading job descriptions", () => {
+    // Reading every CLAUDE.md woke every hosted employee's pod on app open.
+    assert.match(source, /subtitle: agent\.role,/);
+    assert.doesNotMatch(source, /instructions|CLAUDE\.md|readFile/);
   });
 });

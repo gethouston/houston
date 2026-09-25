@@ -22,7 +22,6 @@
     "createDialog": "Create",
     "createWorkspace": "Create workspace",
     "expand": "Expand sidebar",
-    "guideMe": "Guide me",
     "help": "Help",
     "integrations": "Integrations",
     "needsYouCount_one": "{{count}} issue needs you",
@@ -454,7 +453,10 @@
   },
   "workspaceDialog": {
     "title": "New workspace",
-    "createFailed": "We couldn't create the workspace. Please try again."
+    "createFailed": "We couldn't create the workspace. Please try again.",
+    "nameLabel": "Workspace name",
+    "nameTaken": "You already have a workspace with this name.",
+    "create": "Create workspace"
   },
   "agentUpdate": {
     "title": "AI Employee update available",
@@ -481,7 +483,9 @@
     "stillStarting": "Your AI Employee is taking longer than usual to start. We are still trying, hang tight.",
     "blockedBody": "It is almost ready. This action will be available in a moment, as soon as your AI Employee finishes setting up.",
     "stalledTitle": "Still working on it",
-    "stalledBody": "This is taking longer than a normal start. We have not given up, your chat and messages are safe and will pick up the moment your AI Employee answers."
+    "stalledBody": "This is taking longer than a normal start. We have not given up, your chat and messages are safe and will pick up the moment your AI Employee answers.",
+    "gettingReadyTitle": "Getting {{name}} ready",
+    "gettingReadyBody": "This takes a minute or two. Feel free to look around while we set up {{name}}."
   },
   "reportBug": {
     "reportSuccessTitle": "Report sent",
@@ -507,8 +511,6 @@
   "naming": {
     "dialogTitle": "Name your AI Employee",
     "tagline": "Name your AI Employee and tell it what job it does",
-    "namePlaceholder": "e.g. Product manager, Sales, Jerry",
-    "linkExistingProject": "Link existing project",
     "createAgent": "Create AI Employee"
   },
   "newAgent": {
@@ -671,5 +673,22 @@
     "headline": "What do you want to add?",
     "agentTitle": "AI Employee",
     "teamTitle": "Team"
+  },
+  "employeeCard": {
+    "changeColor": "Change color",
+    "namePlaceholder": "e.g. Ava",
+    "namePlaceholderForRole": "e.g. {{role}}, Assistant 3, Jerry",
+    "nameLabel": "Name ({{role}})",
+    "suggestName": "Suggest a name",
+    "nameRequired": "Add a name to continue",
+    "status": {
+      "joining": "Joining",
+      "hired": "On your team",
+      "failed": "Didn't join"
+    },
+    "retryLabel": "Try hiring {{name}} again",
+    "removeLabel": "Remove {{name}}",
+    "showCard": "Show card {{current}} of {{total}}",
+    "nameHeading": "Name"
   }
 }

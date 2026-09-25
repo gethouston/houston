@@ -1,3 +1,5 @@
+import { toolShortName } from "@houston-ai/chat";
+
 /**
  * Which tool calls WROTE a file, in every dialect a turn can carry.
  *
@@ -7,11 +9,6 @@
  * Matching one dialect only silently costs the user the file surfaces built on
  * this answer, so every surface asks HERE rather than keeping its own set.
  */
-
-/** The tool name as the model called it, minus any `server__tool` namespace. */
-export function toolShortName(name: string): string {
-  return name.includes("__") ? (name.split("__").pop() ?? name) : name;
-}
 
 /** Matched on the LOWERCASED short name, which is what makes one set cover
  *  both dialects. */

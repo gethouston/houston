@@ -3,14 +3,13 @@ import { useQueryClient } from "@tanstack/react-query";
 import { useEffect } from "react";
 import { useTranslation } from "react-i18next";
 import { planInvalidation } from "../lib/agent-invalidation-plan";
-import { sliceFreshness } from "../lib/all-conversations-freshness";
+import { patchAgentSlice } from "../lib/all-conversations-patch";
 import { consumeCustomOAuthReturn } from "../lib/custom-oauth-return";
 import { onEngineRestarted } from "../lib/engine";
 import { subscribeHoustonEvents } from "../lib/events";
 import { logger } from "../lib/logger";
 import { osFocusWindow } from "../lib/os-bridge";
 import { isSpaceInvariantQueryKey } from "../lib/space-cache";
-import { tauriConversations } from "../lib/tauri";
 import { useAgentStore } from "../stores/agents";
 import { useUIStore } from "../stores/ui";
 import { useWorkspaceStore } from "../stores/workspaces";
@@ -26,34 +25,14 @@ export function useAgentInvalidation() {
   const { t } = useTranslation("shell");
 
   useEffect(() => {
-    // Refresh ONE agent's slice of every cached all-conversations list.
-    // Deliberately not `invalidateQueries({ queryKey: ["all-conversations"] })`:
-    // that refetch fans out one request to EVERY agent's pod, and in hosted
-    // mode each of those requests resets the pod's idle-sleep clock — so a
-    // single busy agent's event stream used to keep the whole fleet awake for
-    // as long as the app was open. Events name their agent; only that agent's
-    // pod is touched (it just emitted, so it is awake by definition), and the
-    // sidebar badges / Mission Control read the patched cache unchanged.
+    // An event names its agent, which just emitted and so is awake by
+    // definition: only its slice is re-read (`patchAgentSlice`), so a single
+    // busy agent's event stream never keeps the whole fleet awake.
     const patchAllConversations = (agentPath: string) => {
-      // Stamped at the read: a sweep that started before this patch carries
-      // an older slice for the agent and must not overwrite it on settle.
-      sliceFreshness.notePatched(agentPath, Date.now());
-      void tauriConversations
-        .list(agentPath)
-        .then((rows) => {
-          qc.setQueriesData<{ agent_path: string }[]>(
-            { queryKey: ["all-conversations"] },
-            (old) =>
-              old && [
-                ...old.filter((c) => c.agent_path !== agentPath),
-                ...rows,
-              ],
-          );
-        })
-        .catch((e) => {
-          // Stale badge until the agent's next event — never a broken app.
-          logger.warn(`[invalidation] conversations patch failed: ${e}`);
-        });
+      patchAgentSlice(qc, agentPath).catch((e) => {
+        // Stale badge until the agent's next event — never a broken app.
+        logger.warn(`[invalidation] conversations patch failed: ${e}`);
+      });
     };
     const offEngineRestarted = onEngineRestarted(() => {
       qc.invalidateQueries({ queryKey: ["activity"] });

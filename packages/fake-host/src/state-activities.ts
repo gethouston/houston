@@ -46,6 +46,8 @@ export function createActivity(
       contributors: input.contributors,
     }),
     ...(input.mentioned !== undefined && { mentioned: input.mentioned }),
+    // The mode sentinel a setup task carries (the first-day route stamps it).
+    ...(input.agent !== undefined && { agent: input.agent }),
     // The agent-started marker (PRODUCT-1244) is stamped by the real host's
     // missions route, never by a client POST — accept it here for the same
     // reason as the attribution keys: an e2e needs to seed a child mission.

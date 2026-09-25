@@ -18,8 +18,8 @@ import {
   markGatewaySynced,
   needsCompletionPrompt,
   ONBOARDING_GOAL_MAX_LENGTH,
-  ONBOARDING_INDUSTRIES,
   ONBOARDING_INDUSTRY_SKIPPED,
+  ONBOARDING_INDUSTRY_SOMETHING_ELSE,
   ONBOARDING_SEGMENT_SKIPPED,
   ONBOARDING_SURVEY_PREF_KEY,
   ONBOARDING_SURVEY_VERSION,
@@ -35,43 +35,30 @@ function answered(
   return {
     ...createOnboardingSurveyPreference(),
     segment: "marketing",
-    industry: "technology",
+    industry: "software_it",
     automationGoal: "Chase overdue invoices every Monday",
     ...overrides,
   };
 }
 
 describe("onboarding survey ids", () => {
-  it("pins the pref key, version and industry list", () => {
+  it("pins the pref key and version", () => {
     strictEqual(ONBOARDING_SURVEY_PREF_KEY, "houston_onboarding_survey");
     strictEqual(ONBOARDING_SURVEY_VERSION, 2);
-    deepStrictEqual(
-      [...ONBOARDING_INDUSTRIES],
-      [
-        "technology",
-        "finance",
-        "legal",
-        "healthcare",
-        "education",
-        "retail",
-        "manufacturing",
-        "real_estate",
-        "marketing_agencies",
-        "government_nonprofit",
-        "consulting",
-        "something_else",
-      ],
-    );
   });
 
-  it("accepts only known industry ids", () => {
+  it("accepts the hire catalog's contexts and the door out of them", () => {
     strictEqual(isOnboardingIndustry("healthcare"), true);
-    strictEqual(isOnboardingIndustry("government_nonprofit"), true);
+    strictEqual(isOnboardingIndustry("software_it"), true);
+    strictEqual(isOnboardingIndustry(ONBOARDING_INDUSTRY_SOMETHING_ELSE), true);
     strictEqual(isOnboardingIndustry("crypto free text"), false);
+    // The survey's own legacy ids are read (normalized), never written.
+    strictEqual(isOnboardingIndustry("government_nonprofit"), false);
     // "skipped" is a persistable CHOICE, never one of the industry answers.
     strictEqual(isOnboardingIndustry(ONBOARDING_INDUSTRY_SKIPPED), false);
     strictEqual(isOnboardingIndustryChoice(ONBOARDING_INDUSTRY_SKIPPED), true);
-    strictEqual(isOnboardingIndustryChoice("retail"), true);
+    strictEqual(isOnboardingIndustryChoice("retail_ecommerce"), true);
+    strictEqual(isOnboardingIndustryChoice("retail"), false);
     strictEqual(isOnboardingIndustryChoice("crypto free text"), false);
   });
 
@@ -204,8 +191,8 @@ describe("onboarding survey persistence", () => {
     reject({ version: undefined });
     reject({ segment: "founder_free_text" });
     reject({ segment: undefined });
-    reject({ industry: "crypto" });
     reject({ industry: undefined });
+    reject({ industry: 7 });
     reject({ automationGoal: "" });
     reject({ automationGoal: "x".repeat(ONBOARDING_GOAL_MAX_LENGTH + 1) });
     reject({ automationGoal: 7 });

@@ -58,8 +58,9 @@ e2e/
     mission.ts      # open the board's empty new-mission composer
     mobile-nav.ts   # the PHONE chrome: the floating nav bar, its More menu,
                     # and the Teams tree (the phone's only section switcher)
-    onboarding.ts   # reach the first-run survey and walk it; write one ACCOUNT
-                    # preference straight onto the host
+    onboarding.ts   # reach first-run and walk its cards (survey, Connect your
+                    # AI, Build your team); write one ACCOUNT preference
+                    # straight onto the host
     palette.ts      # open the ⌘K command palette (the press retries: the
                     # shortcut listener is attached in an effect)
     run-locked.ts   # run a full Playwright suite under the machine lock — the
@@ -74,7 +75,6 @@ e2e/
     team-nav.ts     # the rail (top-level rows) + the screen ON THE
                     # GLASS; open a team's section, and an agent's settings page
                     # through it ("focused agent screen", the ONE door onto agent policy)
-    tour-nav.ts     # arm the guided tour from the footer's help control
   mobile/           # phone-project specs (see Mobile below)
   visual/           # the visual-regression project + its baselines (see below)
   *.spec.ts         # the tests
@@ -93,8 +93,8 @@ its More menu (`mobile/more-menu.spec.ts`), the Teams tree
 (`mobile/teams-home.spec.ts`), a team's task list
 (`mobile/team-tasks.spec.ts`), and Routines
 (`mobile/routines.spec.ts`: list → a routine's own screen), and first-run
-(`mobile/onboarding.spec.ts`: the survey, then the whole in-app setup over
-the phone shell — More-menu rows, provider connect, first agent, first task).
+(`mobile/onboarding.spec.ts`: the survey, the Connect your AI card, a first
+hire on the Build your team card, then the phone shell).
 Beside it sit the surfaces a phone draws differently: the assistant as a
 full-height chat (`mobile/assistant.spec.ts`), the chat header's people stack
 (`mobile/chat-header-people.spec.ts`), the composer's one-row toolbar and its

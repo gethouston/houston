@@ -1,6 +1,7 @@
 import {
   sidebarIconBox,
   sidebarIconGap,
+  sidebarPersonRow,
   sidebarRowEndMargin,
   sidebarRowEndPad,
   sidebarRowHeight,
@@ -66,11 +67,18 @@ export const sidebarRowButtonClasses = {
   depthBlock: "pl-2",
   /** Indented under a block head, in the shared glyph column. */
   depthChild: "pl-5",
+  /** The person row's own height, overriding the glyph row's on both
+   *  elements (tailwind-merge keeps the later height). */
+  personHeight: sidebarPersonRow.height,
+  personIcon: `${sidebarPersonRow.iconBox} ${sidebarPersonRow.iconGap}`,
+  personText: "flex min-w-0 flex-col",
+  personName: `min-w-0 truncate ${sidebarPersonRow.name}`,
+  personRole: `min-w-0 truncate ${sidebarPersonRow.role}`,
   draggable: "cursor-grab active:cursor-grabbing",
   icon: `${sidebarIconBox} ${sidebarIconGap}`,
   /**
    * Label + disclosure mark, as one phrase. They sit 4px apart rather than the
-   * row's 8px gap, because a triangle a full gap away from the words reads as a
+   * row's 6px icon gap, because a triangle a full gap away from the words reads as a
    * separate control instead of as the words' own state.
    */
   labelGroup: "flex min-w-0 items-center gap-1",
@@ -116,5 +124,5 @@ export const sidebarRowAffordanceClasses = `relative ${sidebarRowEndMargin} flex
  */
 export const sidebarCollapsedItemClasses = {
   trailing:
-    "pointer-events-none absolute -top-1 -right-1 flex scale-75 items-center justify-center",
+    "pointer-events-none absolute top-0 -right-1 flex scale-75 items-center justify-center",
 } as const;

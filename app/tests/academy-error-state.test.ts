@@ -29,6 +29,7 @@ const record = (patch: Partial<AcademyRecord> = {}): AcademyRecord => ({
     setup: { completedAt: "2026-08-01T10:00:00.000Z", experience: 50 },
   },
   lessons: {},
+  lessonPositions: {},
   usageByDevice: {},
   usageDay: null,
   usageToday: 0,

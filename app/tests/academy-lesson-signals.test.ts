@@ -15,6 +15,8 @@ function world(over: Partial<LessonSignals> = {}): LessonSignals {
     hostEventsSinceArmed: new Set(),
     conversationCount: null,
     conversationBaseline: null,
+    activeToolkits: null,
+    companionReady: false,
     ...over,
   };
 }
@@ -98,6 +100,49 @@ describe("lesson signals — conversationCreated", () => {
   });
 });
 
+describe("lesson signals — integrationConnected", () => {
+  const spec: LessonSignalSpec = {
+    type: "integrationConnected",
+    toolkits: ["gmail", "outlook"],
+  };
+
+  it("waits while the connections list has not answered", () => {
+    strictEqual(lessonSignalMet(spec, world()), false);
+  });
+
+  it("waits while none of its toolkits is connected", () => {
+    const signals = world({ activeToolkits: new Set(["slack"]) });
+    strictEqual(lessonSignalMet(spec, signals), false);
+  });
+
+  it("is met by ANY of its toolkits, including one connected before arrival", () => {
+    strictEqual(
+      lessonSignalMet(spec, world({ activeToolkits: new Set(["outlook"]) })),
+      true,
+    );
+  });
+});
+
+describe("lesson signals — acknowledged and companion", () => {
+  it("is never met by the world: only the beat's own Next, or its companion, moves it", () => {
+    const everythingHappened = world({
+      viewMode: "academy",
+      hostEventsSinceArmed: new Set(["ConversationsChanged"]),
+      conversationCount: 5,
+      conversationBaseline: 1,
+      activeToolkits: new Set(["gmail"]),
+    });
+    strictEqual(
+      lessonSignalMet({ type: "acknowledged" }, everythingHappened),
+      false,
+    );
+    strictEqual(
+      lessonSignalMet({ type: "companion" }, everythingHappened),
+      false,
+    );
+  });
+});
+
 describe("lessonAdvance", () => {
   it("never advances a video beat: its own button does", () => {
     const step: LessonStepSpec = { kind: "video", id: "watch", videoId: "v" };
@@ -113,6 +158,24 @@ describe("lessonAdvance", () => {
     const step = spotlight({ type: "viewReached", viewId: "academy" });
     strictEqual(advanced(step, world()), false);
     strictEqual(advanced(step, world({ viewMode: "academy" })), true);
+  });
+
+  it("advances a panel beat on its signal, and never one that names none", () => {
+    const connect: LessonStepSpec = {
+      kind: "panel",
+      id: "connect",
+      panel: "emailConnect",
+      advanceOn: { type: "integrationConnected", toolkits: ["gmail"] },
+    };
+    const sender: LessonStepSpec = {
+      kind: "panel",
+      id: "sender",
+      panel: "emailSender",
+    };
+    const connected = world({ activeToolkits: new Set(["gmail"]) });
+    strictEqual(advanced(connect, world()), false);
+    strictEqual(advanced(connect, connected), true);
+    strictEqual(advanced(sender, connected), false);
   });
 
   it("reads the beat's OWN signal, not any signal being true", () => {

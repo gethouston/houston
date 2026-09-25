@@ -45,8 +45,8 @@ export function academyProgressKey(uid: string | null) {
  * The signed-in user's Academy progress: the record, the two currencies it
  * carries, and the rank they add up to.
  *
- * Progress is also awarded IMPERATIVELY (the onboarding finish path calls
- * `completeSetupChapterLive` outside React), so this query is never treated as
+ * Progress is also awarded IMPERATIVELY (a lesson's finish calls
+ * `completeLessonLive` outside React), so this query is never treated as
  * fresh: it re-reads on mount and whenever the window regains focus, which is
  * exactly when a user comes back from earning something. The read is one
  * preference call plus a localStorage hit — cheap enough that staleness is the

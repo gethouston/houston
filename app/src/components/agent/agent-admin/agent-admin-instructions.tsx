@@ -1,5 +1,5 @@
 import { parseJobDescription } from "@houston/sdk/job-description";
-import { Spinner } from "@houston-ai/core";
+import { Button, Spinner } from "@houston-ai/core";
 import { useTranslation } from "react-i18next";
 import { useInstructions, useSaveInstructions } from "../../../hooks/queries";
 import type { AgentSectionProps } from "../../agent-settings/agent-settings-nav.ts";
@@ -26,9 +26,14 @@ import { PageHero } from "../../shell/page-shell";
  * screen's `<h1>`.
  */
 export function AgentAdminInstructions({ agent }: AgentSectionProps) {
-  const { t } = useTranslation("agents");
+  const { t } = useTranslation(["agents", "common"]);
   const path = agent.folderPath;
-  const { data: instructions } = useInstructions(path);
+  const {
+    data: instructions,
+    isError,
+    refetch,
+    isFetching,
+  } = useInstructions(path);
   const saveInstructions = useSaveInstructions(path);
   const text = instructions ?? "";
   const { fields, body } = parseJobDescription(text);
@@ -41,7 +46,25 @@ export function AgentAdminInstructions({ agent }: AgentSectionProps) {
   return (
     <div className="pb-2">
       <PageHero level={2} title={t("subTabs.instructions")} className="mb-6" />
-      {instructions === undefined ? (
+      {instructions === undefined && isError ? (
+        // The read failed (already reported): say so and offer the read
+        // again, rather than a spinner that never resolves.
+        <div className="flex flex-col items-center gap-3 py-16 text-center">
+          <p className="text-sm text-ink-muted">
+            {t("instructions.loadFailed")}
+          </p>
+          <Button
+            variant="outline"
+            size="sm"
+            disabled={isFetching}
+            onClick={() => {
+              void refetch();
+            }}
+          >
+            {t("common:actions.tryAgain")}
+          </Button>
+        </div>
+      ) : instructions === undefined ? (
         // A loading frame while the one read lands, so neither the facts nor
         // the description ever flashes as empty. Not an empty state.
         <div className="flex items-center justify-center py-16">

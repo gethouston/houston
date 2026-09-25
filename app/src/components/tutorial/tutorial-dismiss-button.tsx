@@ -5,7 +5,7 @@ import { X } from "lucide-react";
  * The way out of a guided beat, worn by the beat's OWN surface.
  *
  * It rides the card it closes rather than standing in a fixed corner of the
- * window: the surface moves (the coach card follows its target across the
+ * window: the surface moves (a lesson's whisper follows its target across the
  * screen), and a detached chip both drifts onto the app's real controls and
  * falls outside the card's `aria-modal` scope, where a screen reader can never
  * reach it. Inside the dialog it is simply the dialog's close.
@@ -14,9 +14,6 @@ import { X } from "lucide-react";
  * on a quiet hover plate, same muted-to-ink shift. Callers pass `className` to
  * seat it in their own geometry (a `p-8` card insets it further than a compact
  * chip does).
- *
- * Rendered only where an exit exists: the mandatory setup shares these
- * primitives and offers none, so it never passes a handler and never gets one.
  */
 export function TutorialDismissButton(props: {
   /** Already translated; the button is icon-only, so this IS the name. */

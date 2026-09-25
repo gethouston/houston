@@ -8,9 +8,18 @@
  * the same PR or the app compiles against a contract nothing serves.
  */
 
-import type { SkillWorkflow } from "@houston/protocol";
+import type { AgentInitialConfig, SkillWorkflow } from "@houston/protocol";
 
-export type { SkillWorkflow, SkillWorkflowStep } from "@houston/protocol";
+export type {
+  AgentArrival,
+  AgentInitialConfig,
+  FirstDayOutcome,
+  FirstDayRefusalCode,
+  FirstDayStartInput,
+  FirstDayStartResult,
+  SkillWorkflow,
+  SkillWorkflowStep,
+} from "@houston/protocol";
 
 export const PROTOCOL_VERSION = 1 as const;
 
@@ -772,6 +781,12 @@ export interface Agent {
   folderPath: string;
   configId: string;
   color?: string;
+  /**
+   * The role the agent's job description names (its `CLAUDE.md` `role`
+   * field), served on the listing so a surface names each agent's job without
+   * reading every job description. Absent when none is named.
+   */
+  role?: string;
   createdAt: string;
   lastOpenedAt?: string;
   /**
@@ -820,6 +835,8 @@ export interface CreateAgent {
   installedPath?: string;
   seeds?: Record<string, string>;
   existingPath?: string;
+  /** The config the agent is born with (a new hire's pending first day). */
+  config?: AgentInitialConfig;
 }
 
 export interface CreateAgentResult {
@@ -2010,6 +2027,8 @@ export interface PortableInstallRequest {
   agentName: string;
   agentColor?: string | null;
   selection: PortableInstallSelection;
+  /** The config the installed agent is born with, as on any create. */
+  config?: AgentInitialConfig;
 }
 
 export interface PortableInstalledAgent {

@@ -7,7 +7,7 @@ import type { ReactNode } from "react";
  * rather than built here: one destination list, one set of tour anchors, one
  * set of gates for both breakpoints. This module only does the two things the
  * menu adds — drop the runs a gate emptied (a heading must never outlive the
- * rows it names) and name the footer's two help actions — so the rules are
+ * rows it names) and name the footer's help actions — so the rules are
  * unit-tested without React (`app/tests/mobile-more-items.test.ts`).
  */
 
@@ -38,22 +38,19 @@ export function mobileMoreItems(
     .map(({ id, label, items }) => ({ id, label, items }));
 }
 
-/** A footer action. Neither points at a screen, which is why they sit under
- *  the destinations rather than among them. */
+/** A footer action. It points at no screen, which is why it sits under the
+ *  destinations rather than among them. */
 export interface MobileMoreFooterRow {
-  id: "guideMe" | "reportProblem";
+  id: "reportProblem";
   label: string;
   onSelect: () => void;
 }
 
 export function mobileMoreFooterRows(args: {
-  guideMe: string;
   reportProblem: string;
-  onGuideMe: () => void;
   onReportProblem: () => void;
 }): MobileMoreFooterRow[] {
   return [
-    { id: "guideMe", label: args.guideMe, onSelect: args.onGuideMe },
     {
       id: "reportProblem",
       label: args.reportProblem,

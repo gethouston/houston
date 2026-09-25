@@ -12,6 +12,7 @@ import {
   type AcademyRecord,
   type AcademyStreak,
 } from "./academy-record.ts";
+import { mergeLessonPositions } from "./lesson-position.ts";
 
 function earlier(a: string, b: string): string {
   return Date.parse(a) <= Date.parse(b) ? a : b;
@@ -120,10 +121,16 @@ export function mergeAcademyRecords(
 ): AcademyRecord | null {
   if (!a) return b;
   if (!b) return a;
+  const lessons = mergeEntries(a.lessons, b.lessons);
   return {
     version: ACADEMY_RECORD_VERSION,
     chapters: mergeEntries(a.chapters, b.chapters),
-    lessons: mergeEntries(a.lessons, b.lessons),
+    lessons,
+    lessonPositions: mergeLessonPositions(
+      a.lessonPositions,
+      b.lessonPositions,
+      lessons,
+    ),
     usageByDevice: mergeUsageByDevice(a.usageByDevice, b.usageByDevice),
     ...mergeUsageDay(a, b),
     streak: mergeStreak(a.streak, b.streak),

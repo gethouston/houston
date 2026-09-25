@@ -8,14 +8,13 @@ export interface SidebarItemRowProps {
 }
 
 /**
- * One agent in the rail: its avatar in the shared glyph column, its name,
- * whatever quiet signal it is carrying in the trailing slot, and the host's
- * optional "..." affordance beside the button.
+ * One AI Employee in the rail: a person row (its portrait, the name above its
+ * role), whatever quiet signal it is carrying in the trailing slot, and the
+ * host's optional "..." affordance beside the button.
  *
- * It is a {@link SidebarRowButton} like every other line in the rail — the
- * avatar is simply what goes in the glyph box. That is the whole point of the
- * primitive: an agent row and the block header above it are the same object, so
- * a block reads as one ladder instead of a header with a foreign list under it.
+ * It is a {@link SidebarRowButton} like every other line in the rail, in the
+ * `person` anatomy, so its paint, indent, states and affordance are the rail's
+ * own and only its height, avatar and text block differ.
  *
  * The affordance is DATA, not behaviour: the host builds the trigger and the
  * menu it opens (`item.affordance`), and this row only places it in the shared
@@ -33,7 +32,9 @@ export function SidebarItemRow({
 }: SidebarItemRowProps) {
   return (
     <SidebarRowButton
+      anatomy="person"
       label={item.name}
+      subtitle={item.subtitle}
       title={item.name}
       icon={item.icon}
       active={isActive}

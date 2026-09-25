@@ -3,10 +3,10 @@
  *
  * Two contracts share this namespace (mirroring the real deployment):
  *  - control-plane host data — activities, routines, skills, agent files
- *    (packages/engine-adapter/src/control-plane.ts), and
+ *    (packages/engine-adapter/src/control-plane.ts; routes-agent-data.ts), and
  *  - the per-agent runtime proxy — providers, auth, settings, and the
  *    conversation stream (packages/runtime-client/src/client.ts), reached at
- *    `/agents/:id/conversations/:cid/*`.
+ *    `/agents/:id/conversations/:cid/*` (routes-agent-runtime.ts).
  *
  * The chat turn is the interesting one: the client subscribes to the
  * conversation's SSE stream FIRST, then POSTs the message (fire-and-forget 202).
@@ -14,15 +14,36 @@
  * → `done`) when the message lands. See translate.ts `streamTurn`.
  */
 
-import { parseMentions } from "@houston/protocol";
 import type { ProviderId } from "@houston/runtime-client";
-import { cancelChat, openChatStream, sendMessage } from "./chat";
 import { json, noContent } from "./http";
-import { apiKeyProviderSpec } from "./provider-catalog";
+import {
+  handleActivities,
+  handleAgentFile,
+  handleAttachments,
+  handleRoutines,
+  handleSkills,
+  handleSkillsManifest,
+} from "./routes-agent-data";
+import {
+  handleAuth,
+  handleConversations,
+  handleCredential,
+} from "./routes-agent-runtime";
 import { handleWorkspaceFiles } from "./routes-files";
+import { startFirstDay } from "./routes-first-day";
 import { handleMigrationRoutes } from "./routes-migration";
 import { handlePortableRoutes } from "./routes-portable";
 import * as state from "./state";
+
+/** A create's `seeds` map, when it is one. */
+function stringRecord(value: unknown): Record<string, string> | undefined {
+  if (!value || typeof value !== "object" || Array.isArray(value))
+    return undefined;
+  const entries = Object.entries(value);
+  return entries.every(([, v]) => typeof v === "string")
+    ? (Object.fromEntries(entries) as Record<string, string>)
+    : undefined;
+}
 
 function makeTitle(text: string): string {
   return (
@@ -49,6 +70,7 @@ export function handleAgents(
         state.createAgent(
           String(body?.name ?? "Agent"),
           typeof body?.claudeMd === "string" ? body.claudeMd : undefined,
+          stringRecord(body?.seeds),
         ),
       );
     return noContent(405);
@@ -71,108 +93,24 @@ export function handleAgents(
 
   const sub = rest[1];
   switch (sub) {
-    case "skills-manifest": {
-      if (rest.length !== 2) return noContent(404);
-      if (method === "GET") return json(state.getSkillsManifest(id));
-      if (method === "PUT")
-        return json(state.putSkillsManifest(id, body ?? {}));
-      return noContent(405);
-    }
+    case "skills-manifest":
+      return handleSkillsManifest(method, id, rest, body);
 
-    case "activities": {
-      if (rest.length === 2) {
-        if (method === "GET") return json({ items: state.listActivities(id) });
-        if (method === "POST")
-          return json(state.createActivity(id, body ?? {}));
-        return noContent(405);
-      }
-      const aid = rest[2];
-      if (method === "PATCH") {
-        const updated = state.updateActivity(id, aid, body ?? {});
-        return updated ? json(updated) : json({ error: {} }, 404);
-      }
-      if (method === "DELETE") {
-        state.deleteActivity(id, aid);
-        return noContent();
-      }
-      return noContent(405);
-    }
+    case "activities":
+      return handleActivities(method, id, rest, body);
 
-    case "skills": {
-      // Skills are agent-scoped; creates land in the per-agent skills state
-      // (state-skills.ts) so the list, the editor and delete work end to end.
-      if (rest.length === 2) {
-        if (method === "GET") return json({ items: state.listSkills(id) });
-        if (method === "POST") {
-          state.createSkill(id, (body ?? {}) as Record<string, string>);
-          return noContent(201);
-        }
-        return noContent(405);
-      }
-      const slug = decodeURIComponent(rest[2] ?? "");
-      if (rest.length === 3) {
-        if (method === "GET") {
-          const detail = state.loadSkill(id, slug);
-          return detail ? json(detail) : json({ error: {} }, 404);
-        }
-        if (method === "PUT") {
-          return state.saveSkill(id, slug, String(body?.content ?? ""))
-            ? noContent()
-            : json({ error: {} }, 404);
-        }
-        if (method === "DELETE") {
-          return state.deleteSkill(id, slug)
-            ? noContent()
-            : json({ error: {} }, 404);
-        }
-      }
-      return noContent(); // run etc. — accepted no-ops
-    }
+    case "skills":
+      return handleSkills(method, id, rest, body);
 
-    case "routines": {
-      if (rest.length === 2) {
-        if (method === "GET") return json({ items: state.listRoutines(id) });
-        if (method === "POST")
-          return json(state.createRoutine(id, body ?? {}), 201);
-        return noContent(405);
-      }
-      const rid = rest[2];
-      if (rest.length === 3 && method === "PATCH") {
-        const updated = state.updateRoutine(id, rid, body ?? {});
-        return updated ? json(updated) : json({ error: {} }, 404);
-      }
-      if (rest.length === 3 && method === "DELETE") {
-        state.deleteRoutine(id, rid);
-        return noContent();
-      }
-      return noContent(); // run-now / scheduler-sync — accepted no-ops
-    }
+    case "routines":
+      return handleRoutines(method, id, rest, body);
 
     case "routine_runs":
       if (method === "GET") return json({ items: [] });
       return noContent(); // create/update/delete/run — accepted no-ops
 
-    case "credential": {
-      // `POST /agents/:id/credential/api-key` is the ONLY write an API-key
-      // connect makes — the real host stores the key centrally AND pushes it
-      // into the standing runtime, so `/providers` reads connected at once. No
-      // runtime-side call follows it, so accepting it as a no-op left the
-      // provider unconnected while the dialog reported success. Same gate as
-      // the real route: the provider must be one this catalog connects with a
-      // pasted key (an OAuth or unknown id is "unknown API-key provider"), and
-      // a key that is only whitespace is no key.
-      if (method === "POST" && rest[2] === "api-key") {
-        const spec = apiKeyProviderSpec(body?.provider);
-        if (!spec) return json({ error: "unknown API-key provider" }, 400);
-        const key = typeof body?.apiKey === "string" ? body.apiKey.trim() : "";
-        if (!key) return json({ error: "missing 'apiKey'" }, 400);
-        state.setApiKey(id, spec.id);
-        return json({ ok: true, provider: spec.id });
-      }
-      // capture / forget: each is paired with a runtime login/logout call the
-      // fake already models, so the slot state is carried there.
-      return noContent();
-    }
+    case "credential":
+      return handleCredential(method, id, rest, body);
 
     case "providers":
       // `/providers/usage` is the live per-account usage the AI Models hub's
@@ -192,126 +130,26 @@ export function handleAgents(
     case "title":
       return json({ title: makeTitle(String(body?.text ?? "")) });
 
-    case "auth": {
-      if (rest[2] === "status") return json(state.authStatusFor(id));
-      const provider = rest[2] as ProviderId; // /auth/:provider/...
-      const action = rest[3];
-      if (action === "login" && rest[4] === "complete") {
-        state.completeLogin(id, provider);
-        return json({ ok: true });
-      }
-      if (action === "login" && rest[4] === "cancel") {
-        state.cancelLogin(id, provider);
-        return json({ ok: true });
-      }
-      if (action === "login") {
-        const enterpriseDomain =
-          new URL(req.url).searchParams.get("enterpriseDomain") ?? undefined;
-        return json(state.startLogin(id, provider, enterpriseDomain));
-      }
-      if (action === "api-key") {
-        state.setApiKey(id, provider);
-        return json({ ok: true });
-      }
-      if (action === "logout") {
-        state.logout(id, provider);
-        return json({ ok: true });
-      }
-      return noContent();
-    }
+    case "auth":
+      return handleAuth(id, rest, req);
 
-    case "conversations": {
-      const cid = rest[2];
-      const action = rest[3];
-      if (action === "events") return openChatStream(req, id, cid);
-      if (action === "messages") {
-        if (method === "GET")
-          return json({
-            id: cid,
-            title: "",
-            messages: state.getHistory(id, cid),
-          });
-        if (method === "POST")
-          return sendMessage(
-            id,
-            cid,
-            String(body?.text ?? ""),
-            typeof body?.nonce === "string" ? body.nonce : undefined,
-            typeof body?.displayText === "string"
-              ? body.displayText
-              : undefined,
-            // The @mention sidecar, through the SAME wire guard the real send
-            // routes use — the mock can't drift on what a mention is.
-            parseMentions(body?.mentions),
-          );
-      }
-      if (action === "cancel") {
-        // `cancelled` mirrors the runtime: false = nothing was in flight, so
-        // the client settles the stuck card itself (the orphan path).
-        return json({ ok: true, cancelled: cancelChat(id, cid) });
-      }
-      if (action === "mode" && method === "POST") {
-        // Live Mode-pill switch passthrough. No turn ever runs in the fake
-        // host, so it always answers the benign "nothing to apply" shape.
-        return json({ ok: true, applied: false });
-      }
-      if (action === "truncate" && method === "POST") {
-        // Edit-and-resend rewind (PRODUCT-1217): cut the transcript at the
-        // named user turn. No turn ever runs in the fake host, so the real
-        // route's 409-while-running never applies here.
-        const turnId = typeof body?.turnId === "string" ? body.turnId : "";
-        if (!state.truncateHistory(id, cid, turnId))
-          return json({ error: "turn not found" }, 404);
-        return json({ ok: true, removed: 0 });
-      }
-      if (action === "dismiss-interaction" && method === "POST") {
-        // Runtime passthrough: append the durable stop marker to the transcript
-        // AND retire the bound activity's pending interaction (mirrors the real
-        // dismiss). No turn runs in the fake host, so always the success path —
-        // the real host's 409-while-running never applies here.
-        state.appendStoppedMessage(id, cid);
-        state.clearActivityInteraction(id, cid);
-        return json({ ok: true });
-      }
-      return noContent();
-    }
+    case "conversations":
+      return handleConversations(method, id, rest, req, body);
 
-    case "agentfile": {
-      // Files-first store: `/agents/:id/agentfile/<relPath>`. The board reads +
-      // writes `.houston/activity/activity.json` through here.
-      const relPath = rest.slice(2).join("/");
-      if (method === "GET")
-        return json({ content: state.readAgentFile(id, relPath) });
-      if (method === "PUT") {
-        state.writeAgentFile(id, relPath, String(body?.content ?? ""));
-        return noContent();
-      }
-      return noContent(405);
-    }
+    case "agentfile":
+      return handleAgentFile(method, id, rest, body);
+
+    case "first-day":
+      // An AI Employee's first day: the host-side start (routes-first-day.ts).
+      if (method !== "POST" || rest.length !== 2) return noContent(405);
+      return startFirstDay(id, body ?? {});
 
     case "files":
       // The Files tab's workspace surface (list/upload/move/…): routes-files.ts.
       return handleWorkspaceFiles(method, id, rest, req, body);
 
-    case "attachments": {
-      // Composer attachments — faithful to the real host's `turn/attachments.ts`:
-      // a 100MB request cap (413), `scopeId` accepted+ignored, and files stored
-      // in the agent's visible, durable `uploads/` folder (HOU-706) with
-      // colliding names disambiguated. Returns the RELATIVE `uploads/<name>`
-      // paths the agent's Read tool opens.
-      if (method !== "POST") return noContent(405);
-      const files = (Array.isArray(body?.files) ? body.files : []) as {
-        name: string;
-        contentBase64: string;
-      }[];
-      // base64 is ~4/3 the byte size; estimate to reject oversized uploads.
-      let total = 0;
-      for (const f of files)
-        total += Math.floor((f.contentBase64.length * 3) / 4);
-      if (total > 100 * 1024 * 1024)
-        return json({ error: "attachments exceed the upload size limit" }, 413);
-      return json({ paths: state.importWorkspaceFiles(id, "uploads", files) });
-    }
+    case "attachments":
+      return handleAttachments(method, id, body);
 
     case "portable":
       // Share / copy: the export inventory and the packaged `.houstonagent`,

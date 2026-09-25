@@ -2,7 +2,7 @@
  * The self-setup mission's permanent hello: the record the app writes the
  * moment it starts that mission, and the role the sentence names.
  *
- * `lib/agent-setup-mission.ts` starts the mission; `lib/setup-hello.ts`
+ * `lib/agent-first-day.ts` opens the mission the host started; `lib/setup-hello.ts`
  * decides which source the hello's two facts come from, and the chat panel
  * renders it as that mission's first item.
  *

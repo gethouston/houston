@@ -44,6 +44,7 @@
     "saveSkill": "Save changes to this skill's instructions.",
     "setAgentAssignments": "Choose who may use this AI Employee, and at what access level.",
     "setAgentModelChoice": "Change which AI model this AI Employee uses.",
+    "startFirstDay": "Start this AI Employee's first day: it introduces itself and works out with you how to help.",
     "setAgentSettings": "Choose which apps and AI models this AI Employee is allowed to use.",
     "setAgentTeam": "Move this AI Employee into another team in this space.",
     "setAgentTeamMemberOwner": "Give someone ownership of this team, or take it away.",

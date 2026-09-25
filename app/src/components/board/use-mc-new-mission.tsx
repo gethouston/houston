@@ -1,6 +1,7 @@
 import type { NewPanelOpener } from "@houston-ai/board";
 import { useCallback, useEffect, useRef, useState } from "react";
 import type { Agent } from "../../lib/types";
+import { newTaskHeldBySeed } from "../../stores/drafts";
 import { useUIStore } from "../../stores/ui";
 import { AgentPickerDialog } from "../agent-picker-dialog";
 import { useIsActiveView } from "../shell/keep-alive-views";
@@ -65,6 +66,9 @@ export function useMcNewMission({
         setMenuOpen(false);
         return;
       }
+      // A seeded composer (the email lesson's ask) keeps its words until the
+      // lesson moves on; the button waits for it like the shortcut does.
+      if (newTaskHeldBySeed()) return;
       const target = newMissionTarget(pinnedAgent, scopedAgents);
       if (target.kind === "direct") {
         handlePickAgentRef.current(target.agent);
@@ -89,7 +93,7 @@ export function useMcNewMission({
     return () => setOnStartMission(null);
   }, [isActive, openNewMission, setOnStartMission]);
 
-  const handlePickAgent = useCallback(
+  const openComposer = useCallback(
     (agent: Agent, options?: { focusComposer?: boolean }) => {
       setPendingAgent(agent);
       setSelectedId(null);
@@ -97,16 +101,36 @@ export function useMcNewMission({
     },
     [setSelectedId],
   );
+  // Picked by hand while a seed stands, the composer would swap the seeded
+  // words for the user's own draft mid-lesson, so it waits for the seed to end.
+  const handlePickAgent = useCallback(
+    (agent: Agent, options?: { focusComposer?: boolean }) => {
+      if (newTaskHeldBySeed()) return;
+      openComposer(agent, options);
+    },
+    [openComposer],
+  );
   handlePickAgentRef.current = handlePickAgent;
+  // A New task asked for from outside the board (`composeTaskFor`, which
+  // seeded its words): the board on the glass that holds the agent opens it,
+  // without focusing the composer, so sending stays a deliberate click.
+  const newTaskRequest = useUIStore((s) => s.newTaskRequest);
+  useEffect(() => {
+    if (!isActive || !openerReady || newTaskRequest === null) return;
+    const agent = scopedAgents.find((a) => a.id === newTaskRequest);
+    if (agent === undefined) return;
+    useUIStore.getState().requestNewTask(null);
+    openComposer(agent, { focusComposer: false });
+  }, [isActive, openerReady, newTaskRequest, scopedAgents, openComposer]);
   const registerOpener = useCallback((opener: NewPanelOpener) => {
     openerRef.current = opener;
     setOpenerReady(true);
   }, []);
   const onAutoOpenEmpty = useCallback(() => {
-    // The in-app onboarding teaches the New task CLICK; an empty board
+    // An Academy lesson teaches the New task CLICK; an empty board
     // auto-opening the composer would perform the lesson's step by itself
     // (and read as "a task started on its own").
-    if (useUIStore.getState().inAppOnboardingActive) return;
+    if (useUIStore.getState().activeLessonId !== null) return;
     if (visibleAgents.length === 1)
       handlePickAgent(visibleAgents[0], { focusComposer: false });
     else if (visibleAgents.length > 1) setAgentPickerOpen(true);

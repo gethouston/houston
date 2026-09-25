@@ -16,6 +16,11 @@ import {
   useTypeToSearch,
 } from "./use-choice-keyboard";
 
+const SIZES = {
+  page: { frame: "mx-auto max-w-2xl gap-5", headline: "text-2xl font-normal" },
+  compact: { frame: "gap-4", headline: "text-base font-medium" },
+};
+
 /**
  * One question of the guided create-agent setup: a headline, a filter paired
  * with the door out ("Something else"), and a wrapping run of suggestions.
@@ -44,16 +49,20 @@ export function ChoiceStep({
   continueLabel,
   cancelLabel,
   search,
-  anchorAttrs,
   onSelect,
   onSelectCustom,
   onCancelCustom,
   onCustomChange,
   onContinue,
+  compact = false,
 }: ChoiceStepProps & {
   /** Translated arrow-key hint for the chip runs; this step stays i18n-free. */
   keyboardHint?: string;
+  /** Asked in a popover over the card it edits, not as a screen of its own:
+   *  the question reads at body size and the step fills the popover. */
+  compact?: boolean;
 }) {
+  const size = compact ? SIZES.compact : SIZES.page;
   const [query, setQuery] = useState("");
   // The chip the keyboard is on, which owns the question's only tab stop.
   const [focusedId, setFocusedId] = useState<string | null>(null);
@@ -117,9 +126,9 @@ export function ChoiceStep({
 
   return (
     <div ref={stepRef} className="flex min-h-0 flex-1 flex-col">
-      <div className="mx-auto flex w-full max-w-2xl flex-col gap-5">
+      <div className={cn("flex w-full flex-col", size.frame)}>
         <div className="flex flex-col gap-1.5">
-          <h2 className="text-balance text-2xl font-normal">{headline}</h2>
+          <h2 className={cn("text-balance", size.headline)}>{headline}</h2>
           {hint && <p className="text-sm text-ink-muted">{hint}</p>}
         </div>
 
@@ -150,7 +159,6 @@ export function ChoiceStep({
             the context the question was asked in — but nothing in them can be
             reached, by thumb or by Tab, until the row hands the step back. */}
         <div
-          {...anchorAttrs}
           inert={custom.active}
           className={cn(
             "flex flex-col gap-5 transition-opacity duration-200",

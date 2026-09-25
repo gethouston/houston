@@ -61,7 +61,8 @@
       "role": "Cargo",
       "addIndustry": "Adicionar indústria",
       "addRole": "Adicionar cargo"
-    }
+    },
+    "loadFailed": "Não foi possível carregar a descrição do cargo."
   },
   "learnings": {
     "emptyTitle": "Ainda sem aprendizados",
@@ -285,8 +286,5 @@
         "clearAll": "Limpar"
       }
     }
-  },
-  "rowMenu": {
-    "label": "Opções de {{name}}"
   }
 }

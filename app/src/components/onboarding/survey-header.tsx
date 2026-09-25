@@ -1,6 +1,5 @@
-import { cn } from "@houston-ai/core";
+import { cn, HoustonHelmet } from "@houston-ai/core";
 import { useTranslation } from "react-i18next";
-import { HoustonLogo } from "../shell/experience-card";
 import type { SurveyQuestionCopy } from "./survey-copy";
 
 /**
@@ -26,7 +25,7 @@ export function SurveyHeader({
   return (
     <>
       <div className="flex flex-col items-center gap-4">
-        <HoustonLogo size={framed ? 44 : 52} />
+        <HoustonHelmet color="currentColor" size={framed ? 44 : 52} />
         <div className="flex flex-col items-center gap-2">
           <h1 className="text-2xl font-semibold tracking-tight">
             {heading.title}

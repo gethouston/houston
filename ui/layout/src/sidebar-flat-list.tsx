@@ -1,8 +1,8 @@
-import { Tooltip, TooltipContent, TooltipTrigger } from "@houston-ai/core";
+import { cn, Tooltip, TooltipContent, TooltipTrigger } from "@houston-ai/core";
 import { Plus } from "lucide-react";
 import type { SidebarItem } from "./sidebar";
 import { SidebarCollapsedItem } from "./sidebar-collapsed-item";
-import { sidebarClasses } from "./sidebar-geometry";
+import { sidebarClasses, sidebarMarkSize } from "./sidebar-geometry";
 import { SidebarItemRow } from "./sidebar-item-row";
 import type { SidebarBaseRowContext } from "./sidebar-row-context";
 
@@ -50,10 +50,13 @@ export function SidebarFlatList({
                 type="button"
                 aria-label={addItemLabel}
                 onClick={onAdd}
-                className="flex size-9 shrink-0 items-center justify-center rounded-lg text-ink-muted transition-colors hover:bg-hover/50 hover:text-ink focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-focus"
+                className={cn(
+                  "flex size-9 shrink-0 items-center justify-center rounded-lg text-ink-muted transition-colors hover:bg-hover/50 hover:text-ink focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-focus",
+                  sidebarMarkSize.slot,
+                )}
                 {...(addItemDataAttrs ?? {})}
               >
-                <Plus className="size-4" />
+                <Plus />
               </button>
             </TooltipTrigger>
             <TooltipContent side="right" sideOffset={8}>

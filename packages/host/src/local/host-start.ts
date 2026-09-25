@@ -1,3 +1,4 @@
+import { trackBoundAgentRole } from "../agent-role/role-publisher";
 import { processAssistantCatalog } from "../assistant/catalog-source";
 import { warmViewDocs } from "../docs/view-warm";
 import { formatAssistantModeLog } from "../routes/assistant-wiring";
@@ -19,6 +20,7 @@ export async function startLocalHost(
     server,
     docProjector,
     docShadow,
+    roleTracker,
     store,
     watcher,
     scheduler,
@@ -70,6 +72,7 @@ export async function startLocalHost(
     // tree's families over the live agent's docs is exactly the
     // stale-data overwrite passivity exists to prevent.
     docProjector?.seed();
+    if (docProjector) trackBoundAgentRole(roleTracker, docProjector);
     if (docShadow) {
       // Self-warm the view docs so an agent asleep since before views
       // existed gets them published without a first slow client read.

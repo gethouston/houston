@@ -6,6 +6,7 @@ import {
 import { useEffect } from "react";
 import { agentRosterSettled } from "../../lib/agent-gone";
 import { latestCachedAllConversations } from "../../lib/all-conversations-cache";
+import { sliceCoverage } from "../../lib/all-conversations-coverage";
 import {
   foldSweep,
   sliceFreshness,
@@ -56,6 +57,7 @@ export function useAllConversations(agentPaths: string[]) {
       // agents that did not answer keep their last-known missions (HOU-981).
       const failedPaths = failedAgents.map((f) => f.agentPath);
       const failed = new Set(failedPaths);
+      sliceCoverage.noteRead(agentPaths.filter((p) => !failed.has(p)));
       // Nor may a SLOW sweep roll the board back: its reads were taken at
       // `startedAt`, and every agent the push stream patched while one slow
       // agent held the settle open has a newer slice in cache than the rows

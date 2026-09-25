@@ -6,10 +6,7 @@ import { Button } from "@houston-ai/core";
  *
  * The same row the video beat ends on — words left, action right — so the two
  * docked beats read as one surface changing its contents rather than two
- * different cards. Nothing is centred and nothing is crowned: a lesson-local
- * card on purpose, because the guided setup's centred narration card
- * (`TutorialCenterCard`) is the FIRST thing a new user ever sees and must not
- * move.
+ * different cards. Nothing is centred and nothing is crowned.
  */
 export function LessonNoteCard({
   title,

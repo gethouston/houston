@@ -9,7 +9,6 @@ import {
 import {
   ACADEMY_PREF_KEY,
   type AcademyRecord,
-  completeChapterRecord,
   completeLessonRecord,
   serializeAcademyRecord,
   totalExperience,
@@ -129,6 +128,7 @@ const record = (patch: Partial<AcademyRecord> = {}): AcademyRecord => ({
     setup: { completedAt: "2026-08-01T10:00:00.000Z", experience: 50 },
   },
   lessons: {},
+  lessonPositions: {},
   usageByDevice: {},
   usageDay: null,
   usageToday: 0,
@@ -146,11 +146,6 @@ const loadRecord = async (ports: AcademyStorePorts) =>
 const settle = () => new Promise((r) => setImmediate(r));
 
 const now = new Date("2026-08-10T12:00:00.000Z");
-
-const award =
-  (id: string, xp: number, at = now) =>
-  (r: AcademyRecord | null): AcademyRecord =>
-    completeChapterRecord(r, id, xp, at);
 
 const teach =
   (id: string, xp: number, at = now) =>
@@ -320,9 +315,9 @@ describe("academyPortsFor — the account that earned it", () => {
 });
 
 describe("the mutation queue — awards", () => {
-  it("awards a chapter and persists it to both copies", async () => {
+  it("awards a lesson and persists it to both copies", async () => {
     const h = harness();
-    const next = await h.queue.run(award("setup", 50));
+    const next = await h.queue.run(teach("houston-tour", 50));
     strictEqual(totalExperience(next), 50);
     deepStrictEqual(h.mirror(), next);
     deepStrictEqual(
@@ -333,19 +328,19 @@ describe("the mutation queue — awards", () => {
 
   it("is idempotent: a second call pays nothing and writes nothing", async () => {
     const h = harness();
-    const first = await h.queue.run(award("setup", 50));
+    const first = await h.queue.run(teach("houston-tour", 50));
     const writesAfterFirst = h.writes.length;
 
     const again = await h.queue.run(
-      award("setup", 50, new Date("2026-09-01T12:00:00.000Z")),
+      teach("houston-tour", 50, new Date("2026-09-01T12:00:00.000Z")),
     );
     strictEqual(totalExperience(again), 50);
-    strictEqual(again.chapters.setup?.completedAt, now.toISOString());
+    strictEqual(again.lessons["houston-tour"]?.completedAt, now.toISOString());
     deepStrictEqual(again, first);
     strictEqual(h.writes.length, writesAfterFirst);
   });
 
-  it("awards a lesson beside the chapters, once", async () => {
+  it("awards a second lesson beside the first, once", async () => {
     const h = harness();
     const first = await h.queue.run(teach("intro", 10));
     strictEqual(totalExperience(first), 10);
@@ -359,8 +354,8 @@ describe("the mutation queue — awards", () => {
 
   it("keeps the award when the engine is unreachable, and heals later", async () => {
     const h = harness({ engineDown: true });
-    const earned = await h.queue.run(award("setup", 50));
-    ok(earned.chapters.setup);
+    const earned = await h.queue.run(teach("houston-tour", 50));
+    ok(earned.lessons["houston-tour"]);
     strictEqual(h.engine.get(ACADEMY_PREF_KEY), undefined);
 
     h.setEngineDown(false);
@@ -395,7 +390,7 @@ describe("the mutation queue — one writer", () => {
     const h = harness();
     const release = h.gate();
     const all = Promise.all([
-      h.queue.run(award("setup", 50)),
+      h.queue.run(teach("houston-tour", 50)),
       h.queue.run(teach("intro", 10)),
       h.queue.run(pay(2)),
     ]);
@@ -444,7 +439,7 @@ describe("the mutation queue — one writer", () => {
   it("folds in a record another window saved while the slot was loading", async () => {
     const h = harness();
     const release = h.gate();
-    const awarding = h.queue.run(award("setup", 50));
+    const awarding = h.queue.run(teach("houston-tour", 50));
     // A second window (its own queue, same mirror) finishes a lesson meanwhile.
     h.setMirror(completeLessonRecord(null, "intro", 10, now));
     release();
@@ -511,10 +506,10 @@ describe("the mutation queue — teardown", () => {
     // user who cmd-tabs away and then quits reaches it twice. An award already
     // applied must cost nothing the second time.
     const h = harness();
-    h.queue.commitSync(award("setup", 50));
+    h.queue.commitSync(teach("houston-tour", 50));
     const writesAfterFirst = h.writes.length;
 
-    h.queue.commitSync(award("setup", 50));
+    h.queue.commitSync(teach("houston-tour", 50));
     strictEqual(totalExperience(h.mirror()), 50);
     strictEqual(h.writes.length, writesAfterFirst);
   });

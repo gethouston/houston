@@ -1,7 +1,6 @@
 import { useCallback, useMemo } from "react";
 import { useTranslation } from "react-i18next";
 import { isAgentContextId } from "../../lib/agent-role-catalog";
-import { tutorialAnchor } from "../tutorial";
 import { ChoiceStep } from "./choice-step";
 import {
   CONTEXT_SEARCH_REACH,
@@ -59,7 +58,6 @@ export function ContextStep({
           state.writeCustomContext(query);
         },
       }}
-      anchorAttrs={tutorialAnchor("createAgentBrief")}
       onSelect={(id) => {
         // The run renders catalog ids alone, so this only ever narrows.
         if (!isAgentContextId(id)) return;

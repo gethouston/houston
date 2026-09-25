@@ -1,11 +1,8 @@
 {
   "setupMission": {
-    "title": "Getting set up",
-    "startFailed": "We could not start setup. Please try again."
+    "title": "Getting set up"
   },
   "roleSetup": {
-    "back": "Back",
-    "unlinkProject": "Unlink existing project",
     "steps": {
       "context": "Industry",
       "role": "Role",
@@ -29,11 +26,12 @@
     "continue": "Continue",
     "cancel": "Cancel",
     "customize": {
-      "headline": "Give it a name and a color",
+      "headline": "Name your AI Employee",
       "changeIndustry": "Change industry: {{answer}}",
       "changeRole": "Change role: {{answer}}"
     },
     "createFailed": "We could not create this AI Employee. Please try again.",
+    "saveFailed": "We couldn't save your changes yet. We'll try again when you finish.",
     "placementFailedTitle": "Created in the default team",
     "placementFailedBody": "We could not put {{name}} in the team you picked. You can move it any time from its menu.",
     "contexts": {
@@ -473,6 +471,7 @@
       "film_festival_coordinator": "Festival coordinator",
       "finance_and_insurance_clerk": "Finance and insurance clerk",
       "finance_business_partner": "Finance business partner",
+      "finance_manager": "Finance manager",
       "finance_reporting_analyst": "Financial reporting analyst",
       "finance_risk_manager": "Risk manager",
       "financial_analyst": "Financial analyst",
@@ -772,6 +771,7 @@
       "open_house_coordinator": "Open house coordinator",
       "operations_consultant": "Operations consultant",
       "operations_coordinator": "Operations coordinator",
+      "operations_manager": "Operations manager",
       "order_desk_clerk": "Order desk clerk",
       "order_fulfillment_clerk": "Order fulfillment clerk",
       "order_status_clerk": "Order status clerk",

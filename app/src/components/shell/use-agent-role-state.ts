@@ -1,11 +1,17 @@
 import { useEffect, useState } from "react";
 import { useTranslation } from "react-i18next";
-import type { AgentContextId, AgentRoleId } from "../../lib/agent-role-catalog";
+import {
+  AGENT_CONTEXT_IDS,
+  AGENT_ROLE_IDS,
+  type AgentContextId,
+  type AgentRoleId,
+} from "../../lib/agent-role-catalog";
 import {
   type AgentRoleContext,
   capRolePart,
   createAgentRoleContext,
 } from "../../lib/agent-role-context";
+import { type JobBriefField, jobAnswerEntry } from "../context/job-brief-model";
 
 export interface AgentRoleState {
   contextId: AgentContextId | null;
@@ -33,19 +39,52 @@ export interface AgentRoleState {
   cancelCustomRole: () => void;
   /** Capped like {@link AgentRoleState.writeCustomContext}. */
   writeCustomRole: (value: string) => void;
+  /** Drop the job and keep the industry: the next hire in the same world. */
+  clearRole: () => void;
+  /** An answer given again on the employee card, as the person reads it: a
+   *  catalog label picks its entry, other words are the typed answer. Unlike
+   *  `chooseContext`, a new industry keeps the job. */
+  answerBrief: (field: JobBriefField, answer: string) => void;
 }
 
 /**
- * The context + role answers the create dialog collects, and the brief they
- * add up to. Both questions start EMPTY on every open: the agent's industry
- * and job are its own, never carried over from the user's onboarding answers, so
- * nothing is ever preselected.
+ * Where the industry question opens: a catalog context to preselect, or the
+ * words of an industry the catalog does not list. Both empty opens it blank.
  */
-export function useAgentRoleState(open: boolean): AgentRoleState {
+export interface AgentRoleStart {
+  contextId: AgentContextId | null;
+  customContext: string;
+}
+
+export const EMPTY_ROLE_START: AgentRoleStart = {
+  contextId: null,
+  customContext: "",
+};
+
+function startsCustom(start: AgentRoleStart): boolean {
+  return start.contextId === null && start.customContext !== "";
+}
+
+/**
+ * The context + role answers a hire collects, and the brief they add up to.
+ * Every open starts from `start`: the in-app create dialog passes nothing, so
+ * an agent's industry is its own and nothing is preselected there; the
+ * onboarding team card passes the industry the person gave in the survey,
+ * because a first team is hired for the business they just described. The job
+ * always starts empty.
+ */
+export function useAgentRoleState(
+  open: boolean,
+  start: AgentRoleStart = EMPTY_ROLE_START,
+): AgentRoleState {
   const { t } = useTranslation("agentOnboarding");
-  const [contextId, setContextId] = useState<AgentContextId | null>(null);
-  const [contextIsCustom, setContextIsCustom] = useState(false);
-  const [customContext, setCustomContext] = useState("");
+  const [contextId, setContextId] = useState<AgentContextId | null>(
+    start.contextId,
+  );
+  const [contextIsCustom, setContextIsCustom] = useState(startsCustom(start));
+  const [customContext, setCustomContext] = useState(() =>
+    capRolePart(start.customContext),
+  );
   const [roleId, setRoleId] = useState<AgentRoleId | null>(null);
   const [roleIsCustom, setRoleIsCustom] = useState(false);
   const [customRole, setCustomRole] = useState("");
@@ -56,14 +95,15 @@ export function useAgentRoleState(open: boolean): AgentRoleState {
     setCustomRole("");
   };
 
+  // Only an open resets: a start that settles while the questions are on
+  // screen must never overwrite an answer the user already changed.
+  // biome-ignore lint/correctness/useExhaustiveDependencies: `open` is the whole trigger.
   useEffect(() => {
     if (!open) return;
-    setContextId(null);
-    setContextIsCustom(false);
-    setCustomContext("");
-    setRoleId(null);
-    setRoleIsCustom(false);
-    setCustomRole("");
+    setContextId(start.contextId);
+    setContextIsCustom(startsCustom(start));
+    setCustomContext(capRolePart(start.customContext));
+    clearRole();
   }, [open]);
 
   const contextLabel = contextIsCustom
@@ -122,5 +162,27 @@ export function useAgentRoleState(open: boolean): AgentRoleState {
       setCustomRole("");
     },
     writeCustomRole: (value) => setCustomRole(capRolePart(value)),
+    clearRole,
+    answerBrief: (field, answer) => {
+      if (field === "industry") {
+        const entry = jobAnswerEntry(
+          AGENT_CONTEXT_IDS,
+          (id) => t(`roleSetup.contexts.${id}`),
+          answer,
+        );
+        setContextId(entry.id);
+        setContextIsCustom(entry.id === null);
+        setCustomContext(entry.typed);
+        return;
+      }
+      const entry = jobAnswerEntry(
+        AGENT_ROLE_IDS,
+        (id) => t(`roleSetup.roles.${id}`),
+        answer,
+      );
+      setRoleId(entry.id);
+      setRoleIsCustom(entry.id === null);
+      setCustomRole(entry.typed);
+    },
   };
 }

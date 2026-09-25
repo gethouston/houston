@@ -201,6 +201,12 @@
         "$value": "{color.glow.blue-a12}"
       }
     },
+    "employee-metal-light": {
+      "$value": "{color.base.white}"
+    },
+    "employee-metal-shade": {
+      "$value": "{color.neutral.950}"
+    },
     "agent": {
       "charcoal": {
         "$value": "{color.agent.charcoal}"

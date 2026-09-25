@@ -11,7 +11,7 @@ import type { LessonSpec } from "../src/lib/academy/lesson-spec.ts";
 
 const spec: LessonSpec = {
   id: "test-lesson",
-  chapterId: "chapter-test",
+  chapterId: "getting-started",
   experience: 20,
   steps: [
     { kind: "video", id: "watch", videoId: "test-lesson" },

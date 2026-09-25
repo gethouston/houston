@@ -108,5 +108,13 @@
   },
   "dnd": {
     "moveError": "Não foi possível mover a tarefa. Tente novamente."
+  },
+  "firstDay": {
+    "start": "Começar o primeiro dia de {{name}}",
+    "heroTitle": "Tudo pronto para o primeiro dia de {{name}}",
+    "explain": "{{name}} vai fazer algumas perguntas para aprender o trabalho.",
+    "compactTitle": "O primeiro dia de {{name}} ainda não começou",
+    "bannerTitle": "Sua equipe está pronta. Escolha um funcionário de IA para começar o primeiro dia dele.",
+    "bannerExplain": "Cada um vai fazer algumas perguntas para aprender o trabalho."
   }
 }

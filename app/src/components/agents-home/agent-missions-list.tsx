@@ -14,6 +14,7 @@ import type {
 import { AgentMissionRow } from "./agent-mission-row";
 import {
   type AgentMissionSections,
+  agentMissionCount,
   missionListSections,
   searchMissions,
 } from "./agent-missions-model";
@@ -81,12 +82,7 @@ export function AgentMissionsList({
     />
   );
 
-  const total =
-    sections.needsYou.length +
-    sections.running.length +
-    sections.done.length +
-    sections.archived.length;
-  if (total === 0)
+  if (agentMissionCount(sections) === 0)
     return (
       <Empty className="border-0">
         <EmptyHeader>

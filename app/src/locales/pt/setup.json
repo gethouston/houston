@@ -1,127 +1,66 @@
 {
-  "inApp": {
-    "welcomeTitle": "Boas-vindas ao Houston!",
-    "welcomeBody": "Antes de começar, configure o essencial. <emph>O Houston não funciona sem isso.</emph> Leva 3 minutos.",
-    "continue": "Continuar",
-    "steps": {
-      "connectAiIntro": {
-        "title": "Conecte sua IA",
-        "body": "Seus funcionários de IA precisam de um modelo para trabalhar. Vou mostrar onde conectá-lo.",
-        "cta": "Me mostre"
-      },
-      "openMenu": {
-        "title": "Abra o menu",
-        "hint": "Toque em Mais, embaixo"
-      },
-      "openAiHub": {
-        "title": "Clique em Modelos de IA"
-      },
-      "connectAi": {
-        "title": "Escolha a IA que você já usa.",
-        "hint": "Seus funcionários de IA vão funcionar com ela",
-        "already": "Você já tem uma IA conectada."
-      },
-      "integrationsIntro": {
-        "title": "Conecte seus apps",
-        "body": "Seus funcionários de IA agem através dos seus apps, como e-mail e calendário. Vou mostrar onde.",
-        "cta": "Me mostre"
-      },
-      "openIntegrations": {
-        "title": "Clique em Integrações"
-      },
-      "connectIntegration": {
-        "title": "Conecte seu e-mail.",
-        "hint": "Ou qualquer app que você usa todo dia",
-        "already": "Você já tem um app conectado."
-      },
-      "integrationConnected": {
-        "title": "App conectado!",
-        "body": "Fácil assim. Seus funcionários de IA podem acessar mais de 1000 apps desse jeito."
-      },
-      "createAgentIntro": {
-        "title": "Crie seu primeiro funcionário de IA",
-        "body": "Funcionários de IA são colegas que tiram trabalho das suas mãos. Vou mostrar onde criar um.",
-        "cta": "Me mostre"
-      },
-      "createAgent": {
-        "title": "Clique em Novo funcionário de IA",
-        "hint": "Comece pela indústria em que ele trabalha",
-        "already": "Você já tem um funcionário de IA."
-      },
-      "agentCreated": {
-        "title": "Funcionário de IA criado!",
-        "body": "Ele está se configurando sozinho agora. Você já pode falar com ele."
-      },
-      "sendMissionIntro": {
-        "title": "Dê trabalho a ele",
-        "body": "Você pede com suas palavras e seu funcionário de IA começa a trabalhar. Vou mostrar onde.",
-        "cta": "Me mostre"
-      },
-      "sendMission": {
-        "title": "Clique em Nova tarefa",
-        "hint": "É assim que você dá trabalho aos funcionários de IA",
-        "typeTitle": "Diga o que você precisa.",
-        "typeHint": "Com suas palavras, e envie",
-        "emailHint": "A primeira tarefa dele já está escrita",
-        "sendTitle": "É só apertar enviar.",
-        "sendHint": "Escrevemos a primeira tarefa do seu funcionário de IA por você"
-      },
-      "missionSent": {
-        "title": "Tarefa enviada!",
-        "body": "Seu funcionário de IA já está nisso. Esse é o ciclo completo: você pede, ele trabalha.",
-        "cta": "Pronto"
-      },
-      "createAgentDialog": {
-        "briefTitle": "Diga o que ele vai fazer.",
-        "briefHint": "Escolha a indústria e depois o trabalho que ele assume",
-        "nameTitle": "Escolha uma cor e dê um nome.",
-        "nameHint": "Depois clique em Criar funcionário de IA"
-      },
-      "emailSending": {
-        "title": "Veja seu funcionário de IA trabalhar.",
-        "hint": "Ele está enviando um e-mail para você agora",
-        "stuck": "Algo deu errado? Sua tarefa foi enviada, você pode terminar a configuração."
-      },
-      "emailSent": {
-        "title": "Confira seu e-mail!",
-        "body": "Seu funcionário de IA acabou de enviar um e-mail de verdade para você. É assim que ele trabalha por você."
-      },
-      "academyReveal": {
-        "title": "Capítulo 1 concluído!",
-        "body": "Você acabou de concluir o primeiro capítulo da Academia Houston e ganhou {{points}} de experiência.",
-        "cta": "Ir para a Academia"
-      },
-      "openAgents": {
-        "hint": "Toque em Funcionários de IA, embaixo",
-        "title": "Abrir Funcionários de IA"
-      }
-    },
-    "skipStep": "Pular etapa",
-    "welcomeCta": "Começar configuração",
-    "checklist": {
-      "ai": "Conecte sua IA",
-      "apps": "Conecte seus apps",
-      "agent": "Crie seu funcionário de IA",
-      "task": "Envie a primeira tarefa"
-    },
-    "stripFailed": "Não conseguimos remover a nota de configuração do seu funcionário de IA. Peça a ele para remover a seção de configuração do Houston das instruções."
-  },
   "name": {
-    "title": "Dê um nome ao seu espaço de trabalho",
     "description": "Espaços de trabalho mantêm seus funcionários de IA organizados: um pessoal, um do trabalho, etc.",
     "placeholder": "ex. Pessoal, Trabalho, Acme Corp"
   },
-  "provider": {
-    "title": "Conecte sua IA",
-    "description": "O Houston usa <emph>sua própria</emph> assinatura. Nunca vemos suas credenciais.",
-    "finishPage": "Começar",
-    "finishDialog": "Criar espaço de trabalho"
-  },
   "migrationReconnect": {
     "title": "Bem-vindo de volta",
-    "body": "Seus assistentes e tudo em que você trabalhou estão aqui. Basta reconectar sua IA para continuar de onde parou.",
+    "body": "Seus funcionários de IA e tudo em que você trabalhou estão aqui. Basta reconectar sua IA para continuar de onde parou.",
     "skip": "Faço isso depois",
     "dismissError": "Não conseguimos salvar. Tente novamente."
+  },
+  "connectAi": {
+    "title": "Conecte sua IA",
+    "subtitle": "Seus funcionários de IA precisam de uma IA para pensar. Entre na que você já usa, como o ChatGPT ou o Claude.",
+    "plans": {
+      "claude": {
+        "title": "Sua assinatura do Claude",
+        "subtitle": "Use o plano do Claude que você já paga.",
+        "cancel": "Cancelar a entrada no Claude"
+      },
+      "chatgpt": {
+        "title": "Sua assinatura do ChatGPT",
+        "subtitle": "Use o plano do ChatGPT que você já paga.",
+        "cancel": "Cancelar a entrada no ChatGPT"
+      }
+    },
+    "signIn": "Entrar",
+    "waiting": "Esperando você entrar",
+    "cancel": "Cancelar",
+    "connected": "Conectado",
+    "checking": "Verificando",
+    "viewMore": "Ver mais",
+    "showFewer": "Mostrar menos opções"
+  },
+  "team": {
+    "choice": {
+      "title": "Vamos montar sua equipe",
+      "subtitle": "Seus funcionários de IA tiram trabalho das suas mãos. Comece com uma equipe pronta ou contrate cada um você mesmo.",
+      "soFar_one": "Você já tem 1 funcionário de IA na sua equipe",
+      "soFar_other": "Você já tem {{count}} funcionários de IA na sua equipe",
+      "basicTitle": "Comece com uma equipe básica",
+      "basicBody": "Três funcionários de IA prontos para trabalhar: {{roles}}.",
+      "hireTitle": "Contrate sua equipe",
+      "hireBody": "Escolha um setor, uma função e um nome, um funcionário de IA de cada vez."
+    },
+    "hire": {
+      "submit": "Contratar"
+    },
+    "hired": {
+      "title_one": "Você contratou seu primeiro funcionário de IA",
+      "title_other": "Você contratou {{count}} funcionários de IA",
+      "subtitle": "Você pode mudar um nome ou uma cor quando quiser. Contrate outro ou conclua e conheça sua equipe.",
+      "hireAnother": "Contratar outro"
+    },
+    "basic": {
+      "title": "Conheça sua nova equipe",
+      "subtitle": "Três funcionários de IA prontos para começar. Dê a cada um um nome e uma cor.",
+      "submit": "Contratar minha equipe",
+      "attention_one": "{{name}} ainda não conseguiu entrar na sua equipe. Tente de novo ou remova este funcionário de IA para concluir.",
+      "attention_other": "{{count}} funcionários de IA ainda não conseguiram entrar na sua equipe. Tente de novo ou remova-os para concluir.",
+      "unsaved_one": "Ainda não conseguimos salvar as alterações de {{name}}. Vamos tentar de novo quando você contratar sua equipe.",
+      "unsaved_other": "Ainda não conseguimos salvar as alterações de {{count}} funcionários de IA. Vamos tentar de novo quando você contratar sua equipe."
+    }
   },
   "onboardingSegment": {
     "title": "Qual descreve melhor o seu trabalho?",
@@ -145,20 +84,7 @@
     "industry": {
       "title": "Em qual indústria você trabalha?",
       "subtitle": "Para o Houston entender o tipo de trabalho que você faz.",
-      "options": {
-        "technology": "Tecnologia",
-        "finance": "Finanças e bancos",
-        "legal": "Jurídico",
-        "healthcare": "Saúde",
-        "education": "Educação",
-        "retail": "Varejo e e-commerce",
-        "manufacturing": "Manufatura",
-        "real_estate": "Imóveis",
-        "marketing_agencies": "Marketing e agências",
-        "government_nonprofit": "Governo e ONGs",
-        "consulting": "Consultoria e serviços profissionais",
-        "something_else": "Outra coisa"
-      }
+      "backToList": "Voltar para a lista"
     },
     "goal": {
       "title": "O que você adoraria automatizar?",
@@ -175,39 +101,5 @@
       "label": "Etapa {{current}} de {{total}}"
     },
     "otherPlaceholder": "Conte em poucas palavras"
-  },
-  "tutorial": {
-    "nav": {
-      "back": "Voltar"
-    },
-    "errors": {
-      "setupFailed": "Não conseguimos terminar de configurar seu espaço de trabalho. Tente novamente."
-    },
-    "defaults": {
-      "assistantName": "Assistente pessoal",
-      "focus": "Me ajude a ficar organizado, preparar meu dia, redigir mensagens, proteger tempo de foco e acompanhar pendências.",
-      "approvalRule": "Pergunte antes de enviar mensagens, criar eventos de calendário ou mudar algo nos apps conectados."
-    },
-    "seeds": {
-      "dailyBriefing": {
-        "name": "Resumo da manhã"
-      },
-      "meetingPrep": {
-        "name": "Preparação de reuniões",
-        "description": "Reúne tudo o que você precisa antes da próxima reunião: quem participa, o que vocês discutiram por último e qualquer coisa urgente, a partir da sua caixa de entrada e de uma busca rápida na web, e entrega para você antes de começar."
-      }
-    },
-    "missions": {
-      "email": {
-        "offer": {
-          "option": "Me envie um e-mail de saudação"
-        }
-      },
-      "aiConnected": {
-        "title": "Sua IA está conectada!",
-        "body": "Seu funcionário de IA já pode pensar. Você está um passo mais perto.",
-        "cta": "Continuar"
-      }
-    }
   }
 }

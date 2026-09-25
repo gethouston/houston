@@ -22,7 +22,6 @@
     "createDialog": "Criar",
     "createWorkspace": "Criar espaço de trabalho",
     "expand": "Expandir barra lateral",
-    "guideMe": "Me guie",
     "help": "Ajuda",
     "integrations": "Integrações",
     "needsYouCount_one": "{{count}} assunto precisa de você",
@@ -454,7 +453,10 @@
   },
   "workspaceDialog": {
     "title": "Novo espaço de trabalho",
-    "createFailed": "Não conseguimos criar o espaço de trabalho. Tente novamente."
+    "createFailed": "Não conseguimos criar o espaço de trabalho. Tente novamente.",
+    "nameLabel": "Nome do espaço de trabalho",
+    "nameTaken": "Você já tem um espaço de trabalho com esse nome.",
+    "create": "Criar espaço de trabalho"
   },
   "agentUpdate": {
     "title": "Atualização do funcionário de IA disponível",
@@ -481,7 +483,9 @@
     "stillStarting": "Seu funcionário de IA está demorando mais que o normal para iniciar. Ainda estamos tentando, aguarde um momento.",
     "blockedBody": "Está quase pronto. Essa ação estará disponível em instantes, assim que seu funcionário de IA terminar de se configurar.",
     "stalledTitle": "Ainda estamos nessa",
-    "stalledBody": "Isso está demorando mais que o normal. Não desistimos, seu chat e suas mensagens estão seguros e vão continuar assim que seu funcionário de IA responder."
+    "stalledBody": "Isso está demorando mais que o normal. Não desistimos, seu chat e suas mensagens estão seguros e vão continuar assim que seu funcionário de IA responder.",
+    "gettingReadyTitle": "Preparando {{name}}",
+    "gettingReadyBody": "Isso leva um ou dois minutos. Fique à vontade para explorar enquanto preparamos {{name}}."
   },
   "reportBug": {
     "reportSuccessTitle": "Relatório enviado",
@@ -507,8 +511,6 @@
   "naming": {
     "dialogTitle": "Dê um nome ao seu funcionário de IA",
     "tagline": "Dê um nome ao seu funcionário de IA e diga qual é o trabalho dele",
-    "namePlaceholder": "ex. Gerente de produto, Vendas, Jerry",
-    "linkExistingProject": "Vincular projeto existente",
     "createAgent": "Criar funcionário de IA"
   },
   "newAgent": {
@@ -671,5 +673,22 @@
     "headline": "O que você quer adicionar?",
     "agentTitle": "Funcionário de IA",
     "teamTitle": "Equipe"
+  },
+  "employeeCard": {
+    "changeColor": "Mudar cor",
+    "namePlaceholder": "ex.: Ana",
+    "namePlaceholderForRole": "ex.: {{role}}, Assistente 3, João",
+    "nameLabel": "Nome ({{role}})",
+    "suggestName": "Sugerir um nome",
+    "nameRequired": "Dê um nome para continuar",
+    "status": {
+      "joining": "Entrando",
+      "hired": "Na sua equipe",
+      "failed": "Não entrou"
+    },
+    "retryLabel": "Tentar contratar {{name}} de novo",
+    "removeLabel": "Remover {{name}}",
+    "showCard": "Ver cartão {{current}} de {{total}}",
+    "nameHeading": "Nome"
   }
 }

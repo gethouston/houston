@@ -4,6 +4,8 @@ import { useCallback, useMemo, useRef } from "react";
 import { useTranslation } from "react-i18next";
 import { perfSpans } from "../../lib/perf-spans";
 import { useUIStore } from "../../stores/ui";
+import { FirstDayLead } from "../first-day/first-day-banner";
+import { FirstDayHero } from "../first-day/first-day-cta";
 import {
   buildMissionBoardColumns,
   MISSION_APPROVE_STATUSES,
@@ -126,10 +128,18 @@ export function MissionBoard({ source }: { source: BoardSource }) {
     [source.setSelectedId],
   );
 
+  const firstDay = source.firstDay;
   if (isMobile) {
     return (
       <>
-        <TeamTaskList source={source} />
+        {firstDay.kind === "hero" ? (
+          <FirstDayHero agent={firstDay.agent} />
+        ) : (
+          <>
+            <FirstDayLead placement={firstDay} />
+            <TeamTaskList source={source} />
+          </>
+        )}
         {wiring.dialogs}
         {source.dialogs}
       </>
@@ -139,6 +149,7 @@ export function MissionBoard({ source }: { source: BoardSource }) {
   return (
     <>
       {source.toolbar}
+      <FirstDayLead placement={firstDay} />
       <div className="flex-1 min-h-0">
         <AIBoard
           items={source.items}
@@ -166,7 +177,13 @@ export function MissionBoard({ source }: { source: BoardSource }) {
             ) : undefined
           }
           panelTrailing={<PanelWidthToggle />}
-          emptyState={source.emptyState}
+          emptyState={
+            firstDay.kind === "hero" ? (
+              <FirstDayHero agent={firstDay.agent} />
+            ) : (
+              source.emptyState
+            )
+          }
           panelContainer={panelContainer}
           onPanelOpenChange={setPanelOpen}
           onItemMove={source.onItemMove}

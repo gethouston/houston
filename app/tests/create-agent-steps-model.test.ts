@@ -13,13 +13,11 @@ import {
   offersChoiceStep,
   previousCreateFlowStep,
 } from "../src/components/shell/create-agent-steps-model.ts";
-import { recapSegments } from "../src/components/shell/create-step-recap.ts";
 
 const GATES: CreateFlowGates = {
   canCreateAgent: true,
   canCreateTeam: true,
   canCopy: true,
-  tutorialActive: false,
 };
 
 const gates = (patch: Partial<CreateFlowGates> = {}): CreateFlowGates => ({
@@ -85,17 +83,9 @@ test("nothing to copy opens straight on the industry", () => {
   assert.equal(shape.offersChoice, false);
 });
 
-test("the tutorial teaches ONE path, so it meets no choice at all", () => {
-  const shape = createFlowShape("choose", gates({ tutorialActive: true }));
-  assert.equal(shape.first, "context");
-  assert.equal(shape.offersAdd, false);
-  assert.equal(shape.offersChoice, false);
-});
-
 test("the choice of how to start is offered only when there is something to copy", () => {
   assert.equal(offersChoiceStep(gates()), true);
   assert.equal(offersChoiceStep(gates({ canCopy: false })), false);
-  assert.equal(offersChoiceStep(gates({ tutorialActive: true })), false);
 });
 
 test("the guided setup runs in order", () => {
@@ -199,24 +189,4 @@ test("only a screen that ASKS for something carries a bottom bar", () => {
   for (const inner of ["instructions", "routines", "skills", "name"] as const) {
     assert.equal(hasFlowPrimary("copy", inner), true);
   }
-});
-
-test("the recap carries both answers, each pointing at its own question", () => {
-  assert.deepEqual(
-    recapSegments({ context: "Legal", role: "Case summarizer" }),
-    [
-      { id: "context", label: "Legal" },
-      { id: "role", label: "Case summarizer" },
-    ],
-  );
-});
-
-test("the recap trims a typed answer and drops a blank one", () => {
-  assert.deepEqual(recapSegments({ context: "  Wine imports  ", role: "" }), [
-    { id: "context", label: "Wine imports" },
-  ]);
-  assert.deepEqual(recapSegments({ context: "   ", role: "Buyer" }), [
-    { id: "role", label: "Buyer" },
-  ]);
-  assert.deepEqual(recapSegments({ context: "", role: "" }), []);
 });

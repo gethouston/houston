@@ -17,7 +17,8 @@ import { CreateStepProgress } from "./create-step-progress";
  *
  * The segmented bar belongs to the wide questions alone: the compact customize
  * screen is always the last of the three, so its bar would read fully filled
- * under the title and say nothing the recap chips do not already say. The copy
+ * under the title and say nothing its employee card, which carries both
+ * answers, does not already say. The copy
  * wizard counts its own screens, so it gets dots.
  *
  * Answering `undefined` rather than an empty node is load-bearing: the sheet's

@@ -54,9 +54,9 @@ test("the menu lists what this deployment offers, with the rail's anchors", asyn
     menu.getByRole("button", { name: "Workspace management" }),
   ).toHaveCount(0);
 
-  // The rows carry the RAIL's own attributes, which is what lets the guided
-  // setup ring the same destination on both breakpoints. Skills carries a test
-  // id rather than a tour anchor, because the tour does not walk it.
+  // The rows carry the RAIL's own attributes, so one anchor names the same
+  // destination on both breakpoints. Skills carries a test id rather than a
+  // tour anchor, because the tour does not walk it.
   for (const anchor of ["nav-integrations", "nav-ai-hub", "nav-settings"]) {
     await expect(
       moreRow(page, anchor),
@@ -65,8 +65,9 @@ test("the menu lists what this deployment offers, with the rail's anchors", asyn
   }
   await expect(menu.getByTestId("rail-skills")).toHaveCount(1);
 
-  // The two help actions band the footer; neither points at a screen.
-  await expect(menu.getByRole("button", { name: "Guide me" })).toBeVisible();
+  // The one help action bands the footer; it points at no screen, and the
+  // guided setup it used to sit beside is gone.
+  await expect(menu.getByRole("button", { name: "Guide me" })).toHaveCount(0);
   await expect(
     menu.getByRole("button", { name: "Report a problem" }),
   ).toBeVisible();

@@ -11,17 +11,13 @@ import {
   type AcademyMutationQueue,
   createAcademyQueues,
 } from "./academy-mutations.ts";
-import { SETUP_CHAPTER_EXPERIENCE, SETUP_CHAPTER_ID } from "./academy-ranks.ts";
-import {
-  type AcademyRecord,
-  completeChapterRecord,
-  completeLessonRecord,
-} from "./academy-record.ts";
+import { type AcademyRecord, completeLessonRecord } from "./academy-record.ts";
 import {
   type AcademyDevice,
   type AcademyStorePorts,
   academyPortsFor,
 } from "./academy-store.ts";
+import { recordLessonPosition } from "./lesson-position.ts";
 import { type UsageDeviceStore, usageDeviceId } from "./usage-device.ts";
 
 const academyDevice: AcademyDevice = {
@@ -83,35 +79,39 @@ export function academyQueueFor(uid: string | null): AcademyMutationQueue {
 }
 
 /**
- * Awards the setup chapter, called imperatively by the onboarding finish path so
- * nobody arrives at the Academy with an empty record. Idempotent: onboarding may
- * finish more than once (a resumed flow, a second window) and this pays once.
- */
-export async function completeSetupChapterLive(
-  uid: string | null,
-): Promise<AcademyRecord> {
-  const now = new Date();
-  return academyQueueFor(uid).run((record) =>
-    completeChapterRecord(
-      record,
-      SETUP_CHAPTER_ID,
-      SETUP_CHAPTER_EXPERIENCE,
-      now,
-    ),
-  );
-}
-
-/**
- * Awards a lesson the user just finished. Idempotent for the same reason a
- * chapter is: re-reading a lesson is welcome, but it pays once.
+ * Awards a lesson the user just finished. Idempotent: re-reading a lesson is
+ * welcome, but it pays once.
+ *
+ * Answers with the record the award was applied TO as well as the one it
+ * produced, so a caller can tell what this very write changed (a chapter it
+ * finished) without re-reading anything.
  */
 export async function completeLessonLive(
   uid: string | null,
   lessonId: string,
   experience: number,
-): Promise<AcademyRecord> {
+): Promise<{ before: AcademyRecord | null; after: AcademyRecord }> {
+  const now = new Date();
+  let before: AcademyRecord | null = null;
+  const after = await academyQueueFor(uid).run((record) => {
+    before = record;
+    return completeLessonRecord(record, lessonId, experience, now);
+  });
+  return { before, after };
+}
+
+/**
+ * Notes the beat a running lesson reached, so leaving it keeps the place.
+ * A finished lesson is left alone (`recordLessonPosition`), so a replay never
+ * turns it back into one to continue.
+ */
+export async function saveLessonPositionLive(
+  uid: string | null,
+  lessonId: string,
+  index: number,
+): Promise<AcademyRecord | null> {
   const now = new Date();
   return academyQueueFor(uid).run((record) =>
-    completeLessonRecord(record, lessonId, experience, now),
+    recordLessonPosition(record, lessonId, index, now),
   );
 }

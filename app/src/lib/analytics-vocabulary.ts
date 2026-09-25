@@ -21,8 +21,6 @@ export type AnalyticsProperty =
   | "config_id"
   | "agent_mode"
   | "mission"
-  | "integrations_skipped"
-  | "tutorial_run"
   | "source"
   | "error_kind"
   | "workspace_count"
@@ -86,8 +84,6 @@ export const ALLOWED_PROPS = new Set<AnalyticsProperty>([
   "config_id",
   "agent_mode",
   "mission",
-  "integrations_skipped",
-  "tutorial_run",
   "source",
   "error_kind",
   "workspace_count",

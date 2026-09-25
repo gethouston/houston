@@ -72,11 +72,5 @@ export function CreateFlowStepView({
       />
     );
   }
-  return (
-    <CustomizeStep
-      flow={agent}
-      formId={CREATE_AGENT_FORM_ID}
-      onChangeAnswer={onGoToStep}
-    />
-  );
+  return <CustomizeStep flow={agent} formId={CREATE_AGENT_FORM_ID} />;
 }

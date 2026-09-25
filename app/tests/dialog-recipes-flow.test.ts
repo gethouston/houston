@@ -22,12 +22,15 @@ import { describe, it } from "node:test";
 
 const ROOT = join(import.meta.dirname, "../src");
 
-/** Every flow surface: the create sheet and its steps, the copy wizard, the
- *  import wizard, and the job-brief question asked again after creation. */
+/** Every flow surface: the create sheet and its steps (the employee card the
+ *  hire is named on included), the copy wizard, the import wizard, and the
+ *  job-brief question asked again after creation, in its sheet or on a card. */
 const AREAS = [
   "components/copy-agent",
+  "components/employee-card",
   "components/portable",
   "components/context/job-brief-picker.tsx",
+  "components/context/job-brief-question.tsx",
   ...[
     "add-choice-step",
     "add-to-workspace-sheet",

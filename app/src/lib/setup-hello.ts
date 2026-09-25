@@ -83,9 +83,8 @@ export interface SetupHelloInput extends SetupMissionMarks {
  *
  * An EMPTY description is an UNREAD one, whatever the fetch flag says: a
  * hosted agent that is still being created answers its own file reads with `""`
- * (`lib/tauri.ts` isAgentPathCreating) and a read that failed is swallowed into
- * `""` by the same hook, so a fetched-but-empty text says nothing about the
- * job. Trusting it latches the hello into its no-role shape, which is the
+ * (`lib/tauri.ts` isAgentPathCreating), so a fetched-but-empty text says
+ * nothing about the job. A failed read leaves it undefined. Trusting it latches the hello into its no-role shape, which is the
  * sentence the user reads the moment the creation record expires.
  */
 export function deriveSetupHello(input: SetupHelloInput): SetupHelloState {

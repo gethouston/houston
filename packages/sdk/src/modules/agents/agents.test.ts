@@ -310,6 +310,28 @@ describe("agents module — reactivity", () => {
     );
   });
 
+  it("carries each agent's role and refetches when an AgentRoleChanged frame arrives", async () => {
+    const sse = makeSse();
+    const h = makeHarness({
+      agents: [{ ...A("a1", "Ada"), role: "Bookkeeper" }],
+      eventsResponder: () => sse.response,
+    });
+    disposeCurrent = () => {
+      sse.close();
+      h.sdk.agents.dispose();
+    };
+    await vi.waitFor(() =>
+      expect(snapshot(h.sdk)?.items[0]?.role).toBe("Bookkeeper"),
+    );
+    // The employee rewrote its own job description; the host names the new
+    // role on the listing and announces it with this frame.
+    h.state.agents = [{ ...A("a1", "Ada"), role: "Controller" }];
+    sse.push({ type: "AgentRoleChanged", agentPath: "a1" });
+    await vi.waitFor(() =>
+      expect(snapshot(h.sdk)?.items[0]?.role).toBe("Controller"),
+    );
+  });
+
   it("ignores unrelated event frames", async () => {
     const sse = makeSse();
     const h = makeHarness({

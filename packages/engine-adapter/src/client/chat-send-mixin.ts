@@ -116,13 +116,6 @@ export function ChatSendMixin<TBase extends BaseCtor>(Base: TBase) {
     ): void {
       removeQueuedSend(agentPath || DEFAULT_AGENT_PATH, sessionKey, id);
     }
-
-    async startOnboarding(
-      _agentPath: string,
-      sessionKey: string,
-    ): Promise<SessionStartResponse> {
-      return { sessionKey };
-    }
   }
   return ChatSend;
 }

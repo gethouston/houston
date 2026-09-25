@@ -39,8 +39,8 @@ const PROBLEM_ID = "onboarding-survey-problem";
  * presentation the segmentation screen shipped with.
  *
  * Mounted twice over a user's life: as the first-run intro ahead of the
- * create-your-assistant flow, and as an in-app prompt that fills the gaps for
- * anyone who only ever answered the job question.
+ * Connect AI and Build your team cards, and as an in-app prompt that fills the
+ * gaps for anyone who only ever answered the job question.
  *
  * The card is a fixed frame (`SetupCard`), so the column SCROLLS when it is
  * taller than the frame — a short phone viewport under browser chrome. It is
@@ -114,6 +114,7 @@ export function OnboardingSurveyScreen({
               onSegment={flow.chooseSegment}
               onIndustry={flow.chooseIndustry}
               onOther={flow.writeOther}
+              onLeaveIndustryOther={flow.leaveIndustryOther}
               onGoal={flow.writeGoal}
               disabled={flow.saving}
               errorId={invalid ? PROBLEM_ID : null}

@@ -10,7 +10,6 @@ const NAV = `${SECTIONS}\n${ROWS}`;
 const FOOTER = read("../src/components/shell/sidebar-footer.tsx");
 const SHELL = read("../src/components/shell/workspace-shell.tsx");
 const HELP = read("../src/components/shell/sidebar-help-menu.tsx");
-const GUIDED_SETUP = read("../src/hooks/use-run-guided-setup.ts");
 const VIEWS = read("../src/lib/top-level-views.ts");
 const MORE_MENU = read("../src/components/shell/mobile-more-menu.tsx");
 
@@ -75,13 +74,13 @@ describe("Settings left the nav for the footer", () => {
   });
 
   it("sits beside the footer's help control, not above a nav row", () => {
-    // "Guide me" and "Report a problem" are the two things a stuck user reaches
-    // for, and neither is a destination, so they are menu items on a control
-    // next to the gear rather than rows among the app's screens.
+    // "Report a problem" is what a stuck user reaches for, and it is not a
+    // destination, so it is a menu item on a control next to the gear rather
+    // than a row among the app's screens. The guided tour is an Academy lesson.
     assert.ok(FOOTER.includes("<SidebarHelpMenu"));
     assert.ok(FOOTER.includes("collapsed={props.collapsed}"));
     assert.ok(FOOTER.includes('help: t("sidebar.help")'));
-    assert.ok(FOOTER.includes('guideMe: t("sidebar.guideMe")'));
+    assert.ok(!FOOTER.includes("guideMe"));
     assert.ok(FOOTER.includes('reportProblem: t("sidebar.reportProblem")'));
     // Report a problem opens the ONE bug-report surface rather than a second
     // copy of it.
@@ -106,40 +105,18 @@ describe("Settings left the nav for the footer", () => {
   });
 });
 
-describe("the Guide me composition", () => {
-  it("goes home BEFORE arming the in-app onboarding", () => {
-    // The onboarding operates over the workspace shell, so the store is left
-    // first — arming against Settings would overlay the wrong surface.
-    assert.ok(
-      GUIDED_SETUP.indexOf("openHome();") <
-        GUIDED_SETUP.indexOf("setInAppOnboardingActive(true);"),
-    );
-  });
-
-  it("is defined ONCE, and the footer's menu item spends it", () => {
-    // The Academy's setup chapter runs the same guided setup. Two copies of
-    // the arming order is one copy waiting to drift, so the footer holds the
-    // affordance and the hook holds the composition.
-    const start = FOOTER.indexOf("onGuideMe={() => {");
-    assert.ok(start >= 0, "the footer composes onGuideMe");
-    assert.ok(FOOTER.includes("useRunGuidedSetup()"));
-    assert.ok(FOOTER.slice(start).includes("runGuidedSetup();"));
-    assert.ok(!FOOTER.includes("setInAppOnboardingFirstRun"));
-  });
-
-  it("keeps the tour's replay anchor on the control that replays it", () => {
-    // The `appTour` step spotlights whatever a user clicks to run the tour
-    // again. That is the help control now, so the anchor travels with it, and
-    // nothing in the nav may still claim it.
-    assert.ok(HELP.includes('tourAnchor("appTour")'));
+describe("the help menu", () => {
+  it("offers no guided tour of its own, and no tour anchor", () => {
+    // The tour lives in the Academy, so nothing on the rail replays it.
+    assert.ok(!HELP.includes("onGuideMe"));
+    assert.ok(!HELP.includes('tourAnchor("appTour")'));
     assert.ok(!NAV.includes('tourAnchor("appTour")'));
   });
 
-  it("runs both menu items one tick AFTER the menu closes", () => {
+  it("runs Report a problem one tick AFTER the menu closes", () => {
     // Radix restores focus to the trigger when its content unmounts, which
-    // lands after a synchronous handler has already mounted the tour overlay or
-    // moved the view. The band's create menu defers for the same reason.
-    assert.ok(HELP.includes("onSelect={() => setTimeout(onGuideMe, 0)}"));
+    // lands after a synchronous handler has already moved the view. The band's
+    // create menu defers for the same reason.
     assert.ok(HELP.includes("onSelect={() => setTimeout(onReportProblem, 0)}"));
   });
 });

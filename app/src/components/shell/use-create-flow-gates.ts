@@ -3,7 +3,6 @@ import { useCapabilities } from "../../hooks/use-capabilities";
 import { isAgentManager } from "../../lib/agent-access";
 import { hasAgentTeams } from "../../lib/org-roles";
 import { useAgentStore } from "../../stores/agents";
-import { useUIStore } from "../../stores/ui";
 import type { CreateFlowGates } from "./create-agent-steps-model";
 
 /**
@@ -21,13 +20,10 @@ export function useCreateFlowGates(): CreateFlowGates {
   const { capabilities } = useCapabilities();
   const { canCreate: canCreateAgent } = useCanCreateAgents();
   const agents = useAgentStore((s) => s.agents);
-  // The in-app tutorial teaches ONE path, so it hides every choice screen.
-  const tutorialActive = useUIStore((s) => s.inAppOnboardingActive);
 
   return {
     canCreateAgent,
     canCreateTeam: hasAgentTeams(capabilities) || canCreateAgent,
     canCopy: agents.some((agent) => isAgentManager(capabilities, agent)),
-    tutorialActive,
   };
 }
