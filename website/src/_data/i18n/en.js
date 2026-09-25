@@ -478,7 +478,7 @@ export default {
           {
             q: "What is free?",
             aHtml:
-              "Houston is free for up to three people in one space, with limited usage and no credit card. Enough to put agents on real work and feel the value. When the whole team wants in, or you need unlimited usage, you upgrade to Team.",
+              "Houston is free for one person, with no credit card and a generous tier to explore. Enough to put agents on real work and feel the value. When you want teammates in, or you need unlimited usage, you upgrade to Team.",
           },
           {
             q: "Who pays for a team?",
@@ -498,7 +498,7 @@ export default {
           {
             q: "What happens when the trial ends?",
             aHtml:
-              "Nothing is deleted. The space drops to the free plan: up to three people and limited usage. Every agent and mission stays put. Add a card whenever you are ready.",
+              "Nothing is deleted. The space drops to the free plan: everyone keeps access and usage gets limited. Every agent and mission stays put. Add a card whenever you are ready.",
           },
           {
             q: "Do members download or pay?",
