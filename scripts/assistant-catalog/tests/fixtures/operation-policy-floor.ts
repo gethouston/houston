@@ -192,6 +192,7 @@ export const OPERATION_POLICY_FLOOR: Readonly<Record<string, OperationPolicy>> =
   setSetupApiKey: { group: "providers", confirm: false, hidden: true, route: null, rawResponse: null },
   startAgentCustomIntegrationOAuth: { group: "integrations", confirm: false, hidden: true, route: "POST /agents/{agentSlugOrId}/integrations/custom/definitions/{slug}/oauth/start", rawResponse: true },
   startCustomIntegrationOAuth: { group: "integrations", confirm: false, hidden: true, route: "POST /v1/integrations/custom/definitions/{slug}/oauth/start", rawResponse: true },
+  startFirstDay: { group: "agents", confirm: true, hidden: false, route: "POST /agents/{agentId}/first-day", rawResponse: true },
   submitAgentCustomIntegrationCredential: { group: "integrations", confirm: true, hidden: true, route: "POST /agents/{agentSlugOrId}/integrations/custom/definitions/{slug}/credential", rawResponse: true },
   submitCustomIntegrationCredential: { group: "integrations", confirm: true, hidden: true, route: "POST /v1/integrations/custom/definitions/{slug}/credential", rawResponse: true },
   triggerTypes: { group: "integrations", confirm: false, hidden: false, route: "GET /v1/integrations/composio/trigger-types", rawResponse: true },
