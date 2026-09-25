@@ -18,7 +18,7 @@
  * generator reads the route straight off the call it makes here.
  */
 
-import type { AgentColorId } from "@houston/domain";
+import { type AgentColorId, withInitialConfigSeed } from "@houston/domain";
 import {
   type HttpScope,
   httpRequest,
@@ -65,7 +65,9 @@ export async function listAgents(scope: HttpScope): Promise<WireAgent[]> {
  * @param color One of Houston's ten palette colours: charcoal, forest,
  *   teal, navy, purple, rose, crimson, orange, golden or umber.
  * @param seed Optional starting files for the new agent. Omit it for a
- *   blank one.
+ *   blank one. A new hire's seeds carry `.houston/config/config.json` holding
+ *   `{"firstDay":"pending"}`, which offers the user the button that starts its
+ *   first day (see startFirstDay).
  * @assistant group:agents
  * @assistant confirm: money. An agent is a billed unit with its own workspace and running engine, so creating one adds recurring cost the user has to want.
  * @assistant unschematized: the seed's seeds map is an open record of file path to contents.
@@ -138,7 +140,13 @@ export function agentsScope(ctx: ScopeContext): HttpScope {
 export function createAgentsHttp(scope: HttpScope): AgentsHttp {
   return {
     list: () => listAgents(scope),
-    create: ({ name, color, ...seed }) => createAgent(scope, name, color, seed),
+    // The initial config becomes the config document among the seeds, so the
+    // wire stays the create every host and gateway already honors.
+    create: ({ name, color, claudeMd, seeds, config }) =>
+      createAgent(scope, name, color, {
+        claudeMd,
+        seeds: withInitialConfigSeed(seeds, config),
+      }),
     rename: (id, name) => renameAgent(scope, id, name),
     remove: (id) => deleteAgent(scope, id),
   };

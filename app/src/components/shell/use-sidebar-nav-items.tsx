@@ -15,9 +15,9 @@ import { buildSidebarNavItems } from "./sidebar-nav-sections";
  * same question: only a TOP-LEVEL view lights a nav row, and a team screen
  * lights a team row instead (`useSidebarTeamsModel`).
  *
- * Every entry POINTS AT A SCREEN. "Guide me" points at none, so it is an item
- * behind the footer's help control (`sidebar-help-menu.tsx`) rather than a row
- * here, and arming the tour is not composed in this hook.
+ * Every entry POINTS AT A SCREEN. "Report a problem" points at none, so it is
+ * an item behind the footer's help control (`sidebar-help-menu.tsx`) rather
+ * than a row here.
  *
  * The rail's FOOTER cluster is not here either: the Academy and Settings are
  * drawn by `sidebar-footer.tsx`, below the teams the rail lists.

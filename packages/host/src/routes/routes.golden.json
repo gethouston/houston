@@ -886,6 +886,16 @@
     ],
     "forwarded": []
   },
+  "POST /agents/:agentId/first-day": {
+    "status": 409,
+    "contentType": "application/json; charset=utf-8",
+    "errorCode": "Probe has no first day waiting to start",
+    "bodyKeys": [
+      "code",
+      "error"
+    ],
+    "forwarded": []
+  },
   "GET /agents/:agentId/activity": {
     "status": 200,
     "contentType": "application/json; charset=utf-8",
@@ -9382,6 +9392,133 @@
     ],
     "forwarded": [
       "POST /routines/r1/runs/run1/cancel/"
+    ]
+  },
+  "GET /agents/:agentId/first-day": {
+    "status": 200,
+    "contentType": "application/json",
+    "errorCode": null,
+    "bodyKeys": [
+      "ok"
+    ],
+    "forwarded": [
+      "GET /first-day"
+    ]
+  },
+  "GET /agents/:agentId/first-day [anon]": {
+    "status": 401,
+    "contentType": "application/json; charset=utf-8",
+    "errorCode": "unauthorized",
+    "bodyKeys": [
+      "error"
+    ],
+    "forwarded": []
+  },
+  "GET /agents/:agentId/first-day [other]": {
+    "status": 403,
+    "contentType": "application/json; charset=utf-8",
+    "errorCode": "not your agent",
+    "bodyKeys": [
+      "error"
+    ],
+    "forwarded": []
+  },
+  "PUT /agents/:agentId/first-day": {
+    "status": 200,
+    "contentType": "application/json",
+    "errorCode": null,
+    "bodyKeys": [
+      "ok"
+    ],
+    "forwarded": [
+      "PUT /first-day"
+    ]
+  },
+  "PUT /agents/:agentId/first-day [anon]": {
+    "status": 401,
+    "contentType": "application/json; charset=utf-8",
+    "errorCode": "unauthorized",
+    "bodyKeys": [
+      "error"
+    ],
+    "forwarded": []
+  },
+  "PUT /agents/:agentId/first-day [other]": {
+    "status": 403,
+    "contentType": "application/json; charset=utf-8",
+    "errorCode": "not your agent",
+    "bodyKeys": [
+      "error"
+    ],
+    "forwarded": []
+  },
+  "PATCH /agents/:agentId/first-day": {
+    "status": 200,
+    "contentType": "application/json",
+    "errorCode": null,
+    "bodyKeys": [
+      "ok"
+    ],
+    "forwarded": [
+      "PATCH /first-day"
+    ]
+  },
+  "PATCH /agents/:agentId/first-day [anon]": {
+    "status": 401,
+    "contentType": "application/json; charset=utf-8",
+    "errorCode": "unauthorized",
+    "bodyKeys": [
+      "error"
+    ],
+    "forwarded": []
+  },
+  "PATCH /agents/:agentId/first-day [other]": {
+    "status": 403,
+    "contentType": "application/json; charset=utf-8",
+    "errorCode": "not your agent",
+    "bodyKeys": [
+      "error"
+    ],
+    "forwarded": []
+  },
+  "DELETE /agents/:agentId/first-day": {
+    "status": 200,
+    "contentType": "application/json",
+    "errorCode": null,
+    "bodyKeys": [
+      "ok"
+    ],
+    "forwarded": [
+      "DELETE /first-day"
+    ]
+  },
+  "DELETE /agents/:agentId/first-day [anon]": {
+    "status": 401,
+    "contentType": "application/json; charset=utf-8",
+    "errorCode": "unauthorized",
+    "bodyKeys": [
+      "error"
+    ],
+    "forwarded": []
+  },
+  "DELETE /agents/:agentId/first-day [other]": {
+    "status": 403,
+    "contentType": "application/json; charset=utf-8",
+    "errorCode": "not your agent",
+    "bodyKeys": [
+      "error"
+    ],
+    "forwarded": []
+  },
+  "POST /agents/:agentId/first-day/": {
+    "status": 200,
+    "contentType": "application/json",
+    "errorCode": null,
+    "bodyKeys": [
+      "ok"
+    ],
+    "forwarded": [
+      "POST /first-day/"
     ]
   },
   "POST /agents/:agentId/activity": {
@@ -18909,6 +19046,24 @@
     "forwarded": []
   },
   "POST /agents/:agentId/routines/:routineId/runs/:runId/cancel [other]": {
+    "status": 403,
+    "contentType": "application/json; charset=utf-8",
+    "errorCode": "not your agent",
+    "bodyKeys": [
+      "error"
+    ],
+    "forwarded": []
+  },
+  "POST /agents/:agentId/first-day [anon]": {
+    "status": 401,
+    "contentType": "application/json; charset=utf-8",
+    "errorCode": "unauthorized",
+    "bodyKeys": [
+      "error"
+    ],
+    "forwarded": []
+  },
+  "POST /agents/:agentId/first-day [other]": {
     "status": 403,
     "contentType": "application/json; charset=utf-8",
     "errorCode": "not your agent",

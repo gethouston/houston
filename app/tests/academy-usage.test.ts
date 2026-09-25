@@ -30,6 +30,7 @@ const record = (patch: Partial<AcademyRecord> = {}): AcademyRecord => ({
   version: 1,
   chapters: {},
   lessons: {},
+  lessonPositions: {},
   usageByDevice: {},
   usageDay: null,
   usageToday: 0,

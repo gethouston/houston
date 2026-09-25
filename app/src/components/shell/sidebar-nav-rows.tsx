@@ -25,8 +25,8 @@ export interface GatedNavRows {
  * (`sidebar-nav-sections.tsx`).
  *
  * They are the only rows with anything to say beyond an id, a label and a
- * glyph — a test id on the Assistant and on Skills, a tour anchor on AI
- * Models — so keeping them here leaves the composition file free to state the
+ * glyph — a test id on the Assistant, a tour anchor on AI Models, both on
+ * Skills — so keeping them here leaves the composition file free to state the
  * information architecture and nothing else. The UNGATED rows stay inline
  * there: a row every deployment has is part of the IA, not a variable in it.
  */
@@ -56,12 +56,9 @@ export function gatedNavRows(args: {
     skills: {
       id: SKILLS_VIEW_ID,
       label: t("shell:sidebar.skills"),
-      // No tour anchor: the tour does not walk this row, and a target in the
-      // anchor union that no step spotlights is dead weight the union exists
-      // to prevent. A test id gives the specs the same stable handle.
       icon: <ListChecks className="h-4 w-4" />,
       onClick: () => setViewMode(SKILLS_VIEW_ID),
-      dataAttrs: { "data-testid": "rail-skills" },
+      dataAttrs: { ...tourAnchor("nav-skills"), "data-testid": "rail-skills" },
     },
   };
 }
@@ -73,9 +70,8 @@ export function gatedNavRows(args: {
  * destination, whichever cluster renders it.
  *
  * It is ungated on purpose, like Settings beside it: every deployment ships
- * the Academy, and learning to fly is nobody's admin territory. No tour anchor
- * — the tour does not walk this row, and a target in the anchor union that no
- * step spotlights is dead weight the union exists to prevent.
+ * the Academy, and learning to fly is nobody's admin territory. The Houston
+ * tour lesson ends on it, so it carries the `nav-academy` anchor on both.
  */
 export function academyNavRow(args: {
   /** `shell:sidebar.academy`, resolved by the caller: the two clusters that
@@ -88,5 +84,6 @@ export function academyNavRow(args: {
     label: args.label,
     icon: <GraduationCap className="h-4 w-4" />,
     onClick: args.onOpen,
+    dataAttrs: tourAnchor("nav-academy"),
   };
 }

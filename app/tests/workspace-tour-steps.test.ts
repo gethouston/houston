@@ -1,6 +1,7 @@
 import assert from "node:assert/strict";
 import test from "node:test";
 import {
+  composerSendSelector,
   TOUR_TARGETS,
   tourAnchor,
   tourSelector,
@@ -33,4 +34,12 @@ test("an anchor renders exactly what its selector looks for", () => {
 
 test("every target name is unique", () => {
   assert.equal(new Set(TOUR_TARGETS).size, TOUR_TARGETS.length);
+});
+
+test("a composer's send is found inside the anchor that holds it", () => {
+  // `ui/chat`'s PromptInputSubmit renders `data-composer-submit`.
+  assert.equal(
+    composerSendSelector("taskChat"),
+    "[data-tour-target='taskChat'] [data-composer-submit]",
+  );
 });

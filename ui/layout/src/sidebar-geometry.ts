@@ -3,18 +3,21 @@
  *
  * EVERY interactive line in the sidebar is the same row: the top-level
  * destinations above the list, the band that names the list, each team's
- * header, each team's destination rows, each agent, and the "New agent" row
- * that closes it. They differ only in what they point at and how far their
- * glyph is indented. If any of them drifts in height, indent, glyph column or
+ * header, each team's destination rows, and the "New agent" row that closes
+ * it. AI Employees are the one exception, and a deliberate one: a person row
+ * (see {@link sidebarPersonRow}) carries a bigger avatar and a second line.
+ * The rest differ only in what they point at and how far their glyph is
+ * indented. If any of them drifts in height, indent, glyph column or
  * type size, the rail stops reading as one list and starts reading as several
  * stacked ones. So every value lives here and nowhere else, and
  * {@link SidebarRowButton} is the only component that spends them.
  *
- * Five invariants worth stating, because each was a bug before it was a rule:
+ * Six invariants keep every row on the same ladder:
  *
- * 1. **Height is FIXED on every row** (`h-7`, 28px). No hover, active, focus or
- *    badge state may change it — a rail that reflows under the cursor is the
- *    single most obvious tell of a hand-built list.
+ * 1. **Height is FIXED per anatomy** (`h-7`, 28px; a person row `h-11`, 44px).
+ *    No hover, active, focus, badge or missing-role state may change it — a
+ *    rail that reflows under the cursor is the single most obvious tell of a
+ *    hand-built list.
  * 2. **The paint is a LAYER, the content sits on top of it.** Hover and active
  *    are drawn on the row's own `::before` — an inset, rounded pill (see
  *    {@link sidebarRowFill}) — never on the element that carries the geometry.
@@ -26,13 +29,14 @@
  * 3. **Colour is never pinned on the glyph.** A row's icon inherits its label's
  *    colour, so an active row brightens as one object rather than as a label
  *    with a stale grey mark beside it.
- * 4. **ONE weight for the whole rail.** Every line — nav destination, band,
- *    team header, child row, agent, add row — is set at 510, the notch past
+ * 4. **ONE weight for the rail's lines.** Every line — nav destination, band,
+ *    team header, child row, add row — is set at 510, the notch past
  *    medium that Linear's rails use. Weight is therefore never a variable: not
  *    of depth, not of state, so nothing re-measures or reflows on click, and
  *    hierarchy is carried entirely by indent and colour. See
  *    `font-weight-510` in `@houston-ai/core`'s globals for why 510 is spelled
- *    the way it is.
+ *    the way it is. A person row's NAME is the exception: it is set semibold
+ *    at the same 13px, because it names someone rather than somewhere.
  * 5. **Two type sizes and no more.** Every row that points at something is
  *    13px; the band that names the list is 12px. See {@link sidebarRowType}.
  * 6. **One horizontal inset for every band and every run of rows.** See
@@ -60,24 +64,70 @@ export const sidebarBandInset = "px-2";
 export const sidebarRowHeight = "h-7";
 
 /**
- * The glyph column: a 20px box holding a 16px Lucide mark, or an agent's avatar
- * at the same box size. One box for all of them, so nav destinations, team
- * glyphs and agent avatars share a single optical column.
+ * Team marks size themselves at 14px (`glyph`), including inside a colour
+ * wrapper. Bare Lucide marks and the Houston logo use the 16px `slot` rule.
  */
-export const sidebarIconBox =
-  "flex size-5 shrink-0 items-center justify-center";
+export const sidebarMarkSize = {
+  glyph: "size-3.5",
+  slot: "[&>img]:size-4 [&>svg]:size-4",
+} as const;
+
+/**
+ * The shared 20px glyph column holds a 16px Lucide mark or a 14px team mark.
+ * Team wrappers preserve their own size; bare destination marks inherit the
+ * slot rule on both rail layouts.
+ */
+export const sidebarIconBox = `flex size-5 shrink-0 items-center justify-center ${sidebarMarkSize.slot}`;
+
+/** The glyph column's diameter, for a mark sized off the column rather than
+ *  off its contents (a folded team's running ring). */
+export const sidebarGlyphDiameter = 20;
+
+/** A running ring clears the mark it circles by 2px a side. */
+export const sidebarRingClearance = 4;
+
+/**
+ * The person row: an AI Employee in the expanded rail. Its avatar is a real
+ * portrait slot (people may give their employees their own pictures), so it is
+ * 32px rather than the 20px glyph column, with the name above the role on two
+ * lines. The row is 44px so the avatar sits on even 6px padding; an employee
+ * with no role keeps the height and centres its name. The text never grows:
+ * the name keeps the rail's 13px and gains weight, the role is 12px and muted.
+ */
+export const sidebarPersonRow = {
+  height: "h-11",
+  avatarDiameter: 32,
+  iconBox: "flex size-8 shrink-0 items-center justify-center",
+  /** Avatar edge to text: the portrait fills its box, so this IS the optical
+   *  gap, a step wider than a glyph row's because the mark is wider. */
+  iconGap: "mr-2",
+  name: "text-[13px] leading-5 font-semibold",
+  role: "text-xs leading-4 font-normal text-ink-muted",
+} as const;
+
+/**
+ * An AI Employee on the COLLAPSED icon rail: a 36px square, not a narrower
+ * person row. Its avatar is 24px so the avatar AND its running ring (28px,
+ * {@link sidebarRingClearance}) sit inside the square with 4px of air a side;
+ * the expanded rail's 32px portrait would put the ring on the square's edge.
+ * The hover flyout beside it is a full person row and keeps the portrait.
+ */
+export const sidebarCollapsedItem = {
+  square: "size-9",
+  avatarDiameter: 24,
+} as const;
 
 /**
  * A row has TWO horizontal gaps and they want opposite things, which is why
- * there is no single `gap` on the row any more. One `gap` set both at once:
- * tightening the icon side dragged the trailing side in with it, and the badge
- * and the "..." ended up crowding the row's right edge.
+ * there is no single `gap` on the row. One `gap` would set both at once:
+ * tightening the icon side drags the trailing side in with it, and the badge
+ * and the "..." end up crowding the row's right edge.
  *
  * **`ICON_GAP` — glyph column to label. TIGHT (6px).** What the eye measures is
  * glyph EDGE to first letter, which is this margin PLUS the slack the mark
- * leaves inside the 20px box: an agent's avatar fills it (0), a 16px Lucide
- * mark leaves 2px a side, a 14px team mark 3px. 6px puts the optical distance
- * at 6-9px, Linear's own range; 8px put it at 8-11px and a label read as
+ * leaves inside the 20px box: a mark that fills it leaves 0, a 16px Lucide
+ * mark leaves 2px a side, and a 14px team mark leaves 3px a side. 6px puts the
+ * optical distance at 6-9px, Linear's own range; 8px would put it at 8-11px and a label would read as
  * drifting away from its own icon.
  *
  * **`TRAILING_GAP` — label to the badge on its right. COMFORTABLE (8px).** A

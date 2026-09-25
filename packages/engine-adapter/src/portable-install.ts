@@ -17,6 +17,7 @@ import {
 } from "@houston/domain";
 import type {
   Agent,
+  AgentInitialConfig,
   PortableInstalledAgent,
   PortableInstallRequest,
 } from "@houston/wire-types";
@@ -32,7 +33,11 @@ import { toWireSelection } from "./portable-map";
 export type InstallCreateAgent = (
   name: string,
   color: AgentColorId | undefined,
-  seed: { claudeMd?: string; seeds?: Record<string, string> },
+  seed: {
+    claudeMd?: string;
+    seeds?: Record<string, string>;
+    config?: AgentInitialConfig;
+  },
 ) => Promise<Agent>;
 
 export async function install(
@@ -52,7 +57,7 @@ export async function install(
     // to the id the picker and the assistant both speak; the rendered color is
     // the same either way.
     req.agentColor ? agentColorId(req.agentColor) : undefined,
-    packageSeed(pkg),
+    { ...packageSeed(pkg), config: req.config },
   );
   dropUpload(req.packageId);
   return {

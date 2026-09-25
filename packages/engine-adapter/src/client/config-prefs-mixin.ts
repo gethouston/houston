@@ -26,6 +26,8 @@ import { viaSdk } from "./sdk-error";
  * device-local copy dies with the session and the next sign-in re-onboarded a
  * returning user whose agent list read empty for a moment (warming pod). As an
  * account key it survives sign-out and follows the account to new devices.
+ * `first_message_sent` is the same kind of account fact: the activation beat
+ * fires once per account, so its armed/sent state must follow the account.
  */
 const ACCOUNT_PREF_KEYS = new Set([
   "timezone",
@@ -35,6 +37,7 @@ const ACCOUNT_PREF_KEYS = new Set([
   "houston_onboarding_segment",
   "houston_onboarding_survey",
   "onboarding_completed",
+  "first_message_sent",
 ]);
 
 /** The raw diagnostic of a store that refused, for the two notes below. */

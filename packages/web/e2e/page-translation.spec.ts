@@ -1,6 +1,10 @@
 import type { Page } from "@playwright/test";
 import { expect, test } from "./support/fixtures";
-import { completeSurvey, resetToFirstRun } from "./support/onboarding";
+import {
+  completeSurvey,
+  connectAiHeading,
+  resetToFirstRun,
+} from "./support/onboarding";
 import { missionCard } from "./support/team-nav";
 
 /**
@@ -88,9 +92,7 @@ test("a translated first run survives the survey's saving spinner", async ({
   await translateLikeChrome(page);
   await completeSurvey(page);
 
-  await expect(
-    page.getByRole("heading", { name: "Welcome to Houston!" }),
-  ).toBeVisible();
+  await expect(connectAiHeading(page)).toBeVisible();
   await expect(page.getByText("App crashed")).toHaveCount(0);
   expect(crashes).toEqual([]);
   // The guard did the work (the translator's wrappers were hit), and said so.

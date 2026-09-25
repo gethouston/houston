@@ -1,15 +1,26 @@
+import {
+  showFewerProviders,
+  subscriptionCard,
+  viewMoreProviders,
+} from "./support/connect-ai";
 import { expect, test } from "./support/fixtures";
-import { completeSurvey, resetToFirstRun } from "./support/onboarding";
+import {
+  buildTeamHeading,
+  completeSurvey,
+  connectAiHeading,
+  connectAiOnCard,
+  resetToFirstRun,
+} from "./support/onboarding";
 
 /**
- * First-run's connect beat, as the game-style in-app tutorial: after the
- * survey the welcome overlay opens over the REAL shell, and each step
- * spotlights the actual control (in-app-onboarding.tsx + tutorial-spotlight)
- * — the user clicks the real sidebar row, lands on the real AI hub, and
- * connects there. Advancement is app state (viewMode, the shared provider
- * status probe), never a Next button.
+ * First-run's connect beat: after the survey, the full-screen "Connect your
+ * AI" card (outside the app shell) leads with two subscription cards, Claude
+ * and ChatGPT; "View more" swaps them for every provider in one list.
+ * Advancement is app state, never a Next button: the card hands over to
+ * "Build your team" the moment the shared provider probe confirms a
+ * connection.
  */
-test("first-run tutorial walks the user to the AI hub through the real sidebar", async ({
+test("the connect card follows the survey and advances once a provider connects", async ({
   page,
   request,
 }) => {
@@ -19,33 +30,63 @@ test("first-run tutorial walks the user to the AI hub through the real sidebar",
   await page.goto("/");
   await completeSurvey(page);
 
-  // Welcome beat: one action only.
-  await expect(
-    page.getByRole("heading", { name: "Welcome to Houston!" }),
-  ).toBeVisible();
-  await page.getByRole("button", { name: "Start setup" }).click();
+  await expect(connectAiHeading(page)).toBeVisible();
+  // Outside the shell: no rail, no Mission Control behind the card.
+  await expect(page.locator("[data-tour-target='nav-ai-hub']")).toHaveCount(0);
 
-  // The WHAT position: a centered card narrates the step ahead (why the AI
-  // must be connected) with its own button.
-  await expect(
-    page.getByRole("dialog", { name: "Connect your AI" }),
-  ).toBeVisible();
-  await page.getByRole("button", { name: "Show me" }).click();
+  await connectAiOnCard(page);
+  await expect(connectAiHeading(page)).toHaveCount(0);
+});
 
-  // The HOW position: a chip pinned at the AI Models row; the row itself
-  // stays clickable through the spotlight's hole.
-  await expect(
-    page.getByRole("dialog", { name: "Click AI Models" }),
-  ).toBeVisible();
-  await page.locator("[data-tour-target='nav-ai-hub']").click();
+test("View more swaps the featured cards for every provider and back", async ({
+  page,
+  request,
+}) => {
+  await resetToFirstRun(request);
+  await page.goto("/");
+  await completeSurvey(page);
+  await expect(connectAiHeading(page)).toBeVisible();
 
-  // The REAL hub opened, and the tutorial advanced to the connect step
-  // (zero-agent first-run: no provider is confirmed connected yet, so the
-  // coach card holds until one is).
+  await expect(subscriptionCard(page, "Claude")).toBeVisible();
+  await expect(subscriptionCard(page, "ChatGPT")).toBeVisible();
+  await expect(page.getByPlaceholder("Search providers")).toHaveCount(0);
+
+  await viewMoreProviders(page).click();
+  // The button pressed is gone, so focus lands on the one that swaps back.
+  const showFewer = showFewerProviders(page);
+  await expect(showFewer).toBeFocused();
+  await expect(page.getByPlaceholder("Search providers")).toBeVisible();
+  // The list replaces the featured cards and includes their providers, listed
+  // under the company that makes each one.
+  await expect(subscriptionCard(page, "Claude")).toHaveCount(0);
+  await expect(subscriptionCard(page, "ChatGPT")).toHaveCount(0);
+  await page.getByPlaceholder("Search providers").fill("claude");
   await expect(
-    page.getByRole("heading", { name: "AI Providers" }),
+    page.getByRole("button", { name: "Connect Anthropic" }),
   ).toBeVisible();
-  await expect(
-    page.getByRole("dialog", { name: "Pick the AI you already use." }),
-  ).toBeVisible();
+
+  await showFewer.click();
+  await expect(page.getByPlaceholder("Search providers")).toHaveCount(0);
+  await expect(subscriptionCard(page, "Claude")).toBeVisible();
+  await expect(viewMoreProviders(page)).toBeFocused();
+});
+
+test("a reload mid-onboarding resumes on the card the user left", async ({
+  page,
+  request,
+}) => {
+  await resetToFirstRun(request);
+  await page.goto("/");
+  await completeSurvey(page);
+  await expect(connectAiHeading(page)).toBeVisible();
+
+  // The survey is answered and nothing is connected: the connect card again.
+  await page.reload();
+  await expect(connectAiHeading(page)).toBeVisible();
+
+  // Connected: a reload lands straight on the team card.
+  await connectAiOnCard(page);
+  await page.reload();
+  await expect(buildTeamHeading(page)).toBeVisible();
+  await expect(connectAiHeading(page)).toHaveCount(0);
 });

@@ -59,8 +59,8 @@ export function UpdateLaunchOverlay({
       // error's only way out is the retry in the footer.
       onOpenChange={() => undefined}
     >
-      {/* `z-[70]`: above the tutorial band (`z-[60]`, the spotlight veil
-          over an open dialog), so a launch-time install landing mid-coaching
+      {/* `z-[70]`: above the lesson band (`z-[60]`, the spotlight veil
+          over an open dialog), so a launch-time install landing mid-lesson
           still shows its recovery controls unveiled. The only layering rule
           a caller may add to the frame. */}
       <AlertDialogContent

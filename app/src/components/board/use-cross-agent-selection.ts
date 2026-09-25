@@ -5,7 +5,7 @@ import { forgetDeletedConversationDrafts } from "../../lib/conversation-drafts";
 import { ARCHIVED_STATUS } from "../../lib/mission-selection";
 import { queryKeys } from "../../lib/query-keys";
 import { tauriActivity } from "../../lib/tauri";
-import type { BoardSelectionModel } from "./board-source";
+import type { BoardSelectionModel } from "./board-selection-model";
 import { groupIdsByAgent } from "./group-ids-by-agent";
 import { useSelectionSet } from "./use-selection-set";
 

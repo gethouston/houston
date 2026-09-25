@@ -337,6 +337,8 @@ export interface CpAgent {
   workspaceId: string;
   name: string;
   createdAt: number;
+  /** Served only: derived from the agent's `CLAUDE.md` on every list. */
+  role?: string;
   /**
    * Teams v2 (multiplayer only). `assignedUserIds: []` = shared with everyone;
    * `assignments` is the full roster with per-person access; `access` is the

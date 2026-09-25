@@ -1,3 +1,5 @@
+import { createRolePublisher } from "../agent-role/role-publisher";
+import { AgentRoleTracker } from "../agent-role/role-tracker";
 import { processAssistantCatalog } from "../assistant/catalog-source";
 import { unservedOperations } from "../assistant/served-operations";
 import { FileCredentialStore } from "../credentials/file-store";
@@ -95,6 +97,16 @@ export function createHostBase(opts: LocalHostOptions) {
   const docProjector = docShadow
     ? new DocShadowProjector({ store, vfs, paths, shadow: docShadow })
     : undefined;
+  const roleTracker = new AgentRoleTracker({
+    store,
+    vfs,
+    paths,
+    announce: (event) => events.emit(LOCAL_USER, event),
+    publish:
+      docShadow && docProjector
+        ? createRolePublisher(docShadow, docProjector)
+        : undefined,
+  });
   const frameForwarder = opts.durableTurns?.turnLog
     ? new FrameForwarder({
         bus,
@@ -127,6 +139,7 @@ export function createHostBase(opts: LocalHostOptions) {
     transcriptShadow,
     docShadow,
     docProjector,
+    roleTracker,
     frameForwarder,
     standingFrameCapture,
   };

@@ -179,3 +179,33 @@ test("create trims the submitted name before storing it", async () => {
   expect(response.status).toBe(201);
   expect(JSON.parse(response.body).name).toBe("Padded");
 });
+
+async function list(): Promise<Array<{ name: string; role?: string }>> {
+  const response = res();
+  await dispatchGroup("agents", {
+    deps,
+    userId: "alice",
+    method: "GET",
+    path: "/agents",
+    url: new URL("/agents", "http://host.local"),
+    req: req(""),
+    res: response,
+  });
+  expect(response.status).toBe(200);
+  return JSON.parse(response.body);
+}
+
+test("the listing names the role each job description names, and nothing where none is named", async () => {
+  await post({
+    name: "Coder",
+    claudeMd:
+      "---\nindustry: Healthcare\nrole: '  Medical\u200b   coder '\n---\n\nCharts.",
+  });
+  await post({ name: "Plain", claudeMd: "# Notes\n\nJust notes." });
+  await post({ name: "Bare" });
+
+  const byName = Object.fromEntries((await list()).map((a) => [a.name, a]));
+  expect(byName.Coder?.role).toBe("Medical coder");
+  expect(byName.Plain).not.toHaveProperty("role");
+  expect(byName.Bare).not.toHaveProperty("role");
+});

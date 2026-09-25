@@ -75,9 +75,7 @@ test("copies an agent, leaving chosen items behind and bringing the chats", asyn
   // The naming screen is the create dialog's own, pre-filled with the first
   // free "<name> copy" and headed by the source.
   await expect(dialog.getByText("Based on Houston")).toBeVisible();
-  const nameField = dialog.getByPlaceholder(
-    "e.g. Product manager, Sales, Jerry",
-  );
+  const nameField = dialog.getByPlaceholder(/^e\.g\. /);
   await expect(nameField).toHaveValue("Houston copy");
   await dialog.getByRole("button", { name: "Create AI Employee" }).click();
 

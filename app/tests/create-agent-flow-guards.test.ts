@@ -5,17 +5,14 @@ import { describe, it } from "node:test";
 import enOnboarding from "../src/locales/en/agent-onboarding.json" with {
   type: "json",
 };
-import en from "../src/locales/en/setup.json" with { type: "json" };
 import enShell from "../src/locales/en/shell.json" with { type: "json" };
 import esOnboarding from "../src/locales/es/agent-onboarding.json" with {
   type: "json",
 };
-import es from "../src/locales/es/setup.json" with { type: "json" };
 import esShell from "../src/locales/es/shell.json" with { type: "json" };
 import ptOnboarding from "../src/locales/pt/agent-onboarding.json" with {
   type: "json",
 };
-import pt from "../src/locales/pt/setup.json" with { type: "json" };
 import ptShell from "../src/locales/pt/shell.json" with { type: "json" };
 
 /**
@@ -115,22 +112,27 @@ describe("a typed answer is capped in the field, not only on the way out", () =>
 
 describe("a create that half-succeeds is reported and explained", () => {
   const hook = source("components/shell/use-create-blank-agent.ts");
+  const create = source("lib/create-employee.ts");
+  const pin = source("hooks/use-kickoff-pin-resolver.ts");
 
   it("reports a failed placement instead of logging it away", () => {
-    assert.ok(hook.includes("logAndReportError("));
-    assert.ok(
-      !hook.includes("logger.error"),
-      "a log-only catch reaches no reporting path",
-    );
+    assert.ok(create.includes('logAndReportError("new_agent_placement"'));
+    for (const src of [hook, create]) {
+      assert.ok(
+        !src.includes("logger.error"),
+        "a log-only catch reaches no reporting path",
+      );
+    }
   });
 
   it("tells the user where the agent actually landed", () => {
-    assert.ok(hook.includes("showExpectedStateToast("));
-    assert.ok(hook.includes("roleSetup.placementFailed"));
+    assert.ok(create.includes("showExpectedStateToast("));
+    assert.ok(create.includes("roleSetup.placementFailed"));
   });
 
   it("catches the last-used lookup rather than floating the promise", () => {
-    assert.ok(/getLastUsed\(\)[\s\S]{0,600}\.catch\(/.test(hook));
+    assert.ok(hook.includes("useKickoffPinResolver(open)"));
+    assert.ok(/getLastUsed\(\)[\s\S]{0,600}\.catch\(/.test(pin));
   });
 });
 
@@ -178,23 +180,38 @@ describe("the flow's copy ships in all three locales", () => {
       );
     }
   });
+});
 
-  it("gives the tutorial two distinct hints for the two create steps", () => {
-    for (const [locale, copy] of [
-      ["en", en],
-      ["es", es],
-      ["pt", pt],
-    ] as const) {
-      const steps = copy.inApp.steps;
-      assert.notEqual(
-        steps.createAgent.hint,
-        steps.createAgentDialog.briefHint,
-        `${locale}: the two hints must not read as one`,
+describe("a new hire waits for the user to start its first day", () => {
+  it("no create door starts the setup task on its own", () => {
+    for (const path of [
+      "components/shell/use-create-blank-agent.ts",
+      "lib/create-employee.ts",
+      "components/portable/import-install.ts",
+      "components/agent-actions/use-copy-agent.ts",
+    ]) {
+      assert.ok(
+        !source(path).includes("startFirstDay"),
+        `${path} starts the first day without the user`,
       );
     }
+  });
+
+  it("hires and imports are born pending in their create, and a copy never", () => {
     assert.ok(
-      !/name/i.test(en.inApp.steps.createAgent.hint),
-      "the dialog opens on the industry question, not on naming",
+      source("lib/create-employee.ts").includes(
+        '{ ...input.pin, firstDay: "pending", arrival: "created" }',
+      ),
+    );
+    assert.ok(
+      source("components/portable/import-install.ts").includes(
+        'config: { ...kickoffPin, firstDay: "pending", arrival: "imported" }',
+      ),
+    );
+    assert.ok(
+      !source("components/agent-actions/use-copy-agent.ts").includes(
+        "firstDay",
+      ),
     );
   });
 });

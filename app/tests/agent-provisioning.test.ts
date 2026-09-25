@@ -1,17 +1,19 @@
 import { deepStrictEqual, ok, strictEqual } from "node:assert";
 import { describe, it } from "node:test";
+import { detectEngineAsleep } from "../src/lib/agent-provisioning/asleep.ts";
 import {
-  detectEngineAsleep,
-  PROVISIONING_RETRY_MS,
   PROVISIONING_TTL_MS,
+  warmingFlushRefetchKeys,
+  warmingReadsAnswerEmpty,
+} from "../src/lib/agent-provisioning/entry.ts";
+import { parsePersistedProvisioning } from "../src/lib/agent-provisioning/persist.ts";
+import {
+  PROVISIONING_RETRY_MS,
   ProvisioningTimeoutError,
-  parsePersistedProvisioning,
   probeSaysAgentGone,
   probeSaysStillStarting,
   runProvisioningProbe,
-  warmingFlushRefetchKeys,
-  warmingReadsAnswerEmpty,
-} from "../src/lib/agent-provisioning.ts";
+} from "../src/lib/agent-provisioning/probe.ts";
 
 const httpError = (status: number) => Object.assign(new Error("x"), { status });
 
@@ -216,6 +218,10 @@ describe("warmingFlushRefetchKeys (HOU-713)", () => {
 
   it("refetches the agent's own activity list for the per-agent surfaces", () => {
     ok(has(warmingFlushRefetchKeys("/w/a1"), ["activity", "/w/a1"]));
+  });
+
+  it("re-reads the agent's config, answered as an empty placeholder while it was created", () => {
+    ok(has(warmingFlushRefetchKeys("/w/a1"), ["config", "/w/a1"]));
   });
 });
 

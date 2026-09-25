@@ -185,9 +185,10 @@ const ENGINE_CALL_BYPASS = new Set([
   "app/src/lib/local-bridge-binding.ts",
   "app/src/lib/mission-row-landing.ts",
   "app/src/lib/mission-title.ts",
-  "app/src/lib/warming-sends.ts",
+  "app/src/lib/warming-send-row.ts",
   "app/src/main.tsx",
   "app/src/stores/agent-provisioning.ts",
+  "app/src/stores/agent-provisioning/lifecycle.ts",
   "app/src/stores/agents.ts",
 ]);
 

@@ -36,7 +36,7 @@
 #   a11y     roles / labels / focus expectations the surface must honor
 #   since    inventory version this component first appeared in
 
-version: 100
+version: 101
 
 components:
   - id: custom-integration-details
@@ -50,20 +50,23 @@ components:
     since: 82
   - id: agent-avatar
     title: Agent avatar
-    purpose: Identity badge for an agent -- colored helmet glyph, resting vs running.
-    anatomy: [glyph, color-fill, running-glow-ring]
+    purpose: Identity mark for an AI Employee -- the employee badge's metal disc with the helmet in relief, resting vs running.
+    anatomy: [metal-disc, top-highlight, helmet-relief, running-glow-ring]
     states: [resting, running]
     variants: [sizes-xs-to-xl, channel-source-avatar]
     behavior: >-
-      Stored semantic color id resolves to a palette entry (resolveAgentColor);
-      running state is driven by the agent's live run status, not local hover.
+      Stored semantic color id resolves to a palette entry (resolveAgentColor),
+      a colorless avatar in the neutral gray. Every size wears the employee
+      metal recipe the badge header uses (employeeMetalColors): a deep disc
+      with the helmet in relief at 65%, centered on whole pixels. Running state
+      is driven by the agent's live run status, not local hover.
     a11y: Decorative when paired with a text label; else img role with the agent name as label.
     since: 1
 
   - id: agent-list-item
     title: Agent list item
     purpose: A single agent row/card in the agent list or sidebar.
-    anatomy: [avatar, name, status-chip, unread-or-count-slot, trailing-actions]
+    anatomy: [avatar, name, role-line, status-chip, unread-or-count-slot, trailing-actions]
     states: [idle, running, needs-you, unread, selected, focused]
     variants: [sidebar-rail-collapsed, list-row, grid-card]
     behavior: >-
@@ -1248,7 +1251,12 @@ components:
       row, each agent, and the New agent row that closes it -- so the whole rail
       is one column of pills with one glyph column running down it, and there is
       exactly one indent step between a row that heads something and a row that
-      hangs under one. Weight states that DEPTH and never the state: a block-
+      hangs under one. Every row is 28px tall around a 20px glyph column, with
+      destination marks at 16px and team marks at 14px, so every glyph edge
+      lands 6-9px from its label. An AI Employee is a person row instead: 44px
+      around a 32px portrait, its role under its name. On the collapsed icon
+      rail it is a 36px square around a 24px avatar, so the avatar and its
+      running ring fit inside the square. Weight states that DEPTH and never the state: a block-
       level row is medium and a child row is regular, whatever is selected, so
       clicking a row cannot re-measure its label and shift where a long agent
       name truncates. The two things deliberately outside the shared row are the
@@ -1380,7 +1388,7 @@ components:
       primary action may not live one level deep inside a menu. That row wears
       the child-row geometry of the blocks above it (see sidebar-team-block), so
       the list ends on the same ladder it was drawn on rather than on a control
-      that has floated free of it, and it is the one the guided tour points at.
+      that has floated free of it.
     a11y: >-
       The label is a real button with aria-expanded and an aria-controls
       pointing at the list it folds; its caret is decorative and hidden. The
@@ -1576,8 +1584,8 @@ components:
       inside an agent's list it opens that agent's draft chat, on a team
       screen it asks among that team's agents, anywhere else it asks among
       everyone (new-mission-sheet). It is the phone's ONLY New task control --
-      no screen carries one of its own -- so it is also what the guided setup
-      rings for that step, and it sits outside every screen rather than
+      no screen carries one of its own -- so it is also what the Academy's
+      lessons ring for that step, and it sits outside every screen rather than
       inside the active one. While a chat is up (the pushed
       mission-chat-screen or the board's full-screen panel) the whole bar
       hides: chat is a push, not a tab, and the composer takes the full
@@ -1607,15 +1615,15 @@ components:
       rail's destinations in the rail's own order, one row each: the
       unlabelled run (the assistant, AI Models where the caller may see it,
       Integrations, each behind the same gate the rail applies), closed by the
-      Academy, then the help pair (Guide me, Report a problem). Administering
+      Academy, then the help row (Report a problem). Administering
       the space is reached through the Settings control, and the shared skills
       library through the Integrations row, which carries it as a tab. One
       list, the rail's own, so a destination cannot exist on the desktop and
       be unreachable on the phone. Picking a destination closes the card and
       RESETS the navigation trail to that screen, with the bar's More item
       lit; opening the card itself is not a navigation and leaves no history
-      entry. The guided setup rings the More item first and then the row
-      inside the open card.
+      entry. An Academy lesson that points at one of these destinations rings
+      the More item.
     a11y: >-
       A modal dialog named "More"; every row is a real button at least 44px
       tall named by its destination, the mention badge announces its count,
@@ -1910,6 +1918,185 @@ components:
       One real button per choice, named by its title, at least 44px tall, with
       a visible focus ring and a decorative icon hidden from screen readers.
     since: 89
+  - id: connect-ai-card
+    title: Connect AI card
+    purpose: >-
+      The first-run onboarding screen that connects the person's first AI
+      provider, between the survey and the Build your team card.
+    anatomy: [setup-card, title, subtitle, subscription-card, brand-mark,
+      live-status, view-more-toggle, provider-browser]
+    states: [loading, idle, signing-in, connected]
+    variants: []
+    behavior: >-
+      Two big subscription cards (Claude, ChatGPT: a wide row on a phone, a
+      square tile on desktop) over a collapsed "View more" that opens the
+      same provider browser the AI hub and the migration reconnect screen
+      mount; with no big card to show, the browser is open and the toggle is
+      gone. Cards and browser share one set of connections, which owns the
+      sign-in launch, the login dialogs, status polling and failure
+      reporting, so a sign-in started on either resolves the same way. A
+      signing-in card turns into a panel carrying its own Cancel. The card never
+      advances itself: the first-run route reads the shared provider statuses
+      and moves on to the team card the moment one provider is confirmed
+      connected; a connect only refreshes those statuses.
+    a11y: >-
+      The card's title is the screen's heading; each subscription card and
+      every provider is a real button named by the provider; "View more" is a
+      real button with aria-expanded; the sign-in dialogs are modal and trap
+      focus.
+    since: 101
+  - id: build-team-card
+    title: Build your team card
+    purpose: >-
+      Where a workspace gets its first AI Employees: at the end of first-run
+      onboarding, and inside the New workspace dialog.
+    anatomy: [heading, logo, choice-row, choice-card, avatar-stack,
+      hire-steps, hired-list, employee-card, basic-team-form,
+      attention-notice, footer-bar, back-control, primary-action]
+    states: [loading, choice, hiring, hired, basic-industry, basic-team,
+      working, error]
+    variants: [first-run, new-workspace]
+    behavior: >-
+      Opens on two navigation choices: hire one AI Employee at a time through
+      the in-app hire (industry, job, then the new hire's employee card to
+      name and color), or start with a basic team of three (Executive
+      assistant, Operations manager, Finance manager) whose employee cards
+      each need a name before the team is hired. The industry the person gave
+      in the survey is already answered on both paths. After each hire the
+      card lists who joined, each on their employee card, and offers another
+      hire or finishing. Every hire lands with its first day pending; nobody
+      starts working from here. The first-run variant is a full screen on the
+      setup card; the new-workspace variant is the card's content inside the
+      dialog, which owns the frame and the way out. The footer bar never
+      scrolls away, and a step slides in from the side it came from. A team of
+      cards (the basic team, the roster) sits three across on a desktop, more
+      wrapping into rows of three, so three fit without scrolling; on a phone
+      it is the employee card's carousel. Pressing "Hire my team" with a
+      blank name marks it required on its card and takes the person to it.
+      Every card stays editable: a hire on the roster renames when its field
+      is left or Enter is pressed, or at once from the dice, and recolors on a
+      swatch, saved through the app's rename and recolor once the hire exists.
+      Hires are created in the background and finishing waits for them. A hire
+      made one by one that failed is named on the basic team screen, on its
+      card with Retry and Remove, since it holds the team back from finishing.
+    a11y: >-
+      Each choice is one real button that moves on (no toggle state); back and
+      the primary action are real, separately named buttons; the cards follow
+      the employee card's own semantics; the attention notice is a section
+      labelled by its message.
+    since: 101
+  - id: employee-card
+    title: Employee ID badge
+    purpose: >-
+      Name an AI Employee, confirm their job and industry, and pick their
+      color in the starter team, hiring roster, and create dialog.
+    anatomy: [surface, photo-panel, engraving, portrait, paintbrush-button,
+      color-picker, color-palette, name-label, name-field, suggest-button,
+      role-choice, industry-choice, brief-picker, message-slot, status-foot,
+      retry-action, remove-action, carousel, pagination-dots]
+    states: [draft, joining, hired, failed, name-required, name-invalid,
+      brief-picking, color-picking]
+    variants: [grid, solo]
+    behavior: >-
+      A portrait ID badge with an opaque surface and hairline, no drop shadows.
+      Its semantic employee color tints the body and full-bleed 160px metal
+      header in both themes. A diagonal alloy gradient and soft sheen carry
+      a fine inline SVG engraving seeded by color and role, never the name.
+      The centered flat helmet is 80px on narrow cards and 96px from a 320px
+      container, with no plate, lanyard slot or wordmark. The upper-right
+      Paintbrush button is
+      always visible, 44px on phone and 32px on desktop. It opens
+      ResponsivePopover on desktop or a bottom sheet on phone, with the
+      existing radio palette in two rows of five 44px targets. Color selection
+      crossfades only paint and helmet opacity over duration.fast (200ms);
+      reduced motion changes instantly and controls never remount.
+      Below the photo are a labeled required 16px Name input with dice,
+      then labeled Role and Industry choices with persistent chevrons.
+      Long brief labels wrap; the name placeholder uses complete role examples
+      only when they fit, otherwise a short localized name example.
+      There is no bottom color section. Draft status is omitted; joining dims
+      the portrait, hired shows On your team, and failed retains Retry and
+      optional Remove on the badge. Name errors stay below the field.
+      Suggestions, brief edits, hiring and roster saving keep the shared flow.
+      Team frames widen to max-w-6xl (1152px); three columns have 16px gaps.
+      Solo badges are centered at max-w-xs (320px). Phone team badges use
+      288px snap slides capped to the viewport minus 64px, with peek and dots.
+    a11y: >-
+      Each badge is a fieldset named after the employee. DOM tab order is name,
+      dice, color button, role, industry, then recovery, while CSS places the
+      photo first visually. The name is aria-required and described by a polite
+      error region; its accessible name includes the job. Color opens focused
+      on the selected swatch. Arrow keys, Home and End select within the
+      radiogroup; Escape closes the picker and returns focus to its button.
+      Brief pickers retain their existing keyboard and focus behavior.
+      Every control has a visible focus ring; invalid submission focuses the
+      first name needing attention and reveals its phone slide.
+    since: 101
+  - id: survey-industry-picker
+    title: Survey industry picker
+    purpose: >-
+      The onboarding survey's industry question, asked from the hire
+      catalog's own industries.
+    anatomy: [search-row, chip-well, industry-chip, no-matches, other-row,
+      other-field]
+    states: [idle, filtered, no-matches, picked, other-typing, disabled]
+    variants: [first-run, profile-completion]
+    behavior: >-
+      The same pieces as the hire flow's industry step: a filter paired with
+      the "something else" door, one sorted run of chips in a bounded,
+      scrolling well, and typing anywhere filtering it. A pick selects and the
+      survey's Continue confirms. "Something else" opens a free-text field;
+      the filter's words carry into it. An answer the catalog does not know
+      is stored as something else.
+    a11y: >-
+      Each chip is a radio (checked state announced) on a roving tab stop the
+      arrow keys walk; the filter is a labelled field; the free-text answer is
+      a labelled input.
+    since: 101
+  - id: first-day-offer
+    title: First day offer
+    purpose: >-
+      The "Start {{name}}'s first day" offer a board shows for an AI Employee
+      whose first day is still pending.
+    anatomy: [avatar, title, explanation, start-button, employee-chip]
+    states: [pending, starting, started]
+    variants: [hero, compact, team-banner]
+    behavior: >-
+      A newly hired AI Employee waits for the person to start its first day,
+      the setup task where it introduces itself and asks how it should work.
+      On that employee's own board the offer is the hero of an empty board,
+      and a compact row above the tasks once the board holds any. On a team
+      board a calm banner lists every waiting employee as a chip that starts
+      that employee's first day in one tap. Pressing start opens the setup
+      task's chat beside the board and records the start, which takes every
+      start button for that employee away, whoever pressed it and on whichever
+      device. Repeat presses while starting are dropped.
+    a11y: >-
+      The start control is a real button named "Start {{name}}'s first day",
+      showing a busy state while it starts; banner chips carry that same name.
+    since: 101
+  - id: academy-path
+    title: Academy path
+    purpose: >-
+      The Academy's list of chapters and their lessons, each lesson with the
+      one thing to do about it.
+    anatomy: [chapter-heading, chapter-progress, path-rail, node-marker,
+      lesson-title, lesson-description, count-chip, node-action]
+    states: [loading, error, available, started, completed, locked,
+      chapter-done]
+    variants: []
+    behavior: >-
+      Each chapter names itself and how much of it is done, then its lessons
+      as stops on one hairline rail. A lesson offers Start, Continue (it was
+      begun and left, and resumes on the beat it reached) or Replay once
+      finished; a locked lesson carries no action at all. Starting and
+      continuing both arm the lesson over the real app. A finished lesson
+      shows the experience it paid.
+    a11y: >-
+      Each chapter is a section labelled by its heading and its lessons an
+      ordered list; the node's action is a real button beside the lesson's
+      title; markers are decorative and hidden from screen readers.
+    since: 101
   - id: messaging-channels-settings
     title: Messaging channels settings
     purpose: Connect messaging identities to the personal assistant in the selected Houston space.

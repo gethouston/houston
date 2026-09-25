@@ -1,4 +1,4 @@
-import { Button } from "@houston-ai/core";
+import { Button, cn } from "@houston-ai/core";
 import { ArrowLeft, ArrowRight, Loader2 } from "lucide-react";
 import type { ReactNode } from "react";
 
@@ -29,6 +29,7 @@ export { OptionCard } from "./option-card";
  * decorative accent (design-system color restraint).
  */
 interface SetupCardProps {
+  layout?: "standard" | "team";
   /** Optional brand mark above the eyebrow (used by the Welcome hero). */
   icon?: ReactNode;
   /** Small muted line above the title, e.g. "Step 2 of 3" or "Welcome". */
@@ -49,6 +50,7 @@ interface SetupCardProps {
 }
 
 export function SetupCard({
+  layout = "standard",
   icon,
   eyebrow,
   title,
@@ -72,7 +74,10 @@ export function SetupCard({
           background — no glass, no backdrop-blur. */}
       <div
         key={title}
-        className="setup-step-in relative z-10 flex min-h-0 w-full flex-1 flex-col bg-card p-5 text-ink md:h-[680px] md:max-h-[88dvh] md:max-w-2xl md:flex-initial md:rounded-2xl md:border md:border-line md:p-8 md:shadow-raised"
+        className={cn(
+          "setup-step-in relative z-10 flex min-h-0 w-full flex-1 flex-col bg-card p-5 text-ink md:h-[680px] md:max-h-[88dvh] md:flex-initial md:rounded-2xl md:border md:border-line md:p-8 md:shadow-raised",
+          layout === "team" ? "md:max-w-6xl" : "md:max-w-2xl",
+        )}
       >
         {icon && <div className="mb-4">{icon}</div>}
         {eyebrow && (

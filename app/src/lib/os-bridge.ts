@@ -4,7 +4,7 @@
  * `app/src/lib/os-bridge/` is the ONLY place in `app/src/` that may call
  * `invoke(...)`. Two classes of calls live there:
  *
- *  1. **OS-native helpers** (`osRevealFile`, `osPickDirectory`, …). These
+ *  1. **OS-native helpers** (`osRevealFile`, `osOpenUrl`, …). These
  *     probe the user's local machine (file manager, open URL, terminal, local
  *     Claude CLI, local log writes) and will NEVER move to the engine —
  *     the engine may run on a remote VPS.

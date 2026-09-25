@@ -80,6 +80,8 @@ export const LOCAL_PROBES: readonly Probe[] = [
     routineId: NO_ROUTINE,
     runId: "no-such-run",
   }),
+  // The probe agent has no first day waiting: the handler's own 409.
+  probe("startFirstDay", { ...AGENT, input: {} }),
 
   // Skills, per agent and shared across the workspace.
   probe("listSkills", AGENT),

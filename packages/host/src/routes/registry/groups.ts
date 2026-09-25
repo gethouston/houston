@@ -65,6 +65,7 @@ export const GROUP_PHASES = {
   "agent-crud": "agent",
   "agent-credentials": "agent",
   "routine-runs": "agent",
+  "agent-first-day": "agent",
   "agent-activity": "agent",
   "agent-approvals": "agent",
   // The custom-integration grammar on the PER-AGENT dispatch surface — the one

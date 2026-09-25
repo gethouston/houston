@@ -1,11 +1,8 @@
 {
   "setupMission": {
-    "title": "Configurando",
-    "startFailed": "Não conseguimos iniciar a configuração. Tente novamente."
+    "title": "Configurando"
   },
   "roleSetup": {
-    "back": "Voltar",
-    "unlinkProject": "Desvincular projeto existente",
     "steps": {
       "context": "Indústria",
       "role": "Cargo",
@@ -29,11 +26,12 @@
     "continue": "Continuar",
     "cancel": "Cancelar",
     "customize": {
-      "headline": "Dê um nome e uma cor",
+      "headline": "Dê um nome ao seu AI Employee",
       "changeIndustry": "Alterar indústria: {{answer}}",
       "changeRole": "Alterar cargo: {{answer}}"
     },
     "createFailed": "Não conseguimos criar este funcionário de IA. Tente novamente.",
+    "saveFailed": "Ainda não conseguimos salvar suas alterações. Vamos tentar de novo quando você terminar.",
     "placementFailedTitle": "Criado na equipe padrão",
     "placementFailedBody": "Não conseguimos colocar {{name}} na equipe que você escolheu. Você pode movê-lo quando quiser pelo menu dele.",
     "contexts": {
@@ -473,6 +471,7 @@
       "film_festival_coordinator": "Coordenador de festivais",
       "finance_and_insurance_clerk": "Auxiliar de financiamento e seguros",
       "finance_business_partner": "Parceiro financeiro de negócio",
+      "finance_manager": "Gerente financeiro",
       "finance_reporting_analyst": "Analista de relatórios",
       "finance_risk_manager": "Gestor de riscos",
       "financial_analyst": "Analista financeiro",
@@ -772,6 +771,7 @@
       "open_house_coordinator": "Coordenador de visitação",
       "operations_consultant": "Consultor de operações",
       "operations_coordinator": "Coordenador de operações",
+      "operations_manager": "Gerente de operações",
       "order_desk_clerk": "Auxiliar de central de pedidos",
       "order_fulfillment_clerk": "Auxiliar de expedição de pedidos",
       "order_status_clerk": "Auxiliar de pedidos",

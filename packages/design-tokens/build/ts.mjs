@@ -121,6 +121,9 @@ export function buildTs(light, dark, palettes) {
     "/** Cubic-bezier control points [x1, y1, x2, y2]. */",
     `export const easing = ${lit(easings(light).map((e) => [e.name, `[${e.value.join(", ")}]`]))} as const;`,
     "",
+    "/** Employee badge alloy mixing ratios. */",
+    `export const employeeMetal = ${lit(scale(light, "employeeMetal").map((e) => [e.name, String(e.value)]))} as const;`,
+    "",
     "/** Elevation tiers as ready-to-use CSS box-shadow strings, per theme. */",
     `export const shadow = {\n  light: ${boxShadows(light, "    ")},\n  dark: ${boxShadows(
       dark,

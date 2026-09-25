@@ -32,7 +32,6 @@ export type DesktopNativeCategory =
  */
 export const DESKTOP_NATIVE_COMMANDS = [
   // OS shell: this machine's file manager, browser, windows and disk.
-  ["pick_directory", "os", "the OS folder picker"],
   ["open_url", "os", "hands a URL to the default browser"],
   ["open_file", "os", "opens a file with its default app"],
   ["reveal_file", "os", "shows a file in Finder/Explorer"],

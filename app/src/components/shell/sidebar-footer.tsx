@@ -1,7 +1,6 @@
 import { SidebarNavItem } from "@houston-ai/layout";
 import { Settings } from "lucide-react";
 import { useTranslation } from "react-i18next";
-import { useRunGuidedSetup } from "../../hooks/use-run-guided-setup";
 import { ACADEMY_VIEW_ID, SETTINGS_VIEW_ID } from "../../lib/top-level-views";
 import { useUIStore } from "../../stores/ui";
 import { SidebarHelpMenu } from "./sidebar-help-menu";
@@ -27,13 +26,10 @@ import { tourAnchor } from "./workspace-tour-steps.ts";
  * SPACE — Workspace management is a section behind it — so it has to be
  * reachable in every deployment mode, whatever gates a caller passes.
  *
- * **The help control sits beside it** (`sidebar-help-menu.tsx`): "Guide me" and
- * "Report a problem", the two things a stuck user reaches for. Asking for help
- * is not a destination, so it wears a help control at the foot of the
- * navigation rather than a slot among the destinations. What it runs is the
- * shared
- * {@link useRunGuidedSetup}, the same composition the Academy's setup chapter
- * spends, so the guided setup can never start two different ways.
+ * **The help control sits beside it** (`sidebar-help-menu.tsx`): "Report a
+ * problem", what a stuck user reaches for. Asking for help is not a
+ * destination, so it wears a help control at the foot of the navigation rather
+ * than a slot among the destinations.
  *
  * Settings is the rail's LAST row, and the ONE door onto that page: identity
  * lives inside it, where the Settings index opens on the signed-in person's
@@ -51,7 +47,6 @@ export function SidebarFooter(props: { collapsed: boolean }) {
   const openSettings = useUIStore((s) => s.openSettings);
   const setMobileMoreOpen = useUIStore((s) => s.setMobileMoreOpen);
   const setViewMode = useUIStore((s) => s.setViewMode);
-  const runGuidedSetup = useRunGuidedSetup();
   const academy = academyNavRow({
     label: t("sidebar.academy"),
     onOpen: () => {
@@ -76,6 +71,7 @@ export function SidebarFooter(props: { collapsed: boolean }) {
           active={viewMode === ACADEMY_VIEW_ID}
           collapsed={props.collapsed}
           onClick={academy.onClick}
+          dataAttrs={academy.dataAttrs}
         />
       </div>
       <div
@@ -106,12 +102,7 @@ export function SidebarFooter(props: { collapsed: boolean }) {
           collapsed={props.collapsed}
           labels={{
             help: t("sidebar.help"),
-            guideMe: t("sidebar.guideMe"),
             reportProblem: t("sidebar.reportProblem"),
-          }}
-          onGuideMe={() => {
-            setMobileMoreOpen(false);
-            runGuidedSetup();
           }}
           onReportProblem={() => {
             // The one bug-report surface, reached from the place a user is

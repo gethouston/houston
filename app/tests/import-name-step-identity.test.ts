@@ -32,7 +32,7 @@ describe("the import wizard's name step", () => {
 
   it("hand-rolls none of the fields the shared form owns", () => {
     ok(!step.includes("<Input"), "no second name input");
-    ok(!step.includes("AgentColorPalette"), "no second colour palette");
+    ok(!step.includes("ColorPalette"), "no second colour palette");
     ok(!step.includes("HoustonAvatar"), "no second helmet preview");
   });
 

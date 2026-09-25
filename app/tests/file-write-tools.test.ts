@@ -1,9 +1,9 @@
 import { strictEqual } from "node:assert/strict";
 import { describe, it } from "node:test";
+import { toolShortName } from "@houston-ai/chat";
 import {
   isFileCreateTool,
   isFileWriteTool,
-  toolShortName,
 } from "../src/lib/file-write-tools.ts";
 
 describe("isFileWriteTool", () => {

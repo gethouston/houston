@@ -315,3 +315,27 @@ describe("planInvalidation — events for agents outside the roster", () => {
     deepStrictEqual(plan.patchAllConversations, [OTHER]);
   });
 });
+
+describe("planInvalidation — AgentRoleChanged renames the row", () => {
+  const ev: HoustonEvent = {
+    type: "AgentRoleChanged",
+    data: { agent_path: PATH },
+  };
+
+  it("re-lists the open workspace's roster, where each row's role lives", () => {
+    const plan = planInvalidation(ev, { workspaceId: "ws-1" });
+    strictEqual(plan.reloadAgentsWorkspace, "ws-1");
+  });
+
+  it("leaves the roster alone for an agent outside it", () => {
+    const plan = planInvalidation(ev, {
+      workspaceId: "ws-1",
+      isKnownAgent: () => false,
+    });
+    strictEqual(plan.reloadAgentsWorkspace, undefined);
+  });
+
+  it("re-lists nothing with no workspace open", () => {
+    strictEqual(planInvalidation(ev, {}).reloadAgentsWorkspace, undefined);
+  });
+});

@@ -115,13 +115,9 @@ describe("the rail's primary run", () => {
   });
 
   it("carries no row that points at no screen", () => {
-    // "Guide me" was exactly that: the one entry that could never light,
-    // holding a permanent slot among destinations. It moved to the footer's
-    // help control, so nothing here arms the tour any more.
-    assert.ok(!NAV.includes("GUIDE_ME_NAV_ID"));
-    assert.ok(!NAV.includes("startTour"));
+    // A row that can never light would hold a permanent slot among
+    // destinations; actions live behind the footer's help control instead.
     assert.ok(!NAV.includes("active: false"));
-    assert.ok(!VIEWS.includes("guide-me"), "no view claims that id either");
   });
 });
 
@@ -159,9 +155,9 @@ describe("the rail's labelled bands", () => {
     assert.ok(NAV.includes('label: t("shell:sidebar.skills")'));
     assert.ok(NAV.includes("onClick: () => setViewMode(SKILLS_VIEW_ID)"));
     assert.ok(VIEWS.includes("SKILLS_VIEW_ID"), "a real top-level view");
-    // The tour does not walk it, so it carries a test id rather than an
-    // anchor: a target in the union no step spotlights is dead weight.
-    assert.ok(!NAV.includes('tourAnchor("nav-skills")'), "no Skills anchor");
+    // The Houston tour lesson stops on it, so it carries the anchor, and the
+    // specs keep their own stable handle beside it.
+    assert.ok(NAV.includes('tourAnchor("nav-skills")'), "the Skills anchor");
     assert.ok(NAV.includes('"data-testid": "rail-skills"'));
   });
 

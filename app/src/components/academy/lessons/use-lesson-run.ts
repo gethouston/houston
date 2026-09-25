@@ -1,8 +1,9 @@
 import { useCallback, useEffect, useRef, useState } from "react";
 import { lessonAdvance } from "../../../lib/academy/lesson-signals";
-import type {
-  LessonSpec,
-  LessonStepSpec,
+import {
+  type LessonSpec,
+  type LessonStepSpec,
+  lessonBeatView,
 } from "../../../lib/academy/lesson-spec";
 import { analytics } from "../../../lib/analytics";
 import { fireMissionDoneConfetti } from "../../../lib/confetti";
@@ -11,6 +12,7 @@ import { TEAM_VIEW_ID } from "../../../lib/top-level-views";
 import { useUIStore } from "../../../stores/ui";
 import { lessonBeatArmed, lessonExitKey } from "./lesson-arming";
 import { useLessonAward } from "./use-lesson-award";
+import { useLessonPosition } from "./use-lesson-position";
 import { useLessonSignals } from "./use-lesson-signals";
 
 /**
@@ -48,7 +50,11 @@ export interface LessonRun {
   armed: boolean;
   /** The narration beats' own button: moves on, or finishes the lesson. */
   next: () => void;
-  /** Leave. A lesson is always abandonable — nothing is kept, nothing is paid. */
+  /** The beat's companion is ready to see the taught action happen, which
+   *  arms a beat that waits on its companion. */
+  companionReady: () => void;
+  /** Leave. A lesson is always abandonable: nothing is paid, and the beat it
+   *  was on is kept for the path's Continue. */
   exit: () => void;
 }
 
@@ -57,30 +63,31 @@ export interface LessonRun {
  * means.
  *
  * The advance DECISION is not here — it is the pure `lessonAdvance` over the
- * world `useLessonSignals` reads, mirroring how the guided setup splits its
- * machine from its wiring. This hook only carries out what the decision says:
- * the beat move, the navigation a beat asks for when it arms, the funnel
- * events, and the finish (the award, the nod, the overlay clearing itself).
+ * world `useLessonSignals` reads, so the machine stays apart from its wiring.
+ * This hook only carries out what the decision says:
+ * the beat move, the navigation a beat asks for when it arms, the place kept
+ * for a later Continue, the funnel events, and the finish (the award, the nod,
+ * the overlay clearing itself).
  *
  * One run per mount: `LessonRunner` is keyed by the lesson id, so arming a
- * different lesson starts from its first beat with a clean world.
+ * different lesson starts on its own `startIndex` with a clean world.
  */
-export function useLessonRun(spec: LessonSpec | undefined): LessonRun {
+export function useLessonRun(spec: LessonSpec, startIndex: number): LessonRun {
   const setActiveLessonId = useUIStore((s) => s.setActiveLessonId);
   const award = useLessonAward();
-  const [index, setIndex] = useState(0);
-  const step = spec?.steps[index];
-  const signals = useLessonSignals(step);
+  const keepPosition = useLessonPosition();
+  const [index, setIndex] = useState(startIndex);
+  const step = spec.steps[index];
+  const { signals, companionReady } = useLessonSignals(step);
   // The finish is terminal and pays real experience, so it is armed once. The
   // overlay unmounts on the same act, but a signal that stays true through
   // that commit must not be able to pay a second time.
   const finished = useRef(false);
 
   // One started event per run, tagged with where it was armed from.
-  const lessonId = spec?.id;
-  const chapterId = spec?.chapterId;
+  const lessonId = spec.id;
+  const chapterId = spec.chapterId;
   useEffect(() => {
-    if (lessonId === undefined || chapterId === undefined) return;
     analytics.track("academy_lesson_started", {
       lesson: lessonId,
       chapter: chapterId,
@@ -90,15 +97,24 @@ export function useLessonRun(spec: LessonSpec | undefined): LessonRun {
 
   // A beat that needs the user somewhere takes them there as it arms, before
   // the wait begins — the spotlight keeps polling, so the hole opens the
-  // moment the anchor renders on the new screen.
-  const navigateTo =
-    step?.kind === "spotlight" ? (step.navigate?.viewId ?? null) : null;
+  // moment the anchor renders on the new screen. The run's first beat is an
+  // OPENING (`lessonBeatView`): a resumed run starts wherever the user is.
+  const opened = useRef(false);
   useEffect(() => {
-    if (navigateTo !== null) navigateToLessonView(navigateTo);
-  }, [navigateTo]);
+    const arrival = opened.current ? "advance" : "open";
+    opened.current = true;
+    const view = lessonBeatView(spec, index, arrival);
+    if (view !== null) navigateToLessonView(view);
+  }, [spec, index]);
+
+  // Every beat reached is the place a later Continue resumes. Never on the
+  // finish: that write clears the place instead (`completeLessonRecord`).
+  useEffect(() => {
+    keepPosition(lessonId, index);
+  }, [lessonId, index, keepPosition]);
 
   const next = useCallback(() => {
-    if (spec === undefined || finished.current) return;
+    if (finished.current) return;
     if (index < spec.steps.length - 1) {
       setIndex(index + 1);
       return;
@@ -142,6 +158,7 @@ export function useLessonRun(spec: LessonSpec | undefined): LessonRun {
     index,
     armed: step !== undefined && lessonBeatArmed(step, signals),
     next,
+    companionReady,
     exit,
   };
 }

@@ -2,6 +2,7 @@ import { existsSync, mkdirSync } from "node:fs";
 import { migrateAgentLayouts } from "../migrate/agent-layout";
 import { reseedAgentSchemas } from "../migrate/agent-schemas";
 import { migrateChatHistory } from "../migrate/chat-history";
+import { sweepLegacySetupDirectives } from "../migrate/legacy-setup-directive";
 import { backfillRoutineCreatedBy } from "../migrate/routine-created-by";
 import { severityLog } from "./host-log";
 import type { LocalHostOptions } from "./host-options";
@@ -71,6 +72,23 @@ export async function runHostMigrations(
       "[local-host] agent schema re-seed failed (continuing):",
       err,
     );
+  }
+  // Remove the retired onboarding's "send ONE real email now" section from
+  // every agent's CLAUDE.md, here where the files are local (desktop, and a
+  // pod after hydration, whose store sync uploads the result). Writes only a
+  // file that carries it, so re-boots are no-ops. Passive hosts must not
+  // mutate the tree they serve. Per-agent failures are reported inside.
+  if (!opts.passive) {
+    try {
+      sweepLegacySetupDirectives({ workspacesRoot: opts.workspacesRoot });
+    } catch (err) {
+      // No UI thread to toast on at boot; the supervisor must stay up. Log
+      // loudly so the failure shows in the app logs / bug report tail.
+      console.error(
+        "[local-host] legacy setup-section sweep failed (continuing):",
+        err,
+      );
+    }
   }
   // Managed pods: stamp the org owner as `created_by` on routines recorded
   // before gateway-fronted pods stamped acting identities. The control-plane

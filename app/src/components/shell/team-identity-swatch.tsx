@@ -2,10 +2,9 @@ import { cn } from "@houston-ai/core";
 import { Check } from "lucide-react";
 
 /**
- * The chip+colour WASH every tinted surface of the identity picker wears — the
- * same recipe `HoustonAvatar` washes an agent's colour with, so a tinted team
- * button, a hovered glyph cell and an agent avatar speak one grammar. The
- * tint arrives via `--identity-tint`, set inline wherever a wash class is
+ * The chip+colour WASH every tinted surface of the identity picker wears, so a
+ * tinted team button and a hovered glyph cell speak one grammar. The tint
+ * arrives via `--identity-tint`, set inline wherever a wash class is
  * applied (the classes are meaningless without it).
  */
 export const WASH =

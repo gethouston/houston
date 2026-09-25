@@ -18,7 +18,8 @@ export type OnboardingSurveyStep = (typeof ONBOARDING_SURVEY_STEPS)[number];
 
 /**
  * Where the survey is being shown: the first-run intro (all three questions,
- * before the create-your-assistant flow) or the in-app prompt that re-opens it
+ * before the Connect AI and Build your team cards) or the in-app prompt that
+ * re-opens it
  * for someone who only ever answered the job question.
  */
 export type OnboardingSurveyMode = "first_run" | "profile_completion";

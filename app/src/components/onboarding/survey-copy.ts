@@ -1,9 +1,7 @@
 import { useMemo } from "react";
 import { useTranslation } from "react-i18next";
 import {
-  ONBOARDING_INDUSTRIES,
   ONBOARDING_SEGMENTS,
-  type OnboardingIndustry,
   type OnboardingSegment,
 } from "../../lib/onboarding-survey";
 import type { SurveyPillOption } from "./survey-pill-grid";
@@ -18,13 +16,14 @@ export interface SurveyCopy {
   /** Heading + supporting line for the question currently on screen. */
   question: SurveyQuestionCopy;
   segmentOptions: readonly SurveyPillOption<OnboardingSegment>[];
-  industryOptions: readonly SurveyPillOption<OnboardingIndustry>[];
 }
 
 /**
- * The survey's translated question copy and pill labels, in one lookup. The
- * job question keeps the `onboardingSegment.*` keys it shipped with so its copy
- * (and its translations) survive the rewrite untouched.
+ * The survey's translated question copy and job pill labels, in one lookup.
+ * The job question keeps the `onboardingSegment.*` keys it shipped with so its
+ * copy (and its translations) survive the rewrite untouched; the industry
+ * question reads its labels from the hire catalog's own translations
+ * (`survey-industry-picker.tsx`).
  */
 export function useSurveyCopy(step: OnboardingSurveyStep): SurveyCopy {
   const { t } = useTranslation("setup");
@@ -34,13 +33,6 @@ export function useSurveyCopy(step: OnboardingSurveyStep): SurveyCopy {
       returnObjects: true,
     }) as Record<OnboardingSegment, string>;
     return ONBOARDING_SEGMENTS.map((id) => ({ id, label: labels[id] }));
-  }, [t]);
-
-  const industryOptions = useMemo(() => {
-    const labels = t("onboardingSurvey.industry.options", {
-      returnObjects: true,
-    }) as Record<OnboardingIndustry, string>;
-    return ONBOARDING_INDUSTRIES.map((id) => ({ id, label: labels[id] }));
   }, [t]);
 
   const question = {
@@ -58,5 +50,5 @@ export function useSurveyCopy(step: OnboardingSurveyStep): SurveyCopy {
     },
   }[step];
 
-  return { question, segmentOptions, industryOptions };
+  return { question, segmentOptions };
 }

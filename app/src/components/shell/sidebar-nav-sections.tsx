@@ -30,8 +30,8 @@ import { tourAnchor } from "./workspace-tour-steps.ts";
  * (`openSettings("workspace")`), because administering the space is a standing
  * preference rather than a place work happens. About me is a Settings section
  * as well: what the agents know about the person is kept with their name and
- * their language. "Guide me" is one of two items behind the help control in
- * the rail's footer (`sidebar-help-menu.tsx`), because it points at no screen.
+ * their language. "Report a problem" sits behind the help control in the
+ * rail's footer (`sidebar-help-menu.tsx`), because it points at no screen.
  * The Academy and Settings are the rail's FOOTER cluster
  * (`sidebar-footer.tsx`): learning to fly and the person's own chrome sit
  * under the space's contents rather than above them.

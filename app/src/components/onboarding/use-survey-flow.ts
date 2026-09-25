@@ -6,6 +6,7 @@ import {
   isOnboardingSegment,
   isValidAutomationGoal,
   isValidOtherText,
+  ONBOARDING_INDUSTRY_SOMETHING_ELSE,
   ONBOARDING_OTHER_MAX_LENGTH,
   type OnboardingIndustry,
   type OnboardingSegment,
@@ -118,7 +119,8 @@ export function useSurveyFlow(
     (segment !== "something_else" || isValidOtherText(segmentOther));
   const industryReady =
     industry !== null &&
-    (industry !== "something_else" || isValidOtherText(industryOther));
+    (industry !== ONBOARDING_INDUSTRY_SOMETHING_ELSE ||
+      isValidOtherText(industryOther));
 
   return {
     step,
@@ -157,6 +159,10 @@ export function useSurveyFlow(
       else setSegmentOther(value);
       setError(null);
     },
+    leaveIndustryOther: () => {
+      setIndustry(null);
+      setError(null);
+    },
     writeGoal: (value) => {
       setGoal(value);
       setError(null);
@@ -170,7 +176,9 @@ export function useSurveyFlow(
         );
       } else if (step === "industry" && industry && industryReady) {
         const other =
-          industry === "something_else" ? industryOther.trim() : null;
+          industry === ONBOARDING_INDUSTRY_SOMETHING_ELSE
+            ? industryOther.trim()
+            : null;
         void save(
           () => survey.saveIndustry(industry, other),
           () => track.industryContinued(industry),

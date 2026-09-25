@@ -44,15 +44,24 @@ export function focusWithinStep(reading: ChoiceFocusReading): boolean {
   return reading.focusNowhere || reading.focusInStep || reading.targetInStep;
 }
 
+/** Where one open layer sits relative to the question. */
+export interface LayerReading {
+  containsStep: boolean;
+  /** The layer comes earlier in the document than the question. */
+  beforeStep: boolean;
+}
+
 /**
  * The sheet the question is asked in is an open layer that CONTAINS it, and it
- * is not above anything. A popover the question itself opened is portalled
- * elsewhere, so it does not contain the question and it does own Escape first.
+ * is not above anything. Layers are portalled in the order they open, so one
+ * that comes earlier in the document is beneath the question: the dialog a
+ * card sits in, when the question is a popover that card opened. A layer
+ * that comes later (a popover the question itself opened, a confirm asked
+ * over it) is above it and owns Escape first.
  */
-export function countLayersAbove(
-  layers: readonly { containsStep: boolean }[],
-): number {
-  return layers.filter((layer) => !layer.containsStep).length;
+export function countLayersAbove(layers: readonly LayerReading[]): number {
+  return layers.filter((layer) => !layer.containsStep && !layer.beforeStep)
+    .length;
 }
 
 /**
@@ -81,7 +90,12 @@ export function readChoiceKeyScope(
     document.querySelectorAll<HTMLElement>(OPEN_LAYER_SELECTOR),
   )
     .filter((layer) => isOpenLayerRole(layer.getAttribute("role") ?? ""))
-    .map((layer) => ({ containsStep: layer.contains(step) }));
+    .map((layer) => ({
+      containsStep: layer.contains(step),
+      beforeStep: Boolean(
+        layer.compareDocumentPosition(step) & Node.DOCUMENT_POSITION_FOLLOWING,
+      ),
+    }));
   return {
     trusted: event.isTrusted,
     focusWithin: focusWithinStep({

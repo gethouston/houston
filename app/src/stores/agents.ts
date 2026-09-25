@@ -1,3 +1,4 @@
+import type { AgentInitialConfig } from "@houston/engine-adapter";
 import { create } from "zustand";
 import {
   selectLoadedAgent,
@@ -9,10 +10,9 @@ import { prepareAgentDraftForget } from "../lib/forget-agent-drafts";
 import { tauriAgents, tauriPreferences } from "../lib/tauri";
 import type { Agent } from "../lib/types";
 import { useAgentProvisioningStore } from "./agent-provisioning";
+import type { AgentState } from "./agents/state";
 
-export interface CreatedAgent {
-  agent: Agent;
-}
+export type { CreatedAgent } from "./agents/state";
 
 let loadAgentsGeneration = 0;
 
@@ -21,62 +21,6 @@ let loadAgentsGeneration = 0;
  *  serves, so there is nothing per-agent for the client to start. */
 function startAgentSideEffects(agent: Agent) {
   tauriPreferences.set("last_agent_id", agent.id);
-}
-
-interface AgentState {
-  agents: Agent[];
-  current: Agent | null;
-  loading: boolean;
-  /**
-   * True once `loadAgents` has settled at least once. `loading` alone can't
-   * distinguish "not started yet" from "loaded, empty": boot has an async gap
-   * between workspaces resolving and the first `loadAgents` call, and the v3
-   * first-run gate (zero agents, HOU-653) must not read `agents: []` in that
-   * gap as a fresh install.
-   */
-  loaded: boolean;
-  loadAgents: (
-    workspaceId: string,
-    options?: { silent?: boolean },
-  ) => Promise<void>;
-  /**
-   * Settle with no agents, for a boot that resolved NO workspace to list them
-   * for — the workspace load failed (already toasted + reported by `call()`,
-   * and recorded as `loadError` for the Settings retry) or the account has
-   * none. `loadAgents` is never called in that path, so without this `loaded`
-   * stays false forever and every gate reading it hangs: the boot splash never
-   * lifts and the provider probe never runs (HOU-979). Settled-empty is the
-   * honest state — there is no space, so there are no agents.
-   */
-  settleEmpty: () => void;
-  setCurrent: (agent: Agent) => void;
-  /**
-   * Reveal a freshly created agent: mark it provisioning (HOU-693), append it
-   * to the sidebar optimistically, and select it. The tail of `create`, also
-   * used by flows that create through another pipeline (agent import,
-   * HOU-710) so every creation gets the same optimistic contract.
-   */
-  adopt: (agent: Agent) => void;
-  create: (
-    workspaceId: string,
-    name: string,
-    configId: string,
-    color?: string,
-    claudeMd?: string,
-    installedPath?: string,
-    seeds?: Record<string, string>,
-    existingPath?: string,
-  ) => Promise<CreatedAgent>;
-  delete: (workspaceId: string, id: string) => Promise<void>;
-  rename: (workspaceId: string, id: string, newName: string) => Promise<Agent>;
-  updateColor: (
-    workspaceId: string,
-    id: string,
-    color: string,
-  ) => Promise<void>;
-  /** Drop the agent list back to its initial (unloaded) state on an identity
-   *  change (HOU-903); the incoming account re-loads its own agents on boot. */
-  reset: () => void;
 }
 
 export const useAgentStore = create<AgentState>((set, get) => ({
@@ -146,6 +90,7 @@ export const useAgentStore = create<AgentState>((set, get) => ({
     installedPath?: string,
     seeds?: Record<string, string>,
     existingPath?: string,
+    config?: AgentInitialConfig,
   ) => {
     const result = await tauriAgents.create(
       workspaceId,
@@ -156,6 +101,7 @@ export const useAgentStore = create<AgentState>((set, get) => ({
       installedPath,
       seeds,
       existingPath,
+      config,
     );
     analytics.track("agent_created", { config_id: configId });
     const { agent } = result;

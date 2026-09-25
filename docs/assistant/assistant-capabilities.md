@@ -15,6 +15,7 @@ Calling an operation returns the host's raw response. Where the adapter function
 - `listInstalledConfigs`: Lists the agent templates installed in Houston.
 - `renameAgent`: Renames an agent. **Confirmation required.**
 - `setAgentModelChoice`: Chooses which AI model an agent uses. **Confirmation required.**
+- `startFirstDay`: Starts an AI Employee's first day: its setup task, where it introduces itself and works out with the user how it should help. Only a new hire whose first day is still waiting can start one; asking again for one that already started hands back the same task instead of making another. **Confirmation required.**
 - `updateAgentColor`: Change an agent's color. Pick one of Houston's ten palette colors: charcoal, forest, teal, navy, purple, rose, crimson, orange, golden, or umber. The new color shows up everywhere that agent appears.
 
 ## billing

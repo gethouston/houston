@@ -8,10 +8,8 @@ import {
   surveyStepPlan,
   surveyStepViewedEvent,
 } from "../src/components/onboarding/survey-steps.ts";
-import {
-  ONBOARDING_INDUSTRIES,
-  ONBOARDING_SEGMENTS,
-} from "../src/lib/onboarding-survey.ts";
+import { AGENT_CONTEXT_IDS } from "../src/lib/agent-role-catalog.ts";
+import { ONBOARDING_SEGMENTS } from "../src/lib/onboarding-survey.ts";
 
 const read = (relativePath: string) =>
   readFileSync(new URL(relativePath, import.meta.url), "utf8");
@@ -132,6 +130,17 @@ describe("survey screen wiring", () => {
   const grid = read("../src/components/onboarding/survey-pill-grid.tsx");
   const footer = read("../src/components/onboarding/survey-footer.tsx");
 
+  it("asks the industry from the hire catalog's contexts", () => {
+    const picker = read(
+      "../src/components/onboarding/survey-industry-picker.tsx",
+    );
+    assert.match(answer, /<SurveyIndustryPicker/);
+    assert.match(picker, /contextRunsForQuery\(/);
+    assert.match(picker, /roleSetup\.contexts\.\$\{id\}/);
+    // A pick selects; the survey's own Continue saves and advances.
+    assert.doesNotMatch(picker, /onContinue/);
+  });
+
   it("keeps the segmentation screen's pill presentation", () => {
     assert.match(
       grid,
@@ -217,7 +226,8 @@ describe("survey locales", () => {
           industry: {
             title: string;
             subtitle: string;
-            options: Record<string, string>;
+            backToList: string;
+            options?: unknown;
           };
           goal: {
             title: string;
@@ -232,11 +242,17 @@ describe("survey locales", () => {
       for (const id of ONBOARDING_SEGMENTS) {
         assert.ok(setup.onboardingSegment.options[id]?.trim(), `job ${id}`);
       }
-      for (const id of ONBOARDING_INDUSTRIES) {
-        assert.ok(
-          setup.onboardingSurvey.industry.options[id]?.trim(),
-          `industry ${id}`,
-        );
+      // The industry question reads the hire catalog's labels, so the
+      // survey keeps no list of its own to drift from them.
+      assert.equal(setup.onboardingSurvey.industry.options, undefined);
+      assert.ok(setup.onboardingSurvey.industry.backToList.trim());
+      const roleSetup = (
+        JSON.parse(read(`../src/locales/${locale}/agent-onboarding.json`)) as {
+          roleSetup: { contexts: Record<string, string> };
+        }
+      ).roleSetup;
+      for (const id of AGENT_CONTEXT_IDS) {
+        assert.ok(roleSetup.contexts[id]?.trim(), `industry ${id}`);
       }
       // The per-question skip is gone from the UI, so its copy must go too:
       // a stranded key is the next contributor's invitation to re-add the link.

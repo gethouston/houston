@@ -22,7 +22,6 @@
     "createDialog": "Crear",
     "createWorkspace": "Crear espacio de trabajo",
     "expand": "Expandir barra lateral",
-    "guideMe": "Guíame",
     "help": "Ayuda",
     "integrations": "Integraciones",
     "needsYouCount_one": "{{count}} asunto necesita tu atención",
@@ -454,7 +453,10 @@
   },
   "workspaceDialog": {
     "title": "Nuevo espacio de trabajo",
-    "createFailed": "No pudimos crear el espacio de trabajo. Inténtalo de nuevo."
+    "createFailed": "No pudimos crear el espacio de trabajo. Inténtalo de nuevo.",
+    "nameLabel": "Nombre del espacio de trabajo",
+    "nameTaken": "Ya tienes un espacio de trabajo con este nombre.",
+    "create": "Crear espacio de trabajo"
   },
   "agentUpdate": {
     "title": "Actualización del empleado de IA disponible",
@@ -481,7 +483,9 @@
     "stillStarting": "Tu empleado de IA está tardando más de lo normal en iniciar. Seguimos intentándolo, un momento.",
     "blockedBody": "Ya casi está listo. Esta acción estará disponible en un momento, en cuanto tu empleado de IA termine de configurarse.",
     "stalledTitle": "Seguimos en eso",
-    "stalledBody": "Esto está tardando más de lo normal. No nos hemos rendido, tu chat y tus mensajes están a salvo y continuarán en cuanto tu empleado de IA responda."
+    "stalledBody": "Esto está tardando más de lo normal. No nos hemos rendido, tu chat y tus mensajes están a salvo y continuarán en cuanto tu empleado de IA responda.",
+    "gettingReadyTitle": "Preparando a {{name}}",
+    "gettingReadyBody": "Esto toma un par de minutos. Puedes explorar mientras preparamos a {{name}}."
   },
   "reportBug": {
     "reportSuccessTitle": "Reporte enviado",
@@ -507,8 +511,6 @@
   "naming": {
     "dialogTitle": "Nombra tu empleado de IA",
     "tagline": "Ponle nombre a tu empleado de IA y dile qué trabajo hace",
-    "namePlaceholder": "p. ej. Gerente de producto, Ventas, Jerry",
-    "linkExistingProject": "Vincular un proyecto existente",
     "createAgent": "Crear empleado de IA"
   },
   "newAgent": {
@@ -671,5 +673,22 @@
     "headline": "¿Qué quieres agregar?",
     "agentTitle": "Empleado de IA",
     "teamTitle": "Equipo"
+  },
+  "employeeCard": {
+    "changeColor": "Cambiar color",
+    "namePlaceholder": "p. ej. Ana",
+    "namePlaceholderForRole": "p. ej. {{role}}, Asistente 3, Jorge",
+    "nameLabel": "Nombre ({{role}})",
+    "suggestName": "Sugerir un nombre",
+    "nameRequired": "Ponle un nombre para continuar",
+    "status": {
+      "joining": "Uniéndose",
+      "hired": "En tu equipo",
+      "failed": "No se unió"
+    },
+    "retryLabel": "Volver a contratar a {{name}}",
+    "removeLabel": "Quitar a {{name}}",
+    "showCard": "Ver tarjeta {{current}} de {{total}}",
+    "nameHeading": "Nombre"
   }
 }

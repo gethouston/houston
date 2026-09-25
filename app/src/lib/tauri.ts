@@ -9,7 +9,7 @@
  * {@link EngineCallOptions}, then runs the expected-state ladder in
  * {@link surfaceError} before anything reaches the user.
  *
- * OS-native calls (`reveal_file`, `open_url`, `pick_directory`, terminal
+ * OS-native calls (`reveal_file`, `open_url`, terminal
  * launching, local CLI probes, frontend log writes) do NOT flow through the
  * engine — they live in `./os-bridge` because the engine may run on a remote
  * VPS where those APIs would be meaningless.
@@ -18,10 +18,13 @@
 import type {
   AddCustomIntegrationInput,
   AgentAssignment,
+  AgentInitialConfig,
   CredentialScope,
   CustomEndpoint,
   EditableProfileUpdate,
   ProviderStatus as EngineProviderStatus,
+  FirstDayStartInput,
+  FirstDayStartResult,
   MessageApproval,
   MessageMention,
   ProviderAuthState,
@@ -33,6 +36,7 @@ import type { IntegrationProviderId } from "@houston/protocol";
 import type { DismissInteractionOutcome } from "@houston/sdk";
 import { shouldUseClaudeDesktopLogin } from "../components/shell/provider-login-url";
 import { actingUser } from "./acting-user";
+import { isFirstDayNotPendingError } from "./agent-first-day-model";
 import {
   isAgentGoneError,
   isStaleRosterReadError,
@@ -78,7 +82,7 @@ import { isModelNotAllowedError } from "./model-not-allowed";
 import { isNetworkTransportError } from "./network-transport-error";
 import { isNoAgentForProviderWriteError } from "./no-agent-provider-write-error";
 import { isOrgAdminRequiredError } from "./org-admin-required-error";
-import { osIsTauri, osPickDirectory } from "./os-bridge";
+import { osIsTauri } from "./os-bridge";
 import { isProviderLoginSessionLostError } from "./provider-login-session-lost";
 import { toDisplayProviderIdOrNull } from "./provider-overrides";
 import { normalizeLegacyModel } from "./providers";
@@ -433,7 +437,6 @@ export const tauriAgents = {
     call<Agent[]>("list_agents", async () =>
       (await getEngine().listAgents(workspaceId)).map(toAgent),
     ),
-  pickDirectory: () => osPickDirectory(),
   create: (
     workspaceId: string,
     name: string,
@@ -443,6 +446,7 @@ export const tauriAgents = {
     installedPath?: string,
     seeds?: Record<string, string>,
     existingPath?: string,
+    config?: AgentInitialConfig,
   ) =>
     call<CreateAgentResult>(
       "create_agent",
@@ -455,6 +459,7 @@ export const tauriAgents = {
           installedPath,
           seeds,
           existingPath,
+          config,
         });
         return {
           agent: toAgent(r.agent),
@@ -467,6 +472,13 @@ export const tauriAgents = {
     ),
   delete: (workspaceId: string, id: string) =>
     call<void>("delete_agent", () => getEngine().deleteAgent(workspaceId, id)),
+  startFirstDay: (agentPath: string, input: FirstDayStartInput) =>
+    call<FirstDayStartResult>(
+      "start_first_day",
+      () => getEngine().startFirstDay(agentPath, input),
+      { agentId: agentPath },
+      { silence: isFirstDayNotPendingError },
+    ),
   rename: (workspaceId: string, id: string, newName: string) => {
     // A rename dispatches into the agent's engine — held while it warms up.
     blockWriteWhileWarmingById(id);
@@ -650,10 +662,6 @@ export const tauriChat = {
   /** Drop one queued (not yet sent) message from a conversation's send queue. */
   removeQueued: (agentPath: string, sessionKey: string, id: string) =>
     getEngine().removeQueuedMessage(agentPath, sessionKey, id),
-  startOnboarding: (agentPath: string, sessionKey: string) =>
-    call<void>("start_onboarding_session", async () => {
-      await getEngine().startOnboarding(agentPath, sessionKey);
-    }),
   stop: (agentPath: string, sessionKey: string) =>
     call<void>("stop_session", async () => {
       await getEngine().cancelSession(agentPath, sessionKey);

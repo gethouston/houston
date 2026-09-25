@@ -23,7 +23,7 @@ function HoustonAvatarSpecimen() {
   return (
     <SpecimenPage
       title="HoustonAvatar"
-      intro="An agent's identity glyph: the Houston helmet on a tinted disc, with a comet halo while it works."
+      intro="An AI Employee's identity: the employee badge's metal as a disc with the Houston helmet in relief, and a comet halo while it works."
     >
       <SpecimenSection
         title="Variants"
@@ -108,7 +108,7 @@ function HoustonAvatarSpecimen() {
           {
             name: "color",
             type: "string",
-            note: "CSS colour for helmet + disc tint. Pass a `var(--ht-agent-*)` reference so it tracks the theme. Defaults to `var(--ht-ink-muted)`.",
+            note: "Identity colour the metal disc and helmet relief are mixed from. Pass a `var(--ht-agent-*)` reference so it tracks the theme. Defaults to `var(--ht-ink-muted)`.",
           },
           {
             name: "diameter",
@@ -141,7 +141,8 @@ function HoustonAvatarSpecimen() {
       <SpecimenTokens
         classes={[
           "var(--ht-ink-muted)",
-          "var(--ht-chip)",
+          "var(--ht-employee-metal-light)",
+          "var(--ht-employee-metal-shade)",
           "var(--ht-agent-charcoal)",
           "var(--ht-agent-forest)",
           "var(--ht-agent-navy)",

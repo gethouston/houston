@@ -7,7 +7,7 @@
  * `cloud-migration-step.ts`).
  */
 
-import { runProvisioningProbe } from "./agent-provisioning";
+import { runProvisioningProbe } from "./agent-provisioning/probe";
 import { chunkPaths, type MigrationTask } from "./cloud-migration";
 import type {
   AgentMigrationProgress,
@@ -41,7 +41,7 @@ export interface RunTaskDeps {
 
 /**
  * Long-poll the freshly created agent until its pod answers — the exact
- * readiness contract the post-create UI uses (`lib/agent-provisioning.ts`):
+ * readiness contract the post-create UI uses (`lib/agent-provisioning/probe.ts`):
  * any per-agent request is held server-side until the engine is reachable, so
  * a cheap read doubles as the probe. Reused, not reimplemented (HOU-693).
  */

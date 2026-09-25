@@ -1,5 +1,5 @@
 import type { IncomingMessage, ServerResponse } from "node:http";
-import { agentFileEventType } from "@houston/domain";
+import { agentFileEventType, docKey } from "@houston/domain";
 import type { HoustonEvent } from "@houston/protocol";
 import type { Agent, Workspace } from "../domain/types";
 import type { WorkspacePaths } from "../paths";
@@ -7,6 +7,7 @@ import { FilePathError, safeRel } from "../turn/files-path";
 import type { Vfs } from "../vfs";
 import { hostOwnedApprovalCards } from "./activity-approval-cards";
 import { DEFAULT_PATHS } from "./agent-authz";
+import { writeSurfaceConfigText } from "./agent-config-write";
 import { agentRest } from "./agent-rest";
 import { json, methodNotAllowed, readJson } from "./http";
 import { defineRoute } from "./registry";
@@ -180,7 +181,10 @@ export async function handleAgentFile(
       json(res, 400, { error: "missing 'content'" });
       return true;
     }
-    await vfs.writeText(key, body.content);
+    const root = paths.agentRoot(ctx.workspace, ctx.agent);
+    if (rel === docKey("", "config").slice(1))
+      await writeSurfaceConfigText(vfs, root, key, body.content);
+    else await vfs.writeText(key, body.content);
     const event = eventForPath(rel, ctx.agent.id);
     if (event) emit?.(event);
     json(res, 200, { ok: true });

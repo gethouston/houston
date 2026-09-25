@@ -19,6 +19,7 @@ Confirmation means Houston asks the user and mints a receipt for that exact call
 | `listInstalledConfigs` | GET | unconfirmed: read-only HTTP GET | visible | none |
 | `renameAgent` | PATCH | confirmed: host approval required | visible | id: resolved:agents; name: free text |
 | `setAgentModelChoice` | PUT | confirmed: host approval required | visible | agentSlugOrId: resolved:agents; choice: free text |
+| `startFirstDay` | POST | confirmed: host approval required | visible | agentId: resolved:agents; input: free text |
 | `updateAgentColor` | PUT | unconfirmed: Reversible display preference; changes no agent behavior or access. | visible | agentId: resolved:agents; color: enum |
 | `createApiKey` | POST | confirmed: host approval required | returns a secret; the full key is revealed once and must not pass through a chat turn. | name: free text |
 | `listApiKeys` | GET | unconfirmed: read-only HTTP GET | a person's keys are theirs to look at, on the screen that lists them. | none |

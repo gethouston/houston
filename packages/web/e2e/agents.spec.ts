@@ -1,13 +1,14 @@
+import { FOLLOW_UP_PLACEHOLDER } from "./support/composer";
 import { createAgent } from "./support/create-agent";
 import { expect, test } from "./support/fixtures";
-import { rail, screen } from "./support/team-nav";
+import { missionCard, rail, screen } from "./support/team-nav";
 
 /**
  * Agent lifecycle through the UI. Creating an agent goes New AI Employee → the
- * guided brief → name + create, which POSTs to the fake host's `/agents`, fires the
- * agent's self-setup mission, and auto-opens its chat panel (dismissed by the
- * shared `createAgent` helper), landing the new agent in the sidebar (via the
- * AgentsChanged reactivity event).
+ * guided brief → name + create, which POSTs to the fake host's `/agents` and
+ * lands the new agent in the sidebar (via the AgentsChanged reactivity event).
+ * Its first day waits for the user: nothing starts until the board's
+ * "Start <name>'s first day" button is pressed.
  */
 test("creates an agent and shows it in the sidebar", async ({ page }) => {
   await page.goto("/");
@@ -33,9 +34,15 @@ test("switches between two agents", async ({ page }) => {
   await page.goto("/");
   await expect(screen(page).getByText("Plan a trip to Tokyo")).toBeVisible();
 
-  // Create a second agent; it becomes selected, with an empty board of its own.
+  // Create a second agent; it becomes selected, its board holding only the
+  // start of its first day.
   await createAgent(page, "Research Bot");
   await expect(screen(page).getByText("Plan a trip to Tokyo")).toHaveCount(0);
+  await expect(
+    screen(page).getByRole("button", {
+      name: "Start Research Bot's first day",
+    }),
+  ).toBeVisible();
 
   // Switch back to the seeded agent → its mission returns. Anchored rather than
   // exact: an agent row may still carry a quiet unread mark inside its button,
@@ -45,6 +52,31 @@ test("switches between two agents", async ({ page }) => {
     .getByRole("button", { name: /^Houston\b/ })
     .click();
   await expect(screen(page).getByText("Plan a trip to Tokyo")).toBeVisible();
+});
+
+/**
+ * A new hire's board IS its start button: pressing it creates the setup task,
+ * opens its chat beside the board, and takes the button away for good.
+ */
+test("starts a new AI Employee's first day from its board", async ({
+  page,
+}) => {
+  await page.goto("/");
+  await expect(page.getByText("Your teams")).toBeVisible();
+
+  await createAgent(page, "Ops Bot");
+  const start = screen(page).getByRole("button", {
+    name: "Start Ops Bot's first day",
+  });
+  await expect(start).toBeVisible();
+
+  await start.click();
+  await expect(page.getByPlaceholder(FOLLOW_UP_PLACEHOLDER)).toBeVisible({
+    timeout: 10_000,
+  });
+  await expect(page.getByText("Task: Getting set up")).toBeVisible();
+  await expect(missionCard(page, "Getting set up")).toBeVisible();
+  await expect(start).toHaveCount(0);
 });
 
 /*

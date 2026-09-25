@@ -1,7 +1,6 @@
 import { useCallback, useMemo } from "react";
 import { useTranslation } from "react-i18next";
 import { isAgentRoleId } from "../../lib/agent-role-catalog";
-import { tutorialAnchor } from "../tutorial";
 import { ChoiceStep } from "./choice-step";
 import { ROLE_SEARCH_REACH, roleRunsForQuery } from "./role-step-model";
 import type { AgentRoleState } from "./use-agent-role-state";
@@ -64,7 +63,6 @@ export function RoleStep({
           state.writeCustomRole(query);
         },
       }}
-      anchorAttrs={tutorialAnchor("createAgentBrief")}
       onSelect={(id) => {
         // The runs render catalog ids alone, so this only ever narrows.
         if (!isAgentRoleId(id)) return;

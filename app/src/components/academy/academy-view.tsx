@@ -31,15 +31,15 @@ import { useAcademyOpened } from "./use-academy-opened";
  * it is a second page title.
  *
  * Two halves under the strip. The status header says where the user stands, with
- * their own face inside the rank ring. The path below says what to do next: the
- * guided setup, then the stops that are still to come. Both read the ONE stored
- * record (`useAcademyProgress()`), so the rank and the path can never tell the
- * user two different stories about the same chapter.
+ * their own face inside the rank ring. The path below says what to do next:
+ * each chapter's lessons, then the stops that are still to come. Both read the
+ * ONE stored record (`useAcademyProgress()`), so the rank and the path can
+ * never tell the user two different stories about the same lesson.
  *
  * A record that failed to LOAD takes the whole page instead of either half. An
  * unread record is indistinguishable from an empty one, so drawing the halves
  * would hand a Mission Director the rank of a fresh cadet and offer "Start" on
- * a chapter they finished months ago. Saying so, with a retry, is the only
+ * a lesson they finished months ago. Saying so, with a retry, is the only
  * honest screen.
  */
 export function AcademyView() {

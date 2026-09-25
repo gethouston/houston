@@ -98,9 +98,7 @@ export function CreateFlowFooter({
       <CreateFlowPrimary
         form={CREATE_AGENT_FORM_ID}
         label={t("shell:naming.createAgent")}
-        disabled={
-          !agent.name.trim() || agent.nameInvalid || agent.submitBlocked
-        }
+        disabled={agent.submitBlocked}
         pending={agent.creating}
       />
     );

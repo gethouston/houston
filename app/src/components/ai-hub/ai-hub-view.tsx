@@ -19,7 +19,6 @@ import {
   PageHeaderToolsProvider,
 } from "../shell/page-header/page-header-tools";
 import { PageContainer } from "../shell/page-shell";
-import { tutorialAnchor } from "../tutorial";
 import { AiHubCatalogControls } from "./ai-hub-catalog-controls";
 import {
   AiHubHeader,
@@ -106,10 +105,7 @@ export function AiHubView() {
           )}
         >
           <PageContainer width="wide" className="pt-6 pb-10">
-            <div
-              {...tutorialAnchor("aiHubProviders")}
-              className={cn("mx-auto w-full", CATALOG_PLANE_MAX_W)}
-            >
+            <div className={cn("mx-auto w-full", CATALOG_PLANE_MAX_W)}>
               {!catalog || !tabs ? (
                 <HubSkeleton loading={isLoading} />
               ) : (

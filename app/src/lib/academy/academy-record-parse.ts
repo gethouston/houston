@@ -18,6 +18,7 @@ import {
   isPointCount,
   LEGACY_DEVICE_ID,
 } from "./academy-record.ts";
+import { parseLessonPositions } from "./lesson-position.ts";
 
 function isIsoTimestamp(value: unknown): value is string {
   return typeof value === "string" && !Number.isNaN(Date.parse(value));
@@ -128,6 +129,8 @@ export function parseAcademyRecord(raw: string | null): AcademyRecord | null {
     version: ACADEMY_RECORD_VERSION,
     chapters,
     lessons,
+    // Tolerant, unlike every field above: see `parseLessonPositions`.
+    lessonPositions: parseLessonPositions(record.lessonPositions),
     usageByDevice,
     usageDay,
     usageToday,

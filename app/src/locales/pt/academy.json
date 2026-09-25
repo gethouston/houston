@@ -22,16 +22,18 @@
   },
   "path": {
     "title": "Seu caminho",
-    "earned": "{{points}} de experiência"
+    "earned": "{{points}} de experiência",
+    "chapterProgress": "{{done}} de {{total}} concluídas",
+    "chapterDone": "Concluído"
   },
   "chapters": {
-    "setup": {
-      "title": "Configure o Houston",
-      "description": "Um passeio guiado pelo app, do seu primeiro funcionário de IA à sua primeira missão."
+    "getting-started": {
+      "title": "Primeiros passos"
     }
   },
   "actions": {
     "start": "Começar",
+    "continue": "Continuar",
     "replay": "Repetir"
   },
   "locked": {
@@ -52,21 +54,78 @@
       "continue": "Continuar",
       "comingSoon": "O vídeo está a caminho. Você já pode começar."
     },
-    "send-first-task": {
-      "title": "Envie sua primeira tarefa",
-      "description": "Peça algo a um funcionário de IA e veja ele resolver.",
+    "houston-tour": {
+      "title": "Faça um tour pelo Houston",
+      "description": "Veja onde fica cada coisa em menos de um minuto.",
       "steps": {
-        "watch": {
-          "title": "Envie sua primeira tarefa",
-          "body": "Veja como uma tarefa vai de você até seu funcionário de IA."
+        "team": {
+          "body": "Seus funcionários de IA ficam aqui. Abra um quando quiser para ver no que ele está trabalhando.",
+          "cta": "Próximo"
         },
-        "intro": {
-          "title": "Sua vez",
-          "body": "Abra uma tarefa nova e diga ao seu funcionário de IA o que você precisa.",
-          "cta": "Quero ver"
+        "board": {
+          "body": "Este é o quadro da sua equipe. Toda tarefa aparece aqui, com o andamento dela.",
+          "cta": "Próximo"
         },
         "newTask": {
-          "body": "Clique em Tarefa nova para abrir uma para seu funcionário de IA."
+          "body": "Use Nova tarefa sempre que precisar de algo. Seu funcionário de IA cuida do resto.",
+          "cta": "Próximo"
+        },
+        "aiModels": {
+          "body": "Em Modelos de IA você conecta sua IA ou troca por outra.",
+          "cta": "Próximo"
+        },
+        "integrations": {
+          "body": "Integrações conecta os apps que você já usa, como Gmail ou Slack, para seus funcionários de IA trabalharem neles.",
+          "cta": "Próximo"
+        },
+        "skills": {
+          "body": "Skills são conhecimentos que seus funcionários de IA compartilham. Adicione uma e todos podem usar.",
+          "cta": "Próximo"
+        },
+        "academy": {
+          "body": "E esta é a Academia. Volte quando quiser para aprender mais e subir de nível.",
+          "cta": "Pronto"
+        }
+      }
+    },
+    "employee-email": {
+      "title": "Receba um e-mail de um funcionário de IA",
+      "description": "Conecte seu e-mail e receba um e-mail de verdade do seu funcionário de IA.",
+      "steps": {
+        "intro": {
+          "title": "Seu funcionário de IA, fazendo trabalho de verdade",
+          "body": "Conecte seu e-mail, escolha um funcionário de IA e peça para ele escrever para você. Leva cerca de um minuto.",
+          "cta": "Vamos lá"
+        },
+        "connect": {
+          "title": "Conecte seu e-mail",
+          "body": "Escolha o e-mail que você usa. Você pode gerenciar isso quando quiser em Integrações.",
+          "connect": "Conectar",
+          "connecting": "Conectando…",
+          "cancel": "Cancelar",
+          "connected": "Conectado",
+          "unavailable": "Os apps de e-mail ainda não estão disponíveis neste Houston.",
+          "loading": "Verificando seus apps de e-mail…"
+        },
+        "sender": {
+          "title": "Quem vai enviar para você?",
+          "body": "Escolha o funcionário de IA que envia.",
+          "cta": "Continuar",
+          "empty": {
+            "title": "Contrate seu primeiro funcionário de IA",
+            "body": "Você precisa de um funcionário de IA para enviar o e-mail. Contrate um e a lição continua daqui.",
+            "askAdmin": "Sua equipe ainda não tem funcionários de IA. Peça a um administrador do espaço para adicionar um e volte.",
+            "cta": "Contratar um funcionário de IA"
+          }
+        },
+        "ask": {
+          "body": "Seu pedido está pronto. Aperte Enviar para passá-lo ao seu funcionário de IA.",
+          "request": "Me mande um e-mail curto e simpático de oi no meu próprio e-mail, usando o {{app}}.",
+          "requestAnyApp": "Me mande um e-mail curto e simpático de oi no meu próprio e-mail."
+        },
+        "watch": {
+          "body": "Seu funcionário de IA já está cuidando disso. Confira sua caixa de entrada.",
+          "cta": "Recebi"
         }
       }
     }

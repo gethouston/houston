@@ -3,7 +3,6 @@ import { WorkspaceSwitcher } from "@houston-ai/layout";
 import { Settings } from "lucide-react";
 import { useCallback, useState } from "react";
 import { useTranslation } from "react-i18next";
-import { useRunGuidedSetup } from "../../hooks/use-run-guided-setup";
 import { useTeams } from "../../hooks/use-teams";
 import { ACADEMY_VIEW_ID } from "../../lib/top-level-views";
 import { useUIStore } from "../../stores/ui";
@@ -26,10 +25,8 @@ import { tourAnchor } from "./workspace-tour-steps";
  *
  * A card and not a full bottom sheet, because it is a MENU — it answers "where
  * else can I go" and then gets out of the way, so it hovers over the bar that
- * raised it rather than taking the screen. It is still a Radix dialog under
- * the restyle, which is load-bearing: the guided setup rings its rows in the
- * `inDialog` mode (`in-app-mobile-spotlight.tsx`), and that mode exists
- * because a dialog isolates the app on its own.
+ * raised it rather than taking the screen. It is a Radix dialog under the
+ * restyle, so it isolates the app on its own while open.
  *
  * The destinations are the RAIL's (`useSidebarNavItems`), so the phone can
  * never drift from the desktop on what exists, what a gate hides, or which
@@ -50,7 +47,6 @@ export function MobileMoreMenu() {
   const openSettings = useUIStore((s) => s.openSettings);
   const setViewMode = useUIStore((s) => s.setViewMode);
   const close = useCallback(() => setOpen(false), [setOpen]);
-  const runGuidedSetup = useRunGuidedSetup();
   const workspaces = useWorkspaceStore((s) => s.workspaces);
   const currentWorkspace = useWorkspaceStore((s) => s.current);
   const [createWsOpen, setCreateWsOpen] = useState(false);
@@ -74,16 +70,7 @@ export function MobileMoreMenu() {
     closeMobileMenu: close,
   });
   const footerRows = mobileMoreFooterRows({
-    guideMe: t("shell:sidebar.guideMe"),
     reportProblem: t("shell:sidebar.reportProblem"),
-    // One tick AFTER the menu closes, for the same reason the rail's help
-    // menu defers: Radix restores focus to the trigger as its content
-    // unmounts, and a handler that mounts an overlay first gets that focus
-    // yanked back.
-    onGuideMe: () => {
-      close();
-      setTimeout(runGuidedSetup, 0);
-    },
     onReportProblem: () => {
       // The one bug-report surface, reached from where the user is standing
       // when something goes wrong rather than duplicated here.

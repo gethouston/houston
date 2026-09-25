@@ -14,13 +14,22 @@ export function createHostDaemons(
   base: ReturnType<typeof createHostBase>,
   runtime: ReturnType<typeof createHostRuntime>,
 ) {
-  const { store, vfs, paths, bus, events, docProjector, transcriptShadow } =
-    base;
+  const {
+    store,
+    vfs,
+    paths,
+    bus,
+    events,
+    docProjector,
+    roleTracker,
+    transcriptShadow,
+  } = base;
   const { channel } = runtime;
   // The agent (or the user) editing files directly → reactivity, no host write.
   const watcher = new FsWatcher(opts.workspacesRoot, (event) => {
     events.emit(LOCAL_USER, event);
     docProjector?.onEvent(event);
+    roleTracker.onEvent(event);
   });
   const scheduler = new Scheduler({
     store,

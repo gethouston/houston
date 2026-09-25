@@ -1,8 +1,8 @@
 /**
  * The app's one `SetupGreetingRegistry` plus the hook the chat panel reads.
  *
- * `lib/agent-setup-mission.ts` records a self-setup mission here the instant it
- * starts one, and `hooks/use-setup-hello.ts` reads the record back while it
+ * `lib/agent-first-day.ts` records a self-setup mission here the instant the
+ * host starts one, and `hooks/use-setup-hello.ts` reads the record back while it
  * lasts (see `lib/setup-mission-greeting.ts` for why the record exists and what
  * takes over afterwards).
  *

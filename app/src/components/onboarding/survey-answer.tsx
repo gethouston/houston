@@ -5,12 +5,14 @@ import type {
   OnboardingSegment,
 } from "../../lib/onboarding-survey";
 import type { SurveyCopy } from "./survey-copy";
+import { SurveyIndustryPicker } from "./survey-industry-picker";
 import { SurveyPillGrid } from "./survey-pill-grid";
 import type { OnboardingSurveyStep } from "./survey-steps";
 
 /**
- * The control the current question is answered with: the shared pill grid for
- * the two closed questions, a plain free-text field for the automation goal.
+ * The control the current question is answered with: the pill grid for the
+ * job question, the hire catalog's searchable industries for the industry
+ * question, a plain free-text field for the automation goal.
  *
  * The goal field is deliberately UNCLAMPED. `maxLength` counts UTF-16 units
  * and the record counts code points, so ANY clamp within reach of the limit
@@ -30,6 +32,7 @@ export function SurveyAnswer({
   onSegment,
   onIndustry,
   onOther,
+  onLeaveIndustryOther,
   onGoal,
   disabled,
   errorId,
@@ -44,6 +47,8 @@ export function SurveyAnswer({
   onSegment: (id: OnboardingSegment) => void;
   onIndustry: (id: OnboardingIndustry) => void;
   onOther: (value: string) => void;
+  /** Leaves the industry's typed answer for the list behind it. */
+  onLeaveIndustryOther: () => void;
   onGoal: (value: string) => void;
   disabled: boolean;
   /** The id of the live problem message, or null when there is none: it marks
@@ -82,15 +87,16 @@ export function SurveyAnswer({
 
   if (step === "industry") {
     return (
-      <div className="flex w-full flex-col items-center">
-        <SurveyPillGrid
-          options={copy.industryOptions}
-          selected={industry}
-          onSelect={onIndustry}
-          disabled={disabled}
-        />
-        {industry === "something_else" && otherField}
-      </div>
+      <SurveyIndustryPicker
+        question={copy.question.title}
+        industry={industry}
+        otherText={otherText}
+        disabled={disabled}
+        errorId={errorId}
+        onIndustry={onIndustry}
+        onOther={onOther}
+        onLeaveOther={onLeaveIndustryOther}
+      />
     );
   }
 

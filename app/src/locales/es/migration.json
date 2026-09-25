@@ -8,22 +8,22 @@
     "title": "Houston se está mudando a la nube",
     "body": "Creíste en Houston antes que nadie. Esto es lo que ganas al mudarte a la nube.",
     "whatTitle": "Lo que obtienes",
-    "benefit1": "<b>Siempre activo.</b> Tus asistentes siguen trabajando, incluso con tu computador apagado.",
+    "benefit1": "<b>Siempre activo.</b> Tus empleados de IA siguen trabajando, incluso con tu computador apagado.",
     "benefit2": "<b>Las rutinas no se detienen</b> y siguen su horario, sin tener el computador encendido.",
     "benefit3": "<b>Nada se queda atrás.</b> Todo lo que has creado viene contigo.",
     "freeNote": "Es gratis y solo toma un par de minutos.",
     "start": "Migrar ahora",
-    "skipAction": "Empezar sin mis asistentes",
+    "skipAction": "Empezar sin mis empleados de IA",
     "skipConfirm": {
-      "title": "¿Empezar sin tus asistentes?",
-      "body": "Tus asistentes y sus conversaciones no estarán aquí. No se borra nada, quedan seguros en este computador y puedes migrarlos cuando quieras desde Configuración, en Migración a la nube.",
+      "title": "¿Empezar sin tus empleados de IA?",
+      "body": "Tus empleados de IA y sus conversaciones no estarán aquí. No se borra nada, quedan seguros en este computador y puedes migrarlos cuando quieras desde Configuración, en Migración a la nube.",
       "confirm": "Empezar sin ellos",
       "goBack": "Volver"
     }
   },
   "progress": {
     "title": "Moviéndonos a la nube",
-    "phaseAssistants": "Moviendo tus asistentes",
+    "phaseAssistants": "Moviendo tus empleados de IA",
     "phaseConversations": "Trayendo tus conversaciones",
     "phaseFiles": "Empacando tus archivos y skills",
     "phaseCloud": "Preparando tu nube",
@@ -34,11 +34,11 @@
     "preparing": "Preparando tus datos. Esto puede tomar unos minutos.",
     "startFailed": "No pudimos iniciar la mudanza, así que no se cambió nada. Puedes intentar de nuevo.",
     "retry": "Intentar de nuevo",
-    "overall": "{{done}} de {{total}} asistentes listos",
+    "overall": "{{done}} de {{total}} empleados de IA listos",
     "continueAnyway": "Continuar sin el resto",
     "step": {
       "pending": "En espera",
-      "creating": "Creando tu asistente",
+      "creating": "Creando tu empleado de IA",
       "warming": "Dejándolo listo",
       "uploading": "Moviendo tus archivos ({{current}} de {{total}})",
       "finalizing": "Terminando",
@@ -55,12 +55,12 @@
     "stepAi": "Paso 1 de 2",
     "stepApps": "Paso 2 de 2",
     "reconnectAiTitle": "Conecta tu IA",
-    "reconnectAiBody": "Tus asistentes ya llegaron a la nube. Conecta tu IA una vez para empezar a usarlos.",
+    "reconnectAiBody": "Tus empleados de IA ya llegaron a la nube. Conecta tu IA una vez para empezar a usarlos.",
     "reconnectAppsTitle": "Reconecta tus aplicaciones",
     "reconnectAppsBody": "Reconecta las aplicaciones que quieras ahora, o hazlo más tarde desde la sección de Aplicaciones.",
     "skip": "Omitir por ahora",
     "leftBehindTitle": "Todavía en este computador",
-    "leftBehindBody": "Estos asistentes no vinieron esta vez. Sus datos quedan seguros en este computador.",
+    "leftBehindBody": "Estos empleados de IA no vinieron esta vez. Sus datos quedan seguros en este computador.",
     "excludedTitle": "Algunos archivos grandes se quedaron en este computador",
     "rejectedTitle": "Algunas cosas no pudieron venir",
     "continue": "Continuar",
@@ -71,6 +71,6 @@
     "connected": "Conectado",
     "finish": "Empezar a crear",
     "congratsTitle": "Todo listo",
-    "congratsBody": "Tus asistentes están en la nube y listos. Vamos a crear algo."
+    "congratsBody": "Tus empleados de IA están en la nube y listos. Vamos a crear algo."
   }
 }

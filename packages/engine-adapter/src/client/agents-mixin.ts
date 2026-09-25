@@ -49,7 +49,8 @@ export function AgentsMixin<TBase extends BaseCtor>(Base: TBase) {
     ): Promise<CreateAgentResult> {
       if (this.ctx.cp) {
         // Delegate the wire write to the SDK (byte-identical POST /agents with
-        // the full `{ name, claudeMd?, seeds? }` body, no refetch). The RETURNED
+        // the full `{ name, claudeMd?, seeds? }` body, the initial config folded
+        // into the seeds, no refetch). The RETURNED
         // wire agent carries the id the color overlay needs — layer it on and map
         // to the UI shape callers expect.
         const wire = await viaSdk("/agents", () =>
@@ -57,6 +58,7 @@ export function AgentsMixin<TBase extends BaseCtor>(Base: TBase) {
             name: req.name,
             claudeMd: req.claudeMd,
             seeds: req.seeds,
+            config: req.config,
           }),
         );
         this.ctx.noteAgentAdded(wire.id);

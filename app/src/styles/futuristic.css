@@ -53,11 +53,6 @@
   background: rgba(13, 13, 13, 0.35);
 }
 
-/* The lift that separates a floating guide surface from the dimmed app. */
-.ht-tutorial-card-shadow {
-  box-shadow: 0 10px 40px rgba(0, 0, 0, 0.18);
-}
-
 /* Keeps the white cursor glyph legible over a light control under the veil. */
 .ht-tutorial-cursor-shadow {
   filter: drop-shadow(0 2px 6px rgba(0, 0, 0, 0.6));

@@ -21,7 +21,7 @@ export function lessonBeatArmed(
   step: LessonStepSpec,
   signals: LessonSignals,
 ): boolean {
-  // Narration points at nothing: there is no target to hold shut.
+  // Narration and panels point at nothing: there is no target to hold shut.
   if (step.kind !== "spotlight") return true;
   switch (step.advanceOn.type) {
     // The snapshot arrives with a cross-agent sweep, which the beat has to
@@ -34,6 +34,17 @@ export function lessonBeatArmed(
     case "viewReached":
     case "hostEvent":
       return true;
+    // A state read as it is, not against a snapshot: a connection made before
+    // the list answers is simply in the list when it does.
+    case "integrationConnected":
+      return true;
+    // The world is not consulted at all; the beat's own Next moves it.
+    case "acknowledged":
+      return true;
+    // The companion compares the world against a note of its own: a click
+    // before the note is taken is one it could never tell apart.
+    case "companion":
+      return signals.companionReady;
   }
 }
 

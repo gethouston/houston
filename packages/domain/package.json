@@ -23,6 +23,26 @@
       "types": "./src/job-description-yaml.ts",
       "import": "./src/job-description-yaml.ts"
     },
+    "./job-role": {
+      "types": "./src/job-role.ts",
+      "import": "./src/job-role.ts"
+    },
+    "./first-day-greeting": {
+      "types": "./src/first-day-greeting.ts",
+      "import": "./src/first-day-greeting.ts"
+    },
+    "./first-day-mode": {
+      "types": "./src/first-day-mode.ts",
+      "import": "./src/first-day-mode.ts"
+    },
+    "./first-day-config": {
+      "types": "./src/first-day-config.ts",
+      "import": "./src/first-day-config.ts"
+    },
+    "./first-day-prompt": {
+      "types": "./src/first-day-prompt.ts",
+      "import": "./src/first-day-prompt.ts"
+    },
     "./provider-dialect": {
       "types": "./src/provider-dialect.ts",
       "import": "./src/provider-dialect.ts"

@@ -36,6 +36,7 @@ export function createHostServer(
     transcriptShadow,
     docShadow,
     docProjector,
+    roleTracker,
   } = base;
   const { channel, credentialHealer, agentDir, liveAgentDir } = runtime;
   const { registry, integrations, customIntegrations } = integration;
@@ -149,7 +150,10 @@ export function createHostServer(
     storeFenced: syncDaemon ? () => syncDaemon.fenced : undefined,
     storeSyncFlush: syncDaemon ? () => syncDaemon.flush() : undefined,
     addressedAgent: docProjector
-      ? (agentId) => docProjector.bindAddressed(agentId)
+      ? (agentId) => {
+          docProjector.bindAddressed(agentId);
+          roleTracker.ensureTracked(agentId);
+        }
       : undefined,
     // Cloud pods publish the view routes' answers to the managed doc store so
     // the gateway can serve them while the pod is asleep (./view-sink.ts).

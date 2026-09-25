@@ -16,6 +16,14 @@ interface DraftsState {
   /** Drop every draft — the outgoing account's parked messages are private to it
    *  (identity change, HOU-903). */
   reset: () => void;
+  /** The one open composer showing seeded words ({@link seedDraft}). */
+  seed: DraftSeed | null;
+}
+
+/** A new-conversation slot (`over`) showing the draft at `key` instead. */
+export interface DraftSeed {
+  over: string;
+  key: string;
 }
 
 /**
@@ -50,10 +58,13 @@ export function boardDraftsView(
 }
 
 const EMPTY_DRAFT: DraftEntry = { text: "", files: [] };
+/** Counts seeds in this session, so each run's slot key is unique. */
+let seedRun = 0;
 const EMPTY_FILES: File[] = [];
 
 export const useDraftStore = create<DraftsState>((set) => ({
   drafts: {},
+  seed: null,
 
   setDraftText: (key, text) =>
     set((s) => ({
@@ -87,7 +98,7 @@ export const useDraftStore = create<DraftsState>((set) => ({
       return { drafts: next };
     }),
 
-  reset: () => set({ drafts: {} }),
+  reset: () => set({ drafts: {}, seed: null }),
 }));
 
 /** Read-only selector for a single draft's text. Returns "" if no draft exists. */
@@ -100,4 +111,62 @@ export function useDraftFiles(key: string | null): File[] {
   return useDraftStore((s) =>
     key ? (s.drafts[key]?.files ?? EMPTY_FILES) : EMPTY_FILES,
   );
+}
+
+/**
+ * The draft key the new-conversation composer at `key` reads and writes: its
+ * own, unless a seed stands over it.
+ */
+export function seededDraftKey(seed: DraftSeed | null, key: string): string {
+  return seed?.over === key ? seed.key : key;
+}
+
+/** {@link seededDraftKey} for the composer of a draft `scope`, live. */
+export function useNewConversationDraftKey(scope?: string | null): string {
+  const key = newConversationDraftKey(scope);
+  return useDraftStore((s) => seededDraftKey(s.seed, key));
+}
+
+/**
+ * Open the new-conversation composer at `over` with `text` typed in, without
+ * touching what the user parked there: the words live in a slot of their own,
+ * which the composer shows in place of its own until the seed ends. A send
+ * empties the slot it was pressed in, so a send still in flight when the seed
+ * ends empties the seed's slot, never the user's.
+ *
+ * Each seed gets a slot of its own run, so an earlier run's send that lands
+ * late empties that run's slot and never a newer run's words.
+ *
+ * Returns the end of this seed (once; a newer seed or a hand-opened composer
+ * that already ended it is left alone).
+ */
+export function seedDraft(over: string, text: string): () => void {
+  seedRun += 1;
+  const seed: DraftSeed = { over, key: `${over}:seed:${seedRun}` };
+  useDraftStore.setState((s) => ({
+    seed,
+    drafts: { ...s.drafts, [seed.key]: { text, files: [] } },
+  }));
+  return () => {
+    if (useDraftStore.getState().seed === seed) endDraftSeed();
+  };
+}
+
+/**
+ * True while a seed stands: a New task opened by hand (shortcut, palette,
+ * button) would swap the seeded words for the user's own draft mid-lesson, so
+ * it waits until the seed ends.
+ */
+export function newTaskHeldBySeed(): boolean {
+  return useDraftStore.getState().seed !== null;
+}
+
+/** End the seed, if any: its composer shows its own draft again. */
+export function endDraftSeed(): void {
+  useDraftStore.setState((s) => {
+    if (s.seed === null) return s;
+    const drafts = { ...s.drafts };
+    delete drafts[s.seed.key];
+    return { seed: null, drafts };
+  });
 }

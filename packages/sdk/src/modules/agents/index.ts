@@ -19,6 +19,7 @@
 import type { ModuleContext } from "../../module-context";
 import { requireString } from "../payload";
 import { startAgentsEventStream } from "./events-stream";
+import { type AgentsFirstDay, createAgentsFirstDay } from "./first-day";
 import { agentsScope, createAgentsHttp } from "./http";
 import { type AgentsAccount, createAgentsAccount } from "./library";
 import {
@@ -30,6 +31,7 @@ import {
   type WireAgent,
 } from "./types";
 
+export type { FirstDayStartInput, FirstDayStartResult } from "./first-day";
 export { AgentsHttpError } from "./http";
 export type { AgentsAccount, AgentsLibrary } from "./library";
 export type {
@@ -76,6 +78,8 @@ export interface AgentsModule {
   library: AgentsAccount["library"];
   /** Set one agent's palette colour, in a single request. */
   setColor: AgentsAccount["setColor"];
+  /** Start a new hire's first day, or hand back the setup task it has. */
+  startFirstDay: AgentsFirstDay["startFirstDay"];
   /** Stop the reactivity stream. Module-local; the kernel has no dispose seam. */
   dispose(): void;
 }
@@ -86,6 +90,7 @@ function toItem(a: WireAgent): AgentsViewModel["items"][number] {
     name: a.name,
     workspaceId: a.workspaceId,
     createdAt: a.createdAt,
+    ...(a.role ? { role: a.role } : {}),
   };
 }
 
@@ -98,6 +103,7 @@ export function createAgentsModule(ctx: ModuleContext): AgentsModule {
   const scope = agentsScope(ctx);
   const http = createAgentsHttp(scope);
   const account = createAgentsAccount(ctx, scope);
+  const firstDay = createAgentsFirstDay(ctx, scope);
 
   async function refresh(): Promise<void> {
     const agents = await http.list();
@@ -185,6 +191,7 @@ export function createAgentsModule(ctx: ModuleContext): AgentsModule {
     delete: del,
     writes,
     ...account,
+    ...firstDay,
     dispose,
   };
 }

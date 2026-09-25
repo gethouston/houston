@@ -1,6 +1,7 @@
 import { useMemo, useRef, useState } from "react";
 import { useTranslation } from "react-i18next";
 import { useAllConversations } from "../../hooks/queries";
+import { useAgentWarmup } from "../../hooks/use-agent-warmup";
 import { openMissionChat } from "../../lib/mission-chat";
 import { openAgentBoard } from "../../lib/open-agent";
 import type { Agent } from "../../lib/types";
@@ -9,12 +10,21 @@ import { useUIStore } from "../../stores/ui";
 import { TaskListFilter } from "../board/task-list-filter";
 import type { TaskListFilterId } from "../board/task-list-model";
 import { TaskListSearch } from "../board/task-list-search";
+import { FirstDayLead } from "../first-day/first-day-banner";
+import { FirstDayHero } from "../first-day/first-day-cta";
+import { useFirstDayPlacement } from "../first-day/use-first-day-placement";
+import { AgentGettingReady } from "../shell/agent-getting-ready";
 import { AgentSidebarIcon } from "../shell/agent-sidebar-status";
 import { MobileDrilledHeader } from "../shell/mobile-drilled-header";
 import { AgentMissionsList } from "./agent-missions-list";
 import { AgentMissionsMenu } from "./agent-missions-menu";
-import { agentMissionSections } from "./agent-missions-model";
+import {
+  agentMissionCount,
+  agentMissionSections,
+  liveMissionCount,
+} from "./agent-missions-model";
 import type { AgentHomeConversation } from "./agents-home-model";
+import { useCreatedMissionChat } from "./use-created-mission-chat";
 
 /**
  * One agent's tasks, pushed from the mobile Agents home: the drilled header
@@ -45,10 +55,20 @@ export function AgentMissionsScreen({ agent }: { agent: Agent }) {
     () => agentMissionSections(conversations, agent.folderPath),
     [conversations, agent.folderPath],
   );
-  // The subtitle counts the agent's LIVE work: the archive is filed away, and
-  // counting it would make a finished agent look busy.
-  const taskCount =
-    sections.needsYou.length + sections.running.length + sections.done.length;
+  const missionCount = agentMissionCount(sections);
+  const firstDay = useFirstDayPlacement({
+    agents: [agent],
+    pinnedAgent: agent,
+    pinnedTaskCount: missionCount,
+  });
+  // With no tasks, the hero IS the screen, and while the config still loads
+  // the screen holds rather than flash "No tasks" before the button: blank for
+  // the beat a read takes, "getting ready" for a warm-up that takes minutes.
+  const showsTasks = missionCount > 0 || !firstDay.holdsAutoOpen;
+  const warmup = useAgentWarmup(agent.folderPath);
+  const gettingReady =
+    !showsTasks && firstDay.placement.kind === "none" && warmup !== "ready";
+  useCreatedMissionChat(agent);
 
   const openMission = (mission: AgentHomeConversation) => {
     openMissionChat(agent, mission.id);
@@ -83,6 +103,7 @@ export function AgentMissionsScreen({ agent }: { agent: Agent }) {
         glyph={
           <AgentSidebarIcon
             color={agent.color}
+            diameter={20}
             running={sections.running.length > 0}
             runningLabel={t("shell:sidebar.runningCount", {
               count: sections.running.length,
@@ -90,7 +111,9 @@ export function AgentMissionsScreen({ agent }: { agent: Agent }) {
           />
         }
         title={agent.name}
-        subtitle={t("shell:agentsHome.taskCount", { count: taskCount })}
+        subtitle={t("shell:agentsHome.taskCount", {
+          count: liveMissionCount(sections),
+        })}
         trailing={
           <AgentMissionsMenu
             onSearch={() => setSearchOpen(true)}
@@ -99,13 +122,15 @@ export function AgentMissionsScreen({ agent }: { agent: Agent }) {
         }
         testId="agent-missions-back"
       />
-      <TaskListFilter
-        active={filter}
-        needsYouCount={sections.needsYou.length}
-        onSelect={setFilter}
-        testId="agent-missions-filter"
-      />
-      {searchOpen && (
+      {showsTasks && (
+        <TaskListFilter
+          active={filter}
+          needsYouCount={sections.needsYou.length}
+          onSelect={setFilter}
+          testId="agent-missions-filter"
+        />
+      )}
+      {showsTasks && searchOpen && (
         <TaskListSearch
           query={query}
           onQuery={setQuery}
@@ -114,17 +139,26 @@ export function AgentMissionsScreen({ agent }: { agent: Agent }) {
         />
       )}
       <div className="min-h-0 flex-1 overflow-y-auto pb-6">
-        <AgentMissionsList
-          sections={sections}
-          agentColor={agent.color}
-          filter={filter}
-          query={query}
-          archivedOpen={archivedOpen}
-          archivedRef={archived}
-          onToggleArchived={() => setArchivedOpen((open) => !open)}
-          onOpen={openMission}
-          onOpenArchived={openArchivedMission}
-        />
+        {firstDay.placement.kind === "hero" && (
+          <FirstDayHero agent={firstDay.placement.agent} />
+        )}
+        {gettingReady && (
+          <AgentGettingReady agent={agent} stalled={warmup === "stalled"} />
+        )}
+        {showsTasks && <FirstDayLead placement={firstDay.placement} />}
+        {showsTasks && (
+          <AgentMissionsList
+            sections={sections}
+            agentColor={agent.color}
+            filter={filter}
+            query={query}
+            archivedOpen={archivedOpen}
+            archivedRef={archived}
+            onToggleArchived={() => setArchivedOpen((open) => !open)}
+            onOpen={openMission}
+            onOpenArchived={openArchivedMission}
+          />
+        )}
       </div>
     </div>
   );

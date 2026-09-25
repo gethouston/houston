@@ -1298,6 +1298,9 @@ export const PromptInputSubmit = ({
 
   return (
     <button
+      // A stable hook for callers that point at the composer's send from
+      // outside it (a guided lesson's spotlight), like `data-composer-surface`.
+      data-composer-submit="true"
       aria-label={isGenerating ? "Stop" : "Submit"}
       className={cn(
         "flex size-9 items-center justify-center rounded-full bg-action text-action-text hover:bg-action/90 disabled:opacity-30 transition-colors",

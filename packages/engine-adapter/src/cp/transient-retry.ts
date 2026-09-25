@@ -39,6 +39,16 @@ const CALLER_OWNED_RETRY_PATHS: ReadonlySet<string> = new Set([
   "/v1/events",
 ]);
 
+/**
+ * Writes the host makes idempotent, which may therefore ride the same ladder
+ * as a read. Starting a first day is one: a repeat hands back the setup task
+ * the first start made (`routes/agent-first-day-start.ts`), so a start sent
+ * while a new hire's pod is still coming up waits it out instead of failing.
+ */
+const IDEMPOTENT_WRITE_PATHS: readonly RegExp[] = [
+  /\/agents\/[^/]+\/first-day$/,
+];
+
 /** The request's path, or null when the input is not a parseable URL (a
  *  relative string in a non-browser context): unknown paths keep the ladder. */
 function pathOf(input: RequestInfo | URL): string | null {
@@ -94,8 +104,9 @@ function sleep(ms: number, signal?: AbortSignal | null): Promise<void> {
  * handoff, or an engine pod that is still cold-starting: transient gateway
  * statuses and network-level drops are retried on the schedule their
  * {@link UnavailableReason} earns. Writes never blind-retry — a thrown network
- * error on a POST may have reached the gateway; the caller decides. So does a
- * read on a {@link CALLER_OWNED_RETRY_PATHS} path, for the same reason.
+ * error on a POST may have reached the gateway; the caller decides — except
+ * the {@link IDEMPOTENT_WRITE_PATHS}, where a repeat is the same answer. A read
+ * on a {@link CALLER_OWNED_RETRY_PATHS} path is the caller's to retry too.
  *
  * An ABORTED caller ends the ladder outright: the request it gave up on must
  * not be re-sent, and its `AbortError` must surface at once rather than after
@@ -105,9 +116,14 @@ export function transientRetryFetch(inner: typeof fetch): typeof fetch {
   return async (input, init) => {
     const method = (init?.method ?? "GET").toUpperCase();
     const path = pathOf(input);
+    const idempotentWrite =
+      method === "POST" &&
+      path !== null &&
+      IDEMPOTENT_WRITE_PATHS.some((pattern) => pattern.test(path));
     const retriable =
-      (method === "GET" || method === "HEAD") &&
-      !(path !== null && CALLER_OWNED_RETRY_PATHS.has(path));
+      ((method === "GET" || method === "HEAD") &&
+        !(path !== null && CALLER_OWNED_RETRY_PATHS.has(path))) ||
+      idempotentWrite;
     const givenUp = () => init?.signal?.aborted === true;
     let res: Response | undefined;
     let failure: unknown;

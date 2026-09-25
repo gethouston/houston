@@ -122,6 +122,7 @@ export function useMissionChatSource(
     autoOpenKey: "mission-chat",
     autoOpenItemCount: mc.items.length,
     autoOpenBlocked: true,
+    firstDay: { kind: "none" },
     search: { query: "", setQuery: noop, isSearchingText: false },
     hasSearchQuery: false,
     panelAgentName: agent.name,

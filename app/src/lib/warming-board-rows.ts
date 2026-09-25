@@ -13,7 +13,7 @@
  */
 
 import type { Activity } from "../data/activity";
-import type { PendingWarmingSend } from "./agent-provisioning";
+import type { PendingWarmingSend } from "./agent-provisioning/entry";
 
 /** Map the queued first-messages (the ones carrying a board row) to
  *  render-ready activities. `since` anchors rows queued before `queuedAt`

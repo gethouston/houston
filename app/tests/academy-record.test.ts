@@ -3,7 +3,6 @@ import { describe, it } from "node:test";
 import { mergeAcademyRecords } from "../src/lib/academy/academy-merge.ts";
 import {
   type AcademyRecord,
-  completeChapterRecord,
   completeLessonRecord,
   LEGACY_DEVICE_ID,
   serializeAcademyRecord,
@@ -22,6 +21,7 @@ const record = (patch: Partial<AcademyRecord> = {}): AcademyRecord => ({
     setup: { completedAt: "2026-08-01T10:00:00.000Z", experience: 50 },
   },
   lessons: {},
+  lessonPositions: {},
   usageByDevice: { [DEVICE]: 120 },
   usageDay: null,
   usageToday: 0,
@@ -461,45 +461,6 @@ describe("totalExperience", () => {
   });
 });
 
-describe("completeChapterRecord", () => {
-  const now = new Date("2026-08-10T12:00:00.000Z");
-
-  it("creates a record when the user has none", () => {
-    const next = completeChapterRecord(null, "setup", 50, now);
-    deepStrictEqual(next.chapters.setup, {
-      completedAt: now.toISOString(),
-      experience: 50,
-    });
-    deepStrictEqual(next.lessons, {});
-    strictEqual(totalUsagePoints(next), 0);
-    strictEqual(next.usageDay, null);
-    deepStrictEqual(next.streak, { current: 0, best: 0, lastActiveDay: null });
-    strictEqual(next.updatedAt, now.toISOString());
-  });
-
-  it("never pays a chapter twice", () => {
-    const first = completeChapterRecord(null, "setup", 50, now);
-    const again = completeChapterRecord(
-      first,
-      "setup",
-      50,
-      new Date("2026-09-01T12:00:00.000Z"),
-    );
-    strictEqual(again, first);
-    strictEqual(totalExperience(again), 50);
-    strictEqual(again.chapters.setup?.completedAt, now.toISOString());
-  });
-
-  it("refuses an award that would corrupt every later sum", () => {
-    throws(() => completeChapterRecord(null, "setup", -1, now), RangeError);
-    throws(
-      () => completeChapterRecord(null, "setup", Number.NaN, now),
-      RangeError,
-    );
-    throws(() => completeChapterRecord(null, "  ", 50, now), RangeError);
-  });
-});
-
 describe("completeLessonRecord", () => {
   const now = new Date("2026-08-10T12:00:00.000Z");
 
@@ -527,7 +488,11 @@ describe("completeLessonRecord", () => {
   });
 
   it("keeps its own namespace: a lesson and a chapter may share an id", () => {
-    const withChapter = completeChapterRecord(null, "basics", 50, now);
+    const withChapter = record({
+      chapters: {
+        basics: { completedAt: now.toISOString(), experience: 50 },
+      },
+    });
     const withBoth = completeLessonRecord(withChapter, "basics", 10, now);
     strictEqual(totalExperience(withBoth), 60);
   });

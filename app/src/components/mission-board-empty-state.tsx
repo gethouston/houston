@@ -4,9 +4,9 @@ import {
   EmptyDescription,
   EmptyHeader,
   EmptyTitle,
+  HoustonHelmet,
 } from "@houston-ai/core";
 import { Loader2 } from "lucide-react";
-import { HoustonLogo } from "./shell/experience-card";
 
 interface MissionBoardEmptyLabels {
   emptyTitle: string;
@@ -78,7 +78,7 @@ export function MissionBoardEmptyState({
         size="sm"
         onClick={onNewMission}
       >
-        <HoustonLogo size={16} />
+        <HoustonHelmet color="currentColor" size={16} />
         {labels.newMission}
       </Button>
     </Empty>

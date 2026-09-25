@@ -12,8 +12,10 @@ import {
 export {
   isOnboardingIndustry,
   isOnboardingIndustryChoice,
-  ONBOARDING_INDUSTRIES,
+  LEGACY_ONBOARDING_INDUSTRY_CONTEXTS,
+  normalizeOnboardingIndustryChoice,
   ONBOARDING_INDUSTRY_SKIPPED,
+  ONBOARDING_INDUSTRY_SOMETHING_ELSE,
   type OnboardingIndustry,
   type OnboardingIndustryChoice,
 } from "./onboarding-industry.ts";

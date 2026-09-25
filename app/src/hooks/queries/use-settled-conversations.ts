@@ -20,9 +20,8 @@ export interface SettledConversations {
  * whole current roster, and told plainly whether the answer can be trusted yet.
  *
  * Settledness is the load-bearing part. An in-flight sweep reads as zero
- * missions, so anything that takes a baseline from one (the guided setup
- * waiting for a first task, a lesson beat waiting for a new conversation)
- * would count every mission the user already had as brand new. `count` is
+ * missions, so anything that takes a baseline from one (a lesson beat
+ * waiting for a new conversation) would count every mission the user already had as brand new. `count` is
  * withheld entirely until the sweep settles rather than reported as zero.
  *
  * No fetch of its own: this is the same cache key the sidebar badges and

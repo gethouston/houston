@@ -2,13 +2,12 @@
 //! sense on the user's local machine.
 //!
 //! The engine may run on a remote VPS for Houston Always On / Teams /
-//! Cloud; these commands (folder picker, file-manager reveal, URL open, local
+//! Cloud; these commands (file-manager reveal, URL open, local
 //! CLI probes) would be meaningless there and stay desktop-only.
 
 use std::path::{Path, PathBuf};
 use std::sync::OnceLock;
 use std::time::{SystemTime, UNIX_EPOCH};
-use tokio::process::Command;
 
 use super::file_failure::FileOpFailure;
 use super::url_open_failure::{self, UrlOpenFailure};
@@ -37,86 +36,6 @@ pub fn stamp_launch_t0() {
 #[tauri::command(rename_all = "snake_case")]
 pub fn launch_t0_ms() -> Option<u64> {
     LAUNCH_T0_MS.get().copied().filter(|&ms| ms > 0)
-}
-
-// -- Directory Picker --
-
-#[tauri::command(rename_all = "snake_case")]
-pub async fn pick_directory() -> Result<Option<String>, String> {
-    #[cfg(target_os = "macos")]
-    {
-        let output = Command::new("osascript")
-            .arg("-e")
-            .arg(r#"POSIX path of (choose folder with prompt "Select your project directory")"#)
-            .output()
-            .await
-            .map_err(|e| format!("Failed to open folder picker: {e}"))?;
-
-        if !output.status.success() {
-            return Ok(None);
-        }
-
-        let path = String::from_utf8_lossy(&output.stdout).trim().to_string();
-        if path.is_empty() {
-            return Ok(None);
-        }
-        Ok(Some(path))
-    }
-    #[cfg(target_os = "windows")]
-    {
-        // PowerShell's FolderBrowserDialog is the closest stdlib-only
-        // equivalent on Windows. STA threading is required for COM
-        // dialogs; -Sta makes that explicit.
-        let script = r#"
-Add-Type -AssemblyName System.Windows.Forms | Out-Null
-$dialog = New-Object System.Windows.Forms.FolderBrowserDialog
-$dialog.Description = 'Select your project directory'
-if ($dialog.ShowDialog() -eq [System.Windows.Forms.DialogResult]::OK) {
-  Write-Output $dialog.SelectedPath
-}
-"#;
-        let output = Command::new("powershell")
-            .args(["-NoProfile", "-Sta", "-Command", script])
-            .creation_flags(crate::child_guard::CREATE_NO_WINDOW)
-            .output()
-            .await
-            .map_err(|e| format!("Failed to open folder picker: {e}"))?;
-
-        if !output.status.success() {
-            return Ok(None);
-        }
-        let path = String::from_utf8_lossy(&output.stdout).trim().to_string();
-        if path.is_empty() {
-            return Ok(None);
-        }
-        Ok(Some(path))
-    }
-    #[cfg(all(not(target_os = "macos"), not(target_os = "windows")))]
-    {
-        // Linux: zenity is the lowest-common-denominator GTK picker. The
-        // system zenity must not inherit the AppImage's library env (see
-        // appimage_env.rs) or it can crash before showing the dialog.
-        let mut cmd = Command::new("zenity");
-        cmd.args([
-            "--file-selection",
-            "--directory",
-            "--title=Select your project directory",
-        ]);
-        crate::appimage_env::sanitize_tokio_command(&mut cmd);
-        let output = cmd
-            .output()
-            .await
-            .map_err(|e| format!("Failed to open folder picker (install zenity): {e}"))?;
-
-        if !output.status.success() {
-            return Ok(None);
-        }
-        let path = String::from_utf8_lossy(&output.stdout).trim().to_string();
-        if path.is_empty() {
-            return Ok(None);
-        }
-        Ok(Some(path))
-    }
 }
 
 // -- Open a URL in the default browser --

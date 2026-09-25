@@ -1,5 +1,5 @@
 import {
-  isOnboardingIndustryChoice,
+  normalizeOnboardingIndustryChoice,
   type OnboardingIndustryChoice,
 } from "./onboarding-industry.ts";
 import {
@@ -79,8 +79,13 @@ export function parseOnboardingSurveyPreference(
   if (record.version !== ONBOARDING_SURVEY_VERSION) return null;
   if (record.segment !== null && !isOnboardingSegmentChoice(record.segment))
     return null;
-  if (record.industry !== null && !isOnboardingIndustryChoice(record.industry))
-    return null;
+  // The industry alone reads leniently: legacy survey ids and contexts this
+  // build cannot name are still answers (`normalizeOnboardingIndustryChoice`).
+  const industry =
+    record.industry === null
+      ? null
+      : normalizeOnboardingIndustryChoice(record.industry);
+  if (record.industry !== null && industry === null) return null;
   if (
     record.automationGoal !== null &&
     !isValidAutomationGoal(record.automationGoal)
@@ -98,7 +103,7 @@ export function parseOnboardingSurveyPreference(
     version: ONBOARDING_SURVEY_VERSION,
     segment: record.segment,
     segmentOther: otherTextOrNull(record.segmentOther),
-    industry: record.industry,
+    industry,
     industryOther: otherTextOrNull(record.industryOther),
     automationGoal: record.automationGoal?.trim() ?? null,
     goalSkipped: record.goalSkipped,

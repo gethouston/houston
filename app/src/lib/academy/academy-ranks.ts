@@ -1,5 +1,5 @@
 // The Academy's rank ladder. Two currencies, deliberately: EXPERIENCE is earned
-// by learning (finishing chapters) and USAGE POINTS by actually running Houston,
+// by learning (finishing lessons) and USAGE POINTS by actually running Houston,
 // so the top ranks cannot be read into existence — someone has to fly.
 //
 // v1 placeholder configuration: the thresholds are expected to move once real
@@ -47,8 +47,3 @@ export function nextRank(rank: AcademyRank): AcademyRank | null {
   if (index < 0 || index + 1 >= ACADEMY_RANKS.length) return null;
   return ACADEMY_RANKS[index + 1];
 }
-
-/** The first chapter every user meets: Houston's own setup, finished by the
- *  onboarding flow itself, so nobody lands in the Academy at zero. */
-export const SETUP_CHAPTER_ID = "setup";
-export const SETUP_CHAPTER_EXPERIENCE = 50;

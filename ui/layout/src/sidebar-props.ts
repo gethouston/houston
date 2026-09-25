@@ -9,6 +9,9 @@ export interface SidebarItem {
   id: string;
   name: string;
   icon?: ReactNode;
+  /** The second line of a person row, under the name (an AI Employee's
+   *  role). Absent: the name sits alone, centred, at the same row height. */
+  subtitle?: string;
   /** Optional right-aligned slot for row badges or status indicators. */
   trailing?: ReactNode;
   /**

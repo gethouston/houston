@@ -68,22 +68,17 @@ export type AnalyticsEventName =
   // Onboarding funnel (acquisition→activation) — one event per step the user
   // actually clears, so a single PostHog funnel can show where first-run drops
   // off (broken down by `app_os` for Mac vs Windows). Action-first: where a
-  // real action exists (provider/apps connected, message/email sent) we fire on
-  // the action, not the Continue click. Each fires exactly ONCE per install
-  // (ref/flag-guarded at the call site).
+  // real action exists (AI connected, message/email sent) we fire on the
+  // action, not the Continue click. Each fires exactly ONCE (ref/flag-guarded
+  // at the call site).
   | "onboarding_language_selected"
   | "onboarding_agreement_accepted"
   | "ai_provider_connected"
-  | "tools_provider_connected"
   | "first_message_sent"
   | "first_email_sent"
   // Fires once per onboarding screen reached (carries `step`), so a single
-  // funnel shows exactly where people drop off in the redesigned flow.
+  // funnel shows exactly where people drop off in the first-run flow.
   | "onboarding_step_viewed"
-  // Escape hatch: the user bailed out of a stuck onboarding step (HOU-555).
-  // Carries `step`, `provider`, `model` so skip-rate can be broken down by
-  // model — some models send the email but never emit the completion marker.
-  | "onboarding_skipped"
   // Houston Academy: the learning surface was opened (`source` names where
   // from) and a chapter was cleared (`chapter` is the chapter id). Chapter
   // completion is awarded once per account, so the event doubles as the
@@ -109,8 +104,8 @@ export type AnalyticsEventName =
   // A workspace-internal duplicate (`agent_slug` is the SOURCE agent);
   // `source` names the door: the agent's Settings row or the create dialog.
   | "agent_copied"
-  // Fired when an agent's self-setup mission auto-starts after it is
-  // created/imported. Carries `source` (created vs imported).
+  // Fired when the user starts an AI Employee's first day (its self-setup
+  // task). Carries `source` (how the employee arrived) when it is known.
   | "agent_onboarding_started"
   | "chat_message_sent"
   | "chat_message_received"

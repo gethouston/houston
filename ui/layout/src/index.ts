@@ -13,6 +13,10 @@ export type {
 export { AppSidebar } from "./sidebar";
 export type { SidebarAddRowProps } from "./sidebar-add-row";
 export { SidebarAddRow } from "./sidebar-add-row";
+export {
+  SidebarAvatarDiameter,
+  useSidebarAvatarDiameter,
+} from "./sidebar-avatar-diameter";
 export type { SidebarBandProps } from "./sidebar-band";
 export { SidebarBand } from "./sidebar-band";
 export type { SidebarBlockContentProps } from "./sidebar-block-content";
@@ -22,7 +26,14 @@ export { SidebarBlockHeader } from "./sidebar-block-header";
 export { SidebarDragOverlay } from "./sidebar-drag-overlay";
 export type { SidebarFlatListProps } from "./sidebar-flat-list";
 export { SidebarFlatList } from "./sidebar-flat-list";
-export { sidebarBandInset } from "./sidebar-geometry";
+export {
+  sidebarBandInset,
+  sidebarCollapsedItem,
+  sidebarGlyphDiameter,
+  sidebarMarkSize,
+  sidebarPersonRow,
+  sidebarRingClearance,
+} from "./sidebar-geometry";
 export {
   matchesSidebarGroupGlyph,
   sidebarGroupGlyphConcepts,
@@ -60,11 +71,13 @@ export {
   SidebarNavList,
 } from "./sidebar-rail-chrome";
 export type {
+  SidebarRowAnatomy,
   SidebarRowButtonProps,
   SidebarRowDepth,
   SidebarRowDisclosure,
 } from "./sidebar-row-button";
-export { SidebarRowButton, SidebarRowCaret } from "./sidebar-row-button";
+export { SidebarRowButton } from "./sidebar-row-button";
+export { SidebarRowCaret } from "./sidebar-row-caret";
 export type {
   SidebarBaseRowContext,
   SidebarRowContext,

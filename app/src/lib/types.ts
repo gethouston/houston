@@ -56,6 +56,8 @@ export interface Agent {
   folderPath: string; // ~/.houston/workspaces/{WorkspaceName}/{AgentName}/
   configId: string; // Points to an AgentConfig
   color?: string; // User-chosen color for avatar
+  /** The role its job description names; the second line of its sidebar row. */
+  role?: string;
   createdAt: string;
   lastOpenedAt?: string;
   /**

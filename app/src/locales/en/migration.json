@@ -8,22 +8,22 @@
     "title": "Houston is moving to the cloud",
     "body": "You believed in Houston before anyone else. Here's what moving to the cloud gives you.",
     "whatTitle": "What you get",
-    "benefit1": "<b>Always on.</b> Your assistants keep working, even when your computer is off.",
+    "benefit1": "<b>Always on.</b> Your AI Employees keep working, even when your computer is off.",
     "benefit2": "<b>Routines keep running</b> on schedule, without your computer awake.",
     "benefit3": "<b>Nothing left behind.</b> Everything you've built comes along.",
     "freeNote": "It's free, and it only takes a couple of minutes.",
     "start": "Migrate Now",
-    "skipAction": "Start without my assistants",
+    "skipAction": "Start without my AI Employees",
     "skipConfirm": {
-      "title": "Start without your assistants?",
-      "body": "Your assistants and their conversations won't be here. Nothing is deleted, they stay safe on this computer, and you can migrate them anytime from Settings, under Cloud migration.",
+      "title": "Start without your AI Employees?",
+      "body": "Your AI Employees and their conversations won't be here. Nothing is deleted, they stay safe on this computer, and you can migrate them anytime from Settings, under Cloud migration.",
       "confirm": "Start without them",
       "goBack": "Go back"
     }
   },
   "progress": {
     "title": "Moving to the cloud",
-    "phaseAssistants": "Moving your assistants",
+    "phaseAssistants": "Moving your AI Employees",
     "phaseConversations": "Bringing your conversations",
     "phaseFiles": "Packing up your files and skills",
     "phaseCloud": "Setting up your cloud",
@@ -34,11 +34,11 @@
     "preparing": "Getting your data ready. This can take a few minutes.",
     "startFailed": "We couldn't start the move, so nothing was changed. You can try again.",
     "retry": "Try again",
-    "overall": "{{done}} of {{total}} assistants moved",
+    "overall": "{{done}} of {{total}} AI Employees moved",
     "continueAnyway": "Continue without the rest",
     "step": {
       "pending": "Waiting",
-      "creating": "Creating your assistant",
+      "creating": "Creating your AI Employee",
       "warming": "Getting it ready",
       "uploading": "Moving your files ({{current}} of {{total}})",
       "finalizing": "Finishing up",
@@ -55,12 +55,12 @@
     "stepAi": "Step 1 of 2",
     "stepApps": "Step 2 of 2",
     "reconnectAiTitle": "Connect your AI",
-    "reconnectAiBody": "Your assistants made it to the cloud. Connect your AI once to start using them.",
+    "reconnectAiBody": "Your AI Employees made it to the cloud. Connect your AI once to start using them.",
     "reconnectAppsTitle": "Reconnect your apps",
     "reconnectAppsBody": "Reconnect any apps you want now, or do it later from the Apps section.",
     "skip": "Skip for now",
     "leftBehindTitle": "Still on this computer",
-    "leftBehindBody": "These assistants didn't come along this time. Their data stays safe on this computer.",
+    "leftBehindBody": "These AI Employees didn't come along this time. Their data stays safe on this computer.",
     "excludedTitle": "Some larger files stayed on this computer",
     "rejectedTitle": "A few items couldn't come along",
     "continue": "Continue",
@@ -71,6 +71,6 @@
     "connected": "Connected",
     "finish": "Start building",
     "congratsTitle": "You're all set",
-    "congratsBody": "Your assistants are in the cloud and ready. Let's build something."
+    "congratsBody": "Your AI Employees are in the cloud and ready. Let's build something."
   }
 }

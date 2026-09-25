@@ -5,7 +5,7 @@ const ROW_CLASSES =
 
 /**
  * One destination in the phone's More menu. It spreads the rail row's own
- * `dataAttrs`, so the guided setup's anchors resolve to THIS element on the
+ * `dataAttrs`, so the lessons' anchors resolve to THIS element on the
  * phone exactly as they resolve to the rail row on the desktop — one
  * vocabulary, two renderings.
  */

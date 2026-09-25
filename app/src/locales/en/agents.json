@@ -61,7 +61,8 @@
       "role": "Role",
       "addIndustry": "Add industry",
       "addRole": "Add role"
-    }
+    },
+    "loadFailed": "Couldn't load the job description."
   },
   "learnings": {
     "emptyTitle": "No learnings yet",
@@ -285,8 +286,5 @@
         "clearAll": "Clear"
       }
     }
-  },
-  "rowMenu": {
-    "label": "Options for {{name}}"
   }
 }

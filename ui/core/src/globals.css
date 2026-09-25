@@ -112,6 +112,9 @@
      values `background`/transparent carried as ONE token. */
   --color-pane: var(--ht-pane);
   --color-card: var(--ht-card);
+  /* The opaque card tier (white / neutral-750): a card that must hold its
+     edge on a glass or card surface, e.g. the employee card. */
+  --color-card-solid: var(--ht-card-solid);
   --color-card-hover: var(--ht-card-hover);
   --color-card-solid: var(--ht-card-solid);
   --color-card-text: var(--ht-card-text);

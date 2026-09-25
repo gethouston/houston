@@ -1,10 +1,10 @@
 import { deepStrictEqual, ok, strictEqual } from "node:assert";
 import { describe, it } from "node:test";
-import {
-  type PendingWarmingSend,
-  type ProvisioningEntry,
-  parsePersistedProvisioning,
-} from "../src/lib/agent-provisioning.ts";
+import type {
+  PendingWarmingSend,
+  ProvisioningEntry,
+} from "../src/lib/agent-provisioning/entry.ts";
+import { parsePersistedProvisioning } from "../src/lib/agent-provisioning/persist.ts";
 import {
   hasHiddenPrompt,
   missionPrompt,
@@ -17,7 +17,7 @@ import {
   warmingSendRecord,
 } from "../src/lib/warming-send-prompt.ts";
 
-/** What `agent-setup-mission.ts` hands the queue: no text, all prompt. */
+/** What a setup chat's kickoff hands the queue: no text, all prompt. */
 const KICKOFF =
   "<!-- houston:auto-continue -->You are Nova. Introduce yourself.";
 

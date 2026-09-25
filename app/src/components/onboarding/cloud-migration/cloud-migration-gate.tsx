@@ -16,8 +16,8 @@ import { ProgressScreen } from "./progress-screen";
 /**
  * First-run cloud-migration gate (HOU-719). Mounted in App.tsx AFTER the
  * session/auth gates and BEFORE the firstRun onboarding branch — a migrating
- * user has zero cloud agents and would otherwise be captured by the
- * create-your-assistant flow. Renders children whenever the trigger says no
+ * user has zero cloud agents and would otherwise be captured by the first-run
+ * onboarding. Renders children whenever the trigger says no
  * (see `hooks/cloud-migration-trigger.ts` for the full gate).
  */
 export function CloudMigrationGate({ children }: { children: ReactNode }) {

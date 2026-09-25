@@ -95,16 +95,17 @@ export const SURFACE_RULES = {
 
   // ── Sidebar rail + top-level views (shell:sidebar.*) ────────────────────
   "app/src/components/shell/": "App shell",
-  "app/src/components/shell/agent-avatar": "Your Agents",
   "app/src/components/shell/agent-card-avatar": "Your Agents",
   "app/src/components/shell/agent-panel-avatar": "Your Agents",
   "app/src/components/shell/agent-sidebar-": "Your Agents",
   "app/src/components/shell/agent-warming-dialog": "Your Agents",
-  "app/src/components/shell/experience-": "Your Agents",
   "app/src/components/shell/add-to-workspace-sheet": "Your Agents",
   "app/src/components/shell/add-choice-step": "Your Agents",
   "app/src/components/shell/workspace-dialog": "Your Agents",
   "app/src/components/agent-picker-dialog": "Your Agents",
+  // The AI Employee ID badge: the hire sheet's naming step, and the
+  // onboarding team card's roster.
+  "app/src/components/employee-card/": "Your Agents",
   "app/src/components/shell/create-team-": "Organization",
   "app/src/components/shell/team-status-banner": "Organization",
   "app/src/components/shell/claude-browser-login": "AI Models",

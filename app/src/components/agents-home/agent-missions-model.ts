@@ -1,3 +1,4 @@
+import type { CreatedMission } from "../../lib/created-mission-handoff.ts";
 import { isSetupChatMode } from "../../lib/integration-chat-setup.ts";
 import { ARCHIVED_STATUS } from "../../lib/mission-selection.ts";
 import {
@@ -104,4 +105,40 @@ export function missionListSections(
     const missions = searchMissions(sections[SECTION_KEY[id]], query);
     return missions.length === 0 ? [] : [{ id, missions }];
   });
+}
+
+/** Every mission the agent holds, the archive included. */
+export function agentMissionCount(sections: AgentMissionSections): number {
+  return (
+    sections.needsYou.length +
+    sections.running.length +
+    sections.done.length +
+    sections.archived.length
+  );
+}
+
+/**
+ * The agent's LIVE work, which the header counts: the archive is filed away,
+ * and counting it would make a finished agent look busy.
+ */
+export function liveMissionCount(sections: AgentMissionSections): number {
+  return agentMissionCount(sections) - sections.archived.length;
+}
+
+/**
+ * Whether the published mission target is the one just created for this
+ * agent: the only published target the agent's own screen may claim, since
+ * every other "open this mission" nav belongs to a board.
+ */
+export function isCreatedMissionOf(
+  created: Pick<CreatedMission, "activityId" | "agentPath"> | null,
+  pendingId: string | null,
+  agentPath: string,
+): pendingId is string {
+  return (
+    pendingId !== null &&
+    created !== null &&
+    created.activityId === pendingId &&
+    created.agentPath === agentPath
+  );
 }

@@ -27,6 +27,8 @@ export interface SurveyFlow {
   chooseSegment: (id: OnboardingSegment) => void;
   chooseIndustry: (id: OnboardingIndustry) => void;
   writeOther: (value: string) => void;
+  /** Leaves the industry's "Something else" for the catalog, unanswered. */
+  leaveIndustryOther: () => void;
   writeGoal: (value: string) => void;
   submit: () => void;
   back: () => void;

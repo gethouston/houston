@@ -11,26 +11,6 @@ type SegmentCopy = {
   skip?: unknown;
 };
 
-describe("required onboarding email path", () => {
-  it("keeps the watch beat's way onward failure-gated", () => {
-    const discipline = read(
-      "../src/components/onboarding/use-send-mission-discipline.ts",
-    );
-    const steps = read(
-      "../src/components/onboarding/in-app-onboarding-agent-steps.tsx",
-    );
-
-    // The guided email task offers no plain "skip": the way onward opens only
-    // once the send actually goes wrong — an in-feed turn error, or the
-    // patience timeout — and the step renders the CTA on exactly that signal.
-    assert.match(
-      discipline,
-      /emailStuck = watching && \(feedShowsTurnError\(feed\) \|\| waitedTooLong\)/,
-    );
-    assert.match(steps, /onAsideCta=\{o\.emailStuck \? o\.abandonEmailWait/);
-  });
-});
-
 describe("required onboarding role selection", () => {
   it("keeps the in-card helper and skip removed, subtitles to five words", () => {
     const screen = read("../src/components/onboarding/survey-screen.tsx");

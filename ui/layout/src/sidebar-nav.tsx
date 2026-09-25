@@ -1,5 +1,6 @@
 import { cn, Tooltip, TooltipContent, TooltipTrigger } from "@houston-ai/core";
 import type { ReactNode } from "react";
+import { sidebarMarkSize } from "./sidebar-geometry";
 import { sidebarCollapsedItemClasses } from "./sidebar-paint";
 import { SidebarRowButton } from "./sidebar-row-button";
 
@@ -50,6 +51,7 @@ export function SidebarNavItem({
             {...dataAttrs}
             className={cn(
               "relative flex size-9 items-center justify-center rounded-lg transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-focus",
+              sidebarMarkSize.slot,
               active ? "bg-sidebar-active text-ink" : "text-ink hover:bg-hover",
             )}
           >

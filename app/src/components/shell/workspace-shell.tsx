@@ -13,7 +13,6 @@ import { LessonRunner } from "../academy/lessons/lesson-runner";
 import { CommandPalette } from "../command-palette";
 import { MissionChatScreen } from "../mission-chat/mission-chat-screen";
 import { MobileNewMissionSheet } from "../mobile-new-mission-sheet";
-import { InAppOnboarding } from "../onboarding/in-app-onboarding";
 import { ImportAgentWizard } from "../portable/import-wizard";
 import { ShortcutCheatsheet } from "../shortcut-cheatsheet";
 import { AddToWorkspaceSheet } from "./add-to-workspace-sheet";
@@ -55,7 +54,6 @@ export function WorkspaceShell({
   useAssistantLanding();
   const missionPanelOpen = useUIStore((s) => s.missionPanelOpen);
   const viewMode = useUIStore((s) => s.viewMode);
-  const inAppOnboardingActive = useUIStore((s) => s.inAppOnboardingActive);
   const activeLessonId = useUIStore((s) => s.activeLessonId);
   const [panelContainer, setPanelContainer] = useState<HTMLDivElement | null>(
     null,
@@ -98,10 +96,7 @@ export function WorkspaceShell({
           The rail reserves space for native window controls; the content
           card reaches the top gutter. The column also hosts phone navigation.
           h-dvh (not h-screen) so mobile browser chrome (the collapsing URL
-          bar) never pushes the composer below the visible viewport.
-          The shell stays fully interactive under the in-app onboarding: the
-          user must click the real controls, so that overlay does its own
-          selective blocking. */}
+          bar) never pushes the composer below the visible viewport. */}
       {/* The PHONE is one flat background edge to edge: no gutter frame, no
           floating screen card. The desktop keeps the Arc canvas, where the
           transparent frame lets the window background read through. */}
@@ -172,12 +167,7 @@ export function WorkspaceShell({
         <ShortcutCheatsheet />
         <ToastContainer toasts={toasts} onDismiss={onDismissToast} />
       </div>
-      {inAppOnboardingActive && <InAppOnboarding />}
-      {/* The guided setup OWNS the screen while it runs: both surfaces spotlight
-          the real app, so two of them at once would point at two controls and
-          teach neither. Arming the setup clears any armed lesson (`stores/ui`);
-          this is the other direction, a lesson armed while it is already up. */}
-      {!inAppOnboardingActive && activeLessonId !== null && (
+      {activeLessonId !== null && (
         <LessonRunner key={activeLessonId} lessonId={activeLessonId} />
       )}
     </DetailPanelProvider>

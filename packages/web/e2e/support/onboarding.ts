@@ -1,13 +1,15 @@
 /**
- * First-run helpers: reaching the onboarding survey, and walking it.
+ * First-run helpers: reaching onboarding, and walking it.
  *
- * The survey (job → industry → what you'd love to automate) stands in front of
- * the create-your-assistant flow, so every spec that drives first-run has to
- * answer it before it reaches the step it actually tests. Centralised here so
- * a fourth question is a one-line change, not a sweep across five specs.
+ * First-run onboarding is three full-screen cards outside the app shell: the
+ * survey (job → industry → what you'd love to automate), "Connect your AI",
+ * then "Build your team". Every spec that drives first-run walks the cards in
+ * front of the one it tests; centralised here so a new question or card is a
+ * one-line change, not a sweep across every spec.
  */
 import { FAKE_HOST_URL } from "@houston/fake-host";
 import { type APIRequestContext, expect, type Page } from "@playwright/test";
+import { viewMoreProviders } from "./connect-ai";
 
 /**
  * Write one ACCOUNT preference straight onto the host (`null` clears it) — the
@@ -72,7 +74,7 @@ export async function seedLegacySegmentMirror(
 /** Labels unique to ONE question, so a click can never hit the other grid
  *  ("Legal" and "Something else" appear in both). */
 const JOB_ANSWER = "Operations";
-const INDUSTRY_ANSWER = "Manufacturing";
+export const INDUSTRY_ANSWER = "Manufacturing";
 
 /** Answer the job question (step 1 of the first-run survey). */
 export async function answerJobStep(page: Page): Promise<void> {
@@ -83,9 +85,9 @@ export async function answerJobStep(page: Page): Promise<void> {
   await page.getByRole("button", { name: "Continue" }).click();
 }
 
-/** Answer the industry question (step 2). */
+/** Answer the industry question (step 2). Its chips are a radio group. */
 export async function answerIndustryStep(page: Page): Promise<void> {
-  await page.getByRole("button", { name: INDUSTRY_ANSWER }).click();
+  await page.getByRole("radio", { name: INDUSTRY_ANSWER }).click();
   await page.getByRole("button", { name: "Continue" }).click();
 }
 
@@ -101,9 +103,46 @@ export async function answerGoalStep(
   await page.getByRole("button", { name: "Continue" }).click();
 }
 
-/** Walk the whole first-run survey, landing on the create-your-assistant flow. */
+/** Walk the whole first-run survey, landing on the "Connect your AI" card. */
 export async function completeSurvey(page: Page): Promise<void> {
   await answerJobStep(page);
   await answerIndustryStep(page);
   await answerGoalStep(page);
+}
+
+/** The "Connect your AI" card's heading. */
+export function connectAiHeading(page: Page) {
+  return page.getByRole("heading", { name: "Connect your AI" });
+}
+
+/** The "Build your team" card's heading. */
+export function buildTeamHeading(page: Page) {
+  return page.getByRole("heading", { name: "Build your team" });
+}
+
+/**
+ * Connect a provider on the "Connect your AI" card through the api-key path
+ * (the fake host accepts any key), found in the full list "View more" opens.
+ * The card advances by itself once the provider is confirmed connected,
+ * landing on "Build your team".
+ */
+export async function connectAiOnCard(page: Page): Promise<void> {
+  await expect(connectAiHeading(page)).toBeVisible();
+  await viewMoreProviders(page).click();
+  await page.getByPlaceholder("Search providers").fill("openrouter");
+  await page.getByRole("button", { name: "Connect OpenRouter" }).click();
+  await page
+    .getByPlaceholder("Paste your API key")
+    .fill("sk-or-e2e-onboarding");
+  await page
+    .getByRole("dialog")
+    .getByRole("button", { name: "Connect", exact: true })
+    .click();
+  await expect(buildTeamHeading(page)).toBeVisible();
+}
+
+/** Walk first-run up to the "Build your team" card: survey, then connect. */
+export async function reachBuildTeamCard(page: Page): Promise<void> {
+  await completeSurvey(page);
+  await connectAiOnCard(page);
 }

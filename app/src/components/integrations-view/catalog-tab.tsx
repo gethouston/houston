@@ -22,7 +22,6 @@ import {
 import { curatedLogoUrl } from "../integrations/curated-logos";
 import { PageHeaderTools } from "../shell/page-header/page-header-tools";
 import { PageContainer } from "../shell/page-shell";
-import { tutorialAnchor } from "../tutorial";
 import { IntegrationsReady } from "./integrations-ready";
 import { useCatalogSurface } from "./use-catalog-surface";
 
@@ -76,10 +75,7 @@ export function CatalogTab() {
             cells) and centers in the wide page — headings and rows keep
             one shared left edge, and the page's margin absorbs the rest,
             split evenly, instead of piling up right of the grid. */}
-        <div
-          {...tutorialAnchor("integrationsCatalog")}
-          className={cn("mx-auto w-full", CATALOG_PLANE_MAX_W)}
-        >
+        <div className={cn("mx-auto w-full", CATALOG_PLANE_MAX_W)}>
           {gate.kind === "ready" ? (
             <IntegrationsReady
               reconnectNotice={gate.reconnectNotice}

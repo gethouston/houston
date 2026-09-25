@@ -1,57 +1,33 @@
-import type { Locator, Page } from "@playwright/test";
-import { NEW_TASK_PLACEHOLDER } from "../support/composer";
-import { fillAgentBrief } from "../support/create-agent";
+import type { Page } from "@playwright/test";
 import { expect, test } from "../support/fixtures";
-import { moreRow, navBar, navItem } from "../support/mobile-nav";
-import { completeSurvey, resetToFirstRun } from "../support/onboarding";
+import { awaitAgentsHome, navBar } from "../support/mobile-nav";
+import {
+  buildTeamHeading,
+  completeSurvey,
+  connectAiHeading,
+  connectAiOnCard,
+  resetToFirstRun,
+} from "../support/onboarding";
+import { hireOnTeamCard, hireYourTeamOption } from "../support/team-card";
 
 /**
- * First-run on a phone, end to end: the survey, then the game-style in-app
- * setup over the REAL phone shell. Below md there is no rail: the long tail of
- * destinations lives behind the nav bar's More menu and creating an agent is a
- * control on the Agents home, so those steps ring the WAY IN first (More, or
- * the Agents item) and then the real control once it is reachable; the send
- * step follows the compose tap into the draft chat. Every advance is app state
- * — the hub opening, a provider confirmed, the roster growing, a mission row
- * landing — never a Next button. This is the tier-1 gate that keeps the phone
- * from dead-ending a new user in a mandatory setup they cannot finish.
+ * First-run on a phone, end to end: the survey, "Connect your AI", then
+ * "Build your team", all full-screen cards outside the phone shell, and then
+ * the shell itself. This is the tier-1 gate that keeps the phone from
+ * dead-ending a new user in a mandatory onboarding they cannot finish.
  */
 
-/** The narration card's one action. */
-function centerCta(page: Page, title: string): Locator {
-  return page.getByRole("dialog", { name: title }).getByRole("button");
+/** Zero horizontal overflow: the phone layout's standing rule. */
+async function expectNoHorizontalOverflow(page: Page) {
+  const overflow = await page.evaluate(
+    () =>
+      document.documentElement.scrollWidth -
+      document.documentElement.clientWidth,
+  );
+  expect(overflow).toBeLessThanOrEqual(0);
 }
 
-/** A More-menu step on the phone: the More button → the row inside the card. */
-async function tapMoreRow(page: Page, rowTitle: string, target: string) {
-  await expect(
-    page.getByRole("dialog", { name: "Open the menu" }),
-  ).toBeVisible();
-  await expect(page.getByText("Tap More at the bottom")).toBeVisible();
-  await navItem(page, "more").tap();
-  // The open Sheet is a modal, so Radix marks everything outside it
-  // `aria-hidden` — the coach chip included — hence `includeHidden` for the
-  // in-menu beat (the a11y shape the in-dialog coaching has always had).
-  await expect(
-    page.getByRole("dialog", { name: rowTitle, includeHidden: true }),
-  ).toBeVisible();
-  await moreRow(page, target).tap();
-}
-
-/** The create-agent step: the Agents item, then the control on its home. */
-async function tapNewAgent(page: Page) {
-  await expect(
-    page.getByRole("dialog", { name: "Open AI Employees" }),
-  ).toBeVisible();
-  await expect(page.getByText("Tap AI Employees at the bottom")).toBeVisible();
-  await navItem(page, "agents").tap();
-  await expect(
-    page.getByRole("dialog", { name: "Click New AI Employee" }),
-  ).toBeVisible();
-  await page.getByTestId("agents-home-new-agent").tap();
-}
-
-test("the guided setup completes on a phone: More rows, provider connect, first agent, first task", async ({
+test("first run completes on a phone: survey, provider connect, first hire, the app", async ({
   page,
   request,
 }) => {
@@ -60,93 +36,58 @@ test("the guided setup completes on a phone: More rows, provider connect, first 
   await page.goto("/");
   await completeSurvey(page);
 
-  await expect(
-    page.getByRole("heading", { name: "Welcome to Houston!" }),
-  ).toBeVisible();
-  await page.getByRole("button", { name: "Start setup" }).tap();
-  await page.getByRole("button", { name: "Show me" }).tap();
+  // Connect on the card (the api-key path; the fake host accepts any key).
+  await expect(connectAiHeading(page)).toBeVisible();
+  await expectNoHorizontalOverflow(page);
+  await connectAiOnCard(page);
+  await expectNoHorizontalOverflow(page);
 
-  // AI Models is a More-menu row on the phone.
-  await tapMoreRow(page, "Click AI Models", "nav-ai-hub");
+  // Hire one AI Employee through the card's walk: the survey's industry is
+  // already answered, then a job, then the name screen.
+  await hireYourTeamOption(page).tap();
   await expect(
-    page.getByRole("heading", { name: "AI Providers" }),
+    page.getByRole("heading", {
+      name: "What industry does this AI Employee work in?",
+    }),
   ).toBeVisible();
+  await page.getByRole("button", { name: "Continue", exact: true }).tap();
+  await page.getByRole("radio", { name: "Production planner" }).tap();
+
+  // The photo corner opens the color sheet with two rows of five.
+  await page.getByRole("button", { name: "Change color" }).tap();
   await expect(
-    page.getByRole("dialog", { name: "Pick the AI you already use." }),
+    page.getByRole("dialog", { name: "Color", exact: true }),
   ).toBeVisible();
-
-  // Connect on the real hub (the api-key path; the fake host accepts any key).
-  const search = page.getByPlaceholder("Search AI models and providers");
-  await search.tap();
-  await search.fill("openrouter");
-  await page.getByRole("button", { name: "Connect OpenRouter" }).tap();
-  await page.getByPlaceholder("Paste your API key").fill("sk-or-e2e-phone");
-  await page.getByRole("button", { name: "Connect", exact: true }).tap();
-  await centerCta(page, "Your AI is connected!").tap();
-  await centerCta(page, "Create your first AI Employee").tap();
-
-  // New AI Employee lives on the Agents home; the dialog coaching is unchanged.
-  await tapNewAgent(page);
-  // In-dialog coaching sits outside the modal (aria-hidden), as on desktop.
-  await expect(page.getByText("Tell it what it will do.")).toBeVisible();
-  // The dialog opens on the guided brief: the industry, then the job.
-  await fillAgentBrief(page);
-  // The color palette wraps inside the phone dialog instead of running off
-  // its right edge (ten swatches outgrow a phone-width card in one row).
-  const naming = page.locator("[data-tutorial-target='createAgentNaming']");
-  const frame = await naming.boundingBox();
-  if (!frame) throw new Error("naming step did not lay out");
-  // The swatches alone: the name field and submit share the anchor and size
-  // by their own rules.
-  for (const swatch of await naming
-    .locator("button[style*='background-color']")
-    .all()) {
+  const frame = await page.locator(".setup-step-in").boundingBox();
+  if (!frame) throw new Error("team card did not lay out");
+  const swatches = page
+    .getByRole("radiogroup", { name: "Color" })
+    .getByRole("radio");
+  await expect(swatches.first()).toBeVisible();
+  for (const swatch of await swatches.all()) {
     const box = await swatch.boundingBox();
     if (!box) throw new Error("swatch did not lay out");
     expect(box.x + box.width).toBeLessThanOrEqual(frame.x + frame.width + 1);
     expect(box.x).toBeGreaterThanOrEqual(frame.x - 1);
   }
+  await page.keyboard.press("Escape");
+  await expect(
+    page.getByRole("button", { name: "Change color" }),
+  ).toBeFocused();
   await page
-    .getByPlaceholder("e.g. Product manager, Sales, Jerry")
+    .getByRole("textbox", { name: "Name (Production planner)" })
     .fill("Aurora");
-  await page.getByRole("button", { name: "Create AI Employee" }).tap();
-  await centerCta(page, "AI Employee created!").tap();
-  await centerCta(page, "Give it work").tap();
-
-  // New task on the phone is the nav bar's own compose control — the only
-  // one there is — so the ring sits outside every screen; the tap pushes the
-  // draft chat and the ring follows it there.
+  await page.getByRole("button", { name: "Hire", exact: true }).tap();
   await expect(
-    page.getByRole("dialog", { name: "Click New task" }),
+    page.getByRole("heading", { name: "You hired your first AI Employee" }),
   ).toBeVisible();
-  await page
-    .locator("[data-testid='mobile-nav-bar'] [data-tour-target='newMission']")
-    .tap();
-  await expect(
-    page.getByRole("dialog", { name: "Tell it what you need." }),
-  ).toBeVisible();
-  const composer = page
-    .getByTestId("mission-chat-screen")
-    .getByPlaceholder(NEW_TASK_PLACEHOLDER);
-  // A real TAP before typing: `fill` skips hit-testing, and a stale spotlight
-  // blocker sitting over the composer once passed this spec while a phone
-  // user could not touch it.
-  await composer.tap();
-  await composer.fill("Say hello");
-  await composer.press("Enter");
+  await page.getByRole("button", { name: "Done", exact: true }).tap();
 
-  // The finale, then the Academy reveal closes the run and lands there.
-  await centerCta(page, "Task sent!").tap();
-  await centerCta(page, "Chapter 1 complete!").tap();
-  await expect(page.getByRole("dialog")).toHaveCount(0);
+  // The phone shell takes over, landing on the Agents home with the hire.
   await expect(navBar(page)).toBeVisible();
-
-  const overflow = await page.evaluate(
-    () =>
-      document.documentElement.scrollWidth -
-      document.documentElement.clientWidth,
-  );
-  expect(overflow).toBeLessThanOrEqual(0);
+  const row = await awaitAgentsHome(page);
+  await expect(row).toContainText("Aurora");
+  await expectNoHorizontalOverflow(page);
 });
 
 test("the disclaimer's accept button fits inside the phone card", async ({
@@ -228,45 +169,27 @@ test.describe("short phone viewport", () => {
   });
 });
 
-test("a reload mid-setup resumes the sequence, not the welcome beat", async ({
+test("a reload mid-onboarding resumes on the card the user left", async ({
   page,
   request,
 }) => {
-  // Phones evict a background tab: leaving to fetch a sign-in code and
-  // coming back reloads the app. The run must re-enter at the connect
-  // sequence (its More-menu beat, which self-advances on the hub), never at
-  // "Start setup" with the work so far forgotten.
+  // Phones evict a background tab: leaving to fetch a sign-in code and coming
+  // back reloads the app. The run must re-enter on the card it stood on, never
+  // on the survey with the work so far forgotten, and never in the app early.
   await resetToFirstRun(request);
   await page.goto("/");
   await completeSurvey(page);
-  await page.getByRole("button", { name: "Start setup" }).tap();
-  await page.getByRole("button", { name: "Show me" }).tap();
-  await tapMoreRow(page, "Click AI Models", "nav-ai-hub");
-  await expect(
-    page.getByRole("dialog", { name: "Pick the AI you already use." }),
-  ).toBeVisible();
+  await expect(connectAiHeading(page)).toBeVisible();
 
   await page.reload();
+  await expect(connectAiHeading(page)).toBeVisible();
 
-  await expect(
-    page.getByRole("dialog", { name: "Open the menu" }),
-  ).toBeVisible();
-  await expect(
-    page.getByRole("heading", { name: "Welcome to Houston!" }),
-  ).toHaveCount(0);
-  await tapMoreRow(page, "Click AI Models", "nav-ai-hub");
-  await expect(
-    page.getByRole("dialog", { name: "Pick the AI you already use." }),
-  ).toBeVisible();
-
-  // The connect itself still lands, and the run carries on from there.
-  const search = page.getByPlaceholder("Search AI models and providers");
-  await search.tap();
-  await search.fill("openrouter");
-  await page.getByRole("button", { name: "Connect OpenRouter" }).tap();
-  await page.getByPlaceholder("Paste your API key").fill("sk-or-e2e-resume");
-  await page.getByRole("button", { name: "Connect", exact: true }).tap();
-  await expect(
-    page.getByRole("dialog", { name: "Your AI is connected!" }),
-  ).toBeVisible();
+  // The first hire flips the zero-agent first-run signal; the pending flag
+  // still holds the user on the team card across a reload.
+  await connectAiOnCard(page);
+  await hireYourTeamOption(page).tap();
+  await hireOnTeamCard(page, "Aurora", "tap");
+  await page.reload();
+  await expect(buildTeamHeading(page)).toBeVisible();
+  await expect(navBar(page)).toHaveCount(0);
 });

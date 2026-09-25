@@ -16,7 +16,7 @@
 
 import { streamGlobalEvents } from "@houston/runtime-client";
 import type { Clock, SdkLogger } from "../../ports";
-import { AGENTS_CHANGED_EVENT } from "./types";
+import { AGENT_ROLE_CHANGED_EVENT, AGENTS_CHANGED_EVENT } from "./types";
 
 /** Fixed short reconnect delay, mirroring the shared helper's default. */
 const RECONNECT_DELAY_MS = 1500;
@@ -24,7 +24,8 @@ const RECONNECT_DELAY_MS = 1500;
 export interface AgentsStreamHandlers {
   /** (Re)connected — refetch the list to catch up any events missed while down. */
   onConnect(): void;
-  /** An `AgentsChanged` frame arrived on a live connection. */
+  /** A frame that changes the list arrived on a live connection:
+   *  `AgentsChanged`, or `AgentRoleChanged` (one agent's listed role). */
   onAgentsChanged(): void;
   /** A `401` proved the Houston session token lapsed. */
   onUnauthorized(): void;
@@ -54,19 +55,17 @@ export function startAgentsEventStream(deps: AgentsStreamDeps): () => void {
     onError: (err) =>
       logger.debug("agents event stream dropped", { error: String(err) }),
     onEvent: (data) => {
-      if (isAgentsChanged(data)) handlers.onAgentsChanged();
+      if (changesTheList(data)) handlers.onAgentsChanged();
     },
   });
   return () => ac.abort();
 }
 
-/** Whether a parsed frame is the host's `AgentsChanged` signal. */
-function isAgentsChanged(data: unknown): boolean {
-  return (
-    typeof data === "object" &&
-    data !== null &&
-    (data as { type?: unknown }).type === AGENTS_CHANGED_EVENT
-  );
+/** Whether a parsed frame changes what `GET /agents` answers. */
+function changesTheList(data: unknown): boolean {
+  if (typeof data !== "object" || data === null) return false;
+  const { type } = data as { type?: unknown };
+  return type === AGENTS_CHANGED_EVENT || type === AGENT_ROLE_CHANGED_EVENT;
 }
 
 /** Backoff sleep on the injected clock, resolved early if the signal aborts. */

@@ -46,6 +46,7 @@ import "../agents-credentials";
 import "../agents-credentials-keys";
 import "../agents-provider";
 import "../routine-runs";
+import "../agent-first-day";
 import "../agents-activity";
 import "../missions-remote-inbound";
 import "../skills-manifest";

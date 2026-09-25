@@ -9,6 +9,7 @@
  */
 
 import type { AgentColorId } from "@houston/domain";
+import type { AgentInitialConfig } from "@houston/protocol";
 
 /** Teams v2: how much of a shared agent the caller may do. */
 export type AgentAccess = "manager" | "user";
@@ -38,6 +39,10 @@ export interface WireAgent {
    * gap for agents whose color was picked before the engine cutover.
    */
   color?: string;
+  /** The role the agent's job description names (its `CLAUDE.md` `role`
+   *  field), normalized. Absent when the description names none, and on a
+   *  gateway whose agent has not published one yet. */
+  role?: string;
   /** Absolute on-disk directory, present only when the host holds the files
    *  (local profile). Feeds the OS reveal/open commands. */
   dir?: string;
@@ -66,6 +71,8 @@ export interface AgentListItem {
   name: string;
   workspaceId: string;
   createdAt: number;
+  /** The role its job description names, when it names one. */
+  role?: string;
 }
 
 /**
@@ -88,6 +95,12 @@ export interface AgentCreateInput {
   color?: AgentColorId;
   claudeMd?: string;
   seeds?: Record<string, string>;
+  /**
+   * The config the agent is born with (its brain, and a new hire's pending
+   * first day), folded into `seeds` as its config document so it lands in the
+   * create itself (`withInitialConfigSeed`).
+   */
+  config?: AgentInitialConfig;
 }
 
 /**
@@ -125,11 +138,15 @@ export const AgentsCommand = {
   Delete: "agents/delete",
   SetColor: "agents/setColor",
   InstallFromGithub: "agents/installFromGithub",
+  StartFirstDay: "agents/startFirstDay",
 } as const;
 export type AgentsCommandType =
   (typeof AgentsCommand)[keyof typeof AgentsCommand];
 
 /** The host wire-event `type` that means the agent list changed (protocol v3). */
 export const AGENTS_CHANGED_EVENT = "AgentsChanged";
+
+/** The host wire-event `type` that means one agent's listed `role` changed. */
+export const AGENT_ROLE_CHANGED_EVENT = "AgentRoleChanged";
 
 /** Pull a required non-empty string off an untrusted command payload. */

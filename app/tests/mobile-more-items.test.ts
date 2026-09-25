@@ -51,29 +51,19 @@ describe("mobileMoreItems", () => {
 });
 
 describe("mobileMoreFooterRows", () => {
-  it("names the two help actions, in order, wired to their handlers", () => {
-    let guided = 0;
+  it("names the help action, wired to its handler", () => {
     let reported = 0;
     const rows = mobileMoreFooterRows({
-      guideMe: "Guide me",
       reportProblem: "Report a problem",
-      onGuideMe: () => {
-        guided += 1;
-      },
       onReportProblem: () => {
         reported += 1;
       },
     });
     assert.deepEqual(
       rows.map((r) => [r.id, r.label]),
-      [
-        ["guideMe", "Guide me"],
-        ["reportProblem", "Report a problem"],
-      ],
+      [["reportProblem", "Report a problem"]],
     );
     rows[0].onSelect();
-    rows[1].onSelect();
-    assert.equal(guided, 1);
     assert.equal(reported, 1);
   });
 });

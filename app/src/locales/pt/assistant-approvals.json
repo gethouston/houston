@@ -44,6 +44,7 @@
     "saveSkill": "Salvar mudanças nas instruções desta habilidade.",
     "setAgentAssignments": "Escolher quem pode usar este funcionário de IA, e com qual nível de acesso.",
     "setAgentModelChoice": "Mudar qual modelo de IA este funcionário de IA usa.",
+    "startFirstDay": "Começar o primeiro dia deste funcionário de IA: ele se apresenta e combina com você como ajudar.",
     "setAgentSettings": "Escolher quais apps e modelos de IA este funcionário de IA pode usar.",
     "setAgentTeam": "Mover este funcionário de IA para outro time deste espaço.",
     "setAgentTeamMemberOwner": "Dar a alguém a propriedade deste time, ou tirá-la.",
