@@ -496,7 +496,7 @@ export default {
           {
             q: "¿Qué es gratis?",
             aHtml:
-              "Houston es gratis hasta para tres personas en un espacio, con uso limitado y sin tarjeta. Alcanza de sobra para poner agentes a hacer trabajo real y sentir el valor. Cuando todo el equipo quiera entrar, o necesites uso ilimitado, pasas al plan Equipo.",
+              "Houston es gratis para una persona, sin tarjeta y con margen de sobra para explorar. Alcanza para poner agentes a hacer trabajo real y sentir el valor. Cuando quieras sumar a tu equipo, o necesites uso ilimitado, pasas al plan Equipo.",
           },
           {
             q: "¿Quién paga por un equipo?",
@@ -516,7 +516,7 @@ export default {
           {
             q: "¿Qué pasa cuando termina la prueba?",
             aHtml:
-              "No se borra nada. El espacio vuelve al plan gratis: hasta tres personas y uso limitado. Cada agente y cada misión se quedan donde están. Agrega una tarjeta cuando quieras.",
+              "No se borra nada. El espacio vuelve al plan gratis: todos conservan el acceso y el uso queda limitado. Cada agente y cada misión se quedan donde están. Agrega una tarjeta cuando quieras.",
           },
           {
             q: "¿Los miembros descargan o pagan?",
