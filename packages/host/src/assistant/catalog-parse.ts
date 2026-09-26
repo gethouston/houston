@@ -42,7 +42,6 @@ const RouteEnvelope = Type.Object({
 /** The live lists the host can resolve a value against (AssistantEntityCollection). */
 const EntityCollection = Type.Union([
   Type.Literal("agents"),
-  Type.Literal("teams"),
   Type.Literal("workspaces"),
   Type.Literal("members"),
   Type.Literal("invites"),

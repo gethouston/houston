@@ -40,7 +40,7 @@ test("a caller that already knows lands on that path's own first screen", () => 
 });
 
 test("a choice with one answer is not a screen", () => {
-  // A plain member on a C13 host may create teams but not agents.
+  // A plain member of a team space may create groups but not agents.
   const teamOnly = createFlowShape("choose", gates({ canCreateAgent: false }));
   assert.equal(teamOnly.first, "team");
   assert.equal(teamOnly.offersAdd, false);

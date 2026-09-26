@@ -46,7 +46,6 @@ let skillReads = 0;
 const deps = () =>
   ({
     agents: async () => REACHABLE,
-    teams: async () => [],
     workspaces: async () => [],
     members: async () => [
       { userId: "u1", name: "Jules", email: "jules@test.dev" },

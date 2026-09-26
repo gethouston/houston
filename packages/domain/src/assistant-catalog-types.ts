@@ -3,7 +3,6 @@ import type { AssistantHands } from "./assistant-hands";
 /** Collections supported by the host's pinned EntityDirectory contract. */
 export type AssistantEntityCollection =
   | "agents"
-  | "teams"
   | "workspaces"
   | "members"
   | "invites"

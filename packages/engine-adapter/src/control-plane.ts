@@ -24,8 +24,6 @@ export type {
   AgentMoveStart,
   AgentMoveStatus,
   AgentSettings,
-  AgentTeam,
-  AgentTeamMember,
   ApiKey,
   ApiKeyCreated,
   AuditEntry,

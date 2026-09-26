@@ -1,11 +1,10 @@
 /**
- * Wire types for the PER-AGENT half of the teams family (Teams v2): who may
- * drive one shared agent, the toolkit and model ceilings a manager sets on it,
- * the acting user's own model pick underneath that ceiling, and whether its
- * routine triggers are live.
+ * Wire types for the teams family (Teams v2): who may drive one shared agent,
+ * the toolkit and model ceilings a manager sets on it, the acting user's own
+ * model pick underneath that ceiling, and whether its routine triggers are
+ * live.
  *
- * The team directory itself is in `./types`. `AgentAccess`/`AgentAssignment`
- * come from the agents module — one shared agent's access level is the same
+ * `AgentAccess`/`AgentAssignment` come from the agents module — one shared agent's access level is the same
  * value whether an agent list or a team assignment carries it.
  */
 

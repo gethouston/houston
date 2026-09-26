@@ -45,12 +45,12 @@ const SLUG: AssistantOperationParam = {
   schema: Type.String(),
   source: "listSkills",
 };
-const TEAM_ID: AssistantOperationParam = {
-  name: "teamId",
+const WORKSPACE_ID: AssistantOperationParam = {
+  name: "workspaceId",
   required: true,
   schema: Type.String(),
-  source: "listAgentTeams",
-  resolver: "teams",
+  source: "listWorkspaces",
+  resolver: "workspaces",
 };
 const COLOR: AssistantOperationParam = {
   name: "color",
@@ -78,18 +78,22 @@ describe("sourceGuidance", () => {
   });
 
   test("leaves out what Houston resolves, so no lookup call is asked for", () => {
-    expect(sourceGuidance(op([TEAM_ID, SLUG]))).toContain(
+    expect(sourceGuidance(op([WORKSPACE_ID, SLUG]))).toContain(
       '"slug" from listSkills',
     );
-    expect(sourceGuidance(op([TEAM_ID, SLUG]))).not.toContain("teamId");
-    expect(sourceGuidance(op([TEAM_ID]))).toBe("");
+    expect(sourceGuidance(op([WORKSPACE_ID, SLUG]))).not.toContain(
+      "workspaceId",
+    );
+    expect(sourceGuidance(op([WORKSPACE_ID]))).toBe("");
   });
 });
 
 describe("resolutionGuidance", () => {
   test("says a resolved parameter takes the id or the exact name", () => {
-    const text = resolutionGuidance(op([TEAM_ID, SLUG]));
-    expect(text).toContain('Houston resolves "teamId" against what exists');
+    const text = resolutionGuidance(op([WORKSPACE_ID, SLUG]));
+    expect(text).toContain(
+      'Houston resolves "workspaceId" against what exists',
+    );
     expect(text).toContain("pass the id, or the exact name the user gave you");
     expect(text).toContain("refused with the ones that do");
   });

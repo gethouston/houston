@@ -64,9 +64,6 @@ export function localEntityDirectory(
   };
   return {
     agents,
-    teams: async () => {
-      throw new UnsupportedEntityCollectionError("teams");
-    },
     members: async () => {
       throw new UnsupportedEntityCollectionError("team members");
     },

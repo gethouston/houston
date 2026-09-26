@@ -20,7 +20,6 @@
  */
 
 export * from "./state-activities";
-export * from "./state-agent-teams";
 export * from "./state-agents";
 export * from "./state-history";
 export * from "./state-integrations";

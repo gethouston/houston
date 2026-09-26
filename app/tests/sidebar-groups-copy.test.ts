@@ -9,16 +9,6 @@ import esTeams from "../src/locales/es/teams.json" with { type: "json" };
 import pt from "../src/locales/pt/shell.json" with { type: "json" };
 import ptTeams from "../src/locales/pt/teams.json" with { type: "json" };
 
-// Read rather than imported: the bundle's top-level `arguments` key is not a
-// legal ESM binding name.
-function approvals(lang: "en" | "es" | "pt"): Record<string, string> {
-  const url = new URL(
-    `../src/locales/${lang}/assistant-approvals.json`,
-    import.meta.url,
-  );
-  return JSON.parse(readFileSync(url, "utf8")).operations;
-}
-
 // The group rail's copy must speak the product's own words in every locale:
 // "empleados de IA" / "funcionários de IA", and the "space" the folder moves to.
 describe("sidebar group copy", () => {
@@ -47,12 +37,6 @@ describe("sidebar group copy", () => {
 
   it("spells ícono with its accent in Spanish", () => {
     doesNotMatch(JSON.stringify([es, esTeams]), /\b[Ii]conos?\b/);
-  });
-
-  it("names org teams with one word per locale in the approvals", () => {
-    match(approvals("en").updateAgentTeam, /\bteam\b/);
-    match(approvals("es").updateAgentTeam, /\bequipo\b/);
-    match(approvals("pt").updateAgentTeam, /\btime\b/);
   });
 
   // The limit is inclusive: a 60-character name saves.

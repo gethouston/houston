@@ -39,8 +39,7 @@ describe("entitySourceFor", () => {
         "workspaceId",
         "listWorkspaces",
       ],
-      ["/v1/org/teams/{teamId}/members/{userId}", "userId", "getOrgPeople"],
-      ["/v1/org/teams/{teamId}", "teamId", "listAgentTeams"],
+      ["/v1/org/members/{userId}", "userId", "getOrgPeople"],
       ["/v1/orgs/{slug}", "slug", "listOrgs"],
       ["/v1/keys/{id}", "id", "listApiKeys"],
       ["/v1/agents/{agentSlugOrId}/move/{moveId}", "moveId", "moveAgent"],
@@ -132,8 +131,7 @@ describe("entityRuleFor", () => {
   it("hands the host the live list each collection resolves against", () => {
     const cases: [string, string, string][] = [
       ["/agents/{id}", "id", "agents"],
-      ["/v1/org/teams/{teamId}", "teamId", "teams"],
-      ["/v1/org/teams/{teamId}/members/{userId}", "userId", "members"],
+      ["/v1/org/members/{userId}", "userId", "members"],
       ["/v1/org/invites/{inviteId}", "inviteId", "invites"],
       ["/v1/org-invites/{inviteId}/accept", "inviteId", "invites"],
       [
@@ -184,9 +182,9 @@ describe("entityRuleFor", () => {
     expect(
       entityRuleFor(
         "target",
-        at("/v1/things", { bodyFields: { teamId: "target" } }),
+        at("/v1/things", { bodyFields: { inviteId: "target" } }),
       )?.collection,
-    ).toBe("teams");
+    ).toBe("invites");
     expect(
       entityRuleFor("who", at("/v1/things", { query: { userId: "who" } }))
         ?.collection,
@@ -201,7 +199,7 @@ describe("entityRuleFor", () => {
 
 describe("namesEntity", () => {
   it("reads an identifier from its spelling or from its path segment", () => {
-    expect(namesEntity("teamId", null)).toBe(true);
+    expect(namesEntity("inviteId", null)).toBe(true);
     expect(namesEntity("toSlug", null)).toBe(true);
     expect(namesEntity("ids", null)).toBe(true);
     expect(

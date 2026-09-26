@@ -16,18 +16,7 @@ import type {
   AgentModelChoice,
   AgentSettingsUpdate,
 } from "./policy-types";
-import {
-  type AgentTeamInput,
-  type AgentTeamPatch,
-  TeamsCommand,
-} from "./types";
-
-/** A required boolean off an untrusted command payload. */
-function requireBoolean(payload: unknown, key: string): boolean {
-  const value = field(payload, key);
-  if (typeof value !== "boolean") throw new Error(`missing '${key}'`);
-  return value;
-}
+import { TeamsCommand } from "./types";
 
 /**
  * A required object off an untrusted command payload, as `T`.
@@ -58,34 +47,7 @@ export function registerTeamsCommands(
   module: TeamsModule,
 ): void {
   const agent = (p: unknown) => requireString(p, "agentSlugOrId");
-  const team = (p: unknown) => requireString(p, "teamId");
 
-  ctx.registerCommand(TeamsCommand.List, () => module.listAgentTeams());
-  ctx.registerCommand(TeamsCommand.Create, (p) =>
-    module.createAgentTeam(requireObject<AgentTeamInput>(p, "input")),
-  );
-  ctx.registerCommand(TeamsCommand.Update, (p) =>
-    module.updateAgentTeam(team(p), requireObject<AgentTeamPatch>(p, "patch")),
-  );
-  ctx.registerCommand(TeamsCommand.Delete, (p) =>
-    module.deleteAgentTeam(team(p)),
-  );
-  ctx.registerCommand(TeamsCommand.ListMembers, (p) =>
-    module.listAgentTeamMembers(team(p)),
-  );
-  ctx.registerCommand(TeamsCommand.RemoveMember, (p) =>
-    module.removeAgentTeamMember(team(p), requireString(p, "userId")),
-  );
-  ctx.registerCommand(TeamsCommand.SetMemberOwner, (p) =>
-    module.setAgentTeamMemberOwner(
-      team(p),
-      requireString(p, "userId"),
-      requireBoolean(p, "owner"),
-    ),
-  );
-  ctx.registerCommand(TeamsCommand.SetAgentTeam, (p) =>
-    module.setAgentTeam(agent(p), team(p)),
-  );
   ctx.registerCommand(TeamsCommand.SetAssignments, (p) =>
     module.setAgentAssignments(
       agent(p),

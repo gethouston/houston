@@ -172,17 +172,9 @@ Confirmation means Houston asks the user and mints a receipt for that exact call
 | `getAssistant` | GET | unconfirmed: read-only HTTP GET | the assistant IS this agent, so where it lives tells it nothing it can act on. | none |
 | `getCapabilities` | GET | unconfirmed: read-only HTTP GET | visible | none |
 | `reportPresence` | POST | unconfirmed: A foreground heartbeat only updates activity time. | presence means the person opened the app; an assistant reporting it would keep their routines from pausing. | none |
-| `createAgentTeam` | POST | unconfirmed: Creates an empty team without moving agents or adding other members. | visible | input: free text |
-| `deleteAgentTeam` | DELETE | confirmed: host approval required | visible | teamId: resolved:teams |
 | `getAgentSettings` | GET | unconfirmed: read-only HTTP GET | visible | agentSlugOrId: resolved:agents |
-| `listAgentTeamMembers` | GET | unconfirmed: read-only HTTP GET | visible | teamId: resolved:teams |
-| `listAgentTeams` | GET | unconfirmed: read-only HTTP GET | visible | none |
-| `removeAgentTeamMember` | DELETE | confirmed: host approval required | visible | teamId: resolved:teams; userId: resolved:members |
 | `setAgentAssignments` | PUT | confirmed: host approval required | visible | agentSlugOrId: resolved:agents; assignments: resolved:members |
 | `setAgentSettings` | PUT | confirmed: host approval required | visible | agentSlugOrId: resolved:agents; settings: free text |
-| `setAgentTeam` | PUT | confirmed: host approval required | visible | agentSlugOrId: resolved:agents; teamId: resolved:teams |
-| `setAgentTeamMemberOwner` | PUT | confirmed: host approval required | visible | teamId: resolved:teams; userId: resolved:members; owner: free text |
-| `updateAgentTeam` | PATCH | confirmed: host approval required | visible | teamId: resolved:teams; patch: free text |
 | `getHostSidebarLayout` | GET | unconfirmed: read-only HTTP GET | A person's sidebar folders are arranged by drag and drop in the app. | workspaceId: resolved:workspaces |
 | `listWorkspaces` | GET | unconfirmed: read-only HTTP GET | visible | none |
 | `putHostSidebarLayout` | PUT | unconfirmed: withheld from dispatch | A person's sidebar folders are arranged by drag and drop in the app. | workspaceId: resolved:workspaces; layout: free text |

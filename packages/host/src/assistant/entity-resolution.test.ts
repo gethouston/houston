@@ -50,7 +50,6 @@ const REACHABLE: ReachableAgent[] = [
 const deps = (agents: readonly ReachableAgent[] = REACHABLE) =>
   ({
     agents: async () => agents,
-    teams: async () => [],
     workspaces: async () => [],
     members: async () => [],
     invites: async () => [],
@@ -227,7 +226,6 @@ describe("resolveEntityParams", () => {
 
 const directory = () => ({
   ...deps(),
-  teams: async () => [{ id: "t1", name: "Design" }],
   workspaces: async () => [{ id: "w1", name: "Studio" }],
   members: async () => [
     { userId: "u1", name: "Jules", email: "jules@test.dev" },
@@ -254,13 +252,13 @@ const directory = () => ({
 describe("every collection resolves against its live list", () => {
   test.each<[string, ParamSpec[], Record<string, unknown>, unknown]>([
     [
-      "a team and a person, by name and by address",
+      "a workspace and a person, by name and by address",
       [
-        ["teamId", "teams"],
+        ["workspaceId", "workspaces"],
         ["userId", "members"],
       ],
-      { teamId: "design", userId: "JULES@test.dev" },
-      { teamId: "t1", userId: "u1" },
+      { workspaceId: "studio", userId: "JULES@test.dev" },
+      { workspaceId: "w1", userId: "u1" },
     ],
     [
       "an invite, by the address it was sent to",
@@ -323,54 +321,61 @@ describe("every collection resolves against its live list", () => {
   });
 
   test("rejects an unknown name with the complete accepted list", async () => {
-    const op = operation("fixture", [["teamId", "teams"]], null);
+    const op = operation("fixture", [["workspaceId", "workspaces"]], null);
     const out = await resolveEntityParams(
       op,
-      { teamId: "guessed" },
+      { workspaceId: "guessed" },
       directory(),
     );
     expect(out).toMatchObject({ ok: false, code: "unknown_entity" });
-    if (!out.ok) expect(out.message).toContain("Design (id t1)");
+    if (!out.ok) expect(out.message).toContain("Studio (id w1)");
   });
 
   test("says so when the list is empty rather than accepting the guess", async () => {
-    const op = operation("fixture", [["teamId", "teams"]], null);
-    const out = await resolveEntityParams(op, { teamId: "Design" }, deps());
+    const op = operation("fixture", [["workspaceId", "workspaces"]], null);
+    const out = await resolveEntityParams(
+      op,
+      { workspaceId: "Studio" },
+      deps(),
+    );
     expect(out).toMatchObject({ ok: false, code: "unknown_entity" });
     if (!out.ok) expect(out.message).toContain("there are none yet");
   });
 
   test("refuses ambiguity with candidate ids, and takes an explicit id", async () => {
-    const op = operation("fixture", [["teamId", "teams"]], null);
+    const op = operation("fixture", [["workspaceId", "workspaces"]], null);
     const duplicate = {
       ...directory(),
-      teams: async () => [
-        { id: "t1", name: "Design" },
-        { id: "t2", name: "DESIGN" },
+      workspaces: async () => [
+        { id: "w1", name: "Studio" },
+        { id: "w2", name: "STUDIO" },
       ],
     };
-    const out = await resolveEntityParams(op, { teamId: "design" }, duplicate);
+    const out = await resolveEntityParams(
+      op,
+      { workspaceId: "studio" },
+      duplicate,
+    );
     expect(out).toMatchObject({ ok: false, code: "ambiguous_entity" });
     if (!out.ok) {
-      expect(out.message).toContain("Design (id t1)");
-      expect(out.message).toContain("DESIGN (id t2)");
+      expect(out.message).toContain("Studio (id w1)");
+      expect(out.message).toContain("STUDIO (id w2)");
     }
-    expect(await resolveEntityParams(op, { teamId: "t2" }, duplicate)).toEqual({
-      ok: true,
-      params: { teamId: "t2" },
-    });
+    expect(
+      await resolveEntityParams(op, { workspaceId: "w2" }, duplicate),
+    ).toEqual({ ok: true, params: { workspaceId: "w2" } });
   });
 
   test("propagates a directory failure instead of resolving against nothing", async () => {
-    const op = operation("fixture", [["teamId", "teams"]], null);
+    const op = operation("fixture", [["workspaceId", "workspaces"]], null);
     const broken = {
       ...directory(),
-      teams: async () => {
+      workspaces: async () => {
         throw new Error("gateway 503");
       },
     };
     await expect(
-      resolveEntityParams(op, { teamId: "Design" }, broken),
+      resolveEntityParams(op, { workspaceId: "Studio" }, broken),
     ).rejects.toThrow("gateway 503");
   });
 
@@ -387,7 +392,6 @@ describe("every collection resolves against its live list", () => {
 });
 
 describe("colour values", () => {
-  const createTeam = operation("createAgentTeam", ["input"]);
   const setColor = operation("updateAgentColor", [
     ["agentId", "agents"],
     "color",
@@ -400,8 +404,8 @@ describe("colour values", () => {
     "",
   ])("accepts %s as a colour Houston can store", async (color) => {
     expect(
-      await resolveEntityParams(createTeam, { input: { color } }, deps()),
-    ).toEqual({ ok: true, params: { input: { color } } });
+      await resolveEntityParams(setColor, { agentId: "Legal", color }, deps()),
+    ).toEqual({ ok: true, params: { agentId: "a-legal", color } });
   });
 
   test.each([
@@ -411,33 +415,15 @@ describe("colour values", () => {
     7,
   ])("refuses %s and names the palette", async (color) => {
     const out = await resolveEntityParams(
-      createTeam,
-      { input: { name: "Design", color } },
+      setColor,
+      { agentId: "Legal", color },
       deps(),
     );
     expect(out).toMatchObject({ ok: false, code: "invalid_params" });
     if (!out.ok) {
-      expect(out.message).toContain('"input.color"');
+      expect(out.message).toContain('"color"');
       expect(out.message).toContain("charcoal");
       expect(out.message).toContain("umber");
     }
-  });
-
-  test("checks a colour passed as a parameter of its own", async () => {
-    const out = await resolveEntityParams(
-      setColor,
-      { agentId: "Legal", color: "neon" },
-      deps(),
-    );
-    expect(out).toMatchObject({ ok: false, code: "invalid_params" });
-    if (!out.ok) expect(out.message).toContain('"color"');
-  });
-
-  test("leaves a body object without a colour alone", async () => {
-    const params = { input: { name: "Design", icon: "star" } };
-    expect(await resolveEntityParams(createTeam, params, deps())).toEqual({
-      ok: true,
-      params,
-    });
   });
 });

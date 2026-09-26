@@ -169,9 +169,4 @@ export const OPERATION_CASES: readonly DiscoverabilityCase[] = [
     request: "Move Dobby into my consulting space.",
     operations: ["moveAgent"],
   },
-  {
-    id: "team-members",
-    request: "Who is on the marketing team?",
-    operations: ["listAgentTeamMembers"],
-  },
 ];

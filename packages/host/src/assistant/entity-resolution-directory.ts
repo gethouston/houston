@@ -14,8 +14,6 @@ export async function directoryEntries(
   scope: string,
 ): Promise<readonly Entry[]> {
   switch (collection) {
-    case "teams":
-      return directory.teams();
     case "workspaces":
       return directory.workspaces();
     case "members":

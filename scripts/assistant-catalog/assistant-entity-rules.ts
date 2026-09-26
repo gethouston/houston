@@ -24,7 +24,7 @@ import { FIELD_SOURCES } from "./assistant-field-rules.ts";
 export interface EntityRule {
   /**
    * The literal path segment a placeholder must directly follow for this rule
-   * to claim it. `/v1/org/teams/{teamId}` -> `teams`.
+   * to claim it. `/v1/org/invites/{inviteId}` -> `invites`.
    */
   after?: string;
   /**
@@ -101,12 +101,6 @@ export const ENTITY_SOURCES: readonly EntityRule[] = [
     discovery: "listOrgs",
     unlisted:
       "The directory covers one organization, so read another one's slug from listOrgs.",
-  },
-  {
-    after: "teams",
-    names: ["teamId"],
-    discovery: "listAgentTeams",
-    collection: "teams",
   },
   {
     after: "members",

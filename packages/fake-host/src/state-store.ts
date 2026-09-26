@@ -92,8 +92,6 @@ export type FakeCapabilities = Capabilities & {
   teams?: boolean;
   spaces?: boolean;
   computeUsage?: boolean;
-  /** The gateway's flag for the org agent-team routes, advertised verbatim. */
-  agentTeams?: boolean;
 };
 
 /**
@@ -131,66 +129,8 @@ export type OrgRole = "owner" | "admin" | "user";
  */
 export const SELF_USER_ID = "u-self";
 
-/**
- * The active space's display name — what `GET /v1/org` serves and the name the
- * C13 default team is minted with (it is "named after the org"). One constant
- * so the two can never drift apart.
- */
+/** The active space's display name — what `GET /v1/org` serves. */
 export const FAKE_ORG_NAME = "Acme";
-
-/**
- * What the gateway mints a PERSONAL space's default team from: the caller's
- * email local-part (`PersonalOrgName` + `DefaultAgentTeamName` in the cloud
- * store). The e2e viewer signs in as `you@acme.test`, so its personal seed is
- * "you" — which is what lets the client's untouched-default detection
- * (`personalDefaultTeamSeed`) fire against this fake exactly as it does against
- * the real gateway.
- */
-export const FAKE_PERSONAL_TEAM_NAME = "you";
-
-/**
- * One C13 agent team as the fake STORES it: the durable columns only. The three
- * fields the client actually renders (`joined`, `owner`, `memberCount`) plus
- * `agentSlugs` are the CALLER's effective values, resolved per read in
- * `state-agent-teams.ts` and never stored — the same split the gateway keeps.
- */
-export interface FakeAgentTeam {
-  id: string;
-  name: string;
-  isDefault: boolean;
-  sortOrder: number;
-  /**
-   * The team's visual identity (C13 §Team identity), both OPTIONAL in the
-   * strict sense: an unset field is ABSENT from the row and therefore from the
-   * wire, never stored as `""`. "Unset" tells the client to render its own
-   * default, which is a different instruction from "render this empty string",
-   * so the two are never collapsed. `""` reaches the fake only as the CLEAR on
-   * a PATCH, where it deletes the field rather than being written.
-   */
-  icon?: string;
-  color?: string;
-  /**
-   * The team's shared CONTEXT (C13 §Team context): prose every agent of the
-   * team is given before it starts a turn. A plain TEXT COLUMN with an empty
-   * default, not an identity field — so unlike `icon`/`color` the wire ALWAYS
-   * carries it (`""` when unwritten), and `""` is an ordinary value rather than
-   * a CLEAR. The absence of the key on the wire is reserved for a gateway that
-   * predates the column, which is what the client feature-detects on; the row
-   * stores it only once something has been written.
-   */
-  context?: string;
-}
-
-/**
- * One EXPLICIT membership row (`gateway.team_memberships`). Implicit ownership
- * — an org owner/admin owns every team — is resolved at permission-check time
- * and NEVER written here, which is exactly what keeps a role change from
- * leaving stale team ownership behind.
- */
-export interface FakeAgentTeamMember {
-  userId: string;
-  owner: boolean;
-}
 
 /**
  * The caller's own display profile as `GET`/`PUT /v1/me/profile` serve it. The
@@ -516,35 +456,6 @@ export interface HostState {
   spaceInvites: FakeSpaceInvite[];
   /** Monotonic counter for minted team-space slugs (`POST /v1/orgs`). */
   teamSeq: number;
-  /**
-   * The active space's C13 agent teams. Empty (the default) = none minted yet:
-   * the first teams READ mints the default team lazily and idempotently, named
-   * after the org, exactly as the gateway does for an org that predates the
-   * migration. Armed wholesale by `/__test__/agent-teams`.
-   */
-  agentTeams: FakeAgentTeam[];
-  /**
-   * teamId -> its EXPLICIT membership rows. The default team never holds any
-   * (everyone belongs to it implicitly), which is why both member writes on it
-   * are refused with `400 default_team`.
-   */
-  agentTeamMembers: Map<string, FakeAgentTeamMember[]>;
-  /**
-   * agentId -> the team it belongs to. An ABSENT entry resolves to the default
-   * team, mirroring the NULL `agents.team_id` the gateway reads that way: no
-   * agent is ever teamless, and deleting a team needs no sweep.
-   */
-  agentTeamOf: Map<string, string>;
-  /**
-   * C13 personal space: a space with exactly one human in it. It groups agents
-   * with teams like any other space (the real list, create/patch/delete and the
-   * agent move all allowed); only join and the two member writes answer
-   * `403 personal_space`. Armed by `/__test__/agent-teams`
-   * `{personalSpace:true}`.
-   */
-  personalSpace: boolean;
-  /** Monotonic counter for minted agent-team ids (`POST /v1/org/teams`). */
-  agentTeamSeq: number;
   /** connectionId -> the acting user's connected account. */
   connections: Map<string, IntegrationConnection>;
   /** Per-user preference key -> value (locale, timezone, …). */
@@ -622,11 +533,6 @@ function freshState(): HostState {
     teamWorkspaces: [],
     spaceInvites: [],
     teamSeq: 0,
-    agentTeams: [],
-    agentTeamMembers: new Map(),
-    agentTeamOf: new Map(),
-    personalSpace: false,
-    agentTeamSeq: 0,
     connections,
     preferences: new Map(),
     sidebarLayouts: new Map(),

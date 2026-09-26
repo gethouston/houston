@@ -171,8 +171,6 @@ export interface Capabilities {
   computeUsage?: boolean;
   /** C19 personal plan is configured on this deployment. */
   plan?: boolean;
-  /** Whether this deployment serves the agent-team membership routes. */
-  agentTeams?: boolean;
   /**
    * Whether this deployment can delete a team space (`DELETE /v1/orgs/:slug`,
    * PRODUCT-1410). A feature-detect flag the frontend reads to show the
@@ -295,58 +293,6 @@ export interface OrgPerson {
   userId: string;
   displayName?: string;
   photoUrl?: string;
-}
-
-/**
- * One team inside the active space (C13): a named group of agents and the
- * people who subscribed to it. `joined`, `owner` and `memberCount` are the
- * CALLER's EFFECTIVE values, resolved server-side — never raw membership rows,
- * so an org owner/admin reads `owner: true` on every team and everyone reads
- * `joined: true` on the default one.
- */
-export interface AgentTeam {
-  id: string;
-  name: string;
-  /** The space's catch-all team: undeletable, and everyone belongs to it. */
-  isDefault: boolean;
-  sortOrder: number;
-  /**
-   * The agents of this team the CALLER may see. Role-filtered server-side (the
-   * same C7 v2 matrix `GET /agents` obeys), so it is the caller's VIEW of the
-   * team's roster, never the whole of it.
-   */
-  agentSlugs: string[];
-  /** Explicit membership rows, except on the default team, where it is the
-   *  space's member count (everyone is in it and it holds no rows). */
-  memberCount: number;
-  joined: boolean;
-  owner: boolean;
-  /** The team's glyph NAME (`^[a-z0-9-]{1,32}$`), never an image. ABSENT when
-   *  unset — the vocabulary is the client's, the gateway validates shape only. */
-  icon?: string;
-  /** `#rrggbb` or a theme token name. ABSENT when unset. */
-  color?: string;
-  /**
-   * The team's shared CONTEXT: prose every agent of the team is given before it
-   * starts a turn. Unlike {@link AgentTeam.icon}/{@link AgentTeam.color} this is
-   * a plain text column with an empty default, so a gateway that supports it
-   * always serves the key (`""` when nobody has written one). Its ABSENCE is
-   * therefore the feature detection: a gateway that predates the column omits
-   * it, and the client hides the editor rather than offering a write the
-   * gateway would 400 and an injection no agent would ever see.
-   */
-  context?: string;
-}
-
-/**
- * One EXPLICIT membership row of a team. Implicit owners (an org owner/admin,
- * who owns every team) are a permission rule, not a roster entry, and are
- * deliberately absent here — never derive `joined`/`owner` for the caller from
- * this list; read them off {@link AgentTeam}.
- */
-export interface AgentTeamMember {
-  userId: string;
-  owner: boolean;
 }
 
 /**

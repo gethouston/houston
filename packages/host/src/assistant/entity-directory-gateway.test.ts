@@ -8,7 +8,6 @@ test("gateway directory reads every entity family with the acting identity", asy
       { id: "assistant", name: "Assistant" },
       { id: "dobby", name: "Dobby", workspaceId: "Houston" },
     ],
-    "/v1/org/teams": [{ id: "t", name: "Sales" }],
     "/v1/workspaces": [{ id: "w", name: "Work" }],
     "/v1/org/people": [{ userId: "u", displayName: "Alice" }],
     "/v1/org/invites": [{ id: "i", email: "alice@example.test" }],
@@ -40,7 +39,6 @@ test("gateway directory reads every entity family with the acting identity", asy
     agentId: "assistant",
   });
   expect((await directory.agents()).map((a) => a.agent.id)).toEqual(["dobby"]);
-  expect(await directory.teams()).toEqual([{ id: "t", name: "Sales" }]);
   expect(await directory.workspaces()).toEqual([{ id: "w", name: "Work" }]);
   expect(await directory.members()).toEqual([{ userId: "u", name: "Alice" }]);
   expect(await directory.invites()).toEqual([
@@ -61,7 +59,7 @@ test("gateway directory reads every entity family with the acting identity", asy
     { id: "a", name: "Research", sessionKey: "activity-a" },
     { id: "b", name: "Welcome", sessionKey: "welcome-xyz" },
   ]);
-  expect(fetchImpl).toHaveBeenCalledTimes(9);
+  expect(fetchImpl).toHaveBeenCalledTimes(8);
 });
 
 test.each([
