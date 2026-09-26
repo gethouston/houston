@@ -2,6 +2,10 @@ import { existsSync, mkdirSync } from "node:fs";
 import { migrateAgentLayouts } from "../migrate/agent-layout";
 import { reseedAgentSchemas } from "../migrate/agent-schemas";
 import { migrateChatHistory } from "../migrate/chat-history";
+import {
+  isEnginePod,
+  sweepGatewayGroupNotes,
+} from "../migrate/gateway-group-notes";
 import { sweepLegacySetupDirectives } from "../migrate/legacy-setup-directive";
 import { backfillRoutineCreatedBy } from "../migrate/routine-created-by";
 import { migrateSidebarLayout } from "../migrate/sidebar-layout";
@@ -58,6 +62,13 @@ export async function runHostMigrations(
       severityLog("[local-host] sidebar layout migration failed", error);
     }
   }
+  await sweepGatewayGroupNotes({
+    enginePod: isEnginePod(opts),
+    store,
+    vfs,
+    paths,
+    log: severityLog,
+  });
   // One-time, idempotent migration of the pre-v0.4 FLAT `.houston/` layout
   // into the per-type folders the domain reads (ported from the Rust
   // engine's migrate_agent_data). Runs BEFORE the watcher so migrated files

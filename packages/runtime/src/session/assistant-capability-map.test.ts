@@ -126,7 +126,7 @@ const handsSentence = (index: string): string | undefined =>
  * person somewhere its own Houston cannot open.
  */
 test("a desktop preamble names only the screens this Houston has", () => {
-  expect(DESKTOP_UNSERVED).toHaveLength(55);
+  expect(DESKTOP_UNSERVED).toHaveLength(47);
   const sentence = handsSentence(map([...DESKTOP_UNSERVED]));
   expect(sentence).toBe(
     "Some things are the person's own to do and are not in this list: connecting an app; giving an app its own key; signing in to an AI provider; files on their device. Hand those over with request_connection, request_credential, request_provider_connection or request_hands_on.",

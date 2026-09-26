@@ -14,8 +14,6 @@ import type { ReachableAgent } from "../routes/reachable-agents";
 export interface EntityDirectory {
   /** Agents the acting user may address, never the assistant itself. */
   agents(): Promise<readonly ReachableAgent[]>;
-  /** Agent teams in the active org. */
-  teams(): Promise<readonly NamedEntity[]>;
   /** Workspaces (spaces) the acting user belongs to. */
   workspaces(): Promise<readonly NamedEntity[]>;
   /** People in the active org, by user id. */

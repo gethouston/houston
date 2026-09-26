@@ -612,21 +612,6 @@
     "classification": "sdk"
   },
   {
-    "pattern": "/v1/org/teams",
-    "methods": [
-      "GET",
-      "POST"
-    ],
-    "classification": "sdk"
-  },
-  {
-    "pattern": "/v1/org/teams/{teamId}/members",
-    "methods": [
-      "GET"
-    ],
-    "classification": "sdk"
-  },
-  {
     "pattern": "/v1/org/usage",
     "methods": [
       "GET"
@@ -732,14 +717,6 @@
   },
   {
     "pattern": "/v1/org/members/{userId}",
-    "methods": [
-      "PATCH",
-      "DELETE"
-    ],
-    "classification": "sdk"
-  },
-  {
-    "pattern": "/v1/org/teams/{teamId}",
     "methods": [
       "PATCH",
       "DELETE"
@@ -1216,24 +1193,9 @@
     "classification": "sdk"
   },
   {
-    "pattern": "/v1/agents/{slug}/team",
-    "methods": [
-      "PUT"
-    ],
-    "classification": "sdk"
-  },
-  {
     "pattern": "/v1/me/routines/keep",
     "methods": [
       "PUT"
-    ],
-    "classification": "sdk"
-  },
-  {
-    "pattern": "/v1/org/teams/{teamId}/members/{userId}",
-    "methods": [
-      "PUT",
-      "DELETE"
     ],
     "classification": "sdk"
   }

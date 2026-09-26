@@ -3,9 +3,8 @@
  * toolkit and model ceilings a manager sets on it, the acting user's own model
  * pick underneath that ceiling, and whether its routine triggers are live.
  *
- * Gateway-only, like the team directory in `./http`: assignments and ceilings
- * are multiplayer concepts a single-user host has nothing to resolve them
- * against. Nothing here degrades — a non-2xx always throws a `TeamsHttpError`
+ * Gateway-only: assignments and ceilings are multiplayer concepts a
+ * single-user host has nothing to resolve them against. Nothing here degrades — a non-2xx always throws a `TeamsHttpError`
  * carrying the HTTP `status`, so the two surfaces a pre-Teams gateway answers
  * `404` for (model choice, trigger status) reach their caller, which decides
  * for itself whether that hides a control or is a failure.

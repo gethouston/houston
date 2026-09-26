@@ -43,7 +43,6 @@ import { FirstDayMixin } from "./client/first-day-mixin";
 import { IntegrationsMixin } from "./client/integrations-mixin";
 import { MeProfileMixin } from "./client/me-profile-mixin";
 import type { BaseCtor } from "./client/mixin";
-import { OrgTeamsMixin } from "./client/org-teams-mixin";
 import { OrgsMixin } from "./client/orgs-mixin";
 import { PlanMixin } from "./client/plan-mixin";
 import { PortableMixin } from "./client/portable-mixin";
@@ -71,7 +70,6 @@ export const MIXINS = [
   PortableMixin,
   ApiKeysMixin,
   TeamsMixin,
-  OrgTeamsMixin,
   BillingMixin,
   PlanMixin,
   ChannelsMixin,

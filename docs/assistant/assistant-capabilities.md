@@ -152,17 +152,9 @@ Calling an operation returns the host's raw response. Where the adapter function
 
 ## teams
 
-- `createAgentTeam`: Creates a team in this space.
-- `deleteAgentTeam`: Deletes a team. **Confirmation required.**
 - `getAgentSettings`: Reads which apps and AI models an agent is allowed to use.
-- `listAgentTeamMembers`: Lists the people who joined a team.
-- `listAgentTeams`: Lists the teams of people and agents in this space.
-- `removeAgentTeamMember`: Removes someone from a team, or leaves it. **Confirmation required.**
 - `setAgentAssignments`: Chooses who may use an agent, and at what access level. **Confirmation required.**
 - `setAgentSettings`: Chooses which apps and AI models an agent is allowed to use. **Confirmation required.**
-- `setAgentTeam`: Moves an agent into another team in this space. **Confirmation required.**
-- `setAgentTeamMemberOwner`: Gives someone ownership of a team, or takes it away. **Confirmation required.**
-- `updateAgentTeam`: Renames a team, reorders it, restyles it, or updates the notes it shares. **Confirmation required.**
 
 ## workspaces
 

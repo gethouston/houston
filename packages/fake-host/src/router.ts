@@ -20,7 +20,6 @@ import {
 import { SEED_AGENT_ID } from "./config";
 import { CORS, json } from "./http";
 import { handleAgents } from "./routes";
-import { handleAgentTeamsRoutes } from "./routes-agent-teams";
 import { handleUserRoutes } from "./routes-integrations";
 import { handleMeRoutes } from "./routes-me";
 import {
@@ -276,25 +275,6 @@ export async function handle(req: Request): Promise<Response> {
       agents: state.listAgents(),
     });
   }
-  // Arm the org agent-team world `GET /v1/org/teams` serves: `{ teams: [{ id,
-  // name, isDefault?, sortOrder?, icon?, color?, agentIds?, members? }],
-  // personalSpace? }`. Omit `icon`/`color` to arm a team that HAS no identity —
-  // the field is then absent from the row, and so from the wire.
-  // Arming REPLACES it wholesale; an omitted (or `null`) `teams` clears it back
-  // to lazy, so the next read mints the default team again. Only route-level
-  // specs read this world; the app's sidebar reads `SidebarLayout`. Returns
-  // the armed value.
-  if (path === "/__test__/agent-teams" && method === "POST") {
-    const body = await parseBody(req);
-    return json(
-      state.armAgentTeams(
-        Array.isArray(body?.teams)
-          ? (body.teams as state.AgentTeamSeed[])
-          : null,
-        body?.personalSpace === true,
-      ),
-    );
-  }
   // Arm the team-space rows `GET /v1/workspaces` bridges in (C8 Spaces): each
   // `{ slug, name }` becomes an `{ id:"org:<slug>", kind:"org" }` switcher row,
   // served alongside the always-present personal seed row. A `slug` must be
@@ -420,10 +400,6 @@ export async function handle(req: Request): Promise<Response> {
   // --- Teams v2 gateway routes (agent + org settings / allowlist ceilings) ---
   const teamsRoute = handleTeamsRoutes(method, segs, body, url);
   if (teamsRoute) return teamsRoute;
-
-  // --- C13 agent teams (the space's teams of agents + people) ---
-  const agentTeamsRoute = handleAgentTeamsRoutes(method, segs, body);
-  if (agentTeamsRoute) return agentTeamsRoute;
 
   // --- C8 Spaces gateway routes (the cross-org list + the invitee's inbox) ---
   const spacesRoute = handleSpacesRoutes(method, segs, body);

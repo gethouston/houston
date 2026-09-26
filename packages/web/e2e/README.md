@@ -200,12 +200,6 @@ inbox and can force a per-invite `needs_upgrade` / `already_member` /
 `{ spaces:true }`, because the sidebar cards are capability-gated on the client
 (`team-invites.spec.ts`).
 
-**Org-team route arming.** `POST /__test__/agent-teams`
-(`{ teams: [{ id, name, isDefault?, sortOrder?, agentIds?, members? }],
-personalSpace? }`) arms the server-owned team world `GET /v1/org/teams` serves —
-who is in each team, which agents it holds, and who owns it. Only route-level
-specs (`@houston/fake-host` `server.test.ts`) read it; pair it with
-`/__test__/org` `{ agents, members }`.
 The personal rail reads `SidebarLayout` groups. Its "+" offers New AI Employee
 and New group, and one New AI Employee row closes the root list outside every
 folder; `sidebar-teams.spec.ts` checks folder actions and row placement, and

@@ -2,7 +2,7 @@
  * The hosted gateway's client-facing multiplayer surface: the routes the app
  * reaches that `packages/host` will never serve, each with what it is for.
  *
- * Multiplayer is not a host concept. Spaces, members, roles, teams, per-agent
+ * Multiplayer is not a host concept. Spaces, members, roles, per-agent
  * access policy, API keys, billing and the routes that move a pod between
  * namespaces exist because `cloud` runs many tenants; `packages/host` serves
  * one workspace and has nothing to answer with. Each family here has its SDK
@@ -49,15 +49,7 @@ export const GATEWAY_ONLY_ROUTES: Readonly<Record<string, string>> = {
   "GET /v1/agents/{slug}/move/{moveId}":
     "polls that migration until the agent answers in its new space",
 
-  // ---- teams + per-agent policy ----
-  "GET /v1/org/teams": "the space's team directory",
-  "POST /v1/org/teams": "creates a team inside the space",
-  "PATCH /v1/org/teams/{teamId}": "renames or restyles a team",
-  "DELETE /v1/org/teams/{teamId}": "deletes a team",
-  "GET /v1/org/teams/{teamId}/members": "who is on a team",
-  "PUT /v1/org/teams/{teamId}/members/{userId}": "makes a member a team owner",
-  "DELETE /v1/org/teams/{teamId}/members/{userId}": "takes a member off a team",
-  "PUT /v1/agents/{slug}/team": "files an agent under a team",
+  // ---- per-agent policy ----
   "PUT /v1/agents/{slug}/assignments": "who may use an agent, and as what",
   "GET /v1/agents/{slug}/settings":
     "the toolkit/model allowlist an admin set for an agent",

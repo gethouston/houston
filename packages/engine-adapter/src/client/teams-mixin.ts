@@ -8,8 +8,7 @@ import { viaSdk } from "./sdk-error";
  * toolkits and models it may use, and whether its triggers are live. The
  * gateway's `/v1/agents/:id/{assignments,settings,model-choice,trigger-status}`
  * family, delegated to `sdk.teams` (`packages/sdk/src/modules/teams`). The
- * org-wide roster and its usage reads are {@link OrgsMixin}; the team directory
- * itself is {@link OrgTeamsMixin}.
+ * org-wide roster and its usage reads are {@link OrgsMixin}.
  *
  * The SDK never softens a failure, so the two degradations this family has live
  * here: a gateway that serves no model choices and one that serves no triggers

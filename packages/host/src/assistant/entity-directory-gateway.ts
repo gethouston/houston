@@ -70,7 +70,6 @@ export function gatewayEntityDirectory(
             createdAt: 0,
           },
         })),
-    teams: () => read("/v1/org/teams", namedEntity),
     workspaces: () => read("/v1/workspaces", namedEntity),
     members: () => read("/v1/org/people", memberEntity),
     invites: () => read("/v1/org/invites", inviteEntity),

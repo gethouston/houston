@@ -26,9 +26,8 @@ export interface SidebarCreateLabels {
  * When both choices are available, its menu opens the corresponding form
  * directly. A sole available choice opens that form with one press.
  *
- * With nothing to create it renders nothing at all: a plain member on a
- * gateway that predates C13 may create neither an agent nor a group, and the
- * band keeps its label and drops the control.
+ * With nothing to create it renders nothing at all: the band keeps its label
+ * and drops the control.
  *
  * The button wears the library's OWN affordance treatment, imported rather
  * than restated: it sits in a `SidebarRowButton`'s affordance slot beside a

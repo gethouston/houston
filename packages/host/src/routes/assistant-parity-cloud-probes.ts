@@ -13,13 +13,10 @@ import {
  * fact, "and here is why that is correct" is the contract.
  */
 const AGENT = { agentSlugOrId: PROBE_AGENT };
-const NO_TEAM = { teamId: "no-such-team" };
 const NO_USER = { userId: "no-such-user" };
 const NO_INVITE = { inviteId: "no-such-invite" };
 
 const SPACES = "spaces and their membership exist only on the hosted gateway";
-const TEAMS =
-  "teams group agents for teammates, which a single-user host has none of";
 const PER_AGENT_POLICY = "manager-set per-agent policy is a Teams surface";
 const API_KEYS = "personal API keys authenticate against the hosted public API";
 const CHANNELS =
@@ -93,19 +90,7 @@ export const CLOUD_ONLY_PROBES: readonly CloudOnlyProbe[] = [
     "the record of who did what is written by the gateway that authorizes them",
   ),
 
-  // Teams, and the per-agent ceilings a manager sets through them.
-  cloudOnly("listAgentTeams", TEAMS),
-  cloudOnly("createAgentTeam", TEAMS, { input: { name: "Probe" } }),
-  cloudOnly("updateAgentTeam", TEAMS, { ...NO_TEAM, patch: {} }),
-  cloudOnly("deleteAgentTeam", TEAMS, NO_TEAM),
-  cloudOnly("listAgentTeamMembers", TEAMS, NO_TEAM),
-  cloudOnly("removeAgentTeamMember", TEAMS, { ...NO_TEAM, ...NO_USER }),
-  cloudOnly("setAgentTeamMemberOwner", TEAMS, {
-    ...NO_TEAM,
-    ...NO_USER,
-    owner: false,
-  }),
-  cloudOnly("setAgentTeam", TEAMS, { ...AGENT, teamId: "no-such-team" }),
+  // The per-agent ceilings a manager sets on a shared agent.
   cloudOnly("setAgentAssignments", PER_AGENT_POLICY, {
     ...AGENT,
     assignments: [],

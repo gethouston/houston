@@ -27,7 +27,6 @@ function context(gatewayFronted = true): AssistantOperationCtx {
     agents: empty,
     directory: {
       agents: empty,
-      teams: empty,
       workspaces: empty,
       members: empty,
       invites: empty,
