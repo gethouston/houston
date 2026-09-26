@@ -26,6 +26,7 @@
     "@houston/host": "workspace:*",
     "@houston/protocol": "workspace:*",
     "@houston/runtime-client": "workspace:*",
+    "@houston/wire-types": "workspace:*",
     "fflate": "0.8.3"
   },
   "devDependencies": {

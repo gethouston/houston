@@ -23,6 +23,7 @@ import type events from "../locales/en/events.json";
 import type integrations from "../locales/en/integrations.json";
 import type legal from "../locales/en/legal.json";
 import type migration from "../locales/en/migration.json";
+import type plan from "../locales/en/plan.json";
 import type portable from "../locales/en/portable.json";
 import type providers from "../locales/en/providers.json";
 import type routines from "../locales/en/routines.json";
@@ -56,6 +57,7 @@ declare module "react-i18next" {
       integrations: typeof integrations;
       migration: typeof migration;
       portable: typeof portable;
+      plan: typeof plan;
       context: typeof context;
       teams: typeof teams;
       agentOnboarding: typeof agentOnboarding;

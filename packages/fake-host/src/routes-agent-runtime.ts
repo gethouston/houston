@@ -9,6 +9,7 @@ import type { ProviderId } from "@houston/runtime-client";
 import { cancelChat, openChatStream, sendMessage } from "./chat";
 import { json, noContent } from "./http";
 import { apiKeyProviderSpec } from "./provider-catalog";
+import { planMessageRefusal } from "./routes-plan";
 import * as state from "./state";
 
 export function handleCredential(
@@ -84,15 +85,20 @@ export function handleConversations(
         messages: state.getHistory(id, cid),
       });
     if (method === "POST")
-      return sendMessage(
-        id,
-        cid,
-        String(body?.text ?? ""),
-        typeof body?.nonce === "string" ? body.nonce : undefined,
-        typeof body?.displayText === "string" ? body.displayText : undefined,
-        // The @mention sidecar, through the SAME wire guard the real send
-        // routes use — the mock can't drift on what a mention is.
-        parseMentions(body?.mentions),
+      // An armed C19 weekly limit refuses the turn at the gateway, before it
+      // ever reaches the runtime.
+      return (
+        planMessageRefusal() ??
+        sendMessage(
+          id,
+          cid,
+          String(body?.text ?? ""),
+          typeof body?.nonce === "string" ? body.nonce : undefined,
+          typeof body?.displayText === "string" ? body.displayText : undefined,
+          // The @mention sidecar, through the SAME wire guard the real send
+          // routes use — the mock can't drift on what a mention is.
+          parseMentions(body?.mentions),
+        )
       );
   }
   if (action === "cancel") {

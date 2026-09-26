@@ -182,6 +182,7 @@ import { integrationsSupported } from "./integrations/model";
 import { NewMissionPickerDialog } from "./new-mission-picker-dialog";
 import { ProviderSwitchDialog } from "./provider-switch-dialog";
 import { SelectedSkillChip } from "./selected-skill-chip";
+import { usePlanComposerState } from "./shell/plan-composer-state";
 import { ProviderErrorCard } from "./shell/provider-error-card";
 import {
   continuesTaskAfterReconnect,
@@ -1981,8 +1982,11 @@ export function useAgentChatPanel({
     approvalCopy,
     t,
   ]);
-  const composerOverride = composerOverrideState.node;
-  const composerOverrideMode = composerOverrideState.mode;
+  const planComposer = usePlanComposerState();
+  const composerOverride = planComposer.limit ?? composerOverrideState.node;
+  const composerOverrideMode = planComposer.limit
+    ? "replace"
+    : composerOverrideState.mode;
   // The archived surfaces take only the offers — the mode IS the distinction:
   // "above" is the offers-beside-a-live-composer shape (and the nothing-pending
   // shape, whose node is undefined anyway), "replace" is a blocking stepper or
@@ -2226,16 +2230,19 @@ export function useAgentChatPanel({
   // for callers who receive it (owner / agent-managers).
   const composerHeader = useMemo<AIBoardProps["composerHeader"]>(() => {
     if (!agent) return undefined;
-    if (!activeSkill) return undefined;
+    if (!activeSkill && !planComposer.hint) return undefined;
     return (
       <div className="flex flex-col gap-1.5">
-        <SelectedSkillChip
-          skill={activeSkill}
-          onCancel={() => setActiveSkill(null)}
-        />
+        {activeSkill && (
+          <SelectedSkillChip
+            skill={activeSkill}
+            onCancel={() => setActiveSkill(null)}
+          />
+        )}
+        {planComposer.hint}
       </div>
     );
-  }, [agent, activeSkill]);
+  }, [agent, activeSkill, planComposer.hint]);
 
   const chatEmptyState = useMemo<AIBoardProps["chatEmptyState"]>(() => {
     if (!agent) return undefined;

@@ -353,7 +353,9 @@ pub fn run() {
                 let handle = app.handle().clone();
                 app.deep_link().on_open_url(move |event| {
                     for url in event.urls() {
-                        if auth::is_auth_callback_deep_link(url.as_str()) {
+                        if auth::is_auth_callback_deep_link(url.as_str())
+                            || auth::is_plan_settings_deep_link(url.as_str())
+                        {
                             auth::emit_deep_link(&handle, url.as_str());
                         }
                     }

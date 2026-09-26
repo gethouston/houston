@@ -464,6 +464,9 @@ importers:
       '@houston/runtime-client':
         specifier: workspace:*
         version: link:../runtime-client
+      '@houston/wire-types':
+        specifier: workspace:*
+        version: link:../wire-types
       fflate:
         specifier: 0.8.3
         version: 0.8.3
@@ -659,6 +662,9 @@ importers:
       '@houston/runtime-client':
         specifier: workspace:*
         version: link:../runtime-client
+      '@houston/wire-types':
+        specifier: workspace:*
+        version: link:../wire-types
     devDependencies:
       '@houston/fake-host':
         specifier: workspace:*

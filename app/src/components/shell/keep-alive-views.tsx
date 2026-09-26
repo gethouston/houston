@@ -52,7 +52,8 @@ export function KeepAliveViews({
       // contract — but a synthetic Escape also dismisses pills, popovers, and
       // inline edits, so only fire it when we are actually leaving a kept-alive
       // screen while a modal overlay holds the page (Radix marks that state by
-      // disabling pointer events on <body>).
+      // disabling pointer events on <body>). Shell-level dialogs that must
+      // outlive navigation ignore it (`user-dismissal.ts`).
       const leftKeptAliveScreen = enabled.has(previousActiveId.current);
       const modalOpen = document.body.style.pointerEvents === "none";
       if (leftKeptAliveScreen && modalOpen) {

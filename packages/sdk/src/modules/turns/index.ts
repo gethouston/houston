@@ -172,6 +172,7 @@ export {
   isNotConnectedError,
   isStoppedByUser,
   isTurnRunningRejection,
+  messageLimitRefusal,
   TURN_FAILED_MESSAGE,
   turnErrorMessage,
 } from "./turn-errors";

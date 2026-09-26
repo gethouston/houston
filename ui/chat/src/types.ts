@@ -175,6 +175,13 @@ export interface TokenUsage {
  */
 export type ProviderError =
   | {
+      kind: "plan_message_limit";
+      provider: string;
+      resets_at: string;
+      message: string;
+      credential?: ProviderErrorCredential;
+    }
+  | {
       kind: "rate_limited";
       provider: string;
       model: string | null;

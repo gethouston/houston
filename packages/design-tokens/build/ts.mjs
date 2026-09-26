@@ -98,6 +98,8 @@ export function buildTs(light, dark, palettes) {
     "",
     `export const space = ${strLit(scale(light, "space"))} as const;`,
     "",
+    `export const layout = ${strLit(scale(light, "layout"))} as const;`,
+    "",
     `export const radius = ${strLit(scale(light, "radius"))} as const;`,
     "",
     "/** Responsive boundaries as CSS dimension strings (media-query authoring). */",

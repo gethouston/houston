@@ -25,6 +25,7 @@ import { useEffect } from "react";
 import { queryKeys } from "../../lib/query-keys";
 import { UnauthenticatedCard } from "./provider-error-cards/auth";
 import {
+  PlanMessageLimitCard,
   RateLimitedCard,
   UsageLimitPausedCard,
 } from "./provider-error-cards/limits";
@@ -81,12 +82,18 @@ export function ProviderErrorCard({
       queryKey: queryKeys.providerStatuses(),
     });
   }, [error.kind, queryClient]);
+  useEffect(() => {
+    if (error.kind === "plan_message_limit")
+      void queryClient.invalidateQueries({ queryKey: queryKeys.plan() });
+  }, [error.kind, queryClient]);
   // Cancellation has no UI surface; feed-to-messages should drop it
   // before we get here, but guard defensively in case it ever sneaks
   // through (e.g. resumed sessions reading from history).
   if (error.kind === "cancelled") return null;
 
   switch (error.kind) {
+    case "plan_message_limit":
+      return <PlanMessageLimitCard error={error} />;
     case "rate_limited":
       return (
         <RateLimitedCard

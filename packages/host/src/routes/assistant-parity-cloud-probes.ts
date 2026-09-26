@@ -25,6 +25,11 @@ const API_KEYS = "personal API keys authenticate against the hosted public API";
 const CHANNELS =
   "the gateway holds the Slack app's credentials and receives its events, so a messaging connection exists only there";
 
+const PERSONAL_PLAN =
+  "the personal plan (usage limit, Plus) is metered and billed by the hosted gateway";
+const PLAN_ROUTINES =
+  "the plan's routine limits are enforced by the hosted control plane's scheduler";
+
 export const CLOUD_ONLY_PROBES: readonly CloudOnlyProbe[] = [
   // The space itself, and who is in it.
   cloudOnly("getOrg", SPACES),
@@ -60,6 +65,21 @@ export const CLOUD_ONLY_PROBES: readonly CloudOnlyProbe[] = [
     interval: "monthly",
   }),
   cloudOnly("createPortal", "billing is a hosted-subscription concern"),
+
+  // The personal plan (C19): limits and Plus are metered and billed by the gateway.
+  cloudOnly("getPlan", PERSONAL_PLAN),
+  cloudOnly("createPlusCheckout", PERSONAL_PLAN),
+  cloudOnly("createPlusPortal", PERSONAL_PLAN),
+  cloudOnly("listPlusInvoices", PERSONAL_PLAN),
+  cloudOnly("dismissPlanAnnouncement", PERSONAL_PLAN),
+  cloudOnly("reportPresence", PERSONAL_PLAN),
+  cloudOnly("listPlanRoutines", PLAN_ROUTINES),
+  cloudOnly("keepRoutine", PLAN_ROUTINES, {
+    orgSlug: "no-such-org",
+    agentSlug: "no-such-agent",
+    routineId: "no-such-routine",
+  }),
+  cloudOnly("resumeRoutines", PLAN_ROUTINES),
   cloudOnly("orgUsage", "usage is metered by the gateway that bills for it", {
     days: 1,
   }),

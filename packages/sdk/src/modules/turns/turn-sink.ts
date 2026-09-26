@@ -1,9 +1,16 @@
 import type { PendingInteraction, WireFrame } from "@houston/runtime-client";
+import type { MessageLimitRefusal } from "@houston/wire-types";
 import type { TerminalBoardStatus } from "./feed-output";
 import { presettleFromHistory, reloadAndSettle } from "./settle-from-history";
 import { applyTurnFrame } from "./turn-frames";
 import { classifyFrame, classifyRunningSync } from "./turn-identity";
-import { finishErr, newTurnState, push, type TurnState } from "./turn-settle";
+import {
+  finishErr,
+  finishPlanLimit,
+  newTurnState,
+  push,
+  type TurnState,
+} from "./turn-settle";
 import type { TurnSinkOptions } from "./turn-sink-options";
 
 export type { TurnSinkOptions } from "./turn-sink-options";
@@ -90,6 +97,9 @@ export class TurnSink {
   /** The send failed / stream broke before a terminal frame: settle as error. */
   fail(msg: string): void {
     finishErr(this.s, msg);
+  }
+  planLimit(refusal: MessageLimitRefusal): void {
+    finishPlanLimit(this.s, refusal);
   }
   /**
    * Verdict on an ambiguous send: settle as an error UNLESS evidence arrived

@@ -21,6 +21,7 @@ import { DetailPanelProvider } from "./detail-panel-context";
 import { KeepAliveViews } from "./keep-alive-views";
 import { MobileMoreMenu } from "./mobile-more-menu";
 import { MobileNavBar } from "./mobile-nav-bar";
+import { PlanLifecycle } from "./plan-lifecycle";
 import { ShellPanelCard } from "./shell-panel-card";
 import { Sidebar } from "./sidebar";
 import { TeamStatusBanner } from "./team-status-banner";
@@ -50,6 +51,7 @@ export function WorkspaceShell({
   toasts,
   onDismissToast,
 }: WorkspaceShellProps) {
+  // Personal plan prompts and presence stay mounted across app views.
   useSettingsLanding();
   useAssistantLanding();
   const missionPanelOpen = useUIStore((s) => s.missionPanelOpen);
@@ -162,6 +164,7 @@ export function WorkspaceShell({
         <MobileNewMissionSheet />
         <AddToWorkspaceSheet />
         <AgentWarmingDialog />
+        <PlanLifecycle />
         <ImportAgentWizard />
         <CommandPalette />
         <ShortcutCheatsheet />

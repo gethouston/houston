@@ -3,6 +3,7 @@ import type {
   ProviderError,
   TokenUsage,
 } from "@houston/runtime-client";
+import type { MessageLimitRefusal } from "@houston/wire-types";
 import type { FeedOutput, TerminalBoardStatus } from "./feed-output";
 import type { EngineNoticeKind } from "./turn-errors";
 import { isNotConnectedError, isStoppedByUser } from "./turn-errors";
@@ -194,6 +195,19 @@ export function finishErr(
   }
   s.output.sessionStatus(s.agentPath, s.sessionKey, "error", msg);
   s.terminal = "error";
+}
+
+/** A gateway plan refusal is a handled, typed card; the send never reached the engine. */
+export function finishPlanLimit(
+  s: TurnState,
+  refusal: MessageLimitRefusal,
+): void {
+  settleProviderErrorCard(s, {
+    kind: "plan_message_limit",
+    provider: "",
+    resets_at: refusal.resetsAt,
+    message: refusal.error,
+  });
 }
 
 /**

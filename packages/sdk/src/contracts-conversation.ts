@@ -49,6 +49,7 @@ export {
   isStoppedByUser,
   isTurnRunningRejection,
   MultiplexFeedOutput,
+  messageLimitRefusal,
   observeConversation,
   type PendingInteraction,
   type QueuedMessageVM,

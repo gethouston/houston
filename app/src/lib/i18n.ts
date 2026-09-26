@@ -27,6 +27,7 @@ import eventsEn from "../locales/en/events.json";
 import integrationsEn from "../locales/en/integrations.json";
 import legalEn from "../locales/en/legal.json";
 import migrationEn from "../locales/en/migration.json";
+import planEn from "../locales/en/plan.json";
 import portableEn from "../locales/en/portable.json";
 import providersEn from "../locales/en/providers.json";
 import routinesEn from "../locales/en/routines.json";
@@ -51,6 +52,7 @@ import eventsEs from "../locales/es/events.json";
 import integrationsEs from "../locales/es/integrations.json";
 import legalEs from "../locales/es/legal.json";
 import migrationEs from "../locales/es/migration.json";
+import planEs from "../locales/es/plan.json";
 import portableEs from "../locales/es/portable.json";
 import providersEs from "../locales/es/providers.json";
 import routinesEs from "../locales/es/routines.json";
@@ -75,6 +77,7 @@ import eventsPt from "../locales/pt/events.json";
 import integrationsPt from "../locales/pt/integrations.json";
 import legalPt from "../locales/pt/legal.json";
 import migrationPt from "../locales/pt/migration.json";
+import planPt from "../locales/pt/plan.json";
 import portablePt from "../locales/pt/portable.json";
 import providersPt from "../locales/pt/providers.json";
 import routinesPt from "../locales/pt/routines.json";
@@ -155,6 +158,7 @@ const resources = {
     integrations: integrationsEn,
     migration: migrationEn,
     portable: portableEn,
+    plan: planEn,
     context: contextEn,
     teams: teamsEn,
     agentOnboarding: agentOnboardingEn,
@@ -181,6 +185,7 @@ const resources = {
     integrations: integrationsEs,
     migration: migrationEs,
     portable: portableEs,
+    plan: planEs,
     context: contextEs,
     teams: teamsEs,
     agentOnboarding: agentOnboardingEs,
@@ -207,6 +212,7 @@ const resources = {
     integrations: integrationsPt,
     migration: migrationPt,
     portable: portablePt,
+    plan: planPt,
     context: contextPt,
     teams: teamsPt,
     agentOnboarding: agentOnboardingPt,
@@ -255,6 +261,7 @@ void i18n
       "integrations",
       "migration",
       "portable",
+      "plan",
       "context",
       "teams",
       "agentOnboarding",

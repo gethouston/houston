@@ -1,8 +1,10 @@
+import { freeScheduleAllowed } from "@houston/sdk";
 import { useTranslation } from "react-i18next";
 import {
   useRoutineWritesForAnyAgent,
   useUpdateActivityForAnyAgent,
 } from "../../../hooks/queries";
+import { usePlan } from "../../../hooks/queries/use-plan";
 import { analytics } from "../../../lib/analytics";
 import { genericErrorDescription } from "../../../lib/error-report";
 import { useUIStore } from "../../../stores/ui";
@@ -39,6 +41,8 @@ export function useTeamRoutineActions(
   drafts: TeamRoutineDraftsList,
 ): TeamRoutineActions {
   const { t } = useTranslation("routines");
+  const { t: planT } = useTranslation("plan");
+  const { data: plan } = usePlan();
   const addToast = useUIStore((s) => s.addToast);
   const { update, remove, runNow, cancelRun } = useRoutineWritesForAnyAgent();
   const updateActivity = useUpdateActivityForAnyAgent();
@@ -61,6 +65,10 @@ export function useTeamRoutineActions(
     // Inline cron edit from the row: the same update route every other routine
     // write uses (`schedule` clears any trigger binding server-side).
     onScheduleChange: (key, cron) => {
+      if (!freeScheduleAllowed(cron, plan)) {
+        addToast({ title: planT("shortInterval") });
+        return;
+      }
       const to = target(key);
       if (to) update.mutate({ ...to, updates: { schedule: cron } });
     },

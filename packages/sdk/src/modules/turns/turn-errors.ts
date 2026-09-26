@@ -1,4 +1,36 @@
 import { EngineError, FatalResumeError } from "@houston/runtime-client";
+import {
+  type MessageLimitRefusal,
+  parseMessageLimitRefusal,
+} from "@houston/wire-types";
+
+/**
+ * The C19 `message_limit` refusal behind any failed call, or null. Every
+ * transport carries the 429 differently: the runtime client's `EngineError`
+ * keeps the body as text, the SDK REST families keep it as the message, and
+ * the adapter's `HoustonEngineError` holds it parsed. A turn start, a routine
+ * Run now and a mission start all read it through here.
+ */
+export function messageLimitRefusal(
+  error: unknown,
+): MessageLimitRefusal | null {
+  const cause = error instanceof FatalResumeError ? error.cause : error;
+  if (!(cause instanceof Error)) return null;
+  const { status, body } = cause as { status?: unknown; body?: unknown };
+  if (status !== 429) return null;
+  if (typeof body === "string") return parseText(body);
+  return body === undefined
+    ? parseText(cause.message)
+    : parseMessageLimitRefusal(body);
+}
+
+function parseText(text: string): MessageLimitRefusal | null {
+  try {
+    return parseMessageLimitRefusal(JSON.parse(text));
+  } catch {
+    return null;
+  }
+}
 
 /**
  * Turn error classification — pure string helpers shared by the sink, settles,

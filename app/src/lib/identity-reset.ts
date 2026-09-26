@@ -8,6 +8,7 @@ import { useWorkspaceStore } from "../stores/workspaces";
 import { sliceCoverage } from "./all-conversations-coverage";
 import { setActiveOrg } from "./engine";
 import { resetQueryCacheForIdentityChange } from "./identity-cache-reset";
+import { resetPlanSessionForIdentityChange } from "./plan-session";
 import { queryClient } from "./query-client";
 
 /**
@@ -15,7 +16,7 @@ import { queryClient } from "./query-client";
  * different account signs in, or the current one signs out (HOU-903).
  *
  * The gateway is the sole tenancy enforcer and never serves cross-tenant data;
- * this is pure client-side stale memory. Three things outlive an identity swap
+ * this is pure client-side stale memory. Four things outlive an identity swap
  * and must be wiped, or the incoming account inherits the outgoing one's world:
  *
  *  1. The in-memory query cache. Query keys are NOT user-scoped — the gateway
@@ -29,13 +30,16 @@ import { queryClient } from "./query-client";
  *     relaunch (PRODUCT-1235) — see `identity-cache-reset.ts`.
  *  2. The zustand stores. They live outside React and survive the sign-out
  *     unmount, so their agents / workspaces / view state would carry over.
- *  3. The active-space pin (`x-houston-org`). A stale team slug from the
+ *  3. The personal plan's session memory: an outstanding Plus checkout (its
+ *     poll, its window focus, its "You're on Plus") and the presence clock.
+ *  4. The active-space pin (`x-houston-org`). A stale team slug from the
  *     outgoing identity would ride the next account's very first requests and
  *     the gateway would 403 them `not_member`.
  */
 export function resetForIdentityChange(): void {
   resetQueryCacheForIdentityChange(queryClient);
   resetIntegrationGateForIdentityChange();
+  resetPlanSessionForIdentityChange();
   useAgentStore.getState().reset();
   useWorkspaceStore.getState().reset();
   useUIStore.getState().reset();

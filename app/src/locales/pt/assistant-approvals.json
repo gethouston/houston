@@ -10,6 +10,7 @@
     "createApiKey": "Criar uma nova chave de API.",
     "createCheckout": "Iniciar o pagamento que assina um plano pago para este espaço de trabalho.",
     "createOrg": "Criar um espaço compartilhado para convidar seu time.",
+    "createPlusCheckout": "Iniciar uma assinatura Plus paga para seu plano pessoal.",
     "createRoutine": "Criar uma rotina para o funcionário de IA repetir um trabalho em um horário.",
     "createSkill": "Criar uma habilidade que o funcionário de IA pode seguir.",
     "declineOrgInvite": "Recusar este convite para entrar em um espaço compartilhado.",
@@ -28,6 +29,7 @@
     "forgetCredential": "Desconectar este espaço de trabalho da conta de IA.",
     "installAgentFromGithub": "Instalar um funcionário de IA a partir de um repositório do GitHub.",
     "integrations.disconnect": "Desconectar um app externo da sua conta.",
+    "keepRoutine": "Manter esta rotina ativa no plano Grátis. As outras ficam salvas, mas param de executar.",
     "mintRoutineWebhookKey": "Criar uma chave nova para que um serviço externo possa iniciar esta rotina. Qualquer chave anterior para de funcionar.",
     "moveAgent": "Mover este funcionário de IA para um espaço compartilhado para que seu time possa trabalhar com ele.",
     "promoteSharedSkill": "Compartilhar a habilidade do funcionário de IA com todo o espaço de trabalho.",
@@ -38,6 +40,7 @@
     "removeCustomIntegration": "Remover um app externo que você mesmo adicionou.",
     "removeOrgMember": "Remover esta pessoa do espaço.",
     "renameAgent": "Renomear este funcionário de IA.",
+    "resumeRoutines": "Retomar as rotinas pausadas enquanto você estava ausente.",
     "revokeApiKey": "Revogar esta chave de API para sempre. Tudo o que ainda a usa para de funcionar.",
     "runRoutineNow": "Rodar esta rotina agora mesmo em vez de esperar o próximo horário dela.",
     "saveSharedSkill": "Salvar mudanças em uma habilidade compartilhada com o espaço de trabalho, para todo mundo que a usa.",
@@ -123,6 +126,9 @@
     },
     "integrations.disconnect": {
       "toolkit": "app"
+    },
+    "keepRoutine": {
+      "key": "rotina"
     },
     "promoteSharedSkill": {
       "slug": "habilidade"

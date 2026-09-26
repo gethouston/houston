@@ -26,8 +26,11 @@ Confirmation means Houston asks the user and mints a receipt for that exact call
 | `revokeApiKey` | DELETE | confirmed: host approval required | revoking a key is the person's own to do, on the screen that lists their keys. | id: open: API keys are secrets the directory never lists. |
 | `saveAttachments` | POST | unconfirmed: withheld from dispatch | the composer owns this; it frames the files a person dropped on a message, and writeAgentFile is how the assistant puts content into a workspace. | agentId: resolved:agents; scopeId: free text; files: free text |
 | `createCheckout` | POST | confirmed: host approval required | visible | interval: enum |
+| `createPlusCheckout` | POST | confirmed: host approval required | visible | none |
+| `createPlusPortal` | POST | unconfirmed: withheld from dispatch | the URL grants access to a signed-in billing session. | none |
 | `createPortal` | POST | unconfirmed: withheld from dispatch | answers with a live Stripe portal session URL, which is a signed-in billing session for anyone who holds it; the person opens billing from the app instead of being handed a link through a model. | none |
 | `getBilling` | GET | unconfirmed: read-only HTTP GET | visible | none |
+| `listPlusInvoices` | GET | unconfirmed: read-only HTTP GET | visible | none |
 | `completeSlack` | POST | unconfirmed: withheld from dispatch | redeems a one-time bearer ticket that only the browser returning from Slack holds, and passing one through a chat turn is how it leaks. | ticket: free text |
 | `connectSlack` | POST | unconfirmed: withheld from dispatch | answers with an authorization URL that only the person's own browser may open, and whoever finishes in Slack is who the connection would be offered to. | none |
 | `disconnectChannel` | DELETE | confirmed: host approval required | visible | connectionId: open: A messaging account is not a directory entry, so read its connection id from getChannels. |
@@ -128,13 +131,18 @@ Confirmation means Houston asks the user and mints a receipt for that exact call
 | `cancelRoutineRun` | POST | confirmed: host approval required | visible | agentId: resolved:agents; routineId: resolved:routines; runId: open: The directory lists routines, not their runs, so read the run id from listRoutineRuns. |
 | `createRoutine` | POST | confirmed: host approval required | visible | agentId: resolved:agents; input: free text |
 | `deleteRoutine` | DELETE | confirmed: host approval required | visible | agentId: resolved:agents; id: resolved:routines |
+| `keepRoutine` | PUT | confirmed: host approval required | visible | key: free text |
+| `listPlanRoutines` | GET | unconfirmed: read-only HTTP GET | visible | none |
 | `listRoutineRuns` | GET | unconfirmed: read-only HTTP GET | visible | agentId: resolved:agents |
 | `listRoutines` | GET | unconfirmed: read-only HTTP GET | visible | agentId: resolved:agents |
 | `mintRoutineWebhookKey` | POST | confirmed: host approval required | returns a secret; the webhook key is revealed once and calling again rotates it. | agentId: resolved:agents; routineId: resolved:routines |
+| `resumeRoutines` | POST | confirmed: host approval required | visible | none |
 | `runRoutineNow` | POST | confirmed: host approval required | visible | agentId: resolved:agents; id: resolved:routines |
 | `updateRoutine` | PATCH | confirmed: host approval required | visible | agentId: resolved:agents; id: resolved:routines; updates: free text |
+| `dismissPlanAnnouncement` | POST | unconfirmed: This only records that the announcement was seen. | only the person seeing the announcement may dismiss it. | none |
 | `getContext` | GET | unconfirmed: read-only HTTP GET | visible | kind: enum |
 | `getMyProfile` | GET | unconfirmed: read-only HTTP GET | visible | none |
+| `getPlan` | GET | unconfirmed: read-only HTTP GET | visible | none |
 | `getPreference` | GET | unconfirmed: read-only HTTP GET | UI plumbing; an untyped key/value store the app reads for its own device settings. | key: free text |
 | `preferences.setLocale` | PATCH | unconfirmed: Reversible display preference; the app's own language picker changes it with one click. | visible | workspaceId: resolved:workspaces; locale: free text |
 | `setContext` | PUT | confirmed: host approval required | visible | kind: enum; content: free text |
@@ -163,6 +171,7 @@ Confirmation means Houston asks the user and mints a receipt for that exact call
 | `moveAgent` | POST | confirmed: host approval required | visible | agentSlugOrId: resolved:agents; toSlug: open: The directory covers one organization, so read another one's slug from listOrgs. |
 | `getAssistant` | GET | unconfirmed: read-only HTTP GET | the assistant IS this agent, so where it lives tells it nothing it can act on. | none |
 | `getCapabilities` | GET | unconfirmed: read-only HTTP GET | visible | none |
+| `reportPresence` | POST | unconfirmed: A foreground heartbeat only updates activity time. | presence means the person opened the app; an assistant reporting it would keep their routines from pausing. | none |
 | `createAgentTeam` | POST | unconfirmed: Creates an empty team without moving agents or adding other members. | visible | input: free text |
 | `deleteAgentTeam` | DELETE | confirmed: host approval required | visible | teamId: resolved:teams |
 | `getAgentSettings` | GET | unconfirmed: read-only HTTP GET | visible | agentSlugOrId: resolved:agents |

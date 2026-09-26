@@ -63,6 +63,8 @@ e2e/
                     # straight onto the host
     palette.ts      # open the ⌘K command palette (the press retries: the
                     # shortcut listener is attached in an effect)
+    plan.ts         # the C19 personal plan: fixtures, arming, the plan-call
+                    # ledger, the stubbed Stripe opener, the fixed page clock
     run-locked.ts   # run a full Playwright suite under the machine lock — the
                     # `test:e2e` / `test:visual` entry point
     seed.ts         # localStorage + window.__HOUSTON_CP__ primed before any app script
@@ -222,6 +224,16 @@ The seeded catalog (`SEED_TOOLKIT_SLUGS`, exported for specs) holds 15 A-Z apps,
 enough that a tight allowlist blocks past the locked preview cap (8) so the
 "+N more" overflow is exercisable.
 
+**C19 personal plan arming.** `POST /__test__/plan` arms the plan AND its
+capability in one call; `support/plan.ts` holds the fixtures (`freePlan`,
+`plusPlan`, `planRoutine`), reads the host's plan ledger back
+(`planCallCount`), stubs `window.open` so no spec reaches Stripe
+(`stubOpener`, `blocked` = the popup blocker, which surfaces the fallback
+link), and starts the page clock at a fixed instant (`installPlanClock`) so
+the launch copy and the preview-versus-enforced mode are a function of the
+fixture, not the day the suite runs (`plan.spec.ts`, `mobile/plan.spec.ts`,
+`plan-dismissal.spec.ts`).
+
 **Board.** The mission board is files-first: it reads/writes
 `.houston/activity/activity.json` through `/agents/:id/agentfile/*`. The fake host
 backs that with a real in-memory store, seeded with two missions, and unified with
@@ -304,6 +316,7 @@ set a 390×844 viewport per test):
 | Chat conversation (settled reply) | light + dark | `chat.visual.spec.ts` |
 | Chat markdown | light + dark | `chat-markdown.visual.spec.ts` |
 | First-run language gate | one (the flow pins `data-theme="light"` itself) | `onboarding.visual.spec.ts` |
+| Billing (Free with the early offer) + the launch announcement, desktop + phone | light (the announcement pins its own dark frame) | `plan.visual.spec.ts` |
 
 Theme is pinned by setting `data-theme` on `<html>` before the app mounts
 (`visual/support.ts` `pinTheme`) — NOT the `houston.pref.theme` preference: the

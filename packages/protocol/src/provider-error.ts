@@ -82,6 +82,13 @@ export interface ProviderErrorCredential {
  */
 export type ProviderError =
   | {
+      kind: "plan_message_limit";
+      provider: string;
+      resets_at: string;
+      message: string;
+      credential?: ProviderErrorCredential;
+    }
+  | {
       kind: "unauthenticated";
       provider: string;
       cause: AuthFailureCause;
