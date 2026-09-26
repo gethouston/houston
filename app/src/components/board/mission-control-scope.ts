@@ -6,9 +6,10 @@ import type { KanbanItem } from "@houston-ai/board";
  *
  * `scopePaths === undefined` means "every agent in the workspace" — the global
  * Mission Control. An ARRAY (an empty one included) means "only these agent
- * folder paths" — one team's board. The distinction matters: the cross-agent
- * sweep still spans the full roster either way, so every team reads the one
- * warm `all-conversations` query instead of starting its own for its slice.
+ * folder paths" — one employee's board. The distinction matters: the
+ * cross-agent sweep still spans the full roster either way, so every board
+ * reads the one warm `all-conversations` query instead of starting its own
+ * for its slice.
  */
 
 /** Whether a folder path belongs to the board's scope (no scope = everything). */
@@ -46,8 +47,8 @@ export const GLOBAL_MISSION_DRAFT_SCOPE = "mission-control";
 /**
  * The draft scope a board's new-mission composer saves under. The global board
  * keeps the bare scope (unchanged behaviour, and unchanged stored drafts); a
- * team board gets its own, so a first message parked on one team's board never
- * surfaces in another team's composer.
+ * scoped board gets its own, so a first message parked on one employee's board
+ * never surfaces in another employee's composer.
  */
 export function missionControlDraftScope(teamId?: string): string {
   return teamId

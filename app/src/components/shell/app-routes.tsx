@@ -1,4 +1,5 @@
 import type { Toast } from "@houston-ai/core";
+import { AppWorkspace } from "../../app-workspace";
 import type { MigrationReconnectState } from "../../hooks/use-migration-reconnect";
 import type { OnboardingSurveyState } from "../../hooks/use-onboarding-survey";
 import type { OnboardingRoute } from "../../lib/onboarding-route";
@@ -10,7 +11,6 @@ import { OnboardingSurveyScreen } from "../onboarding/survey-screen";
 import { ClaudeBrowserLogin } from "./claude-browser-login";
 import { DisclaimerGate } from "./disclaimer-gate";
 import { ProviderLoginFallback } from "./provider-login-fallback";
-import { WorkspaceShell } from "./workspace-shell";
 
 /**
  * The gate tree App renders once the auth and boot gates have cleared.
@@ -89,14 +89,7 @@ export function AppRoutes({
             }}
           />
         ) : (
-          <>
-            <ProviderLoginFallback />
-            <ClaudeBrowserLogin />
-            <WorkspaceShell
-              toasts={mappedToasts}
-              onDismissToast={dismissToast}
-            />
-          </>
+          <AppWorkspace toasts={mappedToasts} onDismissToast={dismissToast} />
         )}
       </CloudMigrationGate>
     </DisclaimerGate>

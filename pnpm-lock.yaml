@@ -1062,6 +1062,10 @@ importers:
       react-resizable-panels:
         specifier: 4.12.1
         version: 4.12.1(react-dom@19.2.7(react@19.2.7))(react@19.2.7)
+    devDependencies:
+      jsdom:
+        specifier: 29.1.1
+        version: 29.1.1(@noble/hashes@2.2.0)
 
   ui/review:
     dependencies:

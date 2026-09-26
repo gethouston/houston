@@ -413,7 +413,7 @@ describe("startFakeHost", () => {
     expect(initial.status).toBe(200);
     expect(await initial.json()).toEqual({
       groups: [],
-      ungroupedOrder: [],
+      order: [],
     });
 
     // A valid PUT persists and echoes the stored layout.
@@ -421,7 +421,10 @@ describe("startFakeHost", () => {
       groups: [
         { id: "g1", name: "Work", collapsed: false, agentIds: ["a", "b"] },
       ],
-      ungroupedOrder: ["c"],
+      order: [
+        { kind: "agent", id: "c" },
+        { kind: "group", id: "g1" },
+      ],
     };
     const put = await fetch(base, {
       method: "PUT",
@@ -443,6 +446,15 @@ describe("startFakeHost", () => {
       },
     );
     expect(res.status).toBe(400);
+    const oldShape = await fetch(
+      `${host.url}/v1/workspaces/${SEED_WORKSPACE_ID}/sidebar-layout`,
+      {
+        method: "PUT",
+        headers: { "content-type": "application/json" },
+        body: JSON.stringify({ groups: [], ungroupedOrder: [] }),
+      },
+    );
+    expect(oldShape.status).toBe(400);
   });
 
   it("404s a sidebar layout for an unknown workspace", async () => {

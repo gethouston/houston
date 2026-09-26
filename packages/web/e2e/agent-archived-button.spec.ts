@@ -10,18 +10,20 @@ import {
 /**
  * The board's archived-mission control and its reset contract. There is ONE
  * archive — the cross-agent one every board renders — and every board belongs
- * to a team, so all three tests drive the team's. It is a MODE of Tasks: the
- * active toolbar's "Archived" button swaps it in, its own "Back to tasks"
- * swaps it out, and no lozenge of the team's strip names it.
+ * to an employee, so all three tests drive the employee's. It is a MODE of
+ * Tasks: the active toolbar's "Archived" button swaps it in, its own "Back to
+ * tasks" swaps it out, and no lozenge of the employee's strip names it.
  *
- * They pin two different exits. Leaving for another SECTION of the same team
- * unmounts the archive (the sections swap), so coming back has to start on the
- * ACTIVE board. Leaving for another TOP-LEVEL view does not: the team screen is
- * KEPT ALIVE, so it comes back exactly as it was left, archive and all, unless
- * the surface router puts the active board back (`useBoardSurfaceOnNav`). The
- * archive is somewhere you go; it is never somewhere a navigation returns you
- * to.
+ * They pin two different exits. Leaving for another SECTION of the same
+ * employee unmounts the archive (the sections swap), so coming back has to
+ * start on the ACTIVE board. Leaving for another TOP-LEVEL view does not: the
+ * employee screen is KEPT ALIVE, so it comes back exactly as it was left,
+ * archive and all, unless the surface router puts the active board back
+ * (`useBoardSurfaceOnNav`). The archive is somewhere you go; it is never
+ * somewhere a navigation returns you to.
  */
+test.use({ teamBoard: true });
+
 test("the Activity archived button swaps to archived missions and back", async ({
   page,
   request,
@@ -90,7 +92,7 @@ test("leaving the board for another TOP-LEVEL view resets its archived board too
   await expect(screen(page).getByText("Left open")).toBeVisible();
 
   // A genuine TOP-LEVEL navigation and back — the case a section swap cannot
-  // reach. The team screen is kept alive, so nothing unmounts and nothing
+  // reach. The employee screen is kept alive, so nothing unmounts and nothing
   // resets on its own: without the surface router the user returns to the
   // archive they walked away from.
   await page.locator("[data-tour-target='nav-integrations']").click();

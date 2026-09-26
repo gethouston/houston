@@ -1,9 +1,6 @@
 import { navigated, viewFieldsOf } from "../../lib/nav-stack.ts";
-import { TEAM_VIEW_ID } from "../../lib/teams-model.ts";
-import {
-  AGENTS_HOME_VIEW_ID,
-  TEAMS_HOME_VIEW_ID,
-} from "../../lib/top-level-views.ts";
+import { AGENT_VIEW_ID } from "../../lib/teams-model.ts";
+import { AGENTS_HOME_VIEW_ID } from "../../lib/top-level-views.ts";
 import type { NavActions } from "./nav-state.ts";
 import type { UISliceCreator } from "./state.ts";
 
@@ -33,28 +30,14 @@ export const createNavActions: UISliceCreator<NavActions> = (set, get) => ({
   },
   setViewMode: (viewMode, opts) =>
     set((s) => navigated(s, { viewMode, ...noChat }, opts?.nav ?? "push")),
-  openTeamView: (activeTeamId, teamSection, opts) => {
-    const teamAgentFilter = opts?.agentFilter ?? null;
-    const teamAgentFocus =
-      opts?.agentFocus === true && teamAgentFilter !== null;
+  openAgentView: (activeAgentId, agentSection, opts) =>
     set((s) =>
       navigated(
         s,
-        {
-          viewMode: TEAM_VIEW_ID,
-          activeTeamId,
-          teamSection,
-          teamAgentFilter,
-          teamAgentFocus,
-          teamSettingsFocus:
-            !teamAgentFocus && opts?.teamSettingsFocus === true,
-          ...noChat,
-        },
+        { viewMode: AGENT_VIEW_ID, activeAgentId, agentSection, ...noChat },
         opts?.nav ?? "push",
       ),
-    );
-  },
-  setTeamAgentFilter: (teamAgentFilter) => set({ teamAgentFilter }),
+    ),
   // Drilling INTO a section is a new place; back to the index is a
   // "back" (pops when the index is where the user came from).
   setSettingsSection: (settingsSection) =>
@@ -82,14 +65,6 @@ export const createNavActions: UISliceCreator<NavActions> = (set, get) => ({
       ),
     ),
   setAgentsHomeTeamId: (agentsHomeTeamId) => set({ agentsHomeTeamId }),
-  openTeamsHome: (opts) =>
-    set((s) =>
-      navigated(
-        s,
-        { viewMode: TEAMS_HOME_VIEW_ID, ...noChat },
-        opts?.nav ?? "push",
-      ),
-    ),
   openMissionChat: (chatAgentId, chatMissionId, opts) =>
     set((s) =>
       navigated(s, { chatAgentId, chatMissionId }, opts?.nav ?? "push"),

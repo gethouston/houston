@@ -13,11 +13,7 @@
  * never `clientFor(agentId)`. A 401 routes through the shared
  * {@link ModuleContext.authExpiry} notifier, as it does for every module.
  *
- * DEGRADATIONS STAY WITH THE CALLER. A host that predates a route answers 404,
- * and what to do about it differs per surface — the sidebar falls back to this
- * device, the workspace list falls back to the personal row alone. Deciding
- * here would force one of those answers on every surface and hide the status
- * from the one that needed it.
+ * A failed layout call preserves the route error for the caller.
  */
 
 import type { ModuleContext } from "../../module-context";
@@ -43,6 +39,7 @@ import {
 export type {
   SidebarGroup,
   SidebarLayout,
+  SidebarRootEntry,
   Workspace,
   WorkspaceKind,
   WorkspacesCommandType,

@@ -92,12 +92,7 @@ export type FakeCapabilities = Capabilities & {
   teams?: boolean;
   spaces?: boolean;
   computeUsage?: boolean;
-  /**
-   * C13 agent teams. Mirrors the `agentTeams` feature-detect flag on
-   * `@houston/engine-adapter`'s `Capabilities` (gateway-only, like `teams`
-   * and `spaces`, so the host protocol type does not carry it): armed on, the
-   * client swaps its sidebar grouping to the server-owned teams below.
-   */
+  /** The gateway's flag for the org agent-team routes, advertised verbatim. */
   agentTeams?: boolean;
 };
 

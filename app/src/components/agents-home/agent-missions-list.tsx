@@ -51,7 +51,6 @@ export function AgentMissionsList({
   archivedRef,
   onToggleArchived,
   onOpen,
-  onOpenArchived,
 }: {
   sections: AgentMissionSections;
   /** The owning agent's stored colour id, worn by every row's avatar. */
@@ -61,24 +60,20 @@ export function AgentMissionsList({
   archivedOpen: boolean;
   archivedRef: RefObject<HTMLDivElement | null>;
   onToggleArchived: () => void;
+  /** Every row, archived ones included, opens as the pushed chat. */
   onOpen: (mission: AgentHomeConversation) => void;
-  onOpenArchived: (mission: AgentHomeConversation) => void;
 }) {
   const { t } = useTranslation(["shell", "dashboard"]);
   const groups = missionListSections(sections, filter, query);
   const archived =
     filter === "all" ? searchMissions(sections.archived, query) : [];
-  const row = (
-    mission: AgentHomeConversation,
-    status: TaskRowStatus,
-    open: (mission: AgentHomeConversation) => void,
-  ) => (
+  const row = (mission: AgentHomeConversation, status: TaskRowStatus) => (
     <AgentMissionRow
       key={mission.id}
       mission={mission}
       status={status}
       color={agentColor}
-      onOpen={open}
+      onOpen={onOpen}
     />
   );
 
@@ -112,7 +107,7 @@ export function AgentMissionsList({
         >
           <ul>
             {group.missions.map((mission) =>
-              row(mission, SECTION_STATUS[group.id], onOpen),
+              row(mission, SECTION_STATUS[group.id]),
             )}
           </ul>
         </TaskListGroup>
@@ -127,11 +122,7 @@ export function AgentMissionsList({
             onToggle={onToggleArchived}
             dataAttrs={{ "data-testid": "agent-missions-archived-toggle" }}
           >
-            <ul>
-              {archived.map((mission) =>
-                row(mission, "archived", onOpenArchived),
-              )}
-            </ul>
+            <ul>{archived.map((mission) => row(mission, "archived"))}</ul>
           </TaskListGroup>
         </div>
       )}

@@ -12,7 +12,6 @@
  */
 import { cn, Tooltip, TooltipContent, TooltipTrigger } from "@houston-ai/core";
 import { MessageCircle, X } from "lucide-react";
-import type { ReactNode } from "react";
 import { DEFAULT_GRID_LABELS, type RoutinesGridLabels } from "./labels";
 
 export interface RoutineDraftRowProps {
@@ -20,8 +19,6 @@ export interface RoutineDraftRowProps {
   selected?: boolean;
   onResume: () => void;
   onDiscard: () => void;
-  /** OWNER chip beside the draft's label, for a cross-agent list. */
-  ownerChip?: ReactNode;
   labels?: RoutinesGridLabels;
 }
 
@@ -29,7 +26,6 @@ export function RoutineDraftRow({
   selected = false,
   onResume,
   onDiscard,
-  ownerChip,
   labels = DEFAULT_GRID_LABELS,
 }: RoutineDraftRowProps) {
   return (
@@ -63,7 +59,6 @@ export function RoutineDraftRow({
         <p className="truncate text-[13px] font-medium italic text-ink-muted">
           {labels.draftTitle}
         </p>
-        {ownerChip && <span className="shrink-0">{ownerChip}</span>}
       </div>
       <Tooltip>
         <TooltipTrigger asChild>

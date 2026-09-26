@@ -17,6 +17,8 @@ export interface AgentState {
    * gap as a fresh install.
    */
   loaded: boolean;
+  /** Workspace whose roster last settled, including a failed read. */
+  loadedWorkspaceId: string | null;
   loadAgents: (
     workspaceId: string,
     options?: { silent?: boolean },

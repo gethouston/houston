@@ -1,6 +1,7 @@
+import { SIDEBAR_GROUP_NAME_MAX_CODE_POINTS } from "@houston/protocol";
 import { Input } from "@houston-ai/core";
 import { useTranslation } from "react-i18next";
-import { TEAM_NAME_MAX_RUNES } from "../team-view/team-members-model";
+
 import type { TeamIdentityChoices } from "./team-identity";
 import { TeamIdentityPopover } from "./team-identity-popover";
 import { teamNameTooLong } from "./team-identity-save";
@@ -63,7 +64,9 @@ export function TeamIdentityNameRow({
       </div>
       {tooLong && (
         <p className="text-sm text-danger-text">
-          {t("teams:agentTeams.form.tooLong", { max: TEAM_NAME_MAX_RUNES })}
+          {t("teams:agentTeams.form.tooLong", {
+            max: SIDEBAR_GROUP_NAME_MAX_CODE_POINTS,
+          })}
         </p>
       )}
     </>

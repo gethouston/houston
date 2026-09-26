@@ -55,8 +55,6 @@ export interface RoutineRowProps {
    *  routine (`ui/` cannot resolve logos); absent or `null` falls back to a
    *  clock for a schedule, a bell for a trigger. */
   leadingIcon?: (routine: Routine) => ReactNode;
-  /** OWNER chip beside the name, for a cross-agent list (see RoutineRowTitle). */
-  ownerChip?: ReactNode;
   /** WARNING chip beside the name: the surface says this routine cannot run as
    *  configured (e.g. its AI account is disconnected). Omit for none. */
   warningChip?: ReactNode;
@@ -93,7 +91,6 @@ export function RoutineRow({
   onRunNow,
   onStopRun,
   leadingIcon,
-  ownerChip,
   warningChip,
   onScheduleChange,
   labels = DEFAULT_ROW_LABELS,
@@ -150,7 +147,6 @@ export function RoutineRow({
       <div className="min-w-0 flex-1">
         <RoutineRowTitle
           name={routine.name || labels.untitled}
-          ownerChip={ownerChip}
           warningChip={warningChip}
         />
         <RoutineRowSummary

@@ -8,20 +8,13 @@ import {
   openSkillsLibrary,
   skillsRow,
 } from "./support/settings-nav";
-import {
-  navRow,
-  openTeamSettings,
-  openTeamSettingsSection,
-  screen,
-} from "./support/team-nav";
+import { navRow, screen } from "./support/team-nav";
 
 /**
  * C8 Spaces gating (HOU-824 / HOU-878): when the host advertises
  * `capabilities.spaces`, Admin exists in personal and team spaces. A personal
  * space has nobody in it to administer, so Workspace management drops People,
- * Billing and Activity there (`orgTabIds`); the way out of being alone is the
- * TEAM screen's People pane, which wears the shared create-organization face
- * (`teamPeopleFace` → "invite"). The gate is `canSeeOrganization(caps, activeSpaceIsTeam)`
+ * Billing and Activity there (`orgTabIds`). The gate is `canSeeOrganization(caps, activeSpaceIsTeam)`
  * (`app/src/components/organization/org-view-model.ts`), where the active space is
  * a team iff its workspace id is `org:<16-hex>` (`app/src/lib/space-id.ts`).
  *
@@ -92,7 +85,7 @@ async function switchToSpace(page: Page, name: string): Promise<void> {
   await expect(switcher.getByText(name, { exact: true })).toBeVisible();
 }
 
-test("spaces host, personal space: Workspace management drops People, the team offers the invite", async ({
+test("spaces host, personal space: Workspace management drops People", async ({
   page,
   request,
 }) => {
@@ -105,20 +98,6 @@ test("spaces host, personal space: Workspace management drops People, the team o
   // what is left is what one human alone can act on.
   await openAdmin(page);
   await expectAdminSections(page, ["Company context", "Org chart", "Usage"]);
-
-  // The way OUT of being alone still exists, on the surface that is about
-  // people: the team's own People pane wears the create-organization face.
-  await openTeamSettings(page);
-  await openTeamSettingsSection(page, "People");
-  await expect(
-    screen(page).getByText("To invite other people, create an organization."),
-  ).toBeVisible();
-  await screen(page)
-    .getByRole("button", { name: "Create organization" })
-    .click();
-  await expect(
-    page.getByRole("heading", { name: "Create an organization" }),
-  ).toBeVisible();
 });
 
 test("regression: a non-spaces Teams host still shows Admin on the personal workspace", async ({

@@ -1,8 +1,7 @@
 /**
  * Visual-regression baselines for the main shell (sidebar + mission board).
  *
- * The board is Houston's home screen — the FIRST team's Tasks board (there
- * is no global board any more), with the sidebar, titlebar, and the seeded
+ * The board belongs to one AI Employee, with the sidebar, titlebar, and seeded
  * missions. It is fully deterministic under the fake
  * host: two seeded missions with FIXED timestamps (state-store.ts `EPOCH`),
  * and the kanban cards render no relative time (only sort by it), so the whole
@@ -26,12 +25,18 @@ import {
   navItem,
   openPhoneTeamSection,
 } from "../support/mobile-nav";
-import { missionCard, navRow, screen } from "../support/team-nav";
+import { missionCard, navRow } from "../support/team-nav";
 import { pinTheme, THEMES } from "./support";
 
 for (const theme of THEMES) {
   test(`board home — ${theme}`, async ({ page }) => {
     await page.goto("/");
+    await page
+      .locator("[data-sidebar-item]")
+      .first()
+      .getByRole("button")
+      .first()
+      .click();
 
     // Anchor on the shell being fully painted before pinning theme + comparing.
     await expect(navRow(page, "integrations")).toBeVisible();
@@ -48,24 +53,27 @@ for (const theme of THEMES) {
 /**
  * Narrow-width run for the board's screen — the responsive layout is the one
  * most worth guarding against drift. At 640px this is already the phone side
- * of the one breakpoint, so what it guards is the team Tasks LIST at a width
- * the phone baselines below do not cover. Light only: the theme axis is
+ * of the one breakpoint, so what it guards is an employee's task list at a
+ * width the phone baselines below do not cover. Light only: the theme axis is
  * already covered full-width above, and one narrow baseline keeps the matrix
- * lean.
+ * lean. The rows carry a live relative time, so those spans are masked.
  */
 test("board home — narrow", async ({ page }) => {
   await page.setViewportSize({ width: 640, height: 900 });
   await page.goto("/");
 
-  // Below the breakpoint boot lands on the Agents home; this baseline guards
-  // the team Tasks screen's narrow layout, so open it through the Teams tree.
+  // Below the breakpoint boot lands on the AI Employees list; the task list
+  // is one tap into its first employee.
   await openPhoneTeamSection(page, "mission-control", "click");
-  await expect(screen(page).getByText("Plan a trip to Tokyo")).toBeVisible();
-  // The phone list mounts on the isMobile signal a beat after first paint —
-  // anchor on its status filter so the baseline never half-renders.
-  await expect(page.getByTestId("team-task-filter-trigger")).toBeVisible();
+  await expect(
+    page.getByTestId("agent-missions-screen").getByText("Plan a trip to Tokyo"),
+  ).toBeVisible();
+  await page.mouse.move(0, 0);
 
-  await expect(page).toHaveScreenshot("board-narrow.png", { fullPage: true });
+  await expect(page).toHaveScreenshot("board-narrow.png", {
+    fullPage: true,
+    mask: [page.locator("[data-relative-time]")],
+  });
 });
 
 /**
@@ -87,29 +95,6 @@ for (const theme of THEMES) {
     await expect(page).toHaveScreenshot(`mobile-shell-${theme}.png`, {
       fullPage: true,
       mask: [page.locator("[data-relative-time]")],
-    });
-  });
-}
-
-/**
- * The phone team Tasks list: a team's Tasks screen at phone width — the
- * drilled back chip, title and "…" chip, the status segments, and the board's
- * sections as bands of shared task rows carrying their owning agent's helmet.
- * These rows trail an avatar rather than a clock, so no masks.
- */
-for (const theme of THEMES) {
-  test(`mobile team tasks — ${theme}`, async ({ page }) => {
-    await page.setViewportSize({ width: 390, height: 844 });
-    await page.goto("/");
-
-    await openPhoneTeamSection(page, "mission-control", "click");
-    await expect(page.getByTestId("team-task-filter-trigger")).toBeVisible();
-    await expect(page.getByText("Draft the launch email")).toBeVisible();
-    await page.mouse.move(0, 0);
-    await pinTheme(page, theme);
-
-    await expect(page).toHaveScreenshot(`mobile-team-tasks-${theme}.png`, {
-      fullPage: true,
     });
   });
 }
@@ -164,32 +149,6 @@ for (const theme of THEMES) {
     await pinTheme(page, theme);
 
     await expect(page).toHaveScreenshot(`mobile-agent-missions-${theme}.png`, {
-      fullPage: true,
-      mask: [page.locator("[data-relative-time]")],
-    });
-  });
-}
-
-/**
- * The phone's Teams tab root: every team as a tree row with its sections
- * indented under a guide line — flat, gutterless "plane" rows on the one
- * background. Nothing here renders a clock, but the mask is kept so a section
- * row that grows one later cannot silently start drifting the baseline.
- */
-for (const theme of THEMES) {
-  test(`mobile teams home — ${theme}`, async ({ page }) => {
-    await page.setViewportSize({ width: 390, height: 844 });
-    await page.goto("/");
-
-    await navItem(page, "teams").click();
-    await expect(screen(page)).toHaveAttribute("data-screen", "teams-home");
-    await expect(
-      screen(page).getByTestId("teams-home-section").first(),
-    ).toBeVisible();
-    await page.mouse.move(0, 0);
-    await pinTheme(page, theme);
-
-    await expect(page).toHaveScreenshot(`mobile-teams-home-${theme}.png`, {
       fullPage: true,
       mask: [page.locator("[data-relative-time]")],
     });

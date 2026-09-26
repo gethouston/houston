@@ -1,6 +1,6 @@
-import type { CreatedMission } from "../../lib/created-mission-handoff.ts";
 import { isSetupChatMode } from "../../lib/integration-chat-setup.ts";
 import { ARCHIVED_STATUS } from "../../lib/mission-selection.ts";
+import type { TeamSectionId } from "../../lib/team-sections.ts";
 import {
   type TaskListFilterId,
   type TaskListSectionId,
@@ -30,7 +30,7 @@ export interface AgentMissionSections {
  * Section one agent's swept rows, newest movement first in every section.
  * The status→section mapping is the board's own (`missionColumnIdForStatus`),
  * so a mission always sits in the same section here as the column it occupies
- * on the board this screen pushes into.
+ * on the desktop board.
  */
 export function agentMissionSections(
   conversations: readonly AgentHomeConversation[] | undefined,
@@ -65,10 +65,8 @@ export function agentMissionSections(
 }
 
 /**
- * The bands the body draws, and what the shared segmented control narrows them
- * to, are the phone task list's own rules ({@link taskListSectionsFor}): one
- * grammar for an agent's list and a team's, so a task never sits in a
- * different band depending on which screen found it.
+ * The bands the body draws, and what the segmented control narrows them to
+ * ({@link taskListSectionsFor}).
  */
 export interface MissionListSection {
   id: TaskListSectionId;
@@ -125,20 +123,22 @@ export function liveMissionCount(sections: AgentMissionSections): number {
   return agentMissionCount(sections) - sections.archived.length;
 }
 
+/** An employee section the task list's ⋯ menu opens. */
+export type AgentMissionsMenuSection = Exclude<
+  TeamSectionId,
+  "mission-control"
+>;
+
 /**
- * Whether the published mission target is the one just created for this
- * agent: the only published target the agent's own screen may claim, since
- * every other "open this mission" nav belongs to a board.
+ * The sections the phone task list's ⋯ menu offers: every one the employee's
+ * screen has beyond Tasks, which this list already is. The phone reaches the
+ * rest of the employee's screen only through here.
  */
-export function isCreatedMissionOf(
-  created: Pick<CreatedMission, "activityId" | "agentPath"> | null,
-  pendingId: string | null,
-  agentPath: string,
-): pendingId is string {
-  return (
-    pendingId !== null &&
-    created !== null &&
-    created.activityId === pendingId &&
-    created.agentPath === agentPath
+export function agentMissionsMenuSections(
+  sections: readonly TeamSectionId[],
+): AgentMissionsMenuSection[] {
+  return sections.filter(
+    (section): section is AgentMissionsMenuSection =>
+      section !== "mission-control",
   );
 }

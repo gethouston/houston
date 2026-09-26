@@ -24,11 +24,6 @@ function AgentRowSkeleton() {
   );
 }
 
-/**
- * Two placeholder cards at the real card's proportions, down to the label over
- * each half: the teams landing moves nothing that was already on screen when
- * the real cards arrive.
- */
 export function ChartSkeleton({ label }: { label: string }) {
   return (
     <ul className={CARD_GRID} aria-label={label} aria-busy="true">
@@ -39,18 +34,6 @@ export function ChartSkeleton({ label }: { label: string }) {
             <div className="min-w-0 flex-1">
               <Skeleton className="h-4 w-32 rounded-full" />
               <Skeleton className="mt-1.5 h-3 w-24 rounded-full" />
-            </div>
-          </div>
-
-          <div className="mt-4 px-1">
-            <Skeleton className="mb-2 h-4 w-16 rounded-full" />
-            <div className="flex gap-4">
-              {[0, 1].map((person) => (
-                <div key={person} className="flex items-center gap-2">
-                  <Skeleton className="size-6 shrink-0 rounded-full" />
-                  <Skeleton className="h-4 w-20 rounded-full" />
-                </div>
-              ))}
             </div>
           </div>
 

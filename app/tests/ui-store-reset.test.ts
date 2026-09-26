@@ -14,10 +14,7 @@ describe("useUIStore.reset", () => {
     s.setViewMode("settings");
     s.setActivityPanelId("activity-42", { forceOpen: true });
     s.setPaletteOpen(true);
-    s.openTeamView("team:default", "routines", {
-      agentFilter: "agent-a",
-      agentFocus: true,
-    });
+    s.openAgentView("agent-a", "routines");
     s.setPendingRoutineChat({ agentId: "agent-a", activityId: "act-1" });
 
     useUIStore.getState().reset();
@@ -30,16 +27,14 @@ describe("useUIStore.reset", () => {
     strictEqual(next.viewMode, "agents-home");
     strictEqual(next.activityPanelId, null);
     strictEqual(next.paletteOpen, false);
-    strictEqual(next.activeTeamId, null);
-    strictEqual(next.teamSection, null);
-    strictEqual(next.teamAgentFilter, null);
-    strictEqual(next.teamAgentFocus, false);
+    strictEqual(next.activeAgentId, null);
+    strictEqual(next.agentSection, null);
     strictEqual(next.pendingRoutineChat, null);
   });
 
   it("keeps the per-machine layout preferences", () => {
     useUIStore.getState().setSidebarCollapsed(true);
-    // "Your teams" is the rail's one labelled band, and its fold is a layout
+    // "Your AI Employees" is the rail's one labelled band, and its fold is a layout
     // pref like the rail's own width: the rail must come back the way the user
     // left it, whoever signs in next.
     useUIStore.getState().toggleTeamsSectionCollapsed();
@@ -66,28 +61,15 @@ describe("useUIStore.reset", () => {
   });
 });
 
-describe("useUIStore.openTeamView", () => {
-  it("normalizes focus without a filter and clears omitted options", () => {
+describe("useUIStore.openAgentView", () => {
+  it("writes the employee and section together", () => {
     const store = useUIStore.getState();
-    store.openTeamView("g1", "files", { agentFocus: true });
-    strictEqual(useUIStore.getState().teamAgentFocus, false);
-    store.openTeamView("g1", "files", {
-      agentFilter: "a1",
-      agentFocus: true,
-    });
-    strictEqual(useUIStore.getState().teamAgentFocus, true);
-    store.openTeamView("g1", "context", { teamSettingsFocus: true });
-    strictEqual(useUIStore.getState().teamSettingsFocus, true);
-    store.openTeamView("g1", "settings", {
-      agentFilter: "a1",
-      agentFocus: true,
-      teamSettingsFocus: true,
-    });
-    strictEqual(useUIStore.getState().teamAgentFocus, true);
-    strictEqual(useUIStore.getState().teamSettingsFocus, false);
-    store.openTeamView("g1", "mission-control");
-    strictEqual(useUIStore.getState().teamAgentFilter, null);
-    strictEqual(useUIStore.getState().teamAgentFocus, false);
-    strictEqual(useUIStore.getState().teamSettingsFocus, false);
+    store.openAgentView("a1", "files");
+    strictEqual(useUIStore.getState().viewMode, "agent");
+    strictEqual(useUIStore.getState().activeAgentId, "a1");
+    strictEqual(useUIStore.getState().agentSection, "files");
+    store.openAgentView("a2", "settings");
+    strictEqual(useUIStore.getState().activeAgentId, "a2");
+    strictEqual(useUIStore.getState().agentSection, "settings");
   });
 });

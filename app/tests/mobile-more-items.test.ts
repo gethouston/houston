@@ -25,13 +25,13 @@ describe("mobileMoreItems", () => {
         id: "primary",
         items: [row("assistant"), row("ai-hub"), row("integrations")],
       },
-      { id: "teams", label: "Your teams", items: [row("team")] },
+      { id: "teams", label: "Your AI Employees", items: [row("team")] },
     ]);
     assert.deepEqual(
       groups.map((g) => [g.id, g.label, g.items.map((i) => i.id)]),
       [
         ["primary", undefined, ["assistant", "ai-hub", "integrations"]],
-        ["teams", "Your teams", ["team"]],
+        ["teams", "Your AI Employees", ["team"]],
       ],
     );
   });
@@ -41,7 +41,7 @@ describe("mobileMoreItems", () => {
     // library applies to its own sections.
     const groups = mobileMoreItems([
       { id: "primary", items: [row("assistant")] },
-      { id: "teams", label: "Your teams", items: [] },
+      { id: "teams", label: "Your AI Employees", items: [] },
     ]);
     assert.deepEqual(
       groups.map((g) => g.id),

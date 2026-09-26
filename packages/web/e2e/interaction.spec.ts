@@ -27,6 +27,8 @@ import { missionCard, openTeamSection } from "./support/team-nav";
  * assert the card RENDERS (button + reason + progress), not the landing.
  */
 
+test.use({ teamBoard: true });
+
 test("collapses a blocking question without hiding its blocked header", async ({
   page,
   request,

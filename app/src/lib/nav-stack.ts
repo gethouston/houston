@@ -1,6 +1,6 @@
 /**
  * The app's navigation stack: an explicit push-stack of screen-level locations
- * (tab → team board → chat panel), modeled in the ui store and mirrored into
+ * (tab → employee board → chat panel), modeled in the ui store and mirrored into
  * the browser history by `lib/nav-history.ts` so back/forward (and Android's
  * hardware back) walk the app instead of leaving it.
  *
@@ -23,11 +23,8 @@ import { AGENTS_HOME_VIEW_ID } from "./top-level-views.ts";
 export interface NavEntry {
   viewMode: string;
   settingsSection: SettingsSectionId | null;
-  activeTeamId: string | null;
-  teamSection: TeamSectionId | null;
-  teamAgentFilter: string | null;
-  teamAgentFocus: boolean;
-  teamSettingsFocus: boolean;
+  activeAgentId: string | null;
+  agentSection: TeamSectionId | null;
   /**
    * The agent the mobile Agents home is drilled into (`null` = the agent
    * list). Meaningful only while `viewMode` is the Agents home; it still
@@ -66,7 +63,7 @@ export interface NavState {
  * How a navigation lands on the stack:
  * - `push`: a new place (rail click, drill-in, panel open).
  * - `replace`: a redirect — the current entry never counts as a place the user
- *   chose (boot's landing→home-team hop, the dead-view guard's go-home).
+ *   chose (boot's landing-to-first-employee hop, the dead-view guard's go-home).
  * - `retreat`: a "back"-flavored transition (Escape, a back bar, panel close).
  *   It POPS when the previous entry already is the destination, so the browser
  *   history retreats with the UI; anywhere else it replaces, because a close
@@ -84,11 +81,8 @@ export type NavMode = "push" | "replace" | "retreat" | "reset";
 export interface NavSourceFields {
   viewMode: string;
   settingsSection: SettingsSectionId | null;
-  activeTeamId: string | null;
-  teamSection: TeamSectionId | null;
-  teamAgentFilter: string | null;
-  teamAgentFocus: boolean;
-  teamSettingsFocus: boolean;
+  activeAgentId: string | null;
+  agentSection: TeamSectionId | null;
   agentsHomeAgentId: string | null;
   chatAgentId: string | null;
   chatMissionId: string | null;
@@ -99,11 +93,8 @@ export function navEntryOf(s: NavSourceFields): NavEntry {
   return {
     viewMode: s.viewMode,
     settingsSection: s.settingsSection,
-    activeTeamId: s.activeTeamId,
-    teamSection: s.teamSection,
-    teamAgentFilter: s.teamAgentFilter,
-    teamAgentFocus: s.teamAgentFocus,
-    teamSettingsFocus: s.teamSettingsFocus,
+    activeAgentId: s.activeAgentId,
+    agentSection: s.agentSection,
     agentsHomeAgentId: s.agentsHomeAgentId,
     chatAgentId: s.chatAgentId,
     chatMissionId: s.chatMissionId,
@@ -115,11 +106,8 @@ export function sameNavEntry(a: NavEntry, b: NavEntry): boolean {
   return (
     a.viewMode === b.viewMode &&
     a.settingsSection === b.settingsSection &&
-    a.activeTeamId === b.activeTeamId &&
-    a.teamSection === b.teamSection &&
-    a.teamAgentFilter === b.teamAgentFilter &&
-    a.teamAgentFocus === b.teamAgentFocus &&
-    a.teamSettingsFocus === b.teamSettingsFocus &&
+    a.activeAgentId === b.activeAgentId &&
+    a.agentSection === b.agentSection &&
     a.agentsHomeAgentId === b.agentsHomeAgentId &&
     a.chatAgentId === b.chatAgentId &&
     a.chatMissionId === b.chatMissionId &&
@@ -138,9 +126,9 @@ export function viewFieldsOf(entry: NavEntry): Omit<NavEntry, "panelOpen"> {
 }
 
 /**
- * The boot stack: one entry, the Agents home — the same honest landing the
- * store's initial `viewMode` names. A refresh re-boots to this single entry on
- * purpose (`viewMode` is deliberately not persisted); pre-refresh history
+ * The boot stack starts with Agents home while data resolves. Desktop replaces
+ * that entry with the first employee's Tasks screen. Refresh starts from one
+ * entry because `viewMode` is deliberately not persisted; pre-refresh history
  * entries decay to it (`nav-history.ts`).
  */
 export function initialNavState(): NavState {
@@ -149,11 +137,8 @@ export function initialNavState(): NavState {
       navEntryOf({
         viewMode: AGENTS_HOME_VIEW_ID,
         settingsSection: null,
-        activeTeamId: null,
-        teamSection: null,
-        teamAgentFilter: null,
-        teamAgentFocus: false,
-        teamSettingsFocus: false,
+        activeAgentId: null,
+        agentSection: null,
         agentsHomeAgentId: null,
         chatAgentId: null,
         chatMissionId: null,

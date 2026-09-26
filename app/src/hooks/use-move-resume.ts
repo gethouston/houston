@@ -2,6 +2,7 @@ import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { useEffect, useRef } from "react";
 import { useTranslation } from "react-i18next";
 import { getEngine, newEngineActive } from "../lib/engine";
+import { logAndReportError } from "../lib/error-report";
 import { resumePendingMove } from "../lib/move-resume";
 import {
   claimMove,
@@ -10,6 +11,7 @@ import {
   releaseMove,
   updatePendingMoveId,
 } from "../lib/pending-move";
+import { readPendingTeamMoves } from "../lib/pending-team-move";
 import { queryKeys } from "../lib/query-keys";
 import { isExpectedShareError, shareErrorCode } from "../lib/share-via-team";
 import { tauriOrg } from "../lib/tauri";
@@ -59,6 +61,12 @@ export function useMoveResume(enabled: boolean): void {
     const addToast = useUIStore.getState().addToast;
     void (async () => {
       for (const pending of readPendingMoves()) {
+        if (
+          readPendingTeamMoves(undefined, (error) =>
+            logAndReportError("read_pending_team_moves", error),
+          ).some((team) => team.agentIds.includes(pending.agentId))
+        )
+          continue;
         if (!claimMove(pending.agentId)) continue; // a dialog is driving it
         try {
           // `toast: false` on both wire calls: transient poll blips are

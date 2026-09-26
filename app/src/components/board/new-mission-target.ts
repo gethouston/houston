@@ -3,7 +3,7 @@ import type { Agent } from "../../lib/types.ts";
 /**
  * Who a new task belongs to, before the composer opens.
  *
- * A team board is cross-agent, so "New task" cannot just open a composer — it
+ * A scoped board can span agents, so "New task" cannot just open a composer — it
  * has to know whose. But asking is only honest when there is genuinely a
  * choice, and there often is not:
  *

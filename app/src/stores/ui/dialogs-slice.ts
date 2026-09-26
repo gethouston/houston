@@ -1,4 +1,5 @@
 import type { CreateFlowDoor } from "../../components/shell/create-agent-steps-model.ts";
+import type { TeamMoveSource } from "../../lib/move-team";
 import type { UISliceCreator } from "./state.ts";
 import type { CreateFlowRequest, FilePreviewTarget } from "./types.ts";
 
@@ -7,12 +8,11 @@ export interface DialogFields {
   /**
    * The ONE create sheet ("Add to your workspace"), or null while it is shut.
    * Store-owned rather than the rail's own state: the phone has no rail, and
-   * every other entry point (a team's empty board, the Agents home, the Teams
-   * home) opens the same sheet through the same door.
+   * every other entry point (the AI Employees list's New AI Employee and New
+   * group) opens the same sheet through the same door.
    */
   createFlow: CreateFlowRequest | null;
-  /** The team whose "Change icon & name" dialog is open, or null for none. */
-  editTeamIdentityId: string | null;
+  teamMoveSource: TeamMoveSource | null;
   /** "Your agent is still being created" write-blocked notice (HOU-693). */
   agentWarmingNoticeOpen: boolean;
   /** Whether the phone's compose agent-picker sheet is open (the mobile
@@ -41,11 +41,11 @@ export interface DialogFields {
 }
 
 export interface DialogActions {
-  /** Open the create sheet on the given door. `teamId` files a new AI employee
-   *  in that team; omit it for the default one. */
-  openCreateFlow: (door: CreateFlowDoor, teamId?: string | null) => void;
+  /** Open the create sheet on the given door. */
+  openCreateFlow: (door: CreateFlowDoor) => void;
   closeCreateFlow: () => void;
-  setEditTeamIdentityId: (teamId: string | null) => void;
+  openTeamMove: (source: TeamMoveSource) => void;
+  closeTeamMove: () => void;
   setAgentWarmingNoticeOpen: (open: boolean) => void;
   setNewMissionSheetOpen: (open: boolean, agentIds?: string[]) => void;
   setMobileMoreOpen: (open: boolean) => void;
@@ -58,7 +58,7 @@ export interface DialogActions {
 
 export const dialogInitialState = {
   createFlow: null,
-  editTeamIdentityId: null,
+  teamMoveSource: null,
   agentWarmingNoticeOpen: false,
   newMissionSheetOpen: false,
   newMissionSheetAgentIds: null,
@@ -71,10 +71,10 @@ export const dialogInitialState = {
 } satisfies DialogFields;
 
 export const createDialogActions: UISliceCreator<DialogActions> = (set) => ({
-  openCreateFlow: (door, teamId = null) =>
-    set({ createFlow: { door, teamId } }),
+  openCreateFlow: (door) => set({ createFlow: { door } }),
   closeCreateFlow: () => set({ createFlow: null }),
-  setEditTeamIdentityId: (editTeamIdentityId) => set({ editTeamIdentityId }),
+  openTeamMove: (teamMoveSource) => set({ teamMoveSource }),
+  closeTeamMove: () => set({ teamMoveSource: null }),
   setAgentWarmingNoticeOpen: (agentWarmingNoticeOpen) =>
     set({ agentWarmingNoticeOpen }),
   setNewMissionSheetOpen: (newMissionSheetOpen, agentIds) =>

@@ -17,6 +17,7 @@ import { ImportAgentWizard } from "../portable/import-wizard";
 import { ShortcutCheatsheet } from "../shortcut-cheatsheet";
 import { AddToWorkspaceSheet } from "./add-to-workspace-sheet";
 import { AgentWarmingDialog } from "./agent-warming-dialog";
+import { BootLandingContent } from "./boot-landing-placeholder";
 import { DetailPanelProvider } from "./detail-panel-context";
 import { KeepAliveViews } from "./keep-alive-views";
 import { MobileMoreMenu } from "./mobile-more-menu";
@@ -39,13 +40,9 @@ interface WorkspaceShellProps {
  * The app frame: the rail, the ONE floating screen card, and the shared detail
  * panel beside it.
  *
- * Every screen is a top-level view (`topLevelScreenViews`) — Mission Control, a
- * team, Integrations, Skills, Settings, the AI hub. Agents have no
- * screen of their own: an agent's work is a slice of its TEAM's sections, and
- * configuring one is the agent settings page reached through Team Settings.
- * `lib/agent-nav.ts` owns that translation, so the frame never has to know it,
- * and this file is layout plus the dialogs that float over it — the standing
- * view rules live in {@link useWorkspaceViewGuards}.
+ * Every screen is a top-level view (`topLevelScreenViews`). Each employee's
+ * work and settings live on their own screen. This frame holds the layout and
+ * floating dialogs; {@link useWorkspaceViewGuards} owns the standing view rules.
  */
 export function WorkspaceShell({
   toasts,
@@ -72,7 +69,7 @@ export function WorkspaceShell({
   // user switches workspace/space: their contents are workspace-scoped.
   const currentWorkspace = useWorkspaceStore((s) => s.current);
 
-  useWorkspaceViewGuards({
+  const landing = useWorkspaceViewGuards({
     showAiModels,
     showAssistant,
     showSkills,
@@ -129,15 +126,17 @@ export function WorkspaceShell({
               >
                 <TeamStatusBanner />
                 <div className="flex min-h-0 flex-1 flex-col overflow-hidden">
-                  <KeepAliveViews
-                    key={currentWorkspace?.id ?? "no-workspace"}
-                    activeId={viewMode}
-                    views={topLevelScreenViews({
-                      showAiModels,
-                      showAssistant,
-                      showSkills,
-                    })}
-                  />
+                  <BootLandingContent landing={landing}>
+                    <KeepAliveViews
+                      key={currentWorkspace?.id ?? "no-workspace"}
+                      activeId={viewMode}
+                      views={topLevelScreenViews({
+                        showAiModels,
+                        showAssistant,
+                        showSkills,
+                      })}
+                    />
+                  </BootLandingContent>
                 </div>
               </main>
               {missionPanelOpen && (
@@ -154,7 +153,7 @@ export function WorkspaceShell({
             </div>
           </Sidebar>
         </div>
-        {/* The floating nav bar (Agents / Teams / More + compose); CSS-hidden
+        {/* The floating nav bar (AI Employees / More + compose); CSS-hidden
             at md+ and gone while a chat is up on the phone (pushed screen,
             the board's full-screen panel, the assistant): chat is a push, not
             a tab, so the back affordances are the way out and the composer

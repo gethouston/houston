@@ -32,8 +32,6 @@
     },
     "createFailed": "Não conseguimos criar este funcionário de IA. Tente novamente.",
     "saveFailed": "Ainda não conseguimos salvar suas alterações. Vamos tentar de novo quando você terminar.",
-    "placementFailedTitle": "Criado na equipe padrão",
-    "placementFailedBody": "Não conseguimos colocar {{name}} na equipe que você escolheu. Você pode movê-lo quando quiser pelo menu dele.",
     "contexts": {
       "accounting": "Contabilidade",
       "advertising": "Publicidade",

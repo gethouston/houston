@@ -44,14 +44,14 @@ export interface OrgTabProps {
  * The Admin dashboard: Company context, People, Billing, Activity, Usage, and
  * Time worked. A shell only: it loads the org, builds the shared
  * `OrgViewContext`, and swaps sections under the shared header grammar
- * (`AdminHeader` — the same lozenge cluster Integrations and the team screen
- * wear), landing on Company context, whose surface the identity lozenge IS.
+ * (`AdminHeader` — the same lozenge cluster Integrations and an employee's
+ * screen wear), landing on Company context, whose surface the identity lozenge IS.
  * It is a Settings section, so the way back to the Settings index leads that
  * same strip — one top row, not a back bar stacked over the header.
  *
  * Permission surfaces (who can use which agent, per-agent ceilings) are NOT
- * here: per-agent policy is discovered through each team's focused agent screen,
- * in the team view's settings section. Drawn ONLY when `canSeeOrganization`
+ * here: per-agent policy is discovered on each employee's screen, in its
+ * Settings section. Drawn ONLY when `canSeeOrganization`
  * (multiplayer owner/admin, and on a Spaces host a TEAM active space — never the
  * personal one); everyone else gets the plain workspace-name card in the same
  * Settings section.

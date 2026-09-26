@@ -3,12 +3,12 @@ import { screen } from "./team-nav";
 
 /**
  * Driving the PHONE shell (<768px): the floating nav bar, its More menu, and
- * the Teams tree that replaced the team section strip.
+ * the AI Employees list.
  *
- * There is no top bar and no drawer any more. Everything a phone user reaches
- * is one of four things — the Agents tree, the Teams tree, the More menu's long
- * tail, or the compose button — so these helpers name exactly those, and every
- * lookup goes by test id or tour anchor rather than by chrome that moved.
+ * There is no top bar and no drawer. Everything a phone user reaches is one of
+ * three things — the AI Employees tree, the More menu's long tail, or the
+ * compose button — so these helpers name exactly those, and every lookup goes
+ * by test id or tour anchor rather than by chrome that moved.
  *
  * English is forced by the boot seed, so the labels below are stable.
  */
@@ -44,8 +44,8 @@ export async function awaitAgentsHome(page: Page): Promise<Locator> {
   return row;
 }
 
-/** The three items of the pill. "More" is a MENU, not a destination. */
-export type MobileTab = "agents" | "teams" | "more";
+/** The two items of the pill. "More" is a MENU, not a destination. */
+export type MobileTab = "agents" | "more";
 
 /** The floating pill + its compose button. CSS-hidden at md+, gone under a
  *  pushed chat. */
@@ -91,56 +91,29 @@ export async function openMoreMenu(
   return menu;
 }
 
-/** The Teams tree's section rows, named the way the tree stamps them: the
- *  desktop strip's own four. Context, Agents, People and Settings live behind
- *  the "settings" row (Team Settings), as tabs of the drilled level. */
-export type PhoneTeamSection =
-  | "mission-control"
-  | "routines"
-  | "files"
-  | "settings";
-
-/** Every section row of the tree on the glass, in render order. */
-export function teamSectionRows(page: Page): Locator {
-  return screen(page).getByTestId("teams-home-section");
-}
-
-export function teamSectionRow(page: Page, section: PhoneTeamSection): Locator {
-  return screen(page).locator(
-    `[data-testid='teams-home-section'][data-section='${section}']`,
-  );
-}
-
-/** The drilled Team Settings level's tabs on the phone, in desktop order. */
-export type PhoneTeamSettingsTab = "context" | "agents" | "people" | "settings";
-
-/** Every tab of the phone's Team Settings level, in render order. */
-export function teamSettingsTabs(page: Page): Locator {
-  return screen(page).getByTestId("team-settings-mobile-tab");
-}
-
-export function teamSettingsTab(
-  page: Page,
-  tab: PhoneTeamSettingsTab,
-): Locator {
-  return screen(page).locator(
-    `[data-testid='team-settings-mobile-tab'][data-section='${tab}']`,
-  );
-}
+/** One section of an employee: its task list, or a tab of its own screen. */
+export type PhoneTeamSection = "mission-control" | "routines" | "files";
 
 /**
- * The phone's ONE door onto a team's section: the Teams tab, then the row under
- * the team. Tapping a section PUSHES the team screen, which draws a back chip
- * instead of a switcher — so this is also the only way back INTO a section
- * after a retreat.
+ * Open the first employee on one section, the way a phone user does: drill
+ * into the employee from the AI Employees list, which IS its Tasks, then pick
+ * Routines or Files from that task list's ⋯ menu.
  */
 export async function openPhoneTeamSection(
   page: Page,
   section: PhoneTeamSection,
   mode: PressMode = "tap",
 ): Promise<void> {
-  await press(navItem(page, "teams"), mode);
-  await expect(screen(page)).toHaveAttribute("data-screen", "teams-home");
-  await press(teamSectionRow(page, section), mode);
-  await expect(screen(page)).toHaveAttribute("data-screen", "team");
+  await press(navItem(page, "agents"), mode);
+  await press(await awaitAgentsHome(page), mode);
+  await expect(page.getByTestId("agent-missions-screen")).toBeVisible();
+  if (section === "mission-control") return;
+  await press(page.getByTestId("agent-missions-menu"), mode);
+  await press(
+    page
+      .getByTestId("agent-missions-menu-section")
+      .and(page.locator(`[data-section='${section}']`)),
+    mode,
+  );
+  await expect(screen(page)).toHaveAttribute("data-screen", "agent");
 }

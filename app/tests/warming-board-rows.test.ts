@@ -60,10 +60,9 @@ describe("mergeWarmingRows", () => {
 });
 
 /**
- * The CROSS-AGENT overlay. Agents lost their own boards in the teams cutover,
- * so a mission started against a still-cold engine has only the team's board
- * (or the global one) to appear on — and that board reads the conversation
- * sweep, which is exactly the read the cold start is holding.
+ * The CROSS-AGENT overlay. A mission started against a still-cold engine
+ * appears on a board that reads the conversation sweep, which is exactly the
+ * read the cold start is holding.
  */
 describe("warmingConversations", () => {
   it("stamps each queued row with its owning agent, as a running activity row", () => {

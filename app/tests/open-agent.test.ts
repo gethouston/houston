@@ -1,145 +1,195 @@
-import { ok, strictEqual } from "node:assert";
+import { match, ok, strictEqual } from "node:assert";
 import { readFileSync } from "node:fs";
 import { join } from "node:path";
 import { describe, it } from "node:test";
+import { createStore } from "zustand/vanilla";
 import { useAgentSettingsNav } from "../src/components/team-view/agent-settings-nav-store.ts";
+import {
+  afterRosterSettles,
+  onStoreChange,
+  type RosterLoadState,
+} from "../src/lib/roster-settled.ts";
 
 /**
- * The two dishonest fallbacks in `lib/open-agent.ts`, and the one-shot it used
- * to leave armed.
- *
- * `open-agent.ts` is the IMPERATIVE half of the agent-nav rules (the pure half
- * is `lib/agent-nav.ts`, covered in `agent-nav.test.ts`). It cannot be imported
- * here: its store chain reaches `lib/tauri.ts` → `@houston/engine-adapter`,
- * whose parameter properties Node's strip-only TypeScript refuses, and
- * `lib/i18n.ts`, whose locale JSON is imported without an import attribute.
- * Both are Vite's job, not Node's. So the store primitive this module now leans
- * on is exercised for real, the wiring that calls it is pinned against the
- * source (the same idiom as `ai-hub-review-fixes.test.ts` /
- * `provider-statuses-gate.test.ts`), and the copy is pinned against the
- * locale files.
+ * `open-agent.ts` cannot be imported here: its store chain reaches
+ * `lib/tauri.ts` → `@houston/engine-adapter` and `lib/i18n.ts`, which are
+ * Vite's job, not Node's. So the roster wait it leans on is executed for real,
+ * its wiring is pinned against the source, and the copy against the locales.
  */
 
-const read = (rel: string) =>
-  readFileSync(new URL(rel, import.meta.url), "utf8");
+const OPEN_AGENT = readFileSync(
+  new URL("../src/lib/open-agent.ts", import.meta.url),
+  "utf8",
+);
 
-/** One exported function with its doc comment, up to the next export. */
-function fnSource(source: string, name: string): string {
-  const decl = source.indexOf(`export function ${name}(`);
+/** One exported function, up to the next export. */
+function fnSource(name: string): string {
+  const decl = OPEN_AGENT.indexOf(`export function ${name}(`);
   ok(decl !== -1, `${name} must exist in lib/open-agent.ts`);
-  const doc = source.lastIndexOf("/**", decl);
-  const next = source.indexOf("\nexport function ", decl + 1);
-  return source.slice(
-    doc === -1 ? decl : doc,
-    next === -1 ? source.length : next,
-  );
+  const next = OPEN_AGENT.indexOf("\nexport function ", decl + 1);
+  return OPEN_AGENT.slice(decl, next === -1 ? OPEN_AGENT.length : next);
 }
 
-const OPEN_AGENT = read("../src/lib/open-agent.ts");
-
-describe("openAgentSection's no-team fallback", () => {
-  // "Take me to this agent's Routines" with no team to open has exactly one
-  // honest answer, and it is the app's ONE home rule. Naming a view here would
-  // be a second, unexplained fallback beside the one `home-nav.ts` documents.
-  const body = fnSource(OPEN_AGENT, "openAgentSection");
-
-  it("routes an unclaimed agent through openAgentBoard, the one justified fallback", () => {
-    ok(
-      body.includes("openAgentBoard(agentId)"),
-      "the no-team branch must delegate to openAgentBoard",
-    );
+describe("employee navigation", () => {
+  it("opens employee sections without resolving a folder", () => {
+    ok(OPEN_AGENT.includes("openAgentView(dest.agentId, dest.section)"));
+    ok(!OPEN_AGENT.includes("currentTeams"));
   });
 
-  it("never names a view of its own", () => {
-    ok(
-      !body.includes("setViewMode("),
-      "a Routines/Files request must not set a view directly",
-    );
-  });
-
-  it("explains why the board is the honest landing spot", () => {
-    // Rule 0: the next reader must not "simplify" this back into a setViewMode.
-    ok(/board/i.test(body) && /fallback/i.test(body));
+  it("decides only once the roster has settled", () => {
+    for (const name of [
+      "openAgentBoard",
+      "openAgentSection",
+      "openAgentSettings",
+    ]) {
+      ok(fnSource(name).includes("withSettledAgent("), name);
+    }
   });
 });
 
-describe("openAgentBoard's no-team fallback", () => {
-  const body = fnSource(OPEN_AGENT, "openAgentBoard");
-
-  it("goes through the ONE shared home rule, never a view id", () => {
-    // There is no global mission board any more, so an agent no team claims
-    // has to land wherever every other missed nav lands: `lib/home-nav.ts`.
-    ok(body.includes("openHome()"), "the no-team branch must call openHome");
-    ok(
-      !body.includes("setViewMode("),
-      "the fallback must not name a view of its own",
-    );
-  });
-});
-
-describe("openAgentSettings's failure path", () => {
-  const body = fnSource(OPEN_AGENT, "openAgentSettings");
+describe("openAgentSettings for an agent the settled roster lacks", () => {
+  const body = fnSource("openAgentSettings");
   const failure = body.slice(0, body.indexOf("requestAgentDetail"));
 
-  it("clears any pending one-shot before returning", () => {
-    // The early return happens BEFORE `requestAgentDetail`, so a request left
-    // by an EARLIER call survived and fired the next time the user opened Team
-    // Settings by hand, drilling them into an agent they never asked for.
-    ok(
-      failure.includes("clearRequested()"),
-      "the no-team branch must clear the one-shot",
-    );
-  });
-
-  it("toasts a title AND a body", () => {
-    ok(failure.includes("teams:teamView.settings.navUnavailable"));
-    ok(failure.includes("teams:teamView.settings.navUnavailableBody"));
+  it("clears any pending one-shot and says why nothing opened", () => {
+    ok(failure.includes("clearRequested()"));
+    ok(failure.includes("teams:agentNav.settingsUnavailable"));
+    ok(failure.includes("teams:agentNav.settingsUnavailableBody"));
     ok(failure.includes('variant: "error"'));
+    ok(!failure.includes("openHome()"), "a settings miss never goes home");
   });
 });
 
 describe("useAgentSettingsNav.clearRequested", () => {
   it("really drops a pending agent + section request", () => {
-    // The primitive the failure path above depends on, executed rather than
-    // read: a half-clear (agent dropped, section kept) would still mis-drill.
     const nav = useAgentSettingsNav.getState();
     nav.requestAgentDetail("agent-1", "skills");
     strictEqual(useAgentSettingsNav.getState().requestedAgentId, "agent-1");
-
-    useAgentSettingsNav.getState().clearRequested();
-
+    nav.clearRequested();
     strictEqual(useAgentSettingsNav.getState().requestedAgentId, null);
     strictEqual(useAgentSettingsNav.getState().requestedSection, null);
   });
 });
 
-describe("navUnavailable copy", () => {
-  // The whole reason we toast is that NO team claims the agent, so the old
-  // "open it from the team it belongs to" told the user to do the very thing
-  // that just failed. Title names the failure, body says what to actually do.
+describe("afterRosterSettles", () => {
+  it("runs at once on a settled roster", () => {
+    const store = createStore<RosterLoadState>(() => ({
+      loaded: true,
+      loading: false,
+    }));
+    let runs = 0;
+    afterRosterSettles(store, () => runs++);
+    strictEqual(runs, 1);
+  });
+
+  it("waits out a load in flight, then runs exactly once", () => {
+    const store = createStore<RosterLoadState>(() => ({
+      loaded: false,
+      loading: true,
+    }));
+    let runs = 0;
+    afterRosterSettles(store, () => runs++);
+    strictEqual(runs, 0);
+    store.setState({ loaded: true, loading: false });
+    strictEqual(runs, 1);
+    store.setState({ loading: true });
+    store.setState({ loading: false });
+    strictEqual(runs, 1);
+  });
+});
+
+describe("afterRosterSettles tripwires", () => {
+  const waiting = () =>
+    createStore<RosterLoadState>(() => ({ loaded: false, loading: true }));
+
+  it("abandons the wait when a watched slice changes before the roster settles", () => {
+    const roster = waiting();
+    const nav = createStore(() => ({ navIndex: 0, other: 0 }));
+    let runs = 0;
+    afterRosterSettles(roster, () => runs++, [
+      onStoreChange(nav, (s) => s.navIndex),
+    ]);
+    nav.setState({ other: 1 });
+    nav.setState({ navIndex: 1 });
+    roster.setState({ loaded: true, loading: false });
+    strictEqual(runs, 0);
+  });
+
+  it("still runs when the watched slices hold still", () => {
+    const roster = waiting();
+    const nav = createStore(() => ({ navIndex: 0, other: 0 }));
+    let runs = 0;
+    afterRosterSettles(roster, () => runs++, [
+      onStoreChange(nav, (s) => s.navIndex),
+    ]);
+    nav.setState({ other: 1 });
+    roster.setState({ loaded: true, loading: false });
+    strictEqual(runs, 1);
+    nav.setState({ navIndex: 1 });
+    strictEqual(runs, 1);
+  });
+});
+
+describe("a waiting employee nav", () => {
+  const wait = OPEN_AGENT.slice(
+    OPEN_AGENT.indexOf("function withSettledAgent("),
+  );
+
+  it("is abandoned by any navigation, a store reset or a space switch", () => {
+    ok(wait.includes("onStoreChange(useUIStore, (s) => s.navStack)"));
+    ok(wait.includes("onStoreChange(useUIStore, (s) => s.navIndex)"));
+    ok(wait.includes("onStoreChange(useWorkspaceStore, (s) => s.current?.id)"));
+  });
+
+  it("hands its follow-up to the opened destination only", () => {
+    for (const name of ["openAgentBoard", "openAgentSection"]) {
+      const body = fnSource(name);
+      ok(
+        body.indexOf("opts?.onOpened?.()") > body.indexOf("openDestination("),
+        name,
+      );
+    }
+  });
+
+  for (const [file, oneShot] of [
+    ["components/command-palette.tsx", "setActivityPanelId"],
+    ["hooks/session-notification-navigate.ts", "setActivityPanelId"],
+    ["hooks/session-notification-navigate.ts", "setPendingRoutineChat"],
+  ] as const) {
+    it(`${file} publishes ${oneShot} once the destination opens`, () => {
+      const src = readFileSync(
+        new URL(`../src/${file}`, import.meta.url),
+        "utf8",
+      );
+      match(src, new RegExp(`onOpened: \\(\\) =>\\s+[\\w.()]*${oneShot}\\(`));
+    });
+  }
+
+  it("a store reset rebuilds the nav stack", () => {
+    const ui = readFileSync(
+      new URL("../src/stores/ui.ts", import.meta.url),
+      "utf8",
+    );
+    const reset = ui.slice(ui.indexOf("      reset: () => {"));
+    ok(reset.includes("...initialNavState()"));
+  });
+});
+
+describe("agentNav copy", () => {
   for (const locale of ["en", "es", "pt"] as const) {
-    it(`${locale} ships a title and a body that is not the old advice`, () => {
+    it(`${locale} ships a one-clause title and a body`, () => {
       const teams = JSON.parse(
         readFileSync(
           join(import.meta.dirname, `../src/locales/${locale}/teams.json`),
           "utf8",
         ),
-      ) as {
-        teamView?: { settings?: Record<string, unknown> };
-      };
-      const settings = teams.teamView?.settings ?? {};
-      for (const key of ["navUnavailable", "navUnavailableBody"]) {
-        const value = settings[key];
-        strictEqual(typeof value, "string", `${key} must be a string`);
-        const text = value as string;
-        ok(text.length > 0, `${key} must not be empty`);
-        ok(!text.includes("—"), `${key}: no em dashes in user-facing copy`);
+      ) as { agentNav?: Record<string, unknown> };
+      const nav = teams.agentNav ?? {};
+      for (const key of ["settingsUnavailable", "settingsUnavailableBody"]) {
+        strictEqual(typeof nav[key], "string", `${key} must be a string`);
+        ok(!(nav[key] as string).includes("—"), `${key}: no em dashes`);
       }
-      const title = settings.navUnavailable as string;
-      ok(
-        !/\.\s/.test(title.trim()) && !title.trim().endsWith("."),
-        "the title is one clause, not the old two-sentence instruction",
-      );
+      ok(!(nav.settingsUnavailable as string).trim().endsWith("."));
     });
   }
 });

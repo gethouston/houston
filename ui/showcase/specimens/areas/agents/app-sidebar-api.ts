@@ -34,29 +34,14 @@ export const APP_SIDEBAR_PROPS: readonly SpecimenProp[] = [
     note: "Paints the block's HEADER as the selected row. Controlled. A block carries no destination rows, so its header is the only row that can say the open view belongs here — folded or open alike.",
   },
   {
-    name: "defaultGroup",
-    type: "{ name, icon?, trailing?, collapsed?, active? }",
-    note: "Turns the trailing default block (the agents in no group) into a labelled team: the workspace's own. It folds exactly like a named one — a block that folded everywhere except here would be the one row in the rail that answers a click differently. What it does not get is what the container itself lacks: no ⋯ menu, no rename, no delete, no drag handle.",
-  },
-  {
-    name: "onActivateDefault",
-    type: "() => void",
-    note: "The default block's header was activated. Its own callback because that block is not a stored group and has no id to hand back.",
-  },
-  {
-    name: "onMoveItem",
-    type: "(itemId, { groupId, beforeItemId }) => void",
-    note: "An agent was reordered WITHIN its own block. groupId is always the block it was already in (null = the ungrouped section): a drag cannot move an agent between blocks, so it is the position that changed and never the block.",
-  },
-  {
-    name: "onMoveGroup",
-    type: "(groupId, beforeGroupId: string | null) => void",
-    note: "Group reorder. null = move to the end.",
+    name: "onArrange",
+    type: "({ order, members }) => boolean",
+    note: "A drop landed. Carries the whole arrangement the rail now shows: the top-level order (agents and groups interleaved) and every group's members. The host stores it as given and answers whether it did; the rail keeps the dropped order only on true. Absent means the rail offers no drag.",
   },
   {
     name: "onActivateGroup",
     type: "(groupId: string) => void",
-    note: "The block's header was activated — ONE hit target carrying the glyph, the name, the disclosure triangle and the rollup badge. The library does NOT decide what that means: a host may open the block's screen, fold the block, or both, and `collapsed` on the view model stays the single controlled truth about the fold. The triangle is an indicator, never a second control.",
+    note: "The block's header was activated — ONE hit target carrying the glyph, the name, the disclosure triangle and the rollup badge. It folds or unfolds the block, and `collapsed` on the view model stays the single controlled truth about the fold: the host writes the new value back. The triangle is an indicator, never a second control.",
   },
   {
     name: "onAdd",
@@ -106,7 +91,7 @@ export const APP_SIDEBAR_PROPS: readonly SpecimenProp[] = [
   {
     name: "sectionLabel / sectionAction",
     type: "string / ReactNode",
-    note: 'The "Your teams" band and its ONE trailing control — the menu that creates an agent, creates a team and joins one. Expanded only.',
+    note: 'The "Your AI Employees" band and its ONE trailing control — the menu that creates an AI Employee or a group. Expanded only.',
   },
   {
     name: "sectionCollapsed",

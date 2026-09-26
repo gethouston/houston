@@ -229,12 +229,12 @@
   },
   "copyAgent": {
     "row": "Duplicar {{name}}",
-    "rowDescription": "Crie uma duplicata em uma das suas equipes. As conversas não são duplicadas.",
+    "rowDescription": "Crie uma duplicata em um dos seus grupos. As conversas não são duplicadas.",
     "title": "Duplicar {{name}}",
     "body": "A duplicata começa com a mesma descrição do cargo, skills, rotinas, aprendizados e cor. As conversas ficam com o original e nunca são duplicadas.",
     "nameLabel": "Nome da duplicata",
-    "nameTaken": "Já existe um funcionário de IA chamado {{name}}. Os nomes de funcionários de IA são compartilhados entre todas as suas equipes, então dê à duplicata um nome próprio.",
-    "teamLabel": "Equipe da duplicata",
+    "nameTaken": "Já existe um funcionário de IA chamado {{name}}. Os nomes de funcionários de IA são compartilhados entre todos os seus grupos, então dê à duplicata um nome próprio.",
+    "teamLabel": "Grupo da duplicata",
     "confirm": "Criar duplicata",
     "copySuffix": "cópia",
     "toasts": {

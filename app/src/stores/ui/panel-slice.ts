@@ -11,8 +11,8 @@ import type { UISliceCreator } from "./state.ts";
 export interface PanelFields {
   activityPanelId: string | null;
   activityPanelForceOpen: boolean;
-  /** Callback registered by whichever mission board is on the glass (the
-   *  global one or a team's) to open its new-mission flow. */
+  /** Callback registered by whichever employee's board is on the glass to
+   *  open its new-mission flow. */
   onStartMission: (() => void) | null;
   /**
    * A one-shot ask, from outside any board, to open this agent's New task
@@ -38,9 +38,9 @@ export interface PanelFields {
    * Each claim also records whether its surface allows the wide layout.
    */
   missionPanelOwners: PanelOwner[];
-  /** Arrow-key kanban navigator registered by whichever board is on
-   *  screen (the global Mission Control or a team's). Moves the
-   *  keyboard highlight; does NOT open the chat panel. */
+  /** Arrow-key kanban navigator registered by whichever employee's board
+   *  is on screen. Moves the keyboard highlight; does NOT open the chat
+   *  panel. */
   onBoardNavigate: ((dir: "up" | "down" | "left" | "right") => void) | null;
   /** Open the currently-highlighted card's chat panel. Registered by
    *  the same board owner as `onBoardNavigate`. Fired by Enter. */

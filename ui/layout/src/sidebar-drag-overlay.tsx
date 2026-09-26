@@ -1,5 +1,5 @@
-import { DragOverlay } from "@dnd-kit/core";
-import { cn } from "@houston-ai/core";
+import { DragOverlay, type Modifiers } from "@dnd-kit/core";
+import { createPortal } from "react-dom";
 import { SidebarGroupHeader } from "./sidebar-group-header";
 import type { SidebarGroupView } from "./sidebar-groups";
 import { SidebarItemRow } from "./sidebar-item-row";
@@ -11,38 +11,36 @@ export interface SidebarDragOverlayProps {
   activeItem?: SidebarItem;
   /** The group being dragged, if this is a group-header drag. */
   activeGroup?: SidebarGroupView;
-  /** The pointer is over a block that will not take this item — dim the lifted
-   *  copy so the gesture reads as refused before it is released. */
-  rejected: boolean;
   rowCtx: SidebarBaseRowContext;
+  modifiers?: Modifiers;
 }
 
 /**
  * The lifted copy that follows the cursor while a drag is in flight: the
  * dragged agent's row, or the dragged group's header. Inert — every row
  * callback is a no-op, because this copy is a picture of the thing being
- * moved, not a second interactive one.
+ * moved, not a second interactive one. Where it will land is shown by the
+ * ghost left in the list, so the copy carries no outline of its own.
  *
- * Over a block the item may not land in it DIMS, and no block highlights. That
- * pair is the cancel affordance: nothing on screen offers to receive the row,
- * and releasing there simply drops it back where it came from — which is what
- * @dnd-kit's return animation then shows.
+ * Portalled to `document.body`: the overlay is `position: fixed`, which
+ * resolves against the nearest TRANSFORMED ancestor, and the rail's list
+ * animates in on `transform`. Inside it, a drag started during that animation
+ * draws (and dnd-kit measures) the overlay far from the pointer, so the drop
+ * lands on the wrong row.
  */
 export function SidebarDragOverlay({
   activeItem,
   activeGroup,
-  rejected,
   rowCtx,
+  modifiers,
 }: SidebarDragOverlayProps) {
-  return (
-    <DragOverlay dropAnimation={{ duration: 180, easing: "ease" }}>
+  return createPortal(
+    <DragOverlay
+      modifiers={modifiers}
+      dropAnimation={{ duration: 180, easing: "ease" }}
+    >
       {activeItem ? (
-        <div
-          className={cn(
-            "rounded-lg bg-card shadow-lg ring-1 ring-line transition-opacity",
-            rejected && "opacity-40",
-          )}
-        >
+        <div className="rounded-lg bg-card shadow-drag">
           <SidebarItemRow
             item={activeItem}
             isActive={activeItem.id === rowCtx.selectedId}
@@ -50,7 +48,7 @@ export function SidebarDragOverlay({
           />
         </div>
       ) : activeGroup ? (
-        <div className="rounded-lg bg-card shadow-lg ring-1 ring-line">
+        <div className="rounded-lg bg-card shadow-drag">
           <SidebarGroupHeader
             name={activeGroup.name}
             icon={activeGroup.icon}
@@ -58,6 +56,7 @@ export function SidebarDragOverlay({
           />
         </div>
       ) : null}
-    </DragOverlay>
+    </DragOverlay>,
+    document.body,
   );
 }

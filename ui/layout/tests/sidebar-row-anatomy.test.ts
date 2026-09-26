@@ -42,10 +42,10 @@ function source(file: string): string {
  */
 const ROW_CONSUMERS = [
   "sidebar-nav.tsx", // the top-level destinations
-  "sidebar-band.tsx", // the ONE band: "Workspace", "Your teams"
-  "sidebar-group-header.tsx", // a team block's header
+  "sidebar-band.tsx", // the ONE band: "Workspace", "Your AI Employees"
+  "sidebar-group-header.tsx", // a folder's header
   "sidebar-item-row.tsx", // an agent row
-  "sidebar-add-row.tsx", // the "New agent" row that closes the list
+  "sidebar-add-row.tsx", // the "New AI Employee" row that closes the list
 ];
 
 /**
@@ -74,12 +74,13 @@ describe("sidebar row anatomy", () => {
   });
 
   it("draws EVERY band through the ONE band component", () => {
-    // The rail names two bands — "Workspace" and "Your teams" — and both are
-    // `SidebarBand`. Nothing else may compose a band: a second one would drift
-    // in its type step, its triangle placement, its fold or the gap under it,
-    // and the rail would read as lists that merely resemble each other.
-    // `sidebar-rail-chrome.tsx` renders the nav runs, `sidebar.tsx` the teams
-    // list.
+    // The rail names two bands — "Workspace" and "Your AI Employees" — and
+    // both are `SidebarBand`. Nothing else may compose a band: a second one
+    // would drift in its type step, its triangle placement, its fold or the gap
+    // under it, and the rail would read as lists that merely resemble each
+    // other.
+    // `sidebar-rail-chrome.tsx` renders the nav runs, `sidebar.tsx` the
+    // employees list.
     for (const file of ["sidebar-rail-chrome.tsx", "sidebar.tsx"]) {
       ok(source(file).includes("<SidebarBand"), file);
     }
@@ -215,7 +216,7 @@ describe("sidebar row anatomy", () => {
   });
 
   it("paints the band one step OFF muted, toward the ink", () => {
-    // "Your teams" in `ink-muted` read as disabled next to the rows under it.
+    // "Your AI Employees" in `ink-muted` read as disabled next to the rows under it.
     // It takes the same resting label colour as every other row (one step
     // toward the ink) and is set apart by SIZE, which is the quiet way.
     ok(includes(sidebarRowState.restText, "text-hover-text"));
@@ -279,7 +280,7 @@ describe("sidebar row anatomy", () => {
   });
 
   it("never goes bold anywhere in the rail", () => {
-    // "Your teams" reading as semibold grey was the tell that the rail had been
+    // "Your AI Employees" reading as semibold grey was the tell that the rail had been
     // built as a heading with a list under it.
     for (const cls of [
       ...Object.values(sidebarRowType),
@@ -354,12 +355,9 @@ describe("sidebar row anatomy", () => {
     }
   });
 
-  it("renders block headers without a menu affordance column", () => {
-    strictEqual(
-      source("sidebar-group-header.tsx").includes("affordance="),
-      false,
-    );
-    strictEqual(source("sidebar-block-header.tsx").includes("menu="), false);
+  it("renders block headers with the host's menu affordance", () => {
+    ok(source("sidebar-group-header.tsx").includes("affordance={affordance}"));
+    strictEqual(source("sidebar-tree-row.tsx").includes("menu="), false);
   });
 
   it("gives the row a visible focus ring, ON the pill it is outlining", () => {
@@ -384,7 +382,7 @@ describe("sidebar row anatomy", () => {
     // A fill spanning the rail edge to edge is a bar: at 28px tall an 8px
     // corner is invisible and the rail reads as stacked rectangles. Pulling the
     // paint 6px in from each side is what makes the corner legible, on the same
-    // `rounded-lg` the team screen's section lozenges wear.
+    // `rounded-lg` an employee screen's section lozenges wear.
     ok(sidebarRowFill.includes("before:left-1.5"));
     ok(sidebarRowFill.includes("before:right-1.5"));
     ok(sidebarRowFill.includes("before:rounded-lg"));
@@ -535,7 +533,7 @@ describe("sidebar row anatomy", () => {
     // One rhythm from the band to the last row: a block adds no vertical space
     // of its own, so two teams sit exactly as far apart as two agents do. The
     // 10px it used to insert read as a hole in the rail — Linear's does not.
-    const src = source("sidebar-group-section.tsx");
+    const src = source("sidebar-tree-row.tsx");
     for (const gap of ["pt-2.5", "first:pt-0", "mt-"])
       strictEqual(src.includes(gap), false, `block spacing: ${gap}`);
     ok(includes(sidebarClasses.itemsList, "space-y-px"));
@@ -587,5 +585,31 @@ describe("sidebar person row", () => {
     const button = source("sidebar-row-button.tsx");
     ok(button.includes("{subtitle && "));
     ok(button.includes("person && c.personHeight"));
+  });
+});
+
+describe("employee depth", () => {
+  it("keeps root employees on the folder header edge and indents only members", () => {
+    ok(includes(sidebarRowButtonClasses.depthBlock, "pl-2"));
+    ok(includes(sidebarRowButtonClasses.depthChild, "pl-5"));
+    ok(
+      source("sidebar-item-row.tsx").includes(
+        'depth={grouped ? "child" : "block"}',
+      ),
+    );
+    ok(source("sidebar-tree-row.tsx").includes("grouped={inGroup}"));
+  });
+
+  it("places one non-draggable create row after every root entry", () => {
+    const groups = source("sidebar-tree-row.tsx");
+    const list = source("sidebar-grouped-list.tsx");
+    const add = source("sidebar-add-row.tsx");
+    strictEqual(groups.includes("SidebarAddRow"), false);
+    strictEqual(list.match(/<SidebarAddRow/g)?.length, 1);
+    ok(list.indexOf("<SidebarAddRow") > list.indexOf("</SortableContext>"));
+    ok(add.includes('depth="block"'));
+    strictEqual(add.includes("dragAttributes"), false);
+    strictEqual(add.includes("dragListeners"), false);
+    strictEqual(add.includes("useDroppable"), false);
   });
 });

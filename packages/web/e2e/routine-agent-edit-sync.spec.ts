@@ -58,6 +58,8 @@ async function openRoutinesTab(page: import("@playwright/test").Page) {
   ).toBeVisible();
 }
 
+test.use({ teamBoard: true });
+
 test("an agent edit refreshes the row's title and schedule summary live", async ({
   page,
 }) => {

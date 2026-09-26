@@ -4,22 +4,19 @@ import { useCallback, useMemo, useState } from "react";
 import { useTranslation } from "react-i18next";
 import { useAllConversations } from "../../hooks/queries";
 import type { BoardSurface } from "../../lib/board-surface-nav";
-import type { TeamView } from "../../lib/teams-model";
+import type { Agent } from "../../lib/types";
 import { useAgentStore } from "../../stores/agents";
-import { useRegisterTaskListArchive } from "../board/task-list-chrome";
 import { useBoardSurfaceOnNav } from "../board/use-board-surface-on-nav";
 import { TeamArchived } from "./team-archived";
-import { TeamMissionEmpty } from "./team-empty";
 import { TeamMissionBoard } from "./team-mission-board";
-import { useTeamBoardScope } from "./use-team-board-scope";
+import { useAgentBoardScope } from "./use-agent-board-scope";
 
 /**
- * A team's Tasks section: the team's active board, or the honest empty state
- * when the team holds no agents.
+ * An employee's Tasks section: its active board or archived missions.
  *
  * The ARCHIVE is a MODE of this section (`team-archived.tsx`), reached by the
- * board toolbar's "Archived" button on desktop and by the drilled header's
- * "…" menu on the phone, and left by the archive's own "Back to tasks". The
+ * board toolbar's "Archived" button or by a published archived mission, and
+ * left by the archive's own "Back to tasks". The
  * flag lives here, above both boards, so exactly one of them is mounted and
  * neither has to say which of two things it is.
  *
@@ -27,21 +24,14 @@ import { useTeamBoardScope } from "./use-team-board-scope";
  * `all-conversations` query, per the one-sweep rule) and the shared
  * `MissionControlScope` narrows what it renders.
  *
- * Mounted with the team's id as its key, so switching teams starts a clean
- * board instead of carrying the previous team's selection across.
+ * Mounted with the employee's id as its key, so switching employees starts a
+ * clean board selection.
  */
-export function TeamMissionControl({
-  team,
-  agentFocusId,
-}: {
-  team: TeamView;
-  agentFocusId?: string;
-}) {
+export function TeamMissionControl({ agent }: { agent: Agent }) {
   const agents = useAgentStore((s) => s.agents);
   const { t } = useTranslation("teams");
   const [archived, setArchived] = useState(false);
-  // Before the empty-team return: hooks may not run conditionally.
-  const scope = useTeamBoardScope(team, agentFocusId);
+  const scope = useAgentBoardScope(agent);
   // The FULL roster's paths, so this is the one shared `all-conversations`
   // query every Mission Control surface already reads — the same key, no
   // second fan-out (the one-sweep rule). It is read here rather than inside
@@ -60,19 +50,10 @@ export function TeamMissionControl({
   }, []);
   useBoardSurfaceOnNav({ rows: rawConversations, show });
 
-  // The phone header's "…" menu opens this archive; it lives a level up, so
-  // the switch is published rather than passed. Withdrawn where there is
-  // nothing to open — an agent-less team, or the archive already on screen,
-  // which carries its own "Back to tasks".
-  const showArchive = useCallback(() => setArchived(true), []);
-  useRegisterTaskListArchive(
-    team.agents.length === 0 || archived ? null : showArchive,
-  );
-
-  if (team.agents.length === 0) return <TeamMissionEmpty team={team} />;
-
   if (archived) {
-    return <TeamArchived team={team} onShowActive={() => setArchived(false)} />;
+    return (
+      <TeamArchived agent={agent} onShowActive={() => setArchived(false)} />
+    );
   }
 
   return (

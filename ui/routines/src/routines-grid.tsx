@@ -58,14 +58,6 @@ export interface RoutinesGridProps {
    *  app's logo for a trigger routine (`ui/` cannot resolve logos); absent or
    *  `null` falls back to a clock for a schedule, a bell for a trigger. */
   leadingIcon?: (routine: Routine) => ReactNode;
-  /** Per-row OWNER chip, for a list that spans several agents (a team's
-   *  Routines): the app returns the owning agent's avatar + name, since `ui/`
-   *  cannot resolve an agent. Absent on a single-agent list, where every row
-   *  has the same owner and naming it on each one would be noise. */
-  ownerChip?: (routine: Routine) => ReactNode;
-  /** The same slot for a DRAFT row. Separate from `ownerChip` because a draft
-   *  is not a routine and has none of its fields — only its own id. */
-  draftOwnerChip?: (draft: RoutineDraft) => ReactNode;
   /** Per-row WARNING chip: the app returns a node when this routine cannot run
    *  as configured (its AI account is disconnected, needs reconnecting, or is
    *  out of credits) and `null`/`undefined` otherwise. `ui/` cannot know any of

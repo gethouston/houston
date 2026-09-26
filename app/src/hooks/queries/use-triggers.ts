@@ -37,16 +37,15 @@ export function useTriggerTypes(toolkit: string | null, enabled: boolean) {
 /** What the trigger-status route answers: `null` = this host serves no triggers. */
 type AgentTriggerStatusData = TriggerStatusItem[] | null;
 
-/** ONE agent's trigger-status cache entry. Named so a cross-agent retry can
- *  target exactly the agents that failed without rebuilding their options. */
-export function agentTriggerStatusQueryKey(agentId: string): [string, string] {
+/** ONE agent's trigger-status cache entry. */
+function agentTriggerStatusQueryKey(agentId: string): [string, string] {
   return ["agent-trigger-status", agentId];
 }
 
 /**
  * ONE agent's trigger status, as options. The setup chat's activation chip
- * (`useAgentTriggerStatus`) and the team's cross-agent list (a `useQueries`
- * fan-out over the team's agents) both build from this, so they share the key,
+ * (`useAgentTriggerStatus`) and the employee's Routines list both build from
+ * this, so they share the key,
  * the cache entry, the queryFn and the poll cadence — the same reasoning as
  * `routinesQueryOptions`. An aggregate key would be a second source of the same
  * truth, and the two surfaces could then disagree about whether a trigger is
@@ -79,8 +78,8 @@ export function agentTriggerStatusQueryOptions(
  *
  * Enable it whenever the agent has at least one trigger routine — independent of
  * the `triggers` capability. The toast is this hook's own, NOT the shared
- * options': a fan-out over a team's agents reuses the options and would
- * otherwise fire one toast per unreachable agent.
+ * options': the Routines list reuses the options and names a failed read in
+ * its inline strip instead.
  */
 export function useAgentTriggerStatus(
   agentId: string,

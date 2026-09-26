@@ -189,7 +189,7 @@ const ENGINE_CALL_BYPASS = new Set([
   "app/src/main.tsx",
   "app/src/stores/agent-provisioning.ts",
   "app/src/stores/agent-provisioning/lifecycle.ts",
-  "app/src/stores/agents.ts",
+  "app/src/stores/agents-loading.ts",
 ]);
 
 /** Node + Bun builtins are always fine to import from open code. */

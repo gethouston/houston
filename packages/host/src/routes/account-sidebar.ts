@@ -1,6 +1,5 @@
 import { getPreference, updatePreference } from "@houston/domain";
 import { ownedWorkspace } from "./account-access";
-import { syncGroupContextFiles } from "./group-context-sync";
 import { json, readJson } from "./http";
 import { defineRoute } from "./registry";
 import { parseSidebarLayout, readSidebarLayout } from "./sidebar-layout";
@@ -32,19 +31,13 @@ defineRoute({
     // never a swallowed accept that writes garbage the read path then rejects.
     const layout = parseSidebarLayout(await readJson(req));
     if (!layout) return json(res, 400, { error: "invalid sidebar layout" });
-    // One critical section: reading the layout the group-context mirror diffs
-    // against and writing the new one must not straddle another writer.
-    const { previous } = await updatePreference(
-      vfs,
-      wsId,
-      "sidebar_layout",
-      () => JSON.stringify(layout),
+    await updatePreference(vfs, wsId, "sidebar_layout", () =>
+      JSON.stringify(layout),
     );
     deps.events?.emit(ws.ownerUserId, {
       type: "SidebarLayoutChanged",
       workspaceId: wsId,
     });
-    await syncGroupContextFiles(deps, ws, readSidebarLayout(previous), layout);
     json(res, 200, layout);
   },
 });

@@ -1,378 +1,46 @@
-import { FAKE_HOST_URL, SEED_AGENT_ID } from "@houston/fake-host";
-import type { APIRequestContext, Locator, Page } from "@playwright/test";
+import { SEED_AGENT_ID } from "@houston/fake-host";
 import { expect, test } from "./support/fixtures";
-import { openSkillsLibrary } from "./support/settings-nav";
-import { createTeam } from "./support/sidebar-create";
-import {
-  openAgentScreen,
-  openAgentSettings,
-  openArchivedTasks,
-  returnToActiveTasks,
-  type TeamSection,
-  teamTab,
-} from "./support/team-nav";
+import { seedSidebarLayout } from "./support/sidebar-layout";
 
-/**
- * The TEAM VIEW and its own chrome. Where `sidebar-teams.spec.ts` asserts what
- * the rail says, this asserts the screen: one frame around four sections, and
- * the team named exactly once on it.
- *
- *   - row 1 carries the team's name and the TAB ROW, which is the only section
- *     switch there is (the rail draws no section rows);
- *   - a team's Tasks tab opens a board SCOPED to its agents, whose own heading
- *     is the scope picker and says nothing about the team (an empty team shows
- *     its own empty state, not the other team's missions);
- *   - clicking an agent row filters that board to the agent, and the board's
- *     own filter menu shows it — the store holds an agent ID and the board
- *     works in folder paths, so this is the id -> path mapping under test;
- *   - the team-wide pin is the BOARD's alone: the rail sets it, the board
- *     shows it, the team's lozenge names it — and no other section reads it
- *     (Routines and Archived carry filters of their own);
- *   - focused agent screens the team's agents and drills into the canonical agent
- *     settings page, and a plain member never gets the tab at all.
- */
-
-const OWNER_CAPS = { multiplayer: true, teams: true, role: "owner" };
-const MEMBER_CAPS = { multiplayer: true, teams: true, role: "user" };
-
-async function armCapabilities(
-  request: APIRequestContext,
-  caps: Record<string, unknown>,
-): Promise<void> {
-  await request.post(`${FAKE_HOST_URL}/__test__/capabilities`, { data: caps });
-}
-
-/** A second agent with a mission of its own, so a filter has something to do. */
-async function addKai(request: APIRequestContext): Promise<void> {
-  const created = await request.post(`${FAKE_HOST_URL}/agents`, {
-    data: { name: "Kai" },
+test("a folder header only folds its employee rows", async ({ page }) => {
+  await seedSidebarLayout(page.request, {
+    groups: [
+      {
+        id: "design",
+        name: "Design",
+        collapsed: false,
+        agentIds: [SEED_AGENT_ID],
+      },
+    ],
+    order: [],
   });
-  const kai = (await created.json()) as { id: string };
-  await request.post(`${FAKE_HOST_URL}/agents/${kai.id}/activities`, {
-    data: { title: "Ship the payroll run", status: "needs_you" },
-  });
-}
-
-/** An archived mission on the seeded agent, so a team's archive has a row. */
-async function addArchivedMission(
-  request: APIRequestContext,
-  title: string,
-): Promise<void> {
-  await request.post(`${FAKE_HOST_URL}/agents/${SEED_AGENT_ID}/activities`, {
-    data: { title, status: "archived" },
-  });
-}
-
-function rail(page: Page): Locator {
-  return page.locator("[data-tour-target='agents']");
-}
-
-/** The content column. Scopes lookups away from the rail, which carries
- *  same-named controls (the workspace switcher, an agent's own row). */
-function screen(page: Page): Locator {
-  // The screen ON THE GLASS: several kept-alive screens sit in the DOM at
-  // once, so a page-level lookup would match the hidden ones too.
-  return page.locator("[data-screen-active='true']");
-}
-
-/**
- * A tab in the team screen's own tab row (row 1). The rail draws no section
- * rows any more: the team frame names the team and carries the ONE section
- * switch, so "open Files" is a click on the screen, not in the rail.
- */
-function sectionTab(page: Page, section: TeamSection): Locator {
-  return teamTab(page, section);
-}
-
-/**
- * The screen's heading — which IS the team's own lozenge, the first in the
- * cluster. Its accessible name is whatever the lozenge says: the team alone,
- * or "<team> <agent>" while an agent is pinned.
- */
-function teamTitle(page: Page, name: string): Locator {
-  return screen(page).getByRole("heading", { level: 1, name, exact: true });
-}
-
-/** The DEFAULT team's block header in the rail: a team's one hit target, and
- *  the way back out of one of its agents. */
-function teamHeaderRow(page: Page): Locator {
-  return rail(page)
-    .locator("[data-sidebar-default-header]")
-    .getByRole("button")
-    .first();
-}
-
-/** The team's lozenge: the board's door, and the pin's undo. */
-function homeLozenge(page: Page): Locator {
-  return teamTab(page, "Tasks");
-}
-
-/**
- * The agent row that says "you are here", by agent name. Read off
- * `aria-current="page"` — the same marker a destination row wears — rather than
- * a Tailwind paint utility, so the assertion is about what the rail MEANS and a
- * repaint cannot break a navigation test.
- */
-function litAgentRow(page: Page, name: string): Locator {
-  return rail(page)
-    .locator("[data-sidebar-item]")
-    .filter({ hasText: name })
-    .locator("[aria-current='page']");
-}
-
-async function openShell(page: Page): Promise<void> {
   await page.goto("/");
-  await expect(page.getByText("Your teams")).toBeVisible();
-}
-
-test("a team's Tasks tab opens that team's board, named once and scoped", async ({
-  page,
-  request,
-}) => {
-  await addKai(request);
-  await openShell(page);
-
-  // The strip names the team ONCE, inside its own lozenge, and says nothing
-  // else while no agent is pinned. There is no "Tasks" label anywhere: the
-  // team's lozenge IS the board's door. No second heading either.
-  await sectionTab(page, "Tasks").click();
-  await expect(teamTitle(page, "New Team")).toBeVisible();
-  await expect(homeLozenge(page)).toHaveAttribute("aria-current", "page");
-  await expect(screen(page).getByText("Tasks", { exact: true })).toHaveCount(0);
-  await expect(screen(page).getByText("All AI Employees")).toHaveCount(0);
-  await expect(screen(page).getByRole("heading", { level: 2 })).toHaveCount(0);
-  await expect(screen(page).getByText("Plan a trip to Tokyo")).toBeVisible();
-  await expect(screen(page).getByText("Ship the payroll run")).toBeVisible();
-
-  // A named team starts empty, and its board says so instead of showing the
-  // workspace's missions — the scope is the team, not the sweep behind it.
-  await createTeam(page, "Work");
-  await sectionTab(page, "Tasks").click();
-  await expect(teamTitle(page, "Work")).toBeVisible();
-  await expect(
-    screen(page).getByText("No AI Employees in this team yet"),
-  ).toBeVisible();
-  // ...and offers the create-an-agent door, which files the new agent into
-  // THIS team rather than the default one.
-  await expect(
-    screen(page).getByTestId("team-empty-create-agent"),
-  ).toBeVisible();
-  await expect(screen(page).getByText("Plan a trip to Tokyo")).toHaveCount(0);
-});
-
-test("the lozenge cluster is the only section switch, and it lights the open one", async ({
-  page,
-  request,
-}) => {
-  await armCapabilities(request, OWNER_CAPS);
-  await openShell(page);
-
-  // The rail promises no sections any more: every one of them is a lozenge on
-  // the screen, and the cluster IS `visibleTeamSectionsForTeam` for this team
-  // — the team's own lozenge standing in for the board.
-  await expect(rail(page).locator("[data-sidebar-section-row]")).toHaveCount(0);
-  await expect(screen(page).locator("[data-team-section-tab]")).toHaveCount(4);
-
-  // The lozenge that is open says so, and exactly one does.
-  await sectionTab(page, "Routines").click();
-  await expect(sectionTab(page, "Routines")).toHaveAttribute(
-    "aria-current",
-    "page",
+  const folder = page.locator('[data-sidebar-group-header="design"]');
+  // By title, not by name: folded, the header carries its hidden members'
+  // needs-you chip, and the chip joins the accessible name.
+  const header = folder.locator('button[title="Design"]');
+  const row = page.locator(
+    `[data-sidebar-item][data-item-id="${SEED_AGENT_ID}"]`,
   );
-  await expect(
-    screen(page).locator("[data-team-section-tab][aria-current='page']"),
-  ).toHaveCount(1);
-});
-
-test("an agent row opens its own screen and managers can enter and leave AI Employee settings", async ({
-  page,
-  request,
-}) => {
-  await armCapabilities(request, MEMBER_CAPS);
-  await openShell(page);
-  await rail(page).getByText("Houston", { exact: true }).click();
-  await expect(screen(page).locator("[data-agent-screen]")).toBeVisible();
-  await expect(
-    screen(page).getByRole("heading", {
-      level: 1,
-      name: "Houston",
-      exact: true,
-    }),
-  ).toBeVisible();
-  await expect(screen(page).locator("[data-team-section-tab]")).toHaveCount(3);
-
-  await armCapabilities(request, OWNER_CAPS);
-  await page.reload();
-  await rail(page).getByText("Houston", { exact: true }).click();
-  const agentSettings = screen(page).locator(
-    "[data-team-section-tab='settings']",
+  await expect(header).toHaveAttribute("aria-expanded", "true");
+  await expect(row).toBeVisible();
+  await expect(page.locator('[data-screen-active="true"]')).toHaveAttribute(
+    "data-screen",
+    "agent",
   );
-  await expect(agentSettings).toBeVisible();
-  await agentSettings.click();
-  await expect(screen(page).locator("[data-agent-section-tab]")).toHaveCount(7);
-  await expect(
-    screen(page).locator("[data-agent-settings-back]"),
-  ).toContainText("Houston");
-  await screen(page).locator("[data-agent-settings-back]").click();
-  await expect(screen(page).locator("[data-agent-screen]")).toBeVisible();
-  await expect(sectionTab(page, "Tasks")).toHaveAttribute(
-    "aria-current",
-    "page",
+  await expect(header).toHaveAccessibleName("Design");
+  await header.click();
+  await expect(header).toHaveAttribute("aria-expanded", "false");
+  await expect(row).toHaveCount(0);
+  await expect(header).toHaveAccessibleName("Design 1 issue needs you");
+  await expect(page.locator('[data-screen-active="true"]')).toHaveAttribute(
+    "data-screen",
+    "agent",
   );
-});
-
-test("an agent row opens that agent's own board, and the team's row widens back", async ({
-  page,
-  request,
-}) => {
-  await addKai(request);
-  await openShell(page);
-
-  // Clicking an agent opens the AGENT's own screen, whose board carries its
-  // work alone. The store pins the agent's ID; the board filters on its folder
-  // path.
-  await rail(page).getByText("Kai", { exact: true }).click();
-  await expect(screen(page).getByText("Ship the payroll run")).toBeVisible();
-  await expect(screen(page).getByText("Plan a trip to Tokyo")).toHaveCount(0);
-  // Its identity lozenge IS the screen's home, so it names the agent and takes
-  // the current mark; the rail says the same thing on the agent's own row.
-  await expect(homeLozenge(page)).toContainText("Kai");
-  await expect(homeLozenge(page)).toHaveAttribute("aria-current", "page");
-  // It names the agent ALONE. The heading is the lozenge, so an exact-name
-  // match is the assertion that the team's name did not come along for the
-  // ride: "Kai" appearing inside "New Team Kai" would satisfy the line above.
-  await expect(teamTitle(page, "Kai")).toBeVisible();
-  await expect(teamTitle(page, "New Team")).toHaveCount(0);
-  await expect(litAgentRow(page, "Kai")).toHaveCount(1);
-  await expect(litAgentRow(page, "Houston")).toHaveCount(0);
-
-  // The TEAM's name is its "all agents" row, and it is the way back out of one
-  // agent: the whole team's board, unnarrowed, named for the team alone.
-  await teamHeaderRow(page).click();
-  await expect(screen(page).getByText("Ship the payroll run")).toBeVisible();
-  await expect(screen(page).getByText("Plan a trip to Tokyo")).toBeVisible();
-  await expect(litAgentRow(page, "Kai")).toHaveCount(0);
-  await expect(homeLozenge(page)).not.toContainText("Kai");
-  await expect(teamTitle(page, "New Team")).toBeVisible();
-
-  // On the whole team's own board the home lozenge is where the user already
-  // is, so clicking it does nothing at all.
-  await homeLozenge(page).click();
-  await expect(homeLozenge(page)).toHaveAttribute("aria-current", "page");
-  await expect(teamTitle(page, "New Team")).toBeVisible();
-});
-
-test("an agent row opens its focused screen and settings page", async ({
-  page,
-  request,
-}) => {
-  await armCapabilities(request, OWNER_CAPS);
-  await addKai(request);
-  await openShell(page);
-
-  await openAgentScreen(page, "Kai");
-  await expect(teamTitle(page, "New Team")).toHaveCount(0);
-  await openAgentSettings(page, "Kai");
-  await expect(
-    screen(page).locator("[data-agent-section-tab='people']"),
-  ).toBeVisible();
-  // Identity lives on the back chip; the lens the user is ON carries the
-  // heading, and the helper lands on Job description.
-  await expect(
-    screen(page).locator("[data-agent-settings-back]"),
-  ).toContainText("Kai");
-  await expect(
-    screen(page).getByRole("heading", { level: 1, name: "Job description" }),
-  ).toBeVisible();
-  // ...and the chip goes back to the agent's own screen.
-  await screen(page).locator("[data-agent-settings-back]").click();
-  await expect(screen(page).locator("[data-agent-screen]")).toContainText(
-    "Kai",
+  await header.click();
+  await row.getByRole("button").first().click();
+  await expect(page.locator('[data-screen-active="true"]')).toHaveAttribute(
+    "data-screen",
+    "agent",
   );
-});
-
-test("the archive toggle round-trips inside Tasks", async ({ page }) => {
-  await openShell(page);
-
-  // The archive stopped being a mode the board swapped into. It is a section,
-  // so the lit tab is the only thing that has to say where you are: no title,
-  // no "· Archived" qualifier, no crumb segment. HOU-1043's rule is satisfied
-  // better than by the old pill-in / back-button-out pair, because one
-  // permanently visible LABELLED control is both doors.
-  await sectionTab(page, "Tasks").click();
-  await openArchivedTasks(page);
-  await expect(teamTitle(page, "New Team")).toBeVisible();
-  await expect(screen(page).getByRole("heading", { level: 2 })).toHaveCount(0);
-  await expect(
-    screen(page).getByRole("button", { name: "Back to tasks" }),
-  ).toBeVisible();
-
-  // And back, by the same control.
-  await returnToActiveTasks(page);
-  await expect(sectionTab(page, "Tasks")).toHaveAttribute(
-    "aria-current",
-    "page",
-  );
-});
-
-test("a team's archive lets go of the shared panel when the user leaves", async ({
-  page,
-  request,
-}) => {
-  await addArchivedMission(request, "Old expense report");
-  await openShell(page);
-
-  // The archive is not a `MissionBoard`, so it carries its own release of the
-  // ONE shell detail panel (HOU-1165's family). Without it the archived chat
-  // keeps portaling into that panel after the user has navigated away.
-  await openArchivedTasks(page);
-  await screen(page).getByText("Old expense report").first().click();
-  await expect(page.getByTestId("mission-panel")).toBeVisible();
-
-  await openSkillsLibrary(page);
-  await expect(page.getByTestId("mission-panel")).toBeHidden();
-});
-
-test("a plain member gets work tabs and loses all manager tabs", async ({
-  page,
-  request,
-}) => {
-  await armCapabilities(request, MEMBER_CAPS);
-  await openShell(page);
-
-  // Routines and Files show the team's work, so they are every member's. The
-  // three manager tabs are gated together by the visible-sections list.
-  await expect(sectionTab(page, "Routines")).toBeVisible();
-  await expect(sectionTab(page, "Files")).toBeVisible();
-  await expect(screen(page).locator("[data-team-section-tab]")).toHaveCount(3);
-
-  // And the tabs go somewhere: the row can never promise a section the screen
-  // will not render (`visibleTeamSectionsForTeam` is the one list both read).
-  await sectionTab(page, "Routines").click();
-  await expect(sectionTab(page, "Routines")).toHaveAttribute(
-    "aria-current",
-    "page",
-  );
-  await sectionTab(page, "Files").click();
-  await expect(sectionTab(page, "Files")).toHaveAttribute(
-    "aria-current",
-    "page",
-  );
-});
-
-test("a plain member lands on Tasks, with the team named once", async ({
-  page,
-  request,
-}) => {
-  await armCapabilities(request, MEMBER_CAPS);
-  await openShell(page);
-
-  await sectionTab(page, "Tasks").click();
-  await expect(sectionTab(page, "Tasks")).toHaveAttribute(
-    "aria-current",
-    "page",
-  );
-  await expect(teamTitle(page, "New Team")).toBeVisible();
-  // No agent pinned, so the crumb is the team and nothing else.
-  await expect(screen(page).getByText("All AI Employees")).toHaveCount(0);
 });

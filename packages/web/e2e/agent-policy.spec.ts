@@ -7,6 +7,7 @@ import {
   expectTeamSections,
   openAgentScreen,
   openAgentSettings,
+  rail,
 } from "./support/team-nav";
 
 /**
@@ -422,15 +423,13 @@ test("a plain member cannot reach the agent settings page at all", async ({
     },
   });
   await page.goto("/");
-  await expect(page.getByText("Your teams")).toBeVisible();
+  await expect(rail(page).getByText("Your AI Employees")).toBeVisible();
 
-  // The team's WORK is theirs — Tasks, Routines, Files — but the one section
+  // The employee's WORK is theirs — Tasks, Routines, Files — but the one section
   // that CONFIGURES is not, and the agent settings page has no other door:
-  // `visibleTeamSectionsForTeam` withholds "focused agent screen", and there is no
-  // top-level Permissions screen to reach the page around it any more. A
-  // lozenge they cannot use would be a dead link, so the strip does not draw
-  // one. (The sections are the team screen's own lozenge cluster now; the rail
-  // names teams and nothing else.)
+  // the section strip withholds Settings, and no top-level Permissions screen
+  // reaches the page around it. A lozenge they cannot use would be a dead
+  // link, so the strip does not draw one.
   await expectTeamSections(page, ["Tasks", "Routines", "Files"]);
 });
 

@@ -706,6 +706,14 @@
     "classification": "sdk"
   },
   {
+    "pattern": "/v1/workspaces/{org}/sidebar-layout",
+    "methods": [
+      "GET",
+      "PUT"
+    ],
+    "classification": "sdk"
+  },
+  {
     "pattern": "/agents/{slug}",
     "methods": [
       "PATCH",

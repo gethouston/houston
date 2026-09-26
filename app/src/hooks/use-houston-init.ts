@@ -63,9 +63,8 @@ export function useHoustonInit() {
       if (lastAgentId) {
         const agents = useAgentStore.getState().agents;
         const saved = agents.find((a) => a.id === lastAgentId);
-        // Restoring the last agent makes it CURRENT (provider routing, model
-        // prefs, the palette's default) — it does not pick a screen: an agent
-        // has no screen of its own, and boot lands on Mission Control.
+        // Restoring the last agent makes it CURRENT for provider routing and
+        // preferences. The desktop landing follows sidebar order separately.
         if (saved) setCurrent(saved);
       }
 

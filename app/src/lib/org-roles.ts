@@ -38,10 +38,7 @@ export function hasSpaces(caps: Capabilities | null | undefined): boolean {
  *
  * Every surface that asks the question LIVE reads it here, through
  * `usePersonalSpace`, and several do: the org dashboard and Permissions drop
- * out entirely (`canSeeOrganization`), and the C13 people affordances — a
- * team's Members card, the rail's "Join a team" and its "Leave team" — hide,
- * because a space with one human has nobody to add, remove, promote or leave a
- * team to, and the gateway answers those routes `403 personal_space`. The pure
+ * out entirely (`canSeeOrganization`). The pure
  * models downstream (`agent-access-model.ts`,
  * `mission-person-filter-model.ts`) take the ANSWER as a boolean rather than
  * calling this, which is what keeps them testable without capabilities.
@@ -54,19 +51,6 @@ export function isPersonalSpace(
   activeSpaceIsTeam: boolean,
 ): boolean {
   return hasSpaces(caps) && !activeSpaceIsTeam;
-}
-
-/**
- * Does this deployment serve C13 agent teams? A FEATURE-DETECT — the gateway
- * describing whether IT owns the teams and their rosters (`GET /v1/org/teams`),
- * not a feature flag we may flip. Absent/false on desktop, self-host and every
- * gateway that predates C13, where a team is the local backend's named sidebar
- * group plus the virtual default team; the off-capability path stays
- * byte-identical. The gateway is the sole enforcer — this only picks which
- * backend resolves the rail (`lib/teams-backend.ts`).
- */
-export function hasAgentTeams(caps: Capabilities | null | undefined): boolean {
-  return caps?.agentTeams === true;
 }
 
 /**

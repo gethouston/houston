@@ -6,7 +6,7 @@ import { gatedNavRows } from "./sidebar-nav-rows";
 import { tourAnchor } from "./workspace-tour-steps.ts";
 
 /**
- * The rail's top-level destinations: ONE unlabelled run above "Your teams".
+ * The rail's top-level destinations: ONE unlabelled run above "Your AI Employees".
  *
  * The Assistant, AI Models, Integrations and Skills are the things a user
  * reaches for without being asked, so they lead the rail and need no heading
@@ -16,7 +16,7 @@ import { tourAnchor } from "./workspace-tour-steps.ts";
  * assistant exists. Skills follows Integrations because the two answer the
  * same question from either side — what an agent can REACH, and what an agent
  * can DO — and it rides the `showSkills` gate, since editing a skill edits
- * every agent in the space at once. "Your teams" is the rail's only labelled
+ * every agent in the space at once. "Your AI Employees" is the rail's only labelled
  * band, drawn below by the teams model.
  *
  * A section the gates empty is DROPPED by the library, band and all

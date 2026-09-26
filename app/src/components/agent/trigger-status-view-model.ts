@@ -31,15 +31,13 @@ export interface TriggerSurface {
  * forever.
  *
  * The FETCH stays with the caller and everything downstream of it lives here:
- * a team's cross-agent list (`team-routines/use-team-trigger-statuses.ts`) fans
- * status out per agent and hands it over. The timeout rule itself lives in
+ * the employee's Routines list (`team-routines/use-team-trigger-statuses.ts`)
+ * reads the status and hands it over. The timeout rule itself lives in
  * `useTriggerStatusTimeouts`, shared with the routine screen's activation chip:
  * it is the only reason a trigger row cannot lie, so there is exactly one copy.
  *
- * The contract, and the reason this works for a merged list: `routines[i].id`
- * and `statusItems[j].routine_id` are both the GRID's row id. The team list
- * namespaces its rows with `teamRoutineKey`, so it re-keys the status reads to
- * match before handing them over.
+ * The contract: `routines[i].id` and `statusItems[j].routine_id` are both the
+ * GRID's row id.
  *
  * `triggersEnabled` gates ONLY offering NEW event triggers (the wizard's event
  * option and the app catalog). Status runs off the routines themselves: a

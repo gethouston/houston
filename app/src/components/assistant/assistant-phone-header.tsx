@@ -1,6 +1,6 @@
 import { ChevronLeft } from "lucide-react";
 import { useTranslation } from "react-i18next";
-import { openMobileTab } from "../../lib/open-mobile-tab";
+import { openAgentsTab } from "../../lib/open-mobile-tab";
 import { useUIStore } from "../../stores/ui";
 import { HoustonLogo } from "./houston-logo";
 
@@ -21,7 +21,7 @@ export function AssistantPhoneHeader() {
   const navBack = useUIStore((s) => s.navBack);
   const back = () => {
     if (canGoBack) navBack();
-    else openMobileTab("agents");
+    else openAgentsTab();
   };
   return (
     <div className="flex shrink-0 items-center gap-3 px-4 py-3 md:hidden">

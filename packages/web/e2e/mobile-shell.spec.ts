@@ -25,7 +25,7 @@ test("replaces the sidebar rail with the floating nav bar", async ({
   await expect(page.locator('[data-tour-target="sidebar"]')).toHaveCount(0);
   await expect(page.getByRole("button", { name: "Open menu" })).toHaveCount(0);
 
-  for (const tab of ["agents", "teams", "more"] as const) {
+  for (const tab of ["agents", "more"] as const) {
     await expect(navItem(page, tab)).toBeVisible();
   }
 });

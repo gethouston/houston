@@ -1,9 +1,7 @@
 import type { ReactNode } from "react";
-import type {
-  SidebarDefaultGroupView,
-  SidebarGroupView,
-} from "./sidebar-groups";
+import type { SidebarGroupView, SidebarRootEntry } from "./sidebar-groups";
 import type { SidebarLabels } from "./sidebar-labels";
+import type { SidebarArrangement } from "./sidebar-tree";
 
 export interface SidebarItem {
   id: string;
@@ -89,8 +87,6 @@ export interface SidebarProps {
    * rail it stays the trailing icon button it has always been.
    */
   onAdd?: () => void;
-  /** Creates an item in one expanded group (`null` is the default group). */
-  onAddToGroup?: (groupId: string | null) => void;
   /** Extra DOM attributes (e.g. `data-tour-target`) on the add-item control. */
   addItemDataAttrs?: Record<string, string>;
   /** Names the list. Expanded rail only. */
@@ -109,41 +105,25 @@ export interface SidebarProps {
   /**
    * Named groups in display order. When provided (even []), the grouped
    * drag-and-drop layout renders; items whose id is in no group render in a
-   * trailing default section. When undefined → flat list, unchanged. Agents are
-   * always drag-reorderable in grouped mode.
+   * top-level entry of their own, placed by `order`. When undefined → flat
+   * list. Agents and groups are always drag-reorderable in grouped mode.
    */
   groups?: SidebarGroupView[];
+  order?: SidebarRootEntry[];
   /**
-   * Names the trailing default section, turning it into a labelled block
-   * instead of a bare list. Grouped mode only (the collapsed rail is always
-   * flat).
-   */
-  defaultGroup?: SidebarDefaultGroupView;
-  /**
-   * A block's header row was activated.
-   *
-   * The library does NOT decide what that means, which is why this is no
-   * longer called "toggle collapsed": a header may open the block's screen,
-   * fold the block, or both, depending on where the host already is. `collapsed`
+   * A block's header row was activated: fold or unfold that block. `collapsed`
    * on the view model stays the single controlled truth about the fold, so the
-   * host's answer is whatever it writes back there.
+   * host answers by writing the new value back there.
    */
   onActivateGroup?: (groupId: string) => void;
-  /** The trailing DEFAULT block's header was activated. Its own callback
-   *  because that block is not a stored group and has no id to hand back. */
-  onActivateDefault?: () => void;
   /**
-   * Reorder an item WITHIN its own container, before `beforeItemId` (null =
-   * append to the end of that section). `groupId` is always the container the
-   * item was already in (null = default section) — a drag cannot move an item
-   * between blocks, so it is the position that changed and never the block.
+   * A drop landed. Carries the WHOLE arrangement the rail now shows (the
+   * top-level order and every group's members), read off the same rows the
+   * drag drew, so the host stores exactly what the person saw. Answers whether
+   * the write was accepted: a refused drop is not drawn. Absent, the rail offers
+   * no drag and no keyboard move.
    */
-  onMoveItem?: (
-    itemId: string,
-    dest: { groupId: string | null; beforeItemId: string | null },
-  ) => void;
-  /** Reorder group before `beforeGroupId` (null = move to end). */
-  onMoveGroup?: (groupId: string, beforeGroupId: string | null) => void;
+  onArrange?: (arrangement: SidebarArrangement) => boolean;
   footer?: ReactNode;
   labels?: SidebarLabels;
   /** Icon-only rail: hide all text labels, reveal them via hover/focus flyouts. */

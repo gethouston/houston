@@ -1,27 +1,32 @@
 import { AIBoard } from "@houston-ai/board";
-import { ChevronLeft } from "lucide-react";
-import { useEffect, useRef } from "react";
-import { useTranslation } from "react-i18next";
+import { useEffect, useMemo, useRef } from "react";
+import { useAllConversations } from "../../hooks/queries";
 import { useVisualViewportInset } from "../../hooks/use-visual-viewport-inset";
+import { pendingMissionSurface } from "../../lib/board-surface-nav";
 import type { Agent } from "../../lib/types";
 import { useAgentStore } from "../../stores/agents";
 import { useUIStore } from "../../stores/ui";
 import { useBoardChatWiring } from "../board/use-board-chat-wiring";
 import { tourAnchor } from "../shell/workspace-tour-steps.ts";
+import { ArchivedMissionChat } from "./archived-mission-chat";
+import { MissionChatBack } from "./mission-chat-back";
 import { useMissionChatSource } from "./use-mission-chat-source";
 
 /**
  * The phone's pushed mission-chat screen: chat as a PLACE, a first-class nav
- * level over whatever view pushed it (a board card, an Agents-home mission
- * row, the compose flow), popped by its back chevron or hardware back. The
+ * level over whatever view pushed it (a task list row, a published task
+ * target, the compose flow), popped by its back chevron or hardware back. The
  * shell mounts it full-screen while the nav entry names it and hides the tab
  * bars — a push, not a tab.
  *
- * The chat itself is the boards' own wiring (`useBoardChatWiring`) over the
- * chat-only source, rendered through AIBoard's panel-only presentation, so
- * this screen can never drift from the desktop panel. The composer stays
- * above the on-screen keyboard by padding the screen with the visual
- * viewport's occluded bottom (`useVisualViewportInset`).
+ * An active task's chat is the boards' own wiring (`useBoardChatWiring`) over
+ * the chat-only source; an archived one's is the archive's
+ * ({@link ArchivedMissionChat}). Which one is decided from the raw sweep rows
+ * (`pendingMissionSurface`), the one place both statuses coexist. Both render
+ * through AIBoard's panel-only presentation, so this screen can never drift
+ * from the desktop panel. The composer stays above the on-screen keyboard by
+ * padding the screen with the visual viewport's occluded bottom
+ * (`useVisualViewportInset`).
  */
 export function MissionChatScreen() {
   const chatAgentId = useUIStore((s) => s.chatAgentId);
@@ -39,18 +44,18 @@ export function MissionChatScreen() {
   }, [chatAgentId, agent, closeMissionChat]);
 
   if (agent === null) return null;
-  return <MissionChatHost agent={agent} />;
+  return <MissionChatFrame agent={agent} />;
 }
 
-function MissionChatHost({ agent }: { agent: Agent }) {
-  const { t } = useTranslation("shell");
+function MissionChatFrame({ agent }: { agent: Agent }) {
   const missionId = useUIStore((s) => s.chatMissionId);
-  const closeMissionChat = useUIStore((s) => s.closeMissionChat);
   const agents = useAgentStore((s) => s.agents);
-  const source = useMissionChatSource(agents, agent, missionId);
-  const wiring = useBoardChatWiring(source);
+  const rosterPaths = useMemo(() => agents.map((a) => a.folderPath), [agents]);
+  const { data: rows } = useAllConversations(rosterPaths);
   const screenRef = useRef<HTMLDivElement>(null);
   const keyboardInset = useVisualViewportInset(screenRef);
+  const archived =
+    missionId !== null && pendingMissionSurface(rows, missionId) === "archived";
 
   return (
     <div
@@ -60,6 +65,28 @@ function MissionChatHost({ agent }: { agent: Agent }) {
       className="flex h-full min-h-0 flex-col pb-safe"
       style={keyboardInset > 0 ? { paddingBottom: keyboardInset } : undefined}
     >
+      {archived ? (
+        <ArchivedMissionChat agent={agent} missionId={missionId} />
+      ) : (
+        <ActiveMissionChat agent={agent} missionId={missionId} />
+      )}
+    </div>
+  );
+}
+
+function ActiveMissionChat({
+  agent,
+  missionId,
+}: {
+  agent: Agent;
+  missionId: string | null;
+}) {
+  const agents = useAgentStore((s) => s.agents);
+  const source = useMissionChatSource(agents, agent, missionId);
+  const wiring = useBoardChatWiring(source);
+
+  return (
+    <>
       <AIBoard
         items={source.items}
         selectedId={source.selectedId}
@@ -70,20 +97,10 @@ function MissionChatHost({ agent }: { agent: Agent }) {
         onRename={source.onRename}
         panelOnly
         hidePanelClose
-        panelLeading={
-          <button
-            type="button"
-            data-testid="mission-chat-back"
-            aria-label={t("missionChat.back")}
-            onClick={closeMissionChat}
-            className="flex size-9 shrink-0 items-center justify-center rounded-full text-ink-muted transition-colors active:scale-95 hover:bg-hover hover:text-ink focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-focus"
-          >
-            <ChevronLeft className="size-5" />
-          </button>
-        }
+        panelLeading={<MissionChatBack />}
         {...wiring.chatProps}
       />
       {wiring.dialogs}
-    </div>
+    </>
   );
 }

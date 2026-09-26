@@ -63,6 +63,8 @@ async function activityTitles(): Promise<string[]> {
   return items.map((a) => a.title);
 }
 
+test.use({ teamBoard: true });
+
 test("opens from the rail onto a welcoming empty chat", async ({ page }) => {
   await page.goto("/");
   await openAssistant(page);

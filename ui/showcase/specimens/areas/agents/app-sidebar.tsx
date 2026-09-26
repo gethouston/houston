@@ -21,7 +21,7 @@ function AppSidebarSpecimen() {
       >
         <SpecimenSection
           title="Variants"
-          note="No `variant` prop. The rail's shape is which slots it is given — and one decision: pass `groups` and the flat list becomes the grouped drag-and-drop layout. Add an `icon` to a group and `defaultGroup` for the trailing block, and each block becomes a team: one header row, then its agents. Every example below is live; select, fold and drag them."
+          note="No `variant` prop. The rail's shape is which slots it is given — and one decision: pass `groups` and the flat list becomes the grouped drag-and-drop layout. Add an `icon` to a group and each block becomes a team: one header row, then its agents. Every example below is live; select, fold and drag them."
         >
           <SpecimenRow label="Flat list">
             <SidebarStage>
@@ -55,7 +55,7 @@ function AppSidebarSpecimen() {
           title="Anatomy"
           note="A team block is ONE ladder, not a header with a list under it: the team row and every agent row share one fixed height, one glyph column and one type size, with hierarchy carried by an indent inside the row so the inset pills line up in a single column down the left edge. The team row itself is one hit target — glyph, name, triangle and rollup badge together — and nothing sits beside it. Its glyph is monochrome on purpose: the identity colour in that column belongs to the agent avatars one indent to the right."
         >
-          <SpecimenRow label="Expanded team, collapsed team, default block">
+          <SpecimenRow label="Expanded team, collapsed team, ungrouped top-level agents">
             <SidebarStage>
               <LiveSidebar grouped teams />
             </SidebarStage>

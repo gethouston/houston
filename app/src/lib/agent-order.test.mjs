@@ -15,7 +15,7 @@ function agent(id, extra = {}) {
 }
 
 function layout(over = {}) {
-  return { groups: [], ungroupedOrder: [], ...over };
+  return { groups: [], order: [], ...over };
 }
 
 test("empty layout: keeps input order (no stored order yet)", () => {
@@ -30,15 +30,20 @@ test("empty layout: keeps input order (no stored order yet)", () => {
   );
 });
 
-test("ungroupedOrder wins, new agents appended stably", () => {
+test("new root agents lead stored entries in natural order", () => {
   const res = resolveSidebarSections(
     [agent("a"), agent("b"), agent("c"), agent("d")],
-    layout({ ungroupedOrder: ["c", "a"] }),
+    layout({
+      order: [
+        { kind: "agent", id: "c" },
+        { kind: "agent", id: "a" },
+      ],
+    }),
   );
-  // c,a from stored order; b,d (new) appended in input order.
+  // b,d are absent from the stored order and lead in input order.
   assert.deepEqual(
     res.ungrouped.map((x) => x.id),
-    ["c", "a", "b", "d"],
+    ["b", "d", "c", "a"],
   );
 });
 
@@ -115,11 +120,58 @@ test("flatSidebarOrder: groups (display order) then ungrouped", () => {
         { id: "g1", name: "G1", collapsed: false, agentIds: ["c"] },
         { id: "g2", name: "G2", collapsed: false, agentIds: ["a"] },
       ],
-      ungroupedOrder: ["d", "b"],
+      order: [
+        { kind: "agent", id: "d" },
+        { kind: "agent", id: "b" },
+      ],
     }),
   );
   assert.deepEqual(
     flat.map((x) => x.id),
-    ["c", "a", "d", "b"],
+    ["d", "b", "c", "a"],
+  );
+});
+
+test("mixed root order renders agents between groups and drops unknown entries", () => {
+  const res = resolveSidebarSections(
+    [agent("a"), agent("b"), agent("inside"), agent("fresh")],
+    layout({
+      groups: [
+        { id: "g1", name: "One", collapsed: false, agentIds: ["inside"] },
+        { id: "g2", name: "Two", collapsed: false, agentIds: [] },
+      ],
+      order: [
+        { kind: "group", id: "g1" },
+        { kind: "agent", id: "a" },
+        { kind: "group", id: "unknown" },
+        { kind: "agent", id: "inside" },
+        { kind: "group", id: "g2" },
+        { kind: "agent", id: "b" },
+      ],
+    }),
+  );
+  assert.deepEqual(
+    res.entries.map((entry) =>
+      entry.kind === "agent"
+        ? `agent:${entry.agent.id}`
+        : `group:${entry.section.group.id}`,
+    ),
+    ["agent:fresh", "group:g1", "agent:a", "group:g2", "agent:b"],
+  );
+  assert.deepEqual(
+    flatSidebarOrder(
+      [agent("a"), agent("b"), agent("inside"), agent("fresh")],
+      layout({
+        groups: [
+          { id: "g1", name: "One", collapsed: false, agentIds: ["inside"] },
+        ],
+        order: [
+          { kind: "group", id: "g1" },
+          { kind: "agent", id: "a" },
+          { kind: "agent", id: "b" },
+        ],
+      }),
+    ).map((item) => item.id),
+    ["fresh", "inside", "a", "b"],
   );
 });

@@ -79,8 +79,8 @@ function handleArrow(e: KeyboardEvent, dir: ArrowDir): void {
   }
   // Board view → arrows move the highlight. They do NOT open the panel; Enter
   // does that. Yield to any editable so search inputs etc. keep their cursor
-  // motion. "Board" is a team's Mission Control — the SURFACE, not the view: a
-  // team's Routines, Files or Settings section has no highlight to move, so it
+  // motion. "Board" is an employee's Tasks surface: their
+  // Routines, Files or Settings section has no highlight to move, so it
   // must leave the arrow key alone instead of preventing the page's own
   // scrolling.
   if (isTypingTarget(e)) return;
@@ -97,9 +97,9 @@ function handleBoardOpen(e: KeyboardEvent): void {
   if (isTypingTarget(e) || isOverlayTarget(e)) return;
   const ui = useUIStore.getState();
   if (ui.missionPanelOpen || ui.paletteOpen || ui.cheatsheetOpen) return;
-  // A team's Mission Control. Off a board there is no card to open, and
+  // An employee's Tasks board. Off a board there is no card to open, and
   // swallowing Enter would keep it from reaching the control the user has
-  // focused on Routines, Files or Team Settings.
+  // focused on Routines, Files or Settings.
   if (!isMissionBoardSurface(ui)) return;
   e.preventDefault();
   ui.onBoardOpen?.();

@@ -1,96 +1,48 @@
 import assert from "node:assert/strict";
 import { describe, it } from "node:test";
-import type { Capabilities } from "@houston/engine-adapter";
-import {
-  TEAM_SECTION_TAB_KEYS,
-  teamSectionTabs,
-} from "../src/components/team-view/team-section-tabs-model.ts";
-import {
-  type TeamView,
-  visibleTeamSectionsForTeam,
-} from "../src/lib/teams-model.ts";
-import type { Agent } from "../src/lib/types.ts";
+import { phoneTaskListReturn } from "../src/components/team-view/team-section-tabs-model.ts";
+import type { NavEntry } from "../src/lib/nav-stack.ts";
 
-/**
- * The team strip's LABELLED lozenges. The rail draws no section rows any more,
- * so the strip is the ONLY way between a team's sections, which makes one
- * property the whole test: the labelled run IS `visibleTeamSectionsForTeam`,
- * in order, minus the board. A run that added a lozenge would offer a section
- * the view refuses to render; one that dropped a section would strand it with
- * no door at all.
- *
- * The board is the exception ON PURPOSE: the team's own lozenge stands for it,
- * so the word "Tasks" appears nowhere in the chrome.
- */
-
-const agent = (id: string): Agent => ({ id, name: id }) as Agent;
-
-const team = (over: Partial<TeamView> = {}): TeamView => ({
-  id: "t1",
-  name: "Design",
-  agents: [agent("a")],
-  isDefault: false,
-  ...over,
+const entry = (fields: Partial<NavEntry>): NavEntry => ({
+  viewMode: "agents-home",
+  settingsSection: null,
+  activeAgentId: null,
+  agentSection: null,
+  agentsHomeAgentId: null,
+  chatAgentId: null,
+  chatMissionId: null,
+  panelOpen: false,
+  ...fields,
 });
 
-const caps = (over: Partial<Capabilities> = {}): Capabilities =>
-  ({ multiplayer: false, ...over }) as Capabilities;
+const list = entry({});
+const drillIn = entry({ agentsHomeAgentId: "a", activeAgentId: "other" });
+const screen = entry({
+  viewMode: "agent",
+  activeAgentId: "a",
+  agentSection: "files",
+  agentsHomeAgentId: "a",
+});
 
-describe("teamSectionTabs", () => {
-  it("is the visible sections, in order, minus the board", () => {
-    const sections = visibleTeamSectionsForTeam(caps(), team());
-    assert.deepEqual(
-      teamSectionTabs(sections).map((tab) => tab.id),
-      ["routines", "files", "settings"],
-    );
-    // The board is dropped, never relabelled: the team's lozenge IS that door.
-    assert.ok(
-      !teamSectionTabs(sections).some((tab) => tab.id === "mission-control"),
-    );
+describe("phoneTaskListReturn", () => {
+  it("pops to the employee's drill-in it came from, whatever else it carries", () => {
+    assert.equal(phoneTaskListReturn([list, drillIn, screen], 2, "a"), "pop");
   });
 
-  it("gives a member the WORK tabs and no focused agent screen", () => {
-    // Multiplayer, plain user, managing nothing: the configure section is not
-    // theirs, so the row must not draw the last tab. Archived is WORK, so they
-    // keep it.
-    const sections = visibleTeamSectionsForTeam(
-      caps({ multiplayer: true, role: "user" } as Partial<Capabilities>),
-      team(),
-    );
-    assert.deepEqual(
-      teamSectionTabs(sections).map((tab) => tab.id),
-      ["routines", "files"],
-    );
-  });
-
-  it("gives a team owner all manager tabs in their pinned order", () => {
-    const sections = visibleTeamSectionsForTeam(
-      caps({ multiplayer: true, role: "user" } as Partial<Capabilities>),
-      team({
-        server: { joined: true, owner: true, memberCount: 2, sortOrder: 0 },
-        context: "",
-      }),
-    );
-    assert.deepEqual(
-      teamSectionTabs(sections).map((tab) => tab.id),
-      ["routines", "files", "settings"],
-    );
-  });
-
-  it("labels every section from the teams namespace, one key each", () => {
-    const keys = Object.values(TEAM_SECTION_TAB_KEYS);
-    assert.equal(new Set(keys).size, keys.length);
-    for (const key of keys) assert.match(key, /^teamView\.tabs\./);
-  });
-
-  it("turns settings into the manager-only door", () => {
+  it("replaces when the screen was opened from anywhere else", () => {
+    assert.equal(phoneTaskListReturn([list, screen], 1, "a"), "replace");
     assert.equal(
-      teamSectionTabs(["mission-control", "settings"])[0]?.id,
-      "settings",
+      phoneTaskListReturn([entry({ agentsHomeAgentId: "b" }), screen], 1, "a"),
+      "replace",
     );
   });
 
-  it("draws nothing for an empty section list", () => {
-    assert.deepEqual(teamSectionTabs([]), []);
+  it("never no-ops on the first entry", () => {
+    assert.equal(phoneTaskListReturn([screen], 0, "a"), "replace");
+  });
+
+  it("does not pop into a pushed chat over the drill-in", () => {
+    const chat = entry({ agentsHomeAgentId: "a", chatAgentId: "a" });
+    assert.equal(phoneTaskListReturn([chat, screen], 1, "a"), "replace");
   });
 });

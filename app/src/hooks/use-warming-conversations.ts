@@ -5,7 +5,7 @@
  *
  * Agents have no board of their own any more, so this is the only place those
  * missions can appear — and the "just created an agent" flow lands straight on
- * a team board, which is exactly when an engine is coldest. Empty (and stable)
+ * an employee board, which is exactly when an engine is coldest. Empty (and stable)
  * when nothing is warming, so consumers merge unconditionally. The store bumps
  * `sendsVersion` on every queue — that is the re-render signal, since entries
  * mutate in place.

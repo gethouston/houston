@@ -159,7 +159,7 @@ export const sidebarRowEndMargin = "mr-2";
  *   destinations, a team header, a team's destination rows, an agent, the
  *   "new" row. One size, so the rail reads as one list.
  * - `band` — 12px, for the one row that names the list instead of pointing at
- *   anything ("Your teams").
+ *   anything ("Your AI Employees").
  *
  * Both steps carry the SAME weight (`font-weight-510`, see invariant 4), so
  * the only thing that separates the band from the rows it heads is one step of

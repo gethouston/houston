@@ -51,6 +51,7 @@ import { orgSlugFromWorkspaceId } from "../../lib/space-id";
 import type { Agent } from "../../lib/types";
 import { useAgentStore } from "../../stores/agents";
 import { useWorkspaceStore } from "../../stores/workspaces";
+import { useSharePickCopy } from "./pick-step-copy";
 import { InviteStep } from "./share-via-team-invite";
 import {
   BusyStep,
@@ -84,6 +85,7 @@ export function ShareViaTeamFlow({
   onOpenChange: (open: boolean) => void;
 }) {
   const { t } = useTranslation("teams");
+  const pickCopy = useSharePickCopy();
   const [state, setState] = useState<ShareViaTeamState>(initialState);
   const [sending, setSending] = useState(false);
   const orgs = useOrgs(open);
@@ -289,6 +291,7 @@ export function ShareViaTeamFlow({
 
         {state.step === "pick" && (
           <PickStep
+            copy={pickCopy}
             teams={ownableTeams(orgs.data?.orgs ?? [])}
             creating={state.creating}
             createError={state.createError}

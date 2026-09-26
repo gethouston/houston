@@ -1,97 +1,143 @@
 import { DndContext, MeasuringStrategy } from "@dnd-kit/core";
 import { restrictToVerticalAxis } from "@dnd-kit/modifiers";
-import type { SidebarItem } from "./sidebar";
+import {
+  SortableContext,
+  verticalListSortingStrategy,
+} from "@dnd-kit/sortable";
+import { useLayoutEffect, useRef, useState } from "react";
 import { SidebarAddRow } from "./sidebar-add-row";
+import {
+  createSidebarAccessibility,
+  keyboardMoveAnnouncement,
+} from "./sidebar-drag-accessibility";
 import { SidebarDragOverlay } from "./sidebar-drag-overlay";
-import { collisionDetection } from "./sidebar-drop-target";
-import { sidebarClasses } from "./sidebar-geometry";
-import { SidebarGroupSection } from "./sidebar-group-section";
-import type {
-  SidebarDefaultGroupView,
-  SidebarGroupView,
-} from "./sidebar-groups";
+import type { SidebarGroupView, SidebarRootEntry } from "./sidebar-groups";
+import type { SidebarLabels } from "./sidebar-labels";
+import type { SidebarItem } from "./sidebar-props";
 import type { SidebarBaseRowContext } from "./sidebar-row-context";
-import { useSidebarDragState } from "./use-sidebar-drag-state";
+import {
+  type SidebarArrangement,
+  type SidebarKeyboardDirection,
+  treeRowKey,
+} from "./sidebar-tree";
+import { SidebarTreeRowView } from "./sidebar-tree-row";
+import { useSidebarTreeDrag } from "./use-sidebar-tree-drag";
 
 export interface SidebarGroupedListProps {
   items: SidebarItem[];
   groups: SidebarGroupView[];
-  /** Renders the trailing default section as a labelled block. */
-  defaultGroup?: SidebarDefaultGroupView;
+  order?: SidebarRootEntry[];
   rowCtx: SidebarBaseRowContext;
-  /** A block's header row was activated. */
   onActivateGroup?: (groupId: string) => void;
-  /** The trailing DEFAULT block's header was activated. Its own callback
-   *  because that block is not a stored group and has no id to hand back. */
-  onActivateDefault?: () => void;
-  onAddToGroup?: (groupId: string | null) => void;
-  /** Reorder an item WITHIN its own container. */
-  onMoveItem?: (
-    itemId: string,
-    dest: { groupId: string | null; beforeItemId: string | null },
-  ) => void;
-  onMoveGroup?: (groupId: string, beforeGroupId: string | null) => void;
-  /** Creates an item. Rendered as the row that CLOSES the list, because this is
-   *  the rail's primary action and a primary action may not live only inside a
-   *  menu. */
+  /** A drop landed: the whole arrangement the rail now shows. Answers whether
+   *  it was stored; absent, nothing can be dragged. */
+  onArrange?: (arrangement: SidebarArrangement) => boolean;
   onAdd?: () => void;
   addItemLabel?: string;
   addItemDataAttrs?: Record<string, string>;
+  labels?: SidebarLabels;
 }
 
 /**
- * Expanded grouped sidebar with @dnd-kit drag-and-drop (always on): a lifted
- * `DragOverlay` copy follows the cursor, sibling rows animate out of the way,
- * agents reorder INSIDE their own group, and group headers reorder whole
- * groups. A drag over any other group is refused and the lifted copy says so
- * (see {@link useSidebarDragState}). Movement is applied live to a working copy
- * in `onDragOver`; the final position commits through `onMoveItem` /
- * `onMoveGroup` on drop. Pointer, touch (press-hold) and keyboard sensors;
- * vertical-axis constrained; droppables always measured for smooth reflow.
+ * The grouped rail: top-level agents and groups interleaved, each open group's
+ * members under its header, and one drag model for all of it (a sortable tree
+ * over the flat row list, `sidebar-tree.ts`). The pointer stays free on both
+ * axes while the overlay follows it vertically: the sideways offset is what
+ * moves the ghost in or out of a group.
  */
 export function SidebarGroupedList({
   items,
   groups,
-  defaultGroup,
+  order = [],
   rowCtx,
   onActivateGroup,
-  onActivateDefault,
-  onAddToGroup,
-  onMoveItem,
-  onMoveGroup,
+  onArrange,
   onAdd,
   addItemLabel,
   addItemDataAttrs,
+  labels,
 }: SidebarGroupedListProps) {
-  const drag = useSidebarDragState({ items, groups, onMoveItem, onMoveGroup });
-
+  const drag = useSidebarTreeDrag({ items, groups, order, onArrange });
+  const [announcement, setAnnouncement] = useState("");
+  const listRef = useRef<HTMLDivElement>(null);
+  // A row moved into a collapsed group leaves the screen and takes the focus
+  // with it: the group's header takes it over. A row that stays mounted keeps
+  // its focus on its own (React restores it after the commit).
+  const [focusGroup, setFocusGroup] = useState<{ id: string } | null>(null);
+  useLayoutEffect(() => {
+    if (!focusGroup) return;
+    const header = [
+      ...(listRef.current?.querySelectorAll<HTMLElement>(
+        "[data-sidebar-group]",
+      ) ?? []),
+    ].find((row) => row.dataset.sidebarGroup === focusGroup.id);
+    header?.querySelector<HTMLElement>("button")?.focus();
+  }, [focusGroup]);
+  const itemById = new Map(items.map((item) => [item.id, item]));
+  const groupById = new Map(groups.map((group) => [group.id, group]));
+  const active = drag.ghost;
+  const keyboardMove = (key: string, direction: SidebarKeyboardDirection) => {
+    const moved = drag.keyboardStep(key, direction);
+    if (!moved) return;
+    const landed = moved.after.find((row) => treeRowKey(row) === key);
+    const parent =
+      landed?.kind === "agent" && landed.parentId !== null
+        ? groupById.get(landed.parentId)
+        : undefined;
+    if (parent?.collapsed) setFocusGroup({ id: parent.id });
+    setAnnouncement(
+      keyboardMoveAnnouncement(
+        moved.before,
+        moved.after,
+        key,
+        items,
+        groups,
+        labels,
+      ),
+    );
+  };
   return (
     <DndContext
+      accessibility={createSidebarAccessibility(items, groups, labels)}
       sensors={drag.sensors}
-      collisionDetection={collisionDetection}
-      modifiers={[restrictToVerticalAxis]}
+      collisionDetection={drag.collisionDetection}
       measuring={{ droppable: { strategy: MeasuringStrategy.Always } }}
       onDragStart={drag.onDragStart}
+      onDragMove={drag.onDragMove}
       onDragOver={drag.onDragOver}
       onDragEnd={drag.onDragEnd}
-      onDragCancel={drag.reset}
+      onDragCancel={drag.onDragCancel}
     >
-      <div className={sidebarClasses.itemsList}>
-        {drag.sections.map((section) => (
-          <SidebarGroupSection
-            key={section.groupId ?? "__default"}
-            section={section}
-            ctx={rowCtx}
-            defaultGroup={defaultGroup}
-            highlight={drag.overContainer === section.groupId}
-            onAdd={onAddToGroup}
-            addItemLabel={addItemLabel}
-            addItemDataAttrs={addItemDataAttrs}
-            onActivateGroup={onActivateGroup}
-            onActivateDefault={onActivateDefault}
-          />
-        ))}
-        {!onAddToGroup && onAdd && addItemLabel && (
+      <div
+        ref={listRef}
+        className="flex flex-col gap-px"
+        data-sidebar-root-list=""
+      >
+        <span className="sr-only" aria-live="polite" aria-atomic="true">
+          {announcement}
+        </span>
+        <SortableContext
+          items={drag.rows.map(treeRowKey)}
+          strategy={verticalListSortingStrategy}
+        >
+          {drag.rows.map((row) => {
+            const key = treeRowKey(row);
+            return (
+              <SidebarTreeRowView
+                key={key}
+                row={row}
+                item={row.kind === "agent" ? itemById.get(row.id) : undefined}
+                group={row.kind === "group" ? groupById.get(row.id) : undefined}
+                ctx={rowCtx}
+                ghost={key === drag.activeKey ? active : null}
+                disabled={drag.disabled}
+                onActivateGroup={onActivateGroup}
+                onKeyboardMove={drag.disabled ? undefined : keyboardMove}
+              />
+            );
+          })}
+        </SortableContext>
+        {onAdd && addItemLabel && (
           <SidebarAddRow
             label={addItemLabel}
             onClick={onAdd}
@@ -99,11 +145,14 @@ export function SidebarGroupedList({
           />
         )}
       </div>
-
       <SidebarDragOverlay
-        activeItem={drag.activeItem}
-        activeGroup={drag.activeGroup}
-        rejected={drag.rejected}
+        modifiers={[restrictToVerticalAxis]}
+        activeItem={
+          active?.kind === "agent" ? itemById.get(active.id) : undefined
+        }
+        activeGroup={
+          active?.kind === "group" ? groupById.get(active.id) : undefined
+        }
         rowCtx={rowCtx}
       />
     </DndContext>

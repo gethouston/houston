@@ -27,6 +27,7 @@ export function SidebarAddRow({
   return (
     <SidebarRowButton
       label={label}
+      depth="block"
       muted
       icon={<Plus />}
       onActivate={onClick}

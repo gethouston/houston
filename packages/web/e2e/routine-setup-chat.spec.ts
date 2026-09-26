@@ -79,6 +79,8 @@ async function openRoutinesTab(page: Page): Promise<void> {
   ).toBeVisible();
 }
 
+test.use({ teamBoard: true });
+
 test("empty state carries the New routine button, and it opens the intake fork card", async ({
   page,
 }) => {

@@ -90,13 +90,9 @@ export function useCopyAgent(): (args: {
         // so it has no first day to run.
         config: { provider: source.provider, model: source.model },
       });
-      // Reveal now (the optimistic create/import contract, HOU-710), and file
-      // the copy in its team BEFORE navigating — openAgentBoard resolves its
-      // destination from the live teams model, so the move must have settled
-      // (on a server host the roster only learns it after the round trip;
-      // navigating earlier lands on the default team's board).
+      // File the copy in its chosen group before opening its Tasks screen.
       adoptAgent(toAgent(installed.agent));
-      if (team) await moveAgent(installed.agent.id, team);
+      if (team) moveAgent(installed.agent.id, team);
       analytics.track("agent_copied", { agent_slug: agent.id, source: via });
       addToast({
         variant: "success",

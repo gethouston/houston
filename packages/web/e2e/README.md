@@ -57,7 +57,7 @@ e2e/
                     # the holder's pid inside so waiters can steal a dead one)
     mission.ts      # open the board's empty new-mission composer
     mobile-nav.ts   # the PHONE chrome: the floating nav bar, its More menu,
-                    # and the Teams tree (the phone's only section switcher)
+                    # and an employee's sections via its task list menu
     onboarding.ts   # reach first-run and walk its cards (survey, Connect your
                     # AI, Build your team); write one ACCOUNT preference
                     # straight onto the host
@@ -91,9 +91,9 @@ phone layout from rotting. The tier-1 set walks the core journey — sign-in
 (`mobile/sign-in.spec.ts`, against the identity-ON server via
 `test.use({ baseURL: AUTH_WEB_URL })`), boot + overflow smoke, Agents home,
 mission chat push, hardware back, the nav bar (`mobile/nav-bar.spec.ts`) and
-its More menu (`mobile/more-menu.spec.ts`), the Teams tree
-(`mobile/teams-home.spec.ts`), a team's task list
-(`mobile/team-tasks.spec.ts`), and Routines
+its More menu (`mobile/more-menu.spec.ts`), group management on the AI
+Employees list (`mobile/agents-home-groups.spec.ts`), an employee's sections
+from its task list menu (`mobile/team-tasks.spec.ts`), and Routines
 (`mobile/routines.spec.ts`: list → a routine's own screen), and first-run
 (`mobile/onboarding.spec.ts`: the survey, the Connect your AI card, a first
 hire on the Build your team card, then the phone shell).
@@ -110,9 +110,10 @@ rather than `.click()` and assert zero horizontal overflow
 The phone chrome is addressed through `support/mobile-nav.ts`: the floating
 nav bar (`mobile-nav-bar`, items by `data-tab`), its More card
 (`mobile-more-menu`, rows by the RAIL's `data-tour-target`), the compose
-button, and `openPhoneTeamSection` — the Teams tree is the phone's only
-section switcher, so a team's Tasks/Routines/Files are reached through it and
-never through `openTeamSection` (the desktop strip, absent below md).
+button, and `openPhoneTeamSection`, which drills into an employee from the AI
+Employees list (its task list) and opens Routines or Files of its own screen
+from the task list's "..." menu; that screen's tabs switch in place, and its
+Tasks tab and back chip return to the task list.
 
 The host itself (`@houston/fake-host`): `startFakeHost`/`stop`, the `/v1/*` +
 `/agents/*` surface, the `StreamChannel` + `serveResumableStream` chat stream,
@@ -199,26 +200,17 @@ inbox and can force a per-invite `needs_upgrade` / `already_member` /
 `{ spaces:true }`, because the sidebar cards are capability-gated on the client
 (`team-invites.spec.ts`).
 
-**C13 agent-teams arming.** `POST /__test__/agent-teams`
+**Org-team route arming.** `POST /__test__/agent-teams`
 (`{ teams: [{ id, name, isDefault?, sortOrder?, agentIds?, members? }],
 personalSpace? }`) arms the server-owned team world `GET /v1/org/teams` serves —
-who is in each team, which agents it holds, and who owns it. Pair it with
-`/__test__/capabilities` `{ agentTeams:true }` (the client feature-detects on the
-capability, never on the data) and with `/__test__/org` `{ agents, members }`,
-because a team is only as real as the fleet and roster behind it. That is the
-whole setup for `agent-teams.spec.ts`: the rail listing only the teams the caller
-is in, creating a team with the TYPED name, a drag that writes
-`PUT /v1/agents/:slug/team` and rolls back on a refusal, and focused agent screen'
-Members card. Browsing and JOINING other teams is dead product: a member only
-ever sees the teams they are part of, people are added through the Members card,
-and the rail's "+" is New agent · New team. `personalSpace: true` arms the space
-a user has to themselves: the teams behave exactly the same there (real list,
-create/patch/delete, the agent move), but every PEOPLE affordance is gone from
-the client, no Members card, because the gateway refuses the member writes with
-`403 personal_space`. With the capability off
-the client runs the pre-C13 local `sidebar_layout` backend unchanged, which is
-what `sidebar-teams.spec.ts` / `sidebar-dnd.spec.ts` /
-`team-manager-gate.spec.ts` already guards.
+who is in each team, which agents it holds, and who owns it. Only route-level
+specs (`@houston/fake-host` `server.test.ts`) read it; pair it with
+`/__test__/org` `{ agents, members }`.
+The personal rail reads `SidebarLayout` groups. Its "+" offers New AI Employee
+and New group, and one New AI Employee row closes the root list outside every
+folder; `sidebar-teams.spec.ts` checks folder actions and row placement, and
+`sidebar-dnd.spec.ts` checks stored order and cross-group drops. Team spaces
+remain separate from these personal groups.
 
 The seeded catalog (`SEED_TOOLKIT_SLUGS`, exported for specs) holds 15 A-Z apps,
 enough that a tight allowlist blocks past the locked preview cap (8) so the
@@ -311,7 +303,7 @@ set a 390×844 viewport per test):
 | Screen | Themes | Spec |
 | --- | --- | --- |
 | Mission board (home: the first team's) | light + dark; the 640px narrow run is already the phone task list | `shell.visual.spec.ts` |
-| Phone shell (Agents home + nav bar), Teams tree, More menu, team tasks, mission chat, agent missions | light + dark each | `shell.visual.spec.ts` |
+| Phone shell (Agents home + nav bar), More menu, team tasks, mission chat, agent missions | light + dark each | `shell.visual.spec.ts` |
 | Phone Routines list + a routine's own screen | light + dark each | `routines.visual.spec.ts` |
 | Chat conversation (settled reply) | light + dark | `chat.visual.spec.ts` |
 | Chat markdown | light + dark | `chat-markdown.visual.spec.ts` |

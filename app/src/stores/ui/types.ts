@@ -1,14 +1,7 @@
 import type { CreateFlowDoor } from "../../components/shell/create-agent-steps-model.ts";
 
-/**
- * A request to open the create sheet: the door the caller pressed, and the
- * team an AI employee made through it should land in (`null` = the default
- * team). The sheet resolves the door against what this caller may actually
- * create (`create-agent-steps-model.ts`).
- */
 export interface CreateFlowRequest {
   door: CreateFlowDoor;
-  teamId: string | null;
 }
 
 export interface ToastItem {

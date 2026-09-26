@@ -1,5 +1,4 @@
 import { AIBoard } from "@houston-ai/board";
-import { useIsMobile } from "@houston-ai/core";
 import { useCallback, useMemo, useRef } from "react";
 import { useTranslation } from "react-i18next";
 import { perfSpans } from "../../lib/perf-spans";
@@ -15,7 +14,6 @@ import { useIsActiveView } from "../shell/keep-alive-views";
 import { useShellDetailPanel } from "../shell/use-shell-detail-panel";
 import type { BoardSource } from "./board-source";
 import { PanelBackToBoard, PanelWidthToggle } from "./panel-width-controls";
-import { TeamTaskList } from "./team-task-list";
 import { useBoardChatWiring } from "./use-board-chat-wiring";
 import { useBoardKeyboard } from "./use-board-keyboard";
 import { useBoardSelectionUI } from "./use-board-selection-ui";
@@ -30,13 +28,9 @@ import { useBoardSelectionUI } from "./use-board-selection-ui";
  * active agent, new-mission flow, bulk routing, toolbar, dialogs) from
  * `source`.
  *
- * Below md the kanban is not rendered at all: a phone gets
- * {@link TeamTaskList}, one scrolling list of the same missions grouped by
- * the same sections. A STRUCTURAL fork, not a narrower board — the desktop
- * board's columns, drag-and-drop, multi-select and side panel have no phone
- * form, and a card tap there is a pushed chat screen rather than a selection.
- * The dialogs stay mounted on both, because the flows behind them (the agent
- * picker, attachment rejections) belong to the source, not to the layout.
+ * Desktop only: the phone's tasks live on the employee's task list
+ * (`agents-home/agent-missions-screen.tsx`), and the employee screen never
+ * mounts a board below md (`team-view/agent-view.tsx`).
  */
 export function MissionBoard({ source }: { source: BoardSource }) {
   const { t } = useTranslation(["dashboard", "board"]);
@@ -50,7 +44,6 @@ export function MissionBoard({ source }: { source: BoardSource }) {
   // must stop portaling its panel, or two screens stack their panels into the
   // one shared slot and the chat renders "split in half" (HOU-1165).
   const isActive = useIsActiveView();
-  const isMobile = useIsMobile();
   const missionPanelOpen = useUIStore((s) => s.missionPanelOpen);
 
   const wiring = useBoardChatWiring(source);
@@ -129,23 +122,6 @@ export function MissionBoard({ source }: { source: BoardSource }) {
   );
 
   const firstDay = source.firstDay;
-  if (isMobile) {
-    return (
-      <>
-        {firstDay.kind === "hero" ? (
-          <FirstDayHero agent={firstDay.agent} />
-        ) : (
-          <>
-            <FirstDayLead placement={firstDay} />
-            <TeamTaskList source={source} />
-          </>
-        )}
-        {wiring.dialogs}
-        {source.dialogs}
-      </>
-    );
-  }
-
   return (
     <>
       {source.toolbar}

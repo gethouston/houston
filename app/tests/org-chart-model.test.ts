@@ -1,10 +1,7 @@
 import { deepStrictEqual, strictEqual } from "node:assert";
 import { test } from "node:test";
-import type { OrgMember, UsageRow } from "@houston/engine-adapter";
-import {
-  orgChartMembers,
-  orgChartUsage,
-} from "../src/components/organization/org-chart-model.ts";
+import type { UsageRow } from "@houston/engine-adapter";
+import { orgChartUsage } from "../src/components/organization/org-chart-model.ts";
 
 const agents = [
   { id: "writer", folderPath: "workspace/writer" },
@@ -33,13 +30,6 @@ test("chart totals resolve both agent ids and paths and retain unused agents", (
       ["researcher", 0],
     ],
   );
-  deepStrictEqual(
-    [...usage.byPerson],
-    [
-      ["alice", 2],
-      ["bob", 3],
-    ],
-  );
 });
 
 test("inaccessible and deleted agents contribute to no chart metric", () => {
@@ -47,7 +37,6 @@ test("inaccessible and deleted agents contribute to no chart metric", () => {
     row("writer", "alice", 2),
     row("hidden", "bob", 900),
   ]);
-  deepStrictEqual([...usage.byPerson], [["alice", 2]]);
   strictEqual(usage.byAgent.get("writer"), 2);
 });
 
@@ -58,39 +47,13 @@ test("invalid counts cannot corrupt every metric", () => {
     row("writer", "alice", Number.POSITIVE_INFINITY),
   ]);
   strictEqual(usage.byAgent.get("writer"), 0);
-  strictEqual(usage.byPerson.size, 0);
 });
 
-const roster: OrgMember[] = [
-  { userId: "alice", role: "owner", displayName: "Alice" },
-  { userId: "bob", role: "user", displayName: "Bob" },
-];
-
-test("named teams show membership without inventing reporting relationships", () => {
-  const members = orgChartMembers({
-    isDefault: false,
-    personal: false,
-    roster,
-    members: [{ userId: "bob", owner: false }],
-  });
-  deepStrictEqual(members, [roster[1]]);
-});
-
-test("default teams include every person without explicit membership rows", () => {
-  deepStrictEqual(
-    orgChartMembers({ isDefault: true, personal: false, roster, members: [] }),
-    roster,
-  );
-});
-
-test("a personal team shows its single human without requesting memberships", () => {
-  deepStrictEqual(
-    orgChartMembers({
-      isDefault: false,
-      personal: true,
-      roster: [roster[0]],
-      members: [],
-    }),
-    [roster[0]],
-  );
+test("ungrouped agents share the chart usage scale with folder agents", () => {
+  const usage = orgChartUsage(agents, [
+    row("writer", "alice", 3),
+    row("researcher", "bob", 8),
+  ]);
+  strictEqual(usage.byAgent.get("writer"), 3);
+  strictEqual(usage.byAgent.get("researcher"), 8);
 });

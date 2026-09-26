@@ -17,6 +17,7 @@ export function AgentsHomeView() {
       ? null
       : (s.agents.find((a) => a.id === drilledAgentId) ?? null),
   );
-  if (agent !== null) return <AgentMissionsScreen agent={agent} />;
+  if (agent !== null)
+    return <AgentMissionsScreen key={agent.id} agent={agent} />;
   return <AgentsHomeList />;
 }

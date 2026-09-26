@@ -1,8 +1,13 @@
 import { strict as assert } from "node:assert";
 import { describe, it } from "node:test";
 import {
+  parseSidebarLayout,
+  SIDEBAR_GROUP_NAME_MAX_CODE_POINTS,
+} from "@houston/protocol";
+import {
   type TeamIdentityDraft,
   teamIdentitySaveWrites,
+  teamNameTooLong,
 } from "../src/components/shell/team-identity-save.ts";
 
 /**
@@ -80,5 +85,33 @@ describe("teamIdentitySaveWrites", () => {
       }),
       { rename: "Ops", patch: { icon: null, color: "umber" } },
     );
+  });
+});
+
+describe("teamNameTooLong", () => {
+  it("uses the stored layout's group-name limit, counted in code points", () => {
+    assert.equal(
+      teamNameTooLong("x".repeat(SIDEBAR_GROUP_NAME_MAX_CODE_POINTS)),
+      false,
+    );
+    assert.equal(
+      teamNameTooLong("x".repeat(SIDEBAR_GROUP_NAME_MAX_CODE_POINTS + 1)),
+      true,
+    );
+    assert.equal(
+      teamNameTooLong("😀".repeat(SIDEBAR_GROUP_NAME_MAX_CODE_POINTS)),
+      false,
+    );
+  });
+
+  it("accepts exactly the names the layout parser accepts", () => {
+    for (const length of [60, 61, 80]) {
+      const name = "x".repeat(length);
+      const layout = {
+        groups: [{ id: "g", name, collapsed: false, agentIds: [] }],
+        order: [],
+      };
+      assert.equal(teamNameTooLong(name), parseSidebarLayout(layout) === null);
+    }
   });
 });

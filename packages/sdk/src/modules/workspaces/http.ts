@@ -4,7 +4,7 @@
  * Four capabilities share this module because they share one addressee — the
  * space the user is in: the list of spaces, the raw `.houston/**` docs of an
  * agent inside one, the background notes spliced into every conversation, and
- * the sidebar arrangement the host mirrors into each agent's `GROUP.md`.
+ * the person's sidebar folder arrangement.
  *
  * The runtime client is scoped to ONE conversation and exposes none of them, so
  * this module talks to the host routes directly through `ports.fetch` — auth
@@ -105,11 +105,8 @@ export async function setContext(
 }
 
 /**
- * The sidebar's per-workspace order + grouping, as the OPEN host persists it
- * (`GET`/`PUT /v1/workspaces/:id/sidebar-layout`, stored as the `sidebar_layout`
- * preference). Host-backed rather than device-local because the PUT is what
- * drives the host's `GROUP.md` fan-out: a team's shared context only reaches an
- * agent's system prompt if the layout carrying it was written HERE.
+ * The person's per-workspace sidebar folders and order, served by the host or
+ * gateway at `GET`/`PUT /v1/workspaces/:id/sidebar-layout`.
  *
  * `workspaceId` must be the SERVER's id — the one `listWorkspaces` answers
  * with, never a client-side synthetic id for the personal space.
@@ -119,7 +116,7 @@ const layoutPath = (workspaceId: string) =>
 
 /**
  * Reads how a workspace's sidebar is arranged.
- * @assistant group:workspaces hidden: UI plumbing; the sidebar's persisted order has no meaning outside the sidebar's own render.
+ * @assistant group:workspaces hidden: A person's sidebar folders are arranged by drag and drop in the app.
  */
 export async function getHostSidebarLayout(
   scope: HttpScope,
@@ -134,7 +131,7 @@ export async function getHostSidebarLayout(
  *
  * Persist a layout and return the host's stored copy (its strict validator
  * echoes exactly what it wrote, so the caller adopts the canonical shape).
- * @assistant group:workspaces hidden: UI plumbing; the app's drag and drop owns this write, and calling it blind rearranges the user's sidebar.
+ * @assistant group:workspaces hidden: A person's sidebar folders are arranged by drag and drop in the app.
  */
 export async function putHostSidebarLayout(
   scope: HttpScope,

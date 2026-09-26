@@ -8,10 +8,10 @@ import type { ReactNode } from "react";
 import { useTranslation } from "react-i18next";
 
 /**
- * A phone task list's overflow control: the round "…" chip in the drilled
- * header and the menu it opens. The ITEMS are the caller's — an agent's list
- * offers Search and Archived, a team's adds its settings — but the chip, its
- * name and its geometry are shared, so the two screens wear one control.
+ * The phone task list's overflow control: the round "…" chip in the drilled
+ * header and the menu it opens. The ITEMS are the caller's (Search, Archived,
+ * the employee's other sections); the chip, its name and its geometry are
+ * this control's.
  *
  * Search hides behind it because an always-on field would take the screen's
  * first line from the tasks, and most visits scroll rather than search. The

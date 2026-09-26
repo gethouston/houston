@@ -139,12 +139,6 @@
     ],
     "fileCount": 3
   },
-  "core-accordion": {
-    "surfaces": [
-      "Your teams"
-    ],
-    "fileCount": 1
-  },
   "core-alert": {
     "surfaces": [
       "Store website",
@@ -218,8 +212,8 @@
       "Skills",
       "Store website",
       "Store website (admin)",
+      "Your AI Employees",
       "Your Agents",
-      "Your teams",
       "app/src/components",
       "ui/agent (library)",
       "ui/board (library)",
@@ -228,7 +222,7 @@
       "ui/routines (library)",
       "ui/store (library)"
     ],
-    "fileCount": 146
+    "fileCount": 141
   },
   "core-button-group": {
     "surfaces": [
@@ -296,6 +290,7 @@
   "core-confirm-dialog": {
     "surfaces": [
       "AI Models",
+      "App shell",
       "Files",
       "Settings",
       "Skills",
@@ -305,7 +300,7 @@
       "ui/routines (library)",
       "ui/store (library)"
     ],
-    "fileCount": 16
+    "fileCount": 17
   },
   "core-dialog": {
     "surfaces": [
@@ -320,8 +315,8 @@
       "Settings",
       "Skills",
       "Store website",
+      "Your AI Employees",
       "Your Agents",
-      "Your teams",
       "app/src/components",
       "ui/store (library)"
     ],
@@ -337,7 +332,6 @@
       "Skills",
       "Store website",
       "Your Agents",
-      "Your teams",
       "app/src/components",
       "ui/board (library)",
       "ui/chat (library)",
@@ -345,19 +339,19 @@
       "ui/routines (library)",
       "ui/store (library)"
     ],
-    "fileCount": 30
+    "fileCount": 28
   },
   "core-empty": {
     "surfaces": [
       "AI Models",
       "Activity",
+      "App shell",
       "Archived",
       "Chat",
       "Integrations",
       "Organization",
       "Settings",
       "Skills",
-      "Your teams",
       "app/src/components",
       "ui/agent (library)",
       "ui/events (library)",
@@ -401,20 +395,19 @@
       "Activity",
       "App shell",
       "Chat",
-      "Files",
       "Integrations",
       "Onboarding",
       "Organization",
       "Permissions",
       "Sign in",
       "Skills",
+      "Your AI Employees",
       "Your Agents",
-      "Your teams",
       "app/src/components",
       "ui/chat (library)",
       "ui/store (library)"
     ],
-    "fileCount": 42
+    "fileCount": 40
   },
   "core-hover-card": {
     "surfaces": [
@@ -494,7 +487,7 @@
       "ui/chat (library)",
       "ui/store (library)"
     ],
-    "fileCount": 5
+    "fileCount": 6
   },
   "core-separator": {
     "surfaces": [
@@ -512,6 +505,7 @@
   "core-skeleton": {
     "surfaces": [
       "AI Models",
+      "App shell",
       "Integrations",
       "Organization",
       "Settings",
@@ -596,7 +590,7 @@
       "ui/layout (library)",
       "ui/routines (library)"
     ],
-    "fileCount": 16
+    "fileCount": 17
   },
   "core-verified-badge": {
     "surfaces": [

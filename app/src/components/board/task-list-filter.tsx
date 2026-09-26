@@ -19,9 +19,6 @@ import {
  * team selector wears, so narrowing a list reads the same wherever the user
  * found one.
  *
- * ONE control for every phone task list (an agent's, a team's): the same
- * choices in the same order with the same words.
- *
  * The choices are a NARROWING of the same sectioned list, not four screens:
  * "All" keeps the sections stacked, and picking one leaves only that section
  * standing. Needs you carries its count, because that number is the reason a

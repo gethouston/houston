@@ -1,7 +1,8 @@
 import type { HandsOnSurface } from "@houston/protocol";
 import { useOrgNav } from "../components/organization/org-nav-store.ts";
 import { useUIStore } from "../stores/ui.ts";
-import { DEFAULT_TEAM_ID } from "./teams-model.ts";
+import { openHome } from "./home-nav.ts";
+import { currentWorkingAgentId, openAgentSection } from "./open-agent.ts";
 
 /**
  * Where each hands-on errand actually LIVES in the app.
@@ -12,9 +13,8 @@ import { DEFAULT_TEAM_ID } from "./teams-model.ts";
  * through the UI store, so the errand lands the person exactly where clicking
  * the rail themselves would.
  *
- * `files` and `routineWebhook` belong to a TEAM, so they follow the team the
- * person is already working in and fall back to the default team (the workspace
- * itself), which exists in every deployment.
+ * Files and routine webhooks open for the current employee, or the first
+ * employee in sidebar order when none is selected.
  */
 export function openHandsOnSurface(surface: HandsOnSurface): void {
   const ui = useUIStore.getState();
@@ -34,10 +34,12 @@ export function openHandsOnSurface(surface: HandsOnSurface): void {
     ui.openSettings("workspace");
     return;
   }
-  ui.openTeamView(
-    ui.activeTeamId ?? DEFAULT_TEAM_ID,
-    surface === "files" ? "files" : "routines",
-  );
+  const agentId = currentWorkingAgentId();
+  if (!agentId) {
+    openHome();
+    return;
+  }
+  openAgentSection(agentId, surface === "files" ? "files" : "routines");
 }
 
 /** The chat-namespace key naming each screen in the person's own words. */

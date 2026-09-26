@@ -3,11 +3,15 @@ import { describe, it } from "node:test";
 import {
   agentMissionCount,
   agentMissionSections,
-  isCreatedMissionOf,
+  agentMissionsMenuSections,
   liveMissionCount,
   missionListSections,
   searchMissions,
 } from "../src/components/agents-home/agent-missions-model.ts";
+import {
+  drillInMissionTarget,
+  isCreatedMissionOf,
+} from "../src/components/agents-home/agent-missions-target.ts";
 import type { AgentHomeConversation } from "../src/components/agents-home/agents-home-model.ts";
 
 // One agent's task list: the board's own status split, plus what the segmented
@@ -183,5 +187,79 @@ describe("isCreatedMissionOf", () => {
   it("claims nothing when nothing is published or created", () => {
     assert.equal(isCreatedMissionOf(created, null, "/ws/a"), false);
     assert.equal(isCreatedMissionOf(null, "m1", "/ws/a"), false);
+  });
+});
+
+// The phone task list is the employee's door to the rest of its screen: the
+// ⋯ menu lists every section the employee has beyond the list itself.
+describe("agentMissionsMenuSections", () => {
+  it("offers Routines, Files and Settings to a manager", () => {
+    assert.deepEqual(
+      agentMissionsMenuSections([
+        "mission-control",
+        "routines",
+        "files",
+        "settings",
+      ]),
+      ["routines", "files", "settings"],
+    );
+  });
+
+  it("offers no Settings the employee's screen withholds", () => {
+    assert.deepEqual(
+      agentMissionsMenuSections(["mission-control", "routines", "files"]),
+      ["routines", "files"],
+    );
+  });
+});
+
+describe("drillInMissionTarget", () => {
+  const rows = [
+    mission({ id: "mine", agent_path: "/ws/a" }),
+    mission({ id: "old", agent_path: "/ws/a", status: "archived" }),
+    mission({ id: "theirs", agent_path: "/ws/b" }),
+  ];
+  const at = (
+    over: Partial<Parameters<typeof drillInMissionTarget>[0]>,
+  ): ReturnType<typeof drillInMissionTarget> =>
+    drillInMissionTarget({
+      pendingId: "mine",
+      rows,
+      agentPath: "/ws/a",
+      chatMissionId: null,
+      chatOpen: false,
+      ...over,
+    });
+
+  it("opens this employee's published task, archived ones included", () => {
+    assert.equal(at({}), "open");
+    assert.equal(at({ pendingId: "old" }), "open");
+  });
+
+  it("leaves another employee's task armed for that employee's list", () => {
+    assert.equal(at({ pendingId: "theirs" }), "wait");
+  });
+
+  it("waits for the sweep to name a task it does not know yet", () => {
+    assert.equal(at({ pendingId: "new" }), "wait");
+    assert.equal(at({ rows: undefined }), "wait");
+  });
+
+  it("never opens a second chat over one already pushed", () => {
+    assert.equal(at({ chatOpen: true, chatMissionId: "other" }), "wait");
+  });
+
+  it("consumes a target whose chat is already the one on the glass", () => {
+    assert.equal(at({ chatOpen: true, chatMissionId: "mine" }), "clear");
+  });
+
+  it("opens the task just created for this employee before the sweep names it", () => {
+    const created = { activityId: "new", agentPath: "/ws/a" };
+    assert.equal(at({ pendingId: "new", created }), "open");
+    assert.equal(at({ pendingId: "new", created, agentPath: "/ws/b" }), "wait");
+  });
+
+  it("does nothing with nothing published", () => {
+    assert.equal(at({ pendingId: null }), "wait");
   });
 });

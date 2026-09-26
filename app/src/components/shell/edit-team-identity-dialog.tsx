@@ -1,4 +1,4 @@
-import { FormDialog } from "@houston-ai/core";
+import { FormDialog, Input } from "@houston-ai/core";
 import { useEffect, useMemo, useState } from "react";
 import { useTranslation } from "react-i18next";
 import {
@@ -6,50 +6,38 @@ import {
   teamDisplayIcon,
   teamDisplayName,
 } from "../../lib/team-display";
-import { type TeamView, teamById } from "../../lib/teams-model";
-import { useUIStore } from "../../stores/ui";
+import type { TeamView } from "../../lib/teams-model";
 import { buildTeamIdentityChoices, teamPaletteColorId } from "./team-identity";
-import { TeamIdentityNameRow } from "./team-identity-name-row";
+import { TeamIdentityPopover } from "./team-identity-popover";
 import {
   type TeamIdentityDraft,
   teamIdentitySaveWrites,
   teamNameTooLong,
 } from "./team-identity-save";
 
-/**
- * The rail's "Change icon & name" dialog: the ONE menu entry a team's "..."
- * offers for its identity, because name, mark and colour are one thing. It
- * renders the same `TeamIdentityNameRow` the create-team dialog does, so the
- * two surfaces cannot drift apart.
- *
- * Edits are STAGED and land on Save — never live while picking. The picker
- * keeps its popover open across clicks (a mark and a tint are a pair), and a
- * dialog writing every intermediate click to the gateway would broadcast each
- * half-decision to the whole team.
- */
+/** Folder menu dialogs stage name or identity edits until Save. */
 export function EditTeamIdentityDialog({
-  teams,
+  team,
+  mode,
+  onClose,
   renameGroup,
   setIdentity,
 }: {
-  teams: TeamView[];
-  /** `ServerTeamActions.renameGroup` — branches on the backend once, there. */
+  team: TeamView;
+  mode: "rename" | "identity";
+  onClose: () => void;
+  /** Saves the folder name to the personal sidebar layout. */
   renameGroup: (teamId: string, newName: string) => void;
-  /** `ServerTeamActions.setIdentity` — omitted field = leave alone. */
+  /** An omitted identity field is left unchanged. */
   setIdentity: (
     teamId: string,
     patch: { icon?: string | null; color?: string | null },
   ) => void;
 }) {
   const { t } = useTranslation(["shell", "teams", "common"]);
-  const teamId = useUIStore((s) => s.editTeamIdentityId);
-  const setTeamId = useUIStore((s) => s.setEditTeamIdentityId);
-  const team = teamById(teams, teamId);
   const choices = useMemo(() => buildTeamIdentityChoices(t), [t]);
 
-  // The form's SEED is kept beside the draft: the save is a diff against what
-  // the user was shown, never against the live team, whose fields a teammate
-  // may have moved while the dialog was open.
+  // The save compares against the identity shown when the dialog opened.
   const [seeded, setSeeded] = useState<TeamIdentityDraft | null>(null);
   const [name, setName] = useState("");
   const [icon, setIcon] = useState<string>();
@@ -57,17 +45,11 @@ export function EditTeamIdentityDialog({
 
   // Seed the form from the team each time the dialog OPENS for one — never
   // while it is open, so a concurrent edit cannot yank the fields mid-type.
-  const openedTeamId = team?.id;
+  const openedTeamId = team.id;
   // biome-ignore lint/correctness/useExhaustiveDependencies: re-seed on the OPENED TEAM changing, deliberately not on every refetch of its fields
   useEffect(() => {
-    if (!team) return;
-    // Seed from the DISPLAY identity, not the stored fields: an untouched
-    // default team wears "New Team" + the charcoal rocket, and the dialog must
-    // open showing exactly that pair. The save is a diff against this seed, so
-    // leaving the placeholders alone writes nothing and the placeholder rule
-    // stays live.
     const draft: TeamIdentityDraft = {
-      name: teamDisplayName(team, t("teams:teamView.defaultName")),
+      name: teamDisplayName(team),
       icon: teamDisplayIcon(team),
       colorId: teamPaletteColorId(teamDisplayColor(team)),
     };
@@ -77,11 +59,10 @@ export function EditTeamIdentityDialog({
     setColor(draft.colorId);
   }, [openedTeamId]);
 
-  if (!team || !seeded) return null;
+  if (!seeded) return null;
 
   const trimmed = name.trim();
   const tooLong = teamNameTooLong(name);
-  const close = () => setTeamId(null);
 
   // The save closes the dialog by RESOLVING: the recipe owns the close, so a
   // name that is still empty or too long is refused by `disabled` alone.
@@ -89,35 +70,47 @@ export function EditTeamIdentityDialog({
     // The diff rules (what renames, what patches, how a deselect becomes an
     // explicit null clear) are `teamIdentitySaveWrites`'s, unit-tested there.
     const writes = teamIdentitySaveWrites(seeded, {
-      name,
+      name: mode === "rename" ? name : seeded.name,
       icon,
       colorId: color,
     });
     if (writes.rename) renameGroup(team.id, writes.rename);
     if (writes.patch) setIdentity(team.id, writes.patch);
+    onClose();
   };
 
   return (
     <FormDialog
       open
-      onOpenChange={(open) => (open ? undefined : close())}
-      title={t("shell:sidebar.teams.identity")}
+      onOpenChange={(open) => (open ? undefined : onClose())}
+      title={t(
+        mode === "rename"
+          ? "shell:sidebar.teams.rename"
+          : "shell:sidebar.teams.identity",
+      )}
       primary={{
         label: t("common:actions.save"),
         onClick: save,
-        disabled: !trimmed || tooLong,
+        disabled: mode === "rename" && (!trimmed || tooLong),
       }}
       labels={{ cancel: t("common:actions.cancel") }}
     >
-      <TeamIdentityNameRow
-        icon={icon}
-        colorId={color}
-        name={name}
-        choices={choices}
-        onIconChange={setIcon}
-        onColorChange={setColor}
-        onNameChange={setName}
-      />
+      {mode === "rename" ? (
+        <Input
+          autoFocus
+          value={name}
+          onChange={(event) => setName(event.target.value)}
+          aria-label={t("teams:agentTeams.form.nameLabel")}
+        />
+      ) : (
+        <TeamIdentityPopover
+          icon={icon}
+          colorId={color}
+          choices={choices}
+          onIconChange={setIcon}
+          onColorChange={setColor}
+        />
+      )}
     </FormDialog>
   );
 }

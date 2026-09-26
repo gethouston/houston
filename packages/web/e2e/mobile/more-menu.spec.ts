@@ -9,7 +9,7 @@ import { screen } from "../support/team-nav";
 
 /**
  * The phone's More menu: the card the nav bar raises for everything outside the
- * Agents and Teams trees.
+ * AI Employees tree.
  *
  * Its destinations ARE the desktop rail's (`useSidebarNavItems`), so this spec
  * guards the two things that could drift — the list the seeded single-player

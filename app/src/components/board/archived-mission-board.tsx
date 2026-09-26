@@ -2,12 +2,10 @@ import { AIBoard } from "@houston-ai/board";
 import { useTranslation } from "react-i18next";
 import { useUIStore } from "../../stores/ui";
 import { ArchivedEmptyState } from "../agent/archived-empty-state";
-import { AgentPanelAvatar } from "../shell/agent-panel-avatar";
 import type { useShellDetailPanel } from "../shell/use-shell-detail-panel";
 import type { useMissionSearch } from "../use-mission-search";
-import { panelTaskLabel } from "./panel-task-label";
 import { PanelBackToBoard, PanelWidthToggle } from "./panel-width-controls";
-import { useBoardLabels } from "./use-board-labels";
+import { useArchivedChatProps } from "./use-archived-chat-props";
 import type { useMissionControlArchived } from "./use-mission-control-archived";
 import type { useMissionControlArchivedPanel } from "./use-mission-control-archived-panel";
 
@@ -23,10 +21,10 @@ type ShellDetailPanel = ReturnType<typeof useShellDetailPanel>;
  *
  * Its own file because everything above it in `mission-control-archived.tsx` is
  * WIRING — the sweep, the scope, the search box, the pending-target routing,
- * the release-on-hide — and none of it is readable next to the ~80 props this
- * board hands `AIBoard`. It takes the wiring's hooks whole, typed off their
- * return types, so the seam can never drift from what those hooks actually
- * return.
+ * the release-on-hide. The chat half of its props is
+ * {@link useArchivedChatProps}, shared with the phone's pushed chat. It takes
+ * the wiring's hooks whole, typed off their return types, so the seam can
+ * never drift from what those hooks actually return.
  *
  * It owns no state: every decision is made above and read straight off `data`,
  * `missionSearch` and `archivedPanel`.
@@ -45,12 +43,8 @@ export function ArchivedMissionBoard({
   setPanelOpen: ShellDetailPanel["setPanelOpen"];
 }) {
   const { t } = useTranslation("board");
-  const { labels } = useBoardLabels();
-  const addToast = useUIStore((s) => s.addToast);
   const chatWide = useUIStore((s) => s.chatWide);
-  const { selectedItem, activeAgent } = data;
-  const { panel, attachmentValidation, openHref, onSendMessage } =
-    archivedPanel;
+  const { chatProps, dialogs } = useArchivedChatProps(data, archivedPanel);
 
   return (
     <>
@@ -63,14 +57,6 @@ export function ArchivedMissionBoard({
           selectedId={data.selectedId}
           onSelect={data.setSelectedId}
           panelContainer={panelContainer}
-          feedItems={data.feedItems}
-          sessionKeyFor={data.sessionKeyFor}
-          onDelete={data.handleDelete}
-          onSendMessage={onSendMessage}
-          onComposerSubmit={panel.onComposerSubmit}
-          onLoadHistory={data.loadHistory}
-          onLoadOlderMessages={data.onLoadOlderMessages}
-          hasOlderMessages={data.hasOlderMessages}
           emptyState={
             <ArchivedEmptyState
               hasQuery={missionSearch.hasQuery}
@@ -92,72 +78,10 @@ export function ArchivedMissionBoard({
             ) : undefined
           }
           panelTrailing={<PanelWidthToggle />}
-          onOpenLink={openHref}
-          onNotice={(message) => addToast({ title: message })}
-          prepareAttachments={attachmentValidation.prepareAttachments}
-          onAttachmentRejections={attachmentValidation.onAttachmentRejections}
-          thinkingIndicator={panel.thinkingIndicator}
-          panelAgentName={activeAgent?.name ?? selectedItem?.subtitle}
-          // Composed here, never left to `ui/`'s English fallback.
-          panelMissionLabel={panelTaskLabel(
-            {
-              task: (title) => t("panel.taskLabel", { title }),
-              newTask: t("panel.newTask"),
-            },
-            data.selectedId,
-            selectedItem?.title,
-          )}
-          panelAvatar={
-            <AgentPanelAvatar color={activeAgent?.color} running={false} />
-          }
-          labels={labels}
-          cardLabels={{
-            deleteTooltip: t("cardActions.deleteTooltip"),
-            deleteTitle: (name: string) =>
-              t("deleteCard.titleWithName", { name }),
-            deleteDescription: t("deleteCard.description"),
-          }}
-          chatEmptyState={panel.chatEmptyState}
-          composerHeader={panel.composerHeader}
-          // Only the OFFERS an archived mission finished with, never a blocking
-          // stepper: archiving answers nothing, so a mission archived mid-
-          // question still carries its question steps (see
-          // `offersComposerOverride`). Acting on an offer sends a message,
-          // which re-activates the mission like any other send.
-          composerOverride={panel.offersComposerOverride}
-          composerOverrideMode="above"
-          canSendEmpty={panel.canSendEmpty}
-          footer={panel.footer}
-          attachMenu={panel.attachMenu}
-          renderUserMessage={panel.renderUserMessage}
-          onEditMessage={panel.onEditMessage}
-          canEditMessage={panel.canEditMessage}
-          editMessageLabel={panel.editMessageLabel}
-          enableMessageCopy={panel.enableMessageCopy}
-          canCopyMessage={panel.canCopyMessage}
-          copyMessageLabel={panel.copyMessageLabel}
-          messageEditing={panel.messageEditing}
-          renderLink={panel.renderLink}
-          currentUserId={panel.currentUserId}
-          authorLabels={panel.authorLabels}
-          showSenders={panel.showSenders}
-          agentLabel={panel.agentLabel}
-          renderSenderAvatar={panel.renderSenderAvatar}
-          senderNameClass={panel.senderNameClass}
-          {...panel.mentionProps}
-          renderSystemMessage={panel.renderSystemMessage}
-          conversationMap={panel.conversationMap}
-          mapFeedItems={panel.mapFeedItems}
-          afterMessages={panel.afterMessages}
-          isSpecialTool={panel.isSpecialTool}
-          renderToolResult={panel.renderToolResult}
-          processLabels={panel.processLabels}
-          getThinkingMessage={panel.getThinkingMessage}
-          renderTurnSummary={panel.renderTurnSummary}
+          {...chatProps}
         />
       </div>
-      {panel.pickerDialog}
-      {attachmentValidation.dialog}
+      {dialogs}
     </>
   );
 }

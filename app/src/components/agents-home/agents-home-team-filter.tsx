@@ -11,16 +11,16 @@ import { teamDisplayName } from "../../lib/team-display";
 import type { TeamView } from "../../lib/teams-model";
 import { TeamGlyph } from "../shell/team-glyph";
 
-/** The radio value standing for "every team": a team id can never be it. */
-const ALL_TEAMS = "all";
+/** The radio value standing for "every group": a group id can never be it. */
+const ALL_GROUPS = "all";
 
 /**
- * The phone Agents home's team selector: one pill under the title that names
- * the team the list is narrowed to ("All teams" by default) and drops a menu
- * of every team to pick from. Props only: the caller resolves the choice and
- * holds it, so the pill can never claim a team the list is not showing.
+ * The phone Agents home's group selector: one pill under the title that names
+ * the group the list is narrowed to ("All groups" by default) and drops a menu
+ * of every group to pick from. Props only: the caller resolves the choice and
+ * holds it, so the pill can never claim a group the list is not showing.
  *
- * A menu rather than a row of chips because a workspace may hold more teams
+ * A menu rather than a row of chips because a person may hold more groups
  * than a phone's width holds chips, and a filter that scrolls off screen is a
  * filter the user cannot see is applied.
  */
@@ -30,14 +30,13 @@ export function AgentsHomeTeamFilter({
   onSelect,
 }: {
   teams: readonly TeamView[];
-  /** The resolved choice, `null` for every team. */
+  /** The resolved choice, `null` for every group. */
   selected: TeamView | null;
   onSelect: (teamId: string | null) => void;
 }) {
   const { t } = useTranslation(["shell", "teams"]);
-  const allTeams = t("shell:agentsHome.allTeams");
-  const name = (team: TeamView) =>
-    teamDisplayName(team, t("teams:teamView.defaultName"));
+  const allGroups = t("shell:agentsHome.allGroups");
+  const name = (team: TeamView) => teamDisplayName(team);
   return (
     <DropdownMenu>
       <DropdownMenuTrigger asChild>
@@ -57,24 +56,24 @@ export function AgentsHomeTeamFilter({
             />
           )}
           <span className="min-w-0 truncate">
-            {selected ? name(selected) : allTeams}
+            {selected ? name(selected) : allGroups}
           </span>
           <ChevronDown aria-hidden className="size-4 shrink-0 text-ink-muted" />
         </button>
       </DropdownMenuTrigger>
       <DropdownMenuContent align="start" className="min-w-48">
         <DropdownMenuRadioGroup
-          value={selected?.id ?? ALL_TEAMS}
+          value={selected?.id ?? ALL_GROUPS}
           onValueChange={(value) =>
-            onSelect(value === ALL_TEAMS ? null : value)
+            onSelect(value === ALL_GROUPS ? null : value)
           }
         >
           <DropdownMenuRadioItem
-            value={ALL_TEAMS}
+            value={ALL_GROUPS}
             data-testid="agents-home-team-option"
-            data-team-id={ALL_TEAMS}
+            data-team-id={ALL_GROUPS}
           >
-            {allTeams}
+            {allGroups}
           </DropdownMenuRadioItem>
           {teams.map((team) => (
             <DropdownMenuRadioItem

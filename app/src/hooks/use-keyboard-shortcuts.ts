@@ -69,8 +69,7 @@ export function useKeyboardShortcuts() {
             : (idx + dir + ordered.length) % ordered.length;
         const next = ordered[nextIdx];
         setCurrent(next);
-        // ⌘[ / ⌘] walk the rail's agents; each one's home is its team board,
-        // filtered to it.
+        // ⌘[ / ⌘] walk the rail's agents; each one's home is its own board.
         openAgentBoard(next.id);
         return;
       }

@@ -1,166 +1,187 @@
 import { deepStrictEqual, rejects, strictEqual } from "node:assert";
 import { describe, it } from "node:test";
-import type { AgentTeam } from "@houston/engine-adapter";
-import type { TeamMoveSource, TeamMoveState } from "../src/lib/move-team.ts";
+import type { SidebarLayout } from "@houston/engine-adapter";
+import type { PendingTeamMove } from "../src/lib/pending-team-move.ts";
 import {
   runTeamMovePostscript,
   runTeamMoveStage,
+  sourceAfterFolderMove,
   type TeamMoveStageWire,
+  targetFolderLayout,
 } from "../src/lib/team-move-stage.ts";
 
 const TARGET = { slug: "abcdef0123456789", name: "Acme" };
-const SOURCE: TeamMoveSource = {
-  id: "old",
-  name: "Design",
-  context: "Brand",
-  isDefault: false,
-  agents: [{ id: "a", name: "A" }],
+const PENDING: PendingTeamMove = {
+  sourceTeam: {
+    id: "old",
+    workspaceId: "default",
+    name: "Design",
+    icon: "palette",
+    color: "blue",
+  },
+  targetSlug: TARGET.slug,
+  targetName: TARGET.name,
+  targetGroupId: "new-folder",
+  agentIds: ["a", "b"],
+  movedAgentIds: ["a", "b"],
+  startedAt: 1,
 };
-const TEAM: AgentTeam = {
-  id: "new",
-  name: "Design",
-  isDefault: false,
-  sortOrder: 1,
-  agentSlugs: [],
-  memberCount: 1,
-  joined: true,
-  owner: true,
+const group = (id: string, agentIds: string[]) => ({
+  id,
+  name: id,
+  collapsed: false,
+  agentIds,
+});
+const source: SidebarLayout = {
+  groups: [group("old", ["a", "b"]), group("keep", ["c"])],
+  order: [
+    { kind: "agent", id: "d" },
+    { kind: "group", id: "old" },
+    { kind: "group", id: "keep" },
+  ],
+};
+const target: SidebarLayout = {
+  groups: [group("there", ["x"])],
+  order: [
+    { kind: "agent", id: "y" },
+    { kind: "group", id: "there" },
+  ],
 };
 
 function wire(fail?: string) {
   const calls: string[] = [];
-  const run = async (name: string) => {
+  const layouts = new Map([
+    ["default", source],
+    ["org:abcdef0123456789", target],
+  ]);
+  const run = (name: string) => {
     calls.push(name);
-    if (fail === name) throw new Error(name);
+    if (name === fail) throw new Error(name);
   };
   const value: TeamMoveStageWire = {
-    deleteSource: async () => run("cleanupSource"),
-    switchTarget: async () => run("switching"),
-    listTargetTeams: async () => {
-      await run("recreate");
-      return [TEAM];
+    targetWorkspaceId: async () => {
+      run("resolveTarget");
+      return "org:abcdef0123456789";
     },
-    createTargetTeam: async () => TEAM,
-    updateTargetTeam: async () => run("context"),
-    placeAgent: async () => run("placing"),
-    isMissingSource: () => false,
+    getLayout: async (id) => {
+      run(`get:${id}`);
+      const layout = layouts.get(id);
+      if (!layout) throw new Error("layout missing");
+      return layout;
+    },
+    updateLayout: async (id, op) => {
+      run(`set:${id}`);
+      const current = layouts.get(id);
+      if (!current) throw new Error("layout missing");
+      const layout = op(current);
+      layouts.set(id, layout);
+      return layout;
+    },
+    switchTarget: async () => run("switching"),
   };
-  return { value, calls };
+  return { value, calls, layouts };
 }
 
-describe("dialog postscript stages", () => {
-  it("drives the entire postscript without mounted-stage re-entry", async () => {
+describe("folder move stages", () => {
+  it("creates a folder with identity and moved agents without changing other folders", () => {
+    const next = targetFolderLayout(target, PENDING);
+    deepStrictEqual(next.groups, [
+      group("there", ["x"]),
+      {
+        id: "new-folder",
+        name: "Design",
+        collapsed: false,
+        agentIds: ["a", "b"],
+        icon: "palette",
+        color: "blue",
+      },
+    ]);
+    deepStrictEqual(next.order, [
+      { kind: "group", id: "new-folder" },
+      ...target.order,
+    ]);
+  });
+
+  it("is idempotent when destination setup resumes after a stored write", () => {
+    const once = targetFolderLayout(target, PENDING);
+    deepStrictEqual(targetFolderLayout(once, PENDING), once);
+  });
+
+  it("removes the source folder and moved agent ids while preserving neighbors", () => {
+    deepStrictEqual(sourceAfterFolderMove(source, PENDING), {
+      groups: [group("keep", ["c"])],
+      order: [
+        { kind: "agent", id: "d" },
+        { kind: "group", id: "keep" },
+      ],
+    });
+    deepStrictEqual(
+      sourceAfterFolderMove(sourceAfterFolderMove(source, PENDING), PENDING),
+      sourceAfterFolderMove(source, PENDING),
+    );
+  });
+
+  it("leaves an agent added during the move in No team", () => {
+    const changed = {
+      ...source,
+      groups: [
+        { ...source.groups[0], agentIds: ["a", "b", "new"] },
+        source.groups[1],
+      ],
+    };
+    deepStrictEqual(sourceAfterFolderMove(changed, PENDING).order, [
+      { kind: "agent", id: "d" },
+      { kind: "agent", id: "new" },
+      { kind: "group", id: "keep" },
+    ]);
+  });
+
+  it("runs destination setup, source cleanup and space switch in order", async () => {
     const target = wire();
     const states: string[] = [];
     await runTeamMovePostscript(
-      {
-        sourceTeam: {
-          id: SOURCE.id,
-          name: SOURCE.name,
-          context: SOURCE.context,
-          isDefault: SOURCE.isDefault,
-        },
-        targetSlug: TARGET.slug,
-        targetName: TARGET.name,
-        agentIds: ["a"],
-        movedAgentIds: ["a"],
-        startedAt: 1,
-      },
+      PENDING,
       target.value,
       (state) => void states.push(state.step),
     );
     deepStrictEqual(target.calls, [
-      "cleanupSource",
+      "resolveTarget",
+      "get:org:abcdef0123456789",
+      "set:org:abcdef0123456789",
+      "get:default",
+      "set:default",
       "switching",
-      "recreate",
-      "context",
-      "placing",
     ]);
     strictEqual(states.at(-1), "invite");
+    deepStrictEqual(
+      target.layouts.get("default")?.groups.map((item) => item.id),
+      ["keep"],
+    );
   });
 
-  it("resumes from the recorded stage with the created team preserved", async () => {
-    // What the failure face's Retry rests on: the record carries the stage the
-    // failure interrupted, so a re-drive redoes only what never completed and
-    // places into the ALREADY-created team instead of reconciling by name.
+  it("resumes from a stored stage without repeating completed writes", async () => {
     const target = wire();
     await runTeamMovePostscript(
-      {
-        sourceTeam: {
-          id: SOURCE.id,
-          name: SOURCE.name,
-          context: SOURCE.context,
-          isDefault: SOURCE.isDefault,
-        },
-        targetSlug: TARGET.slug,
-        targetName: TARGET.name,
-        agentIds: ["a"],
-        movedAgentIds: ["a"],
-        createdTeamId: TEAM.id,
-        postscriptStage: "placing",
-        startedAt: 1,
-      },
+      { ...PENDING, postscriptStage: "cleanupSource" },
       target.value,
       () => {},
     );
-    deepStrictEqual(target.calls, ["placing"]);
+    deepStrictEqual(target.calls, ["get:default", "set:default", "switching"]);
   });
-  it("advances each stage and preserves the reconciled id for placement", async () => {
-    const cleanup = await runTeamMoveStage(
-      { step: "cleanupSource", target: TARGET },
-      SOURCE,
-      wire().value,
-    );
-    strictEqual(cleanup.state.step, "switching");
-    const switched = await runTeamMoveStage(
-      cleanup.state,
-      SOURCE,
-      wire().value,
-    );
-    strictEqual(switched.state.step, "recreate");
-    const recreated = await runTeamMoveStage(
-      switched.state,
-      SOURCE,
-      wire().value,
-    );
-    deepStrictEqual(recreated.state, {
-      step: "placing",
-      target: TARGET,
-      teamId: "new",
-    });
-    const placed = await runTeamMoveStage(
-      recreated.state,
-      SOURCE,
-      wire().value,
-    );
-    strictEqual(placed.state.step, "invite");
-  });
-  for (const stage of [
-    "cleanupSource",
-    "switching",
-    "recreate",
-    "placing",
+
+  for (const [step, failure] of [
+    ["createTarget", "set:org:abcdef0123456789"],
+    ["cleanupSource", "set:default"],
+    ["switching", "switching"],
   ] as const) {
-    it(`rejects in ${stage} so the machine can resume exactly there`, async () => {
-      const state: TeamMoveState =
-        stage === "placing"
-          ? { step: stage, target: TARGET, teamId: "new" }
-          : { step: stage, target: TARGET };
-      await rejects(() => runTeamMoveStage(state, SOURCE, wire(stage).value));
+    it(`rejects during ${step} so resume retries that stage`, async () => {
+      await rejects(() =>
+        runTeamMoveStage(
+          { step, target: TARGET },
+          PENDING,
+          wire(failure).value,
+        ),
+      );
     });
   }
-  it("treats an already-deleted source as complete", async () => {
-    const target = wire("cleanupSource");
-    target.value.isMissingSource = () => true;
-    strictEqual(
-      (
-        await runTeamMoveStage(
-          { step: "cleanupSource", target: TARGET },
-          SOURCE,
-          target.value,
-        )
-      ).state.step,
-      "switching",
-    );
-  });
 });

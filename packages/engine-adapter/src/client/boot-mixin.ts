@@ -64,8 +64,7 @@ export function BootMixin<TBase extends BaseCtor>(Base: TBase) {
     async capabilities(): Promise<Capabilities> {
       // Uncached on purpose: `role` is PER-SPACE, so the caller re-fetches after
       // a space switch (C8 §capabilities). The shared implementation is
-      // `getCapabilities` above — the sidebar-layout store reads the same route
-      // to learn whether it is talking to an open host.
+      // `getCapabilities` above.
       return getCapabilities(this.ctx);
     }
     /**

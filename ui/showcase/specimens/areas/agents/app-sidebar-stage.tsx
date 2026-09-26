@@ -2,10 +2,6 @@ import {
   DropdownMenu,
   DropdownMenuContent,
   DropdownMenuItem,
-  DropdownMenuSeparator,
-  DropdownMenuSub,
-  DropdownMenuSubContent,
-  DropdownMenuSubTrigger,
   DropdownMenuTrigger,
 } from "@houston-ai/core";
 import { AppSidebar } from "@houston-ai/layout";
@@ -53,24 +49,12 @@ export function SidebarStage({ children }: { children: ReactNode }) {
   );
 }
 
-/** The teams a shared space holds that this caller has not pinned to the rail. */
-const JOINABLE = [
-  { id: "design", name: "Design", people: 4 },
-  { id: "support", name: "Support", people: 9 },
-];
-
 /**
- * The one control the "Your teams" band carries, supplied by the host through
- * `sectionAction`.
- *
- * It is ONE menu on purpose. Creating an agent, creating a team and joining one
- * are the only things the rail can add, and they used to be three separate
- * affordances -- a "+", a New team glyph, and a whole disclosure at the foot of
- * the rail listing every team you had not joined. Under one trigger, the band
- * keeps a single control and unjoined teams stop outranking the teams you
- * actually work in.
+ * The one control the "Your AI Employees" band carries, supplied by the host
+ * through `sectionAction`: ONE menu holding the two things the rail can add, an
+ * AI Employee and a group, so the band keeps a single control.
  */
-export function TeamsBandMenu() {
+export function CreateBandMenu() {
   return (
     <DropdownMenu>
       <DropdownMenuTrigger asChild>
@@ -83,19 +67,8 @@ export function TeamsBandMenu() {
         </button>
       </DropdownMenuTrigger>
       <DropdownMenuContent align="end" side="bottom">
-        <DropdownMenuItem>New agent</DropdownMenuItem>
-        <DropdownMenuItem>New team</DropdownMenuItem>
-        <DropdownMenuSeparator />
-        <DropdownMenuSub>
-          <DropdownMenuSubTrigger>Join a team</DropdownMenuSubTrigger>
-          <DropdownMenuSubContent>
-            {JOINABLE.map((team) => (
-              <DropdownMenuItem key={team.id}>
-                {team.name} · {team.people} people
-              </DropdownMenuItem>
-            ))}
-          </DropdownMenuSubContent>
-        </DropdownMenuSub>
+        <DropdownMenuItem>New AI Employee</DropdownMenuItem>
+        <DropdownMenuItem>New group</DropdownMenuItem>
       </DropdownMenuContent>
     </DropdownMenu>
   );

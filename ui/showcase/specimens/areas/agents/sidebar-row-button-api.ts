@@ -18,7 +18,7 @@ export const SIDEBAR_ROW_CONSUMERS: readonly {
   },
   {
     who: "SidebarBand",
-    what: 'The "Your teams" band. Block depth, the 12px `band` type step, a disclosure, and the host\'s create menu in the affordance slot.',
+    what: 'The "Your AI Employees" band. Block depth, the 12px `band` type step, a disclosure, and the host\'s create menu in the affordance slot.',
   },
   {
     who: "SidebarGroupHeader",
@@ -54,7 +54,7 @@ export const SIDEBAR_ROW_BUTTON_PROPS: readonly SpecimenProp[] = [
   {
     name: "band",
     type: "boolean",
-    note: 'The row NAMES the list rather than pointing at anything ("Your teams"): 12px against the rows\' 13px, at the same 510 weight as everything else in the rail. Size is the whole distinction — the band used to be semibold grey, which read as a heading bolted above a list instead of the first line of one.',
+    note: 'The row NAMES the list rather than pointing at anything ("Your AI Employees"): 12px against the rows\' 13px, at the same 510 weight as everything else in the rail. Size is the whole distinction — the band used to be semibold grey, which read as a heading bolted above a list instead of the first line of one.',
   },
   {
     name: "muted",

@@ -1,79 +1,70 @@
 import { deepStrictEqual, strictEqual } from "node:assert";
 import { describe, it } from "node:test";
+import type { SidebarLayout } from "@houston/engine-adapter";
 import {
   agentDestination,
   canOpenAgentSettings,
+  workingAgentId,
 } from "../src/lib/agent-nav.ts";
-import { DEFAULT_TEAM_ID, type TeamView } from "../src/lib/teams-model.ts";
+import type { Agent } from "../src/lib/types.ts";
 
-// The per-agent tab shell is gone: every "take me to agent X's <thing>" now
-// resolves to a section of X's TEAM. These are the rules every caller shares —
-// notification clicks, @mention rows, the command palette, turn summaries.
-
-function agent(id: string) {
-  return {
-    id,
-    name: id,
-    configId: "c",
-    folderPath: `/w/${id}`,
-  } as unknown as TeamView["agents"][number];
-}
-
-const teams: TeamView[] = [
-  { id: "grp-ops", name: "Ops", agents: [agent("a1")], isDefault: false },
-  {
-    id: DEFAULT_TEAM_ID,
-    name: "My workspace",
-    agents: [agent("a2")],
-    isDefault: true,
-  },
-];
-
-describe("agentDestination", () => {
-  it("opens the agent's own team, pinned to the agent, for its board", () => {
-    deepStrictEqual(agentDestination(teams, "a1", "board"), {
-      view: "team",
-      teamId: "grp-ops",
+describe("agentDestination on the desktop", () => {
+  it("opens the employee's own board", () => {
+    deepStrictEqual(agentDestination("a1", "board", false), {
+      kind: "agent-view",
+      agentId: "a1",
       section: "mission-control",
-      agentFilter: "a1",
-      agentFocus: true,
     });
   });
 
-  it("keeps the pin for the sections that narrow by it", () => {
-    deepStrictEqual(agentDestination(teams, "a2", "routines"), {
-      view: "team",
-      teamId: DEFAULT_TEAM_ID,
+  it("opens that employee's routines and files", () => {
+    deepStrictEqual(agentDestination("a2", "routines", false), {
+      kind: "agent-view",
+      agentId: "a2",
       section: "routines",
-      agentFilter: "a2",
-      agentFocus: true,
     });
-    deepStrictEqual(agentDestination(teams, "a2", "files"), {
-      view: "team",
-      teamId: DEFAULT_TEAM_ID,
+    deepStrictEqual(agentDestination("a2", "files", false), {
+      kind: "agent-view",
+      agentId: "a2",
       section: "files",
-      agentFilter: "a2",
-      agentFocus: true,
     });
   });
 
-  it("keeps agent focus for the agent settings door", () => {
-    deepStrictEqual(agentDestination(teams, "a1", "settings"), {
-      view: "team",
-      teamId: "grp-ops",
+  it("opens that employee's settings", () => {
+    deepStrictEqual(agentDestination("a1", "settings", false), {
+      kind: "agent-view",
+      agentId: "a1",
       section: "settings",
-      agentFilter: "a1",
-      agentFocus: true,
+    });
+  });
+});
+
+describe("agentDestination on the phone", () => {
+  it("opens the employee's ONE task list, the AI Employees drill-in", () => {
+    deepStrictEqual(agentDestination("a1", "board", true), {
+      kind: "task-list",
+      agentId: "a1",
     });
   });
 
-  it("answers `none` when no team claims the agent", () => {
-    // No workspace resolved yet -> no teams at all. There is no global board to
-    // substitute any more, so the rule STATES the miss and leaves the landing
-    // to the caller: a board request goes home, a settings request refuses.
-    for (const target of ["board", "routines", "files", "settings"] as const) {
-      deepStrictEqual(agentDestination([], "a1", target), { view: "none" });
-    }
+  it("opens settings in place over that task list", () => {
+    deepStrictEqual(agentDestination("a1", "settings", true), {
+      kind: "task-list",
+      agentId: "a1",
+    });
+  });
+
+  it("keeps routines and files on the employee's own screen", () => {
+    deepStrictEqual(agentDestination("a2", "routines", true), {
+      kind: "agent-view",
+      agentId: "a2",
+      section: "routines",
+    });
+    deepStrictEqual(agentDestination("a2", "files", true), {
+      kind: "agent-view",
+      agentId: "a2",
+      section: "files",
+    });
   });
 });
 
@@ -100,11 +91,42 @@ describe("canOpenAgentSettings", () => {
   });
 
   it("is open to a member who MANAGES the agent, and closed when they only use it", () => {
-    // Team Settings is a PER-TEAM door now, so the page's gate is per agent: a
-    // member who manages this agent reaches it, a member who only uses it does
-    // not (the affordance would resolve back to Mission Control).
+    // An employee's Settings section is a per-agent door, so the page's gate
+    // is per agent: a member who manages this agent reaches it, a member who
+    // only uses it does not (the affordance would resolve back to Mission
+    // Control).
     strictEqual(canOpenAgentSettings(caps("user"), managed), true);
     strictEqual(canOpenAgentSettings(caps("user"), used), false);
     strictEqual(canOpenAgentSettings(caps("user"), bare), false);
+  });
+});
+
+// A nav that names no employee (the tour's "Click New task" step, New task
+// from the palette or the AI Models hub, a lesson beat, a hands-on errand)
+// works on the current employee, else the first one the rail shows: the
+// Agents home has no New task button, and a spotlight would find nothing
+// there.
+describe("workingAgentId", () => {
+  const agent = (id: string) => ({ id, name: id }) as Agent;
+  const roster = [agent("a"), agent("b"), agent("c")];
+  const layout: SidebarLayout = {
+    groups: [{ id: "g", name: "g", collapsed: false, agentIds: ["c", "a"] }],
+    order: [
+      { kind: "group", id: "g" },
+      { kind: "agent", id: "b" },
+    ],
+  };
+
+  it("keeps the current employee", () => {
+    strictEqual(workingAgentId("b", roster, layout), "b");
+  });
+
+  it("falls back to the first employee in sidebar order, not roster order", () => {
+    strictEqual(workingAgentId(null, roster, layout), "c");
+    strictEqual(workingAgentId("deleted", roster, layout), "c");
+  });
+
+  it("has no employee to open for an empty roster", () => {
+    strictEqual(workingAgentId(null, [], layout), null);
   });
 });

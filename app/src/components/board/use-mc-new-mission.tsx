@@ -83,7 +83,7 @@ export function useMcNewMission({
     [requestNewMission],
   );
   // Only the board ON SCREEN owns the global "New mission" handler. Mission
-  // Control and every team board are kept-alive screens, so several of them are
+  // Control and every employee board are kept-alive screens, so several of them are
   // mounted at once: an unconditional registration is last-writer-wins, and the
   // shortcut would open a hidden team's agent picker while the user is looking
   // at the global board.

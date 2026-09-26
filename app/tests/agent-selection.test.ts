@@ -1,9 +1,8 @@
-import { deepStrictEqual, strictEqual } from "node:assert";
+import { strictEqual } from "node:assert";
 import { describe, it } from "node:test";
 import {
   selectCurrentAgent,
   selectLoadedAgent,
-  shouldApplyAgentLoad,
 } from "../src/lib/agent-selection.ts";
 import type { Agent } from "../src/lib/types.ts";
 
@@ -73,12 +72,5 @@ describe("agent selection", () => {
     const ada = agent("ada");
 
     strictEqual(selectLoadedAgent([ada], agent("grace"), "grace"), ada);
-  });
-
-  it("rejects an older response after a newer roster load starts", () => {
-    deepStrictEqual(
-      [shouldApplyAgentLoad(1, 2), shouldApplyAgentLoad(2, 2)],
-      [false, true],
-    );
   });
 });

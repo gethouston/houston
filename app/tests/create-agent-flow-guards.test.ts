@@ -110,13 +110,12 @@ describe("a typed answer is capped in the field, not only on the way out", () =>
   });
 });
 
-describe("a create that half-succeeds is reported and explained", () => {
+describe("a create is reported and lands at the top level", () => {
   const hook = source("components/shell/use-create-blank-agent.ts");
   const create = source("lib/create-employee.ts");
   const pin = source("hooks/use-kickoff-pin-resolver.ts");
 
-  it("reports a failed placement instead of logging it away", () => {
-    assert.ok(create.includes('logAndReportError("new_agent_placement"'));
+  it("never logs a failure away", () => {
     for (const src of [hook, create]) {
       assert.ok(
         !src.includes("logger.error"),
@@ -125,9 +124,10 @@ describe("a create that half-succeeds is reported and explained", () => {
     }
   });
 
-  it("tells the user where the agent actually landed", () => {
-    assert.ok(create.includes("showExpectedStateToast("));
-    assert.ok(create.includes("roleSetup.placementFailed"));
+  it("leaves a new agent at the top level", () => {
+    assert.ok(!hook.includes("targetTeamId"));
+    assert.ok(!create.includes("moveItem("));
+    assert.ok(!create.includes("teamId"));
   });
 
   it("catches the last-used lookup rather than floating the promise", () => {

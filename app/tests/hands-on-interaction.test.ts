@@ -215,7 +215,7 @@ test("every hands-on screen maps to a real navigation", () => {
     'ui.openSettings("apiKeys")',
     "ui.openSettings(null)",
     'requestTab("billing")',
-    "ui.openTeamView(",
+    "openAgentSection(",
     '"files" : "routines"',
   ])
     ok(nav.includes(call), `missing navigation: ${call}`);

@@ -122,8 +122,8 @@ describe("the rail's primary run", () => {
 });
 
 describe("the rail's labelled bands", () => {
-  it("declares exactly ONE run, so nothing is labelled above Your teams", () => {
-    // "Your teams" is the rail's only band. A second heading over a run of
+  it("declares exactly ONE run, so nothing is labelled above Your AI Employees", () => {
+    // "Your AI Employees" is the rail's only band. A second heading over a run of
     // destinations would be a second rule for one row shape, and the rows that
     // LEAD the rail need no heading to be found.
     assert.equal(

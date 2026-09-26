@@ -83,7 +83,7 @@ export const agentItems: SidebarItem[] = [
   },
 ];
 
-/** Two named groups; Expense Filer stays ungrouped to show the default section. */
+/** Two named groups; Expense Filer leads the list without a folder header. */
 export const agentGroups: SidebarGroupView[] = [
   {
     id: "mornings",

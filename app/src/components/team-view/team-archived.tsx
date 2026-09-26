@@ -1,20 +1,15 @@
-import { useCallback, useMemo, useState } from "react";
+import { useCallback, useMemo } from "react";
 import { useAllConversations } from "../../hooks/queries";
 import type { BoardSurface } from "../../lib/board-surface-nav";
-import type { TeamView } from "../../lib/teams-model";
 import type { Agent } from "../../lib/types";
 import { useAgentStore } from "../../stores/agents";
 import { useUIStore } from "../../stores/ui";
 import { MissionControlArchived } from "../board/mission-control-archived";
-import { newMissionTarget } from "../board/new-mission-target";
 import { useBoardSurfaceOnNav } from "../board/use-board-surface-on-nav";
-import { TeamAgentFilterCapsule } from "./team-agent-filter-capsule";
-import { sectionFilterAgent } from "./team-agent-filter-model";
-import { TeamMissionEmpty } from "./team-empty";
-import { useTeamScope } from "./use-team-board-scope";
+import { useAgentBoardScope } from "./use-agent-board-scope";
 
 /**
- * A team's ARCHIVE: everything this team has finished with.
+ * One employee's ARCHIVE: everything this employee has finished with.
  *
  * It is a MODE of the Tasks section, not a destination of its own. The active
  * board's toolbar carries an "Archived" button (`teamView.archive.open`) that
@@ -26,33 +21,24 @@ import { useTeamScope } from "./use-team-board-scope";
  *
  * The one-sweep rule holds. It reads the SAME `all-conversations` query
  * every other Mission Control surface reads, over the FULL workspace roster,
- * and narrows what it renders through the shared `MissionControlScope`
- * (`useTeamBoardScope`) — never a second key for the team's slice.
+ * and narrows what it renders through the shared `MissionControlScope`.
  */
 export function TeamArchived({
-  team,
+  agent,
   onShowActive,
 }: {
-  team: TeamView;
+  agent: Agent;
   onShowActive: () => void;
 }) {
   const agents = useAgentStore((s) => s.agents);
-  const openTeamView = useUIStore((s) => s.openTeamView);
-  // This section's OWN filter, not the team-wide pin: narrowing a list of
-  // finished work must not silently narrow the board the user goes back to
-  // (`team-agent-filter-capsule.tsx` says why). It resets with the section,
-  // which remounts per team because `TeamView` keys it on the team id.
-  const [filterAgentId, setFilterAgentId] = useState<string | null>(null);
-  // Before the empty-team early return: hooks may not run conditionally.
-  const scope = useTeamScope(team, filterAgentId);
+  const openAgentView = useUIStore((s) => s.openAgentView);
+  const scope = useAgentBoardScope(agent);
+  const scopedAgents = useMemo(() => [agent], [agent]);
   const rosterPaths = useMemo(() => agents.map((a) => a.folderPath), [agents]);
   const { data: rawConversations } = useAllConversations(rosterPaths);
 
   // A published target whose mission turns out to be ACTIVE belongs on the
-  // active board, so this screen hands it over: the surface is decided from the
-  // RAW sweep rows, and the owner claims it. Going back carries the team-wide
-  // pin, which is the BOARD's and is never this screen's to change; this
-  // screen's own filter stays here and dies with it.
+  // active board, so this screen hands it over from the raw sweep rows.
   const show = useCallback(
     (surface: BoardSurface) => {
       if (surface === "archived") return;
@@ -63,58 +49,31 @@ export function TeamArchived({
   useBoardSurfaceOnNav({ rows: rawConversations, show });
 
   // "New task" from the ARCHIVE means a new task, which is never an archived
-  // one: it hands the user to the Tasks section with that agent's composer
-  // opening there. The same target rule the board uses decides whether the
-  // button asks at all — the archive's own filter answers it when set.
-  const [newMissionMenuOpen, setNewMissionMenuOpen] = useState(false);
-  const startNewMissionFor = useCallback(
-    (agent: Agent) => {
-      setNewMissionMenuOpen(false);
-      openTeamView(team.id, "mission-control", { agentFilter: agent.id });
-      onShowActive();
-      setTimeout(() => useUIStore.getState().onStartMission?.(), 50);
-    },
-    [openTeamView, team.id, onShowActive],
-  );
+  // one: it hands the user to the Tasks section with this employee's composer
+  // opening there. One employee means the button never asks whose task.
+  const startNewMission = useCallback(() => {
+    openAgentView(agent.id, "mission-control");
+    onShowActive();
+    setTimeout(() => useUIStore.getState().onStartMission?.(), 50);
+  }, [agent.id, openAgentView, onShowActive]);
   const requestNewMission = useCallback(
     (open: boolean) => {
-      if (!open) {
-        setNewMissionMenuOpen(false);
-        return;
-      }
-      const target = newMissionTarget(
-        sectionFilterAgent(team.agents, filterAgentId),
-        team.agents,
-      );
-      if (target.kind === "direct") {
-        startNewMissionFor(target.agent);
-        return;
-      }
-      setNewMissionMenuOpen(true);
+      if (open) startNewMission();
     },
-    [team.agents, filterAgentId, startNewMissionFor],
+    [startNewMission],
   );
-
-  if (team.agents.length === 0) return <TeamMissionEmpty team={team} />;
 
   return (
     <div className="flex h-full flex-col overflow-hidden">
       <MissionControlArchived
         agents={agents}
         scope={scope}
-        scopedAgents={team.agents}
+        scopedAgents={scopedAgents}
         // Rendered by the toolbar, in the same slot the active board's person
         // filter takes, so both board sections read search, filter, action.
-        agentFilter={
-          <TeamAgentFilterCapsule
-            agents={team.agents}
-            selectedAgentId={filterAgentId}
-            onSelect={setFilterAgentId}
-          />
-        }
-        newMissionMenuOpen={newMissionMenuOpen}
+        newMissionMenuOpen={false}
         onNewMissionMenuChange={requestNewMission}
-        onNewMission={startNewMissionFor}
+        onNewMission={startNewMission}
         onShowActive={onShowActive}
       />
     </div>

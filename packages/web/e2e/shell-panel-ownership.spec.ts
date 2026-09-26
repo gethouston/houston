@@ -1,7 +1,7 @@
 import { FAKE_HOST_URL, SEED_AGENT_ID } from "@houston/fake-host";
 import { expect, test } from "./support/fixtures";
 import { openSkillsLibrary } from "./support/settings-nav";
-import { openTeamSection, screen } from "./support/team-nav";
+import { openTeamSection, rail, screen } from "./support/team-nav";
 
 /**
  * The ONE shell-level detail panel is shared by every surface that opens it
@@ -12,6 +12,8 @@ import { openTeamSection, screen } from "./support/team-nav";
  * the newly-visible one claims (PRODUCT-1229 — leaving Routines with a chat
  * open left the panel painted as an empty card over the board).
  */
+
+test.use({ teamBoard: true });
 
 test("leaving the team's Routines with its chat open closes the shared panel", async ({
   page,
@@ -35,7 +37,7 @@ test("leaving the team's Routines with its chat open closes the shared panel", a
   await expect(page.getByTestId("mission-panel")).toBeHidden();
 });
 
-test("leaving the team's board with a mission open closes the shared panel", async ({
+test("leaving the employee's board with a mission open closes the shared panel", async ({
   page,
 }) => {
   await page.goto("/");
@@ -63,7 +65,7 @@ test("leaving a board with the new-mission composer open still lets it reopen", 
 }) => {
   await page.goto("/");
 
-  // The team's board, with the EMPTY new-mission composer claiming the panel.
+  // The employee's board, with the EMPTY new-mission composer claiming the panel.
   // That composer's open state lives inside AIBoard, not in the app store, so
   // releasing the panel means calling the closer the board handed back — not
   // just dropping the app-side selection.
@@ -73,7 +75,7 @@ test("leaving a board with the new-mission composer open still lets it reopen", 
   await page.getByRole("button", { name: "New task" }).first().click();
   await expect(page.getByTestId("mission-panel")).toBeVisible();
 
-  // Off to another top-level view: the team screen is only HIDDEN, never
+  // Off to another top-level view: the employee screen is only HIDDEN, never
   // unmounted, so the board goes off screen still holding its own state and
   // has to let go of the panel itself.
   await openSkillsLibrary(page);
@@ -103,7 +105,7 @@ test("the Skills library's create chat claims the panel from its screen", async 
   await screen(page).getByRole("button", { name: "Create skill" }).click();
   await expect(page.getByTestId("mission-panel")).toBeVisible();
 
-  // Off to a team's board: the Skills screen is kept alive with the chat still
+  // Off to an employee's board: the Skills screen is kept alive with the chat still
   // mounted, so the chat has to release the panel itself.
   await openTeamSection(page, "Tasks");
   await expect(page.getByTestId("mission-panel")).toBeHidden();
@@ -117,10 +119,10 @@ test("a team's routine chat lets go of the shared panel when the team leaves the
     data: { name: "Morning brief", prompt: "p", schedule: "0 9 * * *" },
   });
 
-  // Open the team's Routines section from the rail and select a routine: its
-  // chat claims the ONE shell panel from a team SCREEN, not from a tab.
+  // Open the employee's Routines section from the rail and select a routine:
+  // its chat claims the ONE shell panel from an employee SCREEN, not a tab.
   await page.goto("/");
-  await expect(page.getByText("Your teams")).toBeVisible();
+  await expect(rail(page).getByText("Your AI Employees")).toBeVisible();
   await openTeamSection(page, "Routines");
   const row = page
     .getByTestId("routine-row")
@@ -136,7 +138,7 @@ test("a team's routine chat lets go of the shared panel when the team leaves the
   );
 
   // Off to another TOP-LEVEL view — the exit a section swap cannot model. The
-  // whole team screen is hidden rather than unmounted, so its chat is still
+  // whole employee screen is hidden rather than unmounted, so its chat is still
   // mounted and has to release the panel itself; otherwise it stays painted
   // over whatever the user went to look at.
   await page.locator('[data-tour-target="nav-integrations"]').click();

@@ -2,15 +2,11 @@ import { FAKE_HOST_URL, SEED_WORKSPACE_ID } from "@houston/fake-host";
 import type { APIRequestContext } from "@playwright/test";
 
 /**
- * The sidebar's stored order + grouping, on the SERVER — which is where the web
- * surface now keeps it. The fake host advertises `profile: "local"` (it models a
- * desktop/self-host deployment), so the adapter routes the layout through
- * `GET`/`PUT /v1/workspaces/:id/sidebar-layout` rather than `localStorage`; that
- * PUT is what drives the host's `GROUP.md` fan-out for team shared context.
+ * The sidebar's stored order and grouping, served by the fake host through
+ * `GET`/`PUT /v1/workspaces/:id/sidebar-layout`.
  *
  * Specs therefore ARRANGE by writing the layout to the host before the app
- * boots, and ASSERT by reading it back — never through `page.evaluate` over
- * browser storage.
+ * boots, and ASSERT by reading it back.
  */
 const layoutUrl = (workspaceId: string) =>
   `${FAKE_HOST_URL}/v1/workspaces/${encodeURIComponent(workspaceId)}/sidebar-layout`;
@@ -20,16 +16,13 @@ export interface SeedSidebarGroup {
   name: string;
   collapsed: boolean;
   agentIds: string[];
-  context?: string;
   icon?: string;
   color?: string;
 }
 
 export interface SeedSidebarLayout {
   groups: SeedSidebarGroup[];
-  ungroupedOrder: string[];
-  defaultCollapsed?: boolean;
-  defaultContext?: string;
+  order: ({ kind: "group"; id: string } | { kind: "agent"; id: string })[];
 }
 
 /** Arrange the stored layout the app reads at boot. Server-to-server (no CORS),
@@ -46,8 +39,7 @@ export async function seedSidebarLayout(
   }
 }
 
-/** The layout as the host actually holds it — "was this written down?" is a
- *  server question now, never a storage one. */
+/** The layout as the host holds it. */
 export async function readSidebarLayout(
   request: APIRequestContext,
   workspaceId: string = SEED_WORKSPACE_ID,

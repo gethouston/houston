@@ -176,8 +176,8 @@
   .files-skeleton-in { animation: none; }
 }
 
-/* A sidebar disclosure opening: the "Your teams" section, and every team block
-   under it. Entrance only, transform + opacity only, 200ms on the entrance
+/* A sidebar disclosure opening: the "Your AI Employees" section, and every
+   folder under it. Entrance only, transform + opacity only, 200ms on the entrance
    curve — the rail must feel like it unfolded, never like it waited.
 
    Deliberately NOT a height animation: height is layout, and DESIGN.md allows

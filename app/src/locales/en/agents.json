@@ -229,12 +229,12 @@
   },
   "copyAgent": {
     "row": "Duplicate {{name}}",
-    "rowDescription": "Create a duplicate in one of your teams. Conversations are not duplicated.",
+    "rowDescription": "Create a duplicate in one of your groups. Conversations are not duplicated.",
     "title": "Duplicate {{name}}",
     "body": "The duplicate starts with the same job description, skills, routines, learnings and color. Conversations stay with the original and are never duplicated.",
     "nameLabel": "Name for the duplicate",
-    "nameTaken": "An AI Employee named {{name}} already exists. AI Employee names are shared across all your teams, so give the duplicate its own name.",
-    "teamLabel": "Team for the duplicate",
+    "nameTaken": "An AI Employee named {{name}} already exists. AI Employee names are shared across all your groups, so give the duplicate its own name.",
+    "teamLabel": "Group for the duplicate",
     "confirm": "Create duplicate",
     "copySuffix": "copy",
     "toasts": {

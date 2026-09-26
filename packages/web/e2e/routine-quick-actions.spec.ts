@@ -39,6 +39,8 @@ async function openRoutinesTab(page: import("@playwright/test").Page) {
   ).toBeVisible();
 }
 
+test.use({ teamBoard: true });
+
 test("the schedule summary opens the inline editor and Save persists the cron", async ({
   page,
 }) => {

@@ -1,5 +1,5 @@
 /**
- * The command palette's "jump to a thing" groups: teams, agents, recent
+ * The command palette's "jump to a thing" groups: agents and recent
  * missions. Split out of `command-palette.tsx`, which keeps the dialog, the
  * data it reads and the actions; these are pure lists over what it hands them.
  *
@@ -14,11 +14,8 @@ import {
   HoustonAvatar,
   resolveAgentColor,
 } from "@houston-ai/core";
-import { Users } from "lucide-react";
 import { useTranslation } from "react-i18next";
 import type { RawConversation } from "../lib/tauri";
-import { teamDisplayName } from "../lib/team-display";
-import type { TeamView } from "../lib/teams-model";
 import type { Agent } from "../lib/types";
 import { missionCardAgentName } from "./board/mission-card-agent";
 
@@ -34,40 +31,8 @@ function PaletteAvatar({ color }: { color?: string }) {
 }
 
 /**
- * The teams, each opening its Mission Control. Every mission board belongs to
- * a team now, so this group is how the palette reaches a board at all.
+ * Agents in sidebar order, each opening its own Tasks screen.
  */
-export function PaletteTeams({
-  teams,
-  onSelect,
-}: {
-  teams: TeamView[];
-  onSelect: (teamId: string) => void;
-}) {
-  const { t } = useTranslation(["shell", "teams"]);
-  if (teams.length === 0) return null;
-  return (
-    <>
-      <CommandSeparator />
-      <CommandGroup heading={t("palette.groups.teams")}>
-        {teams.map((team) => {
-          const name = teamDisplayName(team, t("teams:teamView.defaultName"));
-          return (
-            <CommandItem
-              key={team.id}
-              value={`team ${name}`}
-              onSelect={() => onSelect(team.id)}
-            >
-              <Users />
-              <span>{name}</span>
-            </CommandItem>
-          );
-        })}
-      </CommandGroup>
-    </>
-  );
-}
-
 export function PaletteAgents({
   agents,
   onSelect,

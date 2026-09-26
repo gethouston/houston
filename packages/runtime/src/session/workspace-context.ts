@@ -14,7 +14,6 @@ import { join } from "node:path";
  */
 export const WORKSPACE_MD = "WORKSPACE.md";
 export const USER_MD = "USER.md";
-export const GROUP_MD = "GROUP.md";
 
 /** Gateway-provided context (cloud): the two blobs read from Supabase. */
 export interface ProvidedContext {
@@ -24,7 +23,6 @@ export interface ProvidedContext {
 
 const WORKSPACE_HEADING = "# Workspace Context";
 const USER_HEADING = "# User Context";
-const GROUP_HEADING = "# Group Context";
 
 // File-mode empty markers (local): the agent is told to write the files.
 const FILE_WORKSPACE_EMPTY =
@@ -115,33 +113,4 @@ export function buildWorkspaceContextSection(
       "exception to your working-directory rule: you are allowed to read and " +
       "write them. Edits take effect on the next chat.",
   );
-}
-
-/**
- * Build the "# Group Context" section appended to an agent's system prompt from
- * `GROUP.md` at `cwd`, or null when there is nothing to inject.
- *
- * Unlike workspace/user context there is NO empty-marker stub and no `.houston`
- * gate: group membership is optional per-agent, and the host only writes
- * `GROUP.md` into an agent whose team actually has shared context. So the
- * file's mere presence with non-blank content is the whole signal — an agent
- * whose team has no shared context (no file) injects nothing.
- */
-export function buildGroupContextSection(cwd: string): string | null {
-  const groupPath = join(cwd, GROUP_MD);
-  const content = readOrEmpty(groupPath).trim();
-  if (!content) return null;
-  return [
-    GROUP_HEADING,
-    "",
-    content,
-    "",
-    "The section above is context shared by every agent in this agent's " +
-      `team, loaded from the file at \`${groupPath}\`. Like ` +
-      "WORKSPACE.md/USER.md it is an exception to your working-directory rule: " +
-      "you may read and write it directly. But a person edits this team's " +
-      "shared context from the sidebar, and doing so overwrites whatever you " +
-      "wrote here, so treat it as theirs to own. Edits take effect on the next " +
-      "chat.",
-  ].join("\n");
 }

@@ -9,8 +9,8 @@
  * the typecheck here instead of silently drifting the mock.
  */
 
-import { DEFAULT_SIDEBAR_LAYOUT } from "@houston/host/src/routes/sidebar-layout";
 import type { SidebarLayout } from "@houston/protocol";
+import { DEFAULT_SIDEBAR_LAYOUT } from "@houston/protocol";
 import type {
   IntegrationConnection,
   IntegrationProviderStatus,

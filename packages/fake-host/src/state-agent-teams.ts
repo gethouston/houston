@@ -201,8 +201,8 @@ export function setAgentTeamOfAgent(agentId: string, teamId: string): void {
  * it, so the creator's owner row is forced onto each of them. The gateway
  * cannot produce a personal-space team the caller has not joined — the row is
  * written on create and no route can remove it — and a fake that CAN produce
- * that state lets a spec pass against a world the product never sees, which is
- * exactly how the rail kept offering "Leave team" there.
+ * that state lets a spec pass against a world the product never sees. A
+ * personal-space team therefore always has its creator as owner.
  */
 export function armAgentTeams(
   seed: AgentTeamSeed[] | null,

@@ -3,7 +3,7 @@
  *
  * The navigation labels are the product's own words: they come from
  * `app/src/locales/en/shell.json` → `sidebar` (Houston, AI Models,
- * Integrations, Your teams, Academy, Settings), built by
+ * Integrations, Your AI Employees, Academy, Settings), built by
  * `app/src/components/shell/sidebar-nav-sections.tsx` and drawn by
  * `app/src/components/shell/sidebar-chrome.tsx`.
  *
@@ -11,9 +11,9 @@
  * Integrations, Files, Archived, Permissions, Agent Settings) are HISTORICAL
  * names: they were the per-agent tab strip, which was deleted along with
  * `agents:tabLabels.*` and `app/src/agents/standard-tabs.ts`. Those surfaces
- * live on as team sections (Mission Control / Routines / Files) and as sections
- * of the agent settings page (job description, memory, people, apps, AI models,
- * skills). The names are kept because they are still how the team talks about
+ * live on as employee sections (Mission Control / Routines / Files) and as
+ * sections of the agent settings page (job description, memory, people, apps,
+ * AI models, skills). The names are kept because they are still how the team talks about
  * these component families, and a "Used in" chip is a wayfinding hint, not a
  * route. Rename a group only if the product's own word for it changes.
  *
@@ -118,12 +118,12 @@ export const SURFACE_RULES = {
   "app/src/components/shell/naming-step": "Onboarding",
   "app/src/components/shell/workspace-setup-flow": "Onboarding",
 
-  // The `team` screen behind every rail row: the team's board, its archive and
-  // its settings. Named for the rail section that opens it
-  // (shell:sidebar.yourTeams), not for the stored group it draws.
-  "app/src/components/team-view/": "Your teams",
-  // A team's sections are the surfaces those ideas wear now, so they keep the
-  // section's own name rather than the rail block's.
+  // The employee screen behind every rail row: its board, its archive and its
+  // settings. Named for the rail section that opens it
+  // (shell:sidebar.yourTeams).
+  "app/src/components/team-view/": "Your AI Employees",
+  // An employee's sections keep the section's own name rather than the rail
+  // band's.
   "app/src/components/team-view/team-routines/": "Routines",
   "app/src/components/team-view/team-files/": "Files",
 

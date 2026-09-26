@@ -30,9 +30,9 @@ describe("team strip thresholds", () => {
    * sections stay lozenges, so the user never loses the thing they navigate by
    * to make room for buttons that have a second row waiting for them.
    */
-  it("keeps the team's sections drawn as lozenges at every desktop width", () => {
+  it("keeps the employee's sections drawn as tabs at every desktop width", () => {
     const chrome = readFileSync(
-      new URL("../src/components/team-view/team-chrome.tsx", import.meta.url),
+      new URL("../src/components/team-view/agent-chrome.tsx", import.meta.url),
       "utf8",
     );
     assert.ok(chrome.includes("<PageHeaderTabs"), "the cluster is tabs");

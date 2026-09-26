@@ -43,7 +43,7 @@ export function SidebarCollapseToggle({
  * rail, full rows when expanded; the row component owns that switch, so this is
  * only the band they sit in.
  *
- * A LABELLED run is a {@link SidebarBand}, the same component "Your teams"
+ * A LABELLED run is a {@link SidebarBand}, the same component "Your AI Employees"
  * uses below: the band, its triangle, its fold and the flush rhythm under it
  * all live there, so the bands in this rail cannot drift apart. Folding
  * is a host-CONTROLLED prop because the host persists it.
@@ -54,7 +54,7 @@ export function SidebarCollapseToggle({
  * folding is an expanded-rail idea (a 12px heading has nowhere to go in 56px),
  * and inheriting a hidden run there would leave a destination unreachable with
  * nothing on screen to bring it back. That is the same `!collapsed` guard the
- * "Your teams" list uses.
+ * "Your AI Employees" list uses.
  */
 export function SidebarNavList({
   navSections,

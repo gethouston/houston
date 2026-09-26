@@ -112,6 +112,21 @@ export abstract class EngineEndpoint extends AgentSelection {
   }
 
   /**
+   * The SDK addressed at one space instead of the active one: a call about a
+   * space the user is not standing in (a folder move's destination) carries
+   * that space's `x-houston-org`. `null` is the personal space. Off-cloud there
+   * is one space, so it is the shared {@link sdk}.
+   */
+  sdkForSpace(orgSlug: string | null): HoustonSdk {
+    if (!this._cp || orgSlug === (this._cp.activeOrgSlug ?? null))
+      return this.sdk;
+    return createEngineSdk({
+      baseUrl: this.baseUrl,
+      fetch: gatewayAuthFetch(this.token, () => orgSlug),
+    });
+  }
+
+  /**
    * Repoint this context at a new engine endpoint IN PLACE (HOU-432): the
    * desktop shell calls `HoustonClient.setEndpoint` when the sidecar restarts
    * on a fresh random port, and on every hosted bearer rotation

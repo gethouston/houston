@@ -1,5 +1,7 @@
-import type { DraggableAttributes } from "@dnd-kit/core";
-import type { SyntheticListenerMap } from "@dnd-kit/core/dist/hooks/utilities";
+import type {
+  DraggableAttributes,
+  DraggableSyntheticListeners,
+} from "@dnd-kit/core";
 import { cn } from "@houston-ai/core";
 import type { KeyboardEvent, ReactNode } from "react";
 import { sidebarRowType } from "./sidebar-geometry";
@@ -31,7 +33,7 @@ export interface SidebarRowButtonProps {
   /** Default `child`. `block` heads a block and sits one step to the left. */
   depth?: SidebarRowDepth;
   /**
-   * This row NAMES the list rather than pointing at anything ("Your teams").
+   * This row NAMES the list rather than pointing at anything ("Your AI Employees").
    * One type step down (12px) and never carries a block head's weight — a band
    * that shouts is the fastest way to make a rail look like a settings form.
    */
@@ -64,7 +66,7 @@ export interface SidebarRowButtonProps {
    */
   draggable?: boolean;
   dragAttributes?: DraggableAttributes;
-  dragListeners?: SyntheticListenerMap;
+  dragListeners?: DraggableSyntheticListeners;
   /** DOM attributes on the row ROOT: test ids, tour anchors. */
   dataAttrs?: Record<string, string>;
   /** Native title, for a label whose full text is worth hovering for. */
@@ -75,8 +77,8 @@ export interface SidebarRowButtonProps {
  * THE sidebar row.
  *
  * Every interactive line in the rail is one of these: the top-level
- * destinations, the "Your teams" band, each team's header, each team's
- * destination rows, each agent, and the "New agent" row that closes the list.
+ * destinations, the "Your AI Employees" band, each group's header, each agent,
+ * and the "New AI Employee" row that closes the list.
  * One component, so they cannot drift.
  *
  * The anatomy it owns, left to right: a fixed-height box (28px, or 44px for a
@@ -90,9 +92,7 @@ export interface SidebarRowButtonProps {
  * - **disclose** — `disclosure`, which adds the rotating triangle after the
  *   label, `aria-expanded` and `aria-controls`.
  *
- * A row can be BOTH: a collapsed team block discloses its contents and is
- * simultaneously the active row, standing in for the destination row it is
- * hiding.
+ * A folder row uses disclosure without selecting a destination.
  *
  * What it deliberately does NOT own: the icon-only collapsed rail, which is a
  * different anatomy with flyouts rather than a narrower version of this one.

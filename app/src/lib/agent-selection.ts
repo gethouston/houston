@@ -14,13 +14,6 @@ export function selectCurrentAgent(
   return agents.find((a) => a.id === current.id) ?? agents[0];
 }
 
-export function shouldApplyAgentLoad(
-  generation: number,
-  latestGeneration: number,
-): boolean {
-  return generation === latestGeneration;
-}
-
 export function selectLoadedAgent(
   agents: Agent[],
   current: Agent | null,

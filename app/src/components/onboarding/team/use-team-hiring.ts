@@ -1,8 +1,8 @@
 import { useQueryClient } from "@tanstack/react-query";
 import { useTranslation } from "react-i18next";
 import { useAgentActions } from "../../../hooks/use-agent-actions";
-import { useCapabilities } from "../../../hooks/use-capabilities";
 import { useKickoffPinResolver } from "../../../hooks/use-kickoff-pin-resolver";
+import { useSidebarLayout } from "../../../hooks/use-sidebar-layout";
 import { isAgentNameConflictError } from "../../../lib/agent-name-conflict";
 import {
   type AgentRoleContext,
@@ -11,15 +11,12 @@ import {
 import {
   createEmployee,
   nextFreeAgentColor,
-  useEmployeePlacer,
 } from "../../../lib/create-employee";
 import { logAndReportError } from "../../../lib/error-report";
-import { hasAgentTeams } from "../../../lib/org-roles";
 import { queryKeys } from "../../../lib/query-keys";
 import { tauriAgent } from "../../../lib/tauri";
 import { useAgentProvisioningStore } from "../../../stores/agent-provisioning";
 import { useAgentStore } from "../../../stores/agents";
-import { useSidebarOverlayLayout } from "../../shell/use-sidebar-overlay-layout";
 import type { RosterSettlement } from "./team-roster-model";
 import type { RosterSaveHost } from "./team-roster-save";
 
@@ -37,7 +34,9 @@ export interface TeamHiring extends RosterSaveHost {
 }
 
 /**
- * Hiring into the workspace the card was opened for, in the default team.
+ * Hiring into the workspace the card was opened for. Each hire joins the
+ * sidebar as a top-level AI Employee: "your team" is everyone hired, never a
+ * group made on the person's behalf.
  *
  * Each employee's first day stays pending (`createEmployee`): the card only
  * builds the team, and each one starts when the person opens them. The store
@@ -46,15 +45,10 @@ export interface TeamHiring extends RosterSaveHost {
  */
 export function useTeamHiring(workspaceId: string): TeamHiring {
   const agents = useAgentStore((s) => s.agents);
-  const place = useEmployeePlacer();
   const resolvePin = useKickoffPinResolver();
   const { t } = useTranslation("agents");
-  const { capabilities } = useCapabilities();
   const queryClient = useQueryClient();
-  const sidebar = useSidebarOverlayLayout(
-    workspaceId,
-    hasAgentTeams(capabilities),
-  );
+  const sidebar = useSidebarLayout(workspaceId);
   // The same rename and recolor the agent's own "Color & name" settings use.
   const actions = useAgentActions({
     t,
@@ -72,24 +66,20 @@ export function useTeamHiring(workspaceId: string): TeamHiring {
       ]),
     hire: async ({ name, color, brief }) => {
       try {
-        const created = await createEmployee(
-          {
-            workspaceId,
-            name,
-            color,
-            brief,
-            teamId: null,
-            pin: await resolvePin(),
-          },
-          place,
-        );
+        const created = await createEmployee({
+          workspaceId,
+          name,
+          color,
+          brief,
+          pin: await resolvePin(),
+        });
         return { kind: "hired", id: created.id, name: created.name };
       } catch (err) {
         if (isAgentNameConflictError(err)) {
           return { kind: "failed", reason: "nameTaken" };
         }
         // The create call reports its own failures; this catches the ones
-        // around it (the pin lookup, the team placement) and skips a repeat.
+        // around it (the pin lookup) and skips a repeat.
         logAndReportError("team_card_hire", err);
         return { kind: "failed", reason: "failed" };
       }

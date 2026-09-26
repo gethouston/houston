@@ -61,11 +61,9 @@ export interface CreateAgentFlow {
  */
 export function useCreateAgentFlow({
   open,
-  targetTeamId,
   onDone,
 }: {
   open: boolean;
-  targetTeamId: string | null;
   onDone: () => void;
 }): CreateAgentFlow {
   const issueCopy = useEmployeeNameIssueCopy();
@@ -81,7 +79,6 @@ export function useCreateAgentFlow({
 
   const { creating, createBlankAgent } = useCreateBlankAgent({
     open,
-    targetTeamId,
     selectedDef,
     onError: setError,
     onDone,

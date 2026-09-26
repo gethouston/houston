@@ -58,11 +58,12 @@
       "sectionTitle": "Configuración",
       "identity": "Cambiar color y nombre",
       "identityTitle": "Cambiar color y nombre de {{name}}",
-      "moveTeam": "Mover a otro equipo",
-      "chooseTeam": "Elegir un equipo",
+      "moveTeam": "Mover a grupo",
+      "chooseTeam": "Elegir un grupo",
       "moveOrganization": "Mover a otra organización",
       "moveOrganizationDescription": "Mueve este empleado de IA a una organización para que un equipo pueda trabajar con él.",
-      "delete": "Eliminar a {{name}}"
+      "delete": "Eliminar a {{name}}",
+      "noTeam": "Sin grupo"
     },
     "people": {
       "helper": "Elige si todo tu equipo puede usar este empleado de IA o solo las personas que tú elijas.",
@@ -88,70 +89,14 @@
   },
   "agentTeams": {
     "create": {
-      "title": "Crear un equipo",
-      "submit": "Crear equipo",
-      "newAgent": "Nuevo empleado de IA",
-      "members": "Miembros, opcional",
-      "membersSelected_one": "{{count}} miembro seleccionado",
-      "membersSelected_other": "{{count}} miembros seleccionados",
-      "membersFailedTitle": "No pudimos agregar a algunas personas",
-      "membersFailedBody": "No pudimos agregar a {{names}} a {{team}}. Puedes intentarlo de nuevo desde la lista de Miembros del equipo."
+      "title": "Crear un grupo",
+      "submit": "Crear grupo"
     },
     "form": {
-      "iconAndName": "Icono y nombre",
-      "nameLabel": "Nombre del equipo",
+      "iconAndName": "Ícono y nombre",
+      "nameLabel": "Nombre del grupo",
       "namePlaceholder": "p. ej., Marketing",
-      "tooLong": "Usa menos de {{max}} caracteres."
-    },
-    "errors": {
-      "default_team": {
-        "title": "Este es el equipo principal del espacio",
-        "body": "Todas las personas del espacio ya están en él, así que no se puede eliminar y no tiene una lista de miembros aparte."
-      },
-      "personal_space": {
-        "title": "Solo tú estás en este espacio",
-        "body": "Aquí puedes agrupar tus empleados de IA en equipos. Para trabajar con otras personas, crea una organización."
-      },
-      "not_team_owner": {
-        "title": "Solo los propietarios de este equipo pueden cambiarlo",
-        "body": "Pídele a una de esas personas que haga este cambio."
-      },
-      "invalid_team_id": {
-        "title": "No pudimos saber a qué equipo moverlo",
-        "body": "No cambió nada. Inténtalo de nuevo."
-      },
-      "invalid_name": {
-        "title": "Ese nombre de equipo no sirve",
-        "body": "El nombre de un equipo tiene que ser corto, hasta 60 caracteres. Prueba con uno más corto."
-      },
-      "invalid_icon": {
-        "title": "No pudimos poner ese icono",
-        "body": "No cambió nada. Elige uno de los iconos de la lista."
-      },
-      "invalid_color": {
-        "title": "No pudimos poner ese color",
-        "body": "No cambió nada. Elige uno de los colores de la lista."
-      },
-      "not_a_member": {
-        "title": "Esa persona todavía no está en este espacio",
-        "body": "Invítala al espacio primero y después agrégala a este equipo."
-      }
-    },
-    "leave": "Salir del equipo",
-    "settings": {
-      "members": {
-        "title": "Personas",
-        "subtitle": "Las personas que se unieron a este equipo.",
-        "empty": "Todavía nadie se unió a este equipo.",
-        "error": "No pudimos cargar esta lista. Vuelve a intentarlo.",
-        "defaultNote": "Todas las personas de este espacio ya están en este equipo, así que no hay una lista aparte que gestionar.",
-        "adminNote": "Los propietarios y managers de este espacio pueden gestionar todos los equipos, por eso no aparecen aquí.",
-        "ownerLabel": "Propietario",
-        "memberLabel": "Miembro",
-        "you": "(tú)",
-        "changeRole": "Cambiar el rol de {{name}}",
-        "remove": "Quitar"
-      }
+      "tooLong": "Usa hasta {{max}} caracteres."
     }
   },
   "integrations": {
@@ -416,31 +361,40 @@
     "failed": "{{agent}} no pudo terminar de moverse a {{team}}. Houston lo intentará de nuevo la próxima vez que inicie."
   },
   "moveTeam": {
-    "title": "Mover {{team}} a una organización",
+    "title": "Mover {{team}} a otro espacio",
+    "pick": {
+      "subtitle": "Elige un espacio al que mover este grupo, o crea uno nuevo.",
+      "empty": "Aún no tienes otro espacio. Crea uno para mover este grupo.",
+      "createTrigger": "Crear un espacio nuevo",
+      "namePlaceholder": "p. ej. Marketing",
+      "nameLabel": "Nombre del espacio",
+      "create": "Crear",
+      "creating": "Creando…",
+      "failed": "No pudimos crear el espacio. Inténtalo de nuevo."
+    },
     "confirm": {
       "body_one": "¿Mover {{team}} y su {{count}} empleado de IA a {{destination}}?",
       "body_other": "¿Mover {{team}} y sus {{count}} empleados de IA a {{destination}}?",
       "downtime": "Los empleados de IA se pausan mientras se mueven.",
-      "move": "Mover equipo"
+      "move": "Mover grupo"
     },
     "moving": "Moviendo {{name}} ({{index}} de {{total}})",
     "movingBody": "Los empleados de IA se mueven uno a la vez. Mantén esta ventana abierta.",
-    "cleanupSource": "Limpiando el equipo personal",
-    "switching": "Cambiando a la organización",
-    "recreate": "Recreando el equipo",
-    "placing": "Colocando los empleados de IA en su equipo",
+    "createTarget": "Creando el grupo en el espacio de destino",
+    "cleanupSource": "Quitando el grupo de este espacio",
+    "switching": "Cambiando al espacio",
     "moveFailedFirst_one": "No se pudo mover el empleado de IA.",
     "moveFailedFirst_other": "No se movió ninguno de los {{count}} empleados de IA. El primero no se pudo mover.",
     "moveFailedNext": "Se movieron {{moved}} de {{total}} empleados de IA. El siguiente no se pudo mover.",
     "postscriptFailed_one": "El empleado de IA se movió, pero la configuración no terminó.",
     "postscriptFailed_other": "Se movieron los {{count}} empleados de IA, pero la configuración no terminó.",
-    "postscriptFailedEmpty": "El equipo no pudo terminar de moverse.",
+    "postscriptFailedEmpty": "El grupo no pudo terminar de moverse.",
     "retry": "Intentar de nuevo",
     "close": "Cerrar"
   },
   "moveTeamResume": {
-    "done": "{{team}} terminó de moverse a su organización.",
-    "failed": "{{team}} movió sus empleados de IA, pero la configuración no terminó. Houston lo intentará de nuevo la próxima vez que se inicie."
+    "done": "{{team}} terminó de moverse a su nuevo espacio.",
+    "failed": "{{team}} no pudo terminar de moverse. Houston lo intentará de nuevo la próxima vez que se inicie."
   },
   "billing": {
     "unavailable": "No pudimos cargar la facturación de este equipo.",
@@ -502,30 +456,11 @@
     }
   },
   "teamView": {
-    "defaultName": "Nuevo equipo",
     "tabs": {
       "missionControl": "Tareas",
       "routines": "Rutinas",
       "files": "Archivos",
-      "settings": "Configuración del equipo",
-      "context": "Contexto",
-      "people": "Personas",
-      "label": "Secciones del equipo"
-    },
-    "settingsTabs": {
-      "context": "Contexto",
-      "agents": "Empleados de IA",
-      "people": "Personas",
-      "settings": "Configuración",
-      "label": "Secciones de configuración del equipo"
-    },
-    "settingsActions": {
-      "identity": "Cambiar icono y nombre",
-      "moveToOrganization": "Mover a una organización",
-      "moveToOrganizationDescription": "Mueve este equipo y sus empleados de IA a una organización para que otras personas puedan trabajar con ellos.",
-      "leave": "Salir del equipo",
-      "delete": "Eliminar equipo",
-      "onlyTeamDeleteDescription": "Este es tu único equipo, así que no se puede eliminar."
+      "label": "Secciones del empleado de IA"
     },
     "agentTabs": {
       "settings": "Configuración"
@@ -536,91 +471,47 @@
     },
     "move": {
       "confirmTitle": "¿Mover {{agent}} a {{team}}?",
-      "confirmBody": "{{agent}} pasa a {{team}}. Las personas que pueden ver ese equipo verán este empleado de IA ahí.",
+      "confirmBody": "{{agent}} pasa a {{team}}.",
       "confirm": "Mover empleado de IA",
       "cancel": "Cancelar"
     },
     "agentMenu": {
       "delete": "Eliminar empleado de IA"
     },
-    "context": {
-      "title": "Contexto del equipo",
-      "explainer": "Todos los empleados de IA de este equipo saben esto.",
-      "placeholder": "¿Qué debería saber cada empleado de IA de este equipo? La empresa, los clientes, cómo trabajan."
-    },
-    "missionControl": {
-      "empty": {
-        "workspaceTitle": "Aún no tienes empleados de IA",
-        "workspaceBody": "Crea tu primer empleado de IA y sus tareas aparecerán aquí.",
-        "createAgent": "Crear empleado de IA",
-        "teamTitle": "Este equipo aún no tiene empleados de IA",
-        "teamBody": "Crea un empleado de IA aquí o usa la sección Configuración del empleado de IA para moverlo a {{name}}."
-      }
-    },
     "routines": {
       "newRoutine": "Nueva rutina",
-      "empty": {
-        "workspaceTitle": "Aún no tienes empleados de IA",
-        "workspaceBody": "Crea tu primer empleado de IA y todo lo que haga por su cuenta aparecerá aquí.",
-        "createAgent": "Crear empleado de IA",
-        "teamTitle": "Este equipo aún no tiene empleados de IA",
-        "teamBody": "Crea un empleado de IA aquí o usa la sección Configuración del empleado de IA para moverlo a {{name}}."
-      },
-      "noRoutines": {
-        "title": "Todavía nada funciona solo",
-        "body": "Crea una rutina y los empleados de IA de este equipo empezarán a trabajar sin que se lo pidas."
-      },
       "unreadable": {
-        "title": "No pudimos cargar las rutinas de este equipo",
-        "body": "Nada de esto falta a propósito. Reintenta arriba para ver qué hacen estos empleados de IA por su cuenta."
-      },
-      "pickAgent": {
-        "title": "¿Qué empleado de IA debería hacerlo?",
-        "description": "Elige el empleado de IA que hará el trabajo. Puedes cambiarlo mientras configuras la rutina."
-      }
-    },
-    "files": {
-      "empty": {
-        "workspaceTitle": "Aún no tienes empleados de IA",
-        "workspaceBody": "Crea tu primer empleado de IA y los archivos que guarde aparecerán aquí.",
-        "createAgent": "Crear empleado de IA",
-        "teamTitle": "Este equipo aún no tiene empleados de IA",
-        "teamBody": "Crea un empleado de IA aquí o usa la sección Configuración del empleado de IA para moverlo a {{name}}."
-      }
-    },
-    "settings": {
-      "navUnavailable": "Todavía no pudimos abrir la configuración de este empleado de IA",
-      "navUnavailableBody": "El equipo de este empleado de IA todavía se está cargando. Espera un momento y vuelve a intentarlo. Si sigue pasando, repórtalo como un error.",
-      "policy": {
-        "everyone": "Todos",
-        "people_one": "{{count}} persona",
-        "people_other": "{{count}} personas",
-        "integrationsAllowed_one": "{{count}} permitida",
-        "integrationsAllowed_other": "{{count}} permitidas",
-        "modelsAllowed_one": "{{count}} permitido",
-        "modelsAllowed_other": "{{count}} permitidos",
-        "allIntegrations": "Todas las integraciones permitidas",
-        "allModels": "Todos los modelos permitidos",
-        "unavailable": "No se pudo cargar"
+        "title": "No se pudieron cargar las rutinas de este empleado de IA",
+        "body": "Vuelve a intentarlo para ver las rutinas de este empleado de IA."
       }
     }
   },
   "orgChart": {
     "window": "Mensajes de los últimos 30 días",
-    "people_one": "{{count}} persona",
-    "people_other": "{{count}} personas",
     "agents_one": "{{count}} empleado de IA",
     "agents_other": "{{count}} empleados de IA",
-    "people": "Personas",
     "agents": "Empleados de IA",
-    "empty": "Todavía no hay equipos",
-    "emptyTeam": "Este equipo todavía no tiene empleados de IA",
-    "membersUnavailable": "No se pudieron cargar las personas.",
-    "teamsUnavailable": "No se pudieron cargar los equipos.",
+    "empty": "Todavía no hay grupos",
+    "emptyTeam": "Este grupo todavía no tiene empleados de IA",
     "usageUnavailable": "Uso no disponible",
     "retry": "Intentar de nuevo",
-    "openTeam": "Abrir {{name}}",
-    "unknownPerson": "Miembro del equipo",
-    "loading": "Cargando tus equipos..."
+    "loading": "Cargando tus grupos...",
+    "noTeam": "Sin grupo"
+  },
+  "phoneEmployee": {
+    "emptyGroup": {
+      "title": "No hay Empleados de IA en este grupo",
+      "description": "Abre un Empleado de IA, toca su menú ⋯ y elige Mover a grupo."
+    }
+  },
+  "groupDelete": {
+    "title": "¿Eliminar \"{{name}}\"?",
+    "description": "Los Empleados de IA de este grupo se quedan. Solo salen del grupo, nada más cambia.",
+    "confirm": "Eliminar grupo",
+    "cancel": "Cancelar"
+  },
+  "agentNav": {
+    "settingsUnavailable": "No pudimos abrir la configuración de este Empleado de IA",
+    "settingsUnavailableBody": "Este Empleado de IA ya no está en este espacio. Puede que lo hayan eliminado o movido."
   }
 }

@@ -30,10 +30,8 @@ async function armTeams(request: APIRequestContext): Promise<void> {
 }
 
 /**
- * Open the team's board — the CROSS-AGENT board the face stacks were built
- * for. Every board belongs to a team now, and the seeded workspace's default
- * team holds every agent, so this is the shared board. It has no default
- * person filter, which matters here: a board scoped to `me` would hide every
+ * Open the first employee's board, the one the face stacks are drawn on. It
+ * has no default person filter, which matters here: a board scoped to `me` would hide every
  * mission the signed-in user is not stamped on, and identity is off in this
  * project (no session uid), so nothing attributed would survive.
  */
@@ -63,6 +61,8 @@ function stack(page: Page, title: string) {
 function overflowChip(page: Page, title: string) {
   return stack(page, title).locator('button[aria-label="All people"]');
 }
+
+test.use({ teamBoard: true });
 
 test("a two-person mission shows both faces, no overflow chip", async ({
   page,

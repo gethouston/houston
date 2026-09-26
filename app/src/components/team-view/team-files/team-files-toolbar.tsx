@@ -4,19 +4,59 @@ import {
   DropdownMenu,
   DropdownMenuContent,
   DropdownMenuItem,
-  DropdownMenuSub,
-  DropdownMenuSubContent,
-  DropdownMenuSubTrigger,
   DropdownMenuTrigger,
 } from "@houston-ai/core";
-import { ChevronDown, FolderPlus, FolderUp, Upload } from "lucide-react";
+import {
+  ChevronDown,
+  Download,
+  FolderOpen,
+  FolderPlus,
+  FolderUp,
+  Upload,
+} from "lucide-react";
 import { useTranslation } from "react-i18next";
-import type { Agent } from "../../../lib/types";
 
 export interface TeamFileActions {
   upload?: () => void;
   uploadFolder?: () => void;
   newFolder: () => void;
+  /** Desktop: the employee's folder in the OS file manager. */
+  reveal?: () => void;
+  /** Browser builds: every file as one download. */
+  downloadAll?: () => void;
+}
+
+/**
+ * The whole-tree action the host offers, desktop's file manager first. Icon
+ * only on the phone, where the search field needs the width.
+ */
+function WholeTreeAction({ actions }: { actions: TeamFileActions }) {
+  const { t } = useTranslation("agents");
+  const action = actions.reveal
+    ? {
+        label: t("files.openInFileManager"),
+        run: actions.reveal,
+        Icon: FolderOpen,
+      }
+    : actions.downloadAll
+      ? {
+          label: t("files.downloadAll"),
+          run: actions.downloadAll,
+          Icon: Download,
+        }
+      : null;
+  if (!action) return null;
+  return (
+    <Button
+      variant="secondary"
+      aria-label={action.label}
+      onClick={action.run}
+      className="shrink-0 rounded-full"
+    >
+      <action.Icon aria-hidden className="size-4" />
+      <span className="hidden md:inline">{action.label}</span>
+    </Button>
+  );
 }
 
 function ActionItems({ actions }: { actions: TeamFileActions }) {
@@ -41,18 +81,15 @@ function ActionItems({ actions }: { actions: TeamFileActions }) {
 }
 
 export function TeamFilesToolbar({
-  agents,
   actions,
   query,
   onQueryChange,
 }: {
-  agents: Agent[];
-  actions: Map<string, TeamFileActions>;
+  actions: TeamFileActions;
   query: string;
   onQueryChange: (query: string) => void;
 }) {
   const { t } = useTranslation("agents");
-  const direct = agents.length === 1 ? actions.get(agents[0].id) : null;
   return (
     <div className="flex min-w-0 items-center gap-2">
       <FilesSearch
@@ -61,6 +98,7 @@ export function TeamFilesToolbar({
         placeholder={t("files.searchPlaceholder")}
         clearLabel={t("files.searchClear")}
       />
+      <WholeTreeAction actions={actions} />
       <DropdownMenu>
         <DropdownMenuTrigger asChild>
           <Button className="shrink-0 rounded-full">
@@ -76,21 +114,7 @@ export function TeamFilesToolbar({
           // (an input, a file picker), so the trigger never reclaims it.
           onCloseAutoFocus={(event) => event.preventDefault()}
         >
-          {direct ? (
-            <ActionItems actions={direct} />
-          ) : (
-            agents.map((agent) => {
-              const target = actions.get(agent.id);
-              return target ? (
-                <DropdownMenuSub key={agent.id}>
-                  <DropdownMenuSubTrigger>{agent.name}</DropdownMenuSubTrigger>
-                  <DropdownMenuSubContent>
-                    <ActionItems actions={target} />
-                  </DropdownMenuSubContent>
-                </DropdownMenuSub>
-              ) : null;
-            })
-          )}
+          <ActionItems actions={actions} />
         </DropdownMenuContent>
       </DropdownMenu>
     </div>
