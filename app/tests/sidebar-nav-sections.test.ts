@@ -116,7 +116,7 @@ describe("the rail's primary run", () => {
 
   it("carries no row that points at no screen", () => {
     // A row that can never light would hold a permanent slot among
-    // destinations; actions live behind the footer's help control instead.
+    // destinations.
     assert.ok(!NAV.includes("active: false"));
   });
 });
@@ -144,11 +144,10 @@ describe("the rail's labelled bands", () => {
     assert.ok(!NAV.includes("TIME_WORKED_VIEW_ID"), "no Time worked row");
   });
 
-  it("leaves Workspace management to Settings and gives Skills its own row", () => {
-    // Administering the space is standing setup, so it is a Settings section.
-    // The shared library is a destination instead: a rail row of its own,
-    // right after Integrations, on the space-owner gate.
-    assert.ok(SETTINGS_SECTIONS.includes('"workspace"'));
+  it("keeps Admin out of Settings and gives Skills its own row", () => {
+    // Admin is the rail footer's screen (sidebar-footer.tsx); the shared
+    // library is a destination in the leading run, on the space-owner gate.
+    assert.ok(!SETTINGS_SECTIONS.includes('"workspace"'));
     assert.ok(!SETTINGS_SECTIONS.includes('"skills"'), "not a section");
     assert.ok(!NAV.includes('label: t("settings:nav.workspace")'));
     assert.ok(NAV.includes("id: SKILLS_VIEW_ID"), "the Skills row");

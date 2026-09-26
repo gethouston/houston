@@ -2,17 +2,20 @@
  * Full-window destinations share one view registry. The employee screen has
  * one view id; its selected employee and section live in store state. Folder
  * headers have no view id because they only change SidebarLayout disclosure.
- * A stale view falls back to AI Employees home.
+ * Admin is a gated screen in the rail footer. A stale view falls back to AI
+ * Employees home.
  */
 import { ACADEMY_VIEW_ID } from "../components/academy/id.ts";
 import { AGENTS_HOME_VIEW_ID } from "../components/agents-home/id.ts";
 import { ASSISTANT_VIEW_ID } from "../components/assistant/id.ts";
 import { INTEGRATIONS_VIEW_ID } from "../components/integrations-view/id.ts";
+import { ADMIN_VIEW_ID } from "../components/organization/id.ts";
 import { SKILLS_VIEW_ID } from "../components/skills-view/id.ts";
 import { AGENT_VIEW_ID, type TeamSectionId } from "./teams-model.ts";
 
 export {
   ACADEMY_VIEW_ID,
+  ADMIN_VIEW_ID,
   AGENT_VIEW_ID,
   AGENTS_HOME_VIEW_ID,
   ASSISTANT_VIEW_ID,
@@ -31,6 +34,7 @@ export type TopLevelViewId =
   | typeof AI_HUB_VIEW_ID
   | typeof INTEGRATIONS_VIEW_ID
   | typeof SKILLS_VIEW_ID
+  | typeof ADMIN_VIEW_ID
   | typeof AGENT_VIEW_ID;
 
 export const TOP_LEVEL_VIEWS = new Set<TopLevelViewId>([
@@ -41,6 +45,7 @@ export const TOP_LEVEL_VIEWS = new Set<TopLevelViewId>([
   AI_HUB_VIEW_ID,
   INTEGRATIONS_VIEW_ID,
   SKILLS_VIEW_ID,
+  ADMIN_VIEW_ID,
   AGENT_VIEW_ID,
 ]);
 
@@ -76,8 +81,8 @@ export function isActiveTopLevelView(
 
 /**
  * Whether a top-level `viewMode` points at a view whose gate is off for this
- * caller: the AI Models hub hides from plain members, the shared Skills library
- * belongs to whoever owns the space, and the assistant exists only where
+ * caller: the shared Skills library belongs to whoever owns the space, Admin
+ * follows the organization gate, and the assistant exists only where
  * discovery hands out an address. The sidebar entry is already hidden,
  * so a STALE `viewMode` (the role changed on a space switch, or the install
  * moved off the hosted cloud, while the page was open) would otherwise fall
@@ -97,10 +102,12 @@ export function blockedTopLevelView(
     showAiModels: boolean;
     showAssistant: boolean;
     showSkills: boolean;
+    showOrganization: boolean;
   },
 ): boolean {
   if (viewMode === AI_HUB_VIEW_ID) return !gates.showAiModels;
   if (viewMode === ASSISTANT_VIEW_ID) return !gates.showAssistant;
   if (viewMode === SKILLS_VIEW_ID) return !gates.showSkills;
+  if (viewMode === ADMIN_VIEW_ID) return !gates.showOrganization;
   return false;
 }

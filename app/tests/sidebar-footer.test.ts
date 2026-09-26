@@ -9,7 +9,6 @@ const ROWS = read("../src/components/shell/sidebar-nav-rows.tsx");
 const NAV = `${SECTIONS}\n${ROWS}`;
 const FOOTER = read("../src/components/shell/sidebar-footer.tsx");
 const SHELL = read("../src/components/shell/workspace-shell.tsx");
-const HELP = read("../src/components/shell/sidebar-help-menu.tsx");
 const VIEWS = read("../src/lib/top-level-views.ts");
 const MORE_MENU = read("../src/components/shell/mobile-more-menu.tsx");
 
@@ -21,7 +20,7 @@ it("makes the shell card gap a drag region only for the native Mac window", () =
 });
 
 describe("the rail's footer cluster", () => {
-  it("draws the Academy directly above Settings", () => {
+  it("draws Academy, Admin, then Settings", () => {
     // The bottom of the rail is what a person opens about their own use of
     // Houston: learning to fly, then their preferences. Both are ungated, and
     // the Academy must come first in the source so it renders above the gear.
@@ -33,7 +32,24 @@ describe("the rail's footer cluster", () => {
         FOOTER.indexOf("active={viewMode === SETTINGS_VIEW_ID}"),
       "the Academy row is drawn before the Settings row",
     );
+    assert.ok(
+      FOOTER.indexOf("active={viewMode === ADMIN_VIEW_ID}") <
+        FOOTER.indexOf("active={viewMode === SETTINGS_VIEW_ID}"),
+      "Admin sits directly above Settings",
+    );
     assert.ok(VIEWS.includes("ACADEMY_VIEW_ID"), "a real top-level view");
+    assert.ok(VIEWS.includes("ADMIN_VIEW_ID"), "a real top-level view");
+  });
+
+  it("draws Admin only behind the organization gate, on both breakpoints", () => {
+    assert.ok(FOOTER.includes("{showOrganization && ("));
+    assert.ok(FOOTER.includes('label={t("sidebar.admin")}'));
+    assert.ok(FOOTER.includes('"data-testid": "rail-admin"'));
+    assert.ok(
+      MORE_MENU.includes(
+        "{showOrganization && <MobileMoreRowButton row={admin} />}",
+      ),
+    );
   });
 
   it("is ONE row, shared with the phone's More menu", () => {
@@ -73,18 +89,11 @@ describe("Settings left the nav for the footer", () => {
     assert.ok(FOOTER.includes("active={viewMode === SETTINGS_VIEW_ID}"));
   });
 
-  it("sits beside the footer's help control, not above a nav row", () => {
-    // "Report a problem" is what a stuck user reaches for, and it is not a
-    // destination, so it is a menu item on a control next to the gear rather
-    // than a row among the app's screens. The guided tour is an Academy lesson.
-    assert.ok(FOOTER.includes("<SidebarHelpMenu"));
-    assert.ok(FOOTER.includes("collapsed={props.collapsed}"));
-    assert.ok(FOOTER.includes('help: t("sidebar.help")'));
-    assert.ok(!FOOTER.includes("guideMe"));
-    assert.ok(FOOTER.includes('reportProblem: t("sidebar.reportProblem")'));
-    // Report a problem opens the ONE bug-report surface rather than a second
-    // copy of it.
-    assert.ok(FOOTER.includes('openSettings("reportBug")'));
+  it("carries no help control", () => {
+    // Report bug lives in Settings, so the footer holds destinations only.
+    assert.ok(!FOOTER.includes("SidebarHelpMenu"));
+    assert.ok(!FOOTER.includes("sidebar.reportProblem"));
+    assert.ok(!MORE_MENU.includes("moreMenu.help"));
   });
 
   it("is the rail's last row", () => {
@@ -96,27 +105,19 @@ describe("Settings left the nav for the footer", () => {
     assert.ok(!FOOTER.includes("user-menu"));
   });
 
-  it("places the update action before the Academy and Settings cluster", () => {
+  it("places the update action before the Academy, Admin and Settings cluster", () => {
     assert.ok(FOOTER.includes("<UpdateChecker collapsed={props.collapsed} />"));
     assert.ok(
       FOOTER.indexOf("<UpdateChecker") < FOOTER.indexOf("<SidebarNavItem"),
-      "the update action precedes the Academy and Settings cluster",
+      "the update action precedes the footer cluster",
     );
   });
 });
 
-describe("the help menu", () => {
-  it("offers no guided tour of its own, and no tour anchor", () => {
+describe("the guided tour", () => {
+  it("claims no tour anchor in the nav or the footer", () => {
     // The tour lives in the Academy, so nothing on the rail replays it.
-    assert.ok(!HELP.includes("onGuideMe"));
-    assert.ok(!HELP.includes('tourAnchor("appTour")'));
     assert.ok(!NAV.includes('tourAnchor("appTour")'));
-  });
-
-  it("runs Report a problem one tick AFTER the menu closes", () => {
-    // Radix restores focus to the trigger when its content unmounts, which
-    // lands after a synchronous handler has already moved the view. The band's
-    // create menu defers for the same reason.
-    assert.ok(HELP.includes("onSelect={() => setTimeout(onReportProblem, 0)}"));
+    assert.ok(!FOOTER.includes('tourAnchor("appTour")'));
   });
 });

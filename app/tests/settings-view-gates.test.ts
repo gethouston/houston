@@ -1,6 +1,11 @@
-import { ok } from "node:assert";
+import { ok, strictEqual } from "node:assert";
 import { readFileSync } from "node:fs";
 import { describe, it } from "node:test";
+import { adminViewEnabled } from "../src/components/shell/top-level-screen-plan.ts";
+import {
+  parseSettingsSection,
+  SETTINGS_SECTION_IDS,
+} from "../src/lib/settings-sections.ts";
 
 const read = (rel: string) =>
   readFileSync(new URL(rel, import.meta.url), "utf8");
@@ -14,15 +19,11 @@ const read = (rel: string) =>
 describe("settings-view source", () => {
   const src = read("../src/components/settings/settings-view.tsx");
 
-  it("carries no section gate: the view mounts whatever is pinned", () => {
-    // A gate hides a section's INDEX ROW (`settings-index.tsx` reads
-    // `useSurfaceGates`); nothing bounces a caller out of an open screen, so
-    // the view needs no tri-state loading rule and no pin to clear. Inert
-    // plumbing left behind would be a second rule nobody reads.
-    ok(!src.includes("settingsSectionGate"), "no tri-state gate");
-    ok(!src.includes("blockedSettingsSection"), "no raw gate");
-    ok(!src.includes("clearSettingsSectionPin"), "no one-shot pin to clear");
-    ok(!src.includes("useSurfaceGates"), "reads no surface gate at all");
+  it("keeps Admin out of the Settings index", () => {
+    const sections = new Set<string>(SETTINGS_SECTION_IDS);
+    ok(!sections.has("admin"));
+    ok(!sections.has("organization"));
+    ok(!sections.has("workspace"));
   });
 
   it("puts every section behind the ONE workspace gate", () => {
@@ -101,68 +102,26 @@ describe("the About me section", () => {
   });
 });
 
-/**
- * Workspace management is a Settings section. The Admin face frames itself, so
- * the way back rides IN its header strip; the plain workspace-name card has no
- * strip, so it keeps the shared back bar.
- */
-describe("the Workspace settings section", () => {
-  it("mounts Admin inside Settings, with a local fallback", () => {
-    const body = read("../src/components/settings/settings-section-body.tsx");
-    const section = read(
-      "../src/components/settings/sections/workspace-management.tsx",
+describe("the Admin screen", () => {
+  it("keeps Admin mounted pending its gate, then admits or removes it", () => {
+    strictEqual(
+      adminViewEnabled({ showOrganization: false, ready: false }),
+      true,
     );
-    ok(body.includes('active === "workspace"'), "workspace section branch");
-    ok(section.includes("<OrganizationView back={back} />"), "org is nested");
-    ok(
-      section.includes("<WorkspaceSection />"),
-      "local workspace settings remain reachable",
+    strictEqual(
+      adminViewEnabled({ showOrganization: false, ready: true }),
+      false,
+    );
+    strictEqual(
+      adminViewEnabled({ showOrganization: true, ready: true }),
+      true,
     );
   });
 
-  it("hands Admin the way back instead of stacking a bar over it", () => {
-    const body = read("../src/components/settings/settings-section-body.tsx");
-    ok(
-      /if \(active === "workspace"\) \{\s*return <WorkspaceManagementSection back=\{back\} \/>;/.test(
-        body,
-      ),
-      "the workspace branch mounts the section bare",
-    );
-    // The card face has no header strip of its own, so it is the ONE face that
-    // still wears the bar — and it owns that wrapper itself.
-    const section = read(
-      "../src/components/settings/sections/workspace-management.tsx",
-    );
-    ok(
-      section.includes("<BackBarScreen backLabel={back.label}"),
-      "the plain card keeps the back bar",
-    );
-    const header = read("../src/components/organization/admin-header.tsx");
-    ok(header.includes("<PageHeader back={back}>"), "Admin's strip leads back");
-  });
-
-  it("leaves no top-level Admin route", () => {
-    ok(
-      !read("../src/components/shell/top-level-screen-views.tsx").includes(
-        "ORGANIZATION_VIEW_ID",
-      ),
-      "nothing mounts Admin as a top-level view",
-    );
-  });
-
-  it("leaves no trace of the deleted Permissions screen", () => {
-    // Agent policy is discovered through the team that owns the agent, so the
-    // grid the screen framed lives on inside a team's focused agent screen
-    // while the screen, its id and its barrel are gone.
-    const views = read("../src/lib/top-level-views.ts");
-    ok(!views.includes("PERMISSIONS_VIEW_ID"), "no view id");
-    ok(!views.includes("TIME_WORKED_VIEW_ID"), "no Time worked view id either");
-    ok(
-      !read("../src/components/shell/top-level-screen-views.tsx").includes(
-        "PermissionsView",
-      ),
-      "nothing mounts it",
-    );
+  it("has no Settings section", () => {
+    strictEqual(parseSettingsSection("workspace"), null);
+    strictEqual(parseSettingsSection("organization"), null);
+    strictEqual(parseSettingsSection("admin"), null);
   });
 });
 

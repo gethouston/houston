@@ -6,7 +6,7 @@ import type { OrgTabProps } from "./organization-view";
 /**
  * Company context: the standing knowledge every agent in this workspace starts
  * a turn with. It is admin-owned org-wide copy, so it sits beside Org chart,
- * People and Billing in Workspace management; the per-user half of the same
+ * People and Billing in Admin; the per-user half of the same
  * context lives with the user.
  *
  * This is the section the dashboard's identity lozenge stands for, so the

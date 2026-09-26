@@ -1,6 +1,7 @@
 {
   "sidebar": {
     "academy": "Academy",
+    "admin": "Admin",
     "addAgent": "New AI Employee",
     "aiModels": "AI Models",
     "assistant": "AI Manager",
@@ -33,13 +34,11 @@
       "keyboardLeftGroup": "Moved %name% out of %group%, to the top level."
     },
     "expand": "Expand sidebar",
-    "help": "Help",
     "integrations": "Integrations",
     "needsYouCount_one": "{{count}} issue needs you",
     "needsYouCount_other": "{{count}} issues need you",
     "newMission": "New task",
     "newTeam": "New group",
-    "reportProblem": "Report a problem",
     "runningCount_one": "{{count}} issue running",
     "runningCount_other": "{{count}} issues running",
     "selectWorkspace": "Select workspace",
@@ -673,7 +672,6 @@
     }
   },
   "moreMenu": {
-    "help": "Help",
     "title": "More"
   },
   "addToWorkspace": {

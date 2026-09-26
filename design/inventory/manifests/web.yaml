@@ -13,7 +13,7 @@
 
 surface: web
 enforced: true
-inventoryVersion: 106
+inventoryVersion: 107
 
 components:
   custom-integration-details:
@@ -249,7 +249,7 @@ components:
     ref: "@houston-ai/layout AppSidebar (SidebarGroupedList renders root employees, folder headers and folder members as one flat @dnd-kit sortable tree, SidebarTreeRowView per row, the dragged row drawn as a ghost at its landing slot and depth; SidebarRowButton gives root employees and folder headers one left edge and indents only folder members), composed in app/src/components/shell/team-sidebar-lists.tsx"
   sidebar-nav-band:
     status: implemented
-    ref: "@houston-ai/layout AppSidebar -> SidebarNavList (SidebarBand per labelled run, SidebarNavItem per row, one sidebarBandInset), built by app/src/components/shell/sidebar-nav-sections.tsx with the Workspace gates from useSurfaceGates() and the inbox count from useMentionInbox; the footer Settings row is app/src/components/shell/sidebar-footer.tsx"
+    ref: "@houston-ai/layout AppSidebar -> SidebarNavList (SidebarNavItem per row), built by app/src/components/shell/sidebar-nav-sections.tsx with gates from useSurfaceGates(); the Academy, gated Admin, and Settings footer rows are app/src/components/shell/sidebar-footer.tsx"
   team-identity-picker:
     status: implemented
     ref: "app/src/components/shell/team-identity-popover.tsx inside team-identity-name-row.tsx, used by create-team-step.tsx and edit-team-identity-dialog.tsx; the folder menu opens the editor and sidebar.setGroupIdentity saves the glyph and color"
@@ -267,7 +267,7 @@ components:
     ref: "app/src/components/shell/mobile-nav-bar.tsx binding @houston-ai/core FloatingNavBar (items + NeedsYouChip badge over the agent activity rollup), rules in app/src/lib/mobile-tabs.ts with the tap side in app/src/lib/open-mobile-tab.ts (nav-stack reset mode); the new-task control runs lib/new-mission.ts startNewMission over lib/new-mission-scope.ts and carries the guided setup's newMission tour anchor (onboarding/in-app-mobile-targets.ts)"
   mobile-more-menu:
     status: implemented
-    ref: "app/src/components/shell/mobile-more-menu.tsx (@houston-ai/core Sheet restyled as a floating card, ui store mobileMoreOpen) over the pure mobile-more-items.ts model, rows from sidebar-nav-sections.tsx buildSidebarNavItems so the destinations and tour anchors are the rail's own"
+    ref: "app/src/components/shell/mobile-more-menu.tsx (@houston-ai/core Sheet restyled as a floating card, ui store mobileMoreOpen) over mobile-more-items.ts, with sidebar-nav-sections.tsx destinations followed by Academy, gated Admin, and Settings"
   agents-home:
     status: implemented
     ref: "app/src/components/agents-home/ (AgentsHomeView switching AgentsHomeList / AgentMissionsScreen on the ui store's agentsHomeAgentId nav level), rows in agent-home-row.tsx over agent-avatar-stack.tsx (@houston-ai/core HoustonAvatar) + NeedsYouChip, the title block in agents-home-header.tsx (New group via the ui store's openCreateFlow('team'), the group selector agents-home-team-filter.tsx over the ui store's agentsHomeTeamId, and shell/team-folder-menu.tsx for the picked group), all over the pure agentHomeRows + agentRowsForTeam in agents-home-model.ts; tab root wiring in app/src/lib/open-mobile-tab.ts and the phone boot landing in use-workspace-view-guards.ts"

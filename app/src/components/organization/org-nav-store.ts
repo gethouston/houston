@@ -8,11 +8,11 @@ import type { OrgTabId } from "./org-view-model.ts";
  * it — two callers: the C8 team-status banner / trial pill (in the shell)
  * deep-links to Billing, and an agent's hands-on errand card sends the person
  * to Billing. Rather than lift that state into the shared UI store (and couple
- * every consumer to it), this tiny colocated store carries the intent: the
- * caller sets the request, then navigates with `openSettings("workspace")`.
- * `OrganizationView` consumes it and clears it.
+ * every consumer to it), this tiny colocated store carries the intent:
+ * `openAdmin({ section })` (`lib/open-admin.ts`) sets the request, then
+ * navigates. `OrganizationView` consumes it and clears it.
  *
- * Settings is KEPT ALIVE, so the dashboard does not remount per navigation: the
+ * Admin is KEPT ALIVE, so the dashboard does not remount per navigation: the
  * view consumes the pin from an effect on this field, which fires on the first
  * mount AND while the screen is already open (the same shape
  * `team-view/agent-settings-nav-store.ts` uses). A pin nothing consumes — the

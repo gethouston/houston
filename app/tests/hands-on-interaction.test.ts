@@ -214,7 +214,7 @@ test("every hands-on screen maps to a real navigation", () => {
   for (const call of [
     'ui.openSettings("apiKeys")',
     "ui.openSettings(null)",
-    'requestTab("billing")',
+    'openAdmin({ section: "billing" })',
     "openAgentSection(",
     '"files" : "routines"',
   ])

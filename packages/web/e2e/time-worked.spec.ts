@@ -7,7 +7,7 @@ import { screen } from "./support/team-nav";
 /**
  * Time worked — hosted-cloud analytics of how long each agent's engine actually
  * ran per day. It is a first-level section of the Admin dashboard beside
- * Activity and Usage, reached through Settings > Workspace management; the
+ * Activity and Usage, reached through Admin; the
  * standalone rail screen is gone, because it held nothing else (per-AI-account
  * usage moved onto the AI Models hub's Connected rows, HOU-789) and a screen of
  * one section is a section.

@@ -1,3 +1,4 @@
+import { FAKE_HOST_URL } from "@houston/fake-host";
 import { expect, test } from "../support/fixtures";
 import {
   moreMenu,
@@ -48,11 +49,8 @@ test("the menu lists what this deployment offers, with the rail's anchors", asyn
     ).toBeVisible();
   }
 
-  // Administering the space is a Settings section, reached through the gear in
-  // this menu's header line — never a destination row of its own here.
-  await expect(
-    menu.getByRole("button", { name: "Workspace management" }),
-  ).toHaveCount(0);
+  // The single-player seed is below the org gate, so Admin has no row.
+  await expect(menu.getByTestId("rail-admin")).toHaveCount(0);
 
   // The rows carry the RAIL's own attributes, so one anchor names the same
   // destination on both breakpoints. Skills carries a test id rather than a
@@ -65,15 +63,29 @@ test("the menu lists what this deployment offers, with the rail's anchors", asyn
   }
   await expect(menu.getByTestId("rail-skills")).toHaveCount(1);
 
-  // The one help action bands the footer; it points at no screen, and the
-  // guided setup it used to sit beside is gone.
-  await expect(menu.getByRole("button", { name: "Guide me" })).toHaveCount(0);
+  // The footer cluster holds destinations only: no help group.
   await expect(
     menu.getByRole("button", { name: "Report a problem" }),
-  ).toBeVisible();
+  ).toHaveCount(0);
+  await expect(menu.getByText("Help", { exact: true })).toHaveCount(0);
 });
 
-test("the Settings gear opens the settings index", async ({ page }) => {
+test("Admin appears in More only for an admitted caller", async ({
+  page,
+  request,
+}) => {
+  await request.post(`${FAKE_HOST_URL}/__test__/capabilities`, {
+    data: { multiplayer: true, teams: true, role: "owner" },
+  });
+  await page.goto("/");
+  const menu = await openMoreMenu(page);
+  await expect(menu.getByTestId("rail-admin")).toHaveCount(1);
+  await menu.getByTestId("rail-admin").tap();
+  await expect(moreMenu(page)).toBeHidden();
+  await expect(screen(page)).toHaveAttribute("data-screen", "admin");
+});
+
+test("the Settings row opens the settings index", async ({ page }) => {
   await page.goto("/");
   await openMoreMenu(page);
 
@@ -100,16 +112,4 @@ test("a destination row lands on its screen and closes the menu", async ({
     "integrations-home",
   );
   await expect(navItem(page, "more")).toHaveAttribute("aria-current", "page");
-});
-
-test("Report a problem lands on the bug-report section", async ({ page }) => {
-  await page.goto("/");
-  const menu = await openMoreMenu(page);
-
-  await menu.getByRole("button", { name: "Report a problem" }).tap();
-  await expect(moreMenu(page)).toBeHidden();
-  await expect(screen(page)).toHaveAttribute("data-screen", "settings");
-  await expect(
-    screen(page).getByRole("heading", { name: "Report bug" }),
-  ).toBeVisible();
 });

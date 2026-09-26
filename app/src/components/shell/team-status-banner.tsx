@@ -4,12 +4,11 @@ import { useTranslation } from "react-i18next";
 import { useBilling } from "../../hooks/queries/use-billing.ts";
 import { useOrgs } from "../../hooks/queries/use-spaces.ts";
 import { useCapabilities } from "../../hooks/use-capabilities.ts";
+import { openAdmin } from "../../lib/open-admin.ts";
 import { hasSpaces, orgRole } from "../../lib/org-roles.ts";
 import { isTeamWorkspace, orgSlugFromWorkspaceId } from "../../lib/space-id.ts";
 import { teamStatusView } from "../../lib/team-status-model.ts";
-import { useUIStore } from "../../stores/ui.ts";
 import { useWorkspaceStore } from "../../stores/workspaces.ts";
-import { useOrgNav } from "../organization/org-nav-store.ts";
 
 /**
  * The C8 team-status strip, rendered once at the top of the workspace content
@@ -28,8 +27,6 @@ export function TeamStatusBanner() {
   const { t } = useTranslation("teams");
   const { capabilities } = useCapabilities();
   const current = useWorkspaceStore((s) => s.current);
-  const openSettings = useUIStore((s) => s.openSettings);
-  const requestTab = useOrgNav((s) => s.requestTab);
 
   const spaces = hasSpaces(capabilities);
   const isTeam = current ? isTeamWorkspace(current.id) : false;
@@ -53,13 +50,7 @@ export function TeamStatusBanner() {
 
   if (view.kind === "none") return null;
 
-  // Pin the tab BEFORE navigating: Admin is a kept-alive top-level screen, so
-  // it consumes the pin from an effect whether it is mounting for the first
-  // time or already open behind another view.
-  const openBilling = () => {
-    requestTab("billing");
-    openSettings("workspace");
-  };
+  const openBilling = () => openAdmin({ section: "billing" });
 
   if (view.kind === "trial") {
     return (

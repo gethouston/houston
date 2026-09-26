@@ -7,15 +7,8 @@ import { hasSpaces } from "../../lib/org-roles";
 import { CreateOrganizationDialog } from "./create-organization-dialog";
 import { tourAnchor } from "./workspace-tour-steps.ts";
 
-/**
- * The namespaces every builder and component in the rail's chrome reads from.
- * `settings` is here for one string: the Admin row keeps the name the Settings
- * index already owned for that screen rather than growing a second string for
- * the same destination.
- */
-export type SidebarChromeT = TFunction<
-  ["shell", "common", "teams", "settings"]
->;
+/** The namespaces every builder and component in the rail's chrome reads from. */
+export type SidebarChromeT = TFunction<["shell", "common", "teams"]>;
 
 /** Labels for the rail and its visible agent creation row. */
 export function buildSidebarLabels(t: SidebarChromeT): SidebarLabels {

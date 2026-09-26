@@ -23,18 +23,10 @@ import { tourAnchor } from "./workspace-tour-steps.ts";
  * (`SidebarNavList` filters on `items.length`), so a heading can never outlive
  * the rows it names.
  *
- * Four things a reader may come looking for live elsewhere, each on purpose.
- * Per-agent policy is every team's focused agent screen, discovered through
- * the team that owns the agent. Workspace management — members, roles, the
- * activity feed, time worked, the org chart — is a Settings section
- * (`openSettings("workspace")`), because administering the space is a standing
- * preference rather than a place work happens. About me is a Settings section
- * as well: what the agents know about the person is kept with their name and
- * their language. "Report a problem" sits behind the help control in the
- * rail's footer (`sidebar-help-menu.tsx`), because it points at no screen.
- * The Academy and Settings are the rail's FOOTER cluster
- * (`sidebar-footer.tsx`): learning to fly and the person's own chrome sit
- * under the space's contents rather than above them.
+ * Per-agent policy lives on each employee's own screen. Admin owns members,
+ * roles, activity, time worked, and the org chart from its gated footer row.
+ * About me is a Settings section beside name and language. Academy, Admin, and
+ * Settings form the rail's footer cluster (`sidebar-footer.tsx`).
  */
 export function buildSidebarNavItems(args: {
   t: SidebarChromeT;

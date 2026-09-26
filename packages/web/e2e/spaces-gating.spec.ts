@@ -13,16 +13,15 @@ import { navRow, screen } from "./support/team-nav";
 /**
  * C8 Spaces gating (HOU-824 / HOU-878): when the host advertises
  * `capabilities.spaces`, Admin exists in personal and team spaces. A personal
- * space has nobody in it to administer, so Workspace management drops People,
+ * space has nobody in it to administer, so Admin drops People,
  * Billing and Activity there (`orgTabIds`). The gate is `canSeeOrganization(caps, activeSpaceIsTeam)`
  * (`app/src/components/organization/org-view-model.ts`), where the active space is
  * a team iff its workspace id is `org:<16-hex>` (`app/src/lib/space-id.ts`).
  *
- * Admin is the Workspace management SECTION of Settings, so the gate is
- * observed on the face behind that section: the dashboard for whoever passes
- * it, the plain workspace-name card for everyone else. It is the only screen
- * this gate draws; agent policy is discovered through a team's focused agent
- * screen, which carries a gate of its own, per team (`agent-policy.spec.ts`).
+ * Admin is a top-level screen, so the gate controls its dashboard and its
+ * rail row: callers below the gate see neither. It is the only screen this
+ * gate draws; agent policy is discovered through each employee's own screen,
+ * which carries a gate of its own (`agent-policy.spec.ts`).
  *
  * On a NON-spaces multiplayer host (legacy Teams v2, exactly one org) there is no
  * personal/team split, so the gate falls through to the members-roster rule and
@@ -85,7 +84,7 @@ async function switchToSpace(page: Page, name: string): Promise<void> {
   await expect(switcher.getByText(name, { exact: true })).toBeVisible();
 }
 
-test("spaces host, personal space: Workspace management drops People", async ({
+test("spaces host, personal space: Admin drops People", async ({
   page,
   request,
 }) => {
@@ -93,7 +92,7 @@ test("spaces host, personal space: Workspace management drops People", async ({
   await page.goto("/");
   await railPainted(page);
 
-  // Workspace management administers the SPACE, and a personal space has no
+  // Admin administers the SPACE, and a personal space has no
   // people in it to administer: People, Billing and Activity are absent, and
   // what is left is what one human alone can act on.
   await openAdmin(page);
@@ -113,7 +112,7 @@ test("regression: a non-spaces Teams host still shows Admin on the personal work
   await openAdmin(page);
 });
 
-test("spaces host: switching to a team space gives Workspace management its People roster", async ({
+test("spaces host: switching to a team space gives Admin its People roster", async ({
   page,
   request,
 }) => {
@@ -122,8 +121,8 @@ test("spaces host: switching to a team space gives Workspace management its Peop
   await page.goto("/");
   await railPainted(page);
 
-  // Admin stands behind Workspace management in BOTH kinds of space — what the
-  // switch changes is whether the space has PEOPLE in it to administer.
+  // Admin is available in both personal and team spaces. The personal
+  // space has no People section because it has no team roster.
   await openAdmin(page);
   await expectAdminSections(page, ["Company context", "Org chart", "Usage"]);
 
@@ -150,9 +149,7 @@ test("team space: inviting a fresh email through Admin > People renders a pendin
   await page.goto("/");
   await switchToSpace(page, TEAM.name);
 
-  // Open Admin (the Organization dashboard) through Settings > Workspace
-  // management on its People section — a lozenge in the header cluster — to
-  // reach the roster.
+  // Open Admin's People section from the rail row and header lozenge.
   await openAdminSection(page, "People");
 
   // Invite a fresh email → the fake host mints a pending invite (202
@@ -199,7 +196,7 @@ test("Skills belongs to the space owner: a Manager loses it in a team space", as
   await expect(navRow(page, "integrations")).toBeVisible();
 
   // And it really is about OWNERSHIP, not about being junior: the same caller
-  // still reaches the owner/admin dashboard through Settings.
+  // still reaches the owner/admin dashboard through its rail row.
   await openAdmin(page);
 });
 

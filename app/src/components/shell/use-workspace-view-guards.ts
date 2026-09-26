@@ -10,23 +10,33 @@ import { openHome } from "../../lib/home-nav";
 import { useAgentStore } from "../../stores/agents";
 import { useUIStore } from "../../stores/ui";
 import { useWorkspaceStore } from "../../stores/workspaces";
+import { useOrgNav } from "../organization/org-nav-store.ts";
 import { useBootLanding } from "./use-boot-landing.ts";
-import { type BootLanding, deadViewStep } from "./view-guard-rules.ts";
+import {
+  type BootLanding,
+  deadViewStep,
+  shouldDropAdminPin,
+} from "./view-guard-rules.ts";
 
 /**
  * Desktop boot opens the first employee in rail order once the roster and
  * layout resolve. The other standing rules keep the open view valid, keep a
- * current agent for routing, and record real view transitions.
+ * current agent for routing, drop a pinned Admin section the settled org gate
+ * will never let open, and record real view transitions.
  */
 export function useWorkspaceViewGuards(gates: {
   showAiModels: boolean;
   showAssistant: boolean;
   showSkills: boolean;
+  showOrganization: boolean;
   /** False while the reads behind the gates are still loading. */
   ready: boolean;
 }): BootLanding {
-  const { showAiModels, showAssistant, showSkills, ready } = gates;
+  const { showAiModels, showAssistant, showSkills, showOrganization, ready } =
+    gates;
   const viewMode = useUIStore((s) => s.viewMode);
+  const requestedTab = useOrgNav((s) => s.requestedTab);
+  const clearRequestedTab = useOrgNav((s) => s.clearRequestedTab);
   const openAgentView = useUIStore((s) => s.openAgentView);
   const agentsHomeAgentId = useUIStore((s) => s.agentsHomeAgentId);
   const activeAgentId = useUIStore((s) => s.activeAgentId);
@@ -64,6 +74,7 @@ export function useWorkspaceViewGuards(gates: {
       showAiModels,
       showAssistant,
       showSkills,
+      showOrganization,
       gatesReady: ready,
       agentsReady,
       activeAgentId,
@@ -79,9 +90,18 @@ export function useWorkspaceViewGuards(gates: {
     showAiModels,
     showAssistant,
     showSkills,
+    showOrganization,
     viewMode,
     landing.kind,
   ]);
+
+  useEffect(() => {
+    if (
+      requestedTab !== null &&
+      shouldDropAdminPin({ ready, showOrganization })
+    )
+      clearRequestedTab();
+  }, [ready, showOrganization, requestedTab, clearRequestedTab]);
 
   useEffect(() => {
     if (!currentAgent && agents.length > 0) setCurrentAgent(agents[0]);

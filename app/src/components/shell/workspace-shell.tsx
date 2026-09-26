@@ -57,14 +57,13 @@ export function WorkspaceShell({
   const [panelContainer, setPanelContainer] = useState<HTMLDivElement | null>(
     null,
   );
-  // The gated top-level screens. `showAiModels` keeps a stale `viewMode` from
-  // showing the AI Models hub to a plain member (it is owner/admin only in a
-  // Teams workspace: org-level providers + admin model policy), `showSkills`
-  // does the same for the shared library (a skill edit reaches every agent in
-  // the space, so it is the owner's), and `showAssistant` for a deployment
-  // that serves no assistant. `ready` says whether the gates mean anything
-  // yet, so the guard waits instead of bouncing a user mid-load.
-  const { showAiModels, showAssistant, showSkills, ready } = useSurfaceGates();
+  // The top-level screen gates. The AI Models hub admits every caller;
+  // `showSkills` limits the shared library to the space owner,
+  // `showOrganization` admits Admin, and `showAssistant` depends on assistant
+  // discovery. `ready` says when the guarded views can redirect without
+  // bouncing a user during loading.
+  const { showAiModels, showAssistant, showSkills, showOrganization, ready } =
+    useSurfaceGates();
   // Keying the kept-alive set by workspace drops every cached screen when the
   // user switches workspace/space: their contents are workspace-scoped.
   const currentWorkspace = useWorkspaceStore((s) => s.current);
@@ -73,6 +72,7 @@ export function WorkspaceShell({
     showAiModels,
     showAssistant,
     showSkills,
+    showOrganization,
     ready,
   });
   useKeyboardShortcuts();
@@ -134,6 +134,8 @@ export function WorkspaceShell({
                         showAiModels,
                         showAssistant,
                         showSkills,
+                        showOrganization,
+                        ready,
                       })}
                     />
                   </BootLandingContent>

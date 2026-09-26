@@ -138,7 +138,7 @@
       "viewerOnly": "You can use this AI Employee. Someone who manages it can change who has access.",
       "empty": {
         "title": "No people yet",
-        "body": "Invite teammates from Settings > Workspace management to manage their access here."
+        "body": "Invite teammates from Admin to manage their access here."
       }
     }
   },
