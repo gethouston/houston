@@ -139,7 +139,7 @@ Confirmation means Houston asks the user and mints a receipt for that exact call
 | `resumeRoutines` | POST | confirmed: host approval required | visible | none |
 | `runRoutineNow` | POST | confirmed: host approval required | visible | agentId: resolved:agents; id: resolved:routines |
 | `updateRoutine` | PATCH | confirmed: host approval required | visible | agentId: resolved:agents; id: resolved:routines; updates: free text |
-| `dismissPlanAnnouncement` | POST | unconfirmed: This only records that the announcement was seen. | visible | none |
+| `dismissPlanAnnouncement` | POST | unconfirmed: This only records that the announcement was seen. | only the person seeing the announcement may dismiss it. | none |
 | `getContext` | GET | unconfirmed: read-only HTTP GET | visible | kind: enum |
 | `getMyProfile` | GET | unconfirmed: read-only HTTP GET | visible | none |
 | `getPlan` | GET | unconfirmed: read-only HTTP GET | visible | none |
@@ -171,7 +171,7 @@ Confirmation means Houston asks the user and mints a receipt for that exact call
 | `moveAgent` | POST | confirmed: host approval required | visible | agentSlugOrId: resolved:agents; toSlug: open: The directory covers one organization, so read another one's slug from listOrgs. |
 | `getAssistant` | GET | unconfirmed: read-only HTTP GET | the assistant IS this agent, so where it lives tells it nothing it can act on. | none |
 | `getCapabilities` | GET | unconfirmed: read-only HTTP GET | visible | none |
-| `reportPresence` | POST | unconfirmed: A foreground heartbeat only updates activity time. | visible | none |
+| `reportPresence` | POST | unconfirmed: A foreground heartbeat only updates activity time. | presence means the person opened the app; an assistant reporting it would keep their routines from pausing. | none |
 | `createAgentTeam` | POST | unconfirmed: Creates an empty team without moving agents or adding other members. | visible | input: free text |
 | `deleteAgentTeam` | DELETE | confirmed: host approval required | visible | teamId: resolved:teams |
 | `getAgentSettings` | GET | unconfirmed: read-only HTTP GET | visible | agentSlugOrId: resolved:agents |

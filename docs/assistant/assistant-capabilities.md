@@ -114,7 +114,6 @@ Calling an operation returns the host's raw response. Where the adapter function
 
 ## settings
 
-- `dismissPlanAnnouncement`: Dismiss the one-time personal plan announcement across devices.
 - `getContext`: Reads the background notes Houston gives an agent on every conversation.
 - `getMyProfile`: Reads the user's own name and photo.
 - `getPlan`: Read the person's plan across all spaces.
@@ -150,7 +149,6 @@ Calling an operation returns the host's raw response. Where the adapter function
 ## system
 
 - `getCapabilities`: What this deployment can do (`GET /v1/capabilities`) - the SERVER describing itself: which profile it runs, whether it has a shell, an org, a skills store, triggers, and which AI providers it offers.
-- `reportPresence`: Report that the person's app is in the foreground.
 
 ## teams
 

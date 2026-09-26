@@ -6,17 +6,17 @@
 - Undocumented: 0
 - Ungrouped: 0
 - Unschematized: 20
-- Hidden: 60
+- Hidden: 62
 - Confirmed: 59
 - Routable: 157
 - Unroutable: 20
 - Raw-response routes: 107
-- Acknowledged exceptions: 95
+- Acknowledged exceptions: 97
 - Acknowledged debt: 0
 
 A raw-response route reaches the host through an adapter function that post-processes the reply (unwrapping `items`, 404 fallbacks, `.then` transforms). The route itself carries the host's response unchanged.
 
-## Acknowledged exceptions (95)
+## Acknowledged exceptions (97)
 
 Every operation the assistant cannot drive states why in its `@assistant` tag, and `pnpm check:assistant-coverage` fails the build on any that does not. These are the human-owned exceptions.
 
@@ -100,6 +100,7 @@ Every operation the assistant cannot drive states why in its `@assistant` tag, a
 - `listRoutines` - unschematized: a routine's trigger_config is the outside app's own event shape.
 - `mintRoutineWebhookKey` - hidden: returns a secret; the webhook key is revealed once and calling again rotates it.
 - `updateRoutine` - unschematized: a trigger binding carries the outside app's own event config, whose shape belongs to that app.
+- `dismissPlanAnnouncement` - hidden: only the person seeing the announcement may dismiss it.
 - `dismissPlanAnnouncement` - unconfirmed: This only records that the announcement was seen.
 - `getPreference` - hidden: UI plumbing; an untyped key/value store the app reads for its own device settings.
 - `preferences.get` - hidden: UI plumbing; an untyped key/value store the app reads for its own device settings.
@@ -111,6 +112,7 @@ Every operation the assistant cannot drive states why in its `@assistant` tag, a
 - `setSkillEnabled` - hidden: the one-entry primitive behind putSkillsManifest, which is the one to dispatch; both write the same manifest, and this one reads it first so two switches started together cannot drop each other.
 - `deleteOrg` - hidden: deleting a space is the person's own to do, from the space's own settings.
 - `getAssistant` - hidden: the assistant IS this agent, so where it lives tells it nothing it can act on.
+- `reportPresence` - hidden: presence means the person opened the app; an assistant reporting it would keep their routines from pausing.
 - `reportPresence` - unconfirmed: A foreground heartbeat only updates activity time.
 - `createAgentTeam` - unconfirmed: Creates an empty team without moving agents or adding other members.
 - `getHostSidebarLayout` - hidden: UI plumbing; the sidebar's persisted order has no meaning outside the sidebar's own render.
@@ -265,7 +267,7 @@ None.
 - `updateRoutine.returns`
 - `turns.history.returns`
 
-## Hidden operations (60)
+## Hidden operations (62)
 
 - `applyAgentColor`
 - `generateAgentInstructions`
@@ -320,11 +322,13 @@ None.
 - `setProviderCustomEndpoint`
 - `setSetupApiKey`
 - `mintRoutineWebhookKey`
+- `dismissPlanAnnouncement`
 - `getPreference`
 - `setPreference`
 - `setSkillEnabled`
 - `deleteOrg`
 - `getAssistant`
+- `reportPresence`
 - `getHostSidebarLayout`
 - `putHostSidebarLayout`
 

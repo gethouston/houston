@@ -17,7 +17,7 @@ export async function getPlan(scope: HttpScope): Promise<PlanSummary> {
 }
 
 /** Dismiss the one-time personal plan announcement across devices.
- * @assistant group:settings
+ * @assistant group:settings hidden: only the person seeing the announcement may dismiss it.
  * @assistant unconfirmed: This only records that the announcement was seen.
  */
 export async function dismissPlanAnnouncement(scope: HttpScope): Promise<void> {
@@ -95,7 +95,7 @@ export async function resumeRoutines(scope: HttpScope): Promise<PlanSummary> {
 }
 
 /** Report that the person's app is in the foreground.
- * @assistant group:system
+ * @assistant group:system hidden: presence means the person opened the app; an assistant reporting it would keep their routines from pausing.
  * @assistant unconfirmed: A foreground heartbeat only updates activity time.
  */
 export async function reportPresence(scope: HttpScope): Promise<void> {
