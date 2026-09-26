@@ -7,7 +7,7 @@
  * desktop graph (`../app-tree`, behind the "Loading Houston…" Suspense boundary
  * in src/new-engine) pays the entire cold-compile cost in one shot. On a cold CI
  * runner that compile blew past the 10s assertion timeout, so the run's first
- * test failed waiting for the shell ("Your teams"). It passed on retry (vite was
+ * test failed waiting for the sidebar. It passed on retry (vite was
  * warm by then), which Playwright scores as "flaky" — exit 0, green CI — so the
  * failure was silent.
  *
@@ -33,10 +33,10 @@ export default async function globalSetup(_config: FullConfig): Promise<void> {
     // machine vite's on-demand transform of the entry graph alone can hold the
     // load event past 30s. Same generous ceiling for both.
     await page.goto(WEB_URL, { timeout: 120_000 });
-    // The sidebar header proves the app-tree chunk finished compiling. Generous
+    // The sidebar proves the app-tree chunk finished compiling. Generous
     // timeout: this is the one place that absorbs the cold compile.
     await page
-      .getByText("Your teams")
+      .locator('[data-tour-target="sidebar"]')
       .waitFor({ state: "visible", timeout: 120_000 });
 
     // Warm the identity-on server (the `auth` project) the same way. It's a

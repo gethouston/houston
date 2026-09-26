@@ -1,48 +1,22 @@
-import { useIsMobile } from "@houston-ai/core";
+import { isMobileViewport } from "@houston-ai/core";
 import { useEffect, useRef } from "react";
-import { useTeams } from "../../hooks/use-teams";
+import {
+  useSidebarLayoutReady,
+  useSidebarLayoutValue,
+} from "../../hooks/use-sidebar-layout";
+import { firstSidebarAgentId } from "../../lib/agent-order";
 import { analytics } from "../../lib/analytics";
-import { homeTeam } from "../../lib/teams-model";
-import { AGENTS_HOME_VIEW_ID } from "../../lib/top-level-views";
+import { openHome } from "../../lib/home-nav";
 import { useAgentStore } from "../../stores/agents";
 import { useUIStore } from "../../stores/ui";
 import { useWorkspaceStore } from "../../stores/workspaces";
-import {
-  bootGuardStep,
-  deadViewStep,
-  INITIAL_BOOT_GUARD,
-} from "./view-guard-rules.ts";
+import { useBootLanding } from "./use-boot-landing.ts";
+import { type BootLanding, deadViewStep } from "./view-guard-rules.ts";
 
 /**
- * The four standing rules of the shell's frame, kept out of its layout. The
- * decisions behind rules 1 and 2 are pure functions in `view-guard-rules.ts`;
- * what lives here is the effect around them.
- *
- * 1. **Boot lands on the first team's Mission Control.** The store starts on
- *    the Agents home, the screen that needs no team, so the first paint is
- *    honest while the teams are still resolving. The moment the first team
- *    lands, home is its Mission Control and that is where the user goes.
- *    One shot per
- *    workspace, re-armed on a workspace change (each space boots into its own
- *    first team), and dropped the moment the user navigates somewhere of their
- *    own during the read.
- * 2. **The open view must exist.** Every screen is a top-level view now, so a
- *    `viewMode` no screen answers to, a view this caller's gates hide (the AI
- *    Models hub for a plain member, the shared Skills library for anyone but
- *    the space's owner, Admin for anyone but an owner/admin of a
- *    team space, the assistant where discovery hands out no address), or a team
- *    that stopped existing under an open team view all fall through every render
- *    branch and strand the user on a blank card. Each goes home. Two cases WAIT
- *    instead, because they are in-flight rather than stale: a dead TEAM view in
- *    a workspace with no teams, and a gated view whose capabilities have not
- *    resolved yet.
- * 3. **Something is always current.** `currentAgent` no longer picks a SCREEN,
- *    but provider routing, model prefs and the palette still read it, so the
- *    first agent adopts it when nothing has.
- * 4. **One `tab_opened` point.** Watching `viewMode` catches every path that
- *    changes it — rail click, shortcut, programmatic redirect — and fires on
- *    real transitions only, never on the first landing (`install_created`
- *    already records that).
+ * Desktop boot opens the first employee in rail order once the roster and
+ * layout resolve. The other standing rules keep the open view valid, keep a
+ * current agent for routing, and record real view transitions.
  */
 export function useWorkspaceViewGuards(gates: {
   showAiModels: boolean;
@@ -50,72 +24,63 @@ export function useWorkspaceViewGuards(gates: {
   showSkills: boolean;
   /** False while the reads behind the gates are still loading. */
   ready: boolean;
-}): void {
+}): BootLanding {
   const { showAiModels, showAssistant, showSkills, ready } = gates;
   const viewMode = useUIStore((s) => s.viewMode);
-  const setViewMode = useUIStore((s) => s.setViewMode);
-  const openTeamView = useUIStore((s) => s.openTeamView);
-  const openAgentsHome = useUIStore((s) => s.openAgentsHome);
-  // A structural fork, not a layout tweak: the PHONE's landing screen is the
-  // Agents home (the tab bar's landing tab), the desktop's is the home team's
-  // board. Width-based like every mobile decision.
-  const isMobile = useIsMobile();
-  const activeTeamId = useUIStore((s) => s.activeTeamId);
-  const workspaceId = useWorkspaceStore((s) => s.current?.id);
-  const teams = useTeams();
+  const openAgentView = useUIStore((s) => s.openAgentView);
+  const agentsHomeAgentId = useUIStore((s) => s.agentsHomeAgentId);
+  const activeAgentId = useUIStore((s) => s.activeAgentId);
   const currentAgent = useAgentStore((s) => s.current);
   const agents = useAgentStore((s) => s.agents);
+  const agentsLoaded = useAgentStore((s) => s.loaded);
+  const loadedWorkspaceId = useAgentStore((s) => s.loadedWorkspaceId);
+  const agentsLoading = useAgentStore((s) => s.loading);
   const setCurrentAgent = useAgentStore((s) => s.setCurrent);
+  const workspaceId = useWorkspaceStore((s) => s.current?.id);
+  const layout = useSidebarLayoutValue(workspaceId);
+  const layoutReady = useSidebarLayoutReady(workspaceId);
+  const agentsReady =
+    !agentsLoading &&
+    (workspaceId ? loadedWorkspaceId === workspaceId : agentsLoaded);
 
-  const boot = useRef(INITIAL_BOOT_GUARD);
-  useEffect(() => {
-    const team = homeTeam(teams);
-    const step = bootGuardStep(boot.current, {
+  const landing = useBootLanding(
+    {
       workspaceId: workspaceId ?? null,
       viewMode,
-      hasHomeTeam: team !== null,
-    });
-    boot.current = step.state;
-    if (step.action === "open-home-team" && team !== null) {
-      // A REDIRECT, not a place the user chose: replacing keeps the transient
-      // boot landing off the nav stack, so browser back can't land on it.
-      // Same trigger on both breakpoints (the first team resolving is the
-      // "workspace is ready" signal), different landing: the phone opens on
-      // the Agents home, the desktop on the home team's board.
-      if (isMobile) openAgentsHome(null, { nav: "replace" });
-      else openTeamView(team.id, "mission-control", { nav: "replace" });
-    }
-  }, [isMobile, openAgentsHome, openTeamView, teams, viewMode, workspaceId]);
+      agentsHomeAgentId,
+      activeAgentId,
+      isMobile: isMobileViewport(),
+      agentsReady,
+      layoutReady,
+      firstAgentId: firstSidebarAgentId(agents, layout),
+    },
+    (agentId) => openAgentView(agentId, "mission-control", { nav: "replace" }),
+  );
 
   useEffect(() => {
-    // `homeTeam` directly rather than `openHome()`: this hook already holds the
-    // resolved teams, and going through the store-free helper would resolve
-    // them a second time.
+    if (landing.kind !== "done") return;
     const action = deadViewStep({
       viewMode,
       showAiModels,
       showAssistant,
       showSkills,
       gatesReady: ready,
-      teams,
-      activeTeamId,
+      agentsReady,
+      activeAgentId,
+      agents,
     });
     if (action !== "go-home") return;
-    const team = homeTeam(teams);
-    // Replace, not push: a dead view sent home must not stay reachable via
-    // the browser back button (backing into it would just bounce home again).
-    if (team === null) setViewMode(AGENTS_HOME_VIEW_ID, { nav: "replace" });
-    else openTeamView(team.id, "mission-control", { nav: "replace" });
+    openHome({ nav: "replace" });
   }, [
-    activeTeamId,
-    openTeamView,
+    activeAgentId,
+    agentsReady,
+    agents,
     ready,
-    setViewMode,
     showAiModels,
     showAssistant,
     showSkills,
-    teams,
     viewMode,
+    landing.kind,
   ]);
 
   useEffect(() => {
@@ -142,4 +107,5 @@ export function useWorkspaceViewGuards(gates: {
     if (viewMode === "settings") return;
     analytics.track("tab_opened", { tab_name: viewMode });
   }, [viewMode]);
+  return landing;
 }

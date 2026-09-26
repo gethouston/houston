@@ -11,7 +11,6 @@ import { withModeOverlay } from "./mode-overlays";
 import { loadSkillsManifest } from "./skills-manifest";
 import type { CodeExecutionMode } from "./tool-selection-types";
 import {
-  buildGroupContextSection,
   buildWorkspaceContextSection,
   type ProvidedContext,
 } from "./workspace-context";
@@ -150,22 +149,15 @@ export function makeAgentLoader(
    */
   basePrompt?: string,
 ) {
-  // Overlays compose onto Houston's base prompt, in the SAME order as the claude
-  // backend (system-prompt.ts): first the workspace + user CONTEXT section
-  // (HOU-711 — `provided` is the gateway's Supabase copy in cloud, else the two
-  // files at cwd), then the GROUP context section (local-only `GROUP.md` the host
-  // mirrors into each grouped agent's cwd; null when ungrouped), then the personal
-  // assistant's saved MEMORY (null for every other agent — the coordinator-role
-  // gate is inside buildLearningsSection) followed by its OPERATING RULES, then the turn MODE
-  // overlay LAST so the plan/auto mandate is the final word. CLAUDE.md/AGENTS.md still load via
-  // agentsFilesOverride below.
+  // Workspace and user context precede saved memory, operating rules, and
+  // the turn mode overlay. Agent instructions load through agentsFilesOverride.
   const section = buildWorkspaceContextSection(cwd, provided);
   const base = basePrompt || config.systemPrompt || SYSTEM_PROMPT;
   const withContext = section ? `${base}\n\n${section}` : base;
-  const group = buildGroupContextSection(cwd);
-  const withGroup = group ? `${withContext}\n\n${group}` : withContext;
   const learnings = buildLearningsSection(cwd);
-  const withLearnings = learnings ? `${withGroup}\n\n${learnings}` : withGroup;
+  const withLearnings = learnings
+    ? `${withContext}\n\n${learnings}`
+    : withContext;
   const rules = buildAssistantRulesSection();
   const withRules = rules ? `${withLearnings}\n\n${rules}` : withLearnings;
   return buildAgentLoader({

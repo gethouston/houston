@@ -23,8 +23,8 @@ import { usePendingMissionTarget } from "./use-pending-mission-target";
  *
  * `agents` is ALWAYS the full workspace roster, whoever is rendering: the sweep
  * behind it (`useMissionControlArchived`) keys the one shared
- * `all-conversations` query on it. A team's archive narrows what it RENDERS
- * through `scope` instead (the one-sweep rule, `useTeamBoardScope`).
+ * `all-conversations` query on it. An employee's archive narrows what it RENDERS
+ * through `scope` instead (the one-sweep rule, `useAgentBoardScope`).
  *
  * It says nothing about WHERE it is: the archive is a MODE of Tasks, entered
  * from the active board's "Archived" button and left by the "Back to tasks"

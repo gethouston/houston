@@ -11,7 +11,6 @@ import { buildAssistantRulesSection } from "../../session/assistant-rules-contex
 import { buildLearningsSection } from "../../session/learnings-context";
 import { withModeOverlay } from "../../session/mode-overlays";
 import {
-  buildGroupContextSection,
   buildWorkspaceContextSection,
   type ProvidedContext,
 } from "../../session/workspace-context";
@@ -46,16 +45,13 @@ export function buildSystemPrompt(
   // `provided` is the gateway's Supabase copy (cloud), else the cwd files (local).
   const section = buildWorkspaceContextSection(cwd, provided);
   const withContext = section ? `${base}\n\n${section}` : base;
-  // Group context section AFTER workspace/user (HOU-711), local-only: `GROUP.md`
-  // the host mirrors into each grouped agent's cwd from its sidebar group's
-  // shared context. Null for ungrouped agents.
-  const group = buildGroupContextSection(cwd);
-  const withGroup = group ? `${withContext}\n\n${group}` : withContext;
   // The personal assistant's saved MEMORY next, exactly where the pi backend
   // puts it (session/resource-loader.ts). Null for every other agent — the
   // coordinator-role gate lives inside buildLearningsSection.
   const learnings = buildLearningsSection(cwd);
-  const withLearnings = learnings ? `${withGroup}\n\n${learnings}` : withGroup;
+  const withLearnings = learnings
+    ? `${withContext}\n\n${learnings}`
+    : withContext;
   // The assistant's OPERATING RULES immediately after its memory, same order as
   // the pi backend. Null for every other agent (the same role gate).
   const rules = buildAssistantRulesSection();
@@ -66,7 +62,7 @@ export function buildSystemPrompt(
   // so without this an Anthropic session had NO idea what skills exist or where
   // their files live, and a "Use the <skill> skill." turn ran blind.
   const withSkills = withRules + buildSkillsSection(cwd);
-  // Mode overlay LAST — after Houston's prompt, the context file, both context
+  // Mode overlay LAST — after Houston's prompt, the context file, workspace and user
   // sections, the assistant's memory + rules, AND the skills index — so the plan
   // (read-only) or auto (Autopilot) mandate is the final word the model reads.
   // Execute passes through unchanged.

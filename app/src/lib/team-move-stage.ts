@@ -1,100 +1,130 @@
-import type { AgentTeam } from "@houston/engine-adapter";
-import {
-  postscriptDone,
-  type TeamMoveSource,
-  type TeamMoveState,
-} from "./move-team.ts";
+import type { SidebarLayout } from "@houston/engine-adapter";
+import { postscriptDone, type TeamMoveState } from "./move-team.ts";
 import type { PendingTeamMove } from "./pending-team-move.ts";
-import { reconcileTeamByName } from "./team-move-resume.ts";
+import { deleteGroupOp } from "./sidebar-layout-group-ops.ts";
 
 export interface TeamMoveStageWire {
-  deleteSource(teamId: string): Promise<void>;
+  targetWorkspaceId(slug: string): Promise<string>;
+  getLayout(workspaceId: string): Promise<SidebarLayout>;
+  updateLayout(
+    workspaceId: string,
+    op: (layout: SidebarLayout) => SidebarLayout,
+  ): Promise<SidebarLayout>;
   switchTarget(slug: string): Promise<void>;
-  listTargetTeams(): Promise<AgentTeam[]>;
-  createTargetTeam(input: {
-    name: string;
-    icon?: string;
-    color?: string;
-  }): Promise<AgentTeam>;
-  updateTargetTeam(
-    teamId: string,
-    patch: { context: string },
-  ): Promise<unknown>;
-  placeAgent(agentId: string, teamId: string): Promise<void>;
-  isMissingSource(error: unknown): boolean;
-  preferredTeamId?: string;
+}
+
+export function targetFolderLayout(
+  layout: SidebarLayout,
+  pending: PendingTeamMove,
+): SidebarLayout {
+  const source = pending.sourceTeam;
+  const moved = new Set(pending.agentIds);
+  const agentIds = [
+    ...new Set([
+      ...(layout.groups.find((group) => group.id === pending.targetGroupId)
+        ?.agentIds ?? []),
+      ...pending.agentIds,
+    ]),
+  ];
+  const target = layout.groups.find(
+    (group) => group.id === pending.targetGroupId,
+  );
+  if (target && target.name !== source.name)
+    throw new Error("target folder id belongs to another folder");
+  return {
+    groups: target
+      ? layout.groups.map((group) =>
+          group.id === target.id
+            ? { ...group, agentIds }
+            : {
+                ...group,
+                agentIds: group.agentIds.filter((id) => !moved.has(id)),
+              },
+        )
+      : [
+          ...layout.groups.map((group) => ({
+            ...group,
+            agentIds: group.agentIds.filter((id) => !moved.has(id)),
+          })),
+          {
+            id: pending.targetGroupId,
+            name: source.name,
+            collapsed: false,
+            agentIds,
+            ...(source.icon ? { icon: source.icon } : {}),
+            ...(source.color ? { color: source.color } : {}),
+          },
+        ],
+    order: [
+      ...(target
+        ? []
+        : [{ kind: "group" as const, id: pending.targetGroupId }]),
+      ...layout.order.filter(
+        (entry) => entry.kind !== "agent" || !moved.has(entry.id),
+      ),
+    ],
+  };
+}
+
+export function sourceAfterFolderMove(
+  layout: SidebarLayout,
+  pending: PendingTeamMove,
+): SidebarLayout {
+  const moved = new Set(pending.agentIds);
+  return deleteGroupOp(
+    {
+      groups: layout.groups.map((group) => ({
+        ...group,
+        agentIds: group.agentIds.filter((id) => !moved.has(id)),
+      })),
+      order: layout.order.filter(
+        (entry) => entry.kind !== "agent" || !moved.has(entry.id),
+      ),
+    },
+    pending.sourceTeam.id,
+  );
 }
 
 export async function runTeamMoveStage(
   state: TeamMoveState,
-  source: TeamMoveSource,
+  pending: PendingTeamMove,
   wire: TeamMoveStageWire,
-): Promise<{ state: TeamMoveState; createdTeamId?: string }> {
+): Promise<TeamMoveState> {
+  if (state.step === "createTarget") {
+    const workspaceId = await wire.targetWorkspaceId(pending.targetSlug);
+    await wire.getLayout(workspaceId);
+    await wire.updateLayout(workspaceId, (layout) =>
+      targetFolderLayout(layout, pending),
+    );
+    return postscriptDone(state);
+  }
   if (state.step === "cleanupSource") {
-    try {
-      await wire.deleteSource(source.id);
-    } catch (error) {
-      if (!wire.isMissingSource(error)) throw error;
-    }
-    return { state: postscriptDone(state, source) };
+    const workspaceId = pending.sourceTeam.workspaceId;
+    await wire.getLayout(workspaceId);
+    await wire.updateLayout(workspaceId, (layout) =>
+      sourceAfterFolderMove(layout, pending),
+    );
+    return postscriptDone(state);
   }
   if (state.step === "switching") {
-    await wire.switchTarget(state.target.slug);
-    return { state: postscriptDone(state, source) };
+    await wire.switchTarget(pending.targetSlug);
+    return postscriptDone(state);
   }
-  if (state.step === "recreate") {
-    const teams = await wire.listTargetTeams();
-    const existing =
-      teams.find((team) => team.id === wire.preferredTeamId) ??
-      reconcileTeamByName(teams, source.name);
-    const team =
-      existing ??
-      (await wire.createTargetTeam({
-        name: source.name,
-        ...(source.icon ? { icon: source.icon } : {}),
-        ...(source.color ? { color: source.color } : {}),
-      }));
-    if (source.context) {
-      await wire.updateTargetTeam(team.id, { context: source.context });
-    }
-    return {
-      state: postscriptDone(state, source, team.id),
-      createdTeamId: team.id,
-    };
-  }
-  if (state.step === "placing") {
-    if (!state.teamId) throw new Error("target team id missing");
-    for (const agent of source.agents) {
-      await wire.placeAgent(agent.id, state.teamId);
-    }
-    return { state: postscriptDone(state, source) };
-  }
-  return { state };
+  return state;
 }
 
 export async function runTeamMovePostscript(
   pending: PendingTeamMove,
   wire: TeamMoveStageWire,
-  onProgress: (state: TeamMoveState, createdTeamId?: string) => void,
+  onProgress: (state: TeamMoveState) => void,
 ): Promise<void> {
   let state: TeamMoveState = {
-    step:
-      pending.postscriptStage ??
-      (pending.sourceTeam.isDefault ? "switching" : "cleanupSource"),
+    step: pending.postscriptStage ?? "createTarget",
     target: { slug: pending.targetSlug, name: pending.targetName },
-    ...(pending.createdTeamId ? { teamId: pending.createdTeamId } : {}),
   };
   while (state.step !== "invite") {
     onProgress(state);
-    const result = await runTeamMoveStage(
-      state,
-      {
-        ...pending.sourceTeam,
-        agents: pending.agentIds.map((id) => ({ id, name: id })),
-      },
-      wire,
-    );
-    state = result.state;
-    onProgress(state, result.createdTeamId);
+    state = await runTeamMoveStage(state, pending, wire);
+    onProgress(state);
   }
 }

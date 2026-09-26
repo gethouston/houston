@@ -13,7 +13,7 @@ import { useIsActiveView } from "../shell/keep-alive-views";
  * Two things decide who may:
  *
  * - **Only the screen on the glass.** Several kept-alive boards are mounted at
- *   once, and an unguarded consumer lets a hidden team's board eat the target
+ *   once, and an unguarded consumer lets a hidden employee's board eat the target
  *   and clear it.
  * - **Only the surface the target belongs to.** A board is two surfaces that
  *   swap — the active one and the archive — and each holds half the workspace.

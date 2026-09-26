@@ -17,19 +17,21 @@ export type SidebarChromeT = TFunction<
   ["shell", "common", "teams", "settings"]
 >;
 
-/**
- * Localized `AppSidebar` labels (team actions, and the words the list itself
- * uses). An agent row has no actions to name any more: it is renamed,
- * recoloured, moved and deleted on its focused agent screen. The
- * trailing block is named after the workspace and passed as `defaultGroup`, so
- * there is no anonymous "ungrouped" header to label — the library dropped that
- * branch and its untranslated string with it.
- */
+/** Labels for the rail and its visible agent creation row. */
 export function buildSidebarLabels(t: SidebarChromeT): SidebarLabels {
   return {
     addItem: t("shell:sidebar.addAgent"),
     collapseSidebar: t("shell:sidebar.collapse"),
     expandSidebar: t("shell:sidebar.expand"),
+    dragPickedUp: t("shell:sidebar.drag.pickedUp"),
+    dragMovedOver: t("shell:sidebar.drag.movedOver"),
+    dragDropped: t("shell:sidebar.drag.dropped"),
+    dragCancelled: t("shell:sidebar.drag.cancelled"),
+    dragInstructions: t("shell:sidebar.drag.instructions"),
+    dragKeyboardMoved: t("shell:sidebar.drag.keyboardMoved"),
+    dragKeyboardMovedInGroup: t("shell:sidebar.drag.keyboardMovedInGroup"),
+    dragKeyboardEnteredGroup: t("shell:sidebar.drag.keyboardEnteredGroup"),
+    dragKeyboardLeftGroup: t("shell:sidebar.drag.keyboardLeftGroup"),
   };
 }
 

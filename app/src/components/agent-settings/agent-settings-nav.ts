@@ -5,12 +5,10 @@ import type { Agent } from "../../lib/types";
 /**
  * The ONE nav model for configuring a single agent.
  *
- * There is one surface now — the canonical settings page — reached through two
- * doors (Team Settings, and Settings > Permissions in multiplayer). It names
- * its rail from here, so a section can never mean two different things or be
- * gated two different ways. The per-agent Context / Admin tabs that used to
- * render their own one-group rails from `contextTabGroups` / `adminTabGroups`
- * went away with the agent tab shell, and so did those builders.
+ * One surface, the canonical settings page, is reached through two doors (the
+ * employee's own Settings section, and Settings > Permissions in multiplayer).
+ * It names its rail from here, so a section can never mean two different
+ * things or be gated two different ways.
  *
  * Pure and DOM-free, so the visibility rules are unit-tested
  * (`app/tests/agent-settings-nav.test.ts`).

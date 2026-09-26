@@ -12,8 +12,8 @@ import { buildSidebarNavItems } from "./sidebar-nav-sections";
  * Every entry navigates AND closes the phone's More menu — the one rule both
  * callbacks below share, so they are paired here instead of being repeated at
  * the call site. The active id comes from the same place because it answers the
- * same question: only a TOP-LEVEL view lights a nav row, and a team screen
- * lights a team row instead (`useSidebarTeamsModel`).
+ * same question: only a destination view lights a nav row. Employee screens
+ * light their employee row instead (`useSidebarTeamsModel`).
  *
  * Every entry POINTS AT A SCREEN. "Report a problem" points at none, so it is
  * an item behind the footer's help control (`sidebar-help-menu.tsx`) rather

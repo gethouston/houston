@@ -32,7 +32,7 @@ import { useAgentFileDownloads } from "./agent-files-downloads";
  * would mean a second capability gate that can drift, a second upload intake, a
  * second delete confirm, a second move-conflict flow, and a bug fixed in one
  * place but not the other. So it lives here once; `agent-files-surface.tsx`
- * renders it, and the team view's Files section (`team-view/team-files/`) is
+ * renders it, and the employee screen's Files section (`team-view/team-files/`) is
  * nothing but a frame around that.
  *
  * **It is also what keeps the read cache-shared.** The tree comes from

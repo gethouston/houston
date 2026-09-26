@@ -1,136 +1,193 @@
-import type { SidebarLayout } from "@houston/engine-adapter";
-
-import { blankOverlayGroup } from "./sidebar-layout-group-ops.ts";
-
-export {
-  type ExpandOnlyTeam,
-  expandOnlyTeamOp,
-} from "./sidebar-layout-accordion.ts";
-export {
-  setDefaultContextOp,
-  toggleDefaultCollapsedOp,
-} from "./sidebar-layout-default-ops.ts";
-export {
-  blankOverlayGroup,
+import type { SidebarLayout, SidebarRootEntry } from "@houston/engine-adapter";
+import {
   createGroupOp,
-  deleteGroupOp,
-  renameGroupOp,
-  setGroupContextOp,
   setGroupIdentityOp,
-  toggleGroupCollapsedOp,
 } from "./sidebar-layout-group-ops.ts";
+
 export {
   DEFAULT_SIDEBAR_LAYOUT,
   normalizeSidebarLayout,
-} from "./sidebar-layout-normalize.ts";
+} from "@houston/protocol";
+export {
+  createGroupOp,
+  deleteGroupOp,
+  renameGroupOp,
+  setGroupIdentityOp,
+  toggleGroupCollapsedOp,
+} from "./sidebar-layout-group-ops.ts";
 
-/** Where a moved item lands: a target group (`null` = default section) and the
- *  sibling to insert before (`null` = append to that section). */
 export interface ItemDest {
   groupId: string | null;
   beforeItemId: string | null;
 }
 
-/** Insert `id` into `list` before `beforeId` (null = append). `id` is assumed
- *  already absent from `list` (callers strip it first). */
-function insertBefore(
-  list: string[],
-  id: string,
-  beforeId: string | null,
-): string[] {
-  if (beforeId === null) return [...list, id];
-  const idx = list.indexOf(beforeId);
-  if (idx === -1) return [...list, id];
-  return [...list.slice(0, idx), id, ...list.slice(idx)];
+/** Keep stored items absent from a rendered drop beside their old successor. */
+function retainUnrendered<T>(
+  stored: T[],
+  rendered: T[],
+  key: (item: T) => string,
+  mentioned: ReadonlySet<string>,
+): T[] {
+  const result = [...rendered];
+  for (let index = 0; index < stored.length; index++) {
+    const item = stored[index];
+    if (mentioned.has(key(item))) continue;
+    const successor = stored
+      .slice(index + 1)
+      .find((candidate) =>
+        result.some((entry) => key(entry) === key(candidate)),
+      );
+    const at = successor
+      ? result.findIndex((entry) => key(entry) === key(successor))
+      : result.length;
+    result.splice(at, 0, item);
+  }
+  return result;
 }
 
-/** Replace an agent id in-place after a folder-backed rename. Existing copies
- * of the new id are removed so the layout remains duplicate-free. */
+export function createGroupWithIdentityOp(
+  layout: SidebarLayout,
+  id: string,
+  name: string,
+  before: SidebarRootEntry | null,
+  identity: { icon?: string; color?: string } = {},
+): SidebarLayout {
+  return setGroupIdentityOp(
+    createGroupOp(layout, id, name, before),
+    id,
+    identity,
+  );
+}
+
+function insertBefore<T>(list: T[], value: T, beforeIndex: number): T[] {
+  return [...list.slice(0, beforeIndex), value, ...list.slice(beforeIndex)];
+}
+
+function rootIndex(
+  order: SidebarRootEntry[],
+  before: SidebarRootEntry | null,
+): number {
+  if (!before) return order.length;
+  const index = order.findIndex(
+    (entry) => entry.kind === before.kind && entry.id === before.id,
+  );
+  return index < 0 ? order.length : index;
+}
+
 export function remapAgentIdOp(
   layout: SidebarLayout,
   oldId: string,
   newId: string,
 ): SidebarLayout {
   if (oldId === newId) return layout;
-  const hasOldId =
-    layout.groups.some((group) => group.agentIds.includes(oldId)) ||
-    layout.ungroupedOrder.includes(oldId);
-  if (!hasOldId) return layout;
-  const lists = [
-    ...layout.groups.map((group) => group.agentIds),
-    layout.ungroupedOrder,
-  ];
-  const winnerListIndex = lists.findIndex((ids) => ids.includes(oldId));
-  const remap = (ids: string[], listIndex: number) =>
-    ids.flatMap((id) => {
-      if (id === newId) return [];
-      if (id === oldId) return listIndex === winnerListIndex ? [newId] : [];
-      return [id];
-    });
-  return {
-    ...layout,
-    groups: layout.groups.map((group, index) => ({
-      ...group,
-      agentIds: remap(group.agentIds, index),
-    })),
-    ungroupedOrder: remap(layout.ungroupedOrder, layout.groups.length),
-  };
+  const winnerGroup = layout.groups.find((group) =>
+    group.agentIds.includes(oldId),
+  );
+  const hasRoot = layout.order.some(
+    (entry) => entry.kind === "agent" && entry.id === oldId,
+  );
+  if (!winnerGroup && !hasRoot) return layout;
+  const groups = layout.groups.map((group) => ({
+    ...group,
+    agentIds: group.agentIds.flatMap((id) =>
+      id === oldId
+        ? group === winnerGroup
+          ? [newId]
+          : []
+        : id === newId
+          ? []
+          : [id],
+    ),
+  }));
+  let replaced = false;
+  const order = layout.order.flatMap<SidebarRootEntry>((entry) => {
+    if (entry.kind !== "agent") return [entry];
+    if (entry.id === newId) return [];
+    if (entry.id !== oldId) return [entry];
+    if (winnerGroup || replaced) return [];
+    replaced = true;
+    return [{ kind: "agent" as const, id: newId }];
+  });
+  return { groups, order };
 }
 
-/**
- * Move an agent to `dest`, removing it from wherever it currently lives (any
- * group's `agentIds` and `ungroupedOrder`) before inserting it once.
- *
- * A `dest.groupId` the layout does not hold UPSERTS: the group is appended
- * blank and the agent lands inside it. The old fallback (drop it in
- * `ungroupedOrder`) was written for a layout that IS the model, where an
- * unknown id can only mean corruption. On a server-teams host the layout is an
- * ordering overlay keyed by server team id and starts empty, so an unknown id
- * is the NORMAL first drop into a team, and sending it to `ungroupedOrder`
- * there means recording nothing at all: nothing reads that list on that
- * backend, so the drop position is lost. Locally every rail team is a stored
- * group, so this branch never fires and the section maths is untouched.
- */
 export function moveItemOp(
   layout: SidebarLayout,
   agentId: string,
   dest: ItemDest,
 ): SidebarLayout {
-  const groups = layout.groups.map((g) => ({
-    ...g,
-    agentIds: g.agentIds.filter((a) => a !== agentId),
+  if (
+    dest.groupId !== null &&
+    !layout.groups.some((group) => group.id === dest.groupId)
+  )
+    return layout;
+  const groups = layout.groups.map((group) => ({
+    ...group,
+    agentIds: group.agentIds.filter((id) => id !== agentId),
   }));
-  let ungroupedOrder = layout.ungroupedOrder.filter((a) => a !== agentId);
-
+  const order = layout.order.filter(
+    (entry) => entry.kind !== "agent" || entry.id !== agentId,
+  );
   if (dest.groupId === null) {
-    ungroupedOrder = insertBefore(ungroupedOrder, agentId, dest.beforeItemId);
-  } else {
-    let target = groups.find((g) => g.id === dest.groupId);
-    if (!target) {
-      target = blankOverlayGroup(dest.groupId);
-      groups.push(target);
-    }
-    target.agentIds = insertBefore(target.agentIds, agentId, dest.beforeItemId);
+    const before = dest.beforeItemId
+      ? { kind: "agent" as const, id: dest.beforeItemId }
+      : null;
+    return {
+      groups,
+      order: insertBefore(
+        order,
+        { kind: "agent", id: agentId },
+        rootIndex(order, before),
+      ),
+    };
   }
-
-  return { ...layout, groups, ungroupedOrder };
+  const target = groups.find((group) => group.id === dest.groupId);
+  if (!target) return layout;
+  const index = dest.beforeItemId
+    ? target.agentIds.indexOf(dest.beforeItemId)
+    : -1;
+  target.agentIds = insertBefore(
+    target.agentIds,
+    agentId,
+    index < 0 ? target.agentIds.length : index,
+  );
+  return { groups, order };
 }
 
-/** Reorder a group before `beforeGroupId` (null = move to the end). No-op if
- *  the group id is unknown. */
-export function moveGroupOp(
+/** Store a drop while retaining items absent from the rendered arrangement. */
+export function arrangeOp(
   layout: SidebarLayout,
-  groupId: string,
-  beforeGroupId: string | null,
+  arrangement: {
+    order: SidebarRootEntry[];
+    members: Record<string, string[]>;
+  },
 ): SidebarLayout {
-  const moving = layout.groups.find((g) => g.id === groupId);
-  if (!moving) return layout;
-  const rest = layout.groups.filter((g) => g.id !== groupId);
-  if (beforeGroupId === null) return { ...layout, groups: [...rest, moving] };
-  const idx = rest.findIndex((g) => g.id === beforeGroupId);
-  if (idx === -1) return { ...layout, groups: [...rest, moving] };
+  // Members of a group the fresh layout lost are placed nowhere, so they must
+  // not count as mentioned: their stored slot is all they have.
+  const mentionedAgents = new Set([
+    ...arrangement.order.flatMap((entry) =>
+      entry.kind === "agent" ? [entry.id] : [],
+    ),
+    ...layout.groups.flatMap((group) => arrangement.members[group.id] ?? []),
+  ]);
   return {
-    ...layout,
-    groups: [...rest.slice(0, idx), moving, ...rest.slice(idx)],
+    order: retainUnrendered(
+      layout.order,
+      arrangement.order,
+      (entry) => `${entry.kind}:${entry.id}`,
+      new Set([
+        ...arrangement.order.map((entry) => `${entry.kind}:${entry.id}`),
+        ...[...mentionedAgents].map((id) => `agent:${id}`),
+      ]),
+    ),
+    groups: layout.groups.map((group) => ({
+      ...group,
+      agentIds: retainUnrendered(
+        group.agentIds,
+        arrangement.members[group.id] ?? [],
+        (id) => id,
+        mentionedAgents,
+      ),
+    })),
   };
 }

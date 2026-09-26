@@ -4,7 +4,7 @@ import type { AdapterContext } from "./context";
 // The declaration lives in `boot-mixin.ts` — only `*-mixin.ts` files under
 // `client/` are scanned by the assistant-catalog generator, so an operation
 // declared here would never be published. Re-exported so the non-mixin callers
-// (the sidebar-layout store, the local-model bridge, `deploymentServes` below)
+// (the local-model bridge and `deploymentServes` below)
 // keep one import site for the deployment's own description.
 export { getCapabilities };
 

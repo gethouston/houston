@@ -3,18 +3,17 @@ import { FOLLOW_UP_PLACEHOLDER } from "./composer";
 import { rail } from "./team-nav";
 
 /**
- * The DEFAULT team's "New AI Employee" row in the rail — the door this flow walks.
+ * The "New AI Employee" row at the end of the rail — the door this flow walks.
  *
- * "New AI Employee" names two controls at once: this row at the foot of an expanded
- * team block, and the Agents home's round button
+ * "New AI Employee" names two controls at once: this row at the foot of the
+ * full list, and the Agents home's round button
  * (`agents-home-new-agent`, `agents-home-list.tsx`). The Agents home is mounted
  * for the whole session, so a page-wide lookup by accessible name matches both
- * and trips strict mode. Naming the block also fixes WHERE the agent lands: a
- * team's row creates into that team, and these flows want the default one.
+ * and trips strict mode. The row's marker selects the rail control exactly.
  */
 export function newAgentRow(page: Page): Locator {
   return rail(page)
-    .locator('[data-sidebar-drop-section=""]')
+    .locator("[data-sidebar-add-row]")
     .getByRole("button", { name: "New AI Employee" });
 }
 

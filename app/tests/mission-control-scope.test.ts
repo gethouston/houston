@@ -144,7 +144,7 @@ describe("the board applies the agent filter it is given", () => {
   );
   const teamBoardScope = readFileSync(
     new URL(
-      "../src/components/team-view/use-team-board-scope.ts",
+      "../src/components/team-view/use-agent-board-scope.ts",
       import.meta.url,
     ),
     "utf8",
@@ -165,14 +165,11 @@ describe("the board applies the agent filter it is given", () => {
     );
   });
 
-  it("lets a focus argument override the team-wide pin it falls back to", () => {
+  it("narrows the employee board to its owner", () => {
     assert.ok(!teamBoardScope.includes("keepFocus"));
     assert.match(
       teamBoardScope,
-      /useTeamScope\(\s*team,\s*agentFocusId \?\? teamAgentFilter,?\s*\)/,
+      /scopePaths: \[folderPath\], teamId: id, filterPath: folderPath/,
     );
-    // The pin is READ here and written by the rail, so the board hook has no
-    // business holding the store's setter.
-    assert.ok(!teamBoardScope.includes("setTeamAgentFilter"));
   });
 });

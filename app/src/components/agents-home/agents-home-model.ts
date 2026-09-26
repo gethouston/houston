@@ -125,11 +125,9 @@ export function agentHomeFilterTeam(
   return teams.find((team) => team.id === teamId) ?? null;
 }
 
-/** Whether the home offers the team filter at all: a workspace with only its
- *  default team has nothing to narrow by, and a control that offers one
- *  choice is a control that lies. */
+/** A folder filter is useful beside the all-agents choice. */
 export function agentHomeHasTeamFilter(teams: readonly TeamView[]): boolean {
-  return teams.length > 1;
+  return teams.length > 0;
 }
 
 /** The rows under the filter: every row, or the chosen team's members in the

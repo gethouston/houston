@@ -14,7 +14,7 @@ import { missionCard, openTeamSection } from "./support/team-nav";
  * Signed in (identity-ON server) because "nobody but me" needs a viewer id.
  */
 
-test.use({ baseURL: AUTH_WEB_URL });
+test.use({ baseURL: AUTH_WEB_URL, teamBoard: true });
 
 const PEOPLE_LABEL = "People on this task";
 const SOLO_TITLE = "Connect Google Calendar";

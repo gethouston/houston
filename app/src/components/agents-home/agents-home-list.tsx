@@ -5,26 +5,21 @@ import {
   EmptyTitle,
   Skeleton,
 } from "@houston-ai/core";
-import { UserRoundPlus } from "lucide-react";
 import { useMemo } from "react";
 import { useTranslation } from "react-i18next";
 import { useAllConversations } from "../../hooks/queries";
-import { useCanCreateAgents } from "../../hooks/use-can-create-agents";
 import { useTeams } from "../../hooks/use-teams";
 import { useAgentStore } from "../../stores/agents";
 import { useUIStore } from "../../stores/ui";
-import { PageContainer, PageHero } from "../shell/page-shell";
 import { useAgentActivitySummaries } from "../shell/use-agent-activity-summaries";
-import { tourAnchor } from "../shell/workspace-tour-steps";
 import { AgentHomeRowCell } from "./agent-home-row";
+import { AgentsHomeHeader } from "./agents-home-header";
 import {
   type AgentHomeRow,
   agentHomeFilterTeam,
-  agentHomeHasTeamFilter,
   agentHomeRows,
   agentRowsForTeam,
 } from "./agents-home-model";
-import { AgentsHomeTeamFilter } from "./agents-home-team-filter";
 
 /**
  * The mobile Agents home: every agent as a chat-list row — a large avatar
@@ -34,22 +29,22 @@ import { AgentsHomeTeamFilter } from "./agents-home-team-filter";
  * summaries every other badge surface reads — no fetch path of its own — so
  * the rows repaint through the ordinary event invalidation.
  *
- * One FLAT list, narrowed by a team selector under the title (present only
- * when the workspace has more than one team): every agent of every team by
- * default, or one team's. The choice is a store preference, not a nav level,
- * so drilling into an agent and back finds the filter where it was left.
+ * One FLAT list, narrowed by the group filter under the title (present once
+ * the workspace has a group): every agent by default, or one group's. The
+ * choice is a store preference, not a nav level, so drilling into an agent and
+ * back finds the filter where it was left. The title block
+ * ({@link AgentsHomeHeader}) also carries the phone's group actions.
  *
  * Tapping an agent adopts it as current (the same subject-acquisition the rail's
  * agent rows perform) and pushes its task list on the nav stack.
  */
 export function AgentsHomeList() {
-  const { t } = useTranslation("shell");
+  const { t } = useTranslation(["shell", "teams"]);
   const agents = useAgentStore((s) => s.agents);
   const teams = useTeams();
   const openAgentsHome = useUIStore((s) => s.openAgentsHome);
   const teamId = useUIStore((s) => s.agentsHomeTeamId);
   const setTeamId = useUIStore((s) => s.setAgentsHomeTeamId);
-  const { canCreate } = useCanCreateAgents();
 
   const rosterPaths = useMemo(() => agents.map((a) => a.folderPath), [agents]);
   const { data: conversations } = useAllConversations(rosterPaths);
@@ -73,33 +68,25 @@ export function AgentsHomeList() {
 
   return (
     <div data-testid="agents-home" className="flex h-full flex-col">
-      <PageContainer className="shrink-0 pt-6">
-        <PageHero
-          title={t("agentsHome.title")}
-          className="mb-3"
-          trailing={
-            canCreate ? (
-              <NewAgentButton label={t("sidebar.addAgent")} />
-            ) : undefined
-          }
-        />
-        {agentHomeHasTeamFilter(teams) && (
-          <div className="mb-2">
-            <AgentsHomeTeamFilter
-              teams={teams}
-              selected={team}
-              onSelect={setTeamId}
-            />
-          </div>
-        )}
-      </PageContainer>
+      <AgentsHomeHeader teams={teams} selected={team} onSelect={setTeamId} />
       <div className="min-h-0 flex-1 overflow-y-auto pb-6">
         {agents.length === 0 ? (
           <Empty className="border-0">
             <EmptyHeader>
-              <EmptyTitle>{t("agentsHome.empty.title")}</EmptyTitle>
+              <EmptyTitle>{t("shell:agentsHome.empty.title")}</EmptyTitle>
               <EmptyDescription>
-                {t("agentsHome.empty.description")}
+                {t("shell:agentsHome.empty.description")}
+              </EmptyDescription>
+            </EmptyHeader>
+          </Empty>
+        ) : team !== null && team.agents.length === 0 ? (
+          <Empty className="border-0">
+            <EmptyHeader>
+              <EmptyTitle>
+                {t("teams:phoneEmployee.emptyGroup.title")}
+              </EmptyTitle>
+              <EmptyDescription>
+                {t("teams:phoneEmployee.emptyGroup.description")}
               </EmptyDescription>
             </EmptyHeader>
           </Empty>
@@ -125,26 +112,6 @@ export function AgentsHomeList() {
         )}
       </div>
     </div>
-  );
-}
-
-/**
- * The phone's create-agent control. The desktop reaches the same dialog from
- * the rail's own `newAgent` anchor; the rail is not rendered below md, so this
- * carries the anchor there and the spotlight takes whichever is visible.
- */
-function NewAgentButton({ label }: { label: string }) {
-  return (
-    <button
-      type="button"
-      aria-label={label}
-      data-testid="agents-home-new-agent"
-      {...tourAnchor("newAgent")}
-      onClick={() => useUIStore.getState().openCreateFlow("agent")}
-      className="flex size-10 shrink-0 items-center justify-center rounded-full bg-chip text-ink transition-colors active:scale-[0.96] hover:bg-hover focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-focus ht-hairline"
-    >
-      <UserRoundPlus className="size-5" />
-    </button>
   );
 }
 

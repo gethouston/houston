@@ -1,6 +1,8 @@
 import { useEffect, useRef } from "react";
 import { useTranslation } from "react-i18next";
 import { getEngine, newEngineActive } from "../lib/engine";
+import { logAndReportError } from "../lib/error-report";
+import { showErrorToast } from "../lib/error-toast";
 import i18n from "../lib/i18n";
 import { resumePendingMove } from "../lib/move-resume";
 import type { TeamMoveStage, TeamMoveState } from "../lib/move-team";
@@ -18,31 +20,21 @@ import {
   releaseTeamMove,
   updatePendingTeamMove,
 } from "../lib/pending-team-move";
-import { shareErrorCode } from "../lib/share-via-team";
-import { orgSlugFromWorkspaceId } from "../lib/space-id";
-import { tauriAgentTeams, tauriOrg } from "../lib/tauri";
+import { tauriOrg } from "../lib/tauri";
+import { teamMovePostscriptWire } from "../lib/team-move-postscript-wire";
 import { drivePendingTeamMove } from "../lib/team-move-resume";
 import { runTeamMovePostscript } from "../lib/team-move-stage";
-import { useAgentStore } from "../stores/agents";
 import { useUIStore } from "../stores/ui";
-import { useWorkspaceStore } from "../stores/workspaces";
 
 export function useTeamMoveResume(enabled: boolean): void {
   const { t } = useTranslation("teams");
   const ran = useRef(false);
-
   useEffect(() => {
     if (!enabled || !newEngineActive() || ran.current) return;
-    const pendingTeams = readPendingTeamMoves();
+    const pendingTeams = readPendingTeamMoves(undefined, reportPendingMove);
     if (pendingTeams.length === 0) return;
     ran.current = true;
     let cancelled = false;
-    const toast = (kind: "done" | "failed", team: string) => {
-      useUIStore.getState().addToast({
-        title: t(`moveTeamResume.${kind}`, { team }),
-        variant: kind === "done" ? "success" : "error",
-      });
-    };
     void (async () => {
       try {
         const caps = await getEngine().capabilities();
@@ -59,7 +51,7 @@ export function useTeamMoveResume(enabled: boolean): void {
               markAgentMoved: (id) =>
                 updatePendingTeamMove(pending.sourceTeam.id, {
                   movedAgentIds: [
-                    ...(readPendingTeamMoves().find(
+                    ...(readPendingTeamMoves(undefined, reportPendingMove).find(
                       (item) => item.sourceTeam.id === pending.sourceTeam.id,
                     )?.movedAgentIds ?? []),
                     id,
@@ -76,18 +68,40 @@ export function useTeamMoveResume(enabled: boolean): void {
                   },
                   options,
                 ),
-              runPostscript: () => driveTeamMovePostscript(pending),
+              runPostscript: () =>
+                driveTeamMovePostscript(pending, () => {}, {
+                  suppressToasts: () => true,
+                }),
             });
-            if (result.outcome !== "done") throw new Error("agent move failed");
+            if (result.outcome === "done") {
+              useUIStore.getState().addToast({
+                title: t("moveTeamResume.done", {
+                  team: pending.sourceTeam.name,
+                }),
+                variant: "success",
+              });
+            } else {
+              useUIStore.getState().addToast({
+                title: t("moveTeamResume.failed", {
+                  team: pending.sourceTeam.name,
+                }),
+                variant: "error",
+              });
+            }
           } catch (error) {
-            if (!(error instanceof TeamMovePostscriptError))
-              toast("failed", pending.sourceTeam.name);
+            showErrorToast("resume_team_move", String(error), error);
+            useUIStore.getState().addToast({
+              title: t("moveTeamResume.failed", {
+                team: pending.sourceTeam.name,
+              }),
+              variant: "error",
+            });
           } finally {
             releaseTeamMove(pending.sourceTeam.id);
           }
         }
-      } catch {
-        toast("failed", pendingTeams[0]?.sourceTeam.name ?? "");
+      } catch (error) {
+        showErrorToast("resume_team_move", String(error), error);
       }
     })();
     return () => {
@@ -99,76 +113,37 @@ export function useTeamMoveResume(enabled: boolean): void {
 export async function driveTeamMovePostscript(
   pending: PendingTeamMove,
   onProgress: (state: TeamMoveState) => void = () => {},
-  options: {
-    /** Asked AT COMPLETION time: a MOUNTED dialog renders the same outcome
-     *  inline (invite step / failure face), so the driver's toast would be a
-     *  second surface for one event. Unmounted mid-drive (the space switch
-     *  tears the view down), the toast is the only surface and fires. */
-    suppressToasts?: () => boolean;
-  } = {},
+  options: { suppressToasts?: () => boolean } = {},
 ): Promise<void> {
-  const toast = (kind: "done" | "failed") => {
-    if (!options.suppressToasts?.()) {
-      toastPostscript(kind, pending.sourceTeam.name);
-    }
-  };
   try {
-    await runTeamMovePostscript(
-      pending,
-      postscriptWire(pending),
-      (state, createdTeamId) => {
-        const stage = postscriptStage(state);
+    await runTeamMovePostscript(pending, teamMovePostscriptWire(), (state) => {
+      const stage = postscriptStage(state);
+      if (stage)
         updatePendingTeamMove(pending.sourceTeam.id, {
-          ...(createdTeamId ? { createdTeamId } : {}),
-          ...(stage ? { postscriptStage: stage } : {}),
+          postscriptStage: stage,
         });
-        onProgress(state);
-      },
-    );
+      onProgress(state);
+    });
     clearPendingTeamMove(pending.sourceTeam.id);
-    toast("done");
+    if (!options.suppressToasts?.())
+      toastPostscript("done", pending.sourceTeam.name);
   } catch (error) {
-    toast("failed");
-    throw new TeamMovePostscriptError(error);
+    if (!options.suppressToasts?.())
+      toastPostscript("failed", pending.sourceTeam.name);
+    throw error;
   } finally {
     releaseTeamMove(pending.sourceTeam.id);
   }
 }
 
-export class TeamMovePostscriptError extends Error {
-  readonly cause: unknown;
-  constructor(cause: unknown) {
-    super("team move postscript failed");
-    this.cause = cause;
-  }
-}
-
 function postscriptStage(state: TeamMoveState): TeamMoveStage | undefined {
-  return ["cleanupSource", "switching", "recreate", "placing"].includes(
-    state.step,
-  )
+  return ["createTarget", "cleanupSource", "switching"].includes(state.step)
     ? (state.step as TeamMoveStage)
     : undefined;
 }
 
-function postscriptWire(pending: PendingTeamMove) {
-  return {
-    deleteSource: (id: string) => tauriAgentTeams.remove(id),
-    switchTarget: switchTargetWorkspace,
-    listTargetTeams: () => tauriAgentTeams.list(),
-    createTargetTeam: (input: {
-      name: string;
-      icon?: string;
-      color?: string;
-    }) => tauriAgentTeams.create(input),
-    updateTargetTeam: (id: string, patch: { context: string }) =>
-      tauriAgentTeams.update(id, patch),
-    placeAgent: (agentId: string, teamId: string) =>
-      tauriAgentTeams.setAgentTeam(agentId, teamId),
-    isMissingSource: (error: unknown) =>
-      shareErrorCode(error) === "team_not_found",
-    preferredTeamId: pending.createdTeamId,
-  };
+function reportPendingMove(error: unknown): void {
+  logAndReportError("read_pending_team_moves", error);
 }
 
 function toastPostscript(kind: "done" | "failed", team: string): void {
@@ -176,14 +151,4 @@ function toastPostscript(kind: "done" | "failed", team: string): void {
     title: i18n.t(`teams:moveTeamResume.${kind}`, { team }),
     variant: kind === "done" ? "success" : "error",
   });
-}
-
-async function switchTargetWorkspace(slug: string): Promise<void> {
-  await useWorkspaceStore.getState().loadWorkspaces();
-  const workspace = useWorkspaceStore
-    .getState()
-    .workspaces.find((item) => orgSlugFromWorkspaceId(item.id) === slug);
-  if (!workspace) throw new Error("target workspace not found");
-  useWorkspaceStore.getState().setCurrent(workspace);
-  await useAgentStore.getState().loadAgents(workspace.id);
 }

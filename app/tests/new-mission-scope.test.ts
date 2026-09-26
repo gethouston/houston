@@ -9,8 +9,8 @@ import { newMissionScopeFor } from "../src/lib/new-mission-scope.ts";
 const at = (
   viewMode: string,
   agentsHomeAgentId: string | null = null,
-  activeTeamId: string | null = null,
-) => ({ viewMode, agentsHomeAgentId, activeTeamId });
+  activeAgentId: string | null = null,
+) => ({ viewMode, agentsHomeAgentId, activeAgentId });
 
 describe("newMissionScopeFor", () => {
   it("a drilled agent IS the subject", () => {
@@ -26,21 +26,21 @@ describe("newMissionScopeFor", () => {
     });
   });
 
-  it("a team view scopes to that team's roster, in every section", () => {
-    assert.deepEqual(newMissionScopeFor(at("team", null, "t1")), {
-      kind: "team",
-      teamId: "t1",
+  it("an employee screen scopes to that employee in every section", () => {
+    assert.deepEqual(newMissionScopeFor(at("agent", null, "a1")), {
+      kind: "agent",
+      agentId: "a1",
     });
   });
 
-  it("a team view with no team resolved falls back", () => {
-    assert.deepEqual(newMissionScopeFor(at("team", null, null)), {
+  it("an employee screen with no employee resolved falls back", () => {
+    assert.deepEqual(newMissionScopeFor(at("agent", null, null)), {
       kind: "home",
     });
   });
 
   it("every other screen falls back to the shared rule", () => {
-    for (const view of ["academy", "teams-home", "settings", "store"])
+    for (const view of ["academy", "settings", "store"])
       assert.deepEqual(newMissionScopeFor(at(view, "a1", "t1")), {
         kind: "home",
       });

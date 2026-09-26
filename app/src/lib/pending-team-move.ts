@@ -3,17 +3,16 @@ import type { TeamMoveStage } from "./move-team";
 export interface PendingTeamMove {
   sourceTeam: {
     id: string;
+    workspaceId: string;
     name: string;
     icon?: string;
     color?: string;
-    context?: string;
-    isDefault: boolean;
   };
   targetSlug: string;
   targetName: string;
+  targetGroupId: string;
   agentIds: string[];
   movedAgentIds: string[];
-  createdTeamId?: string;
   postscriptStage?: TeamMoveStage;
   startedAt: number;
 }
@@ -23,40 +22,51 @@ type StorageLike = Pick<Storage, "getItem" | "setItem" | "removeItem">;
 const defaultStorage = (): StorageLike | null =>
   typeof localStorage === "undefined" ? null : localStorage;
 
-function valid(v: unknown): v is Omit<PendingTeamMove, "movedAgentIds"> & {
-  movedAgentIds?: string[];
-} {
-  const m = v as PendingTeamMove | null;
+function valid(value: unknown): value is PendingTeamMove {
+  if (!value || typeof value !== "object") return false;
+  const move = value as Partial<PendingTeamMove>;
   return (
-    typeof m?.sourceTeam?.id === "string" &&
-    typeof m.sourceTeam.name === "string" &&
-    typeof m.sourceTeam.isDefault === "boolean" &&
-    typeof m.targetSlug === "string" &&
-    typeof m.targetName === "string" &&
-    Array.isArray(m.agentIds) &&
-    m.agentIds.every((id) => typeof id === "string") &&
-    (m.movedAgentIds === undefined ||
-      (Array.isArray(m.movedAgentIds) &&
-        m.movedAgentIds.every((id) => typeof id === "string"))) &&
-    typeof m.startedAt === "number"
+    typeof move.sourceTeam?.id === "string" &&
+    typeof move.sourceTeam.workspaceId === "string" &&
+    typeof move.sourceTeam.name === "string" &&
+    typeof move.targetSlug === "string" &&
+    typeof move.targetName === "string" &&
+    typeof move.targetGroupId === "string" &&
+    Array.isArray(move.agentIds) &&
+    move.agentIds.every((id) => typeof id === "string") &&
+    Array.isArray(move.movedAgentIds) &&
+    move.movedAgentIds.every((id) => typeof id === "string") &&
+    move.movedAgentIds.every((id) => move.agentIds?.includes(id)) &&
+    typeof move.startedAt === "number" &&
+    (move.postscriptStage === undefined ||
+      ["createTarget", "cleanupSource", "switching"].includes(
+        move.postscriptStage,
+      ))
   );
 }
 
 export function readPendingTeamMoves(
   storage: StorageLike | null = defaultStorage(),
+  report: (error: unknown) => void = (error) =>
+    console.error("[read_pending_team_moves]", error),
 ): PendingTeamMove[] {
   const raw = storage?.getItem(STORAGE_KEY);
   if (!raw) return [];
+  let parsed: unknown;
   try {
-    const parsed: unknown = JSON.parse(raw);
-    return Array.isArray(parsed)
-      ? parsed
-          .filter(valid)
-          .map((move) => ({ ...move, movedAgentIds: move.movedAgentIds ?? [] }))
-      : [];
-  } catch {
+    parsed = JSON.parse(raw);
+  } catch (error) {
+    storage?.removeItem(STORAGE_KEY);
+    report(error);
     return [];
   }
+  const moves = Array.isArray(parsed) ? parsed.filter(valid) : [];
+  if (!Array.isArray(parsed) || moves.length !== parsed.length) {
+    if (moves.length === 0) storage?.removeItem(STORAGE_KEY);
+    else storage?.setItem(STORAGE_KEY, JSON.stringify(moves));
+    report(new Error("discarded incompatible pending team move records"));
+  }
+  return moves;
 }
 
 export function recordPendingTeamMove(
@@ -84,9 +94,7 @@ export function clearPendingTeamMove(
 
 export function updatePendingTeamMove(
   sourceTeamId: string,
-  patch: Partial<
-    Pick<PendingTeamMove, "createdTeamId" | "movedAgentIds" | "postscriptStage">
-  >,
+  patch: Partial<Pick<PendingTeamMove, "movedAgentIds" | "postscriptStage">>,
   storage: StorageLike | null = defaultStorage(),
 ): void {
   if (!storage) return;

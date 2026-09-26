@@ -40,7 +40,6 @@ const team = (id: string, agentIds: string[]): TeamView => ({
   id,
   name: id,
   agents: agentIds.map((agentId) => ({ id: agentId, name: agentId }) as Agent),
-  isDefault: id === "team:default",
 });
 
 describe("agentHomeRows", () => {
@@ -165,10 +164,11 @@ describe("the team filter", () => {
     b: summary(0, 0),
     c: summary(0, 0),
   });
-  const teams = [team("t1", ["b", "c"]), team("team:default", ["a"])];
+  const teams = [team("t1", ["b", "c"]), team("t2", ["a"])];
 
-  it("is offered only when there is more than one team to choose", () => {
-    assert.equal(agentHomeHasTeamFilter([team("team:default", ["a"])]), false);
+  it("is offered when there is a folder to choose", () => {
+    assert.equal(agentHomeHasTeamFilter([]), false);
+    assert.equal(agentHomeHasTeamFilter([team("t2", ["a"])]), true);
     assert.equal(agentHomeHasTeamFilter(teams), true);
   });
 

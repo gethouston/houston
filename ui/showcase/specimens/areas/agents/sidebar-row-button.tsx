@@ -21,7 +21,7 @@ function SidebarRowButtonSpecimen() {
     >
       <SpecimenSection
         title="Anatomy"
-        note="A fixed 28px box, a 20px glyph column, a truncating label, an optional trailing slot inside the button and an optional affordance beside it. The pill is INSET 6px from each edge and rounded on the same radius the team screen's section lozenges wear, so it reads as a row floating on the rail rather than as a bar cut across it. It is painted on a layer of its own, behind the content, which is what lets it be inset without dragging the glyph column with it: hierarchy stays the indent INSIDE a full-width button, so the pills line up in one clean column instead of stepping in and out with their contents. Click anything — the highlight is live."
+        note="A fixed 28px box, a 20px glyph column, a truncating label, an optional trailing slot inside the button and an optional affordance beside it. The pill is INSET 6px from each edge and rounded on the same radius an employee screen's section lozenges wear, so it reads as a row floating on the rail rather than as a bar cut across it. It is painted on a layer of its own, behind the content, which is what lets it be inset without dragging the glyph column with it: hierarchy stays the indent INSIDE a full-width button, so the pills line up in one clean column instead of stepping in and out with their contents. Click anything — the highlight is live."
       >
         <SpecimenRow label="One block, every row kind">
           <Ladder />
@@ -95,7 +95,7 @@ function SidebarRowButtonSpecimen() {
         <SpecimenRow label="13px item / 12px band">
           <Rail>
             <SidebarRowButton
-              label="Your teams"
+              label="Your AI Employees"
               depth="block"
               band
               disclosure={{ expanded: true }}

@@ -1,76 +1,24 @@
-import type { SidebarGroup, SidebarLayout } from "@houston/protocol";
+import {
+  DEFAULT_SIDEBAR_LAYOUT,
+  normalizeSidebarLayout,
+  type SidebarLayout,
+} from "@houston/protocol";
 
-/** The empty layout returned when none is stored (or the stored one is corrupt). */
-export const DEFAULT_SIDEBAR_LAYOUT: SidebarLayout = {
-  groups: [],
-  ungroupedOrder: [],
-};
-
-const isStringArray = (v: unknown): v is string[] =>
-  Array.isArray(v) && v.every((x) => typeof x === "string");
+export { DEFAULT_SIDEBAR_LAYOUT, parseSidebarLayout } from "@houston/protocol";
 
 /**
- * Strict guard for a client-supplied sidebar layout: rejects anything that is
- * not the exact shape (non-object, malformed group, or a non-string-array
- * order) so hostile/corrupt input can never persist. Doubles as the read-path
- * validator, so a hand-edited pref falls back to the default.
+ * Read the stored `sidebar_layout` pref. A hand-edited or corrupt doc keeps
+ * every group it still names rather than reading as empty, because the next
+ * whole-document write would otherwise store that emptiness over it.
  */
-export function parseSidebarLayout(body: unknown): SidebarLayout | null {
-  if (!body || typeof body !== "object" || Array.isArray(body)) return null;
-  const b = body as Record<string, unknown>;
-  if (!Array.isArray(b.groups)) return null;
-  const groups: SidebarGroup[] = [];
-  for (const g of b.groups) {
-    if (!g || typeof g !== "object" || Array.isArray(g)) return null;
-    const gr = g as Record<string, unknown>;
-    if (
-      typeof gr.id !== "string" ||
-      typeof gr.name !== "string" ||
-      typeof gr.collapsed !== "boolean" ||
-      !isStringArray(gr.agentIds) ||
-      (gr.context !== undefined && typeof gr.context !== "string") ||
-      (gr.icon !== undefined && typeof gr.icon !== "string") ||
-      (gr.color !== undefined && typeof gr.color !== "string")
-    )
-      return null;
-    groups.push({
-      id: gr.id,
-      name: gr.name,
-      collapsed: gr.collapsed,
-      agentIds: gr.agentIds,
-      ...(gr.context !== undefined ? { context: gr.context } : {}),
-      ...(gr.icon !== undefined ? { icon: gr.icon } : {}),
-      ...(gr.color !== undefined ? { color: gr.color } : {}),
-    });
-  }
-  if (!isStringArray(b.ungroupedOrder)) return null;
-  if (
-    b.defaultCollapsed !== undefined &&
-    typeof b.defaultCollapsed !== "boolean"
-  )
-    return null;
-  if (b.defaultContext !== undefined && typeof b.defaultContext !== "string")
-    return null;
-  return {
-    groups,
-    ungroupedOrder: b.ungroupedOrder,
-    ...(b.defaultCollapsed !== undefined
-      ? { defaultCollapsed: b.defaultCollapsed }
-      : {}),
-    ...(b.defaultContext !== undefined
-      ? { defaultContext: b.defaultContext }
-      : {}),
-  };
-}
-
-/** Parse the stored `sidebar_layout` pref, falling back to the default. */
 export function readSidebarLayout(raw: string | null): SidebarLayout {
   if (!raw) return DEFAULT_SIDEBAR_LAYOUT;
-  // A corrupt/hand-edited doc reads as the default rather than 500ing the
-  // sidebar (mirrors loadPreferences treating a non-object doc as empty).
+  let parsed: unknown;
   try {
-    return parseSidebarLayout(JSON.parse(raw)) ?? DEFAULT_SIDEBAR_LAYOUT;
+    parsed = JSON.parse(raw);
   } catch {
+    // Unparseable JSON names no groups to keep.
     return DEFAULT_SIDEBAR_LAYOUT;
   }
+  return normalizeSidebarLayout(parsed);
 }

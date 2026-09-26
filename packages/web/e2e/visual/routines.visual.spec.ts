@@ -1,6 +1,6 @@
 /**
  * Visual-regression baselines for the routines screens at phone width: the
- * team's merged Routines list (reached through the Teams tree, so the screen
+ * team's merged Routines list (reached through the task list menu, so the screen
  * wears the drilled back chip) and a routine's own screen. Deterministic under
  * the fake host — one seeded routine with a fixed cron whose row summary
  * ("Runs every day at 9:00 AM") never moves; the routine screen's next-run line

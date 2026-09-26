@@ -1,180 +1,117 @@
-import { FAKE_HOST_URL } from "@houston/fake-host";
-import { NEW_TASK_PLACEHOLDER } from "../support/composer";
+import type { Page } from "@playwright/test";
 import { expect, test } from "../support/fixtures";
-import {
-  newTaskButton,
-  openPhoneTeamSection,
-  teamSettingsTab,
-} from "../support/mobile-nav";
+import { awaitAgentsHome } from "../support/mobile-nav";
 import { screen } from "../support/team-nav";
 
 /**
- * The phone's team Tasks list: below 768px a team's board is a LIST, not a
- * pager. The same missions the columns hold, grouped Needs you / Running /
- * Done as shared task rows, under the segmented control the per-agent list
- * wears, with search, the archive and Team settings behind the drilled
- * header's "…" menu.
- *
- * The screen is reached the way the phone reaches every team section — the
- * Teams tree, one row per section — and it carries a back chip rather than a
- * section switcher.
+ * The phone reaches an employee's other sections from its task list's ⋯
+ * menu: Routines and Files open that tab of the employee's own screen, and
+ * Settings opens in place over the list.
  */
 
-const AGENT = "houston-assistant";
+async function openEmployeeMenu(page: Page): Promise<void> {
+  await page.goto("/");
+  await (await awaitAgentsHome(page)).tap();
+  await expect(page.getByTestId("agent-missions-screen")).toBeVisible();
+  await page.getByTestId("agent-missions-menu").tap();
+}
 
-test("the list groups the seeded missions by section, with their status glyphs", async ({
+const sectionItem = (page: Page, section: string) =>
+  page
+    .getByTestId("agent-missions-menu-section")
+    .and(page.locator(`[data-section='${section}']`));
+
+test("the task list menu lists the employee's other sections", async ({
   page,
 }) => {
-  await page.goto("/");
-  await openPhoneTeamSection(page, "mission-control");
-
-  const list = screen(page).getByTestId("team-task-list");
-  await expect(list).toBeVisible();
-  // The pager and its control row are gone, not hidden: nothing on the phone
-  // renders a squeezed board any more.
-  await expect(page.getByTestId("board-pager")).toHaveCount(0);
-  await expect(page.getByTestId("mobile-board-controls")).toHaveCount(0);
-  await expect(page.getByTestId("board-columns")).toHaveCount(0);
-
-  // Two seeded missions, one per band, each named once by its heading.
-  await expect(list.getByRole("heading", { name: "Needs you" })).toBeVisible();
-  await expect(list.getByRole("heading", { name: "Done" })).toBeVisible();
-  await expect(list.getByTestId("team-task-row")).toHaveText([
-    /Plan a trip to Tokyo/,
-    /Draft the launch email/,
+  await openEmployeeMenu(page);
+  await expect(page.getByTestId("agent-missions-menu-section")).toHaveText([
+    "Routines",
+    "Files",
+    "Settings",
   ]);
-  // The glyph is the only thing that names a row's state, so it says so.
-  await expect(list.getByRole("img", { name: "Needs you" })).toHaveCount(1);
-  await expect(list.getByRole("img", { name: "Done" })).toHaveCount(1);
-
-  // No section navigation anywhere on the phone team screen — the Teams tree
-  // one level up chose the section, and the screen retreats to it by chip.
-  await expect(screen(page).locator("[data-team-section-tab]")).toHaveCount(0);
-  await expect(screen(page).getByTestId("team-mobile-back")).toBeVisible();
-  // ONE compose in the chrome: the nav bar's. The list carries none.
-  await expect(list.getByRole("button", { name: "New task" })).toHaveCount(0);
-  await expect(newTaskButton(page)).toBeVisible();
 });
 
-test("the status filter narrows the list to one band", async ({ page }) => {
-  await page.goto("/");
-  await openPhoneTeamSection(page, "mission-control");
-
-  const list = screen(page).getByTestId("team-task-list");
-  const trigger = screen(page).getByTestId("team-task-filter-trigger");
-  const choice = (filter: string) =>
-    page.locator(`[data-testid='team-task-filter'][data-filter='${filter}']`);
-  // "All" by default; the menu's Needs you choice carries the seeded count.
-  await expect(trigger).toHaveAttribute("data-filter", "all");
-  await trigger.tap();
-  await expect(choice("all")).toHaveAttribute("aria-checked", "true");
-  await expect(choice("needs_you")).toContainText("1");
-
-  await choice("done").click();
-  await expect(trigger).toHaveAttribute("data-filter", "done");
-  await expect(list.getByTestId("team-task-row")).toHaveText([
-    /Draft the launch email/,
-  ]);
-  await expect(list.getByRole("heading", { name: "Needs you" })).toHaveCount(0);
-
-  // A band with nothing in it says so rather than standing hollow.
-  await trigger.tap();
-  await choice("running").click();
-  await expect(list.getByTestId("team-task-row")).toHaveCount(0);
-  await expect(list.getByText("No tasks in this view")).toBeVisible();
-});
-
-test("the header menu reveals search, the archive and Team settings", async ({
-  page,
-}) => {
-  await page.goto("/");
-  await openPhoneTeamSection(page, "mission-control");
-  const list = screen(page).getByTestId("team-task-list");
-
-  // Search hides behind the menu: the screen's first line belongs to tasks.
-  await expect(screen(page).getByTestId("team-task-search")).toHaveCount(0);
-  await screen(page).getByTestId("team-tasks-menu").tap();
-  await page.getByTestId("team-tasks-menu-search").click();
-  const field = screen(page).getByTestId("team-task-search");
-  await expect(field).toBeVisible();
-  await field.fill("launch");
-  await expect(list.getByTestId("team-task-row")).toHaveText([
-    /Draft the launch email/,
-  ]);
-  await field.fill("");
-
-  // Archived swaps in the archive surface, with its own way back.
-  await screen(page).getByTestId("team-tasks-menu").tap();
-  await page.getByTestId("team-tasks-menu-archived").click();
-  await expect(
-    screen(page).getByRole("button", { name: "Back to tasks" }),
-  ).toBeVisible();
-  // No list under the header any more, so the header drops its chip too.
-  await expect(screen(page).getByTestId("team-tasks-menu")).toHaveCount(0);
-  await screen(page).getByRole("button", { name: "Back to tasks" }).tap();
-  await expect(list).toBeVisible();
-
-  // The seeded caller is single-player, so they manage the team: the third
-  // item is theirs, and it lands on the drilled settings level's first
-  // section rather than back on the tasks.
-  await screen(page).getByTestId("team-tasks-menu").tap();
-  await page.getByTestId("team-tasks-menu-settings").click();
-  await expect(
-    screen(page).getByTestId("team-settings-mobile-back"),
-  ).toBeVisible();
-  await expect(
-    screen(page)
-      .locator("p")
-      .filter({ hasText: /^Team Settings$/ }),
-  ).toHaveCount(1);
-  await expect(teamSettingsTab(page, "context")).toHaveAttribute(
-    "aria-selected",
-    "true",
-  );
-});
-
-test("a row tap pushes the chat, and back returns to the list", async ({
-  page,
-}) => {
-  await page.goto("/");
-  await openPhoneTeamSection(page, "mission-control");
-
-  await screen(page).getByText("Plan a trip to Tokyo").tap();
-  const chat = page.getByTestId("mission-chat-screen");
-  await expect(chat.getByText("Task: Plan a trip to Tokyo")).toBeVisible();
-
-  await chat.getByTestId("mission-chat-back").tap();
-  await expect(page.getByTestId("mission-chat-screen")).toHaveCount(0);
-  await expect(screen(page).getByTestId("team-task-list")).toBeVisible();
-});
-
-test("the nav bar's New task composes from the team screen", async ({
-  page,
-}) => {
-  await page.goto("/");
-  await openPhoneTeamSection(page, "mission-control");
-
-  await newTaskButton(page).tap();
-  // One seeded agent on the team: the flow skips the picker and pushes the
-  // draft chat straight away.
-  const chat = page.getByTestId("mission-chat-screen");
-  await expect(chat.getByPlaceholder(NEW_TASK_PLACEHOLDER)).toBeVisible();
-});
-
-test("a running mission joins the list under its own band", async ({
-  page,
-  request,
-}) => {
-  // The seed holds no running mission: add one through the host's own route
-  // before the app boots, so all three bands have real content.
-  await request.post(`${FAKE_HOST_URL}/agents/${AGENT}/activities`, {
-    data: { id: "act-running", title: "Checking emails", status: "running" },
+for (const section of ["routines", "files"] as const) {
+  test(`${section} opens that tab and back returns to the task list`, async ({
+    page,
+  }) => {
+    await openEmployeeMenu(page);
+    await sectionItem(page, section).tap();
+    await expect(screen(page)).toHaveAttribute("data-screen", "agent");
+    await expect(
+      screen(page).locator(`[data-team-section-tab='${section}']`),
+    ).toHaveAttribute("aria-current", "page");
+    // The chip names where it goes: this employee's own task list.
+    await expect(page.getByTestId("agent-mobile-back")).toHaveAttribute(
+      "aria-label",
+      "Houston",
+    );
+    await page.getByTestId("agent-mobile-back").tap();
+    await expect(page.getByTestId("agent-missions-screen")).toBeVisible();
   });
-  await page.goto("/");
-  await openPhoneTeamSection(page, "mission-control");
+}
 
-  const list = screen(page).getByTestId("team-task-list");
-  await expect(list.getByRole("heading", { name: "Running" })).toBeVisible();
-  await expect(list.getByText("Checking emails")).toBeVisible();
-  await expect(list.getByRole("img", { name: "Running" })).toHaveCount(1);
+const tab = (page: Page, section: string) =>
+  screen(page).locator(`[data-team-section-tab='${section}']`);
+
+test("switching tabs never stacks: back returns to the task list", async ({
+  page,
+}) => {
+  await openEmployeeMenu(page);
+  await sectionItem(page, "routines").tap();
+  await tab(page, "files").tap();
+  await expect(tab(page, "files")).toHaveAttribute("aria-current", "page");
+  await tab(page, "routines").tap();
+  await expect(tab(page, "routines")).toHaveAttribute("aria-current", "page");
+  await page.getByTestId("agent-mobile-back").tap();
+  await expect(page.getByTestId("agent-missions-screen")).toBeVisible();
+  // One more back leaves the employee for the AI Employees list.
+  await page.goBack();
+  await expect(page.getByTestId("agent-missions-screen")).toHaveCount(0);
+  await expect(page.getByTestId("agents-home")).toBeVisible();
+});
+
+test("the Tasks tab is the employee's one task list", async ({ page }) => {
+  await openEmployeeMenu(page);
+  await sectionItem(page, "files").tap();
+  await tab(page, "mission-control").tap();
+  await expect(page.getByTestId("agent-missions-screen")).toBeVisible();
+  await expect(screen(page)).toHaveAttribute("data-screen", "agents-home");
+  await page.goBack();
+  await expect(page.getByTestId("agents-home")).toBeVisible();
+});
+
+test("Settings opens in place and back returns to the task list", async ({
+  page,
+}) => {
+  await openEmployeeMenu(page);
+  await sectionItem(page, "settings").tap();
+  await expect(page.getByTestId("agent-missions-screen")).toHaveCount(0);
+  await expect(screen(page)).toHaveAttribute("data-screen", "agents-home");
+  await screen(page).locator("[data-agent-settings-back]").tap();
+  await expect(page.getByTestId("agent-missions-screen")).toBeVisible();
+});
+
+test("the Settings tab's back returns to the task list without stacking", async ({
+  page,
+}) => {
+  await openEmployeeMenu(page);
+  await sectionItem(page, "routines").tap();
+  await tab(page, "settings").tap();
+  await screen(page).locator("[data-agent-settings-back]").tap();
+  await expect(page.getByTestId("agent-missions-screen")).toBeVisible();
+  // One more back leaves the employee for the AI Employees list.
+  await page.goBack();
+  await expect(page.getByTestId("agents-home")).toBeVisible();
+});
+
+test("a phone never shows the employee's desktop board", async ({ page }) => {
+  // Wide, the app opens on the first employee's board; narrowing the window
+  // to a phone moves that employee to its task list.
+  await page.setViewportSize({ width: 1280, height: 800 });
+  await page.goto("/");
+  await expect(screen(page)).toHaveAttribute("data-screen", "agent");
+  await page.setViewportSize({ width: 412, height: 915 });
+  await expect(page.getByTestId("agent-missions-screen")).toBeVisible();
 });

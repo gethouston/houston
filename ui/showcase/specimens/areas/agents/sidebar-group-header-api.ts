@@ -30,11 +30,6 @@ export const SIDEBAR_GROUP_HEADER_PROPS: readonly SpecimenProp[] = [
     note: "Folded. Rotates the disclosure triangle and, in the host, hides the whole region below — every member row the block holds.",
   },
   {
-    name: "contentId",
-    type: "string",
-    note: "The id of the region this row folds, wired as aria-controls. Omitted by the drag preview, which folds nothing.",
-  },
-  {
     name: "active",
     type: "boolean",
     note: 'Paints the selected pill and sets aria-current="page". True whenever the block owns the open view, folded or open: a block carries no destination rows, so this row is the only one that can answer "where am I" for it.',
@@ -42,7 +37,7 @@ export const SIDEBAR_GROUP_HEADER_PROPS: readonly SpecimenProp[] = [
   {
     name: "onActivate",
     type: "() => void",
-    note: "The whole row is ONE hit target — glyph, name, triangle and badge in a single button, so a keyboard user reaches it in one stop and a screen reader is told it discloses something. What activating it DOES is the host's: it may open the block's screen, fold the block, or both. The triangle states the fold and takes no clicks of its own; a second control on the row would promise an outcome it does not own.",
+    note: "The whole row is ONE hit target — glyph, name, triangle and badge in a single button, so a keyboard user reaches it in one stop and a screen reader is told it discloses something. Activating it folds or unfolds the block; the host writes the new `collapsed` back. The triangle states the fold and takes no clicks of its own; a second control on the row would promise an outcome it does not own.",
   },
   {
     name: "dragAttributes / dragListeners",

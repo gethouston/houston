@@ -63,7 +63,7 @@
           "cta": "Next"
         },
         "board": {
-          "body": "This is your team's board. Every task shows up here, with where it stands.",
+          "body": "This is your AI Employee's board. Every task you give them shows up here, with where it stands.",
           "cta": "Next"
         },
         "newTask": {

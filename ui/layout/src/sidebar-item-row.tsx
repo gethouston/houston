@@ -1,3 +1,8 @@
+import type {
+  DraggableAttributes,
+  DraggableSyntheticListeners,
+} from "@dnd-kit/core";
+import type { KeyboardEvent } from "react";
 import type { SidebarItem } from "./sidebar";
 import { SidebarRowButton } from "./sidebar-row-button";
 
@@ -5,6 +10,10 @@ export interface SidebarItemRowProps {
   item: SidebarItem;
   isActive: boolean;
   onSelect: (id: string) => void;
+  dragAttributes?: DraggableAttributes;
+  dragListeners?: DraggableSyntheticListeners;
+  onKeyDown?: (event: KeyboardEvent<HTMLButtonElement>) => void;
+  grouped?: boolean;
 }
 
 /**
@@ -21,14 +30,17 @@ export interface SidebarItemRowProps {
  * affordance slot. The library itself still knows nothing about renaming,
  * copying or deleting an agent.
  *
- * The one thing it still adds over a plain row: it is a drag handle. The
- * listeners live on the sortable wrapper, so the row only has to wear the
- * cursor.
+ * The one thing it still adds over a plain row: it is a drag handle, wearing
+ * the sortable listeners and cursor on the row button.
  */
 export function SidebarItemRow({
   item,
   isActive,
   onSelect,
+  dragAttributes,
+  dragListeners,
+  onKeyDown,
+  grouped = false,
 }: SidebarItemRowProps) {
   return (
     <SidebarRowButton
@@ -37,8 +49,12 @@ export function SidebarItemRow({
       subtitle={item.subtitle}
       title={item.name}
       icon={item.icon}
+      depth={grouped ? "child" : "block"}
       active={isActive}
       draggable
+      dragAttributes={dragAttributes}
+      dragListeners={dragListeners}
+      onKeyDown={onKeyDown}
       onActivate={() => onSelect(item.id)}
       trailing={item.trailing}
       affordance={item.affordance}

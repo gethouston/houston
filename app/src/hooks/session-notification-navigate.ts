@@ -110,14 +110,15 @@ export async function navigateToNotificationTarget({
   }
   useAgentStore.getState().setCurrent(agent);
   if (target.setupKind === "routine") {
-    // A routine-setup chat has no board card: its home is the Routines section
-    // of the agent's TEAM, filtered to that agent, where the chat reopens on
-    // the spot. The owner rides along with the activity id because that list is
-    // cross-agent and the id alone would not say whose chat it is.
-    openAgentSection(agent.id, "routines");
-    useUIStore.getState().setPendingRoutineChat({
-      agentId: agent.id,
-      activityId: target.activityId,
+    // A routine-setup chat has no board card: its home is the agent's Routines
+    // section, where the chat reopens on the spot. The owner rides along with
+    // the activity id so the section knows whose chat the id names.
+    openAgentSection(agent.id, "routines", {
+      onOpened: () =>
+        useUIStore.getState().setPendingRoutineChat({
+          agentId: agent.id,
+          activityId: target.activityId,
+        }),
     });
     return;
   }
@@ -140,11 +141,12 @@ export async function navigateToNotificationTarget({
     ui.setIntegrationSetupChatAgentId(agent.id);
     return;
   }
-  // A standard mission: the board its card lives on — the agent's TEAM Mission
-  // Control, filtered to that agent — then the mission published for that board
-  // to open.
-  openAgentBoard(agent.id);
-  useUIStore.getState().setActivityPanelId(target.activityId, {
-    forceOpen: true,
+  // A standard mission: the agent's board, where its card lives, then the
+  // mission published for that board to open.
+  openAgentBoard(agent.id, {
+    onOpened: () =>
+      useUIStore.getState().setActivityPanelId(target.activityId, {
+        forceOpen: true,
+      }),
   });
 }

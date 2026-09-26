@@ -14,7 +14,7 @@ import { useUIStore } from "../../stores/ui";
  * the UI store stay stable while always reading current state.
  *
  * Every global registration here is gated on `isActive`: a mission board can be
- * mounted while hidden (the kept-alive team screen), so an unconditional
+ * mounted while hidden (a kept-alive employee screen), so an unconditional
  * registration is last-writer-wins and a HIDDEN board would own the arrow
  * navigator and the Enter opener.
  *
@@ -152,7 +152,7 @@ export function useBoardKeyboard({
 
   // Open the new-mission panel when the in-scope board is empty (and the user
   // isn't searching). Fires once per scope via the key ref, and only for the
-  // board ON SCREEN — an off-screen empty team board would otherwise pop its
+  // board ON SCREEN — an off-screen empty employee board would otherwise pop its
   // agent picker over whatever the user is actually looking at.
   const autoOpenKeyRef = useRef<string | null>(null);
   useEffect(() => {

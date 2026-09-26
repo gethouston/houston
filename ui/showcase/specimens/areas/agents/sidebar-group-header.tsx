@@ -24,11 +24,6 @@ function SidebarGroupHeaderSpecimen() {
             <LiveTeam name="Mornings" owns />
           </Rail>
         </SpecimenRow>
-        <SpecimenRow label="Default team — the block every agent falls back into">
-          <Rail>
-            <LiveTeam name="Julian's workspace" />
-          </Rail>
-        </SpecimenRow>
         <SpecimenRow label="Monochrome glyph — colour belongs to the avatars below">
           <Rail>
             <LiveTeam name="Finance" />

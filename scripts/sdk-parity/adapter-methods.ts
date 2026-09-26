@@ -17,15 +17,18 @@ import {
  * therefore classifying a desktop request site.
  *
  * `AdapterContext` is the transport: `cp`, `engine`, `baseUrl`, `token` and the
- * per-agent runtime clients are how a method reaches a server; `sdk` is how it
- * delegates instead. So a method is read off which context members it touches,
+ * per-agent runtime clients are how a method reaches a server; `sdk` and
+ * `sdkForSpace` (the same SDK pinned to one space) are how it delegates
+ * instead. So a method is read off which context members it touches,
  * over everything it runs. {@link BOOKKEEPING} is the short list of context
  * members that carry no request — a member added to `AdapterContext` and not
  * listed there reads as transport, which over-reports rather than letting an
  * unbound request through unseen.
  */
+const SDK_MEMBERS = new Set(["sdk", "sdkForSpace"]);
+
 const BOOKKEEPING = new Set([
-  "sdk",
+  ...SDK_MEMBERS,
   "workspaceIds",
   "activeLogins",
   "loginWatchers",
@@ -103,7 +106,7 @@ function classify(
   for (const node of reachableFrom(graph, nodeKey(file, `${cls}.${name}`))) {
     if (TRANSPORT_CALL.test(node.text)) transport = true;
     for (const member of node.text.matchAll(CTX_MEMBER))
-      if (member[1] === "sdk") bound = true;
+      if (SDK_MEMBERS.has(member[1] as string)) bound = true;
       else if (!BOOKKEEPING.has(member[1] as string)) transport = true;
   }
   return { bound, unbound: transport && !bound };

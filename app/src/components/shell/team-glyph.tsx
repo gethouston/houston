@@ -10,10 +10,7 @@ import { teamDisplayColor, teamDisplayIcon } from "../../lib/team-display";
 import type { TeamView } from "../../lib/teams-model";
 
 /**
- * The mark a team wears, everywhere a team is drawn: its block header in the
- * rail, row 1 of its own screen, and the rows of the "Move to team" picker. ONE
- * component for all of them, so no two surfaces can disagree about what a team
- * looks like.
+ * The mark a personal group wears in the rail, phone tree, org chart and pickers.
  *
  * **A team's glyph DOES pin a colour, and that bends `sidebar-anatomy.md`'s
  * third invariant on purpose.** That rule ("a row's glyph never pins a colour",
@@ -37,7 +34,7 @@ export function TeamGlyph({
   className = sidebarMarkSize.glyph,
 }: {
   team: TeamView;
-  /** Defaults to the rail's own 14px mark; Team Settings asks for 20px. */
+  /** Defaults to the rail's own 14px mark; callers size other surfaces. */
   className?: string;
 }): ReactElement {
   const icon = teamDisplayIcon(team);

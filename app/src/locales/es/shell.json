@@ -21,13 +21,24 @@
     },
     "createDialog": "Crear",
     "createWorkspace": "Crear espacio de trabajo",
+    "drag": {
+      "pickedUp": "Tomaste %name%.",
+      "movedOver": "%name% sobre %over%.",
+      "dropped": "Soltaste %name% sobre %over%.",
+      "cancelled": "Cancelaste el movimiento de %name%.",
+      "instructions": "Arrastra con el puntero. Usa Alt+Arriba o Alt+Abajo para reordenar, y Alt+Derecha o Alt+Izquierda para mover un empleado de IA dentro o fuera de un grupo.",
+      "keyboardMoved": "Moviste %name% a la posición %position% del nivel principal.",
+      "keyboardMovedInGroup": "Moviste %name% a la posición %position% en %group%.",
+      "keyboardEnteredGroup": "Moviste %name% a %group%.",
+      "keyboardLeftGroup": "Sacaste %name% de %group% al nivel principal."
+    },
     "expand": "Expandir barra lateral",
     "help": "Ayuda",
     "integrations": "Integraciones",
     "needsYouCount_one": "{{count}} asunto necesita tu atención",
     "needsYouCount_other": "{{count}} asuntos necesitan tu atención",
     "newMission": "Nueva tarea",
-    "newTeam": "Nuevo equipo",
+    "newTeam": "Nuevo grupo",
     "reportProblem": "Reportar un problema",
     "runningCount_one": "{{count}} asunto en curso",
     "runningCount_other": "{{count}} asuntos en curso",
@@ -35,11 +46,15 @@
     "settings": "Configuración",
     "skills": "Skills",
     "teams": {
-      "identity": "Cambiar icono y nombre",
-      "identityIcons": "Iconos",
+      "identity": "Ícono y color",
+      "identityIcons": "Íconos",
       "identityColors": "Colores",
-      "identitySearch": "Buscar iconos…",
-      "identitySearchEmpty": "No se encontraron iconos"
+      "identitySearch": "Buscar íconos…",
+      "identitySearchEmpty": "No se encontraron íconos",
+      "menu": "Acciones para {{name}}",
+      "rename": "Cambiar nombre",
+      "move": "Mover a otro espacio",
+      "delete": "Eliminar grupo"
     },
     "teamIcons": {
       "bank": "Banco",
@@ -366,7 +381,7 @@
       "staircase": "escalera",
       "starred": "estrella destacado",
       "support": "soporte ayuda",
-      "team": "equipo",
+      "team": "grupo equipo",
       "tech": "tecnología técnico",
       "tee": "camiseta playera",
       "time": "tiempo hora",
@@ -379,7 +394,7 @@
       "work": "trabajo",
       "writing": "escritura redacción"
     },
-    "yourTeams": "Tus equipos"
+    "employeesSection": "Tus empleados de IA"
   },
   "missionChat": {
     "back": "Atrás"
@@ -392,7 +407,7 @@
       "title": "Aún no hay empleados de IA",
       "description": "Crea un empleado de IA para empezar. Todo en lo que trabajen aparecerá aquí."
     },
-    "allTeams": "Todos los equipos",
+    "allGroups": "Todos los grupos",
     "noTasks": "Aún no hay tareas",
     "typing": "Escribiendo..."
   },
@@ -416,16 +431,10 @@
       "description": "Comienza una tarea con el botón de redactar y aparecerá aquí."
     }
   },
-  "teamsHome": {
-    "title": "Equipos",
-    "tree": "Equipos y sus secciones",
-    "newTeam": "Nuevo equipo"
-  },
   "tabBar": {
     "agents": "Empleados de IA",
     "label": "Navegación principal",
-    "more": "Más",
-    "teams": "Equipos"
+    "more": "Más"
   },
   "sentrySmoke": {
     "nativeTriggeredTitle": "Prueba nativa de Sentry activada",
@@ -635,8 +644,7 @@
     "groups": {
       "actions": "Acciones",
       "agents": "Empleados de IA",
-      "recentMissions": "Tareas recientes",
-      "teams": "Equipos"
+      "recentMissions": "Tareas recientes"
     },
     "actions": {
       "newMission": "Iniciar tarea nueva",
@@ -672,7 +680,7 @@
     "title": "Agregar a tu espacio de trabajo",
     "headline": "¿Qué quieres agregar?",
     "agentTitle": "Empleado de IA",
-    "teamTitle": "Equipo"
+    "teamTitle": "Grupo"
   },
   "employeeCard": {
     "changeColor": "Cambiar color",

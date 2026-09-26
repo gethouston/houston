@@ -64,7 +64,7 @@ export function TeamRoutinePanel({
   triggerSummary,
   onSelectionChange,
 }: Props) {
-  // The SAME per-agent cache key the section's fan-out already warmed, so
+  // The SAME per-agent cache key the section's list already warmed, so
   // hosting a chat costs no extra read.
   const { data: routines } = useRoutines(owner.folderPath);
   const { data: allRuns, isLoading: runsLoading } = useQuery(
@@ -111,10 +111,10 @@ export function TeamRoutinePanel({
   }, [selected, onSelectionChange, awaitingPending, request.kind]);
 
   // The chat portals into the ONE shared shell panel (HOU-1165). Only the
-  // team view ON SCREEN may claim it: several kept-alive screens are mounted at
-  // once, so a hidden team stacking its routine chat over the visible board's
+  // employee view ON SCREEN may claim it: several kept-alive screens are mounted at
+  // once, so a hidden employee stacking its routine chat over the visible board's
   // mission panel is exactly the defect that guard exists to prevent. There is
-  // no tab flag here — a team section is the whole screen — so the screen
+  // no tab flag here — the employee section is the whole screen — so the screen
   // signal is the only gate.
   const screenActive = useIsActiveView();
   const { panelContainer, setPanelOpen } = useShellDetailPanel();

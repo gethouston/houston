@@ -106,12 +106,7 @@ export function WorkspacesMixin<TBase extends BaseCtor>(Base: TBase) {
       const { provider, model } = await this.ctx.activeOld();
       return syntheticWorkspace(provider, model);
     }
-    // Sidebar order + grouping. Host-backed wherever the host serves the route
-    // (desktop sidecar + self-host) — that PUT is what triggers the host's
-    // GROUP.md fan-out, so a team's shared context actually reaches its agents —
-    // and device-local on the gateway-fronted cloud, which does not serve it.
-    // The whole policy (predicate, one-time lift, 404 degrade) lives in
-    // `sidebar-layout-store.ts`.
+    // The host or gateway stores each person's sidebar folders.
     private sidebarLayoutStore(): SidebarLayoutStore {
       this.#sidebarLayout ??= new SidebarLayoutStore(this.ctx);
       return this.#sidebarLayout;

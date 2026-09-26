@@ -10,11 +10,8 @@ const entry = (viewMode: string) =>
   navEntryOf({
     viewMode,
     settingsSection: null,
-    activeTeamId: null,
-    teamSection: null,
-    teamAgentFilter: null,
-    teamAgentFocus: false,
-    teamSettingsFocus: false,
+    activeAgentId: null,
+    agentSection: null,
     missionPanelOpen: false,
   });
 
@@ -43,7 +40,7 @@ describe("syncPlan", () => {
 
   it("echoes an in-place swap as replaceState", () => {
     const prev = [entry("agents-home")];
-    const next = [entry("team")];
+    const next = [entry("agent")];
     assert.deepEqual(
       syncPlan({ index: 0, stack: prev }, { index: 0, stack: next }),
       { op: "replace", index: 0 },

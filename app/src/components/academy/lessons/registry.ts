@@ -4,7 +4,7 @@ import {
 } from "../../../lib/academy/academy-chapters.ts";
 import { EMAIL_TOOLKIT_SLUGS } from "../../../lib/academy/email-lesson/email-sender.ts";
 import type { LessonSpec } from "../../../lib/academy/lesson-spec.ts";
-import { TEAM_VIEW_ID } from "../../../lib/top-level-views.ts";
+import { AGENT_VIEW_ID } from "../../../lib/top-level-views.ts";
 import {
   composerSendSelector,
   type TourTarget,
@@ -72,9 +72,9 @@ export const ACADEMY_LESSONS: Record<string, LessonSpec> = {
         kind: "spotlight",
         id: "board",
         target: tourSelector("main"),
-        // A team view is resolved by `navigateToLessonView`, which goes
-        // through the ONE writer of a whole team view.
-        navigate: { viewId: TEAM_VIEW_ID },
+        // An employee's Tasks screen is resolved by `navigateToLessonView`,
+        // which opens the first AI Employee in sidebar order.
+        navigate: { viewId: AGENT_VIEW_ID },
         advanceOn: { type: "acknowledged" },
       },
       {

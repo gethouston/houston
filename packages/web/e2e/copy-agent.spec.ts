@@ -1,8 +1,4 @@
-import {
-  FAKE_HOST_URL,
-  SEED_AGENT_ID,
-  SEED_AGENT_NAME,
-} from "@houston/fake-host";
+import { FAKE_HOST_URL } from "@houston/fake-host";
 import {
   COPY_SOURCE,
   createDialog,
@@ -14,7 +10,7 @@ import {
 } from "./support/copy-agent";
 import { newAgentRow } from "./support/create-agent";
 import { expect, test } from "./support/fixtures";
-import { litRows, rail, screen } from "./support/team-nav";
+import { rail, screen } from "./support/team-nav";
 
 /**
  * "Copy an AI Employee": the second of the two cards the create dialog opens on.
@@ -158,65 +154,4 @@ test("a bare source skips the list screens; chats stay behind by default", async
     rail(page).getByText("Houston copy", { exact: true }),
   ).toBeVisible();
   await expect(screen(page).getByText("Plan a trip to Tokyo")).toHaveCount(0);
-});
-
-/**
- * On a server-backed host the copy is filed in a team by a gateway write, and
- * the roster only knows it after the round trip. Landing must wait for that:
- * navigating before it resolved the copy to the DEFAULT team, so the rail
- * lit "New Team" and its board showed the source's tasks instead of the copy.
- */
-test("a copy started from a server team's New AI Employee row lands on that team, focused on the copy", async ({
-  page,
-}) => {
-  const OPS_TEAM = "team-ops";
-  const base = FAKE_HOST_URL;
-  await page.request.post(`${base}/__test__/capabilities`, {
-    data: { multiplayer: true, teams: true, agentTeams: true, role: "owner" },
-  });
-  await page.request.post(`${base}/__test__/org`, {
-    data: { agents: [{ id: SEED_AGENT_ID, name: SEED_AGENT_NAME }] },
-  });
-  await page.request.post(`${base}/__test__/agent-teams`, {
-    data: {
-      teams: [
-        { id: "team-acme", name: "Acme", isDefault: true, sortOrder: 0 },
-        {
-          id: OPS_TEAM,
-          name: "Operations",
-          sortOrder: 1,
-          members: [{ userId: "u-self", owner: true }],
-        },
-      ],
-    },
-  });
-  await page.goto("/");
-  await expect(page.getByText("Your teams")).toBeVisible();
-
-  const opsBlock = rail(page).locator(
-    `[data-sidebar-drop-section="${OPS_TEAM}"]`,
-  );
-  await opsBlock.getByRole("button", { name: "New AI Employee" }).click();
-  await openCopyWizard(page);
-  const dialog = createDialog(page);
-  await dialog.getByRole("button", { name: "Houston", exact: true }).click();
-  // The seed carries learnings but no routines or skills: the know screen,
-  // then the name.
-  await expect(
-    dialog.getByRole("heading", { name: "What should the copy know?" }),
-  ).toBeVisible();
-  await next(page);
-  await expect(dialog.getByText("Based on Houston")).toBeVisible();
-  await dialog.getByRole("button", { name: "Create AI Employee" }).click();
-  await expect(dialog).toBeHidden();
-
-  // The copy sits in Operations, its rail row is the current one, and the
-  // screen is the copy's own board: not the default team's.
-  await expect(opsBlock).toContainText("Houston copy");
-  await expect(litRows(opsBlock.locator("[data-sidebar-item]"))).toContainText(
-    "Houston copy",
-  );
-  await expect(screen(page).locator("[data-agent-screen]")).toContainText(
-    "Houston copy",
-  );
 });

@@ -19,14 +19,7 @@ const missionControlArchived = read(
 const teamMissionBoard = read(
   "../src/components/team-view/team-mission-board.tsx",
 );
-const teamView = read("../src/components/team-view/team-view.tsx");
-const teamContextPane = read(
-  "../src/components/team-view/team-context-pane.tsx",
-);
-const teamPeoplePane = read("../src/components/team-view/team-people-pane.tsx");
-const createOrganizationInviteEmpty = read(
-  "../src/components/organization/create-organization-invite-empty.tsx",
-);
+const agentView = read("../src/components/team-view/agent-view.tsx");
 const agentSettingsPane = read(
   "../src/components/team-view/agent-settings-pane.tsx",
 );
@@ -73,19 +66,7 @@ describe("one sweep, whatever the scope", () => {
       /useAgentStore\(\(s\) => s\.agents\)/,
       "the archive section must own the full roster",
     );
-    // Its own filter SOURCE, the same scope shape: the one-sweep rule is
-    // about the paths and the query key, and neither moved.
-    assert.match(teamArchived, /useTeamScope\(team, filterAgentId\)/);
-    // That source is the section's OWN state, never the team-wide pin:
-    // narrowing finished work must not narrow the board the user goes back to.
-    assert.match(
-      teamArchived,
-      /const \[filterAgentId, setFilterAgentId\] = useState<string \| null>\(null\)/,
-    );
-    assert.ok(
-      !teamArchived.includes("teamAgentFilter"),
-      "the archive's filter is its own, never the team-wide pin",
-    );
+    assert.match(teamArchived, /useAgentBoardScope\(agent\)/);
   });
 
   it("shares one scope object between the team's two board sections", () => {
@@ -98,7 +79,7 @@ describe("one sweep, whatever the scope", () => {
       /<TeamMissionBoard[\s\S]*?scope=\{scope\}/,
     );
     // The BOARD is the one surface still keyed on the team-wide pin.
-    assert.match(teamMissionControl, /useTeamBoardScope\(team, agentFocusId\)/);
+    assert.match(teamMissionControl, /useAgentBoardScope\(agent\)/);
     // The scope now belongs to the hook, not to the active board alone.
     assert.ok(
       !teamMissionBoard.includes("scopePaths"),
@@ -161,21 +142,11 @@ describe("the archive releases the shell detail panel", () => {
       /if \(isActive\) return;\s*data\.setSelectedId\(null\);\s*setPanelOpen\(false\);/,
     );
   });
-
-  it("stops the active board's comment from claiming the archive too", () => {
-    assert.ok(
-      !teamMissionBoard.includes("already releases the shell detail panel"),
-      "the active board covers only itself",
-    );
-    assert.match(teamMissionBoard, /Archived SECTION carries its own release/);
-  });
 });
 
-describe("a team's archive names nothing: the lit tab already did", () => {
+describe("the employee archive header", () => {
   it("hands the toolbar no title and no roster", () => {
-    // Row 1 of the team frame (`TeamChrome`) names the team above every one of
-    // its sections, and the Archived TAB says which section is up, so a board
-    // that titled itself printed the same words twice on one screen.
+    // The employee header and Archived tab already name this section.
     assert.ok(
       !missionControlArchived.includes("title={scope?.title}"),
       "the team frame owns the team's name, not the board",
@@ -192,20 +163,13 @@ describe("a team's archive names nothing: the lit tab already did", () => {
   });
 });
 
-describe("team and focused-agent composition", () => {
-  it("routes team configuration to Context and People panes", () => {
-    assert.match(teamView, /<TeamContextPane team=\{team\}/);
-    assert.match(teamView, /<TeamPeoplePane team=\{team\} face=\{peopleFace\}/);
-    assert.match(teamContextPane, /<TeamContextCard team=\{team\}/);
-    assert.match(teamPeoplePane, /<TeamMembersCard team=\{team\}/);
-    assert.match(teamPeoplePane, /<CreateOrganizationInviteEmpty \/>/);
-    assert.match(createOrganizationInviteEmpty, /<EmptyTitle>/);
-  });
-
-  it("routes focused settings directly to AgentDetail", () => {
-    assert.match(teamView, /<AgentSettingsPane team=\{team\} agent=\{agent\}/);
+describe("employee screen composition", () => {
+  it("routes employee settings directly to AgentDetail", () => {
+    assert.match(agentView, /<AgentSettingsPane agent=\{agent\}/);
     assert.match(agentSettingsPane, /<AgentDetail/);
-    assert.match(agentSettingsPane, /agentFilter: agent\.id/);
-    assert.match(agentSettingsPane, /agentFocus: true/);
+    assert.match(
+      agentSettingsPane,
+      /openAgentView\(agent\.id, "mission-control"\)/,
+    );
   });
 });

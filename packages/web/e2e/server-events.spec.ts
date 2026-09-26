@@ -11,6 +11,8 @@ import { openTeamSection } from "./support/team-nav";
  * ever reached a real client, so agent-written routines/skills/files never
  * refreshed without a remount.
  */
+test.use({ teamBoard: true });
+
 test("a server-emitted domain event triggers a client refetch", async ({
   page,
   emitHostEvent,

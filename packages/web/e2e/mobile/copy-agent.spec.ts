@@ -50,9 +50,10 @@ test("copies an agent from the Agents home on the phone", async ({
     () => document.documentElement.scrollWidth > window.innerWidth,
   );
   expect(overflow).toBe(false);
-  // The copy opens on its own Tasks screen, the same landing every create
-  // door uses; its header names it.
+  // The copy opens on its task list, the phone's one Tasks screen and the
+  // same landing every create door uses; its header names it.
+  const taskList = page.getByTestId("agent-missions-screen");
   await expect(
-    screen(page).getByRole("heading", { level: 1, name: "Houston copy" }),
+    taskList.getByRole("heading", { level: 1, name: "Houston copy" }),
   ).toBeVisible();
 });

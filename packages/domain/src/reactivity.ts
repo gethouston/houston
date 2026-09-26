@@ -62,8 +62,7 @@ export function agentFileEventType(
     relPath === "AGENTS.md" ||
     relPath === "GEMINI.md" ||
     relPath === "WORKSPACE.md" ||
-    relPath === "USER.md" ||
-    relPath === "GROUP.md"
+    relPath === "USER.md"
   )
     return "ContextChanged";
   // Internal bookkeeping we never surface.

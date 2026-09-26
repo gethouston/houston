@@ -1,41 +1,23 @@
 import { deepStrictEqual, strictEqual } from "node:assert";
 import { describe, it } from "node:test";
-import type { AgentTeam } from "@houston/engine-adapter";
 import type { PendingTeamMove } from "../src/lib/pending-team-move.ts";
 import {
-  completeTeamMovePostscript,
   drivePendingTeamMove,
-  reconcileTeamByName,
+  resumedTeamMove,
   teamMoveAgentsSettled,
 } from "../src/lib/team-move-resume.ts";
 
-const TEAM: AgentTeam = {
-  id: "new",
-  name: "Design",
-  isDefault: false,
-  sortOrder: 1,
-  agentSlugs: [],
-  memberCount: 1,
-  joined: true,
-  owner: true,
-};
 const PENDING: PendingTeamMove = {
-  sourceTeam: {
-    id: "old",
-    name: "Design",
-    icon: "palette",
-    color: "blue",
-    context: "Brand",
-    isDefault: false,
-  },
+  sourceTeam: { id: "old", workspaceId: "default", name: "Design" },
   targetSlug: "abcdef0123456789",
   targetName: "Acme",
+  targetGroupId: "target-folder",
   agentIds: ["a", "b"],
   movedAgentIds: [],
   startedAt: 1,
 };
 
-describe("team move postscript", () => {
+describe("team move resume", () => {
   it("settles only from durable moved-agent checkpoints", () => {
     strictEqual(teamMoveAgentsSettled(PENDING), false);
     strictEqual(
@@ -43,67 +25,54 @@ describe("team move postscript", () => {
       true,
     );
   });
-  it("reconciles by normalized name", () => {
-    strictEqual(reconcileTeamByName([TEAM], " design ")?.id, "new");
-    strictEqual(reconcileTeamByName([TEAM], "Other"), null);
-  });
-  it("completes idempotently with an existing team", async () => {
-    const calls: string[] = [];
-    const id = await completeTeamMovePostscript(PENDING, {
-      deleteSource: async () => void calls.push("delete"),
-      switchTarget: async () => void calls.push("switch"),
-      listTargetTeams: async () => [TEAM],
-      createTargetTeam: async () => {
-        throw new Error("must reconcile");
-      },
-      updateTargetTeam: async () => void calls.push("context"),
-      placeAgent: async (agent) => void calls.push(`place:${agent}`),
-    });
-    strictEqual(id, "new");
-    deepStrictEqual(calls, [
-      "delete",
-      "switch",
-      "context",
-      "place:a",
-      "place:b",
-    ]);
-  });
-  it("reconciles a recreated team by persisted id before its name", async () => {
-    let created = 0;
-    const renamed = { ...TEAM, id: "persisted", name: "Renamed" };
-    const id = await completeTeamMovePostscript(
-      { ...PENDING, createdTeamId: "persisted" },
+
+  it("restores the full source list and failing agent after a remount", () => {
+    const resumed = resumedTeamMove(
+      { ...PENDING, movedAgentIds: ["a"] },
       {
-        deleteSource: async () => {},
-        switchTarget: async () => {},
-        listTargetTeams: async () => [renamed, TEAM],
-        createTargetTeam: async () => {
-          created += 1;
-          return TEAM;
-        },
-        updateTargetTeam: async () => {},
-        placeAgent: async () => {},
+        id: "old",
+        workspaceId: "default",
+        name: "Design",
+        agents: [{ id: "b", name: "Bee" }],
       },
     );
-    strictEqual(id, "persisted");
-    strictEqual(created, 0);
+    deepStrictEqual(resumed.source.agents, [
+      { id: "a", name: "a" },
+      { id: "b", name: "Bee" },
+    ]);
+    deepStrictEqual(resumed.state, {
+      step: "moveFailed",
+      target: { slug: PENDING.targetSlug, name: PENDING.targetName },
+      index: 1,
+      error: "unknown",
+    });
   });
-  it("creates and drives missing per-agent tickets before postscript", async () => {
+
+  it("resumes folder setup when every agent has moved", () => {
+    strictEqual(
+      resumedTeamMove(
+        { ...PENDING, movedAgentIds: ["a", "b"] },
+        { id: "old", workspaceId: "default", name: "Design", agents: [] },
+      ).state.step,
+      "postscriptFailed",
+    );
+  });
+
+  it("creates and drives missing per-agent tickets before folder setup", async () => {
     const events: string[] = [];
     const result = await drivePendingTeamMove(PENDING, {
       readAgentMove: () => undefined,
       recordAgentMove: (move) => void events.push(`record:${move.agentId}`),
-      updateAgentMoveId: (_agentId, moveId) =>
-        void events.push(`ticket:${moveId}`),
-      clearAgentMove: (agentId) => void events.push(`clear:${agentId}`),
-      markAgentMoved: (agentId) => void events.push(`moved:${agentId}`),
-      resumeAgentMove: async (_pending, options) => {
+      updateAgentMoveId: (_id, moveId) => void events.push(`ticket:${moveId}`),
+      clearAgentMove: (id) => void events.push(`clear:${id}`),
+      markAgentMoved: (id) => void events.push(`moved:${id}`),
+      resumeAgentMove: async (_move, options) => {
         options.onMoveAccepted?.("accepted");
         return { outcome: "done" };
       },
-      runPostscript: async () => void events.push("postscript"),
+      runPostscript: async () => void events.push("folder"),
     });
-    strictEqual(result.outcome, "done");
+    deepStrictEqual(result, { outcome: "done" });
     deepStrictEqual(events, [
       "record:a",
       "ticket:accepted",
@@ -113,10 +82,31 @@ describe("team move postscript", () => {
       "ticket:accepted",
       "clear:b",
       "moved:b",
-      "postscript",
+      "folder",
     ]);
   });
-  it("stops a failed record before postscript", async () => {
+
+  it("skips agents recorded as moved and resumes the rest", async () => {
+    const moved: string[] = [];
+    await drivePendingTeamMove(
+      { ...PENDING, movedAgentIds: ["a"] },
+      {
+        readAgentMove: () => undefined,
+        recordAgentMove: () => {},
+        updateAgentMoveId: () => {},
+        clearAgentMove: () => {},
+        markAgentMoved: (id) => void moved.push(id),
+        resumeAgentMove: async (move) => {
+          moved.push(`resume:${move.agentId}`);
+          return { outcome: "done" };
+        },
+        runPostscript: async () => void moved.push("folder"),
+      },
+    );
+    deepStrictEqual(moved, ["resume:b", "b", "folder"]);
+  });
+
+  it("stops a failed agent before folder setup", async () => {
     const result = await drivePendingTeamMove(PENDING, {
       readAgentMove: () => undefined,
       recordAgentMove: () => {},
@@ -125,45 +115,9 @@ describe("team move postscript", () => {
       markAgentMoved: () => {},
       resumeAgentMove: async () => ({ outcome: "timeout" }),
       runPostscript: async () => {
-        throw new Error("must not run");
+        throw new Error("folder setup must wait");
       },
     });
     deepStrictEqual(result, { outcome: "failed", agentId: "a" });
-  });
-  it("treats a missing source as deleted and creates once", async () => {
-    let created = 0;
-    await completeTeamMovePostscript(
-      PENDING,
-      {
-        deleteSource: async () => {
-          throw new Error("missing");
-        },
-        switchTarget: async () => {},
-        listTargetTeams: async () => [],
-        createTargetTeam: async () => {
-          created += 1;
-          return TEAM;
-        },
-        updateTargetTeam: async () => {},
-        placeAgent: async () => {},
-      },
-      { isMissingSource: () => true },
-    );
-    strictEqual(created, 1);
-  });
-  it("default teams only switch", async () => {
-    const calls: string[] = [];
-    await completeTeamMovePostscript(
-      { ...PENDING, sourceTeam: { ...PENDING.sourceTeam, isDefault: true } },
-      {
-        deleteSource: async () => void calls.push("delete"),
-        switchTarget: async () => void calls.push("switch"),
-        listTargetTeams: async () => [],
-        createTargetTeam: async () => TEAM,
-        updateTargetTeam: async () => {},
-        placeAgent: async () => {},
-      },
-    );
-    deepStrictEqual(calls, ["switch"]);
   });
 });

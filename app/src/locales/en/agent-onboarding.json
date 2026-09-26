@@ -32,8 +32,6 @@
     },
     "createFailed": "We could not create this AI Employee. Please try again.",
     "saveFailed": "We couldn't save your changes yet. We'll try again when you finish.",
-    "placementFailedTitle": "Created in the default team",
-    "placementFailedBody": "We could not put {{name}} in the team you picked. You can move it any time from its menu.",
     "contexts": {
       "accounting": "Accounting",
       "advertising": "Advertising",

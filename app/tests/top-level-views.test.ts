@@ -5,15 +5,14 @@ import { AGENTS_HOME_VIEW_ID } from "../src/components/agents-home/id.ts";
 import { ASSISTANT_VIEW_ID } from "../src/components/assistant/id.ts";
 import { INTEGRATIONS_VIEW_ID } from "../src/components/integrations-view/id.ts";
 import { SKILLS_VIEW_ID } from "../src/components/skills-view/id.ts";
-import { TEAMS_HOME_VIEW_ID } from "../src/components/teams-home/id.ts";
 import { SETTINGS_SECTION_IDS } from "../src/lib/settings-sections.ts";
-import type { TeamSectionId, TeamView } from "../src/lib/teams-model.ts";
+import type { TeamSectionId } from "../src/lib/teams-model.ts";
 import {
-  DEFAULT_TEAM_ID,
   resolveTeamSection,
-  visibleTeamSectionsForTeam,
+  visibleAgentSections,
 } from "../src/lib/teams-model.ts";
 import {
+  AGENT_VIEW_ID,
   AI_HUB_VIEW_ID,
   blockedTopLevelView,
   isActiveTopLevelView,
@@ -21,7 +20,6 @@ import {
   isMissionBoardView,
   isTopLevelView,
   SETTINGS_VIEW_ID,
-  TEAM_VIEW_ID,
   TOP_LEVEL_VIEWS,
 } from "../src/lib/top-level-views.ts";
 
@@ -31,35 +29,35 @@ describe("isTopLevelView", () => {
       // The personal assistant's screen, gated on discovery rather than a role.
       ASSISTANT_VIEW_ID,
       ACADEMY_VIEW_ID,
-      // The mobile Agents and Teams tabs' root screens.
+      // The phone's AI Employees tab root.
       AGENTS_HOME_VIEW_ID,
-      TEAMS_HOME_VIEW_ID,
       SETTINGS_VIEW_ID,
       AI_HUB_VIEW_ID,
       INTEGRATIONS_VIEW_ID,
       // The shared Skills library, beside Integrations in the rail.
       SKILLS_VIEW_ID,
       // One screen for every team: which team is open is store state, not an id.
-      TEAM_VIEW_ID,
+      AGENT_VIEW_ID,
     ]) {
       strictEqual(isTopLevelView(id), true, id);
     }
   });
 
-  it("is exactly those nine, and no settings section doubles as one", () => {
+  it("is exactly those eight, and no settings section doubles as one", () => {
     // A Settings section is reached THROUGH `settings`, so no section id may
     // also resolve as a top-level view. Checking the live section list (rather
     // than retired string literals) keeps this failing if a future section is
     // wired up as a top-level view by mistake, and still covers the
     // stale-persisted-`viewMode` case that motivated it.
-    strictEqual(TOP_LEVEL_VIEWS.size, 9);
+    strictEqual(TOP_LEVEL_VIEWS.size, 8);
     for (const section of SETTINGS_SECTION_IDS) {
       strictEqual(isTopLevelView(section), false, section);
     }
     // Retired `viewMode` values an older install may still have pinned: the
     // global usage page, the Permissions screen (agent policy is a team's
     // focused agent screen), the standalone Time worked screen (a lens inside
-    // Admin), the Inbox, and About me (a Settings section).
+    // Admin), the Inbox, About me (a Settings section), and the phone's groups
+    // tree (groups are managed from the AI Employees list).
     for (const retired of [
       "usage",
       "permissions",
@@ -68,6 +66,7 @@ describe("isTopLevelView", () => {
       "about-me",
       "agent-store",
       "organization",
+      "teams-home",
     ]) {
       strictEqual(isTopLevelView(retired), false, retired);
     }
@@ -83,10 +82,10 @@ describe("isTopLevelView", () => {
 });
 
 describe("isMissionBoardView", () => {
-  it("covers every team's board, the only boards left", () => {
-    // The team view owns the global "New mission" handler while its board is
+  it("covers every employee's board, the only boards left", () => {
+    // The employee screen owns the global "New mission" handler while its board is
     // mounted, so ⌘N and the palette fire it in place instead of navigating.
-    strictEqual(isMissionBoardView(TEAM_VIEW_ID), true);
+    strictEqual(isMissionBoardView(AGENT_VIEW_ID), true);
   });
 
   it("no longer covers a global board, because there is none", () => {
@@ -104,17 +103,17 @@ describe("isMissionBoardView", () => {
 });
 
 describe("isMissionBoardSurface", () => {
-  // The keyboard bug this predicate exists for: the arrow keys and bare Enter
-  // used to gate on `isMissionBoardView`, which is true for the WHOLE team view.
-  // On Routines / Files / Team Settings the handler still called
-  // `preventDefault()` and then fired nothing — no list scrolling, no Enter on
-  // the focused control, no feedback at all.
+  // The arrow keys and bare Enter gate on this predicate, not on
+  // `isMissionBoardView`, which is true for the WHOLE employee screen: on its
+  // Routines, Files or Settings section a handler that called
+  // `preventDefault()` would fire nothing, with no list scrolling and no Enter
+  // on the focused control.
 
-  it("is never a board off the team view, whatever the stale team section says", () => {
-    // `teamSection` is sticky store state: it keeps the last team's section
+  it("is never a board off the employee screen, whatever the stale section says", () => {
+    // `agentSection` is sticky store state: it keeps the last employee's section
     // while the user is on the Agents home, and must not speak for it. Claiming
     // arrows and Enter there would swallow them over a plain list.
-    for (const teamSection of [
+    for (const agentSection of [
       null,
       "mission-control",
       "routines",
@@ -122,62 +121,56 @@ describe("isMissionBoardSurface", () => {
       "settings",
     ] as const) {
       strictEqual(
-        isMissionBoardSurface({ viewMode: AGENTS_HOME_VIEW_ID, teamSection }),
+        isMissionBoardSurface({ viewMode: AGENTS_HOME_VIEW_ID, agentSection }),
         false,
-        `${teamSection}`,
+        `${agentSection}`,
       );
     }
   });
 
-  it("is a board on a team whose open section is Mission Control", () => {
+  it("is a board on an employee whose open section is Mission Control", () => {
     strictEqual(
       isMissionBoardSurface({
-        viewMode: TEAM_VIEW_ID,
-        teamSection: "mission-control",
+        viewMode: AGENT_VIEW_ID,
+        agentSection: "mission-control",
       }),
       true,
     );
   });
 
-  it("is a board on a team with no section chosen yet", () => {
+  it("is a board on an employee with no section chosen yet", () => {
     // `null` is what the store holds before any section row is clicked, and
-    // `resolveTeamSection` renders the team's FIRST section for it.
+    // `resolveTeamSection` renders the employee's FIRST section for it.
     strictEqual(
-      isMissionBoardSurface({ viewMode: TEAM_VIEW_ID, teamSection: null }),
+      isMissionBoardSurface({ viewMode: AGENT_VIEW_ID, agentSection: null }),
       true,
     );
   });
 
   it("agrees with resolveTeamSection on what a null section renders", () => {
     // The two rules are duplicated across modules on purpose (this one has no
-    // capabilities and no team to consult), so pin them together: if the team
-    // view ever opens on something other than Mission Control, this fails
+    // capabilities and no employee to consult), so pin them together: if the
+    // employee screen ever opens on something other than Mission Control, this fails
     // instead of the predicate silently claiming the arrow keys on a non-board
     // section.
-    const team: TeamView = {
-      id: DEFAULT_TEAM_ID,
-      name: "Acme",
-      agents: [],
-      isDefault: true,
-    };
     strictEqual(
-      resolveTeamSection(visibleTeamSectionsForTeam(null, team), null),
+      resolveTeamSection(visibleAgentSections(null, {}), null),
       "mission-control",
     );
   });
 
-  it("is NOT a board on a team's Routines, Files or Team Settings", () => {
+  it("is NOT a board on an employee's Routines, Files or Settings", () => {
     // The regression. Each of these renders a list or a form, never a board, so
     // the arrows and Enter must be left to the surface underneath.
-    for (const teamSection of [
+    for (const agentSection of [
       "routines",
       "files",
       "settings",
     ] satisfies TeamSectionId[]) {
       strictEqual(
-        isMissionBoardSurface({ viewMode: TEAM_VIEW_ID, teamSection }),
+        isMissionBoardSurface({ viewMode: AGENT_VIEW_ID, agentSection }),
         false,
-        teamSection,
+        agentSection,
       );
     }
   });
@@ -192,7 +185,7 @@ describe("isMissionBoardSurface", () => {
     ]) {
       // Even carrying a Mission Control section from the last team visited.
       strictEqual(
-        isMissionBoardSurface({ viewMode, teamSection: "mission-control" }),
+        isMissionBoardSurface({ viewMode, agentSection: "mission-control" }),
         false,
         viewMode,
       );
@@ -272,15 +265,15 @@ describe("blockedTopLevelView", () => {
   });
 
   it("never blocks ungated top-level views or agent tabs", () => {
-    // The team view has a gate of its own (`blockedTeamView`, over the resolved
-    // teams) rather than a caps flag, so this one never blocks it.
+    // The employee screen has a gate of its own (`blockedAgentView`) rather
+    // than a caps flag, so this one never blocks it.
     for (const id of [
       ACADEMY_VIEW_ID,
       // The phone's landing screen: a gate that could strand a user off it
       // would strand them off the app.
       AGENTS_HOME_VIEW_ID,
       SETTINGS_VIEW_ID,
-      TEAM_VIEW_ID,
+      AGENT_VIEW_ID,
       "chat",
     ]) {
       strictEqual(blockedTopLevelView(id, gates()), false, id);

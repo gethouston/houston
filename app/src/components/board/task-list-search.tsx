@@ -8,9 +8,7 @@ import { useTranslation } from "react-i18next";
  * by its own control or Escape. It takes focus on reveal — the user asked for
  * it by name, so the keyboard coming up is the point, not a surprise.
  *
- * Shared by every phone task list; each one hands it the query it narrows (an
- * agent's list filters its rows in memory, a team's drives the board source's
- * own mission search) and gets back the same field.
+ * The list hands it the query it narrows and filters its own rows with it.
  */
 export function TaskListSearch({
   query,

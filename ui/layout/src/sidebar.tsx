@@ -32,18 +32,15 @@ export function AppSidebar({
   selectedId,
   onSelect,
   onAdd,
-  onAddToGroup,
   addItemDataAttrs,
   sectionLabel,
   sectionAction,
   sectionCollapsed = false,
   onToggleSectionCollapsed,
   groups,
-  defaultGroup,
+  order,
   onActivateGroup,
-  onActivateDefault,
-  onMoveItem,
-  onMoveGroup,
+  onArrange,
   footer,
   labels,
   collapsed = false,
@@ -70,16 +67,14 @@ export function AppSidebar({
           <SidebarGroupedList
             items={items}
             groups={groups}
-            defaultGroup={defaultGroup}
+            order={order}
             onActivateGroup={onActivateGroup}
-            onActivateDefault={onActivateDefault}
-            onMoveItem={onMoveItem}
-            onMoveGroup={onMoveGroup}
+            onArrange={onArrange}
             onAdd={onAdd}
-            onAddToGroup={onAddToGroup}
             addItemLabel={l.addItem}
             addItemDataAttrs={addItemDataAttrs}
             rowCtx={baseRowCtx}
+            labels={l}
           />
         </div>
       ) : (
@@ -139,7 +134,7 @@ export function AppSidebar({
             spotlight just this region. */}
         <div data-tour-target="agents" className="flex min-h-0 flex-1 flex-col">
           {sectionLabel && !collapsed ? (
-            /* "Your teams" is the SAME `SidebarBand` as the nav runs above
+            /* The host's section band is the SAME `SidebarBand` as the nav runs above
                it — one band component for the whole rail. It is the only one
                that carries an affordance (the "+" that creates) and the only
                one whose content is a scroll box, hence the sizing classes. */

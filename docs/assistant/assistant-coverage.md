@@ -115,8 +115,8 @@ Every operation the assistant cannot drive states why in its `@assistant` tag, a
 - `reportPresence` - hidden: presence means the person opened the app; an assistant reporting it would keep their routines from pausing.
 - `reportPresence` - unconfirmed: A foreground heartbeat only updates activity time.
 - `createAgentTeam` - unconfirmed: Creates an empty team without moving agents or adding other members.
-- `getHostSidebarLayout` - hidden: UI plumbing; the sidebar's persisted order has no meaning outside the sidebar's own render.
-- `putHostSidebarLayout` - hidden: UI plumbing; the app's drag and drop owns this write, and calling it blind rearranges the user's sidebar.
+- `getHostSidebarLayout` - hidden: A person's sidebar folders are arranged by drag and drop in the app.
+- `putHostSidebarLayout` - hidden: A person's sidebar folders are arranged by drag and drop in the app.
 
 ## Acknowledged debt (0)
 

@@ -1,5 +1,6 @@
 import "./styles/globals.css";
 import { useRef } from "react";
+import { useWorkspaceBootReads } from "./app-workspace";
 import { SignInScreen } from "./components/auth/sign-in-screen";
 import { StorageUnavailableScreen } from "./components/auth/storage-unavailable-screen";
 import { AppRoutes } from "./components/shell/app-routes";
@@ -93,6 +94,7 @@ export default function App() {
   useIdentityTagging(session);
 
   const routing = useFirstRunRouting();
+  useWorkspaceBootReads();
 
   // First-boot latch (HOU-907). The workspace-boot splash below is a FIRST-BOOT
   // affordance only: once the full gate has cleared once for this App mount, a

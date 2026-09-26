@@ -250,7 +250,7 @@ export async function expectAdminSections(
  * Open Admin on one of its sections.
  *
  * The sections are lozenges in the header cluster (the shared grammar with the
- * team screen), addressed by their `data-admin-section-tab` id so the helper
+ * employee screen), addressed by their `data-admin-section-tab` id so the helper
  * survives label changes. The landing waits on the BODY's
  * `data-admin-section-body` marker, not just the lozenge's `aria-current`: the
  * lozenge repaints synchronously on click, so only the body attribute proves

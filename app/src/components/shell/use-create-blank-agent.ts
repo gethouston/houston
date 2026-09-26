@@ -6,7 +6,6 @@ import type { AgentRoleContext } from "../../lib/agent-role-context";
 import {
   type CreatedEmployee,
   createEmployee,
-  useEmployeePlacer,
 } from "../../lib/create-employee";
 import { openAgentBoard } from "../../lib/open-agent";
 import type { AgentDefinition } from "../../lib/types";
@@ -20,13 +19,11 @@ export interface CreateFailure {
 
 export function useCreateBlankAgent({
   open,
-  targetTeamId,
   selectedDef,
   onError,
   onDone,
 }: {
   open: boolean;
-  targetTeamId: string | null;
   selectedDef: AgentDefinition | undefined;
   /** Why the create did not land, or null when a new attempt starts. */
   onError: (failure: CreateFailure | null) => void;
@@ -35,7 +32,6 @@ export function useCreateBlankAgent({
   const { t } = useTranslation(["agents", "agentOnboarding"]);
   const [creating, setCreating] = useState(false);
   const currentWorkspace = useWorkspaceStore((s) => s.current);
-  const placeEmployee = useEmployeePlacer();
   const resolveKickoffPin = useKickoffPinResolver(open);
 
   useEffect(() => {
@@ -55,21 +51,17 @@ export function useCreateBlankAgent({
       setCreating(true);
       let created: CreatedEmployee;
       try {
-        created = await createEmployee(
-          {
-            workspaceId: currentWorkspace.id,
-            name: trimmed,
-            color,
-            brief,
-            teamId: targetTeamId,
-            pin: await resolveKickoffPin(),
-            template: {
-              installedPath: selectedDef?.path,
-              seeds: selectedDef?.config.agentSeeds,
-            },
+        created = await createEmployee({
+          workspaceId: currentWorkspace.id,
+          name: trimmed,
+          color,
+          brief,
+          pin: await resolveKickoffPin(),
+          template: {
+            installedPath: selectedDef?.path,
+            seeds: selectedDef?.config.agentSeeds,
           },
-          placeEmployee,
-        );
+        });
       } catch (err) {
         onError(
           isAgentNameConflictError(err)

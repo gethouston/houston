@@ -9,7 +9,7 @@ export interface SessionFields {
   /**
    * One-shot nav target for a routine chat with no board card (session-
    * finished notification click, #401): the OWNING agent plus the activity id
-   * to open in that team's Routines section. The owner travels with it because
+   * to open in that employee's Routines section. The owner travels with it because
    * that section is cross-agent: without it the surface would have to guess
    * whose chat the id belongs to, and guess wrong the moment two agents are in
    * view. The section mounts the owner's chat host, which resolves the id to a

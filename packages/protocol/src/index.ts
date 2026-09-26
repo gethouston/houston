@@ -17,6 +17,9 @@ export {
 } from "./domain/interaction-types";
 export * from "./domain/portable";
 export * from "./domain/routine";
+export * from "./domain/sidebar-layout";
+export * from "./domain/sidebar-layout-normalize";
+export * from "./domain/sidebar-layout-parse";
 export * from "./domain/skill";
 export * from "./domain/workspace";
 export * from "./events";

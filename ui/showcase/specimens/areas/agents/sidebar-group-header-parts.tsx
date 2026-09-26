@@ -1,6 +1,6 @@
 import { SidebarGroupHeader, SidebarRowButton } from "@houston-ai/layout";
 import type { ReactNode } from "react";
-import { useId, useState } from "react";
+import { useState } from "react";
 
 import { TeamGlyph } from "./sidebar-group-header-chrome";
 
@@ -13,8 +13,7 @@ export function Rail({ children }: { children: ReactNode }) {
   );
 }
 
-/** A block holds MEMBERS and nothing else: its destinations are tabs on the
- *  screen its header opens. */
+/** A block holds MEMBERS and nothing else. */
 const MEMBERS: readonly string[] = ["Ada", "Kai", "Nova"];
 
 export interface LiveTeamProps {
@@ -33,9 +32,7 @@ export interface LiveTeamProps {
  * left carrying both answers: the pill that says the open view belongs here,
  * and the `trailing` badge that rolls up what the hidden rows were signalling.
  *
- * Activating the row FOLDS here. The library takes no position on what a header
- * click means — Houston's own rail opens the team's screen on most clicks and
- * only folds when the user is already on it.
+ * Activating the row folds or unfolds the block, exactly as Houston's rail does.
  */
 export function LiveTeam({
   name,
@@ -43,7 +40,6 @@ export function LiveTeam({
   owns = false,
 }: LiveTeamProps) {
   const [collapsed, setCollapsed] = useState(startCollapsed);
-  const contentId = useId();
 
   return (
     <div className="flex flex-col">
@@ -58,11 +54,10 @@ export function LiveTeam({
           ) : undefined
         }
         collapsed={collapsed}
-        contentId={contentId}
         active={owns}
         onActivate={() => setCollapsed((on) => !on)}
       />
-      <div id={contentId} className="flex flex-col">
+      <div className="flex flex-col">
         {!collapsed &&
           MEMBERS.map((member) => (
             <SidebarRowButton key={member} label={member} />

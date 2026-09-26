@@ -1,11 +1,9 @@
 import type { TFunction } from "i18next";
 import { useAgentActions } from "../../hooks/use-agent-actions";
-import { useCapabilities } from "../../hooks/use-capabilities";
-import { hasAgentTeams } from "../../lib/org-roles";
 import type { Agent } from "../../lib/types";
 import { useAgentStore } from "../../stores/agents";
 import { useWorkspaceStore } from "../../stores/workspaces";
-import { useSidebarOverlayLayout } from "../shell/use-sidebar-overlay-layout";
+import { useSidebarLayout } from "../shell/../../hooks/use-sidebar-layout";
 
 /** What a "Change color & name" surface can change. Both halves optional: the
  *  dialog sends only the fields the user actually touched. */
@@ -30,13 +28,9 @@ export function useAgentIdentitySave(
   agent: Agent,
   t: TFunction<["shell", "teams", "agents"]>,
 ): (patch: AgentIdentityPatch) => Promise<void> {
-  const { capabilities } = useCapabilities();
   const agents = useAgentStore((state) => state.agents);
   const workspaceId = useWorkspaceStore((state) => state.current?.id);
-  const sidebar = useSidebarOverlayLayout(
-    workspaceId,
-    hasAgentTeams(capabilities),
-  );
+  const sidebar = useSidebarLayout(workspaceId);
   const actions = useAgentActions({
     t,
     workspaceId,

@@ -39,7 +39,7 @@ function PlainSection({
 /**
  * The active section's body under the Admin strip. No heading of its own: the
  * header's lozenge already names the section (the shared grammar with
- * Integrations and the team screen), so a hero here would say it twice. Every
+ * Integrations and an employee's screen), so a hero here would say it twice. Every
  * context-backed section renders from the shared `{ ctx }` contract. Time
  * worked has no need for organization context and renders directly.
  *

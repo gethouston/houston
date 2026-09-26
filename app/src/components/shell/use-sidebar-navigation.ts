@@ -1,30 +1,17 @@
-import {
-  DEFAULT_TEAM_ID,
-  type TeamView,
-  teamOfAgent,
-} from "../../lib/teams-model";
 import { useAgentStore } from "../../stores/agents";
 import { useUIStore } from "../../stores/ui";
 import { useWorkspaceStore } from "../../stores/workspaces";
 
-/**
- * Where a click in the rail takes the user. Both destinations close the
- * phone's More menu on the way out, so the screen they asked for is
- * immediately visible.
- */
-export function useSidebarNavigation(args: {
-  /** Every team the caller can see — an agent's own team is looked up here. */
-  teams: TeamView[];
-  closeMobileMenu: () => void;
-}) {
-  const { teams, closeMobileMenu } = args;
+/** Rail navigation closes the phone's More menu after a selection. */
+export function useSidebarNavigation(args: { closeMobileMenu: () => void }) {
+  const { closeMobileMenu } = args;
   const workspaces = useWorkspaceStore((s) => s.workspaces);
   const currentWorkspace = useWorkspaceStore((s) => s.current);
   const setCurrentWorkspace = useWorkspaceStore((s) => s.setCurrent);
   const agents = useAgentStore((s) => s.agents);
   const setCurrentAgent = useAgentStore((s) => s.setCurrent);
   const loadAgents = useAgentStore((s) => s.loadAgents);
-  const openTeamView = useUIStore((s) => s.openTeamView);
+  const openAgentView = useUIStore((s) => s.openAgentView);
 
   const switchWorkspace = async (wsId: string) => {
     if (wsId === currentWorkspace?.id) return;
@@ -35,28 +22,12 @@ export function useSidebarNavigation(args: {
     await loadAgents(ws.id);
   };
 
-  /**
-   * Clicking an agent opens ITS TEAM's Tasks board, pre-filtered to that agent,
-   * instead of the agent's own tab: the board is where its work lives, and a
-   * team's Tasks is its home.
-   *
-   * ALWAYS Tasks, wherever the user was — including another section of this
-   * same team. Keeping the open section instead was considered and dropped: the
-   * one surface that made it feel right was Files, which is being redesigned
-   * around agents-as-folders and will carry no agent selection at all.
-   *
-   * The agent store's `current` moves with it so the command palette and
-   * ⌘[ / ⌘] cycling keep pointing at the agent the user just picked.
-   */
+  /** Keep the current-agent store aligned with the focused Tasks screen. */
   const selectAgent = (agentId: string) => {
     const agent = agents.find((a) => a.id === agentId);
     if (!agent) return;
     setCurrentAgent(agent);
-    openTeamView(
-      teamOfAgent(teams, agentId)?.id ?? DEFAULT_TEAM_ID,
-      "mission-control",
-      { agentFilter: agent.id, agentFocus: true },
-    );
+    openAgentView(agent.id, "mission-control");
     closeMobileMenu();
   };
 

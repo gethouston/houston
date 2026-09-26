@@ -2,12 +2,27 @@ import { FAKE_HOST_URL, SEED_AGENT_ID } from "@houston/fake-host";
 import type { Page } from "@playwright/test";
 import { FOLLOW_UP_PLACEHOLDER } from "./support/composer";
 import { expect, test } from "./support/fixtures";
+import { seedSidebarLayout } from "./support/sidebar-layout";
 import {
   missionCard,
   openArchivedTasks,
   openTeamSection,
   screen,
 } from "./support/team-nav";
+
+test.beforeEach(async ({ request }) => {
+  await seedSidebarLayout(request, {
+    groups: [
+      {
+        id: "board-team",
+        name: "Operations",
+        collapsed: false,
+        agentIds: [SEED_AGENT_ID],
+      },
+    ],
+    order: [],
+  });
+});
 
 /**
  * The persisted query mirror's query-key heads, or null while no mirror
@@ -405,9 +420,7 @@ test("deletes a mission from the board", async ({ page }) => {
 });
 
 /**
- * The team's board — the aggregate's own surface. Every board belongs to a
- * team now, and in the seeded single-team workspace the default team holds
- * EVERY agent, so this is still the cross-agent board the sweep feeds.
+ * The seeded personal folder has a board for its agent.
  */
 async function openTeamBoard(page: Page): Promise<void> {
   await openTeamSection(page, "Tasks");

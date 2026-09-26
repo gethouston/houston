@@ -1,6 +1,8 @@
-import type { DraggableAttributes } from "@dnd-kit/core";
-import type { SyntheticListenerMap } from "@dnd-kit/core/dist/hooks/utilities";
-import type { ReactNode } from "react";
+import type {
+  DraggableAttributes,
+  DraggableSyntheticListeners,
+} from "@dnd-kit/core";
+import type { KeyboardEvent, ReactNode } from "react";
 import { SidebarRowButton } from "./sidebar-row-button";
 
 export interface SidebarGroupHeaderProps {
@@ -10,21 +12,15 @@ export interface SidebarGroupHeaderProps {
   /** A badge INSIDE the row, right-aligned: the block's rollup of what its
    *  folded-away rows are signalling. */
   trailing?: ReactNode;
+  affordance?: ReactNode;
   collapsed: boolean;
-  /** The id of the region this row folds, wired as `aria-controls`. Omitted by
-   *  the drag preview, which folds nothing. */
-  contentId?: string;
-  /**
-   * Painted as the selected row. A block carries no destination rows any more,
-   * so this row is the only one that can say the open view belongs here —
-   * folded or open alike.
-   */
+  /** Optional selected treatment supplied by the host. */
   active?: boolean;
-  /** The row was activated. Whether that opens the block's screen, folds it, or
-   *  both is entirely the host's decision; this component only reports it. */
+  /** The row's disclosure button was activated. */
   onActivate?: () => void;
   dragAttributes?: DraggableAttributes;
-  dragListeners?: SyntheticListenerMap;
+  dragListeners?: DraggableSyntheticListeners;
+  onKeyDown?: (event: KeyboardEvent<HTMLButtonElement>) => void;
   /**
    * Extra DOM attributes on the row's ROOT, not on the toggle button: they
    * identify the BLOCK (`data-sidebar-group-header="<id>"`), which is what
@@ -37,31 +33,22 @@ export interface SidebarGroupHeaderProps {
  * A block's header row: ONE button carrying the block's glyph, its name, the
  * triangle that states whether it is open and an optional rollup badge.
  *
- * Three things about that shape are deliberate:
- *
- * - **One button, not three.** The triangle, the glyph and the name used to be
- *   separate controls sharing one job, which gave a keyboard user three stops
- *   to reach one disclosure and gave a screen reader no `aria-expanded` at all.
- *   Now the row IS the single hit target, announced as expanded or collapsed,
- *   pointing at the region it folds through `aria-controls`.
- * - **The triangle is an INDICATOR, not a control.** It states the block's
- *   fold and nothing else. What activating the row does is the host's rule —
- *   it may open the block's screen rather than fold it — so a triangle that
- *   claimed to be the fold button would be promising an outcome it does not
- *   own.
- * The row is also the drag handle, exactly as before. @dnd-kit's pointer sensor
- * has a 4px activation distance, so a click with no movement still activates.
+ * The row is the single hit target, announced as expanded or collapsed, and
+ * the whole button toggles the fold: the triangle only states it. The row is
+ * also the drag handle; @dnd-kit's pointer sensor has a 4px activation
+ * distance, so a click with no movement still activates.
  */
 export function SidebarGroupHeader({
   name,
   icon,
   trailing,
+  affordance,
   collapsed,
-  contentId,
   active,
   onActivate,
   dragAttributes,
   dragListeners,
+  onKeyDown,
   dataAttrs,
 }: SidebarGroupHeaderProps) {
   return (
@@ -69,13 +56,15 @@ export function SidebarGroupHeader({
       label={name}
       icon={icon}
       trailing={trailing}
+      affordance={affordance}
       depth="block"
       active={active}
       title={name}
       onActivate={onActivate}
-      disclosure={{ expanded: !collapsed, contentId }}
+      disclosure={{ expanded: !collapsed }}
       dragAttributes={dragAttributes}
       dragListeners={dragListeners}
+      onKeyDown={onKeyDown}
       dataAttrs={dataAttrs}
     />
   );

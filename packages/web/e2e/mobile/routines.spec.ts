@@ -5,7 +5,7 @@ import { screen } from "../support/team-nav";
 
 /**
  * Routines on a phone (the tier-1 CI gate's last leg): the team's Routines
- * section is reachable from the Teams tree, the merged list is usable at a
+ * section is reachable from the employee's task list menu, the list is usable at a
  * Pixel-7-class width, and a row tap opens the routine's own screen — never a
  * popover — with its actions reachable and nothing forcing a horizontal scroll.
  */
@@ -31,13 +31,13 @@ async function horizontalOverflow(
   );
 }
 
-test("a routine opens as its own screen from the phone team view", async ({
+test("a routine opens as its own screen from the phone employee screen", async ({
   page,
 }) => {
   await seedRoutine("Morning digest");
 
   await page.goto("/");
-  // The phone has no section strip: Routines is a row of the Teams tree.
+  // The phone reaches Routines from the employee's task list menu.
   await openPhoneTeamSection(page, "routines");
 
   const row = screen(page)

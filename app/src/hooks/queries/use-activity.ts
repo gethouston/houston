@@ -11,11 +11,11 @@ import { queryKeys } from "../../lib/query-keys";
 import { tauriActivity } from "../../lib/tauri";
 
 /**
- * ONE agent's activity list, as options. `useActivity` below and any
- * cross-agent fan-out (a team's Routines section reads every member's setup
- * chats to list its DRAFT routines) build from this, so they share the key, the
- * cache entry, the queryFn and the placeholder policy documented below — the
- * activity invalidation refreshes both and neither can serve a different truth.
+ * ONE agent's activity list, as options. `useActivity` below and the
+ * employee's Routines list (its DRAFT rows are setup chats) build from this,
+ * so they share the key, the cache entry, the queryFn and the placeholder
+ * policy documented below: the activity invalidation refreshes both and
+ * neither can serve a different truth.
  */
 export function activityQueryOptions(qc: QueryClient, agentPath: string) {
   return {
@@ -84,10 +84,8 @@ export function useCreateActivity(agentPath: string | undefined) {
 
 /**
  * An activity patch with the AGENT in the variables instead of in the hook
- * argument — the sibling of `useRoutineWritesForAnyAgent`, for the same reason:
- * a cross-agent list (a team's Routines and its DRAFT rows) knows which agent a
- * row belongs to only when the row is acted on, and hooks may not be called in
- * a loop over a roster that changes.
+ * argument, the sibling of `useRoutineWritesForAnyAgent`: one binding serves
+ * whichever agent a call names.
  */
 export function useUpdateActivityForAnyAgent() {
   const qc = useQueryClient();

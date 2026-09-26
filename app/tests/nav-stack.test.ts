@@ -17,11 +17,8 @@ import {
 const at = (viewMode: string, panelOpen = false): NavSourceFields => ({
   viewMode,
   settingsSection: null,
-  activeTeamId: null,
-  teamSection: null,
-  teamAgentFilter: null,
-  teamAgentFocus: false,
-  teamSettingsFocus: false,
+  activeAgentId: null,
+  agentSection: null,
   agentsHomeAgentId: null,
   chatAgentId: null,
   chatMissionId: null,
@@ -66,18 +63,18 @@ describe("navigated push", () => {
 describe("navigated replace", () => {
   it("swaps the current entry without growing the stack", () => {
     const s = state(at("agents-home"), initialNavState());
-    const out = navigated(s, { viewMode: "team" }, "replace");
+    const out = navigated(s, { viewMode: "agent" }, "replace");
     assert.ok("navStack" in out);
     assert.equal(out.navIndex, 0);
     assert.equal(out.navStack.length, 1);
-    assert.equal(out.navStack[0].viewMode, "team");
+    assert.equal(out.navStack[0].viewMode, "agent");
   });
 });
 
 describe("navigated retreat", () => {
   it("pops when the previous entry is the destination, keeping the array", () => {
-    const stack = [navEntryOf(at("team")), navEntryOf(at("team", true))];
-    const s = state(at("team", true), { navStack: stack, navIndex: 1 });
+    const stack = [navEntryOf(at("agent")), navEntryOf(at("agent", true))];
+    const s = state(at("agent", true), { navStack: stack, navIndex: 1 });
     const out = navigated(s, { missionPanelOpen: false }, "retreat");
     assert.ok("navStack" in out);
     assert.equal(out.navIndex, 0);
@@ -87,11 +84,11 @@ describe("navigated retreat", () => {
   });
 
   it("replaces when the previous entry is somewhere else", () => {
-    // Deep link straight into a Settings section from the team board: the
+    // Deep link straight into a Settings section from an employee board: the
     // in-UI back to the index retreats WITHIN the surface, so browser back
     // still leaves it for the board.
     const stack = [
-      navEntryOf(at("team")),
+      navEntryOf(at("agent")),
       navEntryOf({ ...at("settings"), settingsSection: "shortcuts" }),
     ];
     const s = state(
@@ -106,12 +103,12 @@ describe("navigated retreat", () => {
     assert.equal(out.navIndex, 1);
     assert.equal(out.navStack.length, 2);
     assert.equal(out.navStack[1].settingsSection, null);
-    assert.equal(out.navStack[0].viewMode, "team");
+    assert.equal(out.navStack[0].viewMode, "agent");
   });
 
   it("replaces at the root, where there is nothing to pop to", () => {
-    const s = state(at("team", true), {
-      navStack: [navEntryOf(at("team", true))],
+    const s = state(at("agent", true), {
+      navStack: [navEntryOf(at("agent", true))],
       navIndex: 0,
     });
     const out = navigated(s, { missionPanelOpen: false }, "retreat");
@@ -124,7 +121,7 @@ describe("navigated retreat", () => {
 describe("navigated reset", () => {
   it("rebuilds the stack to the destination as its only entry", () => {
     const stack = [
-      navEntryOf(at("team")),
+      navEntryOf(at("agent")),
       navEntryOf(at("skills")),
       navEntryOf(at("skills", true)),
     ];
@@ -141,8 +138,8 @@ describe("navigated reset", () => {
 
   it("still rebuilds when the destination IS the current location", () => {
     // Re-tapping the active tab at a drilled depth must abandon the trail.
-    const stack = [navEntryOf(at("team")), navEntryOf(at("team", true))];
-    const s = state(at("team", true), { navStack: stack, navIndex: 1 });
+    const stack = [navEntryOf(at("agent")), navEntryOf(at("agent", true))];
+    const s = state(at("agent", true), { navStack: stack, navIndex: 1 });
     const out = navigated(s, { missionPanelOpen: true }, "reset");
     assert.ok("navStack" in out);
     assert.equal(out.navIndex, 0);
@@ -150,12 +147,12 @@ describe("navigated reset", () => {
   });
 
   it("drops the forward set even from the root", () => {
-    const stack = [navEntryOf(at("team")), navEntryOf(at("settings"))];
-    const s = state(at("team"), { navStack: stack, navIndex: 0 });
-    const out = navigated(s, { viewMode: "team" }, "reset");
+    const stack = [navEntryOf(at("agent")), navEntryOf(at("settings"))];
+    const s = state(at("agent"), { navStack: stack, navIndex: 0 });
+    const out = navigated(s, { viewMode: "agent" }, "reset");
     assert.ok("navStack" in out);
     assert.equal(out.navStack.length, 1);
-    assert.equal(out.navStack[0].viewMode, "team");
+    assert.equal(out.navStack[0].viewMode, "agent");
   });
 
   it("is a no-op when the stack already is the bare root", () => {
@@ -224,15 +221,15 @@ describe("mission-chat entries (PRODUCT-1560)", () => {
 
 describe("entry plumbing", () => {
   it("snapshots missionPanelOpen as the entry's panel level", () => {
-    assert.equal(navEntryOf(at("team", true)).panelOpen, true);
+    assert.equal(navEntryOf(at("agent", true)).panelOpen, true);
   });
 
   it("viewFieldsOf never writes the derived panel flag back", () => {
     assert.equal(
-      "panelOpen" in viewFieldsOf(navEntryOf(at("team", true))),
+      "panelOpen" in viewFieldsOf(navEntryOf(at("agent", true))),
       false,
     );
-    assert.equal(viewFieldsOf(navEntryOf(at("team"))).viewMode, "team");
+    assert.equal(viewFieldsOf(navEntryOf(at("agent"))).viewMode, "agent");
   });
 
   it("boots as a single Agents home entry, matching the store's initial view", () => {

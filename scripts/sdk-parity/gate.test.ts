@@ -4,6 +4,7 @@ import { tmpdir } from "node:os";
 import { join, resolve } from "node:path";
 import { expect, test } from "vitest";
 import { buildGraph, nodeKey } from "./adapter-graph.ts";
+import { classifyAdapter } from "./adapter-methods.ts";
 import { type Exceptions, judge, parseExceptions } from "./gate.ts";
 import type { GatewayRoute } from "./gateway-inventory.ts";
 import {
@@ -161,6 +162,23 @@ function edgesOf(body: string): {
     helperKey: (name) => nodeKey(join(directory, "helpers.ts"), name),
   };
 }
+
+test("a method reaching a space-pinned SDK is bound", () => {
+  const directory = mkdtempSync(join(tmpdir(), "adapter-methods-"));
+  const mixin = join(directory, "layout-mixin.ts");
+  writeFileSync(
+    mixin,
+    "export class Layout {\n" +
+      "  ctx = { sdkForSpace: (_slug: string | null) => ({}) };\n" +
+      "  read(): unknown {\n" +
+      "    return this.ctx.sdkForSpace(null);\n" +
+      "  }\n" +
+      "}\n",
+  );
+  expect(classifyAdapter([mixin])).toMatchObject([
+    { name: "read", bound: true, unbound: false },
+  ]);
+});
 
 test("a callee behind a cast is still an edge", () => {
   const { edges, helperKey } = edgesOf(

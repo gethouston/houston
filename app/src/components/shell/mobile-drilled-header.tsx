@@ -5,9 +5,10 @@ import type { ReactNode } from "react";
  * The phone's header for a DRILLED screen — a team's section, the team's
  * settings level, a focused agent.
  *
- * A different grammar from the desktop strip on purpose, and it is the tree,
- * not this header, that carries the difference. On the phone the sections were
- * already chosen one level up (the Teams tree / the Agents list), so a
+ * A different grammar from the desktop strip on purpose, and it is the level
+ * above, not this header, that carries the difference. On the phone the
+ * section was already chosen one level up (the AI Employees list, or an
+ * employee's task list menu), so a
  * switcher here would offer the same list twice and leave the screen without a
  * title. What a drilled phone screen owes instead is the two things a lozenge
  * cluster cannot say at 375px: where you ARE (a real `<h1>`, the subject and

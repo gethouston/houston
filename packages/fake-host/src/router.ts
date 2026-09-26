@@ -276,14 +276,14 @@ export async function handle(req: Request): Promise<Response> {
       agents: state.listAgents(),
     });
   }
-  // Arm the C13 agent-team world `GET /v1/org/teams` serves: `{ teams: [{ id,
+  // Arm the org agent-team world `GET /v1/org/teams` serves: `{ teams: [{ id,
   // name, isDefault?, sortOrder?, icon?, color?, agentIds?, members? }],
   // personalSpace? }`. Omit `icon`/`color` to arm a team that HAS no identity —
   // the field is then absent from the row, and so from the wire.
   // Arming REPLACES it wholesale; an omitted (or `null`) `teams` clears it back
-  // to lazy, so the next read mints the default team again. The client
-  // feature-detects on the capability, not on this data, so pair it with
-  // `/__test__/capabilities` `{ agentTeams:true }`. Returns the armed value.
+  // to lazy, so the next read mints the default team again. Only route-level
+  // specs read this world; the app's sidebar reads `SidebarLayout`. Returns
+  // the armed value.
   if (path === "/__test__/agent-teams" && method === "POST") {
     const body = await parseBody(req);
     return json(

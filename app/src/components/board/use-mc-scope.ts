@@ -8,24 +8,16 @@ import {
 } from "./mission-control-scope.ts";
 
 /**
- * How a Mission Control board is narrowed. Every board on screen is a team's,
- * so every live caller passes one; omitting it leaves an unnarrowed board over
- * the whole roster, which nothing renders today.
- *
- * It carries no TITLE: the team screen's row 1 names the team above every one
- * of its sections, so a board that named itself again would print the same
- * words twice on one screen.
+ * How a Tasks board is narrowed to an employee or a group of employees.
  */
 export interface MissionControlScope {
-  /** Restrict the board to these agent folder paths (one team's agents). */
+  /** Restrict the board to these agent folder paths. */
   scopePaths?: string[];
-  /** Identifies the team this board belongs to, for the per-team concerns that
-   *  are not a matter of which cards show — today the new-mission draft scope
-   *  (`missionControlDraftScope`). The global board omits it. */
+  /** Identifies the source group for new-mission draft scope. */
   teamId?: string;
   /** The agent filter this board renders under: a folder path, or `null` for
    *  every agent in scope. Always owned by the surface that holds the pin (the
-   *  team strip's breadcrumb, the archive's own dropdown), which is why the
+   *  employee screen or archive), which is why the
    *  scope carries no setter: a board renders the filter, it never writes it. */
   filterPath?: string | null;
 }
@@ -46,7 +38,7 @@ export interface McScope {
 /**
  * The scope half of {@link useMissionControlSource}: which agents and cards a
  * board covers, and the agent filter over them. Separated from the source so
- * the "one team's slice of the cross-agent sweep" rules live in one small unit
+ * the scoped slice of the cross-agent sweep lives in one small unit
  * (with pure helpers behind them) instead of thickening the source hook.
  */
 export function useMcScope(
@@ -55,8 +47,7 @@ export function useMcScope(
   scope?: MissionControlScope,
 ): McScope {
   const scopePaths = scope?.scopePaths;
-  // Read-only: nothing on a board changes the filter any more (the team strip's
-  // breadcrumb and the archive's dropdown write their own source directly), so
+  // Read-only: the employee screen and archive write their own source, so
   // the applied filter is exactly what the scope says, narrowed to the scope.
   const filterPath = resolveFilterPath(scope?.filterPath ?? "", scopePaths);
 

@@ -7,8 +7,8 @@ import {
 } from "../../../lib/academy/lesson-spec";
 import { analytics } from "../../../lib/analytics";
 import { fireMissionDoneConfetti } from "../../../lib/confetti";
-import { openHome } from "../../../lib/home-nav";
-import { TEAM_VIEW_ID } from "../../../lib/top-level-views";
+import { openComposeBoard } from "../../../lib/open-agent";
+import { AGENT_VIEW_ID } from "../../../lib/top-level-views";
 import { useUIStore } from "../../../stores/ui";
 import { lessonBeatArmed, lessonExitKey } from "./lesson-arming";
 import { useLessonAward } from "./use-lesson-award";
@@ -25,14 +25,12 @@ const LESSON_SOURCE = "academy_path";
 /**
  * Put the user where a beat's target lives.
  *
- * A team view is never set by id alone: which team and which of its sections
- * is open is store state, so `openHome` — the ONE writer of a whole team view
- * — takes that id and lands on the first team's Mission Control (the Agents
- * home when no team has resolved). Everything else is a plain top-level view.
+ * An employee screen needs both its employee and section, so the lesson opens
+ * the Tasks screen a compose starts from (`openComposeBoard`).
  */
 function navigateToLessonView(viewId: string): void {
-  if (viewId === TEAM_VIEW_ID) {
-    openHome();
+  if (viewId === AGENT_VIEW_ID) {
+    openComposeBoard();
     return;
   }
   useUIStore.getState().setViewMode(viewId);

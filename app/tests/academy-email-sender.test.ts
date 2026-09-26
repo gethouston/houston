@@ -5,7 +5,6 @@ import {
   EMAIL_TOOLKIT_SLUGS,
   emailSenderChoice,
 } from "../src/lib/academy/email-lesson/email-sender.ts";
-import type { TeamView } from "../src/lib/teams-model.ts";
 import type { Agent } from "../src/lib/types.ts";
 
 function agent(id: string): Agent {
@@ -16,10 +15,6 @@ function agent(id: string): Agent {
     configId: "blank",
     createdAt: "2026-09-01T00:00:00.000Z",
   };
-}
-
-function team(id: string, agents: Agent[]): TeamView {
-  return { id, name: id, agents, isDefault: false };
 }
 
 describe("connectedEmailToolkit", () => {
@@ -59,58 +54,55 @@ describe("connectedEmailToolkit", () => {
 });
 
 describe("emailSenderChoice", () => {
-  const sales = team("sales", [agent("maya"), agent("leo")]);
-  const ops = team("ops", [agent("ada")]);
+  const agents = [agent("ada"), agent("maya"), agent("leo")];
 
-  it("defaults to the first AI Employee of the team the user last had open", () => {
+  it("defaults to the AI Employee whose screen is open", () => {
     const choice = emailSenderChoice({
-      teams: [ops, sales],
-      activeTeamId: "sales",
+      agents,
+      activeAgentId: "maya",
       pickedAgentId: null,
     });
     strictEqual(choice.sender?.id, "maya");
     deepStrictEqual(
       choice.candidates.map((a) => a.id),
-      ["maya", "leo"],
+      ["ada", "maya", "leo"],
     );
   });
 
-  it("falls back to the first team when none is open", () => {
+  it("falls back to the first in sidebar order when none is open", () => {
     const choice = emailSenderChoice({
-      teams: [ops, sales],
-      activeTeamId: null,
+      agents,
+      activeAgentId: null,
       pickedAgentId: null,
     });
     strictEqual(choice.sender?.id, "ada");
   });
 
-  it("keeps the user's pick while it is on the team", () => {
+  it("keeps the user's pick over the open screen", () => {
     const choice = emailSenderChoice({
-      teams: [sales],
-      activeTeamId: "sales",
+      agents,
+      activeAgentId: "maya",
       pickedAgentId: "leo",
     });
     strictEqual(choice.sender?.id, "leo");
   });
 
-  it("drops a pick that is no longer on the team", () => {
+  it("drops a pick that is no longer an AI Employee", () => {
     const choice = emailSenderChoice({
-      teams: [sales],
-      activeTeamId: "sales",
-      pickedAgentId: "ada",
+      agents,
+      activeAgentId: null,
+      pickedAgentId: "gone",
     });
-    strictEqual(choice.sender?.id, "maya");
+    strictEqual(choice.sender?.id, "ada");
   });
 
-  it("has nobody to send with an empty team, or no team at all", () => {
-    for (const teams of [[team("empty", [])], []]) {
-      const choice = emailSenderChoice({
-        teams,
-        activeTeamId: null,
-        pickedAgentId: null,
-      });
-      strictEqual(choice.sender, null);
-      deepStrictEqual(choice.candidates, []);
-    }
+  it("has nobody to send with an empty roster", () => {
+    const choice = emailSenderChoice({
+      agents: [],
+      activeAgentId: null,
+      pickedAgentId: null,
+    });
+    strictEqual(choice.sender, null);
+    deepStrictEqual(choice.candidates, []);
   });
 });

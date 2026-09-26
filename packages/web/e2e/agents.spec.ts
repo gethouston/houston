@@ -14,7 +14,7 @@ test("creates an agent and shows it in the sidebar", async ({ page }) => {
   await page.goto("/");
 
   // Sidebar starts with the one seeded agent.
-  await expect(page.getByText("Your teams")).toBeVisible();
+  await expect(rail(page).getByText("Your AI Employees")).toBeVisible();
 
   await createAgent(page, "Marketing Bot");
 
@@ -24,7 +24,7 @@ test("creates an agent and shows it in the sidebar", async ({ page }) => {
 });
 
 /**
- * Clicking an agent in the rail opens ITS team's board, narrowed to it — so the
+ * Clicking an agent in the rail opens ITS board, narrowed to it — so the
  * seeded agent's "Plan a trip to Tokyo" must vanish on a fresh agent and return
  * when we switch back. Lookups are scoped to the screen ON THE GLASS: every
  * top-level view is kept alive, so the (hidden) global board holds the same
@@ -62,7 +62,7 @@ test("starts a new AI Employee's first day from its board", async ({
   page,
 }) => {
   await page.goto("/");
-  await expect(page.getByText("Your teams")).toBeVisible();
+  await expect(page.locator("[data-tour-target='agents']")).toBeVisible();
 
   await createAgent(page, "Ops Bot");
   const start = screen(page).getByRole("button", {

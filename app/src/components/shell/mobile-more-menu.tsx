@@ -3,7 +3,6 @@ import { WorkspaceSwitcher } from "@houston-ai/layout";
 import { Settings } from "lucide-react";
 import { useCallback, useState } from "react";
 import { useTranslation } from "react-i18next";
-import { useTeams } from "../../hooks/use-teams";
 import { ACADEMY_VIEW_ID } from "../../lib/top-level-views";
 import { useUIStore } from "../../stores/ui";
 import { useWorkspaceStore } from "../../stores/workspaces";
@@ -66,7 +65,6 @@ export function MobileMoreMenu() {
     },
   });
   const { switchWorkspace } = useSidebarNavigation({
-    teams: useTeams(),
     closeMobileMenu: close,
   });
   const footerRows = mobileMoreFooterRows({

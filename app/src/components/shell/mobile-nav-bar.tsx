@@ -3,12 +3,12 @@ import {
   type FloatingNavBarItem,
   HoustonHelmet,
 } from "@houston-ai/core";
-import { Ellipsis, SquarePen, Users } from "lucide-react";
+import { Ellipsis, SquarePen } from "lucide-react";
 import { useTranslation } from "react-i18next";
 import { activeMobileTab } from "../../lib/mobile-tabs";
 import { startNewMission } from "../../lib/new-mission";
 import { newMissionScopeFor } from "../../lib/new-mission-scope";
-import { openMobileTab } from "../../lib/open-mobile-tab";
+import { openAgentsTab } from "../../lib/open-mobile-tab";
 import { useAgentStore } from "../../stores/agents";
 import { useUIStore } from "../../stores/ui";
 import { teamActivityRollup } from "./agent-activity-summary-model";
@@ -17,8 +17,8 @@ import { useAgentActivitySummaries } from "./use-agent-activity-summaries";
 import { tourAnchor } from "./workspace-tour-steps";
 
 /**
- * The phone (<768px) nav bar: a floating pill of Agents · Teams · More with
- * the compose button beside it (`lib/mobile-tabs.ts` holds the rules).
+ * The phone (<768px) nav bar: a floating pill of AI Employees · More with the
+ * compose button beside it (`lib/mobile-tabs.ts` holds the rules).
  * CSS-hidden at md+, so it appears instantly on resize with no re-render
  * flicker.
  *
@@ -29,7 +29,7 @@ import { tourAnchor } from "./workspace-tour-steps";
  * More is a MENU, not a destination, so tapping it opens the card over the
  * shell instead of navigating; it lights while that card is up (announced as
  * expanded, so the screen behind the card stays the one current page) as well
- * as while the location behind it belongs to neither tree.
+ * as while the location behind it is not an AI Employees screen.
  */
 export function MobileNavBar() {
   const { t } = useTranslation("shell");
@@ -60,15 +60,7 @@ export function MobileNavBar() {
           />
         ) : undefined,
       dataAttrs: { ...tourAnchor("mobileAgentsTab"), "data-tab": "agents" },
-      onSelect: () => openMobileTab("agents"),
-    },
-    {
-      id: "teams",
-      label: t("shell:tabBar.teams"),
-      icon: <Users className="size-5" />,
-      active: active === "teams",
-      dataAttrs: { "data-tab": "teams" },
-      onSelect: () => openMobileTab("teams"),
+      onSelect: () => openAgentsTab(),
     },
     {
       id: "more",

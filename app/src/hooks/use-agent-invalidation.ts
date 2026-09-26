@@ -13,6 +13,7 @@ import { isSpaceInvariantQueryKey } from "../lib/space-cache";
 import { useAgentStore } from "../stores/agents";
 import { useUIStore } from "../stores/ui";
 import { useWorkspaceStore } from "../stores/workspaces";
+import { sidebarLayoutRefetchDeferred } from "./sidebar-layout-writes";
 
 /**
  * Maps agent-change events from Rust (both Tauri command emissions
@@ -82,10 +83,13 @@ export function useAgentInvalidation() {
       // auth / onboarding gates over a dropped stream.
       if (plan.invalidateAll) {
         qc.invalidateQueries({
-          predicate: (q) => !isSpaceInvariantQueryKey(q.queryKey),
+          predicate: (q) =>
+            !isSpaceInvariantQueryKey(q.queryKey) &&
+            !sidebarLayoutRefetchDeferred(qc, q.queryKey),
         });
       }
       for (const queryKey of plan.invalidate) {
+        if (sidebarLayoutRefetchDeferred(qc, queryKey)) continue;
         qc.invalidateQueries({ queryKey });
       }
       for (const agentPath of plan.patchAllConversations) {

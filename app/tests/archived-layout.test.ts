@@ -6,8 +6,7 @@ import {
   KANBAN_LIST_RAIL_CLASS_NAME,
   KANBAN_LIST_RAIL_LEFT_CLASS_NAME,
 } from "../../ui/board/src/kanban-list-layout.ts";
-import { visibleTeamSectionsForTeam } from "../src/lib/team-sections.ts";
-import type { TeamView } from "../src/lib/teams-model.ts";
+import { visibleAgentSections } from "../src/lib/team-sections.ts";
 
 const read = (path: string) =>
   readFileSync(new URL(path, import.meta.url), "utf8");
@@ -61,21 +60,13 @@ describe("archived mission layout", () => {
  * would now be a second, quieter way to say what the tab already says.
  */
 describe("archived is a labelled tab, and the only door", () => {
-  const team = (): TeamView => ({
-    id: "t1",
-    name: "Marketing",
-    agents: [],
-    isDefault: false,
-  });
-
   it("is a mode of Tasks, never a section", () => {
-    const member = visibleTeamSectionsForTeam(
+    const member = visibleAgentSections(
       { multiplayer: true, role: "user" } as never,
-      team(),
+      { access: "user" },
     );
     ok(!member.includes("archived" as never));
-    ok(!member.includes("settings"));
-    const admin = visibleTeamSectionsForTeam(null, team());
+    const admin = visibleAgentSections(null, {});
     ok(!admin.includes("archived" as never));
   });
 
@@ -100,7 +91,7 @@ describe("archived is a labelled tab, and the only door", () => {
   it("keeps the pending-target discipline, as a section change", () => {
     // The surface a published target needs is still decided from the RAW sweep
     // rows, and the section that cannot show it still hands it over — only the
-    // act changed, from a mode flip to `openTeamView`.
+    // act changed, from a mode flip to `openAgentView`.
     ok(missionControlSource.includes("useBoardSurfaceOnNav"));
     ok(archivedSectionSource.includes("useBoardSurfaceOnNav"));
     ok(missionControlSource.includes("setArchived(true)"));

@@ -16,8 +16,7 @@ import {
  * 204px wide an 8px corner is invisible, and the rail reads as a stack of
  * rectangles rather than as macOS/Linear-style rows floating on a surface.
  * Pulling the paint 6px in from each side is what makes the corner legible, and
- * `rounded-lg` is the SAME radius the team screen's section lozenges wear, so
- * the two selected-things in the product are one shape.
+ * `rounded-lg` gives the selected row a visible corner at this width.
  *
  * It is a `::before` and not the row's own background because the row is also
  * what carries the geometry: inset the element and the glyph column moves with

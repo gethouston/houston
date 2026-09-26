@@ -1,10 +1,10 @@
 import { expect, test } from "./support/fixtures";
-import { openTeamSection } from "./support/team-nav";
+import { openTeamSection, rail } from "./support/team-nav";
 
 /**
  * WHO owns the board keyboard while a board is alive but off the glass.
  *
- * The team view is a kept-alive top-level screen: once visited it stays
+ * The employee screen is a kept-alive top-level screen: once visited it stays
  * mounted, hidden behind `display: none`, with its mission board and all of
  * its state intact. A board claims the arrow-key navigator and the Enter
  * opener by publishing callbacks into the UI store — a single slot, so every
@@ -52,11 +52,13 @@ async function pressAndRecordPrevention(
   );
 }
 
-test("a kept-alive team board off the glass owns nothing, and takes the keys back", async ({
+test.use({ teamBoard: true });
+
+test("a kept-alive employee board off the glass owns nothing, and takes the keys back", async ({
   page,
 }) => {
   await page.goto("/");
-  await expect(page.getByText("Your teams")).toBeVisible();
+  await expect(rail(page).getByText("Your AI Employees")).toBeVisible();
 
   // A hidden screen keeps its cards in the DOM, so every "the board is up"
   // check counts the VISIBLE copy.
@@ -68,8 +70,8 @@ test("a kept-alive team board off the glass owns nothing, and takes the keys bac
   await openTeamSection(page, "Tasks");
   await expect(onScreenMission).toHaveCount(1);
 
-  // Off to a top-level view with no board of its own. The team screen is only
-  // HIDDEN — its board is still mounted, still holding whatever it registered.
+  // Off to a top-level view with no board of its own. The employee screen is
+  // only HIDDEN — its board is still mounted, still holding whatever it registered.
   // Counted on the KANBAN copy, off the glass and all: the kept-alive Agents
   // home carries the same title in its preview line, which is not a card.
   await page.locator("[data-tour-target='nav-integrations']").click();
@@ -110,7 +112,7 @@ test("a team's Routines section does not swallow the arrow keys or Enter", async
   page,
 }) => {
   await page.goto("/");
-  await expect(page.getByText("Your teams")).toBeVisible();
+  await expect(rail(page).getByText("Your AI Employees")).toBeVisible();
 
   // Visit the team's Tasks board first, exactly as a user would: its board
   // mounts, claims the arrow/Enter handlers, and then stays mounted behind the

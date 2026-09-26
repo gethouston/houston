@@ -63,7 +63,7 @@
           "cta": "Siguiente"
         },
         "board": {
-          "body": "Este es el tablero de tu equipo. Cada tarea aparece aquí, con su estado.",
+          "body": "Este es el tablero de tu empleado de IA. Cada tarea que le das aparece aquí, con su estado.",
           "cta": "Siguiente"
         },
         "newTask": {

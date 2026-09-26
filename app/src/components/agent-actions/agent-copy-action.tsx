@@ -114,9 +114,7 @@ export function AgentCopyDialog({
                 onClick={() => setTeamId(team.id)}
               >
                 <TeamGlyph team={team} className="size-4 shrink-0" />
-                <span className="truncate">
-                  {teamDisplayName(team, t("teams:teamView.defaultName"))}
-                </span>
+                <span className="truncate">{teamDisplayName(team)}</span>
                 {team.id === teamId && (
                   <Check className="ml-auto size-4 shrink-0" />
                 )}

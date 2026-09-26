@@ -3,10 +3,8 @@ import type { ReactNode } from "react";
 import { useTranslation } from "react-i18next";
 
 /**
- * The Routines section's own tools: how many routines this team has, and the
- * one thing you came here to do. Two forms, and the CALLER never picks — the
- * team chrome measures its strip and says which is honest for the width
- * (`team-chrome-tools.tsx`).
+ * The employee Routines section's count and create action. The header tools
+ * provider chooses the strip or row layout at the available width.
  *
  * - **`strip`**: the third zone of the one-row team strip. The count and the
  *   create button, and NO "Routines" title: the lit tab three inches to the
@@ -14,11 +12,6 @@ import { useTranslation } from "react-i18next";
  *   crowding this layout exists to undo.
  * - **`row`**: the two-row fallback — a slim band with the title, the count,
  *   and the button at its right edge.
- *
- * Its agent dropdown is back, but it is a different control: a SECTION-LOCAL
- * filter (`TeamAgentFilterCapsule`), not the team-wide pin. Narrowing this
- * list no longer narrows the board the user returns to, which is why a tab
- * click always opens Routines team-wide.
  *
  * The create button steps aside in either form when the grid is showing its
  * EMPTY state, which carries the same button: two identical filled pills on
@@ -29,15 +22,12 @@ import { useTranslation } from "react-i18next";
 export function TeamRoutinesHeader({
   variant,
   count,
-  agentFilter,
   createButton,
 }: {
   /** Which form to draw. The chrome decides; see the module comment. */
   variant: "strip" | "row";
   /** Created routines in the list. Zero hides the badge (a draft is not one). */
   count: number;
-  /** This section's OWN "All agents" capsule — never the team-wide pin. */
-  agentFilter: ReactNode;
   /** The create action, or nothing while the grid's empty state carries it. */
   createButton?: ReactNode;
 }) {
@@ -53,7 +43,6 @@ export function TeamRoutinesHeader({
     return (
       <>
         {countBadge}
-        {agentFilter}
         {createButton}
       </>
     );
@@ -63,10 +52,7 @@ export function TeamRoutinesHeader({
     <div className="flex shrink-0 items-center gap-2 px-3 pt-1 pb-3">
       <h2 className="text-sm font-medium text-ink">{t("listTitle")}</h2>
       {countBadge}
-      <div className="ml-auto flex items-center gap-2">
-        {agentFilter}
-        {createButton}
-      </div>
+      <div className="ml-auto flex items-center gap-2">{createButton}</div>
     </div>
   );
 }

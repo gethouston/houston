@@ -1,83 +1,90 @@
 import type { SidebarGroup, SidebarLayout } from "@houston/engine-adapter";
 import type { Agent } from "./types";
 
-/** One resolved named group: the stored group plus its member agents in drag
- *  order. */
 export interface ResolvedGroupSection {
   group: SidebarGroup;
   agents: Agent[];
 }
 
-/** The sidebar partitioned into named groups (display order) plus the trailing
- *  default (ungrouped) section. */
+export type ResolvedRootEntry =
+  | { kind: "group"; section: ResolvedGroupSection }
+  | { kind: "agent"; agent: Agent };
+
 export interface ResolvedSidebar {
+  entries: ResolvedRootEntry[];
   groups: ResolvedGroupSection[];
   ungrouped: Agent[];
 }
 
-/** Order a section's agents by a stored id list: known ids first (in that
- *  order), then any remaining agents stably in their incoming order (a
- *  brand-new agent lands at the end). */
-function orderBy(section: Agent[], order: string[]): Agent[] {
-  const rank = new Map(order.map((id, i) => [id, i] as const));
-  const known = section
-    .filter((a) => rank.has(a.id))
-    .sort((a, b) => (rank.get(a.id) ?? 0) - (rank.get(b.id) ?? 0));
-  const fresh = section.filter((a) => !rank.has(a.id));
-  return [...known, ...fresh];
-}
-
-/**
- * Partition agents into the sidebar's named groups plus the trailing default
- * section, each in its stored drag order. Ordering is always manual.
- *
- * Stale ids (a group/`ungroupedOrder` entry with no live agent) are dropped;
- * an agent listed in more than one group lands in the first. Agents in no group
- * are the default section; brand-new agents fall to the end of it. Sidebar
- * rendering and ⌘[ / ⌘] cycling both derive from this so keyboard order ==
- * visible order.
- */
 export function resolveSidebarSections(
   agents: Agent[],
   layout: SidebarLayout,
 ): ResolvedSidebar {
-  const layoutGroups = Array.isArray(layout?.groups) ? layout.groups : [];
-  const ungroupedOrder = Array.isArray(layout?.ungroupedOrder)
-    ? layout.ungroupedOrder
-    : [];
-  const byId = new Map(agents.map((a) => [a.id, a] as const));
+  const byId = new Map(agents.map((agent) => [agent.id, agent]));
   const grouped = new Set<string>();
-
-  const groups: ResolvedGroupSection[] = layoutGroups.map((group) => {
-    const agentIds = Array.isArray(group?.agentIds) ? group.agentIds : [];
+  const groups = layout.groups.map((group) => {
     const members: Agent[] = [];
-    for (const id of agentIds) {
+    for (const id of group.agentIds) {
       const agent = byId.get(id);
       if (agent && !grouped.has(id)) {
         grouped.add(id);
         members.push(agent);
       }
     }
-    return { group, agents: orderBy(members, agentIds) };
+    return { group, agents: members };
   });
-
-  const ungrouped = orderBy(
-    agents.filter((a) => !grouped.has(a.id)),
-    ungroupedOrder,
+  const groupById = new Map(
+    groups.map((section) => [section.group.id, section]),
   );
-
-  return { groups, ungrouped };
+  const usedGroups = new Set<string>();
+  const usedAgents = new Set<string>();
+  const ordered: ResolvedRootEntry[] = [];
+  for (const entry of layout.order) {
+    if (entry.kind === "group") {
+      const section = groupById.get(entry.id);
+      if (section && !usedGroups.has(entry.id)) {
+        ordered.push({ kind: "group", section });
+        usedGroups.add(entry.id);
+      }
+    } else {
+      const agent = byId.get(entry.id);
+      if (agent && !grouped.has(entry.id) && !usedAgents.has(entry.id)) {
+        ordered.push({ kind: "agent", agent });
+        usedAgents.add(entry.id);
+      }
+    }
+  }
+  const fresh = agents
+    .filter((agent) => !grouped.has(agent.id) && !usedAgents.has(agent.id))
+    .map((agent): ResolvedRootEntry => ({ kind: "agent", agent }));
+  const missingGroups = groups
+    .filter(({ group }) => !usedGroups.has(group.id))
+    .map((section): ResolvedRootEntry => ({ kind: "group", section }));
+  const entries = [...fresh, ...ordered, ...missingGroups];
+  return {
+    entries,
+    groups: entries.flatMap((entry) =>
+      entry.kind === "group" ? [entry.section] : [],
+    ),
+    ungrouped: entries.flatMap((entry) =>
+      entry.kind === "agent" ? [entry.agent] : [],
+    ),
+  };
 }
 
-/**
- * The flat visible order of every agent (groups in display order, each section
- * in drag order, default section last). Feeds ⌘[ / ⌘] cycling and the command
- * palette so their order matches the sidebar.
- */
 export function flatSidebarOrder(
   agents: Agent[],
   layout: SidebarLayout,
 ): Agent[] {
-  const resolved = resolveSidebarSections(agents, layout);
-  return [...resolved.groups.flatMap((g) => g.agents), ...resolved.ungrouped];
+  return resolveSidebarSections(agents, layout).entries.flatMap((entry) =>
+    entry.kind === "agent" ? [entry.agent] : entry.section.agents,
+  );
+}
+
+/** The employee the rail shows first: the desktop's landing. */
+export function firstSidebarAgentId(
+  agents: Agent[],
+  layout: SidebarLayout,
+): string | null {
+  return flatSidebarOrder(agents, layout)[0]?.id ?? null;
 }

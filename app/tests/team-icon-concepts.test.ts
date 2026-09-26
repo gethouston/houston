@@ -68,9 +68,9 @@ describe("team icon concepts", () => {
     });
   }
 
-  it("en keeps each tag as itself, so the source stays the source", () => {
+  it("en keeps source tags except the folder concept's user-facing name", () => {
     for (const tag of VOCABULARY) {
-      strictEqual(conceptsOf(en)[tag], tag);
+      strictEqual(conceptsOf(en)[tag], tag === "team" ? "group team" : tag);
     }
   });
 
@@ -155,5 +155,26 @@ describe("team icon concepts", () => {
     const dinheiro = surfacedBy("pt", "dinheiro");
     for (const name of FINANCE) ok(dinheiro.includes(name), `pt: ${name}`);
     ok(!dinheiro.includes("rocket"), "dinheiro must not surface every mark");
+  });
+
+  // The folders are called groups, but people still type the word they know.
+  it("finds the team marks by both group and team in every locale", () => {
+    const teamMarks = NAMES.filter((name) =>
+      sidebarGroupGlyphConcepts(name).includes("team"),
+    );
+    ok(teamMarks.length > 0, "some mark carries the team concept");
+    const queries = {
+      en: ["group", "team"],
+      es: ["grupo", "equipo"],
+      pt: ["grupo", "time", "equipe"],
+    } as const;
+    for (const [lang, words] of Object.entries(queries)) {
+      for (const word of words) {
+        const found = surfacedBy(lang as keyof typeof LOCALES, word);
+        for (const name of teamMarks) {
+          ok(found.includes(name), `${lang} "${word}": ${name}`);
+        }
+      }
+    }
   });
 });

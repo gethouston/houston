@@ -20,7 +20,7 @@ import type { BoardSelectionModel } from "./board-selection-model";
  * right agent — live behind this `BoardSource` interface, which
  * `useMissionControlSource` builds. This is the headless-logic pattern: one
  * presentational/wiring component, an injected data backend. Mission Control
- * and each team board are the SAME source narrowed by a
+ * and each employee board are the SAME source narrowed by a
  * `MissionControlScope`, so they never drift apart.
  */
 
@@ -71,7 +71,7 @@ export interface BoardSource {
   activeAgent: Agent | null;
   /**
    * Scope for the new-conversation composer draft (HOU-730): a per-board
-   * constant (Mission Control, or one per team board), so a parked first
+   * constant (Mission Control, or one per employee board), so a parked first
    * message survives switching the target agent but never surfaces in another
    * board's composer.
    */

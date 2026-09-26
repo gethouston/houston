@@ -1,5 +1,6 @@
 import { create } from "zustand";
 import { persist } from "zustand/middleware";
+import { initialNavState } from "../lib/nav-stack.ts";
 import { createDialogActions, dialogInitialState } from "./ui/dialogs-slice.ts";
 import { createLayoutActions, layoutInitialState } from "./ui/layout-slice.ts";
 import { createNavActions } from "./ui/nav-slice.ts";
@@ -50,6 +51,9 @@ export const useUIStore = create<UIState>()(
         clearToastTimers();
         set((s) => ({
           ...initialUIState,
+          // A fresh stack, not the shared initial array: a waiting nav watches
+          // the stack's identity to learn that the user moved (open-agent.ts).
+          ...initialNavState(),
           // Keep the per-machine layout prefs (not identity-scoped).
           sidebarCollapsed: s.sidebarCollapsed,
           chatWide: s.chatWide,

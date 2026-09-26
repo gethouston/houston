@@ -1,3 +1,4 @@
+import type { SidebarLayout } from "@houston/engine-adapter";
 import { HoustonClient } from "@houston/engine-adapter/client";
 import { afterEach, beforeEach, describe, expect, test, vi } from "vitest";
 import {
@@ -155,9 +156,14 @@ describe("the delegated conversation context", () => {
 });
 
 describe("the delegated sidebar layout", () => {
-  const LAYOUT = { groups: [], ungroupedOrder: ["a1"] };
-  /** An open host (the only deployment that serves the layout route) whose
-   *  personal workspace answers to the SERVER id, never the synthetic one. */
+  const LAYOUT = {
+    groups: [{ id: "g", name: "Ops", collapsed: false, agentIds: ["inside"] }],
+    order: [
+      { kind: "agent", id: "a1" },
+      { kind: "group", id: "g" },
+    ],
+  } satisfies SidebarLayout;
+  /** The personal workspace answers to the server id. */
   const openHost = (layout: () => Response) =>
     stubFetch((path) => {
       if (path === "/v1/capabilities") return json(200, { profile: "local" });
@@ -178,7 +184,7 @@ describe("the delegated sidebar layout", () => {
     expect(call?.body).toBeNull();
     expect(call?.headers.get("Content-Type")).toBe("application/json");
     expect(call?.headers.get("Authorization")).toBe("Bearer t");
-    expect(call?.headers.get("x-houston-org")).toBe(ORG);
+    expect(call?.headers.get("x-houston-org")).toBeNull();
   });
 
   test("a save PUTs the layout verbatim and adopts the host's copy", async () => {
@@ -191,12 +197,130 @@ describe("the delegated sidebar layout", () => {
     expect(call?.body).toBe(JSON.stringify(LAYOUT));
   });
 
-  test("a 404 still degrades to this device — the status survives the SDK", async () => {
+  test("a 404 rejects with the route status", async () => {
     openHost(() => json(404, { error: "not found" }));
 
-    expect(await client().getSidebarLayout("default")).toEqual({
-      groups: [],
-      ungroupedOrder: [],
+    await expect(client().getSidebarLayout("default")).rejects.toMatchObject({
+      status: 404,
     });
+  });
+
+  test("a local host lifts a device layout once and clears the key", async () => {
+    const old = {
+      groups: [
+        {
+          id: "g",
+          name: "Ops",
+          collapsed: false,
+          agentIds: ["inside"],
+          context: "legacy",
+        },
+      ],
+      ungroupedOrder: ["a1"],
+    };
+    localStorage.setItem("houston.sidebar-layout.default", JSON.stringify(old));
+    stubFetch((path) => {
+      if (path === "/v1/capabilities") return json(200, { profile: "local" });
+      if (path === "/v1/workspaces")
+        return json(200, [{ id: "Personal", isDefault: true }]);
+      if (path.endsWith("/sidebar-layout"))
+        return json(
+          200,
+          calls.at(-1)?.method === "PUT" ? LAYOUT : { groups: [], order: [] },
+        );
+      return undefined;
+    });
+    await client().getSidebarLayout("default");
+    const put = calls.find((call) => call.method === "PUT");
+    expect(JSON.parse(put?.body ?? "null")).toEqual({
+      groups: [
+        { id: "g", name: "Ops", collapsed: false, agentIds: ["inside"] },
+      ],
+      order: [
+        { kind: "group", id: "g" },
+        { kind: "agent", id: "a1" },
+      ],
+    });
+    expect(localStorage.getItem("houston.sidebar-layout.default")).toBeNull();
+    await client().getSidebarLayout("default");
+    expect(calls.filter((call) => call.method === "PUT")).toHaveLength(1);
+  });
+
+  test("a device layout the local host rejects is reported, cleared and never retried", async () => {
+    const error = vi.spyOn(console, "error").mockImplementation(() => {});
+    localStorage.setItem(
+      "houston.sidebar-layout.default",
+      JSON.stringify(LAYOUT),
+    );
+    stubFetch((path) => {
+      if (path === "/v1/capabilities") return json(200, { profile: "local" });
+      if (path === "/v1/workspaces")
+        return json(200, [{ id: "Personal", isDefault: true }]);
+      if (path.endsWith("/sidebar-layout"))
+        return calls.at(-1)?.method === "PUT"
+          ? json(400, { error: "invalid sidebar layout" })
+          : json(200, { groups: [], order: [] });
+      return undefined;
+    });
+    const c = client();
+    expect(await c.getSidebarLayout("default")).toEqual({
+      groups: [],
+      order: [],
+    });
+    expect(error).toHaveBeenCalled();
+    expect(localStorage.getItem("houston.sidebar-layout.default")).toBeNull();
+    await c.getSidebarLayout("default");
+    expect(calls.filter((call) => call.method === "PUT")).toHaveLength(1);
+  });
+
+  test("a failed capabilities probe skips the lift and retries it next read", async () => {
+    vi.spyOn(console, "error").mockImplementation(() => {});
+    localStorage.setItem(
+      "houston.sidebar-layout.default",
+      JSON.stringify(LAYOUT),
+    );
+    let probeUp = false;
+    stubFetch((path) => {
+      if (path === "/v1/capabilities")
+        return probeUp
+          ? json(200, { profile: "local" })
+          : json(500, { error: "boom" });
+      if (path === "/v1/workspaces")
+        return json(200, [{ id: "Personal", isDefault: true }]);
+      if (path.endsWith("/sidebar-layout"))
+        return json(
+          200,
+          calls.at(-1)?.method === "PUT" ? LAYOUT : { groups: [], order: [] },
+        );
+      return undefined;
+    });
+    const c = client();
+    expect(await c.getSidebarLayout("default")).toEqual({
+      groups: [],
+      order: [],
+    });
+    expect(
+      localStorage.getItem("houston.sidebar-layout.default"),
+    ).not.toBeNull();
+    probeUp = true;
+    expect(await c.getSidebarLayout("default")).toEqual(LAYOUT);
+    expect(localStorage.getItem("houston.sidebar-layout.default")).toBeNull();
+  });
+
+  test("a cloud gateway discards the old device overlay", async () => {
+    localStorage.setItem(
+      "houston.sidebar-layout.org:abc",
+      JSON.stringify(LAYOUT),
+    );
+    stubFetch((path) =>
+      path === "/v1/capabilities"
+        ? json(200, { profile: "cloud" })
+        : path.endsWith("/sidebar-layout")
+          ? json(200, LAYOUT)
+          : undefined,
+    );
+    await client().getSidebarLayout("org:abc");
+    expect(calls.filter((call) => call.method === "PUT")).toEqual([]);
+    expect(localStorage.getItem("houston.sidebar-layout.org:abc")).toBeNull();
   });
 });

@@ -2,28 +2,28 @@ import { deepStrictEqual, strictEqual } from "node:assert";
 import { describe, it } from "node:test";
 import type { SidebarLayout } from "@houston/engine-adapter";
 import {
-  expandOnlyTeamOp,
+  arrangeOp,
+  createGroupOp,
+  createGroupWithIdentityOp,
+  DEFAULT_SIDEBAR_LAYOUT,
+  deleteGroupOp,
   moveItemOp,
   normalizeSidebarLayout,
   remapAgentIdOp,
-  setDefaultContextOp,
+  renameGroupOp,
   setGroupIdentityOp,
-  toggleDefaultCollapsedOp,
   toggleGroupCollapsedOp,
 } from "../src/lib/sidebar-layout-ops.ts";
 
-/** A stored group as the LOCAL backend always has it: named, and already in
- *  `layout.groups` because that is where `resolveTeams` reads teams from. */
 const group = (id: string, agentIds: string[]) => ({
   id,
   name: id,
   collapsed: false,
   agentIds,
 });
-
 const layout = (over: Partial<SidebarLayout>): SidebarLayout => ({
   groups: [],
-  ungroupedOrder: [],
+  order: [],
   ...over,
 });
 
@@ -48,15 +48,29 @@ describe("remapAgentIdOp", () => {
 
   it("keeps an ungrouped agent at its existing position", () => {
     const result = remapAgentIdOp(
-      layout({ ungroupedOrder: ["a", "old", "b"] }),
+      layout({
+        order: [
+          { kind: "agent", id: "a" },
+          { kind: "agent", id: "old" },
+          { kind: "agent", id: "b" },
+        ],
+      }),
       "old",
       "new",
     );
-    deepStrictEqual(result.ungroupedOrder, ["a", "new", "b"]);
+    deepStrictEqual(
+      result.order.map((entry) => entry.id),
+      ["a", "new", "b"],
+    );
   });
 
   it("leaves an absent id unchanged", () => {
-    const initial = layout({ ungroupedOrder: ["a", "new"] });
+    const initial = layout({
+      order: [
+        { kind: "agent", id: "a" },
+        { kind: "agent", id: "new" },
+      ],
+    });
     strictEqual(remapAgentIdOp(initial, "old", "new"), initial);
   });
 
@@ -71,13 +85,19 @@ describe("remapAgentIdOp", () => {
             agentIds: ["old", "new"],
           },
         ],
-        ungroupedOrder: ["new", "old"],
+        order: [
+          { kind: "agent", id: "new" },
+          { kind: "agent", id: "old" },
+        ],
       }),
       "old",
       "new",
     );
     deepStrictEqual(result.groups[0]?.agentIds, ["new"]);
-    deepStrictEqual(result.ungroupedOrder, []);
+    deepStrictEqual(
+      result.order.map((entry) => entry.id),
+      [],
+    );
   });
 
   it("removes an existing new id from another section", () => {
@@ -91,206 +111,186 @@ describe("remapAgentIdOp", () => {
             agentIds: ["old"],
           },
         ],
-        ungroupedOrder: ["new"],
+        order: [{ kind: "agent", id: "new" }],
       }),
       "old",
       "new",
     );
     deepStrictEqual(result.groups[0]?.agentIds, ["new"]);
-    deepStrictEqual(result.ungroupedOrder, []);
+    deepStrictEqual(
+      result.order.map((entry) => entry.id),
+      [],
+    );
   });
 });
 
-/**
- * The overlay upsert (C13). On a server-teams host `sidebar_layout` is a
- * per-user ORDERING OVERLAY keyed by SERVER team id and it starts with no
- * entries at all, so the ops below have to MINT the entry they are asked to
- * write, not just match one. The other half of every case here is the local
- * guarantee: locally every team in the rail comes out of `layout.groups`
- * (`resolveTeams`), so no id can miss and the upsert is unreachable — asserted
- * directly rather than assumed.
- */
-describe("moveItemOp upserts the destination group by id", () => {
-  it("mints a blank group for an id the layout does not hold", () => {
-    const result = moveItemOp(layout({}), "a", {
-      groupId: "team_srv",
-      beforeItemId: null,
-    });
-    deepStrictEqual(result.groups, [
-      { id: "team_srv", name: "", collapsed: false, agentIds: ["a"] },
-    ]);
-    // The old fallback dumped it here, where a server host reads nothing.
-    deepStrictEqual(result.ungroupedOrder, []);
+describe("folder operations", () => {
+  it("has an empty default layout", () => {
+    deepStrictEqual(DEFAULT_SIDEBAR_LAYOUT, { groups: [], order: [] });
   });
 
-  it("records the drop POSITION inside a minted group", () => {
-    const first = moveItemOp(layout({ ungroupedOrder: ["a", "b"] }), "a", {
-      groupId: "team_srv",
-      beforeItemId: null,
-    });
-    const second = moveItemOp(first, "b", {
-      groupId: "team_srv",
-      beforeItemId: "a",
-    });
-    deepStrictEqual(second.groups[0]?.agentIds, ["b", "a"]);
+  it("renames only the selected group", () => {
+    const initial = layout({ groups: [group("a", []), group("b", [])] });
+    const result = renameGroupOp(initial, "b", "Operations");
+    deepStrictEqual(
+      result.groups.map((item) => item.name),
+      ["a", "Operations"],
+    );
   });
 
-  it("mints nothing when the group already exists (the local backend)", () => {
+  it("retains a group's identity while storing a drop", () => {
     const initial = layout({
-      groups: [group("grp_1", ["a"]), group("grp_2", [])],
-      ungroupedOrder: ["b"],
+      groups: [{ ...group("g", ["a", "b"]), name: "Design", collapsed: true }],
+      order: [{ kind: "group", id: "g" }],
     });
-    const result = moveItemOp(initial, "b", {
-      groupId: "grp_2",
-      beforeItemId: null,
+    const result = arrangeOp(initial, {
+      order: [
+        { kind: "group", id: "g" },
+        { kind: "agent", id: "b" },
+      ],
+      members: { g: ["a"] },
     });
-    strictEqual(result.groups.length, 2);
-    deepStrictEqual(result.groups[0], group("grp_1", ["a"]));
-    deepStrictEqual(result.groups[1], group("grp_2", ["b"]));
-    deepStrictEqual(result.ungroupedOrder, []);
+    strictEqual(result.groups[0].name, "Design");
+    strictEqual(result.groups[0].collapsed, true);
+    deepStrictEqual(result.groups[0].agentIds, ["a"]);
   });
 
-  it("still routes the default section to ungroupedOrder", () => {
-    const result = moveItemOp(
-      layout({ groups: [group("grp_1", ["a"])] }),
-      "a",
-      {
-        groupId: null,
-        beforeItemId: null,
-      },
+  it("normalizes absent and malformed layouts", () => {
+    deepStrictEqual(normalizeSidebarLayout(undefined), DEFAULT_SIDEBAR_LAYOUT);
+    deepStrictEqual(
+      normalizeSidebarLayout({ error: "not found" }),
+      DEFAULT_SIDEBAR_LAYOUT,
     );
-    deepStrictEqual(result.groups[0]?.agentIds, []);
-    deepStrictEqual(result.ungroupedOrder, ["a"]);
+    deepStrictEqual(
+      normalizeSidebarLayout({
+        groups: [group("valid", ["a"]), { id: "invalid" }, null],
+        order: [1, 2],
+      }),
+      layout({
+        groups: [group("valid", ["a"])],
+        order: [{ kind: "group", id: "valid" }],
+      }),
+    );
   });
-});
 
-describe("toggleGroupCollapsedOp upserts by id", () => {
-  it("collapses a group the layout has never seen", () => {
-    const result = toggleGroupCollapsedOp(layout({}), "team_srv");
-    deepStrictEqual(result.groups, [
-      { id: "team_srv", name: "", collapsed: true, agentIds: [] },
+  it("keeps temporarily unrendered agents in their stored positions", () => {
+    const initial = layout({
+      groups: [group("g", ["hidden", "visible"])],
+      order: [
+        { kind: "agent", id: "missing" },
+        { kind: "group", id: "g" },
+        { kind: "agent", id: "shown" },
+      ],
+    });
+    const result = arrangeOp(initial, {
+      order: [
+        { kind: "group", id: "g" },
+        { kind: "agent", id: "shown" },
+      ],
+      members: { g: ["visible"] },
+    });
+    deepStrictEqual(result.groups[0].agentIds, ["hidden", "visible"]);
+    deepStrictEqual(result.order, [
+      { kind: "agent", id: "missing" },
+      { kind: "group", id: "g" },
+      { kind: "agent", id: "shown" },
     ]);
   });
 
-  it("expands it again on the second toggle", () => {
-    const once = toggleGroupCollapsedOp(layout({}), "team_srv");
-    const twice = toggleGroupCollapsedOp(once, "team_srv");
-    strictEqual(twice.groups[0]?.collapsed, false);
-    strictEqual(twice.groups.length, 1);
-  });
-
-  it("mints nothing when the group already exists (the local backend)", () => {
-    const initial = layout({ groups: [group("grp_1", ["a"])] });
-    const result = toggleGroupCollapsedOp(initial, "grp_1");
-    deepStrictEqual(result, {
-      groups: [{ ...group("grp_1", ["a"]), collapsed: true }],
-      ungroupedOrder: [],
+  it("keeps an agent whose drop names a group the fresh layout no longer has", () => {
+    const initial = layout({
+      groups: [group("g", ["a"])],
+      order: [
+        { kind: "group", id: "g" },
+        { kind: "agent", id: "y" },
+      ],
     });
-  });
-});
-
-/**
- * The DEFAULT team's fold state. Every NAMED team is a stored group with its
- * own `collapsed`; the default team is VIRTUAL (it IS the workspace) and owns
- * no group row, so the flag lives on the layout. It is ADDITIVE, so the cases
- * below pin that absent stays ABSENT rather than becoming `false` — a layout
- * written before the field existed has to keep normalizing byte-identically.
- */
-describe("normalizeSidebarLayout carries defaultCollapsed", () => {
-  it("keeps a valid boolean", () => {
-    strictEqual(
-      normalizeSidebarLayout({
-        groups: [],
-        ungroupedOrder: [],
-        defaultCollapsed: true,
-      }).defaultCollapsed,
-      true,
-    );
-    strictEqual(
-      normalizeSidebarLayout({
-        groups: [],
-        ungroupedOrder: [],
-        defaultCollapsed: false,
-      }).defaultCollapsed,
-      false,
-    );
-  });
-
-  it("drops a wrong-typed value to absent instead of failing the layout", () => {
-    const result = normalizeSidebarLayout({
-      groups: [group("grp_1", ["a"])],
-      ungroupedOrder: ["b"],
-      defaultCollapsed: "yes",
+    const result = arrangeOp(initial, {
+      order: [{ kind: "group", id: "g" }],
+      members: { g: ["a"], deleted: ["y"] },
     });
-    strictEqual("defaultCollapsed" in result, false);
-    // Lenient, not strict: the rest of the layout survives.
-    deepStrictEqual(result.groups, [group("grp_1", ["a"])]);
-    deepStrictEqual(result.ungroupedOrder, ["b"]);
+    deepStrictEqual(result.order, [
+      { kind: "group", id: "g" },
+      { kind: "agent", id: "y" },
+    ]);
   });
 
-  it("leaves an absent field absent", () => {
-    const result = normalizeSidebarLayout({
-      groups: [],
-      ungroupedOrder: ["a"],
+  it("creates a group with its identity in one layout operation", () => {
+    const result = createGroupWithIdentityOp(layout({}), "g", "Design", null, {
+      icon: "rocket",
+      color: "blue",
     });
-    strictEqual("defaultCollapsed" in result, false);
+    deepStrictEqual(result.groups, [
+      { ...group("g", []), name: "Design", icon: "rocket", color: "blue" },
+    ]);
   });
-});
-
-/**
- * The DEFAULT team's shared CONTEXT, additive on the layout for the same reason
- * the fold flag is: the default team owns no group row to hold it. Empty is a
- * real stored value here (the user cleared the box) — only a WRONG-TYPED one
- * decays to absent.
- */
-describe("normalizeSidebarLayout carries defaultContext", () => {
-  it("keeps a stored string, including an emptied one", () => {
-    strictEqual(
-      normalizeSidebarLayout({
-        groups: [],
-        ungroupedOrder: [],
-        defaultContext: "We ship daily.",
-      }).defaultContext,
-      "We ship daily.",
+  it("creates an empty folder and frees its agents on deletion", () => {
+    const created = createGroupOp(
+      layout({ order: [{ kind: "agent", id: "c" }] }),
+      "g",
+      "Design",
     );
-    strictEqual(
-      normalizeSidebarLayout({
-        groups: [],
-        ungroupedOrder: [],
-        defaultContext: "",
-      }).defaultContext,
-      "",
+    deepStrictEqual(created.groups, [
+      { id: "g", name: "Design", collapsed: false, agentIds: [] },
+    ]);
+    const filled = moveItemOp(
+      moveItemOp(created, "a", { groupId: "g", beforeItemId: null }),
+      "b",
+      { groupId: "g", beforeItemId: null },
+    );
+    deepStrictEqual(
+      deleteGroupOp(filled, "g").order.map((entry) => entry.id),
+      ["a", "b", "c"],
     );
   });
 
-  it("drops a wrong-typed value to absent instead of failing the layout", () => {
-    const result = normalizeSidebarLayout({
-      groups: [group("grp_1", ["a"])],
-      ungroupedOrder: ["b"],
-      defaultContext: 42,
+  it("moves an agent between folders and No team", () => {
+    const initial = layout({
+      groups: [group("g", ["b"])],
+      order: [{ kind: "agent", id: "a" }],
     });
-    strictEqual("defaultContext" in result, false);
-    deepStrictEqual(result.groups, [group("grp_1", ["a"])]);
-    deepStrictEqual(result.ungroupedOrder, ["b"]);
+    const grouped = moveItemOp(initial, "a", {
+      groupId: "g",
+      beforeItemId: "b",
+    });
+    deepStrictEqual(grouped.groups[0].agentIds, ["a", "b"]);
+    const ungrouped = moveItemOp(grouped, "a", {
+      groupId: null,
+      beforeItemId: null,
+    });
+    deepStrictEqual(
+      ungrouped.order.map((entry) => entry.id),
+      ["a"],
+    );
   });
 
-  it("leaves an absent field absent", () => {
+  it("does not invent a folder for an unknown destination or collapse", () => {
+    const initial = layout({ order: [{ kind: "agent", id: "a" }] });
     strictEqual(
-      "defaultContext" in
-        normalizeSidebarLayout({ groups: [], ungroupedOrder: [] }),
-      false,
+      moveItemOp(initial, "a", { groupId: "missing", beforeItemId: null }),
+      initial,
+    );
+    strictEqual(toggleGroupCollapsedOp(initial, "missing"), initial);
+  });
+
+  it("toggles the stored collapsed flag", () => {
+    const initial = layout({ groups: [group("g", [])] });
+    strictEqual(toggleGroupCollapsedOp(initial, "g").groups[0].collapsed, true);
+  });
+
+  it("normalizes only the pinned wire fields", () => {
+    const initial = group("g", ["a"]);
+    deepStrictEqual(
+      normalizeSidebarLayout({
+        groups: [{ ...initial, unsupported: "ignored" }],
+        order: [],
+        unsupported: true,
+      }),
+      layout({ groups: [initial], order: [{ kind: "group", id: "g" }] }),
     );
   });
 });
 
-/**
- * A team's glyph + color, the LOCAL half of the identity C13 stores
- * server-side. Three states, spelled as the wire spells them except for the
- * clear: a string SETS, `null` CLEARS (the wire's `""`, which a stored layout
- * has no serialisation reason to borrow), an omitted key is UNTOUCHED. A clear
- * removes the KEY — absent means "render your own default", which is a
- * different instruction from an empty string the user never chose.
- */
 describe("setGroupIdentityOp", () => {
   const styled = (over: Partial<SidebarLayout["groups"][number]>) =>
     layout({ groups: [{ ...group("grp_1", ["a"]), ...over }] });
@@ -366,7 +366,7 @@ describe("normalizeSidebarLayout carries a group's identity", () => {
   it("keeps a valid icon and color", () => {
     const result = normalizeSidebarLayout({
       groups: [{ ...group("grp_1", ["a"]), icon: "rocket", color: "#5E6AD2" }],
-      ungroupedOrder: [],
+      order: [],
     });
     strictEqual(result.groups[0]?.icon, "rocket");
     strictEqual(result.groups[0]?.color, "#5E6AD2");
@@ -375,7 +375,7 @@ describe("normalizeSidebarLayout carries a group's identity", () => {
   it("drops a wrong-typed icon to absent, keeping the group", () => {
     const result = normalizeSidebarLayout({
       groups: [{ ...group("grp_1", ["a"]), icon: 7, color: "#5E6AD2" }],
-      ungroupedOrder: ["b"],
+      order: [{ kind: "agent", id: "b" }],
     });
     // Lenient, not strict: the group survives with the icon simply absent —
     // never `""`, which would be an identity the user never chose.
@@ -384,179 +384,11 @@ describe("normalizeSidebarLayout carries a group's identity", () => {
     deepStrictEqual(result.groups[0]?.agentIds, ["a"]);
   });
 
-  it("leaves both absent when the stored group predates identity", () => {
+  it("leaves both absent when the stored group has no identity", () => {
     const result = normalizeSidebarLayout({
       groups: [group("grp_1", ["a"])],
-      ungroupedOrder: [],
+      order: [],
     });
     deepStrictEqual(result.groups[0], group("grp_1", ["a"]));
-  });
-});
-
-describe("toggleDefaultCollapsedOp", () => {
-  it("folds the default team shut when the flag is absent", () => {
-    strictEqual(toggleDefaultCollapsedOp(layout({})).defaultCollapsed, true);
-  });
-
-  it("expands it again from true", () => {
-    strictEqual(
-      toggleDefaultCollapsedOp(layout({ defaultCollapsed: true }))
-        .defaultCollapsed,
-      false,
-    );
-  });
-
-  it("folds it from an explicit false", () => {
-    strictEqual(
-      toggleDefaultCollapsedOp(layout({ defaultCollapsed: false }))
-        .defaultCollapsed,
-      true,
-    );
-  });
-
-  it("does not mutate its input and disturbs nothing else", () => {
-    const initial = layout({
-      groups: [group("grp_1", ["a"])],
-      ungroupedOrder: ["b"],
-    });
-    const result = toggleDefaultCollapsedOp(initial);
-    strictEqual("defaultCollapsed" in initial, false);
-    deepStrictEqual(result, {
-      groups: [group("grp_1", ["a"])],
-      ungroupedOrder: ["b"],
-      defaultCollapsed: true,
-    });
-  });
-});
-
-/**
- * `setGroupContextOp` for the team that owns no group row. The host reads the
- * result and mirrors it into every UNGROUPED agent's `GROUP.md`, so what this op
- * writes is what a whole team is told — and it must never disturb a NAMED team's
- * own context on the way past.
- */
-describe("setDefaultContextOp", () => {
-  it("writes the default team's context onto the layout", () => {
-    strictEqual(
-      setDefaultContextOp(layout({}), "We ship daily.").defaultContext,
-      "We ship daily.",
-    );
-  });
-
-  it("stores an emptied box as an empty string, not an absent key", () => {
-    // One spelling of cleared: the host trims, so blank and absent are the same
-    // state downstream and both delete the mirror file.
-    strictEqual(
-      setDefaultContextOp(layout({ defaultContext: "old" }), "").defaultContext,
-      "",
-    );
-  });
-
-  it("replaces an existing context", () => {
-    strictEqual(
-      setDefaultContextOp(layout({ defaultContext: "old" }), "new")
-        .defaultContext,
-      "new",
-    );
-  });
-
-  it("does not mutate its input and leaves named teams untouched", () => {
-    const named = { ...group("grp_1", ["a"]), context: "Team text." };
-    const initial = layout({ groups: [named], ungroupedOrder: ["b"] });
-    const result = setDefaultContextOp(initial, "Default text.");
-    strictEqual("defaultContext" in initial, false);
-    deepStrictEqual(result, {
-      groups: [named],
-      ungroupedOrder: ["b"],
-      defaultContext: "Default text.",
-    });
-  });
-});
-
-describe("expandOnlyTeamOp", () => {
-  // The rail's accordion: opening a team the user was not in folds every other
-  // one. It has to be ONE layout, because it is one click — N toggles would
-  // fire N PUTs racing each other through the same optimistic cache.
-  const three = layout({
-    groups: [
-      { ...group("t1", ["a"]), collapsed: true },
-      { ...group("t2", ["b"]), collapsed: false },
-      { ...group("t3", ["c"]), collapsed: false },
-    ],
-    defaultCollapsed: false,
-  });
-  const ids = ["t1", "t2", "t3"];
-
-  it("opens the named team and folds every other, in one layout", () => {
-    const next = expandOnlyTeamOp(three, {
-      teamId: "t1",
-      isDefault: false,
-      namedTeamIds: ids,
-    });
-    deepStrictEqual(
-      next.groups.map((g) => [g.id, g.collapsed]),
-      [
-        ["t1", false],
-        ["t2", true],
-        ["t3", true],
-      ],
-    );
-    // The DEFAULT team owns no group row, so its fold is the layout's own flag.
-    strictEqual(next.defaultCollapsed, true);
-  });
-
-  it("opens the DEFAULT team the same way, folding every named one", () => {
-    const next = expandOnlyTeamOp(three, {
-      teamId: "team:default",
-      isDefault: true,
-      namedTeamIds: ids,
-    });
-    strictEqual(next.defaultCollapsed, false);
-    strictEqual(
-      next.groups.every((g) => g.collapsed),
-      true,
-    );
-  });
-
-  it("upserts a team the overlay has never seen", () => {
-    // A server host's overlay starts EMPTY, so the first accordion click names
-    // ids the layout does not hold yet.
-    const next = expandOnlyTeamOp(layout({}), {
-      teamId: "t2",
-      isDefault: false,
-      namedTeamIds: ids,
-    });
-    deepStrictEqual(
-      next.groups.map((g) => [g.id, g.collapsed, g.name]),
-      [
-        ["t1", true, ""],
-        ["t2", false, ""],
-        ["t3", true, ""],
-      ],
-    );
-  });
-
-  it("carries a group the rail is NOT drawing through untouched", () => {
-    // Another surface's row, or an overlay entry for a team someone else
-    // deleted. Neither is this click's business; rule 7's decay retires them.
-    const stale = { ...group("gone", ["z"]), context: "the brand" };
-    const next = expandOnlyTeamOp(
-      layout({ groups: [...three.groups, stale] }),
-      { teamId: "t1", isDefault: false, namedTeamIds: ids },
-    );
-    strictEqual(
-      next.groups.find((g) => g.id === "gone"),
-      stale,
-    );
-  });
-
-  it("does not mutate the layout it was handed", () => {
-    const before = structuredClone(three);
-    expandOnlyTeamOp(three, {
-      teamId: "t1",
-      isDefault: false,
-      namedTeamIds: ids,
-    });
-    deepStrictEqual(three, before);
   });
 });

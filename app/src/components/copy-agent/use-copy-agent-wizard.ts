@@ -2,7 +2,6 @@ import type { PortableInventoryPreview } from "@houston/engine-adapter";
 import { useState } from "react";
 import { useTranslation } from "react-i18next";
 import { useCapabilities } from "../../hooks/use-capabilities";
-import { useTeams } from "../../hooks/use-teams";
 import { isAgentManager } from "../../lib/agent-access";
 import { AGENT_NAME_MAX_LENGTH, agentNameIssue } from "../../lib/agent-name";
 import { getEngine } from "../../lib/engine";
@@ -27,14 +26,12 @@ import {
  * Settings "Copy agent" row runs, fed this selection.
  */
 export function useCopyAgentWizard(args: {
-  targetTeamId: string | null;
   onBack: () => void;
   onDone: () => void;
 }) {
   const { t } = useTranslation("agents");
   const agents = useAgentStore((s) => s.agents);
   const { capabilities } = useCapabilities();
-  const teams = useTeams();
   const addToast = useUIStore((s) => s.addToast);
   const copyAgent = useCopyAgent();
 
@@ -127,11 +124,10 @@ export function useCopyAgentWizard(args: {
   const submit = async () => {
     if (creating || !source || !selection || !name.trim() || nameIssue) return;
     setCreating(true);
-    const team = teams.find((entry) => entry.id === args.targetTeamId) ?? null;
     const ok = await copyAgent({
       agent: source,
       name,
-      team,
+      team: null,
       color,
       selection: toCopySelection(selection),
       copyChats,

@@ -7,9 +7,9 @@ import { initialsFor } from "./people-tab-model.ts";
  * "you" marker on the caller's own row), an optional second identity line, and
  * exactly ONE trailing control on the right.
  *
- * It exists because the shape had been forked byte-for-byte across surfaces —
- * the team Members card and the Permissions agent People tab — and a fork is
- * how two lists of people start reading differently. The shell owns the flat
+ * The Permissions agent People tab renders it, and any other list of people
+ * renders the same shell, because a fork is how two lists of people start
+ * reading differently. The shell owns the flat
  * page language (transparent row, no card chrome, so the section's own rhythm
  * carries the list) and the identity typography; it knows nothing about teams,
  * agents or access levels, which is what keeps it reusable for the next list.

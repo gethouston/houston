@@ -125,7 +125,6 @@ describe("the reads behind Workspace management are gated on it being open", () 
     for (const rel of [
       "../src/hooks/queries/use-org-usage.ts",
       "../src/components/organization/organization-view.tsx",
-      "../src/components/organization/org-chart-team-card.tsx",
     ]) {
       ok(
         read(rel).includes("useWorkspaceSectionActive"),

@@ -13,8 +13,7 @@ import type { Routine, TriggerStatusItem } from "@houston/engine-adapter";
  * caller derives it here: a workspace with no event routine makes no status
  * request anywhere.
  *
- * Whichever id the caller's rows carry is what comes back — a routine's own id,
- * or the team list's namespaced row keys.
+ * Whichever id the caller's rows carry is what comes back.
  */
 export function triggerBoundRoutineIds(
   routines: Routine[] | null | undefined,

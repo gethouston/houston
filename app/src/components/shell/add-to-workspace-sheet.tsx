@@ -1,8 +1,6 @@
 import { FlowSheet } from "@houston-ai/core";
 import { useEffect, useState } from "react";
 import { useTranslation } from "react-i18next";
-import { useCapabilities } from "../../hooks/use-capabilities";
-import { hasAgentTeams } from "../../lib/org-roles";
 import { useUIStore } from "../../stores/ui";
 import { useCopyAgentWizard } from "../copy-agent/use-copy-agent-wizard";
 import {
@@ -33,8 +31,8 @@ import { useCreateTeamForm } from "./use-create-team-form";
 /**
  * The ONE surface for everything a user adds to their workspace.
  *
- * Every door — the rail's "+", a team's empty board, the Agents home, the
- * Teams home — opens this same sheet; what differs is only the screen it
+ * Every door — the rail's "+", a team's empty board, the AI Employees list's
+ * create buttons — opens this same sheet; what differs is only the screen it
  * opens ON. "What do you want to add?" leads to an AI employee (hired through
  * the guided brief, or copied from one the user already has) or to a team,
  * and each of those is another step of the SAME frame.
@@ -54,7 +52,6 @@ export function AddToWorkspaceSheet() {
   const { t } = useTranslation("common");
   const request = useUIStore((s) => s.createFlow);
   const close = useUIStore((s) => s.closeCreateFlow);
-  const { capabilities } = useCapabilities();
   const gates = useCreateFlowGates();
   const open = request !== null;
   const shape = createFlowShape(request?.door ?? "choose", gates);
@@ -74,16 +71,13 @@ export function AddToWorkspaceSheet() {
     // The hire path's answers live exactly as long as the path does: a run the
     // gates settle out of it clears them through the hook's own reset.
     open: open && shapeOffersHire(shape),
-    targetTeamId: request?.teamId ?? null,
     onDone: close,
   });
   const team = useCreateTeamForm({
     open,
-    serverBacked: hasAgentTeams(capabilities),
     onDone: close,
   });
   const copy = useCopyAgentWizard({
-    targetTeamId: request?.teamId ?? null,
     onBack: () => goToStep("choose"),
     onDone: close,
   });

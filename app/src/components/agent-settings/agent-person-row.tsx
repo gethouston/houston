@@ -25,9 +25,8 @@ function levelLabel(level: Row["level"], t: (k: string) => string): string {
 
 /**
  * One member row in the Permissions agent People tab: the shared
- * {@link PersonRow} shell (the same one a team's Members card wears) carrying
- * the member's identity over their org role, with a None / Can use / Manager
- * control on the right.
+ * {@link PersonRow} shell carrying the member's identity over their org role,
+ * with a None / Can use / Manager control on the right.
  * The org owner renders as a static "Owner, always has access" (never editable);
  * everyone else gets a dropdown whose Manager option is disabled with an inline
  * reason for teammates without a Manager seat (`canBeManager` false). The trigger

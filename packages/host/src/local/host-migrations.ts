@@ -4,6 +4,7 @@ import { reseedAgentSchemas } from "../migrate/agent-schemas";
 import { migrateChatHistory } from "../migrate/chat-history";
 import { sweepLegacySetupDirectives } from "../migrate/legacy-setup-directive";
 import { backfillRoutineCreatedBy } from "../migrate/routine-created-by";
+import { migrateSidebarLayout } from "../migrate/sidebar-layout";
 import { severityLog } from "./host-log";
 import type { LocalHostOptions } from "./host-options";
 import type { LocalHostState } from "./host-state";
@@ -12,7 +13,15 @@ export async function runHostMigrations(
   opts: LocalHostOptions,
   state: LocalHostState,
 ) {
-  const { boot, sharedMirrorDir, sharedMirror, remoteCustomSecrets } = state;
+  const {
+    boot,
+    sharedMirrorDir,
+    sharedMirror,
+    remoteCustomSecrets,
+    store,
+    vfs,
+    paths,
+  } = state;
   const migrationsT0 = Date.now();
   // Shared storage is a disposable synchronized mirror, not a readiness
   // invariant. Start its pull after authoritative agent hydration but do
@@ -40,6 +49,13 @@ export async function runHostMigrations(
       console.log(
         `[local-host] migrated ${migrated} custom integration secret(s) to remote custody`,
       );
+    }
+  }
+  if (!opts.passive) {
+    try {
+      await migrateSidebarLayout({ store, vfs, paths, log: severityLog });
+    } catch (error) {
+      severityLog("[local-host] sidebar layout migration failed", error);
     }
   }
   // One-time, idempotent migration of the pre-v0.4 FLAT `.houston/` layout

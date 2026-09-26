@@ -63,7 +63,7 @@
           "cta": "Próximo"
         },
         "board": {
-          "body": "Este é o quadro da sua equipe. Toda tarefa aparece aqui, com o andamento dela.",
+          "body": "Este é o quadro do seu funcionário de IA. Toda tarefa que você passa para ele aparece aqui, com o andamento dela.",
           "cta": "Próximo"
         },
         "newTask": {

@@ -8,7 +8,7 @@
  * route matched, or `undefined` to let the router fall through.
  */
 
-import { parseSidebarLayout } from "@houston/host/src/routes/sidebar-layout";
+import { parseSidebarLayout } from "@houston/protocol";
 import { SEED_WORKSPACE_ID } from "./config";
 import { json } from "./http";
 import { handleCustom } from "./routes-custom-integrations";

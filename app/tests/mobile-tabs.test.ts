@@ -2,22 +2,19 @@ import assert from "node:assert/strict";
 import { describe, it } from "node:test";
 import { activeMobileTab, phoneChromeHidden } from "../src/lib/mobile-tabs.ts";
 
-// The phone nav bar's classification rule — which of the three items the
+// The phone nav bar's classification rule — which of the two items the
 // current location lights up. Pure; the tap side is store-bound and covered
 // by the mobile Playwright suite.
 
 const at = (viewMode: string) => ({ viewMode });
 
 describe("activeMobileTab", () => {
-  it("the Agents home screen is the Agents item's own root", () => {
+  it("the AI Employees list is the AI Employees item's own root", () => {
     assert.equal(activeMobileTab(at("agents-home")), "agents");
   });
 
-  it("every team location belongs to Teams", () => {
-    // The Teams tree is the home plus any team, whatever section is open and
-    // whether or not it is narrowed to one agent.
-    assert.equal(activeMobileTab(at("teams-home")), "teams");
-    assert.equal(activeMobileTab(at("team")), "teams");
+  it("an employee's own screen belongs to AI Employees", () => {
+    assert.equal(activeMobileTab(at("agent")), "agents");
   });
 
   it("everything the More menu leads to lights More", () => {
@@ -48,26 +45,20 @@ describe("phoneChromeHidden", () => {
   });
 
   it("stays for the tab roots and the More menu's screens", () => {
-    for (const view of [
-      "agents-home",
-      "teams-home",
-      "team",
-      "settings",
-      "store",
-    ])
+    for (const view of ["agents-home", "agent", "settings", "store"])
       assert.equal(phoneChromeHidden(on(view)), false);
   });
 
   it("leaves under the pushed mission chat", () => {
     assert.equal(
-      phoneChromeHidden({ ...on("team"), chatAgentId: "agent-1" }),
+      phoneChromeHidden({ ...on("agent"), chatAgentId: "agent-1" }),
       true,
     );
   });
 
   it("leaves under the board's full-screen mission panel", () => {
     assert.equal(
-      phoneChromeHidden({ ...on("team"), missionPanelOpen: true }),
+      phoneChromeHidden({ ...on("agent"), missionPanelOpen: true }),
       true,
     );
   });

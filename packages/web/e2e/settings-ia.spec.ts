@@ -96,10 +96,10 @@ test("the sidebar carries only the IA's top-level entries", async ({
   // Skills closes the run, right after Integrations. Anchorless like the
   // Assistant, so it is addressed by its own test id.
   await expect(skillsRow(page)).toBeVisible();
-  // "Your teams" is the rail's ONE band: nothing is labelled above it, even
+  // "Your AI Employees" is the rail's ONE band: nothing is labelled above it, even
   // for the space owner, who holds one more destination than a member.
   await expect(sidebar.getByText("Workspace", { exact: true })).toHaveCount(0);
-  await expect(sidebar.getByText("Your teams")).toBeVisible();
+  await expect(sidebar.getByText("Your AI Employees")).toBeVisible();
   // The footer cluster: the Academy directly above Settings. The Academy
   // carries no tour anchor, so its name is the handle.
   await expect(railButton(page, "Academy")).toBeVisible();

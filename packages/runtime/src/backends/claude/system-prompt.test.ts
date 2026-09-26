@@ -203,18 +203,3 @@ test("a normal agent's learnings are never injected", () => {
   expect(prompt).not.toContain("# What you remember about this user");
   expect(prompt).not.toContain("Julian prefers short replies.");
 });
-
-test("group context is appended after the workspace/user section", () => {
-  const dir = freshWorkspace();
-  writeFileSync(join(dir, "WORKSPACE.md"), "Acme Corp.");
-  writeFileSync(join(dir, "GROUP.md"), "Q3 launch squad.");
-
-  const prompt = buildSystemPrompt(dir, "You are Houston.");
-  expect(prompt).toContain("# Workspace Context");
-  expect(prompt).toContain("# Group Context");
-  expect(prompt).toContain("Q3 launch squad.");
-  // Ordering: base prompt → workspace/user context → group context.
-  expect(prompt.indexOf("# Group Context")).toBeGreaterThan(
-    prompt.indexOf("# Workspace Context"),
-  );
-});

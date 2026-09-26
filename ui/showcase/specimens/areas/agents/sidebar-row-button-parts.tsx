@@ -28,7 +28,7 @@ export function Ladder() {
         onActivate={() => setOpenId("nav")}
       />
       <SidebarRowButton
-        label="Your teams"
+        label="Your AI Employees"
         depth="block"
         band
         onActivate={() => setCollapsed((on) => !on)}

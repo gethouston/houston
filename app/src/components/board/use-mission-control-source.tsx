@@ -26,10 +26,8 @@ import { usePendingMissionTarget } from "./use-pending-mission-target";
  * agent. The active agent that scopes the right panel is whichever the
  * selected card belongs to, or the one just picked for a new mission.
  *
- * `scope` narrows all of that to one team's agents and lets the caller own the
- * agent filter (see {@link MissionControlScope}). The cross-agent sweep always
- * spans the agents it is handed, so a team board passes the FULL roster and
- * scopes what it renders — one shared query, no per-team re-sweep.
+ * `scope` narrows the rendered board to one employee. The conversation sweep
+ * still spans the full roster, so every board reads one shared query.
  */
 export function useMissionControlSource(
   agents: Agent[],
@@ -59,9 +57,7 @@ export function useMissionControlSource(
     mc.selectedId,
   );
 
-  // The board never WRITES the filter: the scope is a breadcrumb in row 1 of
-  // the team strip, which reads and writes the same `teamAgentFilter` pin
-  // directly. `filterPath` is still READ, for the auto-open key.
+  // The board reads its employee path from scope for the auto-open key.
   const { scopedAgents, paths, agentFilteredItems, visibleAgents, filterPath } =
     useMcScope(agents, mc.items, scope);
 

@@ -76,11 +76,10 @@ export function CreateOrganizationDialog({ open, onOpenChange }: Props) {
       // old space and the reload above just dropped), the view would stay put
       // and the whole create reads as a silent failure. Land them on home —
       // the same place the shell sends a blocked view — so the switch is
-      // visible. The new space's teams may not have resolved yet, in which
-      // case home IS the Agents home and the boot rule moves them on to the
-      // first team's Mission Control the moment it lands; that composition is
-      // deliberate. The toast's Invite action then takes them on to Workspace
-      // management from home.
+      // visible. Home is the new space's first employee once its roster and
+      // sidebar layout have settled; until then the Agents home stands and the
+      // desktop boot rule opens that employee. The toast's Invite action takes
+      // them to Workspace management.
       openHome();
     }
     // Point the user at the next step: the Admin dashboard's People card, now

@@ -13,12 +13,16 @@
 import {
   FAKE_HOST_PORT,
   type FakeHost,
+  SEED_AGENT_ID,
   startFakeHost,
 } from "@houston/fake-host";
 import { test as base, expect, type Page } from "@playwright/test";
 import { seedPage } from "./seed";
+import { seedSidebarLayout } from "./sidebar-layout";
 
 interface Fixtures {
+  /** Seed a named folder containing the seed agent for team-board specs. */
+  teamBoard: boolean;
   /** A page pre-seeded with engine config + skipped boot gates. */
   page: Page;
   /** Push a domain reactivity event onto the host's `/v1/events` feed. */
@@ -31,6 +35,7 @@ interface WorkerFixtures {
 }
 
 export const test = base.extend<Fixtures, WorkerFixtures>({
+  teamBoard: [false, { option: true }],
   fakeHost: [
     // biome-ignore lint/correctness/noEmptyPattern: Playwright requires the destructuring pattern on a fixture's first parameter
     async ({}, use) => {
@@ -40,9 +45,22 @@ export const test = base.extend<Fixtures, WorkerFixtures>({
     },
     { scope: "worker", auto: true },
   ],
-  page: async ({ page, request, fakeHost }, use) => {
+  page: async ({ page, request, fakeHost, teamBoard }, use) => {
     // Server-to-server (no CORS): restore the seed before each test.
     await request.post(`${fakeHost.url}/__test__/reset`);
+    if (teamBoard) {
+      await seedSidebarLayout(request, {
+        groups: [
+          {
+            id: "team-board",
+            name: "Team",
+            collapsed: false,
+            agentIds: [SEED_AGENT_ID],
+          },
+        ],
+        order: [],
+      });
+    }
     await seedPage(page);
     await use(page);
   },

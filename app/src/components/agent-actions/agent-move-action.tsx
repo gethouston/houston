@@ -7,11 +7,14 @@ import {
   DialogTitle,
 } from "@houston-ai/core";
 import { useTranslation } from "react-i18next";
-import { teamDisplayName } from "../../lib/team-display";
 import type { TeamView } from "../../lib/teams-model";
 import type { Agent } from "../../lib/types";
 import { TeamGlyph } from "../shell/team-glyph";
 import { moveTargetTeams } from "../team-view/move-agent-model";
+
+export type MoveTarget =
+  | { kind: "team"; team: TeamView }
+  | { kind: "ungrouped" };
 
 export function AgentMovePickerDialog({
   open,
@@ -23,11 +26,11 @@ export function AgentMovePickerDialog({
   open: boolean;
   onOpenChange: (open: boolean) => void;
   teams: readonly TeamView[];
-  currentTeamId: string;
-  onSelect: (team: TeamView) => void;
+  currentTeamId: string | null;
+  onSelect: (target: MoveTarget) => void;
 }) {
   const { t } = useTranslation("teams");
-  const targets = moveTargetTeams(teams, currentTeamId);
+  const targets = moveTargetTeams(teams);
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
       <DialogContent>
@@ -37,14 +40,17 @@ export function AgentMovePickerDialog({
         <div className="grid gap-2 pt-2">
           {targets.map((team) => (
             <Button
-              key={team.id}
+              key={team?.id ?? "ungrouped"}
               variant="outline"
               className="justify-start gap-2"
-              onClick={() => onSelect(team)}
+              disabled={(team?.id ?? null) === currentTeamId}
+              onClick={() =>
+                onSelect(team ? { kind: "team", team } : { kind: "ungrouped" })
+              }
             >
-              <TeamGlyph team={team} className="size-4 shrink-0" />
+              {team && <TeamGlyph team={team} className="size-4 shrink-0" />}
               <span className="truncate">
-                {teamDisplayName(team, t("teamView.defaultName"))}
+                {team?.name ?? t("agentSettings.manage.noTeam")}
               </span>
             </Button>
           ))}
@@ -56,27 +62,28 @@ export function AgentMovePickerDialog({
 
 export function AgentMoveDialog({
   agent,
-  team,
+  target,
   onOpenChange,
   onConfirm,
 }: {
   agent: Agent;
-  team: TeamView | null;
+  target: MoveTarget | null;
   onOpenChange: (open: boolean) => void;
   onConfirm: () => void;
 }) {
   const { t } = useTranslation("teams");
+  const name =
+    target?.kind === "team"
+      ? target.team.name
+      : t("agentSettings.manage.noTeam");
   return (
     <ConfirmDialog
-      open={team !== null}
+      open={target !== null}
       onOpenChange={onOpenChange}
-      title={t("teamView.move.confirmTitle", {
-        agent: agent.name,
-        team: team ? teamDisplayName(team, t("teamView.defaultName")) : "",
-      })}
+      title={t("teamView.move.confirmTitle", { agent: agent.name, team: name })}
       description={t("teamView.move.confirmBody", {
         agent: agent.name,
-        team: team ? teamDisplayName(team, t("teamView.defaultName")) : "",
+        team: name,
       })}
       confirmLabel={t("teamView.move.confirm")}
       cancelLabel={t("teamView.move.cancel")}

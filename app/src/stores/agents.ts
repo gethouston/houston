@@ -1,27 +1,18 @@
 import type { AgentInitialConfig } from "@houston/engine-adapter";
 import { create } from "zustand";
-import {
-  selectLoadedAgent,
-  shouldApplyAgentLoad,
-} from "../lib/agent-selection";
 import { analytics } from "../lib/analytics";
-import { getEngine, isEngineReady } from "../lib/engine";
 import { prepareAgentDraftForget } from "../lib/forget-agent-drafts";
-import { tauriAgents, tauriPreferences } from "../lib/tauri";
+import { tauriAgents } from "../lib/tauri";
 import type { Agent } from "../lib/types";
 import { useAgentProvisioningStore } from "./agent-provisioning";
 import type { AgentState } from "./agents/state";
+import {
+  agentLoadingActions,
+  invalidateAgentLoads,
+  startAgentSideEffects,
+} from "./agents-loading";
 
 export type { CreatedAgent } from "./agents/state";
-
-let loadAgentsGeneration = 0;
-
-/** What selecting an agent leaves behind: the pick survives a restart. The
- *  host owns the file watcher and the routine scheduler for every agent it
- *  serves, so there is nothing per-agent for the client to start. */
-function startAgentSideEffects(agent: Agent) {
-  tauriPreferences.set("last_agent_id", agent.id);
-}
 
 export const useAgentStore = create<AgentState>((set, get) => ({
   agents: [],
@@ -29,40 +20,8 @@ export const useAgentStore = create<AgentState>((set, get) => ({
   loading: false,
   loaded: false,
 
-  loadAgents: async (workspaceId, options) => {
-    const silent = options?.silent ?? false;
-    const generation = ++loadAgentsGeneration;
-    const selectionBeforeLoad = get().current?.id;
-    if (!silent) set({ loading: true });
-    try {
-      const agents = await tauriAgents.list(workspaceId);
-      if (!shouldApplyAgentLoad(generation, loadAgentsGeneration)) return;
-      const current = get().current;
-      const selected = selectLoadedAgent(agents, current, selectionBeforeLoad);
-      set({ agents, current: selected, loading: false, loaded: true });
-      if (selected && selected.id !== current?.id) {
-        startAgentSideEffects(selected);
-      }
-    } catch (e) {
-      if (!shouldApplyAgentLoad(generation, loadAgentsGeneration)) return;
-      console.error("[agents] Failed to load:", e);
-      // Settled (with the failure already logged + toasted upstream): the boot
-      // gate must not hang on `loaded` forever; an empty-but-failed list reads
-      // as the same empty state the legacy wire shows on a failed load.
-      set({ loading: false, loaded: true });
-    }
-  },
-
-  settleEmpty: () => {
-    loadAgentsGeneration++;
-    // Also tell the engine adapter no list is coming, so provider routing falls
-    // back to the persisted selection instead of refusing every call while it
-    // waits on a `listAgents` that will never run (HOU-979). Guarded because
-    // this settles UI state and must never itself throw; a client that isn't
-    // built yet starts in the same unrouted state anyway.
-    if (isEngineReady()) getEngine().noteAgentsUnavailable();
-    set({ agents: [], current: null, loading: false, loaded: true });
-  },
+  loadedWorkspaceId: null,
+  ...agentLoadingActions(set, get),
 
   setCurrent: (agent) => {
     set({ current: agent });
@@ -139,7 +98,7 @@ export const useAgentStore = create<AgentState>((set, get) => ({
     // survives in the roster and every later per-agent call 404s.
     // Reject a roster snapshot started before the rename: it still carries the
     // removed folder path and would reinstate it after this mutation.
-    loadAgentsGeneration++;
+    invalidateAgentLoads();
     const updated = await tauriAgents.rename(workspaceId, id, newName);
     // A rename can change both id and folderPath; a warm-up probe pointed at
     // the old path would 404 and wrongly read as "ready" (HOU-693).
@@ -161,10 +120,5 @@ export const useAgentStore = create<AgentState>((set, get) => ({
       agents: s.agents.map((a) => (a.id === id ? updated : a)),
       current: s.current?.id === id ? updated : s.current,
     }));
-  },
-
-  reset: () => {
-    loadAgentsGeneration++;
-    set({ agents: [], current: null, loading: false, loaded: false });
   },
 }));

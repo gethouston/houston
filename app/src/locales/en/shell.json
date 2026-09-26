@@ -21,13 +21,24 @@
     },
     "createDialog": "Create",
     "createWorkspace": "Create workspace",
+    "drag": {
+      "pickedUp": "Picked up %name%.",
+      "movedOver": "%name% over %over%.",
+      "dropped": "Dropped %name% over %over%.",
+      "cancelled": "Cancelled moving %name%.",
+      "instructions": "Drag with the pointer. Use Alt+Up or Alt+Down to reorder, and Alt+Right or Alt+Left to move an AI Employee into or out of a group.",
+      "keyboardMoved": "Moved %name% to position %position% at the top level.",
+      "keyboardMovedInGroup": "Moved %name% to position %position% in %group%.",
+      "keyboardEnteredGroup": "Moved %name% into %group%.",
+      "keyboardLeftGroup": "Moved %name% out of %group%, to the top level."
+    },
     "expand": "Expand sidebar",
     "help": "Help",
     "integrations": "Integrations",
     "needsYouCount_one": "{{count}} issue needs you",
     "needsYouCount_other": "{{count}} issues need you",
     "newMission": "New task",
-    "newTeam": "New team",
+    "newTeam": "New group",
     "reportProblem": "Report a problem",
     "runningCount_one": "{{count}} issue running",
     "runningCount_other": "{{count}} issues running",
@@ -35,11 +46,15 @@
     "settings": "Settings",
     "skills": "Skills",
     "teams": {
-      "identity": "Change icon & name",
+      "identity": "Icon & color",
       "identityIcons": "Icons",
       "identityColors": "Colors",
       "identitySearch": "Search icons…",
-      "identitySearchEmpty": "No icons found"
+      "identitySearchEmpty": "No icons found",
+      "menu": "Actions for {{name}}",
+      "rename": "Rename",
+      "move": "Move to another space",
+      "delete": "Delete group"
     },
     "teamIcons": {
       "bank": "Bank",
@@ -366,7 +381,7 @@
       "staircase": "staircase",
       "starred": "starred",
       "support": "support",
-      "team": "team",
+      "team": "group team",
       "tech": "tech",
       "tee": "tee",
       "time": "time",
@@ -379,7 +394,7 @@
       "work": "work",
       "writing": "writing"
     },
-    "yourTeams": "Your teams"
+    "employeesSection": "Your AI Employees"
   },
   "missionChat": {
     "back": "Back"
@@ -392,7 +407,7 @@
       "title": "No AI Employees yet",
       "description": "Create an AI Employee to get started. Everything they work on shows up here."
     },
-    "allTeams": "All teams",
+    "allGroups": "All groups",
     "noTasks": "No tasks yet",
     "typing": "Typing..."
   },
@@ -416,16 +431,10 @@
       "description": "Start a task with the compose button and it will show up here."
     }
   },
-  "teamsHome": {
-    "title": "Teams",
-    "tree": "Teams and their sections",
-    "newTeam": "New team"
-  },
   "tabBar": {
     "agents": "AI Employees",
     "label": "Main navigation",
-    "more": "More",
-    "teams": "Teams"
+    "more": "More"
   },
   "sentrySmoke": {
     "nativeTriggeredTitle": "Native Sentry smoke triggered",
@@ -635,8 +644,7 @@
     "groups": {
       "actions": "Actions",
       "agents": "AI Employees",
-      "recentMissions": "Recent tasks",
-      "teams": "Teams"
+      "recentMissions": "Recent tasks"
     },
     "actions": {
       "newMission": "Start new task",
@@ -672,7 +680,7 @@
     "title": "Add to your workspace",
     "headline": "What do you want to add?",
     "agentTitle": "AI Employee",
-    "teamTitle": "Team"
+    "teamTitle": "Group"
   },
   "employeeCard": {
     "changeColor": "Change color",

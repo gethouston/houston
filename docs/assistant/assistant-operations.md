@@ -183,6 +183,6 @@ Confirmation means Houston asks the user and mints a receipt for that exact call
 | `setAgentTeam` | PUT | confirmed: host approval required | visible | agentSlugOrId: resolved:agents; teamId: resolved:teams |
 | `setAgentTeamMemberOwner` | PUT | confirmed: host approval required | visible | teamId: resolved:teams; userId: resolved:members; owner: free text |
 | `updateAgentTeam` | PATCH | confirmed: host approval required | visible | teamId: resolved:teams; patch: free text |
-| `getHostSidebarLayout` | GET | unconfirmed: read-only HTTP GET | UI plumbing; the sidebar's persisted order has no meaning outside the sidebar's own render. | workspaceId: resolved:workspaces |
+| `getHostSidebarLayout` | GET | unconfirmed: read-only HTTP GET | A person's sidebar folders are arranged by drag and drop in the app. | workspaceId: resolved:workspaces |
 | `listWorkspaces` | GET | unconfirmed: read-only HTTP GET | visible | none |
-| `putHostSidebarLayout` | PUT | unconfirmed: withheld from dispatch | UI plumbing; the app's drag and drop owns this write, and calling it blind rearranges the user's sidebar. | workspaceId: resolved:workspaces; layout: free text |
+| `putHostSidebarLayout` | PUT | unconfirmed: withheld from dispatch | A person's sidebar folders are arranged by drag and drop in the app. | workspaceId: resolved:workspaces; layout: free text |

@@ -72,8 +72,8 @@ export type GuidedCreateAgentStep = (typeof GUIDED_CREATE_AGENT_STEPS)[number];
 /**
  * Which door a caller opened the sheet by. `"choose"` is the rail's "+", which
  * knows only that the user wants to add something; the other two are the
- * callers that already know (a team's "New AI Employee", the Teams home's
- * "+"), and they land on that path's own first screen.
+ * callers that already know (the list's "New AI Employee" and "New group"),
+ * and they land on that path's own first screen.
  */
 export type CreateFlowDoor = "choose" | "agent" | "team";
 

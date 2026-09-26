@@ -36,7 +36,7 @@
 #   a11y     roles / labels / focus expectations the surface must honor
 #   since    inventory version this component first appeared in
 
-version: 105
+version: 106
 
 components:
   - id: custom-integration-details
@@ -816,10 +816,11 @@ components:
       ambient mission movement -- clamped to "99+". Multiplayer only: single
       player gets no mentions chrome at all.
       The board is DESKTOP-ONLY. Below the one breakpoint it is not squeezed,
-      paged or hidden -- it is replaced by the team-screen's phone task list,
-      a single scrolling list of the same missions grouped by the same
-      sections. Columns, drag-and-drop, multi-select and the side panel have
-      no phone form at all, and there a task opens as a pushed
+      paged or hidden -- the employee's Tasks is its task list on the AI
+      Employees tab (agent-missions-list), a single scrolling list of the same
+      missions grouped by the same sections, and every way into an employee's
+      Tasks lands there. Columns, drag-and-drop, multi-select and the side
+      panel have no phone form at all, and there a task opens as a pushed
       mission-chat-screen rather than a selection.
     a11y: >-
       list/grid semantics per column; column headers labeled; DnD has
@@ -895,7 +896,6 @@ components:
         next-fire,
         enabled-toggle,
         quick-actions-menu,
-        owner-chip,
         connection-warning-chip,
       ]
     states:
@@ -913,7 +913,7 @@ components:
         provider-unusable,
       ]
     variants:
-      [list-row, grid-card, schedule-driven, event-driven, cross-agent]
+      [list-row, grid-card, schedule-driven, event-driven]
     behavior: >-
       Shows a humanized schedule summary + next fire time (cron routine) or a
       humanized event summary + live provisioning status badge (event-driven:
@@ -924,12 +924,6 @@ components:
       The inline edit panel authors the wake mechanism: where the deployment
       supports event triggers it offers a plain-language "When should this
       happen?" choice (schedule / app event); otherwise it is schedule-only.
-      In a CROSS-AGENT list (a team's Routines) the row carries an owner chip
-      beside its name -- the owning agent's avatar + name, supplied by the
-      surface. The chip never truncates; the routine's name does. A DRAFT row (a
-      routine still being built in chat) wears the same chip, or several
-      identical "being created" rows would be indistinguishable. A single-agent
-      list omits both, since every row would name the same owner.
       A row also carries a WARNING chip when the AI account the routine would
       run on is unusable -- not connected, needing a reconnect, or out of
       credits -- so a broken automation is visible in the list rather than only
@@ -1224,184 +1218,66 @@ components:
     since: 33
 
   - id: sidebar-team-block
-    title: Sidebar team block
-    purpose: >-
-      One team in the navigation rail: its name and the agents that belong to
-      it.
-    anatomy: [header-row, team-glyph, team-name, disclosure-caret, rollup-badge, header-menu, identity-picker, agent-rows, empty-hint]
-    states: [resting, active, collapsed, collapsed-active, collapsed-rollup, drop-target, drop-refused, empty, renaming]
-    variants: [named-team, default-team]
+    title: Sidebar group block
+    purpose: A personal folder in the AI Employees rail.
+    anatomy: [header-row, group-glyph, group-name, disclosure-caret, rollup-badge, folder-menu, agent-rows]
+    states: [resting, expanded, collapsed, collapsed-rollup, menu-open, drop-target, empty, renaming]
+    variants: [named-group]
     behavior: >-
-      Every agent belongs to exactly one team, so the rail is a list of team
-      blocks and nothing else. Named teams are the stored sidebar groups; the
-      trailing DEFAULT team is the workspace itself, wearing the workspace name
-      and holding every agent in no group.
-      A block is ONE LADDER of rows, not a header with a list beneath it. The
-      team row and every agent row share a single anatomy: one fixed row
-      height, one glyph column, one type size, one rounded hover fill, and an
-      active state that is a clearly-defined pill rather than a faint tint. Hierarchy is carried by an indent INSIDE the
-      row, so the pills line up in one clean column down the block's left edge
-      instead of stepping in and out with their contents; a row's glyph also
-      inherits its label's colour, so an active row brightens as one object
-      rather than as a label with a stale mark beside it. Any of the three row
-      kinds drifting in height or indent makes the block read as several stacked
-      lists, which is exactly what it used to do.
-      That ladder is not the block's alone. EVERY interactive line in the rail
-      is the same row wearing different options -- the top-level destinations
-      above the list, the band that names it, each team header, each destination
-      row, each agent, and the New agent row that closes it -- so the whole rail
-      is one column of pills with one glyph column running down it, and there is
-      exactly one indent step between a row that heads something and a row that
-      hangs under one. Every row is 28px tall around a 20px glyph column, with
-      destination marks at 16px and team marks at 14px, so every glyph edge
-      lands 6-9px from its label. An AI Employee is a person row instead: 44px
-      around a 32px portrait, its role under its name. On the collapsed icon
-      rail it is a 36px square around a 24px avatar, so the avatar and its
-      running ring fit inside the square. Weight states that DEPTH and never the state: a block-
-      level row is medium and a child row is regular, whatever is selected, so
-      clicking a row cannot re-measure its label and shift where a long agent
-      name truncates. The two things deliberately outside the shared row are the
-      collapsed icon rail, which is a different anatomy rather than a narrower
-      one, and inline rename, because a text field is not a state of a button.
-      The team row itself is ONE hit target carrying the glyph, the name, the
-      caret that states whether the block is open and the block's rollup badge,
-      with the "..." menu beside it rather than inside it. It used to be three
-      separate controls sharing one job, which cost a keyboard user three stops
-      to reach a single disclosure. The caret is an INDICATOR and takes no
-      clicks of its own: what the row does depends on where the user already
-      is, so a caret claiming to be the fold button would promise an outcome it
-      does not own.
-      Clicking a team's name answers four questions with one gesture. From
-      anywhere else it OPENS that team, unfolds it, and folds every other block
-      -- an accordion, because a rail of eight expanded teams is a list of
-      agents with headings in it, and the team just asked for is the only one
-      whose members are worth the space. From another of the same team's
-      surfaces it simply comes back to the team's work. On the team's own work,
-      it folds the block, and folds it back open on the next click. Folding is
-      the only one of the four that does not move the screen: the rail may fold
-      while the surface stays, which is deliberate and user-invoked.
-      The team's glyph is the team's IDENTITY: a solid mark the user picked
-      from a curated set, tinted by a colour they picked from the SAME palette
-      the agent avatars below it use. One vocabulary, so a team and an agent can
-      never mean two different purples, and a team stays recognisable at a
-      glance in a rail full of blocks. A team that has chosen neither wears a
-      neutral people mark inheriting the row's own colour, which is what every
-      block looked like before and is still what most of them look like. This
-      is the one place a rail glyph pins a colour, and it is deliberate: the
-      mark is identity a person chose, not decoration a component invented.
-      Collapsing folds away EVERYTHING under the header. The hole that leaves is
-      answered by the header twice over. It wears the selected pill whenever the
-      open view belongs to this team, folded or open alike -- with no
-      destination rows left in the block, the header is the only row that can
-      answer "where am I" for a team at all. And it picks up a ROLLUP of what
-      its hidden agent rows were signalling: the sum of their waiting work as a
-      badge, and the same running treatment an agent's mark wears if any member
-      is working. Both only while folded, because an open block's rows say it
-      themselves and two badges in one block would count the same work twice.
-      Folding a team must never mean losing sight of it.
-      The DEFAULT block renders and folds exactly like a named team. One that
-      folded everywhere except there would make the team everybody has the one
-      row in the rail that answers a click differently, which is the kind of
-      exception a user reads as a bug. Its folded state is persisted separately
-      from the stored groups, because the block is virtual -- it is the
-      container, not a record -- and its absence reads as open, so every layout
-      written before it stays untouched. What it still does not get is what the
-      container itself lacks: no rename, no delete, no leave, no menu at all,
-      and no drag handle.
-      A block holds MEMBERS and nothing else. A team's sections live on the
-      screen its name opens, as tabs over the team's own work: four rows per
-      team spent most of the rail on the same four words repeated, and the
-      rail's job is to say WHICH team, not which of its surfaces. Selecting an
-      agent opens its team's work pre-filtered to that agent, so the rail and
-      the open view always agree on where the user is.
-      A DRAG reorders and nothing more: an agent inside its own team, a team
-      block among its siblings. An agent dragged over any other block is
-      REFUSED -- no block offers to receive it and the lifted copy dims -- because
-      a drop across blocks was the one gesture here that changed what a team
-      HOLDS, and a slip of the wrist across a rail full of blocks is not a way
-      to decide that. Moving an agent to another team is a named action on the
-      team's own screen, where it can be read before it is taken.
-      Where teams are SERVER-OWNED and shared with other people, the blocks are
-      the teams the caller has JOINED. A team they have not joined is not a
-      block at all: it lives in the band's Join menu (see sidebar-teams-band),
-      because the rail is a working surface and not a directory. Joining is
-      sidebar PINNING, not a grant: it moves the team into the rail and nothing
-      else, because who may see a team's agents was already settled by the
-      space's roles, and a rail that implied otherwise would be selling
-      permission it does not hold. Leaving is the same move backwards, which is
-      why it lives at the BOTTOM of the header menu behind a separator:
-      everything above it edits the team, and this one edits the caller's
-      relationship to it. Which menu entries a block offers is decided PER TEAM,
-      not once for the rail -- the caller may own one team and merely belong to
-      the next -- and a block that offers none shows no menu at all rather than
-      an empty one. Creating a team asks for the name FIRST: the new block is a
-      local draft until a name is committed, and abandoning the field removes
-      it, so no placeholder-named team is ever broadcast to the people sharing
-      the space.
+      Each block represents one SidebarLayout group. Its header only toggles
+      that folder's collapsed flag and never navigates. Its always-visible menu
+      offers Rename, Icon & color, Move to another space where available, and
+      Delete group. Agent rows follow the group's stored order. Agents
+      outside every folder share the header's left edge. SidebarLayout order
+      interleaves root employees and folders, with new employees at the start.
+      Every person can create, rename, restyle, reorder, and delete folders.
+      Deleting a folder puts its agents at that folder's root position in group
+      order. Dragging reorders employees and folders among root entries, or
+      moves employees into, out of, and within folders. Folders never nest.
+      While dragging, the row stays in the list as a faded ghost at the slot
+      and depth it will land in; there are no drop lines or highlighted
+      targets. A sideways drag of 20px moves the ghost one level in or out,
+      which is how an employee enters a collapsed group or leaves a group
+      after its last member.
+      Every row is 28px tall around a 20px glyph column, with destination
+      marks at 16px and group marks at 14px, so every glyph edge lands 6-9px
+      from its label. An AI Employee is a person row instead: 44px around a
+      32px portrait, its role under its name, at the same root or member
+      indent as any other row. On the collapsed icon rail it is a 36px square
+      around a 24px avatar, so the avatar and its running ring fit inside the
+      square.
     a11y: >-
-      The team row is ONE button carrying aria-expanded and an aria-controls
-      pointing at the region it folds, so the disclosure is announced rather
-      than inferred from a rotating caret; the caret is decorative and hidden.
-      The default block's row is that same button -- it folds a real region, so
-      it makes a real promise, which is the opposite of the inert label it used
-      to be. It carries aria-current="page" whenever the team's work is the open
-      view, so "you are here" survives folding instead of vanishing with the
-      rows it hid, and its rollup badge and running treatment both carry a
-      spoken label with the number in it, since the rail must never turn into a
-      wall of digits to be read. The "..." menu is always rendered rather than revealed on
-      hover: a control that exists only under a cursor is unreachable by touch
-      and invisible to anyone scanning the rail.
+      The header is one labelled button with a disclosure state. The menu is a
+      separate, always-visible button. The glyph is decorative. Enter and Space
+      activate a focused row; Alt+Arrow keys move it one slot, or into and out
+      of a folder.
     since: 55
 
   - id: sidebar-teams-band
-    title: Sidebar teams band
-    purpose: >-
-      The furniture wrapping the rail's team blocks: the band that names the
-      list and folds all of it, the one menu that creates teams and agents, and
-      the New agent row that closes the list. It is the rail's ONE heading --
-      the destinations above it (see sidebar-nav-band) wear none.
-    anatomy: [band-label-toggle, band-caret, add-menu-trigger, add-menu, add-agent-row]
+    title: AI Employees sidebar band
+    purpose: The heading and create control above the unlabelled agents and group folders.
+    anatomy: [band-label-toggle, band-caret, add-menu-trigger, add-menu, trailing-add-agent-row]
     states: [resting, collapsed, menu-open]
-    variants: [personal, shared-space]
+    variants: [phone, desktop]
     behavior: >-
-      The band is the rail's list header and its only LIST-level control -- one
-      per rail, however many team blocks hang under it, which is what makes it a
-      different thing from the block headers it sits above.
-      Its LABEL is the toggle. The caret sits immediately after the words rather
-      than pinned to the far edge, so the control reads as one phrase you can
-      click instead of a label that happens to have an arrow near it, and the
-      button is sized to its text because everything to the right of the words
-      belongs to the action, not to the disclosure. Folding it puts every team
-      block away at once, and the state is persisted: a rail that forgets it was
-      folded on every reload is worse than one that never folded. Folding is an
-      EXPANDED-rail idea only -- the icon rail has no band to fold from, so it
-      must never inherit a hidden list.
-      ONE "+" menu carries everything the rail can create: New agent and New
-      team. Those used to be two unnamed glyphs sitting on a row that already
-      had a label. Browsing and joining OTHER teams is gone entirely: a member
-      sees only the teams they are part of, and people are added to a team from
-      its settings, so the rail no longer stacks teams the user never opens
-      underneath the few they live in. The menu degrades to a plain named button
-      when there is exactly one thing to create, and renders nothing when there
-      is none.
-      New agent is ALSO a visible row at the foot of the list, not only a menu
-      entry, because creating an agent is the rail's primary action and a
-      primary action may not live one level deep inside a menu. That row wears
-      the child-row geometry of the blocks above it (see sidebar-team-block), so
-      the list ends on the same ladder it was drawn on rather than on a control
-      that has floated free of it.
+      The band reads Your AI Employees and folds the whole list in the expanded
+      desktop rail. Its create menu offers a new agent when the person may
+      create one and always offers a new group folder. New group opens a compact
+      name and identity dialog and leaves the current screen in place. The phone
+      manages groups on the AI Employees list: New group in its title row and
+      the picked group's menu beside the group filter. The create choices show the helmet and folder-plus glyphs on both breakpoints.
+      One New AI Employee row follows the last root entry, outside every group,
+      flush with root employees and folder headers. It creates an ungrouped
+      employee at the top of the root order and cannot be dragged or targeted.
     a11y: >-
-      The label is a real button with aria-expanded and an aria-controls
-      pointing at the list it folds; its caret is decorative and hidden. The
-      menu trigger carries an accessible name of its own rather than borrowing
-      the band's, because a "+" says nothing aloud. The add row is a button
-      inside the list's own reading order, not chrome parked outside it.
+      The label button exposes its expanded state, and the add control has its
+      own accessible name. Agent rows remain visible without hover.
     since: 58
 
   - id: sidebar-nav-band
     title: Sidebar nav band
     purpose: >-
-      The rail's top-level destinations above the team list: one unlabelled run
+      The rail's top-level destinations above the AI Employees list: one unlabelled run
       of rows, with no heading of its own.
     anatomy: [nav-row, nav-glyph, nav-label, footer-row]
     states: [resting, hover, active, icon-rail]
@@ -1423,12 +1299,10 @@ components:
       person rather than to the space, and it has to be reachable in every
       deployment.
       A run whose rows are all hidden by a gate is DROPPED with its rows: a
-      heading may never outlive the list it names, which is the rule the team
-      list's band below still lives by.
-      There is no general mission board among these rows. Every board belongs
-      to a team, so the app opens on the first team's board and the only
-      destination that needs no team is the agents home, which is where the app
-      waits while the teams are still arriving.
+      heading may never outlive the list it names, which is the rule the AI Employees
+      band's list below still lives by.
+      The AI Employees home provides the full roster, while opening an employee
+      enters that employee's own tasks, routines, files and settings.
       The icon rail keeps the rows and drops their labels: each glyph carries
       its name in a tooltip, so a destination is never left with nothing on
       screen to name it.
@@ -1439,128 +1313,67 @@ components:
     since: 59
 
   - id: team-identity-picker
-    title: Team identity picker
+    title: Group identity picker
     purpose: >-
-      The popover behind a team's "Change icon & color": a grid of solid marks
+      The popover behind a group's "Icon & color": a grid of solid marks
       and a row of colour swatches, applied as they are clicked.
     anatomy: [menu-entry, icon-grid, icon-cell, swatch-row, swatch, reset-entry]
     states: [resting, hover, selected, none-chosen, applied]
-    variants: [named-team, default-team]
+    variants: [named-group]
     behavior: >-
-      A team's identity is a GLYPH NAME and a COLOUR, both optional and both
-      edited by whoever may rename the team. The set of marks is the client's
+      A group's identity is a GLYPH NAME and a COLOUR, both optional and both
+      edited by whoever may rename the group. The set of marks is the client's
       own curated vocabulary rather than an image upload or an open icon
       library: a fixed set is the only way every mark reads at rail size and
       renders the same on every surface, and it costs the user a choice instead
       of a design task. The colours are not a new palette either -- they are the
       same swatches an agent's avatar uses, so one vocabulary of colour carries
       identity everywhere.
-      Every pick is applied IMMEDIATELY and optimistically: the rail repaints
-      the moment a mark is clicked, and a refusal puts the previous identity
-      back and says why in the user's own words. Choosing a mark before a
+      The create form and folder menu's identity dialog stage changes until
+      Create or Save. Choosing a mark before a
       colour has to look right, so the grid itself is tinted by whatever colour
       is currently chosen -- picking either half previews the pair.
-      Clearing is a first-class choice, not a missing one: a single Default
-      entry drops BOTH fields and returns the team to the neutral mark, and it
-      is offered only when there is something to clear.
-      The catch-all team is included. Restyling is a rename, not a structural
-      change, so a team you may name is a team you may style.
+      Clicking a selected mark or swatch clears that field.
     a11y: >-
-      The entry opens a submenu of the block's own "..." menu, so it is reached
-      by keyboard the same way every other block action is. Each mark and each
+      The folder menu opens a small identity dialog and its picker. Each mark and each
       swatch is a real button carrying its own name and a pressed state, so the
       current choice is never signalled by colour or position alone.
     since: 60
 
-  - id: team-screen
-    title: Team screen
-    purpose: >-
-      The full-window surface behind a team block's destination rows: one
-      team's missions, what its agents do on their own, what they keep, and the
-      agents that belong to it.
-    anatomy: [board-toolbar, team-title, agent-filter, mission-board, phone-task-list, phone-status-filter, phone-overflow-menu, phone-inline-search, phone-settings-tabs, archived-board, routines-list, files-browser, failed-agents-strip, empty-state, settings-agent-list, agent-drill-in, members-card]
-    states: [mission-control, mission-control-filtered, phone-task-list, phone-task-list-filtered, phone-task-list-searching, archived, routines, files, empty, partially-unavailable, settings, settings-agent-detail, settings-members]
-    variants: [named-team, default-team]
+  - id: agent-screen
+    title: AI Employee screen
+    purpose: The board, routines, files, and settings of one AI Employee.
+    anatomy: [agent-identity, section-tabs, mission-board, archived-board, routines-list, files-browser, agent-settings]
+    states: [tasks, archived, routines, files, settings]
+    variants: [phone, desktop]
     behavior: >-
-      ONE screen serves every team: which team and which of its sections are
-      open is state, so a team can be renamed, reordered or deleted without
-      leaving a dead view behind, and a team that stops existing sends the user
-      home, to the first team's board, rather than to a blank pane. The sections it can
-      show are exactly the destination rows the team block offers, so the rail
-      can never point at something the screen will not render; a section the
-      caller may not open resolves to Mission Control. Mission Control is the
-      SAME board the global one is, narrowed to the team's agents and titled
-      with the team's name, reading the one cross-agent sweep rather than
-      starting its own. Its agent filter is shared with the rail in both
-      directions: selecting an agent row filters the board, and picking one in
-      the board's own filter menu moves the lit row -- except under Team
-      Settings, which ignores the pin and lists the whole team, so no agent row
-      is filled there. An empty team says why it
-      is empty -- the workspace's own team offers the create-an-agent door, a
-      named team says to drag one in, because that is where a new agent would
-      land. Routines is ONE list of every team agent's routines, each row
-      naming its owner, because a routine is a flat thing and a team wants to
-      see what runs on its behalf in one place; routines still being BUILT in
-      chat are rows here too, resumable and discardable, so one started from
-      this surface never vanishes from it. Files is the opposite call:
-      folders are not flat and merging several agents' trees would invent a
-      filesystem nobody has, so the section picks ONE agent and shows that
-      agent's real tree, with every action the per-agent surface offers.
-      Both read the same per-agent caches the per-agent surfaces do, so an
-      event that refreshes one refreshes the other; when some agents answer and
-      others do not, the section says which ones failed and offers to retry
-      just those (and to report it), rather than presenting a short list as the
-      whole truth -- and when NOTHING answered it stops claiming the team is
-      idle at all. Team
-      Settings lists the team's agents with the same plain-language access line
-      every agent list shares, and opening one drills into the ONE canonical
-      agent settings page rather than a second copy of it.
-      Below the one breakpoint the strip is gone: the Teams tree chose the
-      section a level up, so the screen wears the drilled phone header (back
-      chip, team, the section's name) instead; the Team Settings level keeps
-      its Context / Agents / People / Settings tabs there too, as a segmented
-      row under that header, a tab replacing the navigation entry rather
-      than pushing one. Tasks there is a LIST, not the
-      board -- the same missions the columns hold, grouped Needs you /
-      Running / Done as bands of shared task-rows under the same All / Needs
-      you / Running / Done status filter (a pill dropping a radio menu) the
-      per-agent list wears, each
-      row trailing its OWNING agent's helmet (a team's list mixes agents, and
-      the band already says how fresh the task is). There is no pager, no
-      agent chip bar and no compose on the screen: the nav bar's one New task
-      control composes, and the team-wide agent pin stays a desktop affair.
-      The header's "..." menu holds the three things the screen will not
-      spend a row on -- Search (an inline field that narrows the same query
-      the desktop toolbar types into), Archived (which swaps in the archive,
-      with its own way back) and Team settings, offered only to a caller who
-      may actually configure the team. A segment or a search that matches
-      nothing says so in words; a team with no tasks at all gets the honest
-      empty state. Tapping a row pushes the mission-chat-screen.
-      Where teams are server-owned, Team Settings is also where a team is NAMED
-      and where its PEOPLE are, in a members card under the agents: the rows are
-      EXPLICIT memberships only, so a card that lists nobody is not a claim that
-      nobody can reach the team, and it says as much -- owners and admins of the
-      space manage every team without ever appearing in it, and the space's
-      catch-all team holds no rows at all because everybody is in it. Only a
-      team's owner sees the controls that write (making someone an owner,
-      removing them); everyone else reads the same list. This is also the only
-      door to renaming the catch-all team, whose rail block deliberately offers
-      no menu. The caller's own Join and Leave sit here too, next to the list
-      that explains what they mean.
+      Selecting an AI Employee opens its own screen regardless of its folder.
+      The screen offers Tasks, Routines, Files, and Settings where authorized.
+      On the phone, the employee's header and section tabs sit above its content.
+      Folder headers never open this screen.
     a11y: >-
-      The board's team name is the screen's h1; the filter menu names the agent
-      it is pinned to; the settings drill-in is framed by a labelled back
-      control naming the team it returns to; every members-card control names
-      the person it acts on. On the phone the team is the h1 with the
-      section under it, the status segments are a labelled tablist, the "..."
-      chip and the inline search field are both labelled, and a task row
-      names its owning agent in text rather than by helmet colour alone.
-    since: 55
+      The employee identity, tabs, and phone back control are labelled.
+    since: 102
+
+  - id: org-chart-folders
+    title: Org chart folders
+    purpose: The caller's folder arrangement with agent usage in each folder.
+    anatomy: [ungrouped-card, folder-card, agent-rows, usage-bars]
+    states: [loading, empty, ready, usage-unavailable]
+    variants: [phone, desktop]
+    behavior: >-
+      The chart groups visible agents by the caller's SidebarLayout groups.
+      Agents in no folder share one neutral card before the folder cards.
+      Each agent bar uses one scale across the entire chart.
+    a11y: >-
+      Folder headings label their cards. Usage remains readable as text, and
+      the neutral card does not imply shared membership.
+    since: 102
 
   - id: mobile-nav-bar
     title: Mobile nav bar
     purpose: >-
-      The phone shell's floating bottom pill: Agents, Teams and More, plus a
+      The phone shell's floating bottom pill: AI Employees and More, plus a
       separate round new-task control, below 768px only.
     anatomy: [pill, nav-item, item-glyph, active-item-label, needs-you-badge,
       new-task-control]
@@ -1568,22 +1381,21 @@ components:
     variants: []
     behavior: >-
       A floating pill a little above the bottom edge, padded against the
-      home indicator, with three items and never a fourth: Agents (the
-      landing item, rooting on the agents tree), Teams (rooting on the
-      teams-home tree) and More (which opens the mobile-more-menu rather than
-      navigating). Inactive items are glyph-only; the active item widens into
-      an inner pill carrying its glyph and label, so the bar names exactly one
-      place at a time and is never dark: the Agents home and its drill-ins
-      light Agents, a team screen and the teams tree light Teams, every other
+      home indicator, with two items: AI Employees (the landing item, rooting
+      on the agents-home list) and More (which opens the mobile-more-menu
+      rather than navigating). Inactive items are glyph-only; the active item
+      widens into an inner pill carrying its glyph and label, so the bar names
+      exactly one place at a time and is never dark: the AI Employees list, its
+      drill-ins and an employee's own screen light AI Employees, every other
       screen (Settings, Inbox, the store, integrations, skills, admin, about
-      me, the academy) lights More. Tapping Agents or Teams RESETS the
-      navigation trail to that root the way native tab bars do, so hardware
-      back afterwards stays on the new root. The Agents item wears the same
+      me, the academy) lights More. Tapping AI Employees RESETS the navigation
+      trail to the list the way native tab bars do, so hardware back
+      afterwards stays on the list. The AI Employees item wears the same
       needs-you count badge the rail rows wear, the cross-agent sum of
       missions waiting on the user, nothing at zero. The round control to the
       right of the pill starts a new task, scoped to where the user stands:
-      inside an agent's list it opens that agent's draft chat, on a team
-      screen it asks among that team's agents, anywhere else it asks among
+      inside an agent's list it opens that agent's draft chat, on an employee
+      screen it opens that employee's draft chat, anywhere else it asks among
       everyone (new-mission-sheet). It is the phone's ONLY New task control --
       no screen carries one of its own -- so it is also what the Academy's
       lessons ring for that step, and it sits outside every screen rather than
@@ -1631,47 +1443,18 @@ components:
       and dismissal is reachable by the hardware back and the scrim.
     since: 75
 
-  - id: teams-home
-    title: Teams home
-    purpose: >-
-      The phone's Teams tab root: every team as a tree row with its sections
-      indented beneath it.
-    anatomy: [title, team-row, team-glyph, guide-line, section-row,
-      section-glyph, skeleton]
-    states: [tree, loading]
-    variants: []
-    behavior: >-
-      One bold, non-tappable row per team (its glyph and name, the virtual
-      default team named after the workspace), and under each, indented
-      beside a thin guide line, one tappable row per section in the DESKTOP
-      strip's own order and words: Tasks, Routines, Files, Team Settings.
-      Tasks, Routines and Files are every member's; Team Settings is the
-      door a caller who may configure the team gets, and it lands where the
-      desktop's door lands -- the drilled Team Settings level, on Context,
-      whose Context / Agents / People / Settings panes are the tabs of that
-      level (team-screen), never rows of this tree. Tapping a section PUSHES
-      that team's screen on that section, so the screen's back chip and
-      hardware back both retreat to this tree; the tree is the one place a
-      team's section is chosen on the phone, so the team screen draws no
-      section switcher there. At least one team row always exists; while the
-      teams are still resolving the tree renders a skeleton of itself rather
-      than an empty claim.
-    a11y: >-
-      The title is the screen's h1; team rows are headings, not buttons;
-      every section row is one real button at least 44px tall named
-      "<section>" within its team's group.
-    since: 75
-
   - id: agents-home
     title: Agents home
     purpose: >-
-      The phone's landing screen and the Agents tab's root: every agent as a
-      chat-list row, the whole roster or one team's.
-    anatomy: [title, new-agent-control, team-selector, agent-row,
+      The phone's landing screen and the AI Employees tab's root: every agent
+      as a chat-list row, the whole roster or one group's, and where the phone
+      manages groups.
+    anatomy: [title, new-group-control, new-agent-control, group-selector,
+      group-menu, agent-row,
       avatar-stack, running-ring, preview-line, relative-time, needs-you-chip,
       empty-state]
-    states: [list, filtered, loading, no-agents]
-    variants: [all-teams, one-team]
+    states: [list, filtered, loading, no-agents, groups-loading]
+    variants: [all-groups, one-group]
     behavior: >-
       One flat list in the grammar of a messaging app's chat list. Each row is
       a LARGE avatar on the left -- the agent's helmet, fanned out into a stack
@@ -1686,13 +1469,20 @@ components:
       same running ring the rail draws. The rows keep the attention sort:
       agents with tasks waiting on the user first, then agents with running
       work, then everyone else, most recently active leading each band. Under
-      the title, where the workspace has more than one team, a team selector
-      (a pill dropping a menu of every team) narrows the list to one team's
-      agents; "All teams" is the default, the choice is a preference rather
-      than a navigation level (it survives the drill into an agent and back),
-      and a chosen team that no longer exists widens the list back out. A
-      trailing control in the title row creates an agent (where the caller
-      may). With no agents at all the screen says so instead of rendering a
+      the title, once the workspace has a group, a group selector (a pill
+      dropping a menu of the person's own groups) narrows the list to one
+      group's agents; "All groups" is the default, the choice is a preference
+      rather than a navigation level (it survives the drill into an agent and
+      back), and a chosen group that no longer exists widens the list back
+      out. The phone manages groups here, since it has no rail: the title row
+      carries a New group control (the create sheet's small group form; the
+      list stays behind it, and it waits until the groups have loaded) beside
+      the control that creates an agent (where the caller may), and while one
+      group is picked an always-visible group menu beside the selector offers
+      Rename, Icon & color, Move to another space (where allowed) and Delete
+      group; deleting returns the selector to "All groups". Both group
+      controls are phone-only: the desktop manages groups from the rail. With
+      no agents at all the screen says so instead of rendering a
       hollow list. Counts and previews read the same conversation sweep and
       per-agent summaries every other badge surface reads, repainting through
       the ordinary event invalidation, never a fetch path of their own.
@@ -1702,9 +1492,9 @@ components:
       The screen's title is its h1; each agent row is one button at least 72px
       tall named by the agent and its preview, with the chip and the running
       ring carrying their own accessible labels ("N issues need you", "N
-      issues running") and the avatar stack hidden as decoration; the team
+      issues running") and the avatar stack hidden as decoration; the group
       selector is a button named by the current choice that opens a radio
-      menu; the create control is a labelled button.
+      menu; the create controls and the group menu are labelled buttons.
     since: 71
 
   - id: agent-missions-list
@@ -1722,7 +1512,13 @@ components:
       The drilled phone header names the agent (avatar with its running ring)
       over its live task count and carries a back chip to the Agents home (a
       navigation-stack retreat, so the hardware back button does the same
-      thing) plus one "..." menu. A status filter under it -- a pill naming
+      thing) plus one "..." menu: Search, Archived, Move to group (when the
+      person has groups) and, below a divider, the employee's other sections
+      its screen offers (Routines and Files open that tab of the employee's own
+      screen, whose back chip returns here; Settings, for whoever may manage
+      the employee, opens in place with a back chip to this list). This menu
+      is the phone's way to an employee's other sections. A status filter
+      under it -- a pill naming
       the current choice ("All" by default) that drops a radio menu of All,
       Needs you (with its count), Running, Done -- narrows the list, and the
       body draws the board's own sections in that order, by the exact status
@@ -1739,12 +1535,14 @@ components:
       or its own control closes it), and Archived resets the filter to All,
       expands the archive and scrolls it into view. The archive is a
       collapsible group at the bottom, present only under All: it is the
-      list's basement, not a status. Tapping an active task pushes its
-      mission-chat-screen as the next navigation-stack level, the same push a
-      board card performs, so back pops straight from the chat to this list.
-      An archived task has no chat screen: its rows keep the notification
-      navigation (the agent becomes current, its board opens with the archive
-      surface swapped in, and the chat opens over it). An agent with no tasks
+      list's basement, not a status. Tapping any task, archived ones
+      included, pushes its mission-chat-screen as the next navigation-stack
+      level, so back pops straight from the chat to this list. It is the
+      phone's ONE task list for an employee: every "open this employee's
+      Tasks" (a create or copy, the command palette, the org chart, a
+      notification, a Settings back chip) lands here, and a published task
+      target (a notification, a recent task in the palette) opens that task's
+      chat above it. An agent with no tasks
       at all gets the honest empty state pointing at the compose control; a
       filter or a search that matches nothing says so in words. Rows read the
       same conversation sweep the boards read and live-update through the
@@ -1762,9 +1560,8 @@ components:
   - id: task-row
     title: Task row
     purpose: >-
-      One task as a phone list row, plus the named band it sits in: the shared
-      shape behind every task list outside the board -- an agent's list and a
-      team's Tasks screen alike.
+      One task as a phone list row, plus the named band it sits in: the shape
+      of the phone's task list, the one task list outside the board.
     anatomy: [status-glyph, title, preview-line, trailing-slot, group-heading,
       group-count, group-chevron]
     states: [needs-you, running, done, archived, with-preview, without-preview,
@@ -1778,9 +1575,8 @@ components:
       section and a second badge would repeat the heading. The title sits over
       an optional preview line, shown only when the task actually has a
       description, and a trailing slot carries whatever the surface flushes
-      right: the movement's relative time on an agent's own list, the owning
-      agent's helmet on a team's, where several agents share the list. The
-      whole row is one
+      right: the movement's relative time on the employee's list. The whole
+      row is one
       target: a phone row has no room for a second, and nothing on it waits
       for a hover. A hairline separates rows and drops on the last of a stack.
       The group is a muted heading with its count flush right; a collapsible
@@ -1797,7 +1593,8 @@ components:
     title: Mission chat screen
     purpose: >-
       The phone's full-screen chat, pushed as a first-class navigation level
-      from a board card, an Agents-home mission row, or the compose flow.
+      from an employee's task list (active and archived tasks alike), a
+      published task target, or the compose flow.
     anatomy: [back-chevron, agent-avatar, agent-name, mission-line,
       message-log, composer]
     states: [conversation, draft, running, loading-history]
@@ -1814,8 +1611,10 @@ components:
       compose flow) opens the screen with no mission and creates one on the
       first send, replacing itself in place so back never revisits the blank
       composer; opening a child or parent mission from the chat pushes that
-      mission's screen. Deleting or archiving the open mission closes the
-      screen. The composer stays above the on-screen keyboard (the screen
+      mission's screen. An archived task opens here too, with the archive's
+      own chat: sending in it re-activates the task and the screen carries on
+      as that task's active chat. Deleting or archiving the open mission
+      closes the screen. The composer stays above the on-screen keyboard (the screen
       pads itself by the visual viewport's occluded bottom), pads against the
       home indicator, and the log keeps its stick-to-bottom anchoring when
       the keyboard opens or closes. Navigating anywhere underneath closes the

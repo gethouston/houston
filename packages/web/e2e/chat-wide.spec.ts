@@ -16,6 +16,8 @@ import {
  * beside its catalog) keeps its host on screen whatever the preference says.
  */
 
+test.use({ teamBoard: true });
+
 test("a mission chat expands to the wide layout and comes back", async ({
   page,
 }) => {

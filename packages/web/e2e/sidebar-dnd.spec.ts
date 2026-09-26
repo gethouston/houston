@@ -1,200 +1,382 @@
+import { FAKE_HOST_URL, SEED_AGENT_ID } from "@houston/fake-host";
 import type { Locator, Page } from "@playwright/test";
-import { createAgent } from "./support/create-agent";
 import { expect, test } from "./support/fixtures";
-import {
-  createSheet,
-  startNewTeam,
-  teamNameField,
-} from "./support/sidebar-create";
+import { readSidebarLayout, seedSidebarLayout } from "./support/sidebar-layout";
 
-/**
- * Sidebar TEAM drag (@dnd-kit, always-on), against the REAL rail.
- *
- * **A drag reorders an agent inside its OWN team, and that is all it can do.**
- * Dropping an agent into another block is no longer a valid gesture: moving an
- * agent between teams is a named action on the team screen, because it changes
- * what a team HOLDS and a slip of the wrist across a rail full of blocks is not
- * a way to decide that. What is left for a drag to say is position — an agent's
- * inside its team, and a team block's among its siblings — and both must
- * survive a reload, which is the only honest test of "it persists".
- *
- * The team STRUCTURE itself is asserted in `sidebar-teams.spec.ts`.
- */
-
-async function center(loc: Locator) {
-  const b = await loc.boundingBox();
-  if (!b) throw new Error("no bounding box");
-  return { x: b.x + b.width / 2, y: b.y + b.height / 2 };
-}
-
-/** Drag `source` onto `target`. The target's position is read ONCE, after the
- *  drag has activated (so any lift-time reflow is in) and never again: the
- *  sortable list live-reorders on every hover, so re-reading the target
- *  mid-drag chases it into its swapped slot and swaps it right back —
- *  dnd-kit then reports the item dropped over ITSELF (flaky order). */
-async function dragOnto(page: Page, source: Locator, target: Locator) {
-  const s = await center(source);
-  await page.mouse.move(s.x, s.y);
-  await page.mouse.down();
-  await page.waitForTimeout(60);
-  await page.mouse.move(s.x, s.y + 10, { steps: 5 }); // cross activation
-  const t = await center(target);
-  await page.mouse.move(t.x, t.y, { steps: 8 });
-  await page.waitForTimeout(120); // let the hover's live-reorder commit
-  await page.mouse.up();
-  await page.waitForTimeout(300); // drop-animation + overlay unmount
-}
-
-async function rowY(sidebar: Locator, name: string) {
-  return (await sidebar.getByText(name, { exact: true }).boundingBox())?.y ?? 0;
-}
-
-/**
- * The agent rows inside the ONE named team of these specs, and inside the
- * trailing default block. Where an agent SITS is the only membership the user
- * can see: the block header carries its name and nothing else, so "the drop
- * landed" is a question about which container holds the row.
- */
-function teamRows(sidebar: Locator): Locator {
-  return sidebar.locator(
-    '[data-sidebar-drop-section]:not([data-sidebar-drop-section=""])',
+test("root employees align with folder headers", async ({ page }) => {
+  await seedSidebarLayout(page.request, {
+    groups: [{ id: "empty", name: "Empty", collapsed: false, agentIds: [] }],
+    order: [
+      { kind: "agent", id: SEED_AGENT_ID },
+      { kind: "group", id: "empty" },
+    ],
+  });
+  await page.goto("/");
+  const rail = page.locator("[data-tour-target='agents']");
+  await expect(rail.locator("[data-sidebar-item]").first()).toContainText(
+    "Houston",
   );
-}
-function defaultRows(sidebar: Locator): Locator {
-  return sidebar.locator('[data-sidebar-drop-section=""]');
+  await expect(
+    rail.locator('[data-sidebar-group-header="empty"]'),
+  ).toBeVisible();
+  expect((await readSidebarLayout(page.request)).order).toEqual([
+    { kind: "agent", id: SEED_AGENT_ID },
+    { kind: "group", id: "empty" },
+  ]);
+  const rootLead = await rowLead(
+    rail.locator(`[data-sidebar-item][data-item-id="${SEED_AGENT_ID}"]`),
+  );
+  const folderLead = await rowLead(
+    rail.locator('[data-sidebar-group-header="empty"]'),
+  );
+  expect(rootLead).toBe(folderLead);
+});
+
+/**
+ * A row's label. Depth is padding INSIDE the full-width row button, so the
+ * indent reads off where the label starts, never off the button's box.
+ */
+/**
+ * The x of a row's leading mark (avatar or group glyph): rows share one left
+ * edge, while the label after it moves with the mark's width.
+ */
+async function rowLead(row: Locator): Promise<number> {
+  return row
+    .getByRole("button")
+    .first()
+    .evaluate(
+      (button) => button.firstElementChild?.getBoundingClientRect().x ?? -1,
+    );
 }
 
-/** A named team holding nobody yet, created through the rail's own flow. */
-async function createTeamNamed(page: Page, name: string) {
-  await startNewTeam(page);
-  await teamNameField(page).pressSequentially(name);
-  await createSheet(page).getByRole("button", { name: "Create team" }).click();
+async function addAgent(page: Page, name: string) {
+  const response = await page.request.post(`${FAKE_HOST_URL}/agents`, {
+    data: { name },
+  });
+  expect(response.ok()).toBe(true);
+  const agent = (await response.json()) as { id: string };
+  return agent.id;
 }
 
-test("team create + type name + reorder agents inside the default team", async ({
+/**
+ * Press on `source`, travel to the middle of `target`, then `dx` px sideways
+ * (positive = one level into a group per 20px, negative = out), and release.
+ *
+ * Both boxes are read only once the row is STABLE (a trial hover): rows glide
+ * into their new slots for a moment after a drop, and a box read mid-glide
+ * presses beside the row's real position, so the drop lands a slot away.
+ */
+async function dragOnto(page: Page, source: Locator, target: Locator, dx = 0) {
+  await source.hover({ trial: true });
+  const start = await source.boundingBox();
+  if (!start) throw new Error("drag source is not visible");
+  const x = start.x + start.width / 2;
+  await page.mouse.move(x, start.y + start.height / 2);
+  await page.mouse.down();
+  await page.mouse.move(x, start.y + start.height / 2 + 6, { steps: 4 });
+  const end = await target.boundingBox();
+  if (!end) throw new Error("drag target is not visible");
+  await page.mouse.move(x, end.y + end.height / 2, { steps: 8 });
+  if (dx !== 0)
+    await page.mouse.move(x + dx, end.y + end.height / 2, { steps: 4 });
+  await page.waitForTimeout(120);
+  await page.mouse.up();
+}
+
+test("reorders employees inside a group and in the top section", async ({
   page,
 }) => {
+  const grouped = await addAgent(page, "Grouped");
+  const ungrouped = await addAgent(page, "Ungrouped");
+  const last = await addAgent(page, "Last");
+  await seedSidebarLayout(page.request, {
+    groups: [
+      {
+        id: "first",
+        name: "First",
+        collapsed: false,
+        agentIds: [SEED_AGENT_ID, grouped],
+      },
+    ],
+    order: [
+      { kind: "agent", id: ungrouped },
+      { kind: "group", id: "first" },
+      { kind: "agent", id: last },
+    ],
+  });
   await page.goto("/");
-  await expect(page.getByText("Your teams")).toBeVisible();
-
-  await createAgent(page, "Alpha");
-  await createAgent(page, "Beta");
-
-  const sidebar = page.locator("[data-tour-target='agents']");
-  const header = page.locator("[data-sidebar-group-header]");
-
-  // Create menu → "New team" opens the identity dialog. Type the name
-  // char-by-char to exercise the real field before submitting it.
-  await createTeamNamed(page, "Work");
-  await expect(header).toHaveCount(1);
-  await expect(sidebar.getByText("Work")).toBeVisible(); // full name, not "k"
-
-  // Reorder INSIDE the default team, with a named team present: Beta onto
-  // Houston so Beta ends up above Houston.
-  expect(await rowY(sidebar, "Beta")).toBeGreaterThan(
-    await rowY(sidebar, "Houston"),
-  );
-  // Arm the write listener BEFORE the drop: the reload below must not race
-  // the layout PUT, or it re-reads the pre-drag order from the server.
-  const layoutWrite = page.waitForResponse(
-    (r) =>
-      r.url().includes("/sidebar-layout") &&
-      r.request().method() === "PUT" &&
-      r.ok(),
-  );
+  const rail = page.locator("[data-tour-target='agents']");
   await dragOnto(
     page,
-    sidebar.getByText("Beta", { exact: true }),
-    sidebar.getByText("Houston", { exact: true }),
+    rail.locator(`[data-sidebar-item][data-item-id="${grouped}"]`),
+    rail.locator(`[data-sidebar-item][data-item-id="${SEED_AGENT_ID}"]`),
   );
-  // Poll: the committed order re-renders from the layout write-back, a beat
-  // after the drop animation ends.
   await expect
     .poll(
-      async () =>
-        (await rowY(sidebar, "Beta")) < (await rowY(sidebar, "Houston")),
+      async () => (await readSidebarLayout(page.request)).groups[0]?.agentIds,
     )
-    .toBe(true);
-  await layoutWrite;
-
-  // Every gesture above is written back with
-  // `PUT /v1/workspaces/:id/sidebar-layout`. A reload throws away all the
-  // client state and re-reads that layout, so what survives here is what the
-  // server was actually told.
+    .toEqual([grouped, SEED_AGENT_ID]);
+  await dragOnto(
+    page,
+    rail.locator(`[data-sidebar-item][data-item-id="${last}"]`),
+    rail.locator(`[data-sidebar-item][data-item-id="${ungrouped}"]`),
+  );
+  await expect
+    .poll(async () => (await readSidebarLayout(page.request)).order)
+    .toEqual([
+      { kind: "agent", id: last },
+      { kind: "agent", id: ungrouped },
+      { kind: "group", id: "first" },
+    ]);
   await page.reload();
-  await expect(page.getByText("Your teams")).toBeVisible();
-  await expect(header).toHaveCount(1);
-  await expect(sidebar.getByText("Work")).toBeVisible();
-  // Same poll after reload: the server layout applies a beat after first paint.
-  await expect
-    .poll(
-      async () =>
-        (await rowY(sidebar, "Beta")) < (await rowY(sidebar, "Houston")),
-    )
-    .toBe(true);
+  await expect(
+    rail.locator('[data-sidebar-member-of="first"]').first(),
+  ).toHaveAttribute("data-item-id", grouped);
+  await expect(
+    rail.locator(`[data-sidebar-item][data-item-id="${last}"]`),
+  ).toHaveAttribute("data-item-id", last);
 });
 
-test("an agent dragged onto ANOTHER team is refused and stays put", async ({
+test("moves employees between groups and into a collapsed group dragged right", async ({
   page,
 }) => {
+  const second = await addAgent(page, "Second");
+  await seedSidebarLayout(page.request, {
+    groups: [
+      {
+        id: "first",
+        name: "First",
+        collapsed: false,
+        agentIds: [SEED_AGENT_ID],
+      },
+      { id: "second", name: "Second", collapsed: false, agentIds: [second] },
+      { id: "closed", name: "Closed", collapsed: true, agentIds: [] },
+    ],
+    order: [],
+  });
   await page.goto("/");
-  await expect(page.getByText("Your teams")).toBeVisible();
-  await createAgent(page, "Nova");
-
-  const sidebar = page.locator("[data-tour-target='agents']");
-  const header = page.locator("[data-sidebar-group-header]");
-
-  await createTeamNamed(page, "Work");
-  await expect(header).toHaveCount(1);
-
-  // Both agents start in the DEFAULT block, and the named team is empty.
-  await expect(defaultRows(sidebar)).toContainText("Nova");
-  await expect(teamRows(sidebar).locator("[data-sidebar-item]")).toHaveCount(0);
-
-  // Drag Nova onto the named team's header — the old way in. Nothing happens:
-  // no block highlights while the pointer is over a team that will not take it,
-  // and releasing simply drops the row back where it came from.
-  await dragOnto(page, sidebar.getByText("Nova", { exact: true }), header);
-  await expect(sidebar.locator("[data-drop-active]")).toHaveCount(0);
-  await expect(teamRows(sidebar).locator("[data-sidebar-item]")).toHaveCount(0);
-  await expect(defaultRows(sidebar)).toContainText("Nova");
-
-  // And nothing was written: a reload comes back to the same rail.
-  await page.reload();
-  await expect(page.getByText("Your teams")).toBeVisible();
-  await expect(teamRows(sidebar).locator("[data-sidebar-item]")).toHaveCount(0);
-  await expect(defaultRows(sidebar)).toContainText("Nova");
+  const rail = page.locator("[data-tour-target='agents']");
+  await dragOnto(
+    page,
+    rail.locator(`[data-sidebar-item][data-item-id="${SEED_AGENT_ID}"]`),
+    rail.locator(`[data-sidebar-item][data-item-id="${second}"]`),
+  );
+  await expect
+    .poll(
+      async () => (await readSidebarLayout(page.request)).groups[1]?.agentIds,
+    )
+    .toEqual([second, SEED_AGENT_ID]);
+  await dragOnto(
+    page,
+    rail.locator(`[data-sidebar-item][data-item-id="${second}"]`),
+    rail.locator('[data-sidebar-group-header="closed"]'),
+    24,
+  );
+  await expect
+    .poll(
+      async () => (await readSidebarLayout(page.request)).groups[2]?.agentIds,
+    )
+    .toEqual([second]);
 });
 
-test("a COLLAPSED team is not a way in either", async ({ page }) => {
+test("moves a grouped employee into the top section at its drop position", async ({
+  page,
+}) => {
+  const top = await addAgent(page, "Top");
+  await seedSidebarLayout(page.request, {
+    groups: [
+      {
+        id: "first",
+        name: "First",
+        collapsed: false,
+        agentIds: [SEED_AGENT_ID],
+      },
+    ],
+    order: [{ kind: "agent", id: top }],
+  });
   await page.goto("/");
-  await createAgent(page, "Nova");
+  const rail = page.locator("[data-tour-target='agents']");
+  await dragOnto(
+    page,
+    rail.locator(`[data-sidebar-item][data-item-id="${SEED_AGENT_ID}"]`),
+    rail.locator(`[data-sidebar-item][data-item-id="${top}"]`),
+  );
+  await expect
+    .poll(async () => (await readSidebarLayout(page.request)).order)
+    .toEqual([
+      { kind: "agent", id: SEED_AGENT_ID },
+      { kind: "agent", id: top },
+      { kind: "group", id: "first" },
+    ]);
+});
 
-  const sidebar = page.locator("[data-tour-target='agents']");
-  const header = page.locator("[data-sidebar-group-header]");
+test("reorders folder headers without changing their employees", async ({
+  page,
+}) => {
+  await seedSidebarLayout(page.request, {
+    groups: [
+      {
+        id: "first",
+        name: "First",
+        collapsed: false,
+        agentIds: [SEED_AGENT_ID],
+      },
+      { id: "second", name: "Second", collapsed: false, agentIds: [] },
+    ],
+    order: [
+      { kind: "group", id: "first" },
+      { kind: "group", id: "second" },
+    ],
+  });
+  await page.goto("/");
+  const rail = page.locator("[data-tour-target='agents']");
+  await dragOnto(
+    page,
+    rail.locator('[data-sidebar-group-header="second"]'),
+    rail.locator('[data-sidebar-group-header="first"]'),
+  );
+  await expect
+    .poll(async () =>
+      (await readSidebarLayout(page.request)).order.map((entry) => entry.id),
+    )
+    .toEqual(["second", "first"]);
+  const { groups } = await readSidebarLayout(page.request);
+  expect(groups.find((group) => group.id === "first")?.agentIds).toEqual([
+    SEED_AGENT_ID,
+  ]);
+});
 
-  await createTeamNamed(page, "Team");
-  await expect(header).toHaveCount(1);
+test("interleaves root employees and folders and reorders either kind", async ({
+  page,
+}) => {
+  const rootA = await addAgent(page, "Root A");
+  const rootB = await addAgent(page, "Root B");
+  await seedSidebarLayout(page.request, {
+    groups: [
+      { id: "g1", name: "One", collapsed: false, agentIds: [SEED_AGENT_ID] },
+      { id: "g2", name: "Two", collapsed: false, agentIds: [] },
+    ],
+    order: [
+      { kind: "group", id: "g1" },
+      { kind: "agent", id: rootA },
+      { kind: "group", id: "g2" },
+      { kind: "agent", id: rootB },
+    ],
+  });
+  await page.goto("/");
+  const rail = page.locator("[data-tour-target='agents']");
+  await expect(rail.locator("[data-sidebar-root-list]")).toHaveCount(1);
+  const rootLead = await rowLead(
+    rail.locator(`[data-sidebar-item][data-item-id="${rootA}"]`),
+  );
+  const folderLead = await rowLead(
+    rail.locator('[data-sidebar-group-header="g1"]'),
+  );
+  const memberLead = await rowLead(
+    rail.locator(`[data-sidebar-item][data-item-id="${SEED_AGENT_ID}"]`),
+  );
+  expect(rootLead).toBe(folderLead);
+  expect(memberLead).toBeGreaterThan(rootLead);
 
-  // Fold the named team. Its header used to resolve to the block as a drop
-  // target, which made a folded team the easiest place to lose an agent.
-  // Clicking a team the user is not in opens it and folds every other, so two
-  // clicks — Team, then the workspace's own block — leave Team folded and the
-  // agents on screen to drag.
-  await header.getByText("Team").click();
-  await page
-    .locator("[data-sidebar-default-header]")
-    .getByRole("button")
-    .click();
-  await expect(
-    header.getByRole("button", { name: "Team", exact: true }),
-  ).toHaveAttribute("aria-expanded", "false");
+  await dragOnto(
+    page,
+    rail.locator('[data-sidebar-group-header="g2"]'),
+    rail.locator(`[data-sidebar-item][data-item-id="${rootA}"]`),
+  );
+  await expect
+    .poll(async () => (await readSidebarLayout(page.request)).order)
+    .toEqual([
+      { kind: "group", id: "g1" },
+      { kind: "group", id: "g2" },
+      { kind: "agent", id: rootA },
+      { kind: "agent", id: rootB },
+    ]);
+  await dragOnto(
+    page,
+    rail.locator(`[data-sidebar-item][data-item-id="${rootB}"]`),
+    rail.locator('[data-sidebar-group-header="g1"]'),
+  );
+  await expect
+    .poll(async () => (await readSidebarLayout(page.request)).order)
+    .toEqual([
+      { kind: "agent", id: rootB },
+      { kind: "group", id: "g1" },
+      { kind: "group", id: "g2" },
+      { kind: "agent", id: rootA },
+    ]);
+});
 
-  await dragOnto(page, sidebar.getByText("Nova", { exact: true }), header);
-  await expect(defaultRows(sidebar)).toContainText("Nova");
+test("Alt+ArrowDown moves a root employee past a folder", async ({ page }) => {
+  await seedSidebarLayout(page.request, {
+    groups: [{ id: "g", name: "Work", collapsed: false, agentIds: [] }],
+    order: [
+      { kind: "agent", id: SEED_AGENT_ID },
+      { kind: "group", id: "g" },
+    ],
+  });
+  await page.goto("/");
+  const employee = page.locator(
+    `[data-sidebar-item][data-item-id="${SEED_AGENT_ID}"] button[title="Houston"]`,
+  );
+  await employee.focus();
+  await employee.press("Alt+ArrowDown");
+  await expect(employee).toBeFocused();
+  await expect
+    .poll(async () => (await readSidebarLayout(page.request)).order)
+    .toEqual([
+      { kind: "group", id: "g" },
+      { kind: "agent", id: SEED_AGENT_ID },
+    ]);
+});
 
-  // Unfolding says so: the team is still empty. (Clicking a team the user is
-  // not in opens it, which unfolds it.)
-  await header.getByText("Team").click();
-  await expect(teamRows(sidebar).locator("[data-sidebar-item]")).toHaveCount(0);
+test("a drop lands where the ghost is: top level by default, inside when dragged right", async ({
+  page,
+}) => {
+  const b = await addAgent(page, "B");
+  const c = await addAgent(page, "C");
+  await seedSidebarLayout(page.request, {
+    groups: [{ id: "g", name: "Folder", collapsed: true, agentIds: [] }],
+    order: [
+      { kind: "agent", id: SEED_AGENT_ID },
+      { kind: "agent", id: b },
+      { kind: "group", id: "g" },
+      { kind: "agent", id: c },
+    ],
+  });
+  await page.goto("/");
+  const rail = page.locator("[data-tour-target='agents']");
+  const employee = rail.locator(
+    `[data-sidebar-item][data-item-id="${SEED_AGENT_ID}"]`,
+  );
+  const header = rail.locator('[data-sidebar-group-header="g"]');
+  await dragOnto(page, employee, rail.locator(`[data-item-id="${c}"]`));
+  await expect
+    .poll(async () => (await readSidebarLayout(page.request)).order)
+    .toEqual([
+      { kind: "agent", id: b },
+      { kind: "group", id: "g" },
+      { kind: "agent", id: c },
+      { kind: "agent", id: SEED_AGENT_ID },
+    ]);
+  await dragOnto(page, employee, header);
+  await expect
+    .poll(async () => (await readSidebarLayout(page.request)).order)
+    .toEqual([
+      { kind: "agent", id: b },
+      { kind: "agent", id: SEED_AGENT_ID },
+      { kind: "group", id: "g" },
+      { kind: "agent", id: c },
+    ]);
+  await dragOnto(page, employee, employee, 24);
+  await expect
+    .poll(
+      async () => (await readSidebarLayout(page.request)).groups[0]?.agentIds,
+    )
+    .toEqual([]);
+  await dragOnto(page, employee, header, 24);
+  await expect
+    .poll(
+      async () => (await readSidebarLayout(page.request)).groups[0]?.agentIds,
+    )
+    .toEqual([SEED_AGENT_ID]);
 });

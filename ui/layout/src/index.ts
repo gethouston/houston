@@ -19,10 +19,6 @@ export {
 } from "./sidebar-avatar-diameter";
 export type { SidebarBandProps } from "./sidebar-band";
 export { SidebarBand } from "./sidebar-band";
-export type { SidebarBlockContentProps } from "./sidebar-block-content";
-export { SidebarBlockContent } from "./sidebar-block-content";
-export type { SidebarBlockHeaderProps } from "./sidebar-block-header";
-export { SidebarBlockHeader } from "./sidebar-block-header";
 export { SidebarDragOverlay } from "./sidebar-drag-overlay";
 export type { SidebarFlatListProps } from "./sidebar-flat-list";
 export { SidebarFlatList } from "./sidebar-flat-list";
@@ -53,13 +49,11 @@ export type {
   SidebarGroupIdentityLabels,
   SidebarGroupSwatch,
 } from "./sidebar-group-identity-model";
-export type { SidebarGroupSectionProps } from "./sidebar-group-section";
-export { SidebarGroupSection } from "./sidebar-group-section";
 export type { SidebarGroupedListProps } from "./sidebar-grouped-list";
 export { SidebarGroupedList } from "./sidebar-grouped-list";
 export type {
-  SidebarDefaultGroupView,
   SidebarGroupView,
+  SidebarRootEntry,
   SidebarSection,
 } from "./sidebar-groups";
 export { computeSidebarSections } from "./sidebar-groups";
@@ -82,6 +76,13 @@ export type {
   SidebarBaseRowContext,
   SidebarRowContext,
 } from "./sidebar-row-context";
+export type { SidebarArrangement, SidebarTreeRow } from "./sidebar-tree";
+export {
+  arrangementFromRows,
+  flattenSidebar,
+  projectSidebarDrop,
+  treeRowKey,
+} from "./sidebar-tree";
 export type { SplitViewProps } from "./split-view";
 export { SplitView } from "./split-view";
 export type { TabBarProps } from "./tab-bar";

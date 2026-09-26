@@ -5,20 +5,8 @@ import type { MissionControlScope } from "../board/use-mc-scope";
 import { useMissionControlSource } from "../board/use-mission-control-source";
 
 /**
- * One team's active mission board: the same board Mission Control renders,
- * narrowed to the team's agents by the shared `MissionControlScope`
- * (`useTeamBoardScope`). The agent filter inside that scope is CONTROLLED by
- * the store, so clicking an agent row in the sidebar and picking one from the
- * board's own filter menu are the same act.
- *
- * The source is handed the FULL agent roster and told which slice to show, so
- * every team reads the one cross-agent sweep rather than starting its own.
- *
- * This board is the whole of a kept-alive top-level screen, so it rides
- * `MissionBoard`'s own `useIsActiveView` signal to release the shell detail
- * panel when the team view hides (HOU-1165). That covers the ACTIVE board
- * only; the Archived SECTION carries its own release, in
- * `MissionControlArchived`.
+ * One employee's active board. It receives the full roster for the shared
+ * conversation sweep and a scope that renders only this employee's missions.
  */
 export function TeamMissionBoard({
   agents,

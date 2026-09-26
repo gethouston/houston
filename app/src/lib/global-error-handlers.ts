@@ -1,3 +1,4 @@
+import { setAdapterErrorSink } from "@houston/engine-adapter";
 import { isAgentWarmingError } from "./agent-warming-guard";
 import { analytics, classifyAnalyticsError } from "./analytics";
 import {
@@ -6,6 +7,7 @@ import {
 } from "./benign-rejections";
 import { isStayOpenSignal } from "./dialog-stay-open";
 import { isEngineWakingError } from "./engine-waking-error";
+import { logAndReportError } from "./error-report";
 import {
   showConnectivityErrorToast,
   showEngineWakingToast,
@@ -34,6 +36,7 @@ export function installGlobalErrorHandlers(): void {
   // page rewritten by a browser translator (or a translating extension) from
   // ever reaching the crash boundary below, and both app entries must get it.
   installForeignDomSafetyNet();
+  setAdapterErrorSink(logAndReportError);
   window.onerror = (_event, _source, _line, _col, error) => {
     const message = error?.message ?? String(_event);
     console.error("[global:error]", message, error);

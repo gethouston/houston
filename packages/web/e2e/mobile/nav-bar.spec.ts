@@ -6,21 +6,21 @@ import {
   navItem,
   newTaskButton,
   openMoreMenu,
+  openPhoneTeamSection,
 } from "../support/mobile-nav";
 import { screen } from "../support/team-nav";
 
 /**
- * The phone shell's floating nav bar: Agents · Teams · More in a pill, with the
+ * The phone shell's floating nav bar: AI Employees · More in a pill, with the
  * compose button beside it.
  *
- * Two of the three items are TREES — each tap lands on that tree's root and
- * RESETS the nav stack (native tab semantics, so browser back after a switch
- * must not re-enter the abandoned trail). The third is a menu over the shell,
- * which is why it lights for every screen neither tree owns rather than naming
- * one of its own.
+ * AI Employees is a TREE — a tap lands on its root and RESETS the nav stack
+ * (native tab semantics, so browser back after it must not re-enter the
+ * abandoned trail). More is a menu over the shell, which is why it lights for
+ * every screen the tree does not own rather than naming one of its own.
  */
 
-test("the three items navigate and mark the active one", async ({ page }) => {
+test("the two items navigate and mark the active one", async ({ page }) => {
   await page.goto("/");
   await expect(navBar(page)).toBeVisible();
 
@@ -31,26 +31,21 @@ test("the three items navigate and mark the active one", async ({ page }) => {
   // review queue, carried by the bar itself.
   await expect(navBar(page).getByText("1", { exact: true })).toBeVisible();
 
-  await navItem(page, "teams").tap();
-  await expect(screen(page)).toHaveAttribute("data-screen", "teams-home");
-  await expect(navItem(page, "teams")).toHaveAttribute("aria-current", "page");
-  await expect(navItem(page, "agents")).not.toHaveAttribute("aria-current");
-
   // More is a menu, not a place: it opens the card over the shell.
   await openMoreMenu(page);
   // While the card is up the More item lights as EXPANDED; the screen behind
-  // it (Teams) stays the one current page.
+  // it (AI Employees) stays the one current page.
   await expect(navItem(page, "more")).toHaveAttribute("aria-expanded", "true");
-  await expect(navItem(page, "teams")).toHaveAttribute("aria-current", "page");
+  await expect(navItem(page, "agents")).toHaveAttribute("aria-current", "page");
 
   // Picking a destination from the menu closes it and lands on that screen —
-  // and every screen outside the two trees lights More.
+  // and every screen outside the tree lights More.
   await moreMenu(page).getByRole("button", { name: "Settings" }).tap();
   await expect(moreMenu(page)).toBeHidden();
   await expect(screen(page)).toHaveAttribute("data-screen", "settings");
   await expect(navItem(page, "more")).toHaveAttribute("aria-current", "page");
 
-  // Agents roots back on the home list.
+  // AI Employees roots back on the home list.
   await navItem(page, "agents").tap();
   await expect(screen(page)).toHaveAttribute("data-screen", "agents-home");
   await expect(navItem(page, "agents")).toHaveAttribute("aria-current", "page");
@@ -78,23 +73,34 @@ test("the bar hides under a pushed chat and returns when it pops", async ({
   await expect(screen(page)).toHaveAttribute("data-screen", "agents-home");
 });
 
-test("a tab switch resets the stack: back stays on the new root", async ({
+test("an employee's own screen lights AI Employees", async ({ page }) => {
+  await page.goto("/");
+  await openPhoneTeamSection(page, "routines");
+  await expect(navItem(page, "agents")).toHaveAttribute("aria-current", "page");
+  await expect(navItem(page, "more")).not.toHaveAttribute("aria-current");
+});
+
+test("tapping AI Employees from a More screen resets the stack", async ({
   page,
 }) => {
   await page.goto("/");
 
-  // Drill somewhere on the Agents tree...
+  // Drill somewhere on the AI Employees tree...
   await page.getByTestId("agents-home-row").tap();
   await expect(page.getByTestId("agent-missions-screen")).toBeVisible();
 
-  // ...switch trees: the old one's trail is abandoned.
-  await navItem(page, "teams").tap();
-  await expect(screen(page)).toHaveAttribute("data-screen", "teams-home");
+  // ...leave for a More destination, then come back through the tab.
+  await openMoreMenu(page);
+  await moreMenu(page).getByRole("button", { name: "Settings" }).tap();
+  await expect(screen(page)).toHaveAttribute("data-screen", "settings");
+  await navItem(page, "agents").tap();
+  await expect(page.getByTestId("agents-home")).toBeVisible();
 
-  // Browser back walks a decayed pre-switch entry: it clamps onto the fresh
-  // root instead of re-entering the drill the user navigated away from.
+  // Browser back walks a decayed pre-reset entry: it clamps onto the fresh
+  // root instead of re-entering the trail the user navigated away from.
   await page.goBack();
-  await expect(screen(page)).toHaveAttribute("data-screen", "teams-home");
+  await expect(screen(page)).toHaveAttribute("data-screen", "agents-home");
+  await expect(page.getByTestId("agent-missions-screen")).toHaveCount(0);
 });
 
 test("re-tapping Agents pops a drilled agent back to the list", async ({

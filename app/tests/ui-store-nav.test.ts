@@ -34,8 +34,8 @@ describe("nav-aware actions", () => {
     // user chose, so browser back must not land on the boot Inbox.
     useUIStore
       .getState()
-      .openTeamView("team-a", "mission-control", { nav: "replace" });
-    assert.deepEqual(views(), ["team"]);
+      .openAgentView("agent-a", "mission-control", { nav: "replace" });
+    assert.deepEqual(views(), ["agent"]);
     assert.equal(useUIStore.getState().navIndex, 0);
   });
 
@@ -53,7 +53,7 @@ describe("nav-aware actions", () => {
 
   it("panel open pushes a level; the last owner's release pops it", () => {
     const s = useUIStore.getState();
-    s.openTeamView("team-a", "mission-control", { nav: "replace" });
+    s.openAgentView("agent-a", "mission-control", { nav: "replace" });
     s.setMissionPanelOwner("board", true);
     let now = useUIStore.getState();
     assert.equal(now.navIndex, 1);
@@ -90,12 +90,12 @@ describe("nav-aware actions", () => {
 describe("navBack / navApplyHistory", () => {
   it("navBack restores the previous entry's view fields", () => {
     const s = useUIStore.getState();
-    s.openTeamView("team-a", "mission-control", { nav: "replace" });
+    s.openAgentView("agent-a", "mission-control", { nav: "replace" });
     s.openSettings("shortcuts");
     s.navBack();
     const now = useUIStore.getState();
-    assert.equal(now.viewMode, "team");
-    assert.equal(now.activeTeamId, "team-a");
+    assert.equal(now.viewMode, "agent");
+    assert.equal(now.activeAgentId, "agent-a");
     assert.equal(now.navIndex, 0);
     // The popped entry stays on the stack: forward can re-land on it.
     assert.equal(now.navStack.length, 2);
@@ -122,7 +122,7 @@ describe("navBack / navApplyHistory", () => {
 
   it("closes an open panel through its registered owner on back", () => {
     const s = useUIStore.getState();
-    s.openTeamView("team-a", "mission-control", { nav: "replace" });
+    s.openAgentView("agent-a", "mission-control", { nav: "replace" });
     s.setMissionPanelOwner("board", true);
     // The board's closer deselects, which releases the claim — modeled here.
     let closed = 0;
@@ -155,16 +155,16 @@ describe("navBack / navApplyHistory", () => {
     // The mobile tab bar's semantics: switching tabs abandons the old tab's
     // trail instead of stacking on top of it.
     const s = useUIStore.getState();
-    s.openTeamView("team-a", "mission-control", { nav: "replace" });
+    s.openAgentView("agent-a", "mission-control", { nav: "replace" });
     s.openSettings("shortcuts");
-    useUIStore.getState().openTeamView("team-a", "mission-control", {
+    useUIStore.getState().openAgentView("agent-a", "mission-control", {
       nav: "reset",
     });
     const now = useUIStore.getState();
     assert.equal(now.navIndex, 0);
     assert.equal(now.navStack.length, 1);
-    assert.equal(now.navStack[0].viewMode, "team");
-    assert.equal(now.viewMode, "team");
+    assert.equal(now.navStack[0].viewMode, "agent");
+    assert.equal(now.viewMode, "agent");
   });
 
   it("openSettings resets to the index when the tab bar asks", () => {

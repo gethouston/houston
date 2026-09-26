@@ -1,7 +1,7 @@
 import { strict as assert } from "node:assert";
 import { afterEach, beforeEach, describe, it } from "node:test";
 import { handleBoardKeys } from "../src/hooks/board-keys.ts";
-import { TEAM_VIEW_ID } from "../src/lib/teams-model.ts";
+import { AGENT_VIEW_ID } from "../src/lib/teams-model.ts";
 import { useUIStore } from "../src/stores/ui.ts";
 
 // The board owns BARE keys (Enter opens the highlighted card, arrows move the
@@ -52,8 +52,8 @@ beforeEach(() => {
   opened = 0;
   moved = 0;
   useUIStore.setState({
-    viewMode: TEAM_VIEW_ID,
-    teamSection: null,
+    viewMode: AGENT_VIEW_ID,
+    agentSection: null,
     onBoardOpen: () => {
       opened += 1;
     },

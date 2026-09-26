@@ -32,8 +32,6 @@
     },
     "createFailed": "No pudimos crear este empleado de IA. Inténtalo de nuevo.",
     "saveFailed": "Aún no pudimos guardar tus cambios. Lo intentaremos de nuevo cuando termines.",
-    "placementFailedTitle": "Creado en el equipo predeterminado",
-    "placementFailedBody": "No pudimos poner a {{name}} en el equipo que elegiste. Puedes moverlo cuando quieras desde su menú.",
     "contexts": {
       "accounting": "Contabilidad",
       "advertising": "Publicidad",

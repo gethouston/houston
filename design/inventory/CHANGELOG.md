@@ -3,6 +3,26 @@
 Every `version` bump in `inventory.yaml` needs a matching entry here (enforced by
 `pnpm check:parity`). Newest first. Use `## vN` headings.
 
+## v106 - 2026-09-26
+
+The AI Employees rail interleaves ungrouped employees with personal groups.
+Group headings fold and expose their actions, while employees open their own
+Tasks, Routines, Files and Settings screens. Dragging moves
+employees within groups, between groups and the root, and reorders root entries.
+The New AI Employee row sits at the root after the other entries. The org chart
+uses the caller's groups and one ungrouped card. The phone's nav bar holds AI
+Employees and More: the AI Employees list is where the phone manages groups,
+with New group in its title row and the picked group's menu (Rename, Icon &
+color, Move to another space, Delete group) beside the "All groups" selector.
+An employee's task list menu opens its Routines, Files and Settings. The
+separate phone groups tree (`teams-home`) is removed. The phone has one task
+list per employee, on the AI Employees tab: every way into an employee's
+Tasks lands there, an archived task opens as the same pushed chat an active
+one does, and a notification about a task opens its chat above the list. An
+employee's Routines list never asks which employee a new routine is for, and
+the routine row has no owner chip or cross-agent variant. Alt+Arrow keys move
+a focused rail row the same ways a drag does.
+
 ## v105 - 2026-09-26
 
 The launch announcement becomes a dark mission briefing with a desktop astronaut
