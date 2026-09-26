@@ -6,6 +6,7 @@
  */
 
 import type { Routine, RoutineUpdate } from "@houston/engine-adapter";
+import { freeScheduleAllowed } from "@houston/sdk";
 import { Button, Textarea } from "@houston-ai/core";
 import {
   cronSummary,
@@ -15,6 +16,7 @@ import {
 } from "@houston-ai/routines";
 import { type ReactNode, useEffect, useState } from "react";
 import { useTranslation } from "react-i18next";
+import { usePlan } from "../../hooks/queries/use-plan";
 import { useRoutineLabels } from "../../hooks/use-routine-labels";
 import type { Agent } from "../../lib/types";
 import { RoutineModelRow } from "./routine-model-row";
@@ -48,6 +50,9 @@ export function RoutineScreenSections({
   saving,
 }: Props) {
   const { t } = useTranslation("routines");
+  const { t: planT } = useTranslation("plan");
+  const { data: plan } = usePlan();
+  const [shortInterval, setShortInterval] = useState(false);
   const labels = useRoutineLabels();
 
   // The editable description IS the routine's prompt. The draft follows
@@ -120,13 +125,20 @@ export function RoutineScreenSections({
                 labels.schedule.summary,
                 labels.locale,
               )}
-              onScheduleChange={(_routineId, cron) =>
-                onSave({ schedule: cron })
-              }
+              onScheduleChange={(_routineId, cron) => {
+                const allowed = freeScheduleAllowed(cron, plan);
+                setShortInterval(!allowed);
+                if (allowed) onSave({ schedule: cron });
+              }}
               labels={labels.rowLabels}
               scheduleLabels={labels.schedule}
               locale={labels.locale}
             />
+            {shortInterval && (
+              <p className="text-xs text-warning-ink">
+                {planT("shortInterval")}
+              </p>
+            )}
           </div>
         )}
         {nextRunText && (

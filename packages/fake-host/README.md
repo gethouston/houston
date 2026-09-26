@@ -80,6 +80,8 @@ They drive the failure/reactivity scenarios the specs assert against:
 | `/__test__/workspaces` | `{ teams: [{ slug, name }] }` | Arm the team-space rows the C8 Spaces workspaces bridge serves at `GET /v1/workspaces` (alongside the always-present personal seed row). Each `slug` (exactly `[a-f0-9]{16}`) becomes an `{ id:"org:<slug>", kind:"org" }` switcher row. Pair with `/__test__/capabilities` `{ spaces:true }`. `{ teams: [] }` (and reset) restores personal-only. Returns the armed `{ teams }`. |
 | `/__test__/space-invites` | `{ invites: [{ orgName, role?, invitedBy?, orgSlug?, id?, reject? }] }` | Arm the INVITEE-side invite inbox `GET /v1/orgs` surfaces in `invites` (C8 Spaces) — the sidebar cards under the workspace switcher. Only `orgName` is required (`role` defaults to `user`, the id and the 16-hex `orgSlug` the accepted team lands under are minted). `invitedBy` is the raw gateway field: the card names the inviter only when it is human-readable (an email, or a name with whitespace). `reject` forces THAT invite's answer — `needs_upgrade` (403, invite kept), `already_member` (409, invite kept), `invite_not_found` (404, invite dropped: the revoked-behind-your-back case). The card is capability-gated on the CLIENT, so pair with `/__test__/capabilities` `{ spaces:true }`. `{ invites: [] }` (and reset) empties the inbox. Returns the normalized `{ invites }`. |
 | `/__test__/provider-usage` | `{ rows: ProviderUsage[] \| null }` | Arm the live per-account usage `GET /providers/usage` serves — what the AI Models hub's Connected rows meter with (windows, plan, credits, metered tokens, and the honest `unsupported`/`unauthenticated`/`error` rows). `null` (and reset) restores the default seed: the connected Claude subscription on plan `max`, its session window 42% used and its weekly 12%. Returns the served `{ rows }`. |
+| `/__test__/plan` | `{ summary: PlanSummary \| null, invoices?, routines?, checkoutUrl?, portalUrl?, messageLimit?: { limit, resetsAt }, checkoutRefusal?: "account_deleted" \| "not_configured" }` | Arm the C19 personal plan AND advertise the `plan` capability (the gateway's one switch drives both): `GET /v1/me/plan` serves `summary`, `GET /v1/me/plus/invoices` / `GET /v1/me/routines` the lists, checkout/portal answer `{url}` (a `.invalid` host by default, never Stripe). `messageLimit` makes every chat send answer `429 message_limit` with `Retry-After`. `checkoutRefusal` makes every Plus checkout answer the gateway's refusal (`410 account_deleted` / `503 not_configured`); `409 already_plus` follows a Plus `summary`. `{ summary: null }` (and reset) turns the plan off: no capability, every plan route `503 not_configured`. Arming clears the ledger. Returns `{ plan }`. |
+| `GET /__test__/plan-calls` | — | The plan ledger since arming: `{ calls: [{ route, body? }] }`, `route` one of `plan` · `invoices` · `routines` · `checkout` · `portal` · `keep` (with its body) · `resume` · `presence` · `announcement` · `send` (a refused chat send). |
 | `/__test__/compute-usage` | `{ seed: { rows, awakeNow } \| null }` | Arm the per-agent running-time dataset `GET /v1/org/compute-usage` serves (Settings > Time worked). `null` (the default) 404s the route, mirroring desktop/self-host. Pair with `/__test__/capabilities` `{ computeUsage:true }`. Returns `{ seed }`. |
 
 ## Modeled surface
@@ -108,6 +110,14 @@ They drive the failure/reactivity scenarios the specs assert against:
   png/jpeg/webp data URL). A `PUT` also reflects into the `/v1/org/people` +
   `/v1/org/profiles` roster fixtures, so a save visibly repaints the faces. The
   provider fallback is captured from the `u-self` row armed via `/__test__/org`.
+- `/v1/me/plan`, `/v1/me/plan/announcement`, `/v1/me/plus/{checkout,portal,invoices}`,
+  `/v1/me/routines`, `/v1/me/routines/{keep,resume}`, `/v1/me/presence` — the C19
+  personal plan, off by default (`503 not_configured`, no capability) and armed by
+  `/__test__/plan`. The writes mutate the armed summary as the gateway's store
+  would (a dismissed announcement stays dismissed, resume clears the pause, keep
+  records the choice or answers `404 routine_not_found`); checkout answers
+  `409 already_plus` on Plus, the portal `409 no_subscription` when not
+  `manageable`. The refusals are the flat `{error, code}` the Go gateway writes.
 - `/v1/org` (Teams v2 identity + roster + pending `invites`) and
   `POST /v1/org/members` (invite path: an unknown email mints a pending invite,
   `202 { invited:true }`, then surfaced in `/v1/org`'s `invites`;

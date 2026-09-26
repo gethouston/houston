@@ -97,6 +97,36 @@ export {
   type UserProfile,
   type UserProfilesResult,
 } from "./modules/org";
+export { PlanCommand, PlanHttpError, type PlanModule } from "./modules/plan";
+export {
+  PLUS_CHECKOUT_WINDOW_MS,
+  type PlusCheckoutPorts,
+  type PlusCheckoutState,
+  PlusCheckoutTracker,
+  plusCheckoutOutstanding,
+} from "./modules/plan/checkout-tracker";
+export {
+  formatLaunchDate,
+  formatLaunchMonthDay,
+  formatLocalDate,
+  formatLocalDateTime,
+  formatPlanAmount,
+  LAUNCH_TIME_ZONE,
+  stripeCurrencyDecimals,
+} from "./modules/plan/format";
+export {
+  freeScheduleAllowed,
+  planComposerMode,
+  planDialog,
+  planLaunchRefreshDelay,
+  planUsageMode,
+  presenceDue,
+  usagePercent,
+} from "./modules/plan/model";
+export {
+  type PlusCheckoutRefusal,
+  plusCheckoutRefusal,
+} from "./modules/plan/refusals";
 // ===== Preferences module contract =====================================
 export {
   PreferencesCommand,

@@ -20,6 +20,7 @@ import {
   engineVerdictMessage,
   isAmbiguousSendFailure,
   isEngineWakingRejection,
+  messageLimitRefusal,
   turnErrorMessage,
 } from "./turn-errors";
 import { TurnSink } from "./turn-sink";
@@ -267,11 +268,27 @@ export async function streamTurn(
       registry.endSend(key);
       // The resend was rejected before it reached the engine — fail its
       // optimistic bubble (the observed turn keeps rendering unaffected).
-      output.pushFeedItem(agentPath, sessionKey, {
-        feed_type: "system_message",
-        data: turnErrorMessage(e),
-        fails_pending: true,
-      });
+      const limit = messageLimitRefusal(e);
+      output.pushFeedItem(
+        agentPath,
+        sessionKey,
+        limit
+          ? {
+              feed_type: "provider_error",
+              data: {
+                kind: "plan_message_limit",
+                provider: "",
+                resets_at: limit.resetsAt,
+                message: limit.error,
+              },
+              fails_pending: true,
+            }
+          : {
+              feed_type: "system_message",
+              data: turnErrorMessage(e),
+              fails_pending: true,
+            },
+      );
       return; // the observer keeps rendering the running turn
     }
     sent = true;
@@ -370,7 +387,11 @@ export async function streamTurn(
     // 409), a fatal stream refusal (FatalResumeError), or a throwing frame
     // handler: settle with the engine's plain message so the spinner stops
     // and the reason surfaces.
-    if (!sink.settled) sink.fail(turnErrorMessage(e));
+    if (!sink.settled) {
+      const limit = messageLimitRefusal(e);
+      if (limit) sink.planLimit(limit);
+      else sink.fail(turnErrorMessage(e));
+    }
   } finally {
     if (sendVerdict !== undefined) clearTimeout(sendVerdict);
     sink.dispose(); // clear any armed pre-settled poll — the stream is done

@@ -20,6 +20,7 @@
  */
 export const SETTINGS_SECTION_IDS = [
   "profile",
+  "plan",
   "aboutMe",
   "workspace",
   "apiKeys",
@@ -42,4 +43,49 @@ export function parseSettingsSection(
   return SETTINGS_SECTION_IDS.includes(value as SettingsSectionId)
     ? (value as SettingsSectionId)
     : null;
+}
+
+export function settingsSectionFromPath(
+  path: string,
+): SettingsSectionId | null {
+  const match = /^\/settings\/([^/]+)\/?$/.exec(path);
+  return match ? parseSettingsSection(match[1]) : null;
+}
+
+/**
+ * The ONE settings section an OS deep link may open: Billing, the Stripe
+ * portal's return (`houston://settings/plan`). Any other section is refused so
+ * an arbitrary link cannot steer the app.
+ */
+export function settingsSectionFromDeepLink(
+  value: string,
+): SettingsSectionId | null {
+  try {
+    const url = new URL(value);
+    if (url.protocol !== "houston:" || url.hostname !== "settings") return null;
+    const section = settingsSectionFromPath(`/settings${url.pathname}`);
+    return section === "plan" ? section : null;
+  } catch {
+    return null;
+  }
+}
+
+/** Billing exists only where the deployment serves the personal plan (C19). */
+export function settingsSectionAvailable(
+  section: SettingsSectionId,
+  capabilities: { plan?: boolean } | null | undefined,
+): boolean {
+  return section !== "plan" || capabilities?.plan === true;
+}
+
+/**
+ * Where a link to `section` lands: a section this deployment does not serve
+ * (Billing without the plan capability) lands on the Settings index instead of
+ * a blank screen.
+ */
+export function settingsLandingSection(
+  section: SettingsSectionId,
+  capabilities: { plan?: boolean } | null | undefined,
+): SettingsSectionId | null {
+  return settingsSectionAvailable(section, capabilities) ? section : null;
 }

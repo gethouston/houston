@@ -101,7 +101,20 @@ export function gatewayAuthFetch(
       // Active-space header (C8), re-read per attempt so a mid-flight space
       // switch is honored on the next retry/refresh — same live discipline as
       // the bearer. Absent → the gateway resolves the personal org.
-      const org = getOrg?.();
+      const path = new URL(
+        typeof input === "string"
+          ? input
+          : input instanceof URL
+            ? input.href
+            : input.url,
+        "http://houston.invalid",
+      ).pathname;
+      const personalPlan =
+        path.startsWith("/v1/me/plan") ||
+        path.startsWith("/v1/me/plus/") ||
+        path.startsWith("/v1/me/routines") ||
+        path === "/v1/me/presence";
+      const org = personalPlan ? null : getOrg?.();
       if (org) headers.set("x-houston-org", org);
       // Build identity: `<semver>+<channel>` on every gateway request, for
       // log/debug attribution (nothing server-side acts on it — the version

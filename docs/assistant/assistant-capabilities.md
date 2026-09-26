@@ -21,7 +21,9 @@ Calling an operation returns the host's raw response. Where the adapter function
 ## billing
 
 - `createCheckout`: Starts the checkout that subscribes the team workspace to a paid plan. **Confirmation required.**
+- `createPlusCheckout`: Start a Plus subscription checkout. **Confirmation required.**
 - `getBilling`: Shows the plan, trial, and payment status of the team workspace.
+- `listPlusInvoices`: List the person's recent Plus invoices.
 
 ## channels
 
@@ -102,15 +104,20 @@ Calling an operation returns the host's raw response. Where the adapter function
 - `cancelRoutineRun`: Stops a routine run that is currently under way. **Confirmation required.**
 - `createRoutine`: Creates a routine so an agent repeats work on a schedule. **Confirmation required.**
 - `deleteRoutine`: Deletes a routine so it stops running on its schedule. **Confirmation required.**
+- `keepRoutine`: Choose the one Free routine that keeps firing. **Confirmation required.**
+- `listPlanRoutines`: List the person's enabled routines across all spaces.
 - `listRoutineRuns`: Lists the times an agent's routines have run, including any run in progress.
 - `listRoutines`: Lists an agent's routines.
+- `resumeRoutines`: Resume routines paused while away. **Confirmation required.**
 - `runRoutineNow`: Runs a routine right now instead of waiting for its next scheduled time. **Confirmation required.**
 - `updateRoutine`: Updates a routine's schedule or instructions. **Confirmation required.**
 
 ## settings
 
+- `dismissPlanAnnouncement`: Dismiss the one-time personal plan announcement across devices.
 - `getContext`: Reads the background notes Houston gives an agent on every conversation.
 - `getMyProfile`: Reads the user's own name and photo.
+- `getPlan`: Read the person's plan across all spaces.
 - `preferences.setLocale`: Sets the language Houston's own screens are shown in, for one workspace.
 - `setContext`: Replaces the background notes Houston gives an agent on every conversation. **Confirmation required.**
 - `setMyProfile`: Updates the user's own name or photo.
@@ -143,6 +150,7 @@ Calling an operation returns the host's raw response. Where the adapter function
 ## system
 
 - `getCapabilities`: What this deployment can do (`GET /v1/capabilities`) - the SERVER describing itself: which profile it runs, whether it has a shell, an org, a skills store, triggers, and which AI providers it offers.
+- `reportPresence`: Report that the person's app is in the foreground.
 
 ## teams
 

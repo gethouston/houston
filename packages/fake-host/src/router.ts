@@ -23,6 +23,11 @@ import { handleAgents } from "./routes";
 import { handleAgentTeamsRoutes } from "./routes-agent-teams";
 import { handleUserRoutes } from "./routes-integrations";
 import { handleMeRoutes } from "./routes-me";
+import {
+  handlePlanCallsControl,
+  handlePlanControl,
+  handlePlanRoutes,
+} from "./routes-plan";
 import { lastPortableExport, resetPortable } from "./routes-portable";
 import { handleSetupRuntime } from "./routes-setup-runtime";
 import { handleSharedSkillsRoutes } from "./routes-shared-skills";
@@ -324,6 +329,17 @@ export async function handle(req: Request): Promise<Response> {
   if (path === "/__test__/space-invites" && method === "POST") {
     return handleSpaceInvitesControl(await parseBody(req));
   }
+  // Arm the C19 personal plan: the PlanSummary `GET /v1/me/plan` serves, the
+  // invoices/routines, the Stripe URLs, and the chat send's `429
+  // message_limit`. Also advertises the `plan` capability (the gateway's one
+  // switch drives both); `{ summary: null }` (and reset) turns both off.
+  if (path === "/__test__/plan" && method === "POST") {
+    return handlePlanControl(await parseBody(req));
+  }
+  // The plan-call ledger: every plan route hit (and refused send) since arming.
+  if (path === "/__test__/plan-calls" && method === "GET") {
+    return handlePlanCallsControl();
+  }
   // Seed a connection at a status the UI can't be clicked into: `pending` (an
   // abandoned sign-in) or `error` (the provider refused). `{toolkit, status}`.
   if (path === "/__test__/integrations-connection" && method === "POST") {
@@ -412,6 +428,10 @@ export async function handle(req: Request): Promise<Response> {
   // --- C8 Spaces gateway routes (the cross-org list + the invitee's inbox) ---
   const spacesRoute = handleSpacesRoutes(method, segs, body);
   if (spacesRoute) return spacesRoute;
+
+  // --- C19 personal plan (per person, across spaces) ---
+  const planRoute = handlePlanRoutes(method, segs, body);
+  if (planRoute) return planRoute;
 
   // --- the caller's own editable display profile (name + photo) ---
   const meRoute = handleMeRoutes(method, segs, body);

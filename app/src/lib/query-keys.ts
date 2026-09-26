@@ -148,6 +148,9 @@ export const queryKeys = {
    *  App-scoped — reads the active space; dropped whole on a space switch by
    *  `resetCacheForSpaceChange`, so it never carries the prior team's billing. */
   billing: () => ["billing"] as const,
+  plan: () => ["plan"] as const,
+  plusInvoices: () => ["plus-invoices"] as const,
+  planRoutines: () => ["plan-routines"] as const,
   /** C8 spaces: one agent-move's progress, keyed by agent + moveId so two
    *  moves (or a retry with a fresh id) never share a poll. */
   agentMove: (agentId: string, moveId: string) =>

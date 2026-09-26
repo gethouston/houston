@@ -1,0 +1,133 @@
+.plan-briefing-frame::before {
+  position: absolute;
+  inset: 0;
+  z-index: 1;
+  border: thin solid var(--ht-line);
+  border-radius: inherit;
+  content: "";
+  pointer-events: none;
+  transform-origin: left;
+  animation: briefing-frame var(--briefing-duration) var(--briefing-easing) both;
+}
+
+/* The astronaut dissolves into the dialog: masked on both axes so no edge of
+   the photo is ever visible, with a faint accent light where it meets the copy.
+   A mask reads only alpha, so the opaque ink token stands for "fully shown". */
+.plan-briefing-image {
+  opacity: 1;
+  mask-image:
+    linear-gradient(
+      to right,
+      var(--ht-ink) 20%,
+      color-mix(in srgb, var(--ht-ink) 80%, transparent) 40%,
+      color-mix(in srgb, var(--ht-ink) 50%, transparent) 60%,
+      color-mix(in srgb, var(--ht-ink) 22%, transparent) 78%,
+      color-mix(in srgb, var(--ht-ink) 6%, transparent) 92%,
+      transparent
+    ),
+    linear-gradient(to bottom, transparent, var(--ht-ink) 24%, var(--ht-ink) 72%, transparent);
+  mask-composite: intersect;
+  -webkit-mask-composite: source-in;
+}
+
+/* A slow drift keeps the astronaut alive without ever drawing the eye. */
+.plan-briefing-drift {
+  animation: briefing-drift var(--briefing-ambient) ease-in-out infinite alternate;
+  transform-origin: 30% 40%;
+}
+
+.plan-briefing-stage::before {
+  position: absolute;
+  inset: 0;
+  background: radial-gradient(ellipse at 30% 40%, color-mix(in srgb, var(--ht-action) 9%, transparent), transparent 60%);
+  content: "";
+  pointer-events: none;
+}
+
+.plan-briefing-plus {
+  background: color-mix(in srgb, var(--ht-ink) 4%, var(--ht-dialog));
+  border: thin solid color-mix(in srgb, var(--ht-ink) 14%, transparent);
+  box-shadow: 0 0 var(--briefing-space-32) color-mix(in srgb, var(--ht-ink) 6%, transparent);
+}
+
+.plan-briefing-plus::before {
+  position: absolute;
+  inset: 0;
+  border-radius: inherit;
+  background: radial-gradient(ellipse at top, color-mix(in srgb, var(--ht-ink) 6%, transparent), transparent);
+  content: "";
+  pointer-events: none;
+}
+
+.plan-briefing-gift {
+  background: color-mix(in srgb, var(--ht-ink) 5%, var(--ht-dialog));
+  border: thin solid color-mix(in srgb, var(--ht-ink) 16%, transparent);
+  box-shadow: 0 0 var(--briefing-space-32) color-mix(in srgb, var(--ht-ink) 7%, transparent);
+}
+
+.plan-briefing-gift::before {
+  position: absolute;
+  inset: 0;
+  border-radius: inherit;
+  background: radial-gradient(ellipse at top left, color-mix(in srgb, var(--ht-ink) 8%, transparent), transparent 65%);
+  content: "";
+  pointer-events: none;
+}
+
+/* The one bright element: the offer's action. */
+.plan-briefing-cta {
+  box-shadow: 0 0 var(--briefing-space-32) color-mix(in srgb, var(--ht-ink) 22%, transparent);
+}
+
+/* Dims the photo behind the copy with one continuous ramp across the whole
+   dialog, so text never sits on the busy image and no seam marks the column. */
+.plan-briefing-scrim {
+  background: linear-gradient(
+    to right,
+    transparent 18%,
+    color-mix(in srgb, var(--ht-dialog) 35%, transparent) 30%,
+    color-mix(in srgb, var(--ht-dialog) 70%, transparent) 42%,
+    color-mix(in srgb, var(--ht-dialog) 88%, transparent) 55%,
+    var(--ht-dialog) 70%
+  );
+}
+
+.plan-briefing-gift-icon {
+  position: relative;
+  border-color: color-mix(in srgb, var(--ht-ink) 22%, transparent);
+  color: var(--ht-ink);
+}
+
+.plan-briefing-rise {
+  animation: briefing-rise var(--briefing-duration) var(--briefing-easing) both;
+}
+
+.plan-briefing-stage-1 { animation-delay: calc(var(--briefing-duration) * 0.4); }
+.plan-briefing-stage-2 { animation-delay: calc(var(--briefing-duration) * 0.8); }
+.plan-briefing-stage-3 { animation-delay: calc(var(--briefing-duration) * 1); }
+.plan-briefing-stage-4 { animation-delay: calc(var(--briefing-duration) * 1.2); }
+.plan-briefing-stage-5 { animation-delay: calc(var(--briefing-duration) * 1.5); }
+.plan-briefing-stage-6 { animation-delay: calc(var(--briefing-duration) * 1.8); }
+
+@keyframes briefing-drift {
+  from { transform: scale(1) translate3d(0, 0, 0); }
+  to { transform: scale(1.06) translate3d(calc(var(--briefing-space-8) * -1), calc(var(--briefing-space-4) * -1), 0); }
+}
+
+@keyframes briefing-frame {
+  from { opacity: 0; transform: scaleX(0.95); }
+  to { opacity: 1; transform: scaleX(1); }
+}
+
+@keyframes briefing-rise {
+  from { opacity: 0; transform: translateY(var(--briefing-space-8)); }
+  to { opacity: 1; transform: translateY(0); }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .plan-briefing-frame::before,
+  .plan-briefing-rise,
+  .plan-briefing-drift {
+    animation: none;
+  }
+}

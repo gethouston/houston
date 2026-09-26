@@ -91,6 +91,7 @@
     "@houston/design-tokens": "workspace:*",
     "@houston/domain": "workspace:*",
     "@houston/protocol": "workspace:*",
-    "@houston/runtime-client": "workspace:*"
+    "@houston/runtime-client": "workspace:*",
+    "@houston/wire-types": "workspace:*"
   }
 }

@@ -10,6 +10,7 @@
     "createApiKey": "Create a new API key.",
     "createCheckout": "Start the checkout that subscribes this workspace to a paid plan.",
     "createOrg": "Create a shared space you can invite teammates into.",
+    "createPlusCheckout": "Start a paid Plus subscription for your personal plan.",
     "createRoutine": "Create a routine so the AI Employee repeats work on a schedule.",
     "createSkill": "Create a skill the AI Employee can follow.",
     "declineOrgInvite": "Decline this invitation to join a shared space.",
@@ -28,6 +29,7 @@
     "forgetCredential": "Sign this workspace out of the AI account.",
     "installAgentFromGithub": "Install an AI Employee from a GitHub repository.",
     "integrations.disconnect": "Disconnect an outside app from your account.",
+    "keepRoutine": "Keep this routine running on Free. The others stay saved but stop firing.",
     "mintRoutineWebhookKey": "Create a fresh key that lets an outside service start this routine. Any key issued before stops working.",
     "moveAgent": "Move this AI Employee into a shared space so teammates can work with it.",
     "promoteSharedSkill": "Share the AI Employee's skill with everyone in the workspace.",
@@ -38,6 +40,7 @@
     "removeCustomIntegration": "Remove an outside app you added yourself.",
     "removeOrgMember": "Remove this person from the space.",
     "renameAgent": "Rename this AI Employee.",
+    "resumeRoutines": "Resume routines that paused while you were away.",
     "revokeApiKey": "Revoke this API key for good. Anything still using it stops working.",
     "runRoutineNow": "Run this routine right now instead of waiting for its next scheduled time.",
     "saveSharedSkill": "Save changes to a skill shared with the workspace, for everyone who uses it.",
@@ -123,6 +126,9 @@
     },
     "integrations.disconnect": {
       "toolkit": "app"
+    },
+    "keepRoutine": {
+      "key": "routine"
     },
     "promoteSharedSkill": {
       "slug": "skill"

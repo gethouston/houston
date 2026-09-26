@@ -1,0 +1,6 @@
+{
+  "layout": {
+    "$type": "dimension",
+    "announcement-dialog-width": { "$value": "72rem" }
+  }
+}

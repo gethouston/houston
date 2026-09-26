@@ -36,7 +36,7 @@
 #   a11y     roles / labels / focus expectations the surface must honor
 #   since    inventory version this component first appeared in
 
-version: 101
+version: 105
 
 components:
   - id: custom-integration-details
@@ -255,11 +255,12 @@ components:
     title: Provider error card
     purpose: Actionable card for a provider failure in the feed (auth, quota, rate-limit).
     anatomy: [icon-bubble, title, reason, primary-action, secondary-action]
-    states: [unauthenticated, quota-exhausted, rate-limited, model-unavailable, context-overflow, transient]
+    states: [unauthenticated, quota-exhausted, rate-limited, model-unavailable, context-overflow, transient, plan-message-limit]
     variants: [single-action-row-card, multi-action-error-card]
     behavior: >-
       provider_error feed items carry a typed ProviderError (cause/scope). The
       card maps each taxonomy variant to its reconnect/upgrade/retry affordance.
+      The personal weekly limit shows a local reset time and a Plan action.
     a11y: alert role; each action a labeled button; status-page link where relevant.
     since: 1
 
@@ -312,7 +313,7 @@ components:
     title: Composer
     purpose: The signature message-input surface -- text, attachments, send/stop.
     anatomy: [leading-attach, attachment-chips, textarea, footer-slot, queued-list, trailing-send-stop]
-    states: [ready, submitted, streaming, has-attachments, drag-over, disabled, replaced-by-override]
+    states: [ready, submitted, streaming, has-attachments, drag-over, disabled, replaced-by-override, plan-usage-hint, plan-limit]
     variants: [single-line, multiline-expanded, phone]
     behavior: >-
       Send is gated on non-empty text/attachments; while streaming the trailing
@@ -2118,3 +2119,33 @@ components:
       Real labeled buttons, a read-only labeled command input, status messages,
       and a focus-managed disconnect confirmation. All controls remain visible.
     since: 94
+
+  - id: personal-plan-dialogs
+    title: Personal plan dialogs
+    purpose: Ask a Free person to resume routines, choose one to keep, or review the launch plans.
+    anatomy: [title, explanation, routine-list, telemetry, astronaut-image, free-plus-teams-panels, offer, primary-action, secondary-action]
+    states: [resume, keep, announcement, offer, no-offer, countdown, loading, empty]
+    variants: [phone, desktop]
+    behavior: >-
+      The plan summary gates resume before keep before the announcement.
+      Dismissing the announcement by any close path persists across devices
+      through the SDK. The offer starts Plus checkout; without it, the primary
+      action opens Billing. The countdown and prices come from the plan summary.
+    a11y: >-
+      Focus-managed dialogs with labeled actions and visible routine names.
+      Announcement countdown is decorative because the localized launch date is
+      in the title; the struck price has a spoken replacement.
+    since: 102
+  - id: personal-billing-screen
+    title: Personal billing screen
+    purpose: Show a person's Free or Plus plan, weekly usage, routine state, and invoices.
+    anatomy: [heading, current-plan-card, upgrade-card, launch-price, offer-line, usage-card, invoice-list]
+    states: [free, plus, offer, preview, past-due, ending, loading, empty-invoices, error]
+    variants: [phone, desktop]
+    behavior: >-
+      Upgrade opens checkout and polls the plan; invoice links open externally.
+      Free shows usage as a percentage, including the prelaunch preview, and
+      routine actions. Launch pricing and an early offer appear when supplied.
+      Plus shows renewal or payment status and subscription management.
+    a11y: Visible actions, labeled progress, status announcement, and keyboard-accessible invoice links.
+    since: 103

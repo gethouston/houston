@@ -1,8 +1,13 @@
-import { deepStrictEqual, strictEqual } from "node:assert";
+import { deepStrictEqual, ok, strictEqual } from "node:assert";
+import { readFileSync } from "node:fs";
 import { describe, it } from "node:test";
 import {
   parseSettingsSection,
   SETTINGS_SECTION_IDS,
+  settingsLandingSection,
+  settingsSectionAvailable,
+  settingsSectionFromDeepLink,
+  settingsSectionFromPath,
 } from "../src/lib/settings-sections.ts";
 
 describe("SETTINGS_SECTION_IDS", () => {
@@ -13,6 +18,7 @@ describe("SETTINGS_SECTION_IDS", () => {
       [...SETTINGS_SECTION_IDS],
       [
         "profile",
+        "plan",
         "aboutMe",
         "workspace",
         "apiKeys",
@@ -25,9 +31,65 @@ describe("SETTINGS_SECTION_IDS", () => {
   });
 });
 
+describe("billing deep links", () => {
+  it("accepts only known settings sections", () => {
+    strictEqual(settingsSectionFromPath("/settings/plan"), "plan");
+    strictEqual(settingsSectionFromPath("/settings/reportBug"), "reportBug");
+    strictEqual(settingsSectionFromPath("/settings/unknown"), null);
+    strictEqual(settingsSectionFromPath("/settings/plan/extra"), null);
+    strictEqual(settingsSectionFromDeepLink("houston://settings/plan"), "plan");
+    strictEqual(
+      settingsSectionFromDeepLink("houston://settings/unknown"),
+      null,
+    );
+    strictEqual(
+      settingsSectionFromDeepLink("https://example.com/settings/plan"),
+      null,
+    );
+  });
+
+  it("opens only Billing from an OS deep link", () => {
+    strictEqual(
+      settingsSectionFromDeepLink("houston://settings/plan/"),
+      "plan",
+    );
+    strictEqual(
+      settingsSectionFromDeepLink("houston://settings/reportBug"),
+      null,
+    );
+    strictEqual(
+      settingsSectionFromDeepLink("houston://settings/profile"),
+      null,
+    );
+  });
+});
+
+describe("settingsSectionAvailable", () => {
+  it("shows Billing only where the deployment serves the personal plan", () => {
+    strictEqual(settingsSectionAvailable("plan", { plan: true }), true);
+    strictEqual(settingsSectionAvailable("plan", { plan: false }), false);
+    strictEqual(settingsSectionAvailable("plan", {}), false);
+    strictEqual(settingsSectionAvailable("plan", undefined), false);
+    strictEqual(settingsSectionAvailable("profile", undefined), true);
+  });
+});
+
+describe("settingsLandingSection", () => {
+  it("lands a Billing link on the index where the plan is not served", () => {
+    strictEqual(settingsLandingSection("plan", { plan: false }), null);
+    strictEqual(settingsLandingSection("plan", null), null);
+    strictEqual(settingsLandingSection("plan", { plan: true }), "plan");
+  });
+
+  it("lands every other section as linked", () => {
+    strictEqual(settingsLandingSection("reportBug", null), "reportBug");
+  });
+});
+
 describe("parseSettingsSection", () => {
   it("passes a valid section id through", () => {
     strictEqual(parseSettingsSection("profile"), "profile");
+    strictEqual(parseSettingsSection("plan"), "plan");
     strictEqual(parseSettingsSection("aboutMe"), "aboutMe");
     strictEqual(parseSettingsSection("apiKeys"), "apiKeys");
     strictEqual(parseSettingsSection("channels"), "channels");
@@ -68,5 +130,24 @@ describe("parseSettingsSection", () => {
 
   it("maps null to null", () => {
     strictEqual(parseSettingsSection(null), null);
+  });
+});
+
+describe("useSettingsLanding source", () => {
+  // The node runner has no DOM, so the hook's wiring is guarded on its source.
+  const src = readFileSync(
+    new URL("../src/hooks/use-settings-landing.ts", import.meta.url),
+    "utf8",
+  );
+
+  it("opens every linked section through the capability-aware landing", () => {
+    strictEqual(/openSettings\(\s*pendingPath\.current/.test(src), false);
+    strictEqual(/openSettings\(section\)/.test(src), false);
+    ok(src.includes("settingsLandingSection("));
+  });
+
+  it("waits for the capabilities before landing", () => {
+    ok(src.includes("useCapabilities()"));
+    ok(/ready\.current =[^;]*!capabilitiesLoading/.test(src));
   });
 });

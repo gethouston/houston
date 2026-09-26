@@ -52,6 +52,10 @@ export default defineConfig(({ mode }) => {
         { find: "@tauri-apps/api/core", replacement: shim("tauri-core.ts") },
         { find: "@tauri-apps/api/event", replacement: shim("tauri-event.ts") },
         {
+          find: "@tauri-apps/plugin-deep-link",
+          replacement: shim("tauri-plugin-deep-link.ts"),
+        },
+        {
           find: "@tauri-apps/api/window",
           replacement: shim("tauri-window.ts"),
         },

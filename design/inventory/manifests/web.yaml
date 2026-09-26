@@ -13,7 +13,7 @@
 
 surface: web
 enforced: true
-inventoryVersion: 82
+inventoryVersion: 105
 
 components:
   custom-integration-details:
@@ -314,3 +314,12 @@ components:
   messaging-channels-settings:
     status: implemented
     ref: app/src/components/settings/sections/channels.tsx
+
+  personal-plan-dialogs:
+    status: partial
+    ref: "app/src/components/shell/plan-lifecycle.tsx + plan-announcement-dialog.tsx + plan-announcement-plans.tsx"
+    notes: The plan dialogs render in app and are not extracted as reusable ui components.
+  personal-billing-screen:
+    status: partial
+    ref: "app/src/components/settings/sections/plan.tsx"
+    notes: Settings content shared by desktop and web; includes preview usage, early offer, and launch price states.

@@ -20,6 +20,7 @@ import { createIntegrationsModule } from "./modules/integrations";
 import { createMigrationModule } from "./modules/migration";
 import { createMissionsSearchModule } from "./modules/missions-search";
 import { createOrgModule } from "./modules/org";
+import { createPlanModule } from "./modules/plan";
 import { createPreferencesModule } from "./modules/preferences";
 import { createProvidersModule } from "./modules/providers";
 import { createRoutinesModule } from "./modules/routines";
@@ -64,6 +65,7 @@ export interface SdkModules {
   readonly teams: ReturnType<typeof createTeamsModule>;
   /** Billing facade (the team's subscription + the Stripe hand-offs). */
   readonly billing: ReturnType<typeof createBillingModule>;
+  readonly plan: ReturnType<typeof createPlanModule>;
   /** Channels facade (the messaging accounts the personal assistant answers in). */
   readonly channels: ReturnType<typeof createChannelsModule>;
   /** Routines facade (an agent's scheduled work, its runs, its webhook key). */
@@ -89,6 +91,7 @@ export const moduleFactories = {
   createAgentsModule,
   createAppearanceModule,
   createBillingModule,
+  createPlanModule,
   createChannelsModule,
   createConversationsModule,
   createFilesModule,

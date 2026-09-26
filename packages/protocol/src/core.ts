@@ -90,6 +90,8 @@ export interface Capabilities {
    * hides the event-wake option when false. Absent = off (legacy hosts stay valid).
    */
   triggers?: boolean;
+  /** C19 personal plan routes are configured on this deployment. */
+  plan?: boolean;
   /**
    * Whether a custom integration can sign in through its own OAuth flow
    * (PRODUCT-1172): the host can serve a browser-reachable callback (the

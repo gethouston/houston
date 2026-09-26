@@ -2401,3 +2401,38 @@ test("a non-waking refusal is never re-sent", async () => {
   );
   expect(nonces).toHaveLength(1);
 });
+
+test("C19 message_limit settles as a typed card after one send", async () => {
+  const refusal = {
+    error: "message limit reached",
+    code: "message_limit",
+    limit: 40,
+    resetsAt: "2026-10-01T00:00:00Z",
+  };
+  const { engine, nonces } = fakeEngine([hang], [], {
+    sendError: new EngineError(429, JSON.stringify(refusal)),
+  });
+  const { output, items } = makeOutput();
+  await streamTurn(
+    engine,
+    "Houston/Bo",
+    "activity-plan-limit",
+    "hi",
+    output,
+    registry,
+    {
+      tuning: { ...fast, sendWakeRetryDelaysMs: [1, 1] },
+    },
+  );
+  expect(nonces).toHaveLength(1);
+  expect(items).toContainEqual(
+    expect.objectContaining({
+      feed_type: "provider_error",
+      data: expect.objectContaining({
+        kind: "plan_message_limit",
+        resets_at: refusal.resetsAt,
+      }),
+      fails_pending: true,
+    }),
+  );
+});

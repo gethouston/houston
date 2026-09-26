@@ -33,7 +33,10 @@ import type {
   SkillsManifest,
 } from "@houston/engine-adapter";
 import type { IntegrationProviderId } from "@houston/protocol";
-import type { DismissInteractionOutcome } from "@houston/sdk";
+import {
+  type DismissInteractionOutcome,
+  plusCheckoutRefusal,
+} from "@houston/sdk";
 import { shouldUseClaudeDesktopLogin } from "../components/shell/provider-login-url";
 import { actingUser } from "./acting-user";
 import { isFirstDayNotPendingError } from "./agent-first-day-model";
@@ -83,6 +86,7 @@ import { isNetworkTransportError } from "./network-transport-error";
 import { isNoAgentForProviderWriteError } from "./no-agent-provider-write-error";
 import { isOrgAdminRequiredError } from "./org-admin-required-error";
 import { osIsTauri } from "./os-bridge";
+import { surfacePlanMessageLimit } from "./plan-message-limit";
 import { isProviderLoginSessionLostError } from "./provider-login-session-lost";
 import { toDisplayProviderIdOrNull } from "./provider-overrides";
 import { normalizeLegacyModel } from "./providers";
@@ -233,6 +237,8 @@ async function surfaceError(
   // predicate over the whole error (e.g. `isMissingSkillError`, which reads the
   // `HoustonEngineError` `.status`) rather than a tagged error kind.
   if (options?.silence?.(err)) return;
+
+  if (await surfacePlanMessageLimit(err)) return;
 
   // Expected business state, not a bug: a write into a team whose trial expired
   // (C8 `needs_upgrade`). Surface the real reason as a plain info toast — never
@@ -2160,6 +2166,37 @@ export const tauriOrg = {
     call("create_checkout", () => getEngine().createCheckout(interval)),
   /** C8 billing: open the Stripe customer portal (owner only); returns `{url}`. */
   createPortal: () => call("create_portal", () => getEngine().createPortal()),
+  getPlan: () => call("get_plan", () => getEngine().getPlan()),
+  dismissPlanAnnouncement: () =>
+    call("dismiss_plan_announcement", () =>
+      getEngine().dismissPlanAnnouncement(),
+    ),
+  /** C19: start a Plus checkout. The refusals a person can be in (already
+   *  Plus, account being deleted, plan off) are silenced here: the checkout
+   *  surfaces them itself with authored copy (`plus-checkout-failure`). */
+  createPlusCheckout: () =>
+    call(
+      "create_plus_checkout",
+      () => getEngine().createPlusCheckout(),
+      undefined,
+      { silence: (error) => plusCheckoutRefusal(error) !== null },
+    ),
+  createPlusPortal: () =>
+    call("create_plus_portal", () => getEngine().createPlusPortal()),
+  listPlusInvoices: () =>
+    call("list_plus_invoices", () => getEngine().listPlusInvoices()),
+  listPlanRoutines: () =>
+    call("list_plan_routines", () => getEngine().listPlanRoutines()),
+  keepRoutine: (key: import("@houston/engine-adapter").PlanRoutineKey) =>
+    call("keep_plan_routine", () => getEngine().keepRoutine(key)),
+  resumeRoutines: () =>
+    call("resume_plan_routines", () => getEngine().resumeRoutines()),
+  /** C19 presence heartbeat: a passive background call, never a toast. A
+   *  failure is still logged and reported once here. */
+  reportPresence: () =>
+    call("report_presence", () => getEngine().reportPresence(), undefined, {
+      toast: false,
+    }),
 };
 
 /**

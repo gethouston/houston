@@ -29,6 +29,7 @@ export * from "./routine-pin";
 export * from "./routines";
 export * from "./scan";
 export * from "./schedule";
+export * from "./schedule-gap";
 export * from "./skills";
 export * from "./skills-manifest";
 export * from "./store";

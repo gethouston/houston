@@ -169,6 +169,8 @@ export interface Capabilities {
    * predate it. Feature-detect flag only — the gateway is the sole enforcer.
    */
   computeUsage?: boolean;
+  /** C19 personal plan is configured on this deployment. */
+  plan?: boolean;
   /**
    * Whether this deployment serves C13 agent teams: named groups of agents +
    * people INSIDE one space, server-owned. A feature-detect flag the frontend

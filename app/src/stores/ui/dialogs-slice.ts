@@ -36,6 +36,8 @@ export interface DialogFields {
   importFromFriendOpen: boolean;
   /** File shown by the global preview dialog, or null when closed. */
   filePreview: FilePreviewTarget | null;
+  /** Whether the C19 "choose the routines to keep" dialog is open. */
+  planKeepDialogOpen: boolean;
 }
 
 export interface DialogActions {
@@ -51,6 +53,7 @@ export interface DialogActions {
   setCheatsheetOpen: (open: boolean) => void;
   setImportFromFriendOpen: (open: boolean) => void;
   setFilePreview: (preview: FilePreviewTarget | null) => void;
+  setPlanKeepDialogOpen: (open: boolean) => void;
 }
 
 export const dialogInitialState = {
@@ -64,6 +67,7 @@ export const dialogInitialState = {
   cheatsheetOpen: false,
   importFromFriendOpen: false,
   filePreview: null,
+  planKeepDialogOpen: false,
 } satisfies DialogFields;
 
 export const createDialogActions: UISliceCreator<DialogActions> = (set) => ({
@@ -84,4 +88,5 @@ export const createDialogActions: UISliceCreator<DialogActions> = (set) => ({
   setImportFromFriendOpen: (importFromFriendOpen) =>
     set({ importFromFriendOpen }),
   setFilePreview: (filePreview) => set({ filePreview }),
+  setPlanKeepDialogOpen: (planKeepDialogOpen) => set({ planKeepDialogOpen }),
 });

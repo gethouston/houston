@@ -3,6 +3,30 @@
 Every `version` bump in `inventory.yaml` needs a matching entry here (enforced by
 `pnpm check:parity`). Newest first. Use `## vN` headings.
 
+## v105 - 2026-09-26
+
+The launch announcement becomes a dark mission briefing with a desktop astronaut
+panel, responsive Free, Plus, and Teams panels, live countdown, plan-derived
+launch prices and offer, and one persistent dismissal across every close path.
+
+## v104 - 2026-09-26
+
+The plan dialogs add a one-time launch announcement after routine prompts.
+Billing adds preview usage, an early offer, and a struck-through comparison
+price with an accessible spoken price on phone and desktop.
+
+## v103 - 2026-09-26
+
+The personal Billing screen shows Free and Plus plan cards, weekly usage,
+routine actions, and recent invoices on phone and desktop. Checkout return
+pages provide public web entry points back to Settings.
+
+## v102 - 2026-09-26
+
+The chat composer shows personal weekly usage near its limit and yields to a
+plan limit card at 100%. The card offers the Plan section. Free plan routine
+choices open as focus-managed dialogs on phone and desktop.
+
 ## v101 - 2026-09-25
 
 First-run onboarding is the survey (its industry question asked from the hire
