@@ -1,48 +1,35 @@
 import { SidebarNavItem } from "@houston-ai/layout";
-import { Settings } from "lucide-react";
+import { Building2, Settings } from "lucide-react";
 import { useTranslation } from "react-i18next";
-import { ACADEMY_VIEW_ID, SETTINGS_VIEW_ID } from "../../lib/top-level-views";
+import { useSurfaceGates } from "../../hooks/use-surface-gates";
+import { openAdmin } from "../../lib/open-admin";
+import {
+  ACADEMY_VIEW_ID,
+  ADMIN_VIEW_ID,
+  SETTINGS_VIEW_ID,
+} from "../../lib/top-level-views";
 import { useUIStore } from "../../stores/ui";
-import { SidebarHelpMenu } from "./sidebar-help-menu";
 import { academyNavRow } from "./sidebar-nav-rows";
 import { UpdateChecker } from "./update-checker";
 import { tourAnchor } from "./workspace-tour-steps.ts";
 
 /**
- * The foot of the rail: the Academy, Settings, and the help control beside
- * Settings.
+ * The foot of the rail: Academy, Admin, Settings.
  *
- * **The Academy leads the cluster.** Learning to fly is neither a destination
- * the user reaches for hourly nor a preference, so it closes the rail rather
- * than competing with the Assistant at the top of it —
- * and it sits directly above Settings, where the two rows a person opens
- * about their own use of Houston are found together
- * (`sidebar-nav-rows.tsx` builds the row; the phone's More menu draws the
- * same one at the tail of its destinations).
+ * The Academy leads the cluster: learning to fly is neither an hourly
+ * destination nor a preference (`sidebar-nav-rows.tsx` builds the row; the
+ * phone's More menu draws the same one). Admin sits directly above Settings
+ * and only for a caller the org gate admits (`showOrganization`), including
+ * callers in Spaces personal spaces. Settings is the rail's LAST row and the
+ * one door onto the person's own setup; identity lives inside it
+ * (`settings/identity-header.tsx`).
  *
- * **Settings lives here, not among the destinations.** Those are the places
- * work happens; Settings belongs to the PERSON's chrome, which is why it sits
- * with the account. It is also the door to everything that administers the
- * SPACE — Workspace management is a section behind it — so it has to be
- * reachable in every deployment mode, whatever gates a caller passes.
- *
- * **The help control sits beside it** (`sidebar-help-menu.tsx`): "Report a
- * problem", what a stuck user reaches for. Asking for help is not a
- * destination, so it wears a help control at the foot of the navigation rather
- * than a slot among the destinations.
- *
- * Settings is the rail's LAST row, and the ONE door onto that page: identity
- * lives inside it, where the Settings index opens on the signed-in person's
- * face, email and Sign out (`settings/identity-header.tsx`).
- *
- * The row is drawn with `SidebarNavItem` — the same component `SidebarNavList`
- * renders every other destination through — so it is a rail row rather than a
- * lookalike, and `collapsed` gives it the icon-rail anatomy for free. The help
- * control follows it in the same direction: beside the row while the rail is
- * expanded, stacked under the glyph while it is the icon strip.
+ * Every row is a `SidebarNavItem`, the component every other destination
+ * renders through, so `collapsed` gives each the icon-rail anatomy for free.
  */
 export function SidebarFooter(props: { collapsed: boolean }) {
   const { t } = useTranslation("shell");
+  const { showOrganization } = useSurfaceGates();
   const viewMode = useUIStore((s) => s.viewMode);
   const openSettings = useUIStore((s) => s.openSettings);
   const setMobileMoreOpen = useUIStore((s) => s.setMobileMoreOpen);
@@ -57,9 +44,6 @@ export function SidebarFooter(props: { collapsed: boolean }) {
   return (
     <div data-testid="sidebar-footer" className="flex flex-col">
       <UpdateChecker collapsed={props.collapsed} />
-      {/* Collapsed, the row is a fixed 36px glyph box rather than a full-width
-          button, so the rail centres it exactly as it centres the Settings
-          cluster below. */}
       <div
         className={
           props.collapsed ? "flex flex-col items-center px-2 pb-1" : "px-2 pb-1"
@@ -73,41 +57,26 @@ export function SidebarFooter(props: { collapsed: boolean }) {
           onClick={academy.onClick}
           dataAttrs={academy.dataAttrs}
         />
-      </div>
-      <div
-        className={
-          props.collapsed
-            ? "flex flex-col items-center gap-1 px-2 pb-1"
-            : "flex items-center gap-1 px-2 pb-1"
-        }
-      >
-        <div className={props.collapsed ? undefined : "min-w-0 flex-1"}>
+        {showOrganization && (
           <SidebarNavItem
-            icon={<Settings className="h-4 w-4" />}
-            label={t("sidebar.settings")}
-            active={viewMode === SETTINGS_VIEW_ID}
+            icon={<Building2 className="h-4 w-4" />}
+            label={t("sidebar.admin")}
+            active={viewMode === ADMIN_VIEW_ID}
             collapsed={props.collapsed}
-            dataAttrs={tourAnchor("nav-settings")}
-            onClick={() => {
-              // Open Settings on its INDEX, never plain
-              // `setViewMode("settings")` — that is a dead click while a
-              // section is already open, leaving the user staring at the
-              // section they wanted to leave.
-              openSettings(null);
-              setMobileMoreOpen(false);
-            }}
+            dataAttrs={{ "data-testid": "rail-admin" }}
+            onClick={() => openAdmin()}
           />
-        </div>
-        <SidebarHelpMenu
+        )}
+        <SidebarNavItem
+          icon={<Settings className="h-4 w-4" />}
+          label={t("sidebar.settings")}
+          active={viewMode === SETTINGS_VIEW_ID}
           collapsed={props.collapsed}
-          labels={{
-            help: t("sidebar.help"),
-            reportProblem: t("sidebar.reportProblem"),
-          }}
-          onReportProblem={() => {
-            // The one bug-report surface, reached from the place a user is
-            // standing when something goes wrong rather than duplicated here.
-            openSettings("reportBug");
+          dataAttrs={tourAnchor("nav-settings")}
+          onClick={() => {
+            // Open Settings on its INDEX, never plain `setViewMode("settings")`:
+            // that is a dead click while a section is already open.
+            openSettings(null);
             setMobileMoreOpen(false);
           }}
         />

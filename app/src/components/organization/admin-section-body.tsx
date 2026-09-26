@@ -1,5 +1,4 @@
 import type { ReactNode } from "react";
-import { useTranslation } from "react-i18next";
 import { PageContainer } from "../shell/page-shell";
 import { ComputeSection } from "../time-worked/compute-section";
 import ActivityTab from "./activity-tab";
@@ -50,13 +49,10 @@ function PlainSection({
 export function AdminSectionBody({
   active,
   ctx,
-  isLoading,
 }: {
   active: OrgTabId;
-  ctx: OrgViewContext | null;
-  isLoading: boolean;
+  ctx: OrgViewContext;
 }) {
-  const { t } = useTranslation("teams");
   return (
     <PageContainer
       // Company context is a pinned page (its editor card owns the bottom
@@ -69,11 +65,7 @@ export function AdminSectionBody({
       }
       data-admin-section-body={active}
     >
-      {!ctx ? (
-        <p className="py-10 text-sm text-ink-muted">
-          {isLoading ? t("org.loading") : t("org.unavailable")}
-        </p>
-      ) : active === "timeWorked" ? (
+      {active === "timeWorked" ? (
         <ComputeSection />
       ) : (
         <PlainSection active={active} ctx={ctx} />

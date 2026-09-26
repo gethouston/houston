@@ -138,7 +138,7 @@
       "viewerOnly": "Puedes usar este empleado de IA. Alguien que lo administre puede cambiar quién tiene acceso.",
       "empty": {
         "title": "Aún no hay personas",
-        "body": "Invita a tu equipo desde Configuración > Gestión del espacio para gestionar su acceso aquí."
+        "body": "Invita a tu equipo desde Administración para gestionar su acceso aquí."
       }
     }
   },

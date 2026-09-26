@@ -12,15 +12,12 @@ import {
 
 describe("SETTINGS_SECTION_IDS", () => {
   it("is the exact section set: the standing setup, nothing else", () => {
-    // Everything a person adjusts rather than works in, Workspace management
-    // (which administers the SPACE) included.
     deepStrictEqual(
       [...SETTINGS_SECTION_IDS],
       [
         "profile",
         "plan",
         "aboutMe",
-        "workspace",
         "apiKeys",
         "channels",
         "shortcuts",
@@ -100,23 +97,19 @@ describe("parseSettingsSection", () => {
     strictEqual(parseSettingsSection("nope"), null);
     strictEqual(parseSettingsSection("integrations"), null);
     strictEqual(parseSettingsSection(""), null);
-    // "connectedAccounts" was folded into the global Integrations page (the ONE
-    // by-app lens); the Settings row now deep-links there, so it is no longer a
-    // settings section and a stale deep-link must not land.
+    // Integrations owns connected accounts; a stale Settings deep link cannot land.
     strictEqual(parseSettingsSection("connectedAccounts"), null);
-    // "members" was removed with the Settings > Members surface (the Admin
-    // People tab is now the canonical home); a stale deep-link must not land.
+    // Admin's People section owns the roster; a stale Settings link cannot land.
     strictEqual(parseSettingsSection("members"), null);
-    // Time worked, Admin and Permissions are reached without a section id of
-    // their own (Admin is the `workspace` section, Time worked a lens inside
-    // it, and agent policy a team's focused agent screen), and the company
+    // Admin is a top-level screen, Time worked a lens inside it, and agent
+    // policy a team's focused agent screen. The company
     // half of the standing context is an Admin section: a stale pin on any of
     // them must fall back rather than land. The `about-me` VIEW id an older
     // install may have pinned is not a section id either: the section is
     // `aboutMe`.
     strictEqual(parseSettingsSection("timeWorked"), null);
     strictEqual(parseSettingsSection("organization"), null);
-    strictEqual(parseSettingsSection("workspace"), "workspace");
+    strictEqual(parseSettingsSection("workspace"), null);
     // The shared Skills library is a TOP-LEVEL view, not a Settings section:
     // neither the old section id nor the view id may resolve here, or a stale
     // pin would open Settings on a section that does not exist.

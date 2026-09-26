@@ -5,11 +5,7 @@ import {
 } from "../../components/organization/org-view-model";
 import { queryKeys } from "../../lib/query-keys";
 import { tauriOrg } from "../../lib/tauri";
-import {
-  isActiveTopLevelView,
-  SETTINGS_VIEW_ID,
-} from "../../lib/top-level-views";
-import { useUIStore } from "../../stores/ui";
+import { useAdminScreenActive } from "../use-admin-screen-active";
 
 /**
  * The org audit feed (Teams v2), newest first, paged by a before-cursor.
@@ -26,18 +22,14 @@ import { useUIStore } from "../../stores/ui";
  * `tauriOrg.audit` → `call()` path (toast + Report bug), no `onError` needed.
  */
 export function useOrgAudit(enabled: boolean) {
-  const active = useUIStore(
-    (s) =>
-      isActiveTopLevelView(s.viewMode, SETTINGS_VIEW_ID) &&
-      s.settingsSection === "workspace",
-  );
+  const active = useAdminScreenActive();
   return useInfiniteQuery({
     queryKey: queryKeys.orgAudit(),
     queryFn: ({ pageParam }: { pageParam: number | undefined }) =>
       tauriOrg.audit({ before: pageParam, limit: AUDIT_PAGE_SIZE }),
     initialPageParam: undefined as number | undefined,
     getNextPageParam: nextAuditCursor,
-    // Admin rides the kept-alive Settings screen. Its focus refresh is
+    // Admin is a kept-alive screen. Its focus refresh is
     // valuable only while the audit feed is actually visible.
     enabled: enabled && active,
     staleTime: 30_000,

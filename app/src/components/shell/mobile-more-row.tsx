@@ -26,22 +26,6 @@ export function MobileMoreRowButton({ row }: { row: MobileMoreRow }) {
   );
 }
 
-/** A footer action: same row anatomy, no glyph column, because neither of the
- *  two points at a screen. */
-export function MobileMoreActionRow({
-  label,
-  onSelect,
-}: {
-  label: string;
-  onSelect: () => void;
-}) {
-  return (
-    <button type="button" onClick={onSelect} className={ROW_CLASSES}>
-      <span className="min-w-0 flex-1 truncate text-left">{label}</span>
-    </button>
-  );
-}
-
 /** The band naming a labelled run. */
 export function MobileMoreBand({ label }: { label: string }) {
   return (

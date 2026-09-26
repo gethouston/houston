@@ -5,10 +5,9 @@ import type { ReactNode } from "react";
  *
  * The destinations are the RAIL's own (`buildSidebarNavItems`), handed in
  * rather than built here: one destination list, one set of tour anchors, one
- * set of gates for both breakpoints. This module only does the two things the
- * menu adds — drop the runs a gate emptied (a heading must never outlive the
- * rows it names) and name the footer's help actions — so the rules are
- * unit-tested without React (`app/tests/mobile-more-items.test.ts`).
+ * set of gates for both breakpoints. The one thing this module adds is dropping
+ * the runs a gate emptied, so a heading never outlives the rows it names
+ * (`app/tests/mobile-more-items.test.ts`).
  */
 
 /** One row, structurally the rail's `SidebarNavItemEntry`. Restated locally
@@ -36,25 +35,4 @@ export function mobileMoreItems(
   return sections
     .filter((section) => section.items.length > 0)
     .map(({ id, label, items }) => ({ id, label, items }));
-}
-
-/** A footer action. It points at no screen, which is why it sits under the
- *  destinations rather than among them. */
-export interface MobileMoreFooterRow {
-  id: "reportProblem";
-  label: string;
-  onSelect: () => void;
-}
-
-export function mobileMoreFooterRows(args: {
-  reportProblem: string;
-  onReportProblem: () => void;
-}): MobileMoreFooterRow[] {
-  return [
-    {
-      id: "reportProblem",
-      label: args.reportProblem,
-      onSelect: args.onReportProblem,
-    },
-  ];
 }

@@ -1,6 +1,7 @@
 {
   "sidebar": {
     "academy": "Academia",
+    "admin": "Administración",
     "addAgent": "Nuevo empleado de IA",
     "aiModels": "Modelos de IA",
     "assistant": "AI Manager",
@@ -33,13 +34,11 @@
       "keyboardLeftGroup": "Sacaste %name% de %group% al nivel principal."
     },
     "expand": "Expandir barra lateral",
-    "help": "Ayuda",
     "integrations": "Integraciones",
     "needsYouCount_one": "{{count}} asunto necesita tu atención",
     "needsYouCount_other": "{{count}} asuntos necesitan tu atención",
     "newMission": "Nueva tarea",
     "newTeam": "Nuevo grupo",
-    "reportProblem": "Reportar un problema",
     "runningCount_one": "{{count}} asunto en curso",
     "runningCount_other": "{{count}} asuntos en curso",
     "selectWorkspace": "Elige un espacio de trabajo",
@@ -673,7 +672,6 @@
     }
   },
   "moreMenu": {
-    "help": "Ayuda",
     "title": "Más"
   },
   "addToWorkspace": {

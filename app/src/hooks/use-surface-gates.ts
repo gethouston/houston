@@ -11,8 +11,8 @@ export type { SurfaceGates } from "../lib/surface-gates-model.ts";
 
 /**
  * The single source of the surface gates. The sidebar (which nav items exist),
- * the workspace shell (which top-level view may render) and the Settings index
- * (which rows it draws) all read the same booleans from here, so a gate can
+ * the workspace shell (which top-level view may render) and the footer
+ * (which gated rows it draws) all read the same booleans from here, so a gate can
  * never be tightened in one place and forgotten in another. `ready` says whether
  * they mean anything yet.
  *

@@ -1,17 +1,15 @@
 /**
- * The settings sections that open on their own screen (a back bar returns to the
- * index). A DOM-free module in `lib/` so both the UI store (`stores/ui`, which
+ * The settings sections that open on their own screen (a back control returns
+ * to the index). A DOM-free module in `lib/` so both the UI store (`stores/ui`, which
  * types its deep-link pin against it) and the deep-link parser stay node-testable
  * without pulling in React/lucide — and so the store never has to depend on a
  * component module.
  *
  * Settings holds the standing setup a person adjusts rather than the places
- * work happens: their profile, what their agents know about them, their keys,
- * their shortcuts, a bug report, their migration, plus Workspace management,
- * which administers the SPACE. Every section reads the current workspace, so
- * the whole screen sits behind the ONE workspace gate and no section opts out
- * of it. The gates that hide a section hide its INDEX ROW
- * (`hooks/use-surface-gates.ts`); the gateway is what enforces the claim.
+ * work happens: their profile, their plan, what their agents know about them,
+ * their keys, their channels, their shortcuts, a bug report, and their
+ * migration. Every section reads the current workspace, so the whole screen
+ * sits behind one workspace gate.
  *
  * The shared Skills library is NOT here: it is a screen of its own, opened
  * from the rail's Skills row. An AI Employee's own Skills section is that same
@@ -22,7 +20,6 @@ export const SETTINGS_SECTION_IDS = [
   "profile",
   "plan",
   "aboutMe",
-  "workspace",
   "apiKeys",
   "channels",
   "shortcuts",

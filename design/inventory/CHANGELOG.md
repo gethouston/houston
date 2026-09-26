@@ -3,6 +3,13 @@
 Every `version` bump in `inventory.yaml` needs a matching entry here (enforced by
 `pnpm check:parity`). Newest first. Use `## vN` headings.
 
+## v107 - 2026-09-26
+
+The rail footer lists Academy, gated Admin, and Settings, with no help
+control. Admin opens its own screen; Settings holds only personal setup.
+The phone More card mirrors these destinations beneath the workspace
+switcher, with Settings as a row, and has no Help rows.
+
 ## v106 - 2026-09-26
 
 The AI Employees rail interleaves ungrouped employees with personal groups.

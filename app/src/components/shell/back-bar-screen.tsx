@@ -4,9 +4,8 @@ import { BackControl } from "./back-control";
 /**
  * The shared drill-in scaffold: a back affordance over a full-height scroll
  * region. ONE frame for every screen that sits one level below something else
- * and has NO header strip of its own — the plain Settings sections, the
- * workspace-name card behind the org gate — so the chevron, its spacing and
- * the scroll behaviour can never drift between them. It also keeps each level
+ * and has NO header strip of its own, including plain Settings sections, so
+ * the chevron, spacing and scroll behaviour stay consistent. It keeps each level
  * to exactly one back affordance: a screen nested inside another renders its
  * own bar only for its own depth.
  *

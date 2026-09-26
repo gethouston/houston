@@ -1,7 +1,7 @@
 import type { HandsOnSurface } from "@houston/protocol";
-import { useOrgNav } from "../components/organization/org-nav-store.ts";
 import { useUIStore } from "../stores/ui.ts";
 import { openHome } from "./home-nav.ts";
+import { openAdmin } from "./open-admin.ts";
 import { currentWorkingAgentId, openAgentSection } from "./open-agent.ts";
 
 /**
@@ -28,10 +28,7 @@ export function openHandsOnSurface(surface: HandsOnSurface): void {
     return;
   }
   if (surface === "billing") {
-    // The dashboard owns its own tab state, so the tab is pinned before
-    // navigating; it renders inside Settings' Workspace management section.
-    useOrgNav.getState().requestTab("billing");
-    ui.openSettings("workspace");
+    openAdmin({ section: "billing" });
     return;
   }
   const agentId = currentWorkingAgentId();

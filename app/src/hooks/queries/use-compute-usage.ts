@@ -1,11 +1,7 @@
 import { useQuery } from "@tanstack/react-query";
 import { queryKeys } from "../../lib/query-keys";
 import { tauriOrg } from "../../lib/tauri";
-import {
-  isActiveTopLevelView,
-  SETTINGS_VIEW_ID,
-} from "../../lib/top-level-views";
-import { useUIStore } from "../../stores/ui";
+import { useAdminScreenActive } from "../use-admin-screen-active";
 
 /**
  * One fetch covers every client-side range (7d / 30d / 13w); the gateway
@@ -29,11 +25,7 @@ export const COMPUTE_USAGE_DAYS = 90;
  * Failures surface via `tauriOrg.computeUsage` → `call()` (toast + Report bug).
  */
 export function useComputeUsage(enabled: boolean) {
-  const active = useUIStore(
-    (s) =>
-      isActiveTopLevelView(s.viewMode, SETTINGS_VIEW_ID) &&
-      s.settingsSection === "workspace",
-  );
+  const active = useAdminScreenActive();
   return useQuery({
     queryKey: queryKeys.computeUsage(COMPUTE_USAGE_DAYS),
     queryFn: () => tauriOrg.computeUsage(COMPUTE_USAGE_DAYS),

@@ -1,17 +1,19 @@
 import { Sheet, SheetContent, SheetTitle } from "@houston-ai/core";
 import { WorkspaceSwitcher } from "@houston-ai/layout";
-import { Settings } from "lucide-react";
+import { Building2, Settings } from "lucide-react";
 import { useCallback, useState } from "react";
 import { useTranslation } from "react-i18next";
-import { ACADEMY_VIEW_ID } from "../../lib/top-level-views";
+import { useSurfaceGates } from "../../hooks/use-surface-gates";
+import { openAdmin } from "../../lib/open-admin";
+import {
+  ACADEMY_VIEW_ID,
+  ADMIN_VIEW_ID,
+  SETTINGS_VIEW_ID,
+} from "../../lib/top-level-views";
 import { useUIStore } from "../../stores/ui";
 import { useWorkspaceStore } from "../../stores/workspaces";
-import { mobileMoreFooterRows, mobileMoreItems } from "./mobile-more-items";
-import {
-  MobileMoreActionRow,
-  MobileMoreBand,
-  MobileMoreRowButton,
-} from "./mobile-more-row";
+import { type MobileMoreRow, mobileMoreItems } from "./mobile-more-items";
+import { MobileMoreBand, MobileMoreRowButton } from "./mobile-more-row";
 import { SidebarDialogs } from "./sidebar-dialogs";
 import { academyNavRow } from "./sidebar-nav-rows";
 import { useSidebarNavItems } from "./use-sidebar-nav-items";
@@ -20,9 +22,9 @@ import { tourAnchor } from "./workspace-tour-steps";
 
 /**
  * The phone's "More": a floating card raised by the nav bar, holding the
- * workspace switcher, the long tail of destinations and the help actions.
+ * workspace switcher and the long tail of destinations.
  *
- * A card and not a full bottom sheet, because it is a MENU — it answers "where
+ * A card and not a full bottom sheet, because it is a MENU: it answers "where
  * else can I go" and then gets out of the way, so it hovers over the bar that
  * raised it rather than taking the screen. It is a Radix dialog under the
  * restyle, so it isolates the app on its own while open.
@@ -33,14 +35,12 @@ import { tourAnchor } from "./workspace-tour-steps";
  * destination from the menu is a tab-level move, not a level pushed onto the
  * tree the user was in.
  *
- * The rail's footer cluster is mirrored, not repeated: the Academy closes the
- * destination list (the same row the rail draws above Settings) and Settings
- * itself is the round control in the header line, beside the workspace
- * switcher, where the menu keeps what belongs to the person rather than to the
- * space.
+ * The rail's footer cluster closes the list in the rail's own order: Academy,
+ * Admin behind the org gate, then Settings.
  */
 export function MobileMoreMenu() {
-  const { t } = useTranslation(["shell", "common", "teams", "settings"]);
+  const { t } = useTranslation(["shell", "common", "teams"]);
+  const { showOrganization } = useSurfaceGates();
   const open = useUIStore((s) => s.mobileMoreOpen);
   const setOpen = useUIStore((s) => s.setMobileMoreOpen);
   const openSettings = useUIStore((s) => s.openSettings);
@@ -52,29 +52,35 @@ export function MobileMoreMenu() {
 
   const { navSections } = useSidebarNavItems(t, close, { nav: "reset" });
   const groups = mobileMoreItems(navSections);
-  // The rail's footer cluster, mirrored: the Academy closes the destinations
-  // here exactly as it closes the rail above Settings, and it is the SAME row
-  // (`sidebar-nav-rows.tsx`) so the two breakpoints cannot drift.
+  // The SAME Academy row the rail draws (`sidebar-nav-rows.tsx`), so the two
+  // breakpoints cannot drift.
   const academy = academyNavRow({
     label: t("shell:sidebar.academy"),
     onOpen: () => {
-      // `reset`, like every other destination in this menu: reaching one from
-      // the menu is a tab-level move, not a level pushed onto the open tree.
       setViewMode(ACADEMY_VIEW_ID, { nav: "reset" });
       close();
     },
   });
-  const { switchWorkspace } = useSidebarNavigation({
-    closeMobileMenu: close,
-  });
-  const footerRows = mobileMoreFooterRows({
-    reportProblem: t("shell:sidebar.reportProblem"),
-    onReportProblem: () => {
-      // The one bug-report surface, reached from where the user is standing
-      // when something goes wrong rather than duplicated here.
-      openSettings("reportBug", { nav: "reset" });
+  const admin: MobileMoreRow = {
+    id: ADMIN_VIEW_ID,
+    label: t("shell:sidebar.admin"),
+    icon: <Building2 className="h-4 w-4" />,
+    onClick: () => openAdmin({ nav: "reset" }),
+    dataAttrs: { "data-testid": "rail-admin" },
+  };
+  const settings: MobileMoreRow = {
+    id: SETTINGS_VIEW_ID,
+    label: t("shell:sidebar.settings"),
+    icon: <Settings className="h-4 w-4" />,
+    dataAttrs: tourAnchor("nav-settings"),
+    onClick: () => {
+      // Settings opens on its INDEX, never a leftover section.
+      openSettings(null, { nav: "reset" });
       close();
     },
+  };
+  const { switchWorkspace } = useSidebarNavigation({
+    closeMobileMenu: close,
   });
 
   return (
@@ -90,36 +96,21 @@ export function MobileMoreMenu() {
           <SheetTitle className="sr-only">
             {t("shell:moreMenu.title")}
           </SheetTitle>
-          <div className="flex items-center gap-1 pr-2">
-            <div className="min-w-0 flex-1">
-              <WorkspaceSwitcher
-                workspaces={workspaces}
-                currentId={currentWorkspace?.id ?? null}
-                currentName={
-                  currentWorkspace?.name ?? t("shell:sidebar.selectWorkspace")
-                }
-                onSwitch={switchWorkspace}
-                onCreate={() => {
-                  close();
-                  setCreateWsOpen(true);
-                }}
-                collapsed={false}
-                createLabel={t("shell:sidebar.createWorkspace")}
-              />
-            </div>
-            <button
-              type="button"
-              aria-label={t("shell:sidebar.settings")}
-              {...tourAnchor("nav-settings")}
-              onClick={() => {
-                // Settings opens on its INDEX, never a leftover section.
-                openSettings(null, { nav: "reset" });
+          <div className="min-w-0 pr-2">
+            <WorkspaceSwitcher
+              workspaces={workspaces}
+              currentId={currentWorkspace?.id ?? null}
+              currentName={
+                currentWorkspace?.name ?? t("shell:sidebar.selectWorkspace")
+              }
+              onSwitch={switchWorkspace}
+              onCreate={() => {
                 close();
+                setCreateWsOpen(true);
               }}
-              className="flex size-10 shrink-0 items-center justify-center rounded-full text-ink-muted transition-colors active:scale-[0.96] hover:bg-hover hover:text-ink focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-focus"
-            >
-              <Settings className="size-5" />
-            </button>
+              collapsed={false}
+              createLabel={t("shell:sidebar.createWorkspace")}
+            />
           </div>
           <div className="min-h-0 flex-1 overflow-y-auto pb-2">
             {groups.map((group, index) => (
@@ -135,16 +126,8 @@ export function MobileMoreMenu() {
             ))}
             <div className="border-line border-t">
               <MobileMoreRowButton row={academy} />
-            </div>
-            <div className="border-line border-t">
-              <MobileMoreBand label={t("shell:moreMenu.help")} />
-              {footerRows.map((row) => (
-                <MobileMoreActionRow
-                  key={row.id}
-                  label={row.label}
-                  onSelect={row.onSelect}
-                />
-              ))}
+              {showOrganization && <MobileMoreRowButton row={admin} />}
+              <MobileMoreRowButton row={settings} />
             </div>
           </div>
         </SheetContent>

@@ -1,7 +1,7 @@
 import { FAKE_HOST_URL } from "@houston/fake-host";
 import type { APIRequestContext, Page } from "@playwright/test";
 import { expect, test } from "./support/fixtures";
-import { adminHeading, openWorkspaceManagement } from "./support/settings-nav";
+import { adminRow } from "./support/settings-nav";
 import { screen } from "./support/team-nav";
 
 /**
@@ -70,17 +70,11 @@ test("Teams member: no Admin dashboard, but the Integrations nav opens the perso
   const integrationsNav = page.locator('[data-tour-target="nav-integrations"]');
   await expect(integrationsNav).toBeVisible();
 
-  // No Admin dashboard for a plain member: Workspace management is everyone's
-  // door, and behind the org gate it falls back to the read-only workspace-name
-  // row, so the absence is asserted on the FACE rather than on a rail row.
-  await openWorkspaceManagement(page);
-  await expect(adminHeading(page)).toHaveCount(0);
-  await expect(
-    screen(page).getByText("Workspace name", { exact: true }),
-  ).toBeVisible();
+  // A plain member has no Admin rail row.
+  await expect(adminRow(page)).toHaveCount(0);
 
-  // The rail stays put while Settings is open, so the catalog is one click
-  // away, and the identity lozenge carries the screen's h1.
+  // The Integrations rail row opens the catalog directly, and its identity
+  // lozenge carries the screen's h1.
   await integrationsNav.click();
   await expect(
     page.getByRole("heading", { name: "Integrations", exact: true }),

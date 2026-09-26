@@ -9,7 +9,7 @@ import { showComputeSection } from "../time-worked/compute-usage-model.ts";
  */
 
 /**
- * The sections of Workspace management. Company context is the workspace half
+ * The sections of Admin. Company context is the workspace half
  * of the standing context every agent starts a turn with. Per-agent policy
  * lives in each team's focused agent screen.
  */
@@ -50,10 +50,8 @@ export const ORG_TAB_IDS: readonly OrgTabId[] = [
  * unit-tested without React; the view maps each id to its component + `t()`
  * label.
  *
- * Company context takes no gate of its own on purpose: the whole dashboard is
- * mounted only behind {@link canSeeOrganization}, which is false on a personal
- * space (`isPersonalSpace`), so "org spaces only" is already enforced one level
- * up and a second branch here would be dead code.
+ * Company context takes no gate of its own: the whole dashboard is mounted
+ * behind {@link canSeeOrganization}, including in a Spaces personal space.
  */
 export function orgTabIds(gates: {
   billing: boolean;
@@ -72,16 +70,12 @@ export function orgTabIds(gates: {
 }
 
 /**
- * Whether the Organization dashboard renders as the face of Settings >
- * Workspace management.
+ * Whether the organization gate admits the Admin dashboard.
  *
- * On a C8 Spaces host the personal space is single-player semantics
- * (non-invitable, no roster, no policy — the gateway 403s a member-add with
- * `personal_space`), so the dashboard is a TEAM-space surface: it hides
- * whenever the active space is personal, whatever the role. On a non-spaces
- * multiplayer host (exactly one org) there is no personal/team split, so
- * `activeSpaceIsTeam` is irrelevant and the gate falls through to the
- * members-roster rule.
+ * On a C8 Spaces host the personal space has a sole caller who owns it, so the
+ * dashboard is available there. On a non-spaces multiplayer host (exactly one
+ * org) there is no personal/team split, so `activeSpaceIsTeam` is irrelevant
+ * and the gate falls through to the members-roster rule.
  *
  * That base rule is exactly the members-roster gate (`canSeeMembers` is already
  * "multiplayer AND owner|admin": `orgRole` returns null off-multiplayer and the

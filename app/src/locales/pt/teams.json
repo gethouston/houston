@@ -138,7 +138,7 @@
       "viewerOnly": "Você pode usar este funcionário de IA. Alguém que o gerencia pode alterar quem tem acesso.",
       "empty": {
         "title": "Ainda não há pessoas",
-        "body": "Convide sua equipe em Configurações > Gerenciamento do espaço para gerenciar o acesso delas aqui."
+        "body": "Convide sua equipe pela Administração para gerenciar o acesso delas aqui."
       }
     }
   },

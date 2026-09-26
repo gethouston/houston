@@ -24,7 +24,6 @@ export function Sidebar({ children }: { children: ReactNode }) {
     "portable",
     "teams",
     "agents",
-    "settings",
   ]);
   const workspaces = useWorkspaceStore((s) => s.workspaces);
   const currentWorkspace = useWorkspaceStore((s) => s.current);

@@ -1,7 +1,7 @@
 import { useQuery } from "@tanstack/react-query";
 import { queryKeys } from "../../lib/query-keys";
 import { tauriOrg } from "../../lib/tauri";
-import { useWorkspaceSectionActive } from "../use-workspace-section-active";
+import { useAdminScreenActive } from "../use-admin-screen-active";
 
 /** Default usage window (contract §5: host clamps `days` to ≤ 90). */
 export const USAGE_DEFAULT_DAYS = 30;
@@ -21,11 +21,11 @@ export function useOrgUsage(
   enabled: boolean,
   days: number = USAGE_DEFAULT_DAYS,
 ) {
-  const active = useWorkspaceSectionActive();
+  const active = useAdminScreenActive();
   return useQuery({
     queryKey: queryKeys.orgUsage(days),
     queryFn: () => tauriOrg.usage(days),
-    // Admin is a Settings section (HOU-788) and Settings remains mounted while
+    // Admin is a top-level screen and remains mounted while
     // hidden; avoid an unnecessary usage read when the app window regains focus
     // off that screen.
     enabled: enabled && active,

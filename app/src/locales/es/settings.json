@@ -1,8 +1,5 @@
 {
   "title": "Configuración",
-  "workspace": {
-    "title": "Nombre del espacio de trabajo"
-  },
   "nav": {
     "profile": "Perfil",
     "aboutMe": "Sobre mí",
@@ -10,8 +7,7 @@
     "language": "Idioma",
     "shortcuts": "Atajos de teclado",
     "reportBug": "Reportar bug",
-    "danger": "Eliminar espacio de trabajo",
-    "workspace": "Gestión del espacio de trabajo"
+    "danger": "Eliminar espacio de trabajo"
   },
   "workspaceGate": {
     "failedTitle": "No pudimos cargar tu configuración",
@@ -162,8 +158,7 @@
       "apiKeys": "Permite que otras apps y asistentes de IA inicien tareas con tus empleados de IA",
       "shortcuts": "Usa Houston sin el mouse",
       "reportBug": "¿Algo falló o tienes una idea? Cuéntanos",
-      "migration": "Retoma tu mudanza a la nube",
-      "workspace": "Personas, facturación, actividad, uso y contexto compartido"
+      "migration": "Retoma tu mudanza a la nube"
     }
   },
   "apiKeys": {

@@ -1,6 +1,5 @@
 import { Building2 } from "lucide-react";
 import { useTranslation } from "react-i18next";
-import type { BackTarget } from "../shell/back-control";
 import { PageHeader } from "../shell/page-header/page-header";
 import type { HeaderThresholds } from "../shell/page-header/page-header-layout";
 import { PageHeaderSwitcher } from "../shell/page-header/page-header-switcher";
@@ -12,20 +11,17 @@ import { DEFAULT_ORG_TAB, type OrgTabId } from "./org-view-model";
  * The widest forms are Spanish. Dashboard level: identity "Espacio de trabajo"
  * ~171px (glyph 16 + 6 gap + text + px-3), Organigrama ~99, Personas ~84,
  * Facturación ~99, Analítica ~86, plus 4 × 2px gaps and the track's 4px
- * padding ≈ 551, plus the strip's 40px `px-5` = 591. The way back leads the
- * strip: chevron 16 + 4 gap + the widest label "Configurações" ~96 = ~116,
- * plus the 12px zone gap = 128. `591 + 128 = 719`, rounded UP to 720. The back
- * control stays in the strip in every mode.
+ * padding ≈ 551, plus the strip's 40px `px-5` = 591, rounded up to 592.
  */
 export const ADMIN_HEADER_THRESHOLDS: HeaderThresholds = {
-  oneRowMin: 720,
+  oneRowMin: 592,
 };
 
 /**
  * The Admin strip, in the shared header grammar (Integrations, the team
  * screen): one lozenge cluster where the identity IS the first section.
  *
- * **"Workspace" is the first lozenge.** It wears the Settings row's mark
+ * **"Workspace" is the first lozenge.** It wears the Admin row's mark
  * (`Building2`) — the door and the page agree on what this place looks like —
  * carries the screen's `<h1>`, and stands for Company context, the landing
  * section: the standing knowledge every agent starts a turn with is what this
@@ -37,17 +33,12 @@ export const ADMIN_HEADER_THRESHOLDS: HeaderThresholds = {
  * every section — Company context included, because inside a list of section
  * names "the identity lozenge stands for it" stops being legible.
  *
- * Admin is reached through Settings, so the way back to that index LEADS this
- * strip. One top row at every width: back, identity, sections.
  */
 export function AdminHeader({
-  back,
   active,
   visibleIds,
   onSelect,
 }: {
-  /** Back to the Settings index, the level this section hangs under. */
-  back: BackTarget;
   active: OrgTabId;
   /** The sections visible for this caller + space, from `orgTabIds`. */
   visibleIds: readonly OrgTabId[];
@@ -83,7 +74,7 @@ export function AdminHeader({
   }));
 
   return (
-    <PageHeader back={back}>
+    <PageHeader>
       {collapsed ? (
         <PageHeaderSwitcher
           identity={identity}

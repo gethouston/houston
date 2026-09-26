@@ -14,9 +14,8 @@ import { screen } from "./support/team-nav";
  *    solo desktop install.
  *  - **Company context** — what the agents know about the COMPANY. It is
  *    shared by everyone in the space, so it is the space owner's: a section of
- *    the Admin dashboard behind Settings > Workspace management, which is itself
- *    gated to a team space and therefore never appears on a personal/solo
- *    install.
+ *    the Admin screen, available to a multiplayer team owner or admin and
+ *    in a Spaces personal space. A solo install has no org read.
  *
  * The underlying data did not move: each half still reads and writes its own
  * slot of the same blob (`WORKSPACE.md` / `USER.md` locally, the org+user blobs

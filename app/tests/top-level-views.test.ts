@@ -4,6 +4,7 @@ import { ACADEMY_VIEW_ID } from "../src/components/academy/id.ts";
 import { AGENTS_HOME_VIEW_ID } from "../src/components/agents-home/id.ts";
 import { ASSISTANT_VIEW_ID } from "../src/components/assistant/id.ts";
 import { INTEGRATIONS_VIEW_ID } from "../src/components/integrations-view/id.ts";
+import { ADMIN_VIEW_ID } from "../src/components/organization/id.ts";
 import { SKILLS_VIEW_ID } from "../src/components/skills-view/id.ts";
 import { SETTINGS_SECTION_IDS } from "../src/lib/settings-sections.ts";
 import type { TeamSectionId } from "../src/lib/teams-model.ts";
@@ -36,6 +37,8 @@ describe("isTopLevelView", () => {
       INTEGRATIONS_VIEW_ID,
       // The shared Skills library, beside Integrations in the rail.
       SKILLS_VIEW_ID,
+      // Admin, the rail footer's gated dashboard.
+      ADMIN_VIEW_ID,
       // One screen for every team: which team is open is store state, not an id.
       AGENT_VIEW_ID,
     ]) {
@@ -43,13 +46,13 @@ describe("isTopLevelView", () => {
     }
   });
 
-  it("is exactly those eight, and no settings section doubles as one", () => {
+  it("is exactly those nine, and no settings section doubles as one", () => {
     // A Settings section is reached THROUGH `settings`, so no section id may
     // also resolve as a top-level view. Checking the live section list (rather
     // than retired string literals) keeps this failing if a future section is
     // wired up as a top-level view by mistake, and still covers the
     // stale-persisted-`viewMode` case that motivated it.
-    strictEqual(TOP_LEVEL_VIEWS.size, 8);
+    strictEqual(TOP_LEVEL_VIEWS.size, 9);
     for (const section of SETTINGS_SECTION_IDS) {
       strictEqual(isTopLevelView(section), false, section);
     }
@@ -214,11 +217,13 @@ describe("blockedTopLevelView", () => {
       showAiModels?: boolean;
       showAssistant?: boolean;
       showSkills?: boolean;
+      showOrganization?: boolean;
     } = {},
   ) => ({
     showAiModels: over.showAiModels ?? false,
     showAssistant: over.showAssistant ?? false,
     showSkills: over.showSkills ?? false,
+    showOrganization: over.showOrganization ?? false,
   });
 
   it("never blocks the Integrations page", () => {
@@ -244,6 +249,14 @@ describe("blockedTopLevelView", () => {
     strictEqual(blockedTopLevelView(SKILLS_VIEW_ID, gates()), true);
     strictEqual(
       blockedTopLevelView(SKILLS_VIEW_ID, gates({ showSkills: true })),
+      false,
+    );
+  });
+
+  it("blocks Admin when the organization gate is closed", () => {
+    strictEqual(blockedTopLevelView(ADMIN_VIEW_ID, gates()), true);
+    strictEqual(
+      blockedTopLevelView(ADMIN_VIEW_ID, gates({ showOrganization: true })),
       false,
     );
   });

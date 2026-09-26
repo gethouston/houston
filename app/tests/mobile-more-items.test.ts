@@ -1,15 +1,18 @@
 import assert from "node:assert/strict";
+import { readFileSync } from "node:fs";
 import { describe, it } from "node:test";
 import {
   type MobileMoreGroup,
-  mobileMoreFooterRows,
   mobileMoreItems,
 } from "../src/components/shell/mobile-more-items.ts";
 
 // The phone More menu's model: the rail's own destination runs, minus the
-// ones a gate emptied, plus the two help actions. The rail composes ONE
+// ones a gate emptied. The rail composes ONE
 // unlabelled run today; the mapper mirrors the library's section shape, bands
 // and all, so the menu draws whatever the rail hands it.
+
+const requireSource = (rel: string) =>
+  readFileSync(new URL(rel, import.meta.url), "utf8");
 
 const row = (id: string): MobileMoreGroup["items"][number] => ({
   id,
@@ -50,20 +53,18 @@ describe("mobileMoreItems", () => {
   });
 });
 
-describe("mobileMoreFooterRows", () => {
-  it("names the help action, wired to its handler", () => {
-    let reported = 0;
-    const rows = mobileMoreFooterRows({
-      reportProblem: "Report a problem",
-      onReportProblem: () => {
-        reported += 1;
-      },
-    });
-    assert.deepEqual(
-      rows.map((r) => [r.id, r.label]),
-      [["reportProblem", "Report a problem"]],
+describe("mobile More screen rows", () => {
+  it("gates Admin and omits the Help group", () => {
+    const source = requireSource(
+      "../src/components/shell/mobile-more-menu.tsx",
     );
-    rows[0].onSelect();
-    assert.equal(reported, 1);
+    assert.ok(
+      source.includes(
+        "{showOrganization && <MobileMoreRowButton row={admin} />}",
+      ),
+    );
+    assert.ok(source.includes('"data-testid": "rail-admin"'));
+    assert.ok(!source.includes("mobileMoreFooterRows"));
+    assert.ok(!source.includes("moreMenu.help"));
   });
 });

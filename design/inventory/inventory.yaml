@@ -36,7 +36,7 @@
 #   a11y     roles / labels / focus expectations the surface must honor
 #   since    inventory version this component first appeared in
 
-version: 106
+version: 107
 
 components:
   - id: custom-integration-details
@@ -1286,18 +1286,18 @@ components:
       The run leads the rail with no band over it, because these are the
       destinations a user heads for without being asked: the assistant that
       answers a question they have not worked out how to ask yet, the AI
-      accounts their turns run on, and the apps they have connected. A heading
+      accounts their turns run on, the apps they have connected, and the
+      shared Skills library when the space owner may edit it. A heading
       would only name what the glyphs already say, and the rows would still be
       the first thing read.
-      What the SPACE is made of is not here. Administering it -- who is in it,
-      what it is called, how long its agents have worked -- is STANDING SETUP
-      rather than a place work happens, so it is a section of Settings, reached
-      through the rail's footer. The shared skills every agent can use hang off
-      the connected-apps row instead, as its second tab: both answer what a
-      person's agents can reach outside themselves. Settings itself is a
-      permanent footer row beside the account controls: it belongs to the
-      person rather than to the space, and it has to be reachable in every
-      deployment.
+      The rail's footer holds Academy, Admin and Settings, in that order, with
+      no help control. Admin is a gated footer row that opens its own screen
+      with Company context, Org chart, People where the active team space has
+      a roster, Billing where allowed, Activity, Usage, and Time worked where
+      available. The row follows the organization gate: owners and admins of a
+      multiplayer team space and callers in a Spaces personal space can reach
+      it. Settings is a permanent footer row for personal setup and remains
+      reachable in every deployment.
       A run whose rows are all hidden by a gate is DROPPED with its rows: a
       heading may never outlive the list it names, which is the rule the AI Employees
       band's list below still lives by.
@@ -1417,21 +1417,18 @@ components:
     purpose: >-
       The phone's long tail behind the nav bar's More item: every destination
       the desktop rail lists, as a floating card rising from the bar.
-    anatomy: [card, workspace-switcher, settings-control, band-label,
-      destination-row, row-glyph, mention-badge, help-row]
+    anatomy: [card, workspace-switcher, destination-row, row-glyph]
     states: [closed, open]
     variants: []
     behavior: >-
       A floating rounded card anchored just above the nav bar, dismissed by
       scrim tap or swipe, never a full-height sheet. Its header is the
-      workspace switcher beside a Settings control; below it the desktop
-      rail's destinations in the rail's own order, one row each: the
-      unlabelled run (the assistant, AI Models where the caller may see it,
-      Integrations, each behind the same gate the rail applies), closed by the
-      Academy, then the help row (Report a problem). Administering
-      the space is reached through the Settings control, and the shared skills
-      library through the Integrations row, which carries it as a tab. One
-      list, the rail's own, so a destination cannot exist on the desktop and
+      workspace switcher; below it the desktop rail's destinations in the
+      rail's own order, one row each: the unlabelled run (the assistant when
+      discovered, AI Models, Integrations, and Skills for the space owner,
+      each behind the same gate the rail applies), then Academy, Admin when
+      the org gate admits the caller, then Settings. There is no help group.
+      One list, the rail's own, so a destination cannot exist on the desktop and
       be unreachable on the phone. Picking a destination closes the card and
       RESETS the navigation trail to that screen, with the bar's More item
       lit; opening the card itself is not a navigation and leaves no history

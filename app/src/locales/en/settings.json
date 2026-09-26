@@ -1,8 +1,5 @@
 {
   "title": "Settings",
-  "workspace": {
-    "title": "Workspace name"
-  },
   "nav": {
     "profile": "Profile",
     "aboutMe": "About me",
@@ -10,8 +7,7 @@
     "language": "Language",
     "shortcuts": "Keyboard shortcuts",
     "reportBug": "Report bug",
-    "danger": "Delete workspace",
-    "workspace": "Workspace management"
+    "danger": "Delete workspace"
   },
   "workspaceGate": {
     "failedTitle": "We couldn't load your settings",
@@ -160,7 +156,6 @@
       "profile": "Your name and picture",
       "aboutMe": "What your AI Employees know about you before they start",
       "apiKeys": "Let other apps and AI assistants start tasks with your AI Employees",
-      "workspace": "People, billing, activity, usage, and shared context",
       "shortcuts": "Run Houston without the mouse",
       "reportBug": "Something broke, or you have an idea? Tell us",
       "migration": "Pick up your move to the cloud"

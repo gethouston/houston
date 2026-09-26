@@ -9,31 +9,37 @@ import { AgentsHomeView } from "../agents-home/agents-home-view";
 import { AiHubView } from "../ai-hub/ai-hub-view";
 import { ASSISTANT_VIEW_ID, AssistantView } from "../assistant";
 import { INTEGRATIONS_VIEW_ID, IntegrationsView } from "../integrations-view";
+import { OrganizationView } from "../organization";
+import { ADMIN_VIEW_ID } from "../organization/id";
 import { SettingsView } from "../settings/settings-view";
 import { SKILLS_VIEW_ID } from "../skills-view/id";
 import { SkillsPage } from "../skills-view/skills-page";
 import { AgentView } from "../team-view/agent-view";
 import type { KeepAliveView } from "./keep-alive-views";
+import { adminViewEnabled } from "./top-level-screen-plan";
 
 /**
  * The cached top-level screens, separated from the shell's agent-tab chrome.
  *
  * The Academy is ungated: learning the product exists in every deployment.
- * Settings carries its own sections — About me and Workspace management, which
- * holds everything that administers the space (`lib/settings-sections.ts`).
+ * Settings carries personal setup sections (`lib/settings-sections.ts`).
  *
  * The shared Skills library is its own screen, gated like the rail row that
  * opens it: a skill edit reaches every agent in the space, so the surface
  * belongs to whoever owns it.
  *
- * Each employee's policy is reached through their own screen; space
- * administration lives under Settings. Employee screens share one view id and
- * read the selected employee and section from the UI store.
+ * Each employee's policy is reached through their own screen. Admin owns the
+ * space's administration and follows the organization gate: it stays mounted
+ * while that gate resolves so it can show a neutral frame. Employee screens
+ * share one view id and read the selected employee and section from the UI
+ * store.
  */
 export function topLevelScreenViews(gates: {
   showAiModels: boolean;
   showAssistant: boolean;
   showSkills: boolean;
+  showOrganization: boolean;
+  ready: boolean;
 }): KeepAliveView[] {
   return [
     // The phone's Agents tab root and the desktop's temporary boot landing.
@@ -55,6 +61,11 @@ export function topLevelScreenViews(gates: {
       content: <IntegrationsView />,
     },
     { id: SKILLS_VIEW_ID, enabled: gates.showSkills, content: <SkillsPage /> },
+    {
+      id: ADMIN_VIEW_ID,
+      enabled: adminViewEnabled(gates),
+      content: <OrganizationView />,
+    },
     { id: AGENT_VIEW_ID, enabled: true, content: <AgentView /> },
   ];
 }

@@ -11,10 +11,9 @@ import {
 /** The Teams gates that decide which non-agent surfaces this caller can reach. */
 export interface SurfaceGates {
   /**
-   * The Admin dashboard behind Settings' "Workspace management" section; every
-   * other caller gets the plain workspace-name card there. Multiplayer
-   * owner/admin only on a non-spaces multiplayer host. A C8 Spaces personal
-   * space also shows Admin because its sole caller owns that space.
+   * The Admin rail row and top-level dashboard. Multiplayer owner/admin can
+   * reach it, as can the caller in a Spaces personal space. Other callers
+   * see no row and an open Admin view returns home.
    */
   showOrganization: boolean;
   /**
@@ -32,10 +31,8 @@ export interface SurfaceGates {
    */
   showWorkspaceDanger: boolean;
   /**
-   * The AI Models hub, which is also where each connected account's usage lives
-   * (HOU-789). In a Teams workspace it is owner/admin territory (provider
-   * credentials are org-level), so plain members lose it; everyone else keeps
-   * it.
+   * The AI Models hub holds each caller's connected accounts and usage
+   * (HOU-789). Every caller can reach their own accounts.
    */
   showAiModels: boolean;
   /**

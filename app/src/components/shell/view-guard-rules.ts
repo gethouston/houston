@@ -102,14 +102,21 @@ export function bootGuardStep(
 
 export type DeadViewAction = "keep" | "wait" | "go-home";
 
+/** A closed, settled organization gate cannot honor a pending Admin tab. */
+export function shouldDropAdminPin(gates: {
+  ready: boolean;
+  showOrganization: boolean;
+}): boolean {
+  return gates.ready && !gates.showOrganization;
+}
+
 /**
  * Whether the open view still exists — and, when it does not, whether that is
  * genuinely stale or merely in flight.
  *
- * A `viewMode` no screen answers to, a view this caller's gates hide (the AI
- * Models hub for a plain member, the shared Skills library for anyone but the
- * space's owner, Admin outside a team space or below owner/admin, the assistant
- * on a deployment that serves none), or an employee that stopped existing under an
+ * A `viewMode` no screen answers to, a view this caller's gates hide (the
+ * shared Skills library for anyone but the space's owner, Admin below its
+ * organization gate, the assistant on a deployment that serves none), or an employee that stopped existing under an
  * open employee view all fall through every render branch and strand the user on a
  * blank card. Those go home.
  *
@@ -129,6 +136,7 @@ export function deadViewStep(input: {
   showAiModels: boolean;
   showAssistant: boolean;
   showSkills: boolean;
+  showOrganization: boolean;
   /** False while the capabilities behind the gates are still loading. */
   gatesReady: boolean;
   agentsReady: boolean;
@@ -144,6 +152,7 @@ export function deadViewStep(input: {
     showAiModels: input.showAiModels,
     showAssistant: input.showAssistant,
     showSkills: input.showSkills,
+    showOrganization: input.showOrganization,
   });
   if (gateDead && !input.gatesReady) return "wait";
   const dead = !isTopLevelView(input.viewMode) || gateDead || agentDead;
