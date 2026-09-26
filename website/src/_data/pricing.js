@@ -8,9 +8,9 @@ export default function () {
   return {
     currency: "$",
     // Team plan, per seat, per month, billed monthly.
-    teamMonthly: 15,
+    teamMonthly: 20,
     // Team plan, per seat, per month, when billed annually (the cheaper rate).
-    teamAnnual: 12,
+    teamAnnual: 15,
     // Length of the invite-triggered free trial, in days.
     trialDays: 14,
     // Where "Contact sales" points. Mirrors the site's existing contact CTA.

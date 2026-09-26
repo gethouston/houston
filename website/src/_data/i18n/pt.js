@@ -23,15 +23,15 @@ export default {
   meta: {
     title: "Houston: agentes de IA que fazem o trabalho de verdade",
     description:
-      "O Houston é o espaço de trabalho compartilhado onde pessoas e agentes de IA trabalham juntos. Agentes compartilhados, um único quadro de missões e papéis para o time inteiro. Grátis para até três pessoas.",
+      "O Houston é o espaço de trabalho compartilhado onde pessoas e agentes de IA trabalham juntos. Agentes compartilhados, um único quadro de missões e papéis para o time inteiro. Grátis para começar por conta própria.",
     ogTitle: "Houston: agentes de IA que fazem o trabalho de verdade",
     ogDescription:
-      "O Houston é o espaço de trabalho compartilhado onde pessoas e agentes de IA trabalham juntos. Agentes compartilhados, um único quadro de missões e papéis para o time inteiro. Grátis para até três pessoas.",
+      "O Houston é o espaço de trabalho compartilhado onde pessoas e agentes de IA trabalham juntos. Agentes compartilhados, um único quadro de missões e papéis para o time inteiro. Grátis para começar por conta própria.",
     twTitle: "Houston: agentes de IA que fazem o trabalho de verdade",
     twDescription:
-      "O Houston é o espaço de trabalho compartilhado onde pessoas e agentes de IA trabalham juntos. Agentes compartilhados, um único quadro de missões e papéis para o time inteiro. Grátis para até três pessoas.",
+      "O Houston é o espaço de trabalho compartilhado onde pessoas e agentes de IA trabalham juntos. Agentes compartilhados, um único quadro de missões e papéis para o time inteiro. Grátis para começar por conta própria.",
     jsonLdDescription:
-      "App de computador gratuito que coloca agentes de IA para fazer trabalho de verdade por você, com a assinatura de ChatGPT ou Claude que você já tem e mais de 1.000 integrações.",
+      "App de computador gratuito que coloca agentes de IA para fazer trabalho de verdade por você, com a assinatura de ChatGPT ou Claude que você já tem e mais de 1.500 integrações.",
     ogImageAlt: "Houston: agentes de IA que fazem o trabalho de verdade.",
   },
 
@@ -349,9 +349,9 @@ export default {
     title: "Conecta com tudo o que você já usa.",
     tiles: [
       {
-        n: "1.000+",
+        n: "1.500+",
         l: "integrações, as ferramentas onde seu time já trabalha",
-        more: "mais 990",
+        more: "mais 1.490",
       },
       {
         n: "400+",
@@ -373,16 +373,14 @@ export default {
 
   pricing: {
     title: "Pronto para multiplicar seu time por 10 da noite para o dia?",
-    lead: "Grátis para as três primeiras pessoas. Suba de plano quando o time inteiro quiser entrar.",
+    lead: "Comece grátis, por conta própria. Suba de plano quando o time quiser entrar.",
     free: {
       name: "Grátis",
-      note: "para você, ou para um time de até três",
+      note: "para você",
       items: [
-        "Seu espaço de trabalho pessoal, grátis para sempre",
-        "Até três pessoas quando você quiser",
-        "Todas as mais de 1.000 integrações",
+        "Seu espaço de trabalho pessoal, grátis e com folga de sobra para explorar",
+        "Todas as mais de 1.500 integrações",
         "Funciona com sua assinatura de IA",
-        "Agentes da comunidade, direto da loja",
       ],
       cta: "Baixar o app",
     },
@@ -468,7 +466,7 @@ export default {
           {
             q: "Com o que os agentes conseguem se conectar?",
             aHtml:
-              "Com mais de 1.000 ferramentas que você já usa, como Gmail, Slack, QuickBooks, HubSpot e Google Drive.",
+              "Com mais de 1.500 ferramentas que você já usa, como Gmail, Slack, QuickBooks, HubSpot e Google Drive.",
           },
           {
             q: "Posso usar meu próprio plano do ChatGPT ou do Claude?",
@@ -493,7 +491,7 @@ export default {
           {
             q: "O que é grátis?",
             aHtml:
-              "O Houston é grátis para até três pessoas em um espaço, com uso limitado e sem cartão. O suficiente para colocar agentes em trabalho de verdade e sentir o valor. Quando o time inteiro quiser entrar, ou você precisar de uso ilimitado, é só subir para o plano Time.",
+              "O Houston é grátis para uma pessoa, sem cartão e com folga de sobra para explorar. O suficiente para colocar agentes em trabalho de verdade e sentir o valor. Quando você quiser trazer o time, ou precisar de uso ilimitado, é só subir para o plano Time.",
           },
           {
             q: "Quem paga por um time?",
@@ -513,7 +511,7 @@ export default {
           {
             q: "O que acontece quando o teste acaba?",
             aHtml:
-              "Nada é apagado. O espaço volta para o plano grátis: até três pessoas e uso limitado. Cada agente e cada missão continuam no lugar. Coloque um cartão quando quiser.",
+              "Nada é apagado. O espaço volta para o plano grátis: todo mundo continua com acesso e o uso fica limitado. Cada agente e cada missão continuam no lugar. Coloque um cartão quando quiser.",
           },
           {
             q: "Os membros baixam ou pagam?",
