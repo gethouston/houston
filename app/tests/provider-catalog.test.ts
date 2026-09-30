@@ -57,8 +57,8 @@ describe("hydrateProviderCatalog: local provider + auth", () => {
 
 describe("hydrateProviderCatalog: model metadata", () => {
   it("layers override label + description over pi's raw model name", () => {
-    const sonnet = getModel("anthropic", "claude-sonnet-5");
-    strictEqual(sonnet?.label, "Sonnet 5");
+    const sonnet = getModel("anthropic", "claude-sonnet-5-5");
+    strictEqual(sonnet?.label, "Sonnet 5.5");
     ok(sonnet && sonnet.description.length > 0);
   });
 
@@ -73,14 +73,14 @@ describe("hydrateProviderCatalog: model metadata", () => {
   });
 
   it("takes the model window from pi, and the snap-up ceiling from the override", () => {
-    // Sonnet 4.6: pi reports 200k (the default estimate); override adds the
-    // credit-gated 1M snap-up.
-    deepStrictEqual(getContextWindowConfig("anthropic", "claude-sonnet-4-6"), {
-      default: 200_000,
-      max: 1_000_000,
+    // GPT-6 Astra: the override starts at Codex's 95%-effective 272k tier and
+    // snaps up to its opt-in 1M variant (× 95%).
+    deepStrictEqual(getContextWindowConfig("openai", "gpt-6-astra"), {
+      default: 258_400,
+      max: 950_000,
     });
-    // Sonnet 5: flat 1M from pi, no override ceiling → default === max.
-    deepStrictEqual(getContextWindowConfig("anthropic", "claude-sonnet-5"), {
+    // Sonnet 5.5: flat 1M from pi, no override ceiling → default === max.
+    deepStrictEqual(getContextWindowConfig("anthropic", "claude-sonnet-5-5"), {
       default: 1_000_000,
       max: 1_000_000,
     });
@@ -89,13 +89,13 @@ describe("hydrateProviderCatalog: model metadata", () => {
   it("derives the effort set straight from pi (no hand-curated per-model list)", () => {
     // Both are reasoning models with pi's full ladder in the fixture → the
     // four-tier low→xhigh spectrum, with no retired `max`.
-    deepStrictEqual(getEffortLevels("anthropic", "claude-sonnet-4-6"), [
+    deepStrictEqual(getEffortLevels("anthropic", "claude-sonnet-5-5"), [
       "low",
       "medium",
       "high",
       "xhigh",
     ]);
-    deepStrictEqual(getEffortLevels("anthropic", "claude-opus-4-8"), [
+    deepStrictEqual(getEffortLevels("anthropic", "claude-opus-5-5"), [
       "low",
       "medium",
       "high",
@@ -152,16 +152,19 @@ describe("normalizeEffort (legacy `max` tolerance)", () => {
 
 describe("helpers read the hydrated cache", () => {
   it("getDefaultModel: override pick for curated, first model for new providers", () => {
-    strictEqual(getDefaultModel("anthropic"), "claude-sonnet-5");
+    strictEqual(getDefaultModel("anthropic"), "claude-sonnet-5-5");
     strictEqual(getDefaultModel("groq"), "llama-4-scout");
   });
 
   it("validModelOrNull: authoritative for curated, pass-through for open catalogs", () => {
     strictEqual(
-      validModelOrNull("anthropic", "claude-opus-4-8"),
-      "claude-opus-4-8",
+      validModelOrNull("anthropic", "claude-opus-5-5"),
+      "claude-opus-5-5",
     );
     strictEqual(validModelOrNull("anthropic", "gpt-5.5-codex"), null);
+    // A Claude id retired from the lineup is no longer a row of its own
+    // (`normalizeLegacyModel` is what reads it as its family's lineup model).
+    strictEqual(validModelOrNull("anthropic", "claude-opus-4-8"), null);
     // OpenRouter + the two OpenCode gateways run ids pi doesn't enumerate.
     strictEqual(validModelOrNull("openrouter", "x-ai/grok-5"), "x-ai/grok-5");
     strictEqual(
@@ -174,16 +177,16 @@ describe("helpers read the hydrated cache", () => {
     // A persisted legacy `max` normalizes to the top tier the model accepts,
     // so an agent carrying it keeps its top-tier reasoning (not the default).
     strictEqual(
-      validEffortOrDefault("anthropic", "claude-sonnet-4-6", "max"),
+      validEffortOrDefault("anthropic", "claude-sonnet-5-5", "max"),
       "xhigh",
     );
     strictEqual(
-      validEffortOrDefault("anthropic", "claude-sonnet-4-6", "xhigh"),
+      validEffortOrDefault("anthropic", "claude-sonnet-5-5", "xhigh"),
       "xhigh",
     );
     // Garbage clamps to the shared default.
     strictEqual(
-      validEffortOrDefault("anthropic", "claude-sonnet-4-6", "bogus"),
+      validEffortOrDefault("anthropic", "claude-sonnet-5-5", "bogus"),
       "medium",
     );
     // A model with no effort row → undefined (caller omits the flag).
@@ -196,7 +199,7 @@ describe("helpers read the hydrated cache", () => {
   it("normalizeLegacyModel still resolves retired aliases against the cache", () => {
     strictEqual(
       validModelOrNull("anthropic", normalizeLegacyModel("opus", "anthropic")),
-      "claude-opus-5",
+      "claude-opus-5-5",
     );
     // Bare "sonnet" lands on the provider's ONE default, read from the table
     // the alias itself derives from (`@houston/domain` model-aliases.ts): saying
@@ -229,7 +232,7 @@ describe("helpers read the hydrated cache", () => {
     // A Codex alias is not an Anthropic one, and the other way round.
     strictEqual(normalizeLegacyModel("gpt-5.5", "anthropic"), "gpt-5.5");
     strictEqual(normalizeLegacyModel("opus", "openai"), "opus");
-    strictEqual(normalizeLegacyModel("opus", "anthropic"), "claude-opus-5");
+    strictEqual(normalizeLegacyModel("opus", "anthropic"), "claude-opus-5-5");
     // No provider to key on: nothing is a legacy alias of nothing.
     strictEqual(normalizeLegacyModel("opus", null), "opus");
   });

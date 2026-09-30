@@ -1,4 +1,4 @@
-import type { ExtensionContext } from "@earendil-works/pi-coding-agent";
+import type { ExtensionToolContext } from "@earendil-works/pi-coding-agent";
 import { afterEach, expect, test } from "vitest";
 import { runWithActingContext } from "../acting-context";
 import {
@@ -57,7 +57,7 @@ if (!search || !execute || !requestConnection)
 
 // pi's tool.execute takes (id, params, signal, onUpdate, ctx); the last two are
 // irrelevant to these proxies, so one helper supplies them.
-const ctx = {} as unknown as ExtensionContext;
+const ctx = {} as unknown as ExtensionToolContext;
 const run = (tool: typeof search, params: unknown) =>
   tool.execute("id", params as never, undefined, undefined, ctx);
 

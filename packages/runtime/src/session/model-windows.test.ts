@@ -6,10 +6,12 @@ import {
 import { expect, test } from "vitest";
 
 test("resolveModelWindow: an override wins over pi's raw window", () => {
-  // pi reports 1,000,000 for the anthropic flagship, but the real default is 200k.
-  expect(resolveModelWindow("anthropic", "claude-opus-4-8", 1_000_000)).toEqual(
-    { default: 200_000, max: 1_000_000 },
-  );
+  // pi reports 1,050,000 for gpt-6-astra; Codex's effective window is 95% of
+  // the 272k standard tier, with the opt-in 1M variant (× 95%) as the ceiling.
+  expect(resolveModelWindow("openai-codex", "gpt-6-astra", 1_050_000)).toEqual({
+    default: 258_400,
+    max: 950_000,
+  });
 });
 
 test("resolveModelWindow: no override falls back to pi's raw as both default + max", () => {
@@ -27,21 +29,21 @@ test("resolveModelWindow: no override falls back to pi's raw as both default + m
 
 test("effectiveModelWindow: starts at the default before observed usage proves more", () => {
   expect(
-    effectiveModelWindow("anthropic", "claude-opus-4-8", 1_000_000, 40_000),
-  ).toBe(200_000);
+    effectiveModelWindow("openai-codex", "gpt-6-astra", 1_050_000, 40_000),
+  ).toBe(258_400);
 });
 
 test("effectiveModelWindow: snaps up to the ceiling once observed exceeds the default", () => {
-  // 250k observed proves the credit-gated 1M window is active.
+  // 300k observed proves the opt-in 1M variant is active.
   expect(
-    effectiveModelWindow("anthropic", "claude-opus-4-8", 1_000_000, 250_000),
-  ).toBe(1_000_000);
+    effectiveModelWindow("openai-codex", "gpt-6-astra", 1_050_000, 300_000),
+  ).toBe(950_000);
 });
 
 test("effectiveModelWindow: never reads below the observed count (mis-catalogued ceiling)", () => {
   // Observed above even the max floors the window at observed, so % <= 100.
   expect(
-    effectiveModelWindow("anthropic", "claude-opus-4-8", 1_000_000, 1_200_000),
+    effectiveModelWindow("openai-codex", "gpt-6-astra", 1_050_000, 1_200_000),
   ).toBe(1_200_000);
 });
 
@@ -51,19 +53,18 @@ test("effectiveModelWindow: no-override model divides by pi's raw window", () =>
   ).toBe(1_048_576);
 });
 
-// Pins the curated Anthropic windows so a pi-ai catalog drift (or an accidental
-// edit) fails CI rather than silently changing the bar + autocompact denominator.
-test("MODEL_WINDOW_OVERRIDES: Anthropic flagships are 200k default / 1M ceiling", () => {
+// Pins the Anthropic sizing so a pi-ai catalog drift (or an accidental edit)
+// fails CI rather than silently changing the bar + autocompact denominator.
+test("MODEL_WINDOW_OVERRIDES: the Claude lineup carries no row (native 1M)", () => {
+  expect(MODEL_WINDOW_OVERRIDES.anthropic).toBeUndefined();
   for (const id of [
-    "claude-sonnet-4-6",
-    "claude-opus-4-7",
-    "claude-opus-4-8",
+    "claude-sonnet-5-5",
+    "claude-opus-5-5",
+    "claude-fable-5-1",
   ]) {
-    expect(MODEL_WINDOW_OVERRIDES.anthropic[id]).toEqual({
-      default: 200_000,
+    expect(resolveModelWindow("anthropic", id, 1_000_000)).toEqual({
+      default: 1_000_000,
       max: 1_000_000,
     });
   }
-  // fable-5 is intentionally NOT gated (pi's 1M stands).
-  expect(MODEL_WINDOW_OVERRIDES.anthropic["claude-fable-5"]).toBeUndefined();
 });

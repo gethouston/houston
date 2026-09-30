@@ -19,9 +19,9 @@ describe("resolveAgentModelOverrides", () => {
     deepStrictEqual(
       resolveAgentModelOverrides({
         provider: "anthropic",
-        model: "claude-opus-4-8",
+        model: "claude-opus-5-5",
       }),
-      { providerOverride: "anthropic", modelOverride: "claude-opus-4-8" },
+      { providerOverride: "anthropic", modelOverride: "claude-opus-5-5" },
     );
   });
 
@@ -42,12 +42,12 @@ describe("resolveAgentModelOverrides", () => {
     deepStrictEqual(
       resolveAgentModelOverrides({
         provider: "anthropic",
-        model: "claude-opus-4-8",
+        model: "claude-opus-5-5",
         effort: "high",
       }),
       {
         providerOverride: "anthropic",
-        modelOverride: "claude-opus-4-8",
+        modelOverride: "claude-opus-5-5",
         effortOverride: "high",
       },
     );
@@ -56,7 +56,7 @@ describe("resolveAgentModelOverrides", () => {
   it("returns no pins when the config names no provider (the runtime keeps resolving the turn itself)", () => {
     deepStrictEqual(resolveAgentModelOverrides({}), {});
     deepStrictEqual(
-      resolveAgentModelOverrides({ model: "claude-opus-4-8" }),
+      resolveAgentModelOverrides({ model: "claude-opus-5-5" }),
       {},
     );
   });
@@ -74,7 +74,7 @@ describe("resolveAgentModelOverrides", () => {
       model: "claude-9-imaginary",
     });
     strictEqual(pins.providerOverride, "anthropic");
-    strictEqual(pins.modelOverride, "claude-sonnet-5");
+    strictEqual(pins.modelOverride, "claude-sonnet-5-5");
   });
 
   it("normalizes a legacy alias at the same tier (no Opus→Sonnet downgrade)", () => {
@@ -82,7 +82,23 @@ describe("resolveAgentModelOverrides", () => {
       provider: "anthropic",
       model: "opus",
     });
-    strictEqual(pins.modelOverride, "claude-opus-5");
+    strictEqual(pins.modelOverride, "claude-opus-5-5");
+  });
+
+  it("moves a retired Claude pin to its own family's lineup model", () => {
+    const cases: Record<string, string> = {
+      "claude-opus-5": "claude-opus-5-5",
+      "claude-opus-4-8": "claude-opus-5-5",
+      "claude-sonnet-5": "claude-sonnet-5-5",
+      "claude-sonnet-4-6": "claude-sonnet-5-5",
+      "claude-fable-5": "claude-fable-5-1",
+    };
+    for (const [model, lineup] of Object.entries(cases))
+      deepStrictEqual(
+        resolveAgentModelOverrides({ provider: "anthropic", model }),
+        { providerOverride: "anthropic", modelOverride: lineup },
+        model,
+      );
   });
 
   it("omits the model pin when the provider has no default to give (B4)", () => {
@@ -105,7 +121,7 @@ describe("resolveAgentModelOverrides", () => {
 describe("resolveAgentModelOverrides + connected providers", () => {
   it("moves the pin to a connected provider when the configured one is signed out (the reported bug: OpenAI-only user, agent configured for Anthropic)", () => {
     const pins = resolveAgentModelOverrides(
-      { provider: "anthropic", model: "claude-opus-4-8" },
+      { provider: "anthropic", model: "claude-opus-5-5" },
       ["openai"],
     );
     strictEqual(pins.providerOverride, "openai");
@@ -116,7 +132,7 @@ describe("resolveAgentModelOverrides + connected providers", () => {
 
   it("drops a stored effort when the pin moves (it was clamped for the other provider's model)", () => {
     const pins = resolveAgentModelOverrides(
-      { provider: "anthropic", model: "claude-opus-4-8", effort: "high" },
+      { provider: "anthropic", model: "claude-opus-5-5", effort: "high" },
       ["openai"],
     );
     strictEqual(pins.providerOverride, "openai");
@@ -126,10 +142,10 @@ describe("resolveAgentModelOverrides + connected providers", () => {
   it("keeps the configured provider when the user IS connected to it", () => {
     deepStrictEqual(
       resolveAgentModelOverrides(
-        { provider: "anthropic", model: "claude-opus-4-8" },
+        { provider: "anthropic", model: "claude-opus-5-5" },
         ["openai", "anthropic"],
       ),
-      { providerOverride: "anthropic", modelOverride: "claude-opus-4-8" },
+      { providerOverride: "anthropic", modelOverride: "claude-opus-5-5" },
     );
   });
 
@@ -154,20 +170,20 @@ describe("resolveAgentModelOverrides + connected providers", () => {
   it("defers to the configured provider when connectivity is unconfirmable (null is not 'nothing is connected')", () => {
     deepStrictEqual(
       resolveAgentModelOverrides(
-        { provider: "anthropic", model: "claude-opus-4-8" },
+        { provider: "anthropic", model: "claude-opus-5-5" },
         null,
       ),
-      { providerOverride: "anthropic", modelOverride: "claude-opus-4-8" },
+      { providerOverride: "anthropic", modelOverride: "claude-opus-5-5" },
     );
   });
 
   it("keeps the configured provider when nothing at all is connected (its sign-in error is the surface)", () => {
     deepStrictEqual(
       resolveAgentModelOverrides(
-        { provider: "anthropic", model: "claude-opus-4-8" },
+        { provider: "anthropic", model: "claude-opus-5-5" },
         [],
       ),
-      { providerOverride: "anthropic", modelOverride: "claude-opus-4-8" },
+      { providerOverride: "anthropic", modelOverride: "claude-opus-5-5" },
     );
   });
 
@@ -206,18 +222,18 @@ describe("readAgentModelOverrides", () => {
   it("reads the config and resolves it", async () => {
     const pins = await readAgentModelOverrides("/a", async (path) => {
       strictEqual(path, "/a");
-      return { provider: "anthropic", model: "claude-opus-4-8" };
+      return { provider: "anthropic", model: "claude-opus-5-5" };
     });
     deepStrictEqual(pins, {
       providerOverride: "anthropic",
-      modelOverride: "claude-opus-4-8",
+      modelOverride: "claude-opus-5-5",
     });
   });
 
   it("forwards the connected set to the resolver", async () => {
     const pins = await readAgentModelOverrides(
       "/a",
-      async () => ({ provider: "anthropic", model: "claude-opus-4-8" }),
+      async () => ({ provider: "anthropic", model: "claude-opus-5-5" }),
       ["openai"],
     );
     strictEqual(pins.providerOverride, "openai");

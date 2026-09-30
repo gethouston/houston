@@ -10,7 +10,7 @@
  * | `provider-default-models.ts`  | `DEFAULT_MODEL` (every surface's default) |
  * | `provider-valid-models.ts`    | `VALID_MODELS`                            |
  * | `provider-name-aliases.ts`    | `PROVIDER_ALIASES`                        |
- * | `model-aliases.ts`            | `MODEL_ALIASES`                           |
+ * | `model-aliases.ts`            | `MODEL_ALIASES`, the Anthropic lineup     |
  *
  * Each leaf is dependency-free — no import at all, a type-only one, or (in
  * `provider-name-aliases.ts`) a value import of a sibling leaf — so it can be
@@ -18,15 +18,16 @@
  * `node --experimental-strip-types`, which is what lets the app catalog read
  * these values rather than restate them. A leaf that IS exposed as a subpath
  * reaches a sibling through the package subpath (`model-aliases.ts` reads
- * `@houston/domain/provider-default-models`): that runner resolves no
+ * `@houston/domain/provider-dialect`): that runner resolves no
  * extensionless relative specifier, and a `.ts` one is a type error under this
  * package's emitting tsconfig.
  *
  * The catalog is hard-coded (NOT read from pi-ai) so `@houston/domain` stays
  * free of the pi-ai dependency and the open/closed boundary. The valid-model
- * sets were captured from `getModels("anthropic")` / `getModels("openai-codex")`
- * — keep them current as pi's catalog moves (a stale entry only ever means we
- * migrate to the provider default + emit a diagnostic, never a throw).
+ * sets are drawn from `getModels(...)` (Anthropic's narrowed to its lineup,
+ * Codex's to what the subscription serves) — keep them current as pi's catalog
+ * moves (a stale entry only ever means we migrate to the provider default +
+ * emit a diagnostic, never a throw).
  */
 
 export { MODEL_ALIASES } from "./model-aliases";

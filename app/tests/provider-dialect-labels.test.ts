@@ -149,7 +149,7 @@ describe("the app catalog reads its defaults from the domain table", () => {
   });
 
   it("keeps Anthropic on the model the runtime and picker agree on", () => {
-    strictEqual(DEFAULT_MODEL.anthropic, "claude-sonnet-5");
-    strictEqual(getDefaultModel("anthropic"), "claude-sonnet-5");
+    strictEqual(DEFAULT_MODEL.anthropic, "claude-sonnet-5-5");
+    strictEqual(getDefaultModel("anthropic"), "claude-sonnet-5-5");
   });
 });

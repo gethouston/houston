@@ -90,6 +90,11 @@ export const SAMPLE_CATALOG: ProviderCatalog = [
     "ChatGPT subscription",
   ),
   provider("anthropic", "oauth", [
+    reasoningModel("claude-sonnet-5-5", {
+      contextWindow: 1_000_000,
+      vision: true,
+    }),
+    reasoningModel("claude-opus-5-5", { contextWindow: 1_000_000 }),
     reasoningModel("claude-sonnet-5", {
       contextWindow: 1_000_000,
       vision: true,

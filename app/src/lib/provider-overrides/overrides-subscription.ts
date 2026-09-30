@@ -28,9 +28,6 @@ export const SUBSCRIPTION_OVERRIDES: Record<string, ProviderOverride> = {
       "gpt-5.3-codex-spark": {
         description: "Ultra-fast coding model.",
       },
-      "gpt-5.4-mini": {
-        description: "Small, fast, and cost-efficient for simpler tasks.",
-      },
     },
   },
   anthropic: {
@@ -40,30 +37,17 @@ export const SUBSCRIPTION_OVERRIDES: Record<string, ProviderOverride> = {
     cost: "Your Claude subscription",
     installUrl: "https://docs.anthropic.com/en/docs/claude-code/overview",
     auth: "oauth",
+    // Rows in picker order: the picker ranks curated rows by this key order.
     models: {
-      "claude-sonnet-5": {
-        description: "Newest Sonnet. Stronger agentic coding and tool use.",
+      "claude-sonnet-5-5": {
+        description: "Fast and capable. Best for everyday work.",
+      },
+      "claude-opus-5-5": {
+        description: "Deeper reasoning for complex, long-running work.",
       },
       "claude-fable-5-1": {
         description:
-          "Newest Fable. Most capable model, costs 2x more credits than Opus 5.",
-      },
-      "claude-fable-5": {
-        description: "Previous Fable. Costs 2x more credits than Opus 5.",
-      },
-      "claude-opus-5": {
-        description:
-          "Newest Opus. Deeper reasoning and stronger autonomous work.",
-      },
-      "claude-opus-4-8": {
-        description: "Previous Opus. Strong alignment and agentic coding.",
-      },
-      "claude-opus-4-7": {
-        description:
-          "Older Opus. Strong coding autonomy and complex reasoning.",
-      },
-      "claude-sonnet-4-6": {
-        description: "Best balance of speed and quality.",
+          "Most capable. Uses up your Claude limits faster than Opus.",
       },
     },
   },

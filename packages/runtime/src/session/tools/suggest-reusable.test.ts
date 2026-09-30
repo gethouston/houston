@@ -1,4 +1,4 @@
-import type { ExtensionContext } from "@earendil-works/pi-coding-agent";
+import type { ExtensionToolContext } from "@earendil-works/pi-coding-agent";
 import { expect, test } from "vitest";
 import {
   newInteractionHolder,
@@ -20,7 +20,7 @@ const suggestReusable = makeSuggestReusableTool();
 
 // pi's tool.execute takes (id, params, signal, onUpdate, ctx); the last three
 // are irrelevant here, so one helper supplies them.
-const ctx = {} as unknown as ExtensionContext;
+const ctx = {} as unknown as ExtensionToolContext;
 const run = (params: unknown) =>
   suggestReusable.execute("id", params as never, undefined, undefined, ctx);
 

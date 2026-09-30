@@ -1,4 +1,4 @@
-import type { ExtensionContext } from "@earendil-works/pi-coding-agent";
+import type { ExtensionToolContext } from "@earendil-works/pi-coding-agent";
 import { expect, test, vi } from "vitest";
 import {
   newInteractionHolder,
@@ -19,7 +19,7 @@ import {
  * did nothing).
  */
 
-const ctx = {} as unknown as ExtensionContext;
+const ctx = {} as unknown as ExtensionToolContext;
 
 function toolWith(
   status: (

@@ -1,4 +1,4 @@
-import type { ExtensionContext } from "@earendil-works/pi-coding-agent";
+import type { ExtensionToolContext } from "@earendil-works/pi-coding-agent";
 import type { AssistantCatalog } from "@houston/host/src/assistant/catalog";
 import { afterEach, expect, test } from "vitest";
 import { runWithActingContext } from "../acting-context";
@@ -15,7 +15,7 @@ import { httpSandboxFetch } from "./sandbox-fetch";
  * mistake from a refusal it must relay to the user.
  */
 
-const CTX = {} as ExtensionContext;
+const CTX = {} as ExtensionToolContext;
 
 const catalog: AssistantCatalog = {
   version: 3,

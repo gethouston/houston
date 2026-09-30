@@ -1,4 +1,4 @@
-import type { ExtensionContext } from "@earendil-works/pi-coding-agent";
+import type { ExtensionToolContext } from "@earendil-works/pi-coding-agent";
 import type { ProviderOption } from "@houston/domain";
 import { expect, test } from "vitest";
 import { makeMissionTools } from "./missions";
@@ -13,7 +13,7 @@ import type { SandboxFetch } from "./sandbox-fetch";
 
 // The tools take their request scope from AsyncLocalStorage and never read the
 // extension context, so an empty one is safe (same stance as the MCP bridge).
-const NOOP = {} as ExtensionContext;
+const NOOP = {} as ExtensionToolContext;
 
 interface Recorded {
   path: string;

@@ -153,6 +153,9 @@ export function buildProviderCatalog(): ProviderCatalog {
   const catalog: ProviderCatalog = [];
   for (const id of getProviders()) {
     const models = getModels(id as BuiltinProvider);
+    // A provider whose baked catalog holds no chat model (pi 0.99's `typesafe`
+    // ships only classifier rows) has nothing a picker could run.
+    if (models.length === 0) continue;
     catalog.push(
       piProviderToCatalog(
         id,

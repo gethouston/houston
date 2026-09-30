@@ -1,4 +1,4 @@
-import type { ExtensionContext } from "@earendil-works/pi-coding-agent";
+import type { ExtensionToolContext } from "@earendil-works/pi-coding-agent";
 import { afterEach, expect, test } from "vitest";
 import { runWithActingContext } from "../acting-context";
 import { runWithConversationId } from "../conversation-context";
@@ -51,7 +51,7 @@ function mockFetch(reply: () => { status?: number; body?: unknown }) {
 const tool = makeSaveLearningTool({
   call: httpSandboxFetch("https://host.test/", "sb-tok"),
 });
-const ctx = {} as unknown as ExtensionContext;
+const ctx = {} as unknown as ExtensionToolContext;
 const run = (params: unknown) =>
   tool.execute("id", params as never, undefined, undefined, ctx);
 

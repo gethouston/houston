@@ -14,11 +14,17 @@ import {
  * silently ran the provider's default instead of what was asked for.
  */
 
-test("every displayed id is one the provider can actually run", () => {
+test("a spoken name only ever resolves to a model the provider runs", () => {
+  // The table keeps names for models a provider no longer runs (older chats
+  // and activity rows still name them), but a name must never resolve to one.
   for (const [provider, rows] of Object.entries(MODEL_DISPLAY)) {
     const valid = VALID_MODELS[provider];
     if (!valid) continue;
-    for (const id of Object.keys(rows ?? {})) expect(valid.has(id)).toBe(true);
+    for (const name of Object.values(rows ?? {})) {
+      const spoken = resolveSpokenModel(provider, name);
+      if (spoken)
+        expect(valid.has(spoken.id), `${provider} ${name}`).toBe(true);
+    }
   }
 });
 
@@ -32,8 +38,7 @@ test("the codex codenames a user speaks resolve to their ids", () => {
     "GPT-5.6 Luna": "gpt-5.6-luna",
     Spark: "gpt-5.3-codex-spark",
     "Codex Spark": "gpt-5.3-codex-spark",
-    "5.4 mini": "gpt-5.4-mini",
-    "gpt-5.4 MINI": "gpt-5.4-mini",
+    "gpt-5.3 codex SPARK": "gpt-5.3-codex-spark",
   };
   for (const [spoken, id] of Object.entries(cases)) {
     expect(resolveSpokenModel("openai-codex", spoken)).toEqual({
@@ -44,33 +49,33 @@ test("the codex codenames a user speaks resolve to their ids", () => {
   }
 });
 
-test("an anthropic display name resolves to the exact id it names", () => {
+test("an anthropic display name resolves to the exact lineup id it names", () => {
   const cases: Record<string, string> = {
-    "Sonnet 5": "claude-sonnet-5",
-    "sonnet 4.6": "claude-sonnet-4-6",
-    "Opus 4.6": "claude-opus-4-6",
-    "OPUS 4.8": "claude-opus-4-8",
+    "Sonnet 5.5": "claude-sonnet-5-5",
+    "Opus 5.5": "claude-opus-5-5",
+    "opus 5.5": "claude-opus-5-5",
     "Fable 5.1": "claude-fable-5-1",
-    Haiku: "claude-haiku-4-5",
   };
   for (const [spoken, id] of Object.entries(cases)) {
     expect(resolveSpokenModel("anthropic", spoken)?.id).toBe(id);
   }
+  // A retired model's name resolves to nothing: the caller refuses with the
+  // lineup rather than pinning a model the provider no longer runs.
+  for (const spoken of ["Opus 4.8", "Sonnet 4.6", "Haiku"])
+    expect(resolveSpokenModel("anthropic", spoken)).toBeNull();
 });
 
-test("a bare family name lands on the newest of that family, flagged", () => {
+test("a bare family name lands on that family's one lineup model", () => {
   expect(resolveSpokenModel("anthropic", "Sonnet")).toEqual({
-    id: "claude-sonnet-5",
-    name: "Sonnet 5",
-    ambiguous: true,
+    id: "claude-sonnet-5-5",
+    name: "Sonnet 5.5",
+    ambiguous: false,
   });
   expect(resolveSpokenModel("anthropic", "opus")).toEqual({
-    id: "claude-opus-5",
-    name: "Opus 5",
-    ambiguous: true,
+    id: "claude-opus-5-5",
+    name: "Opus 5.5",
+    ambiguous: false,
   });
-  // Only one Haiku row: nothing to disambiguate, so nothing is flagged.
-  expect(resolveSpokenModel("anthropic", "haiku")?.ambiguous).toBe(false);
 });
 
 test("a name no row carries resolves to nothing at all", () => {
@@ -101,14 +106,14 @@ test("the listing is capped and counts what it left out", () => {
 });
 
 test("a name resolves only among the models the caller actually offers", () => {
-  // The provider serves one Opus, and it is not the newest one: "opus" must
+  // The provider serves one GPT row, and it is not the newest one: "gpt" must
   // land on what it CAN run, never on a row this caller does not offer.
-  expect(resolveSpokenModel("anthropic", "opus", ["claude-opus-4-8"])).toEqual({
-    id: "claude-opus-4-8",
-    name: "Opus 4.8",
+  expect(resolveSpokenModel("openai-codex", "gpt", ["gpt-5.6-luna"])).toEqual({
+    id: "gpt-5.6-luna",
+    name: "GPT-5.6 Luna",
     ambiguous: false,
   });
   expect(
-    resolveSpokenModel("anthropic", "haiku", ["claude-opus-4-8"]),
+    resolveSpokenModel("anthropic", "opus", ["claude-sonnet-5-5"]),
   ).toBeNull();
 });

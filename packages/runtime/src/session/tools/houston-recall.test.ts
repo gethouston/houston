@@ -1,7 +1,7 @@
 import { mkdtempSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
-import type { ExtensionContext } from "@earendil-works/pi-coding-agent";
+import type { ExtensionToolContext } from "@earendil-works/pi-coding-agent";
 import type { ChatMessage } from "@houston/runtime-client";
 import { expect, test } from "vitest";
 
@@ -30,7 +30,7 @@ type HoustonRecallDetails = import("./houston-recall").HoustonRecallDetails;
 
 const dir = join(config.dataDir, "conversations");
 const tool = makeHoustonRecallTool();
-const CTX = {} as unknown as ExtensionContext;
+const CTX = {} as unknown as ExtensionToolContext;
 
 let seq = 0;
 /** Seed one conversation and answer with its id. */

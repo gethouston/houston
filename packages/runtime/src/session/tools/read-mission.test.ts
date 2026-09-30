@@ -1,4 +1,4 @@
-import type { ExtensionContext } from "@earendil-works/pi-coding-agent";
+import type { ExtensionToolContext } from "@earendil-works/pi-coding-agent";
 import { expect, test } from "vitest";
 import { makeReadMissionTool } from "./read-mission";
 import type { SandboxFetch } from "./sandbox-fetch";
@@ -10,7 +10,7 @@ import type { SandboxFetch } from "./sandbox-fetch";
  * assistant only ever reviews other agents' missions — it has none of its own.
  */
 
-const NOOP = {} as ExtensionContext;
+const NOOP = {} as ExtensionToolContext;
 
 function tool(personalAssistant: boolean) {
   const paths: string[] = [];

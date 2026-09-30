@@ -28,9 +28,9 @@ before(() => hydrateProviderCatalog(SAMPLE_CATALOG));
  */
 describe("modelDisplayLabel", () => {
   it("prefers the catalog's curated label", () => {
-    const label = getModel("anthropic", "claude-opus-5")?.label;
+    const label = getModel("anthropic", "claude-opus-5-5")?.label;
     strictEqual(typeof label, "string");
-    strictEqual(modelDisplayLabel("anthropic", "claude-opus-5"), label);
+    strictEqual(modelDisplayLabel("anthropic", "claude-opus-5-5"), label);
   });
 
   it("falls back to the engine-reported model for a catalog-less provider", () => {
@@ -42,10 +42,10 @@ describe("modelDisplayLabel", () => {
     );
   });
 
-  it("names a model that is runnable but hidden from the picker (B6)", () => {
-    // `VALID_MODELS.anthropic` keeps 28 runnable ids while the picker shows 7,
-    // so a user pinned to a preserved one has no catalog row — the shared
-    // display table still knows its name.
+  it("names a model that has no catalog row (B6)", () => {
+    // A Claude id retired from the lineup has no catalog row, yet older chats
+    // and activity rows still name it — the shared display table still knows
+    // its name.
     strictEqual(getModel("anthropic", "claude-opus-4-6"), undefined);
     strictEqual(modelDisplayLabel("anthropic", "claude-opus-4-6"), "Opus 4.6");
   });
@@ -104,7 +104,7 @@ describe("curated picker labels come from the shared display table", () => {
 
 describe("providerForModel", () => {
   it("finds the catalogued provider that offers a model", () => {
-    strictEqual(providerForModel("claude-opus-5"), "anthropic");
+    strictEqual(providerForModel("claude-opus-5-5"), "anthropic");
   });
 
   it("is null for a model no provider offers", () => {
@@ -114,21 +114,21 @@ describe("providerForModel", () => {
 
 describe("providerOffersModel", () => {
   it("is true only for the provider that lists the id", () => {
-    strictEqual(providerOffersModel("anthropic", "claude-opus-5"), true);
+    strictEqual(providerOffersModel("anthropic", "claude-opus-5-5"), true);
     // OpenRouter's id for the same model is not Anthropic's (PRODUCT-1657).
     strictEqual(
-      providerOffersModel("anthropic", "anthropic/claude-opus-5"),
+      providerOffersModel("anthropic", "anthropic/claude-opus-5-5"),
       false,
     );
-    strictEqual(providerOffersModel("nope", "claude-opus-5"), false);
+    strictEqual(providerOffersModel("nope", "claude-opus-5-5"), false);
   });
 });
 
 describe("providerModelLabel", () => {
   it("names the account AND the model", () => {
-    const model = getModel("anthropic", "claude-opus-5")?.label;
+    const model = getModel("anthropic", "claude-opus-5-5")?.label;
     strictEqual(
-      providerModelLabel("anthropic", "claude-opus-5"),
+      providerModelLabel("anthropic", "claude-opus-5-5"),
       `${providerName("anthropic")} · ${model}`,
     );
   });

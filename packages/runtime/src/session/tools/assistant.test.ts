@@ -1,4 +1,4 @@
-import type { ExtensionContext } from "@earendil-works/pi-coding-agent";
+import type { ExtensionToolContext } from "@earendil-works/pi-coding-agent";
 import type { AssistantCatalog } from "@houston/host/src/assistant/catalog";
 import { expect, test } from "vitest";
 import {
@@ -20,7 +20,7 @@ import {
  * in both places so the model asks before it acts.
  */
 
-const CTX = {} as ExtensionContext;
+const CTX = {} as ExtensionToolContext;
 const call = (async () => new Response(null)) as never;
 
 const catalog: AssistantCatalog = {

@@ -19,8 +19,8 @@
     "typecheck": "tsgo -p tsconfig.json"
   },
   "dependencies": {
-    "@earendil-works/pi-ai": "0.85.1",
-    "@earendil-works/pi-coding-agent": "0.85.1",
+    "@earendil-works/pi-ai": "0.99.1",
+    "@earendil-works/pi-coding-agent": "0.99.1",
     "@executor-js/plugin-mcp": "1.5.37",
     "@executor-js/plugin-openapi": "1.5.37",
     "@executor-js/sdk": "1.5.37",
@@ -42,7 +42,7 @@
     "@types/js-yaml": "4.0.9",
     "@types/node": "22.20.0",
     "@typescript/native-preview": "7.0.0-dev.20260607.1",
-    "undici": "8.5.0",
+    "undici": "8.10.2",
     "vitest": "3.2.6"
   }
 }

@@ -34,7 +34,12 @@
  */
 
 import { toDisplayProviderId } from "./provider-overrides.ts";
-import { getModel, getProvider, isOpenCatalogProvider } from "./providers.ts";
+import {
+  getModel,
+  getProvider,
+  isOpenCatalogProvider,
+  normalizeLegacyModel,
+} from "./providers.ts";
 
 /** Which of the three tiers above named the model. */
 export type ChatModelPinSource = "mission" | "agent" | "deployment";
@@ -135,12 +140,17 @@ export function resolveChatModelPin(
  * run falls back to that provider's own default, never to another provider's
  * model. The guard for pairs assembled elsewhere (the Teams personal-choice
  * resolution), which read a stored model without re-checking it belongs.
+ *
+ * A stored legacy or retired id is read as the model it denotes first (a
+ * personal Claude Opus 4.8 choice is Opus 5.5), so it is kept in its family
+ * instead of being mistaken for an unrunnable id and dropped to the default.
  */
 export function coherentPinModel(
   provider: string,
   model: string,
   catalog: PinCatalog = LIVE_PIN_CATALOG,
 ): string {
-  if (model && catalog.runs(provider, model)) return model;
-  return catalog.defaultModel(provider) || model;
+  const current = normalizeLegacyModel(model, provider) ?? model;
+  if (current && catalog.runs(provider, current)) return current;
+  return catalog.defaultModel(provider) || current;
 }

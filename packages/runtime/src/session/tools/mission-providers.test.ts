@@ -31,7 +31,7 @@ const NAMED: ProviderOption[] = [
     id: "openai-codex",
     name: "ChatGPT / Codex (Plus / Pro)",
     connected: true,
-    models: ["gpt-6-astra", "gpt-5.6-luna", "gpt-5.4-mini"],
+    models: ["gpt-6-astra", "gpt-5.6-luna", "gpt-5.3-codex-spark"],
   },
   {
     id: "anthropic",

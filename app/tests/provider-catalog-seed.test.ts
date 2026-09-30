@@ -59,7 +59,7 @@ describe("override-only seed (before the pi catalog loads)", () => {
     strictEqual(anthropic?.subtitle, "Claude Code");
     strictEqual(anthropic?.models.length, 0);
     // The curated default is seeded from the override so it is stable pre-load.
-    strictEqual(anthropic?.defaultModel, "claude-sonnet-5");
+    strictEqual(anthropic?.defaultModel, "claude-sonnet-5-5");
   });
 
   it("seeds the OpenAI card under the `openai` id, reachable in either dialect", () => {

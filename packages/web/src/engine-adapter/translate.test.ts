@@ -159,7 +159,7 @@ describe("configWriteToSettings (model-pick → engine settings bridge)", () => 
         CONFIG,
         JSON.stringify({ provider: "anthropic", model: "opus" }),
       ),
-    ).toEqual({ activeProvider: "anthropic", model: "claude-opus-5" });
+    ).toEqual({ activeProvider: "anthropic", model: "claude-opus-5-5" });
   });
 
   test("a new provider id passes through carrying NO other provider's model", () => {

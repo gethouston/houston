@@ -18,7 +18,7 @@
 import type { ProviderId } from "./provider-ids";
 
 export const DEFAULT_MODEL: Partial<Record<ProviderId, string>> = {
-  anthropic: "claude-sonnet-5",
+  anthropic: "claude-sonnet-5-5",
   // Codex's current full tier, and the id a pin naming `openai-codex` with NO
   // model lands on. gpt-5.5 held this slot after OpenAI stopped serving it to
   // ChatGPT subscriptions, so every such pin died `model_not_found` on its
@@ -34,9 +34,14 @@ export const DEFAULT_MODEL: Partial<Record<ProviderId, string>> = {
   // unlike native Anthropic.
   "github-copilot": "gpt-5-mini",
   opencode: "claude-sonnet-4-6",
-  "opencode-go": "glm-5.1",
+  // The GLM row that holds glm-5.1's tier (same price, same plan) — pi 0.99.1
+  // dropped glm-5.1, and a default the catalog no longer carries fails every
+  // provider-only pin on its first turn.
+  "opencode-go": "glm-5.2",
   openrouter: "anthropic/claude-sonnet-4.6",
-  deepseek: "deepseek-v4-flash",
+  // DeepSeek V4.1 Flash, the Flash tier's id since pi 0.99.1 renamed
+  // `deepseek-v4-flash`.
+  deepseek: "deepseek-flash",
   // 3.8 Flash (GA 2026-09-02): 1M context, 64K output, and cheaper than 3.5
   // Flash while scoring higher. Also the key-verify probe model.
   google: "gemini-3.8-flash",

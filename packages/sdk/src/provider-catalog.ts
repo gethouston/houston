@@ -15,7 +15,12 @@
  * barrels' extensionless internal imports do not resolve.
  */
 
-export { MODEL_ALIASES, modelAliasesFor } from "@houston/domain/model-aliases";
+export {
+  ANTHROPIC_LINEUP,
+  legacyModelAlias,
+  MODEL_ALIASES,
+  modelAliasesFor,
+} from "@houston/domain/model-aliases";
 export {
   humanizedModelName,
   MODEL_DISPLAY,

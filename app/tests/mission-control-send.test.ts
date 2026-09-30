@@ -41,13 +41,15 @@ const routineActivity: ActivityOverrideSource = {
 
 describe("resolveActivityOverride (Mission Control send-path override drop fix)", () => {
   it("returns the activity's provider+model when the activity is found", () => {
+    // Opus 4.7 left the Claude lineup, so the pin reads as the lineup's Opus
+    // (never a Sonnet downgrade).
     const overrides = resolveActivityOverride(`activity-${opus47Activity.id}`, [
       opus47Activity,
       codexActivity,
     ]);
     deepStrictEqual(overrides, {
       providerOverride: "anthropic",
-      modelOverride: "claude-opus-4-7",
+      modelOverride: "claude-opus-5-5",
     });
   });
 
@@ -62,11 +64,11 @@ describe("resolveActivityOverride (Mission Control send-path override drop fix)"
     ]);
     deepStrictEqual(overrides, {
       providerOverride: "anthropic",
-      modelOverride: "claude-opus-4-7",
+      modelOverride: "claude-opus-5-5",
     });
   });
 
-  it("normalizes the legacy 'opus' alias to claude-opus-5", () => {
+  it("normalizes the legacy 'opus' alias to the lineup's Opus", () => {
     // Activity records created before catalog version-pinning hold bare
     // aliases on disk and are NOT migrated by the engine (only config.json
     // is). The frontend must normalize on read so the send doesn't ship
@@ -77,7 +79,7 @@ describe("resolveActivityOverride (Mission Control send-path override drop fix)"
     );
     deepStrictEqual(overrides, {
       providerOverride: "anthropic",
-      modelOverride: "claude-opus-5",
+      modelOverride: "claude-opus-5-5",
     });
   });
 
@@ -130,12 +132,12 @@ describe("resolveActivityOverride (Mission Control send-path override drop fix)"
     const weird: ActivityOverrideSource = {
       id: "activity-inside-id",
       provider: "anthropic",
-      model: "claude-opus-4-8",
+      model: "claude-opus-5-5",
     };
     const overrides = resolveActivityOverride(`activity-${weird.id}`, [weird]);
     deepStrictEqual(overrides, {
       providerOverride: "anthropic",
-      modelOverride: "claude-opus-4-8",
+      modelOverride: "claude-opus-5-5",
     });
   });
 });
@@ -148,7 +150,7 @@ describe("resolveMissionControlSendOverrides", () => {
       ]),
       {
         providerOverride: "anthropic",
-        modelOverride: "claude-opus-4-7",
+        modelOverride: "claude-opus-5-5",
         modeOverride: "execute",
       },
     );
@@ -171,7 +173,7 @@ describe("resolveFollowUpOverrides (no pod read before the bubble)", () => {
       ),
       {
         providerOverride: "anthropic",
-        modelOverride: "claude-opus-4-7",
+        modelOverride: "claude-opus-5-5",
         modeOverride: "execute",
       },
     );

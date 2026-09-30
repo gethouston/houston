@@ -2,7 +2,7 @@ import { mkdtemp, readFile, writeFile } from "node:fs/promises";
 import { createServer, type Server } from "node:http";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
-import type { ExtensionContext } from "@earendil-works/pi-coding-agent";
+import type { ExtensionToolContext } from "@earendil-works/pi-coding-agent";
 import { afterAll, beforeAll, describe, expect, test } from "vitest";
 import { makeRunCodeTool } from "./run-code";
 
@@ -99,7 +99,7 @@ describe("run_code tool", () => {
       { language: "python", code: "print(2+2)" },
       undefined,
       undefined,
-      {} as unknown as ExtensionContext,
+      {} as unknown as ExtensionToolContext,
     );
     if (!lastBody) throw new Error("request body not captured");
     expect(lastBody.language).toBe("python");
@@ -124,7 +124,7 @@ describe("run_code tool", () => {
       { language: "python", code: "..." },
       undefined,
       undefined,
-      {} as unknown as ExtensionContext,
+      {} as unknown as ExtensionToolContext,
     );
     expect(await readFile(join(ws, "deck.pptx"), "utf8")).toBe("PPTX-BYTES");
     expect((r.details as unknown as RunCodeDetails).saved).toEqual([
@@ -152,7 +152,7 @@ describe("run_code tool", () => {
       { language: "python", code: "x", input_files: ["data.csv"] },
       undefined,
       undefined,
-      {} as unknown as ExtensionContext,
+      {} as unknown as ExtensionToolContext,
     );
     if (!lastBody) throw new Error("request body not captured");
     const files = lastBody.files;
@@ -171,7 +171,7 @@ describe("run_code tool", () => {
         { language: "python", code: "x" },
         undefined,
         undefined,
-        {} as unknown as ExtensionContext,
+        {} as unknown as ExtensionToolContext,
       ),
     ).rejects.toThrow(/code sandbox returned 500/);
   });
@@ -185,7 +185,7 @@ describe("run_code tool", () => {
         { language: "python", code: "x" },
         undefined,
         undefined,
-        {} as unknown as ExtensionContext,
+        {} as unknown as ExtensionToolContext,
       ),
     ).rejects.toThrow(/HOUSTON_CODE_SANDBOX_TOKEN/);
   });
@@ -206,7 +206,7 @@ describe("run_code tool", () => {
       { language: "python", code: "x" },
       undefined,
       undefined,
-      {} as unknown as ExtensionContext,
+      {} as unknown as ExtensionToolContext,
     );
     const first = r.content[0];
     expect(first.type === "text" && first.text).toContain("truncated");
@@ -231,7 +231,7 @@ describe("run_code tool", () => {
       { language: "python", code: "x" },
       undefined,
       undefined,
-      {} as unknown as ExtensionContext,
+      {} as unknown as ExtensionToolContext,
     );
     expect(await readFile(join(ws, "good.txt"), "utf8")).toBe("yes");
     expect((r.details as unknown as RunCodeDetails).saved).toEqual([
@@ -251,7 +251,7 @@ describe("run_code tool", () => {
         { language: "bash", code: "x", input_files: ["../escape"] },
         undefined,
         undefined,
-        {} as unknown as ExtensionContext,
+        {} as unknown as ExtensionToolContext,
       ),
     ).rejects.toThrow(/escapes the workspace/);
   });
@@ -278,7 +278,7 @@ describe("run_code tool", () => {
       { language: "python", code: "x" },
       undefined,
       undefined,
-      {} as unknown as ExtensionContext,
+      {} as unknown as ExtensionToolContext,
     );
     expect(lastHeaders["x-sandbox-token"]).toBe("app-secret");
     expect(lastHeaders.authorization).toBe("Bearer google-id-token");
@@ -300,7 +300,7 @@ describe("run_code tool", () => {
       { language: "python", code: "x" },
       undefined,
       undefined,
-      {} as unknown as ExtensionContext,
+      {} as unknown as ExtensionToolContext,
     );
     expect(await readFile(join(ws, "report.txt"), "utf8")).toBe(
       "PRECIOUS USER DATA",
@@ -331,7 +331,7 @@ describe("run_code tool", () => {
       { language: "python", code: "x", input_files: ["deck.pptx"] },
       undefined,
       undefined,
-      {} as unknown as ExtensionContext,
+      {} as unknown as ExtensionToolContext,
     );
     expect(await readFile(join(ws, "deck.pptx"), "utf8")).toBe("V2 DECK");
     expect((r.details as unknown as RunCodeDetails).updated).toEqual([
@@ -362,7 +362,7 @@ describe("run_code tool", () => {
       { language: "python", code: "x" },
       undefined,
       undefined,
-      {} as unknown as ExtensionContext,
+      {} as unknown as ExtensionToolContext,
     );
     await new Promise((r) => setTimeout(r, 10)); // let the first call claim the slot
     await expect(
@@ -371,7 +371,7 @@ describe("run_code tool", () => {
         { language: "python", code: "x" },
         undefined,
         undefined,
-        {} as unknown as ExtensionContext,
+        {} as unknown as ExtensionToolContext,
       ),
     ).rejects.toThrow(/code-execution budget/);
     await first;
@@ -387,7 +387,7 @@ describe("run_code tool", () => {
         { language: "python", code: "x" },
         undefined,
         undefined,
-        {} as unknown as ExtensionContext,
+        {} as unknown as ExtensionToolContext,
       ),
     ).rejects.toThrow(/run\.invoker/);
     nextStatus = 200;

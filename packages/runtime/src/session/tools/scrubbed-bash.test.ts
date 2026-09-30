@@ -1,4 +1,4 @@
-import type { ExtensionContext } from "@earendil-works/pi-coding-agent";
+import type { ExtensionToolContext } from "@earendil-works/pi-coding-agent";
 import { describe, expect, test } from "vitest";
 import {
   bashMemoryFenceOptions,
@@ -105,7 +105,7 @@ describe("the memory fence", () => {
           getSessionId: () => "test-session",
           getSessionFile: () => undefined,
         },
-      } as unknown as ExtensionContext;
+      } as unknown as ExtensionToolContext;
       const fenced = makeScrubbedBashTool(process.cwd(), {
         memoryCapBytes: 768 * 1024 * 1024,
       });

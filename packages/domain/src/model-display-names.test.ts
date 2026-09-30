@@ -87,10 +87,14 @@ test("every family reads newest first, which is what a bare name resolves to", (
   }
 });
 
-test("saying a tier name lands on the newest model of that tier", () => {
-  expect(resolveSpokenModel("anthropic", "opus")?.id).toBe("claude-opus-5");
-  expect(resolveSpokenModel("anthropic", "sonnet")?.id).toBe("claude-sonnet-5");
-  expect(resolveSpokenModel("anthropic", "haiku")?.id).toBe("claude-haiku-4-5");
+test("saying a tier name lands on that tier's lineup model", () => {
+  expect(resolveSpokenModel("anthropic", "opus")?.id).toBe("claude-opus-5-5");
+  expect(resolveSpokenModel("anthropic", "sonnet")?.id).toBe(
+    "claude-sonnet-5-5",
+  );
+  expect(resolveSpokenModel("anthropic", "fable")?.id).toBe("claude-fable-5-1");
+  // Haiku is not in the Claude lineup, so there is nothing to land on.
+  expect(resolveSpokenModel("anthropic", "haiku")).toBeNull();
 });
 
 test("the table is keyed by pi's canonical provider ids", () => {

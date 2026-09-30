@@ -1,4 +1,4 @@
-import type { ExtensionContext } from "@earendil-works/pi-coding-agent";
+import type { ExtensionToolContext } from "@earendil-works/pi-coding-agent";
 import type { ProviderOption } from "@houston/domain";
 import { expect, test, vi } from "vitest";
 import { makeMissionTools } from "./missions";
@@ -14,7 +14,7 @@ import type { SandboxFetch } from "./sandbox-fetch";
 
 // The tools take their request scope from AsyncLocalStorage and never read the
 // extension context, so an empty one is safe (same stance as the MCP bridge).
-const NOOP = {} as ExtensionContext;
+const NOOP = {} as ExtensionToolContext;
 
 const { live } = vi.hoisted(() => ({
   live: { options: [] as ProviderOption[] },
@@ -34,7 +34,7 @@ const ANTHROPIC: ProviderOption = {
   id: "anthropic",
   name: "Claude (Pro / Max)",
   connected: true,
-  models: ["claude-opus-4-6", "claude-sonnet-5"],
+  models: ["claude-opus-5-5", "claude-sonnet-5-5"],
 };
 
 const off = (o: ProviderOption): ProviderOption => ({
@@ -100,15 +100,15 @@ test("a provider connected after the tools were built accepts its pin", async ()
     title: "Draft",
     prompt: "Write it.",
     provider: "anthropic",
-    model: "Sonnet 5",
+    model: "Sonnet 5.5",
   });
   expect(s.bodies[0]).toMatchObject({
     provider: "anthropic",
-    model: "claude-sonnet-5",
+    model: "claude-sonnet-5-5",
   });
   expect(r.details).toMatchObject({
     provider: "anthropic",
-    model: "claude-sonnet-5",
+    model: "claude-sonnet-5-5",
   });
 });
 
@@ -120,11 +120,11 @@ test("the run-on sentence names a provider known only since the build", async ()
       title: "Draft",
       prompt: "Write it.",
       provider: "anthropic",
-      model: "claude-sonnet-5",
+      model: "claude-sonnet-5-5",
     }),
   );
   expect(text).toContain("It runs on anthropic (Claude (Pro / Max))");
-  expect(text).toContain("claude-sonnet-5 (Sonnet 5)");
+  expect(text).toContain("claude-sonnet-5-5 (Sonnet 5.5)");
 });
 
 test("a refusal lists the values accepted right now, not at build time", async () => {
@@ -177,7 +177,7 @@ test("a model is validated against the provider's live catalog", async () => {
       ok: false,
       error: {
         code: "invalid_model",
-        message: expect.stringMatching(/claude-sonnet-5/),
+        message: expect.stringMatching(/claude-sonnet-5-5/),
       },
     },
   });

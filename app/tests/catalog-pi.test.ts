@@ -126,8 +126,10 @@ describe("piCatalogToCandidates applies the shared VISIBLE_MODELS curation", () 
   const catalog: ProviderCatalog = [
     provider("anthropic", "oauth", [
       // In VISIBLE_MODELS.anthropic — surfaces.
+      entry("claude-sonnet-5-5"),
+      // Retired from the Claude lineup, NOT in VISIBLE_MODELS.anthropic —
+      // hidden.
       entry("claude-sonnet-5"),
-      // Runnable but NOT in VISIBLE_MODELS.anthropic — hidden.
       entry("claude-haiku-4-5"),
     ]),
     provider("google", "apiKey", [
@@ -142,7 +144,7 @@ describe("piCatalogToCandidates applies the shared VISIBLE_MODELS curation", () 
   it("keeps a curated provider's visible models", () => {
     ok(
       candidates.some(
-        (c) => c.providerId === "anthropic" && c.raw.id === "claude-sonnet-5",
+        (c) => c.providerId === "anthropic" && c.raw.id === "claude-sonnet-5-5",
       ),
     );
     ok(
@@ -153,6 +155,7 @@ describe("piCatalogToCandidates applies the shared VISIBLE_MODELS curation", () 
   });
 
   it("drops a curated provider's hidden models", () => {
+    ok(!candidates.some((c) => c.raw.id === "claude-sonnet-5"));
     ok(!candidates.some((c) => c.raw.id === "claude-haiku-4-5"));
     ok(!candidates.some((c) => c.raw.id === "gemini-2.5-pro"));
   });

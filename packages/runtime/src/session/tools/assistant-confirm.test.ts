@@ -1,4 +1,4 @@
-import type { ExtensionContext } from "@earendil-works/pi-coding-agent";
+import type { ExtensionToolContext } from "@earendil-works/pi-coding-agent";
 import type { AssistantCatalog } from "@houston/host/src/assistant/catalog";
 import { afterEach, expect, test } from "vitest";
 import { runWithConversationId } from "../conversation-context";
@@ -27,7 +27,7 @@ import { httpSandboxFetch } from "./sandbox-fetch";
  * runtime that lied about every step of this still performs nothing.
  */
 
-const CTX = {} as ExtensionContext;
+const CTX = {} as ExtensionToolContext;
 
 const catalog: AssistantCatalog = {
   version: 3,

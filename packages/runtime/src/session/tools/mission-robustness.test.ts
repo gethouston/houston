@@ -1,8 +1,8 @@
-import type { ExtensionContext } from "@earendil-works/pi-coding-agent";
+import type { ExtensionToolContext } from "@earendil-works/pi-coding-agent";
 import { expect, test } from "vitest";
 import { makeMissionTools } from "./missions";
 
-const context = {} as ExtensionContext;
+const context = {} as ExtensionToolContext;
 const providers = [
   { id: "openai-codex", name: "Codex", connected: true, models: ["gpt-5.5"] },
 ];

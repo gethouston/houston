@@ -90,8 +90,8 @@ test("an OAuth pi provider stays OAuth, and a non-pi id is rejected", () => {
 
 test("providerDefaultModel returns each provider's catalog default", () => {
   expect(providerDefaultModel("opencode")).toBe("claude-sonnet-4-6");
-  expect(providerDefaultModel("opencode-go")).toBe("glm-5.1");
-  expect(providerDefaultModel("deepseek")).toBe("deepseek-v4-flash");
+  expect(providerDefaultModel("opencode-go")).toBe("glm-5.2");
+  expect(providerDefaultModel("deepseek")).toBe("deepseek-flash");
   expect(providerDefaultModel("amazon-bedrock")).toBe(
     "global.anthropic.claude-sonnet-4-6",
   );
@@ -168,8 +168,8 @@ test("MiniMax token-plan model MiniMax-M3[1m] resolves on the minimax provider",
 test("safeGetModel keeps a valid saved id but falls back on a stale one", () => {
   // A valid id resolves to that exact model.
   expect(
-    (safeGetModel("anthropic", "claude-opus-4-8", false) as { id?: string }).id,
-  ).toBe("claude-opus-4-8");
+    (safeGetModel("anthropic", "claude-opus-5-5", false) as { id?: string }).id,
+  ).toBe("claude-opus-5-5");
   // A stale/legacy id the provider no longer offers falls back to the default
   // so the turn runs a REAL model. (pi-ai's getModel returns `undefined` for an
   // unknown id — which would crash the turn downstream — so the guard catches
@@ -210,12 +210,12 @@ test("resolveModel honors a pinned provider regardless of the active one (never 
   // the saved active provider or connection state — parity with the Rust
   // resolve_provider_with_overrides. This is what keeps a routine on the
   // provider it was configured with while chats switch providers freely.
-  const m = resolveModel("claude-opus-4-8", "anthropic") as {
+  const m = resolveModel("claude-opus-5-5", "anthropic") as {
     provider?: string;
     id?: string;
   };
   expect(m.provider).toBe("anthropic");
-  expect(m.id).toBe("claude-opus-4-8");
+  expect(m.id).toBe("claude-opus-5-5");
 });
 
 test("resolveModel canonicalizes a wire `openai` pin to the openai-codex product", () => {

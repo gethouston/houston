@@ -87,16 +87,15 @@ export const VISIBLE_MODELS: Readonly<Record<string, ReadonlySet<string>>> = {
     "gpt-5.6-terra",
     "gpt-5.6-luna",
     "gpt-5.3-codex-spark",
-    "gpt-5.4-mini",
   ]),
+  // The Claude lineup, one model per family (`ANTHROPIC_LINEUP` in
+  // @houston/domain model-aliases.ts; `anthropic-model-catalog.test.ts` pins
+  // this set to it). pi still lists older Claude rows; a stored pin on one
+  // runs on its own family's lineup model, so none is runnable-but-hidden.
   anthropic: new Set([
-    "claude-sonnet-5",
+    "claude-sonnet-5-5",
+    "claude-opus-5-5",
     "claude-fable-5-1",
-    "claude-fable-5",
-    "claude-opus-5",
-    "claude-opus-4-8",
-    "claude-opus-4-7",
-    "claude-sonnet-4-6",
   ]),
   // NOTE: pi-ai ships no plain `gemini-3.1-flash` (only the Lite tier), so the
   // 3.1 line is represented by Flash Lite here.

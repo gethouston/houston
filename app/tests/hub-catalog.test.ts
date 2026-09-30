@@ -105,21 +105,18 @@ describe("pricing and subscription flags come from pi", () => {
 
   it("offers a curated provider EXACTLY its VISIBLE_MODELS set", () => {
     // The hub must mirror the chat model picker: both apply the shared
-    // `isModelVisible` gate. The fixture's `anthropic` provider also runs
-    // `claude-haiku-4-5`, which is NOT in VISIBLE_MODELS.anthropic — it must
-    // never surface, while the seven curated ids all do.
+    // `isModelVisible` gate. The fixture's `anthropic` provider also carries
+    // pi's older Claude rows (Opus 4.8, Sonnet 4.6, Haiku 4.5, …), none in
+    // VISIBLE_MODELS.anthropic — they must never surface, while the three
+    // lineup ids all do.
     const ids = new Set<string>();
     for (const model of all.models)
       for (const offer of model.offers)
         if (offer.providerId === "anthropic") ids.add(offer.modelId);
     deepStrictEqual([...ids].sort(), [
-      "claude-fable-5",
       "claude-fable-5-1",
-      "claude-opus-4-7",
-      "claude-opus-4-8",
-      "claude-opus-5",
-      "claude-sonnet-4-6",
-      "claude-sonnet-5",
+      "claude-opus-5-5",
+      "claude-sonnet-5-5",
     ]);
   });
 

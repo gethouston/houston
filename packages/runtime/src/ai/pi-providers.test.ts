@@ -86,11 +86,30 @@ test("a connected pi extra never displaces a connected curated provider (precede
 
 test("curated providers keep their configured defaults (no regression)", () => {
   // The catalog source-of-truth widen must not perturb curated resolution.
-  expect(providers.providerDefaultModel("anthropic")).toBe("claude-sonnet-5");
+  expect(providers.providerDefaultModel("anthropic")).toBe("claude-sonnet-5-5");
   expect(providers.providerAuthMethod("anthropic")).toBe("oauth");
   expect(providers.providerAuthMethod("openai-codex")).toBe("oauth");
   // opencode is an open-catalog gateway (getModels → []) that keeps its curated
   // api-key auth and configured default.
   expect(providers.providerAuthMethod("opencode")).toBe("apiKey");
   expect(providers.providerDefaultModel("opencode")).toBe("claude-sonnet-4-6");
+});
+
+test("an agent saved on a retired Claude id runs and reports its family's lineup model", () => {
+  // settings.json written before the Claude lineup moved still says Opus 4.8;
+  // the turn must run Opus 5.5 (never the Sonnet default), and the status row
+  // must name the model the turn really runs.
+  providers.setSettings({
+    activeProvider: "anthropic",
+    model: "claude-opus-4-8",
+  });
+  const m = providers.resolveModel(null, "anthropic") as { id?: string };
+  expect(m.id).toBe("claude-opus-5-5");
+  const row = providers.listProviders().find((p) => p.id === "anthropic");
+  expect(row?.activeModel).toBe("claude-opus-5-5");
+  expect(row?.models).toEqual([
+    "claude-sonnet-5-5",
+    "claude-opus-5-5",
+    "claude-fable-5-1",
+  ]);
 });

@@ -1,4 +1,4 @@
-import type { ExtensionContext } from "@earendil-works/pi-coding-agent";
+import type { ExtensionToolContext } from "@earendil-works/pi-coding-agent";
 import { afterEach, expect, test } from "vitest";
 import {
   FIND_SKILLS_TOOL_NAME,
@@ -51,7 +51,7 @@ function mockFetch(reply: () => { status?: number; body?: unknown }) {
 const OPTS = { call: httpSandboxFetch("http://host/", "sb-token") };
 const find = makeFindSkillsTool(OPTS);
 const install = makeInstallSkillTool(OPTS);
-const CTX = {} as ExtensionContext;
+const CTX = {} as ExtensionToolContext;
 
 const HIT = {
   skillId: "web-design-guidelines",

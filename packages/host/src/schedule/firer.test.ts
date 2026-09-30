@@ -135,7 +135,7 @@ test("ChannelRoutineFirer carries provider/model/effort plus autopilot mode", as
       routine: {
         ...job().routine,
         provider: "anthropic",
-        model: "claude-opus-4-8",
+        model: "claude-opus-5-5",
         effort: "max",
       },
     }),
@@ -146,10 +146,27 @@ test("ChannelRoutineFirer carries provider/model/effort plus autopilot mode", as
   // own provider no matter what other chats/routines picked since.
   expect(call0.pin).toEqual({
     provider: "anthropic",
-    model: "claude-opus-4-8",
+    model: "claude-opus-5-5",
     effort: "max",
     mode: "auto",
   });
+});
+
+test("ChannelRoutineFirer fires a retired Claude pin on its family's lineup model", async () => {
+  const cloudrun = recordingChannel();
+  const firer = new ChannelRoutineFirer({ cloudrun });
+  // routines.json is never rewritten: an Opus pin saved before the lineup
+  // moved must still fire on Opus, never on the Sonnet default.
+  await firer.fire(
+    job({
+      routine: {
+        ...job().routine,
+        provider: "anthropic",
+        model: "claude-opus-4-8",
+      },
+    }),
+  );
+  expect(cloudrun.calls[0]?.pin?.model).toBe("claude-opus-5-5");
 });
 
 test("ChannelRoutineFirer maps a Rust-era provider pin to its pi id at fire time", async () => {

@@ -14,6 +14,10 @@
  *   refused — gpt-5.5 (404 `model_not_found`), gpt-5.4 (400 "not supported when
  *             using Codex with a ChatGPT account")
  *
+ * pi 0.99.1 no longer ships gpt-5.4 or gpt-5.4-mini. It ships gpt-6-luna,
+ * gpt-6-sol and gpt-6.1-sol, which that probe predates, so they are held out
+ * of the offer until a probe records a verdict for them.
+ *
  * A LIVE listing exists and Houston's credential is accepted by it — `GET
  * https://chatgpt.com/backend-api/codex/models?client_version=<codex-cli
  * version>`, the endpoint the Codex CLI caches into `~/.codex/models_cache.json`
@@ -46,11 +50,21 @@ const CODEX_UNSERVED_MODEL_IDS: ReadonlySet<string> = new Set([
   "gpt-5.5",
 ]);
 
+/** pi-ai catalog rows the probe above has no verdict for. */
+const CODEX_UNPROBED_MODEL_IDS: ReadonlySet<string> = new Set([
+  "gpt-6-luna",
+  "gpt-6-sol",
+  "gpt-6.1-sol",
+]);
+
 /**
- * Narrow pi's `openai-codex` catalog to the ids the subscription actually runs,
- * so the picker, the agent-facing tool enum and the pin validator never offer a
- * model whose only possible outcome is a `model_unavailable` turn.
+ * Narrow pi's `openai-codex` catalog to the ids the subscription is known to
+ * run, so the picker, the agent-facing tool enum and the pin validator never
+ * offer a model whose only possible outcome is a `model_unavailable` turn.
  */
 export function codexOfferedModelIds(catalogIds: readonly string[]): string[] {
-  return catalogIds.filter((id) => !CODEX_UNSERVED_MODEL_IDS.has(id));
+  return catalogIds.filter(
+    (id) =>
+      !CODEX_UNSERVED_MODEL_IDS.has(id) && !CODEX_UNPROBED_MODEL_IDS.has(id),
+  );
 }

@@ -17,6 +17,11 @@ import {
 import { servedScopeFor } from "../auth/served-scope";
 import { authStorage, providerConnected } from "../auth/storage";
 import { config } from "../config";
+import {
+  ANTHROPIC_PROVIDER_ID,
+  anthropicOfferedModelIds,
+  lineupModelId,
+} from "./anthropic-lineup";
 import { AZURE_OPENAI, withAzureBaseUrl } from "./azure-openai";
 import { CODEX_PROVIDER_ID, codexOfferedModelIds } from "./codex-offered";
 import { endpointReachableCached } from "./endpoint-reachability";
@@ -459,9 +464,12 @@ export function setSettings(input: {
  */
 export function safeGetModel(
   provider: string,
-  modelId: string,
+  requestedId: string,
   pinned: boolean,
 ) {
+  // A retired Claude id runs on its own family's lineup model, pinned or saved
+  // alike (./anthropic-lineup): it is the SAME choice, not a stale one.
+  const modelId = lineupModelId(provider, requestedId);
   // MiniMax token/coding plan: pi-ai's minimax catalog has no `[1m]` variant, so
   // hand-build it (same provider/endpoint/auth) before consulting pi's getModel —
   // otherwise a saved id falls back to the pay-as-you-go SKU and a pinned id throws.
@@ -603,6 +611,8 @@ export function safeModelIds(provider: ProviderId): string[] {
   // (./codex-offered.ts carries the probe and its verdicts).
   if (provider === CODEX_PROVIDER_ID)
     return codexOfferedModelIds(piModelIds(provider));
+  if (provider === ANTHROPIC_PROVIDER_ID)
+    return anthropicOfferedModelIds(piModelIds(provider));
   return piModelIds(provider);
 }
 
@@ -627,7 +637,9 @@ function providerRow(id: ProviderId, name: string, active: ProviderId | null) {
     name,
     configured: providerUsable(id),
     isActive: id === active,
-    activeModel: modelFor(id),
+    // What a turn on this provider runs, so a retired saved Claude id reports
+    // its lineup model rather than a model no turn will run on.
+    activeModel: lineupModelId(id, modelFor(id)),
     models: safeModelIds(id),
     ...(servedScope ? { credentialScope: servedScope } : {}),
     health: providerHealth(id),

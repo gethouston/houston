@@ -1,3 +1,4 @@
+import { DEFAULT_MODEL } from "@houston/domain/provider-default-models";
 import { HoustonEngineClient } from "@houston/runtime-client";
 import type { HoustonSdk } from "@houston/sdk";
 // Control-plane calls import from the barrel (`../control-plane`), never the
@@ -349,6 +350,6 @@ export class AdapterContext {
     } catch {
       /* engine unreachable / no agent selected / not authed → defaults below */
     }
-    return { provider: "anthropic", model: "claude-sonnet-4-6" };
+    return { provider: "anthropic", model: DEFAULT_MODEL.anthropic ?? "" };
   }
 }

@@ -1,4 +1,4 @@
-import type { ExtensionContext } from "@earendil-works/pi-coding-agent";
+import type { ExtensionToolContext } from "@earendil-works/pi-coding-agent";
 import { expect, test } from "vitest";
 import {
   newInteractionHolder,
@@ -10,7 +10,7 @@ import {
 } from "./suggest-actions";
 
 const suggestActions = makeSuggestActionsTool();
-const ctx = {} as unknown as ExtensionContext;
+const ctx = {} as unknown as ExtensionToolContext;
 const run = (params: unknown) =>
   suggestActions.execute("id", params as never, undefined, undefined, ctx);
 const actions = [

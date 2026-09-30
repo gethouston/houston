@@ -15,8 +15,22 @@ test("maps the app dialect to engine ids (openai → openai-codex, legacy aliase
   // CLI-era bare tier aliases map at the same tier.
   expect(wireTurnPin({ provider: "claude", model: "opus" })).toEqual({
     provider: "anthropic",
-    model: "claude-opus-5",
+    model: "claude-opus-5-5",
   });
+});
+
+test("a retired Claude id pins its own family's lineup model", () => {
+  // A chat or mission picked before the Claude lineup moved still carries the
+  // old id; the send must stay in its family (Opus never becomes Sonnet).
+  expect(
+    wireTurnPin({ provider: "anthropic", model: "claude-opus-4-8" }),
+  ).toEqual({ provider: "anthropic", model: "claude-opus-5-5" });
+  expect(
+    wireTurnPin({ provider: "anthropic", model: "claude-sonnet-5" }),
+  ).toEqual({ provider: "anthropic", model: "claude-sonnet-5-5" });
+  expect(
+    wireTurnPin({ provider: "anthropic", model: "claude-fable-5" }),
+  ).toEqual({ provider: "anthropic", model: "claude-fable-5-1" });
 });
 
 test("modern engine ids pass through verbatim", () => {
@@ -84,12 +98,12 @@ test("mode passes through verbatim alongside the pin", () => {
   expect(
     wireTurnPin({
       provider: "anthropic",
-      model: "claude-opus-4-8",
+      model: "claude-opus-5-5",
       mode: "plan",
     }),
   ).toEqual({
     provider: "anthropic",
-    model: "claude-opus-4-8",
+    model: "claude-opus-5-5",
     mode: "plan",
   });
 });
@@ -99,7 +113,7 @@ test("a mode-only send still pins the mode (plan mode with no provider override)
 });
 
 test("no mode key when the send carries no mode", () => {
-  const pin = wireTurnPin({ provider: "anthropic", model: "claude-opus-4-8" });
+  const pin = wireTurnPin({ provider: "anthropic", model: "claude-opus-5-5" });
   expect(pin).not.toHaveProperty("mode");
 });
 

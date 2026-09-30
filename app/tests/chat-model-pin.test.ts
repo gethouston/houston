@@ -1,6 +1,7 @@
 import { deepStrictEqual, strictEqual } from "node:assert";
 import { describe, it } from "node:test";
 import {
+  coherentPinModel,
   type PinCatalog,
   resolveChatModelPin,
 } from "../src/lib/chat-model-pin.ts";
@@ -171,5 +172,37 @@ describe("resolveChatModelPin", () => {
       CATALOG,
     );
     strictEqual(pin.model, "");
+  });
+});
+
+describe("coherentPinModel (the Teams personal-choice guard)", () => {
+  // The Claude lineup as the hydrated catalog carries it.
+  const LINEUP_CATALOG: PinCatalog = {
+    runs: (provider, model) =>
+      provider !== "anthropic" ||
+      ["claude-sonnet-5-5", "claude-opus-5-5", "claude-fable-5-1"].includes(
+        model,
+      ),
+    offers: () => false,
+    defaultModel: (provider) =>
+      provider === "anthropic" ? "claude-sonnet-5-5" : "",
+  };
+
+  it("keeps a retired Claude choice in its family (no Opus→Sonnet downgrade)", () => {
+    strictEqual(
+      coherentPinModel("anthropic", "claude-opus-4-8", LINEUP_CATALOG),
+      "claude-opus-5-5",
+    );
+    strictEqual(
+      coherentPinModel("anthropic", "claude-fable-5", LINEUP_CATALOG),
+      "claude-fable-5-1",
+    );
+  });
+
+  it("drops an id with no family in the lineup to the provider default", () => {
+    strictEqual(
+      coherentPinModel("anthropic", "claude-9-imaginary", LINEUP_CATALOG),
+      "claude-sonnet-5-5",
+    );
   });
 });

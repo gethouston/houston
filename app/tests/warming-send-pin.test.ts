@@ -51,17 +51,24 @@ describe("preferRowPin (a parked follow-up flushes with the mission's own pin)",
   it("takes the row's provider+model and keeps the send's effort", () => {
     assert.deepEqual(
       preferRowPin(
-        { provider: "anthropic", model: "claude-opus-4-7" },
+        { provider: "anthropic", model: "claude-opus-5-5" },
         { provider: "openai", model: "gpt-6-astra", effort: "high" },
       ),
-      { provider: "anthropic", model: "claude-opus-4-7", effort: "high" },
+      { provider: "anthropic", model: "claude-opus-5-5", effort: "high" },
     );
   });
 
   it("normalizes a legacy alias stored on the row", () => {
     assert.deepEqual(
       preferRowPin({ provider: "anthropic", model: "opus" }, pin),
-      { provider: "anthropic", model: "claude-opus-5", effort: "high" },
+      { provider: "anthropic", model: "claude-opus-5-5", effort: "high" },
+    );
+  });
+
+  it("reads a retired Claude id on the row as its family's lineup model", () => {
+    assert.deepEqual(
+      preferRowPin({ provider: "anthropic", model: "claude-opus-4-7" }, pin),
+      { provider: "anthropic", model: "claude-opus-5-5", effort: "high" },
     );
   });
 

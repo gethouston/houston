@@ -129,17 +129,26 @@ test("a model is checked only where the registry enumerates the provider's model
   });
 });
 
-test("a legacy model alias resolves at the same tier instead of being refused", () => {
-  const anthropic: ProviderOption = {
-    id: "anthropic",
-    name: "Claude (Pro / Max)",
-    connected: true,
-    models: ["claude-opus-5", "claude-sonnet-4-6"],
+const ANTHROPIC_LINEUP_OPTION: ProviderOption = {
+  id: "anthropic",
+  name: "Claude (Pro / Max)",
+  connected: true,
+  models: ["claude-sonnet-5-5", "claude-opus-5-5", "claude-fable-5-1"],
+};
+
+test("a legacy or retired Claude id resolves in its own family instead of being refused", () => {
+  const cases: Record<string, string> = {
+    opus: "claude-opus-5-5",
+    "claude-opus-4-8": "claude-opus-5-5",
+    "claude-opus-5": "claude-opus-5-5",
+    "claude-sonnet-4-6": "claude-sonnet-5-5",
+    "claude-fable-5": "claude-fable-5-1",
   };
-  expect(resolveModelChoice("opus", anthropic, OP)).toEqual({
-    ok: true,
-    id: "claude-opus-5",
-  });
+  for (const [written, id] of Object.entries(cases))
+    expect(resolveModelChoice(written, ANTHROPIC_LINEUP_OPTION, OP)).toEqual({
+      ok: true,
+      id,
+    });
 });
 
 test("the name a user says for a model resolves to the id, per provider", () => {
@@ -147,46 +156,39 @@ test("the name a user says for a model resolves to the id, per provider", () => 
     id: "openai-codex",
     name: "ChatGPT / Codex (Plus / Pro)",
     connected: true,
-    models: ["gpt-6-astra", "gpt-5.6-luna", "gpt-5.4-mini"],
-  };
-  const anthropic: ProviderOption = {
-    id: "anthropic",
-    name: "Claude (Pro / Max)",
-    connected: true,
-    models: ["claude-opus-4-6", "claude-sonnet-5", "claude-sonnet-4-6"],
+    models: ["gpt-6-astra", "gpt-5.6-luna", "gpt-5.3-codex-spark"],
   };
   expect(resolveModelChoice("Luna", codex, OP)).toEqual({
     ok: true,
     id: "gpt-5.6-luna",
   });
-  expect(resolveModelChoice("5.4 mini", codex, OP)).toEqual({
+  expect(resolveModelChoice("Codex Spark", codex, OP)).toEqual({
     ok: true,
-    id: "gpt-5.4-mini",
+    id: "gpt-5.3-codex-spark",
   });
-  expect(resolveModelChoice("Opus 4.6", anthropic, OP)).toEqual({
+  expect(resolveModelChoice("Opus 5.5", ANTHROPIC_LINEUP_OPTION, OP)).toEqual({
     ok: true,
-    id: "claude-opus-4-6",
+    id: "claude-opus-5-5",
   });
-  // A family with several rows here lands on the newest one the provider offers.
-  expect(resolveModelChoice("sonnet", anthropic, OP)).toEqual({
+  // A bare family name lands on that family's lineup model.
+  expect(resolveModelChoice("sonnet", ANTHROPIC_LINEUP_OPTION, OP)).toEqual({
     ok: true,
-    id: "claude-sonnet-5",
+    id: "claude-sonnet-5-5",
+  });
+  expect(resolveModelChoice("Fable", ANTHROPIC_LINEUP_OPTION, OP)).toEqual({
+    ok: true,
+    id: "claude-fable-5-1",
   });
 });
 
 test("a name belonging to another provider is refused, never cross-pinned", () => {
-  const anthropic: ProviderOption = {
-    id: "anthropic",
-    name: "Claude (Pro / Max)",
-    connected: true,
-    models: ["claude-opus-4-6", "claude-sonnet-5"],
-  };
-  const out = resolveModelChoice("Luna", anthropic, OP);
+  const out = resolveModelChoice("Luna", ANTHROPIC_LINEUP_OPTION, OP);
   expect(out.ok).toBe(false);
   if (out.ok) throw new Error("expected a refusal");
   // The refusal names the ids AND the names, so the next call can be right.
-  expect(out.message).toContain("claude-sonnet-5 = Sonnet 5");
-  expect(out.message).toContain("claude-opus-4-6 = Opus 4.6");
+  expect(out.message).toContain("claude-sonnet-5-5 = Sonnet 5.5");
+  expect(out.message).toContain("claude-opus-5-5 = Opus 5.5");
+  expect(out.message).toContain("claude-fable-5-1 = Fable 5.1");
 });
 
 test("an open-catalog provider still resolves a name it has a table for", () => {

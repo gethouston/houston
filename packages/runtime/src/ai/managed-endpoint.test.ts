@@ -1,6 +1,7 @@
 import { mkdtempSync, readFileSync, writeFileSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
+import { normalizeContext } from "@earendil-works/pi-ai";
 import type { ModelRuntime } from "@earendil-works/pi-coding-agent";
 import { afterEach, expect, test, vi } from "vitest";
 import { runWithActingContext } from "../session/acting-context";
@@ -111,7 +112,7 @@ test.each([
     async () => {
       const stream = cfg?.streamSimple?.(
         buildActiveCustomModel(undefined, dir),
-        { messages: [] },
+        normalizeContext({ messages: [] }),
         { apiKey: "placeholder" },
       );
       expect(stream).toBeDefined();

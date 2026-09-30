@@ -28,17 +28,17 @@ const NAMED: ProviderOption[] = [
     id: "openai-codex",
     name: "ChatGPT / Codex (Plus / Pro)",
     connected: true,
-    models: ["gpt-6-astra", "gpt-5.6-luna", "gpt-5.4-mini"],
+    models: ["gpt-6-astra", "gpt-5.6-luna", "gpt-5.3-codex-spark"],
   },
   {
     id: "anthropic",
     name: "Claude (Pro / Max)",
     connected: true,
-    models: ["claude-opus-4-6", "claude-sonnet-5"],
+    models: ["claude-opus-5-5", "claude-sonnet-5-5"],
   },
 ];
 
-const PARENT = { provider: "anthropic", model: "claude-sonnet-5" };
+const PARENT = { provider: "anthropic", model: "claude-sonnet-5-5" };
 
 test("a written provider resolves to its id, alias or display name alike", () => {
   expect(resolveMissionPin({ provider: "Codex" }, OPTIONS)).toEqual({
@@ -120,15 +120,38 @@ test("the name the user said pins the model, never the provider default", () => 
     pin: { provider: "openai-codex", model: "gpt-5.6-luna" },
   });
   expect(
-    resolveMissionPin({ provider: "anthropic", model: "Opus 4.6" }, NAMED),
+    resolveMissionPin({ provider: "anthropic", model: "Opus 5.5" }, NAMED),
   ).toEqual({
     ok: true,
-    pin: { provider: "anthropic", model: "claude-opus-4-6" },
+    pin: { provider: "anthropic", model: "claude-opus-5-5" },
   });
   // A name alone rides the provider the mission inherits.
   expect(
-    resolveMissionPin({ model: "5.4 mini" }, NAMED, "openai-codex"),
-  ).toEqual({ ok: true, pin: { model: "gpt-5.4-mini" } });
+    resolveMissionPin({ model: "Codex Spark" }, NAMED, "openai-codex"),
+  ).toEqual({ ok: true, pin: { model: "gpt-5.3-codex-spark" } });
+});
+
+test("a retired Claude id an agent writes pins its family's lineup model", () => {
+  // An agent that remembers an older id (from its own notes, a past mission)
+  // must land on the same family — an Opus request never becomes Sonnet.
+  expect(
+    resolveMissionPin(
+      { provider: "anthropic", model: "claude-opus-4-8" },
+      NAMED,
+    ),
+  ).toEqual({
+    ok: true,
+    pin: { provider: "anthropic", model: "claude-opus-5-5" },
+  });
+  expect(
+    resolveMissionPin(
+      { provider: "anthropic", model: "claude-sonnet-4-6" },
+      NAMED,
+    ),
+  ).toEqual({
+    ok: true,
+    pin: { provider: "anthropic", model: "claude-sonnet-5-5" },
+  });
 });
 
 // --- the pin the child mission actually carries ----------------------------
@@ -148,9 +171,9 @@ test("an explicit provider stands alone — never mixed with the parent's model 
 });
 
 test("a model named without a provider rides the inherited provider", () => {
-  expect(missionPin({ model: "claude-opus-5" }, PARENT)).toEqual({
+  expect(missionPin({ model: "claude-opus-5-5" }, PARENT)).toEqual({
     provider: "anthropic",
-    model: "claude-opus-5",
+    model: "claude-opus-5-5",
   });
 });
 
@@ -161,10 +184,10 @@ test("outside a turn (nothing inherited) the explicit params pass through", () =
 
 test("what the tool tells the user names the model it really pinned", () => {
   const text = missionRunsOn(
-    { provider: "anthropic", model: "claude-sonnet-5" },
+    { provider: "anthropic", model: "claude-sonnet-5-5" },
     NAMED,
   );
-  expect(text).toContain("claude-sonnet-5 (Sonnet 5)");
+  expect(text).toContain("claude-sonnet-5-5 (Sonnet 5.5)");
   expect(text).toContain("anthropic (Claude (Pro / Max))");
 });
 

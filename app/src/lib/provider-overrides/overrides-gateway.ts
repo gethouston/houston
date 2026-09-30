@@ -27,7 +27,7 @@ export const GATEWAY_OVERRIDES: Record<string, ProviderOverride> = {
       "gemini-3.5-flash": {
         description: "Fast and capable.",
       },
-      "mimo-v2.5-free": {
+      "mimo-v2.6-flash-free": {
         description: "Free to try.",
       },
       "nemotron-3-ultra-free": {
@@ -44,16 +44,16 @@ export const GATEWAY_OVERRIDES: Record<string, ProviderOverride> = {
     installUrl: "https://opencode.ai/auth",
     apiKeyUrl: "https://opencode.ai/auth",
     models: {
-      "glm-5.1": {
+      "glm-5.2": {
         description: "Strong open coding model.",
       },
-      "kimi-k2.6": {
+      "kimi-k2.7-code": {
         description: "Fast, capable open model.",
       },
       "minimax-m3": {
         description: "Capable open model.",
       },
-      "qwen3.7-max": {
+      "qwen3.8-max": {
         description: "Large open model.",
       },
       "deepseek-v4-pro": {

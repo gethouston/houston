@@ -13,7 +13,7 @@ export const CURATED_API_KEY_OVERRIDES: Record<string, ProviderOverride> = {
     installUrl: "https://platform.deepseek.com",
     apiKeyUrl: "https://platform.deepseek.com/api_keys",
     models: {
-      "deepseek-v4-flash": {
+      "deepseek-flash": {
         description: "Fast, low-cost DeepSeek model.",
       },
       "deepseek-v4-pro": {
@@ -29,8 +29,8 @@ export const CURATED_API_KEY_OVERRIDES: Record<string, ProviderOverride> = {
     installUrl: "https://ai.google.dev",
     apiKeyUrl: "https://aistudio.google.com/apikey",
     // Effort rows for 3.7/3.8 derive to low/medium/high; Google rejects
-    // `minimal` on both (the carried pi-ai patch floors the no-effort path
-    // at LOW).
+    // `minimal` on both (pi-ai's per-model thinking map drops it, so the
+    // no-effort path floors at LOW).
     models: {
       "gemini-3.8-flash": {
         description: "Google's newest Flash. Best for agents and coding.",
