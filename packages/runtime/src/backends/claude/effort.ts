@@ -17,17 +17,17 @@ export interface SdkEffort {
 /**
  * Map pi's `ThinkingLevel` to the SDK's `{ thinking, effort }`.
  *
- * - `minimal` — reasoning OFF (`thinking: disabled`) at the lowest effort.
- * - `low` / `medium` / `high` — reasoning ON at the matching effort.
+ * - `minimal` / `low` — reasoning ON at the lowest effort.
+ * - `medium` / `high` — reasoning ON at the matching effort.
  * - `xhigh` — pi's ceiling → the SDK's maximum effort (`max`).
  *
- * pi enables reasoning only when a level is set (see `ai/effort.ts`), so this
- * mirrors that: only `minimal` disables thinking; every other level enables it.
+ * Reasoning is never disabled: every model the anthropic provider offers
+ * (Sonnet 5.5, Opus 5.5, Fable 5.1) is always-thinking, and pi lists neither
+ * `off` nor `minimal` for them, so `minimal` takes the lowest level they run.
  */
 export function toSdkEffort(level: ThinkingLevel): SdkEffort {
   switch (level) {
     case "minimal":
-      return { thinking: { type: "disabled" }, effort: "low" };
     case "low":
       return { thinking: { type: "enabled" }, effort: "low" };
     case "medium":
