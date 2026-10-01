@@ -22,15 +22,15 @@ export default {
   meta: {
     title: "Houston: AI agents that actually do the work",
     description:
-      "Houston is the shared workspace where people and AI agents work together. Shared agents, one mission board, roles for your whole team. Free for up to three people.",
+      "Houston is the shared workspace where people and AI agents work together. Shared agents, one mission board, roles for your whole team. Free to start on your own.",
     ogTitle: "Houston: AI agents that actually do the work",
     ogDescription:
-      "Houston is the shared workspace where people and AI agents work together. Shared agents, one mission board, roles for your whole team. Free for up to three people.",
+      "Houston is the shared workspace where people and AI agents work together. Shared agents, one mission board, roles for your whole team. Free to start on your own.",
     twTitle: "Houston: AI agents that actually do the work",
     twDescription:
-      "Houston is the shared workspace where people and AI agents work together. Shared agents, one mission board, roles for your whole team. Free for up to three people.",
+      "Houston is the shared workspace where people and AI agents work together. Shared agents, one mission board, roles for your whole team. Free to start on your own.",
     jsonLdDescription:
-      "Free desktop app that runs AI agents which do real work for you, on your existing ChatGPT or Claude subscription, with over 1,000 integrations.",
+      "Free desktop app that runs AI agents which do real work for you, on your existing ChatGPT or Claude subscription, with over 1,500 integrations.",
     ogImageAlt: "Houston: AI agents that actually do the work.",
   },
 
@@ -336,9 +336,9 @@ export default {
     title: "Plugs into everything you already use.",
     tiles: [
       {
-        n: "1,000+",
+        n: "1,500+",
         l: "integrations, the tools your team already works in",
-        more: "+990 more",
+        more: "+1,490 more",
       },
       {
         n: "400+",
@@ -360,16 +360,14 @@ export default {
 
   pricing: {
     title: "Ready to 10x your team overnight?",
-    lead: "Free for the first three people. Upgrade when the whole team wants in.",
+    lead: "Start free, on your own. Upgrade when the team wants in.",
     free: {
       name: "Free",
-      note: "for yourself, or a team of up to three",
+      note: "for yourself",
       items: [
-        "Your personal workspace, free forever",
-        "Up to three people when you're ready",
-        "All 1,000+ integrations",
+        "Your personal workspace, free with a generous tier to explore",
+        "All 1,500+ integrations",
         "Works with your AI subscription",
-        "Community agents from the store",
       ],
       cta: "Download the app",
     },
@@ -455,7 +453,7 @@ export default {
           {
             q: "What can agents connect to?",
             aHtml:
-              "Over 1,000 tools you already use, like Gmail, Slack, QuickBooks, HubSpot, and Google Drive.",
+              "Over 1,500 tools you already use, like Gmail, Slack, QuickBooks, HubSpot, and Google Drive.",
           },
           {
             q: "Can I use my own ChatGPT or Claude plan?",
@@ -480,7 +478,7 @@ export default {
           {
             q: "What is free?",
             aHtml:
-              "Houston is free for up to three people in one space, with limited usage and no credit card. Enough to put agents on real work and feel the value. When the whole team wants in, or you need unlimited usage, you upgrade to Team.",
+              "Houston is free for one person, with no credit card and a generous tier to explore. Enough to put agents on real work and feel the value. When you want teammates in, or you need unlimited usage, you upgrade to Team.",
           },
           {
             q: "Who pays for a team?",
@@ -500,7 +498,7 @@ export default {
           {
             q: "What happens when the trial ends?",
             aHtml:
-              "Nothing is deleted. The space drops to the free plan: up to three people and limited usage. Every agent and mission stays put. Add a card whenever you are ready.",
+              "Nothing is deleted. The space drops to the free plan: everyone keeps access and usage gets limited. Every agent and mission stays put. Add a card whenever you are ready.",
           },
           {
             q: "Do members download or pay?",
