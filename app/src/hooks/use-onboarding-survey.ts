@@ -19,22 +19,13 @@ import {
   type OnboardingSurveyPreference,
 } from "../lib/onboarding-survey";
 import { liveSurveyStorePorts } from "../lib/onboarding-survey-ports";
-import {
-  loadSurveyPreference,
-  persistSurveyPreference,
-} from "../lib/onboarding-survey-store";
+import { persistSurveyPreference } from "../lib/onboarding-survey-store";
 import { onboardingGatewayAvailable } from "../lib/onboarding-sync";
 import { osIsTauri } from "../lib/os-bridge";
-import { surveyKey, useSurveyGatewaySync } from "./onboarding-survey-flush";
+import { useSurveyGatewaySync } from "./onboarding-survey-flush";
+import { loadOwnSurvey } from "./survey-load";
+import { surveyKey, surveyQueryOptions } from "./survey-query";
 import { useSession } from "./use-session";
-
-/**
- * The record changes a handful of times in an account's whole life, and it is
- * read on every boot by the first-run gate. A long stale window plus no
- * refetch-on-focus keeps that to ONE round trip per app session instead of two
- * on every window focus, forever, for every user.
- */
-const SURVEY_STALE_MS = 30 * 60_000;
 
 /** Everything the survey screens need. Exactly ONE instance of the hook is
  *  live (App owns it) and this is what it hands down — see the catch-up in
@@ -84,11 +75,8 @@ export function useOnboardingSurvey(): OnboardingSurveyState {
   });
 
   const query = useQuery({
-    queryKey: surveyKey(uid),
+    ...surveyQueryOptions(uid, () => loadOwnSurvey(uid)),
     enabled: !sessionLoading,
-    queryFn: () => loadSurveyPreference(uid, gateway, liveSurveyStorePorts),
-    staleTime: SURVEY_STALE_MS,
-    refetchOnWindowFocus: false,
   });
   const survey = query.data ?? null;
   const { flush, claim } = useSurveyGatewaySync({ uid, gateway, survey });

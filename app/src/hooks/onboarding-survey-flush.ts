@@ -18,10 +18,7 @@ import {
   owesGatewayCatchUp,
   syncOnboardingToGateway,
 } from "../lib/onboarding-sync";
-
-/** Where the record lives in the query cache — shared with its owning hook. */
-export const surveyKey = (uid: string | null) =>
-  ["onboarding-survey", uid] as const;
+import { surveyKey } from "./survey-query";
 
 /**
  * ONE instance per app (App owns the survey hook that owns this): the catch-up

@@ -1,6 +1,7 @@
 import { useQuery } from "@tanstack/react-query";
 import { useMemo } from "react";
-import { surveyKey } from "../../../hooks/onboarding-survey-flush";
+import { loadOwnSurvey } from "../../../hooks/survey-load";
+import { surveyQueryOptions } from "../../../hooks/survey-query";
 import { useSession } from "../../../hooks/use-session";
 import {
   surveyIndustryContext,
@@ -27,8 +28,11 @@ export interface SurveyRoleStart {
  */
 export function useSurveyRoleStart(): SurveyRoleStart {
   const { data: session, isLoading: sessionLoading } = useSession();
+  const uid = session?.uid ?? null;
+  // The owner's own options, load included, so this reader never leaves the
+  // shared query without one (`surveyQueryOptions`).
   const query = useQuery<OnboardingSurveyPreference | null>({
-    queryKey: surveyKey(session?.uid ?? null),
+    ...surveyQueryOptions(uid, () => loadOwnSurvey(uid)),
     enabled: false,
   });
   const record = query.data ?? null;
