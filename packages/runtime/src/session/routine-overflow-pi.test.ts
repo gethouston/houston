@@ -67,7 +67,14 @@ const server = createServer((req, res) => {
       );
       return;
     }
-    const reply = `Stock export: ${"SKU-0001 12 units; ".repeat(Math.ceil(endpoint.replyChars / 19))}`;
+    // Varied rows, 19 characters each: one identical row repeated would read
+    // as a repetition loop and be cut (session/runaway-output.ts).
+    const rows = Array.from(
+      { length: Math.ceil(endpoint.replyChars / 19) },
+      (_, i) =>
+        `SKU-${String(i % 10_000).padStart(4, "0")} ${10 + (i % 90)} units; `,
+    );
+    const reply = `Stock export: ${rows.join("")}`;
     const chunk = (data: object) => `data: ${JSON.stringify(data)}\n\n`;
     res.writeHead(200, { "content-type": "text/event-stream" });
     res.write(

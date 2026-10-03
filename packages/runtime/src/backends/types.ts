@@ -45,6 +45,17 @@ export interface CompactionOutcome {
 }
 
 /**
+ * Where one model round-trip stands. `requesting`: a request to `provider`'s
+ * model is out (or goes out after `afterMs` of retry backoff) and its
+ * response has not started. `responding`: the response is streaming.
+ * `idle`: no request is out (a tool runs, a compaction summarizes).
+ */
+export type ModelPhase =
+  | { phase: "requesting"; provider: string; afterMs?: number }
+  | { phase: "responding" }
+  | { phase: "idle" };
+
+/**
  * One live conversation session against a backend. `prompt` resolves at turn end;
  * a provider failure arrives as a `provider_error` WireEvent on the stream, never
  * a throw. `dispose` is idempotent.
@@ -74,6 +85,14 @@ export interface HarnessSession {
    * fakes stay minimal; without it no tool can end the turn early.
    */
   subscribeAssistantMessageStart?(listener: () => void): () => void;
+  /**
+   * Subscribe to where the model round-trip stands (`ModelPhase`). The stall
+   * watchdog bounds a request that has not started answering far tighter
+   * than a quiet response: a provider that never opens its response is not
+   * thinking. Optional so test fakes stay minimal; without it only the
+   * quiet-stream window applies.
+   */
+  subscribeModelPhase?(listener: (phase: ModelPhase) => void): () => void;
   /** Run one turn; resolves at turn end. Provider errors surface as WireEvents. */
   prompt(text: string): Promise<void>;
   /** Abort the in-flight turn (the user's Stop), then settle. */

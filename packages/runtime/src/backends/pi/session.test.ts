@@ -9,7 +9,7 @@ import type {
 } from "@earendil-works/pi-coding-agent";
 import type { WireEvent } from "@houston/runtime-client";
 import { expect, test } from "vitest";
-import type { ResolvedModel, ThinkingLevel } from "../types";
+import type { ModelPhase, ResolvedModel, ThinkingLevel } from "../types";
 import { PiSession } from "./session";
 
 /**
@@ -98,6 +98,7 @@ class StubAgentSession {
   lastModel: unknown;
   lastThinking: ThinkingLevel | undefined;
   contextUsage: { tokens: number | null } | undefined;
+  model: { provider: string } | undefined = { provider: "opencode" };
 
   subscribe(l: (e: AgentSessionEvent) => void): () => void {
     this.listeners.add(l);
@@ -326,4 +327,42 @@ test("subscribeAssistantMessageStart fires for assistant message_starts only", (
     message: assistantMessage(usage({})),
   } as unknown as AgentSessionEvent);
   expect(starts).toBe(1);
+});
+
+test("subscribeModelPhase marks each request, its response, and the gaps between", () => {
+  const { stub, session } = make();
+  const phases: ModelPhase[] = [];
+  const unsub = session.subscribeModelPhase((p) => phases.push(p));
+  const assistant = assistantMessage(usage({}));
+  const user = { role: "user", content: "hi", timestamp: 0 };
+  const emit = (e: unknown) => stub.emit(e as AgentSessionEvent);
+
+  emit({ type: "turn_start" });
+  // The user's message is not the response.
+  emit({ type: "message_start", message: user });
+  emit({ type: "message_end", message: user });
+  emit({ type: "message_start", message: assistant });
+  stub.emit(textDelta("x"));
+  emit({ type: "message_end", message: assistant });
+  // A failed request pi retries after its backoff, on a switched model.
+  stub.model = { provider: "anthropic" };
+  emit({
+    type: "auto_retry_start",
+    attempt: 1,
+    maxAttempts: 3,
+    delayMs: 2000,
+    errorMessage: "Request timed out.",
+  });
+  emit({ type: "compaction_start", reason: "threshold" });
+
+  expect(phases).toEqual([
+    { phase: "requesting", provider: "opencode" },
+    { phase: "responding" },
+    { phase: "idle" },
+    { phase: "requesting", provider: "anthropic", afterMs: 2000 },
+    { phase: "idle" },
+  ]);
+  unsub();
+  emit({ type: "turn_start" });
+  expect(phases).toHaveLength(5);
 });

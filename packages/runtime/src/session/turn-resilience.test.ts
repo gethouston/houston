@@ -7,6 +7,7 @@ import type {
   CreateSessionOptions,
   HarnessBackend,
   HarnessSession,
+  ModelPhase,
   ResolvedModel,
 } from "../backends/types";
 
@@ -26,8 +27,11 @@ process.env.HOUSTON_WORKSPACE_DIR = mkdtempSync(
   join(tmpdir(), "houston-resilience-ws-"),
 );
 process.env.HOUSTON_TURN_STALL_TIMEOUT_MS = "5000";
+// Unanswered cut = 3 deadlines and a third: 600 ms -> 2,000 ms.
+process.env.HOUSTON_TURN_FIRST_BYTE_DEADLINE_MS = "600";
 
 const STALL_MS = 5000;
+const FIRST_RESPONSE_MS = 2000;
 
 const state = vi.hoisted(() => ({
   model: null as ResolvedModel | null,
@@ -179,6 +183,57 @@ class ToolInputSession implements HarnessSession {
   setThinkingLevel(): void {}
   getContextUsage(): { tokens: number | null } {
     return { tokens: 100 };
+  }
+}
+
+/** A StallSession that reports its request going out: the response never
+ *  opens, so the unanswered cut applies, not the quiet-stream one. */
+class UnansweredSession extends StallSession {
+  private phases = new Set<(p: ModelPhase) => void>();
+  subscribeModelPhase(l: (p: ModelPhase) => void): () => void {
+    this.phases.add(l);
+    return () => {
+      this.phases.delete(l);
+    };
+  }
+  override prompt(): Promise<void> {
+    for (const p of this.phases)
+      p({ phase: "requesting", provider: "openai-codex" });
+    return super.prompt();
+  }
+}
+
+/** A session whose reply loops ("SymbolSymbol…") until aborted, after a 429
+ *  pi retried: pi flushes that held failure once the aborted prompt settles. */
+class LoopingSession extends StallSession {
+  private wire = new Set<(e: WireEvent) => void>();
+  override subscribe(l: (e: WireEvent) => void): () => void {
+    this.wire.add(l);
+    const unsub = super.subscribe(l);
+    return () => {
+      this.wire.delete(l);
+      unsub();
+    };
+  }
+  override prompt(): Promise<void> {
+    const settled = super.prompt();
+    for (let i = 0; i < 200 && !this.aborted; i++)
+      for (const l of this.wire) l({ type: "text", data: "Symbol".repeat(20) });
+    return settled;
+  }
+  override async abort(): Promise<void> {
+    for (const l of this.wire)
+      l({
+        type: "provider_error",
+        data: {
+          kind: "rate_limited",
+          provider: "openai-codex",
+          model: null,
+          retry_after_seconds: null,
+          message: "429 Too Many Requests",
+        },
+      });
+    await super.abort();
   }
 }
 
@@ -426,4 +481,66 @@ test("a queued message is persisted + visible BEFORE the workdir lock frees — 
   release?.();
   await held;
   await turn.catch(() => {});
+});
+
+test("a request whose response never opens is cut once its retries have had their deadlines, well before the stall window", async () => {
+  vi.useFakeTimers();
+  state.model = OPENAI;
+  const session = new UnansweredSession();
+  const conv = convWith(session);
+
+  const events: WireEvent[] = [];
+  const unsub = subscribe("conv-unanswered", (e) => events.push(e));
+  const done = execTurn(conv, "conv-unanswered", "turn-u", "hi", {
+    author: undefined,
+    priorAuthors: [],
+  });
+
+  await vi.advanceTimersByTimeAsync(0);
+  await vi.advanceTimersByTimeAsync(FIRST_RESPONSE_MS - 1);
+  expect(session.aborted).toBe(false);
+  await vi.advanceTimersByTimeAsync(1);
+  await done;
+  unsub();
+
+  expect(session.aborted).toBe(true);
+  const pe = events.find(
+    (e): e is Extract<WireEvent, { type: "provider_error" }> =>
+      e.type === "provider_error",
+  );
+  expect(pe?.data).toMatchObject({
+    kind: "provider_internal",
+    message: expect.stringContaining("did not start answering"),
+  });
+  expect(events.some((e) => e.type === "done")).toBe(false);
+});
+
+test("a looping reply settles on the broken-response card, never a failure pi had already retried", async () => {
+  vi.useFakeTimers();
+  state.model = OPENAI;
+  const session = new LoopingSession();
+  const conv = convWith(session);
+  appendUserMessage("conv-loop", "hi", { turnId: "turn-loop" });
+
+  const events: WireEvent[] = [];
+  const unsub = subscribe("conv-loop", (e) => events.push(e));
+  const done = execTurn(conv, "conv-loop", "turn-loop", "hi", {
+    author: undefined,
+    priorAuthors: [],
+  });
+  await vi.advanceTimersByTimeAsync(0);
+  await done;
+  unsub();
+
+  expect(session.aborted).toBe(true);
+  const kinds = events
+    .filter(
+      (e): e is Extract<WireEvent, { type: "provider_error" }> =>
+        e.type === "provider_error",
+    )
+    .map((e) => e.data.kind);
+  expect(kinds).toEqual(["malformed_response"]);
+  expect(getHistory("conv-loop")?.messages.at(-1)?.providerError?.kind).toBe(
+    "malformed_response",
+  );
 });

@@ -137,10 +137,23 @@ export function createTurnBackend(
       },
     };
   }
+  const timings = deps.turn.timings;
   return createPiBackend({
     workspaceDir,
     dataDir,
     modelRuntime: deps.modelRuntime,
+    // The turn's first answered request and first hedge, on the terminal
+    // frame's timingsMs (turn-terminal.ts) beside the other marks.
+    hedge: timings
+      ? {
+          answered() {
+            timings.t_first_byte ??= performance.now();
+          },
+          hedged() {
+            timings.t_first_hedge ??= performance.now();
+          },
+        }
+      : undefined,
     // The SAME prompt the Claude branch gets: the capability sentence follows
     // the turn's granted tools, not the provider it landed on.
     systemPrompt: deps.systemPrompt,

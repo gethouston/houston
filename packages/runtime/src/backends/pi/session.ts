@@ -4,6 +4,7 @@ import type { WireEvent } from "@houston/runtime-client";
 import type {
   CompactionOutcome,
   HarnessSession,
+  ModelPhase,
   ResolvedModel,
   ThinkingLevel,
 } from "../types";
@@ -50,6 +51,34 @@ export class PiSession implements HarnessSession {
     return this.session.subscribe((e) => {
       if (e.type === "message_start" && e.message.role === "assistant")
         listener();
+    });
+  }
+
+  /**
+   * pi's round-trip boundaries as `ModelPhase`s. `turn_start` precedes each
+   * request, and the assistant `message_start` fires when the provider's
+   * response opens (its headers, or the first stream event): between the two
+   * the request is out and unanswered. An auto-retry is a request that goes
+   * out after its backoff.
+   */
+  subscribeModelPhase(listener: (phase: ModelPhase) => void): () => void {
+    const provider = () => this.session.model?.provider ?? "";
+    return this.session.subscribe((e) => {
+      if (e.type === "turn_start")
+        listener({ phase: "requesting", provider: provider() });
+      else if (e.type === "auto_retry_start")
+        listener({
+          phase: "requesting",
+          provider: provider(),
+          afterMs: e.delayMs,
+        });
+      else if (e.type === "message_start" && e.message.role === "assistant")
+        listener({ phase: "responding" });
+      else if (
+        (e.type === "message_end" && e.message.role === "assistant") ||
+        e.type === "compaction_start"
+      )
+        listener({ phase: "idle" });
     });
   }
 

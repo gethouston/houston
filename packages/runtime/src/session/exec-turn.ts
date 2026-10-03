@@ -8,6 +8,7 @@ import type {
   WireEvent,
 } from "@houston/runtime-client";
 import { DEFAULT_REASONING_EFFORT, toThinkingLevel } from "../ai/effort";
+import { unansweredWindowMs } from "../ai/first-byte";
 import {
   learnCustomContextWindow,
   OPENAI_COMPATIBLE,
@@ -78,7 +79,12 @@ import {
   recordRoutineCarry,
   resetRoutineSessionIfNeeded,
 } from "./routine-session-reset";
-import { createStallWatchdog, isAbortEcho } from "./stall-watchdog";
+import { describeStall, stallFailure } from "./stall-failure";
+import {
+  createStallWatchdog,
+  isAbortEcho,
+  type StallReason,
+} from "./stall-watchdog";
 import {
   clearInflightMarker,
   noteInflightTool,
@@ -233,12 +239,13 @@ export async function execTurn(
   // the marker on a backend that persists nothing from a failed prompt.
   let replayedHistory = false;
 
-  // Stall watchdog: a provider stream that goes silent mid-turn resolves neither
-  // success nor error and would hold the workdir lock until the socket dies.
-  // When it trips, `stalled` turns the aborted (contentless) turn into a typed
-  // error below — see stall-watchdog.ts. Fed every wire event by the
-  // subscription; armed/disarmed around the model round-trip only.
-  let stalled = false;
+  // Stall watchdog: a provider stream that goes silent mid-turn, a request that
+  // is never answered, or a reply stuck in a loop would hold the workdir lock
+  // until the socket dies. When it trips, `stalled` (why, and the window that
+  // elapsed) turns the aborted turn into a typed error below — see
+  // stall-watchdog.ts. Fed every wire event by the subscription;
+  // armed/disarmed around the model round-trip only.
+  let stalled: { reason: StallReason; windowMs: number } | undefined;
   // A fresh, per-turn holder for whatever the model ends up waiting on the
   // user for (ask_user / request_connection). Fresh every turn IS the reset;
   // established for the DURATION of the prompt (like the acting context) so
@@ -249,15 +256,15 @@ export async function execTurn(
   const interaction = newInteractionHolder();
   const watchdog = createStallWatchdog({
     timeoutMs: config.turnStallTimeoutMs,
-    onStall: () => {
-      stalled = true;
+    firstResponseMs: (provider) =>
+      unansweredWindowMs(provider, config.turnFirstByteDeadlineMs),
+    onStall: (reason, windowMs) => {
+      stalled = { reason, windowMs };
       // The only log line a watchdog cut leaves: pi's echo below is logged as
       // an ordinary (expected) provider_error, so without this a 300 s gap in
       // the tool log is the sole clue that the turn was aborted here.
       console.warn(
-        `[turn] stall watchdog aborted the turn: no provider event for ${Math.round(
-          config.turnStallTimeoutMs / 1000,
-        )}s (conversation=${id} turn=${turnId})`,
+        `[turn] stall watchdog aborted the turn: ${describeStall(reason, windowMs)} (conversation=${id} turn=${turnId})`,
       );
       // Fire-and-forget: the awaited prompt() resolves once pi unwinds the
       // aborted stream; that resolution, not this call, advances the turn.
@@ -280,11 +287,18 @@ export async function execTurn(
   // marks so an offer tool can tell whether the message carrying it already
   // holds the closing message (turn-finish.ts).
   let unsubMessageStart: (() => void) | undefined;
+  // The backend's round-trip boundaries: the watchdog's first-response window
+  // runs while a request is out and its response has not opened.
+  let unsubPhase: (() => void) | undefined;
   const subscribeSession = () => {
     unsubLiveness = conv.session.subscribeLiveness?.(() => watchdog.touch());
-    unsubMessageStart = conv.session.subscribeAssistantMessageStart?.(() =>
-      interaction.finish.noteAssistantMessageStart(),
+    unsubPhase = conv.session.subscribeModelPhase?.((phase) =>
+      watchdog.onPhase(phase),
     );
+    unsubMessageStart = conv.session.subscribeAssistantMessageStart?.(() => {
+      interaction.finish.noteAssistantMessageStart();
+      watchdog.onResponseStart();
+    });
     unsub = conv.session.subscribe((wire: WireEvent) => {
       if (wire.type === "text") {
         assistantText += wire.data;
@@ -313,12 +327,14 @@ export async function execTurn(
       } else if (wire.type === "provider_error") {
         // Our OWN abort (the watchdog's, or the user's Stop), echoed back by
         // pi as an unclassifiable error: drop it, never publish it. The turn's
-        // surface is the synthesized "stopped responding" card after prompt()
-        // resolves, or the "Stopped by user" frame cancelTurn already sent
-        // (stall-watchdog.ts, PRODUCT-1778).
+        // surface is the watchdog's synthesized card after prompt() resolves,
+        // or the "Stopped by user" frame cancelTurn already sent
+        // (stall-watchdog.ts, PRODUCT-1778). After a watchdog trip ANY
+        // provider error is its consequence, including a failure pi held from
+        // an attempt it had since retried (backends/pi/wire.ts).
         if (
-          (stalled || conv.stoppedTurnId === turnId) &&
-          isAbortEcho(wire.data)
+          stalled ||
+          (conv.stoppedTurnId === turnId && isAbortEcho(wire.data))
         )
           return;
         providerError = wire.data;
@@ -667,23 +683,19 @@ export async function execTurn(
     // A stall-abort resolves prompt() the same way a user Stop does (pi marks it
     // "aborted" and emits no provider_error), so synthesize the typed failure
     // here — else the empty, contentless turn would settle below as a clean
-    // success. `provider_internal` is the honest card: the request DID reach the
-    // provider (the socket was live) and it then failed to deliver — a
-    // provider-side fault, "try again in a moment", NOT the user's connectivity.
-    // No HTTP status: the stream went silent, it never returned a response code.
+    // success. The card follows the trip (stall-failure.ts): a provider that
+    // went silent or never answered is `provider_internal`, a looping reply
+    // `malformed_response`.
     // A user STOP always wins over the watchdog: if the same turn was both
     // stalled and stopped, cancelTurn's "Stopped by user" frame is the terminal
     // surface — synthesizing a provider error on top would double-settle the turn
     // (a red card over the neutral stop). So skip the synthesis when stopped.
     if (stalled && !providerError && !stopped) {
-      providerError = {
-        kind: "provider_internal",
-        provider: model.provider,
-        http_status: null,
-        message: `The AI provider stopped responding (no response for ${Math.round(
-          config.turnStallTimeoutMs / 1000,
-        )}s). Please try again.`,
-      };
+      providerError = stallFailure(
+        stalled.reason,
+        stalled.windowMs,
+        model.provider,
+      );
       publish(id, { type: "provider_error", data: providerError, turnId });
     }
     // A context-overflow rejection names the model's REAL window (llama.cpp's
@@ -941,6 +953,7 @@ export async function execTurn(
     // subscribed (a bad pin) — nothing to tear down in that case.
     unsub?.();
     unsubLiveness?.();
+    unsubPhase?.();
     unsubMessageStart?.();
     // PRODUCT-1355 (layer 3): a turn that died on a REVOKED token leaves a
     // Claude session whose next spawn would 401 identically — evict it so the

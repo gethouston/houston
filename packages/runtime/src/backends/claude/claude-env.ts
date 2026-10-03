@@ -1,5 +1,7 @@
 import { isAbsolute } from "node:path";
+import { firstByteDeadlineMs } from "../../ai/first-byte";
 import { isPersonalClaudePlan } from "../../auth/claude-plan";
+import { config } from "../../config";
 import { claudeShellFencePath } from "../../session/claude-shell-fence";
 import type { ClaudeToken } from "./backend-types";
 
@@ -172,6 +174,16 @@ export function buildClaudeEnv(
       ? claudeShellFencePath()
       : opts.shellFencePath;
   if (fence !== null) env.CLAUDE_CODE_SHELL_PREFIX = fence;
+  // Claude Code's request timeout covers only the wait for the response
+  // headers, and it retries a request that timed out: the CLI's own
+  // cancel-and-resend at the first-byte deadline (ai/first-byte.ts). A stream
+  // that opened is never cut by it, however long it thinks or writes.
+  const deadline = firstByteDeadlineMs(
+    "anthropic",
+    config.turnFirstByteDeadlineMs,
+  );
+  if (deadline > 0 && env.API_TIMEOUT_MS === undefined)
+    env.API_TIMEOUT_MS = String(deadline);
   if (opts.homeDir !== undefined) env.HOME = opts.homeDir;
   if (opts.credentialStorageDir !== undefined) {
     // The CLI reads an EMPTY `CLAUDE_SECURESTORAGE_CONFIG_DIR` as `~/.houston`'s

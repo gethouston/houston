@@ -111,6 +111,8 @@ export async function runTurn(
           interaction,
           usedTokens,
           stallTimeoutMs: deps.stallTimeoutMs ?? config.turnStallTimeoutMs,
+          firstByteDeadlineMs:
+            deps.firstByteDeadlineMs ?? config.turnFirstByteDeadlineMs,
           emit,
         }),
     );

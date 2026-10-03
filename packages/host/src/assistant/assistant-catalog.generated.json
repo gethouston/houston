@@ -4200,6 +4200,49 @@
                           ]
                         },
                         "kind": {
+                          "const": "malformed_response",
+                          "type": "string"
+                        },
+                        "message": {
+                          "type": "string"
+                        },
+                        "provider": {
+                          "type": "string"
+                        }
+                      },
+                      "required": ["kind", "message", "provider"],
+                      "additionalProperties": false
+                    },
+                    {
+                      "type": "object",
+                      "properties": {
+                        "credential": {
+                          "anyOf": [
+                            {
+                              "type": "null"
+                            },
+                            {
+                              "type": "object",
+                              "properties": {
+                                "scope": {
+                                  "anyOf": [
+                                    {
+                                      "const": "personal",
+                                      "type": "string"
+                                    },
+                                    {
+                                      "const": "team",
+                                      "type": "string"
+                                    }
+                                  ]
+                                }
+                              },
+                              "required": ["scope"],
+                              "additionalProperties": false
+                            }
+                          ]
+                        },
+                        "kind": {
                           "const": "network_unreachable",
                           "type": "string"
                         },

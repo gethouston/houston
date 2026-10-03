@@ -183,6 +183,19 @@ export type ProviderError =
       credential?: ProviderErrorCredential;
     }
   | {
+      /**
+       * The model's reply broke mid-generation: the runtime cut a repetition
+       * loop ("SymbolSymbolSymbol…") before it ran to the output limit.
+       * Transient, a retry usually comes back clean. Mirrors the frontend
+       * `malformed_response` card.
+       */
+      kind: "malformed_response";
+      provider: string;
+      message: string;
+      /** WHOSE credential ran this turn (HOU-976); absent without an acting identity. */
+      credential?: ProviderErrorCredential;
+    }
+  | {
       kind: "network_unreachable";
       provider: string;
       message: string;
