@@ -1,6 +1,7 @@
 import { equal, ok } from "node:assert/strict";
 import { before, describe, it } from "node:test";
 import type { Routine } from "@houston/engine-adapter";
+import type { ProviderHealth } from "@houston/protocol";
 import routines from "../src/locales/en/routines.json" with { type: "json" };
 
 // The routine screen's auto-pause notice: the engine records WHY it paused a
@@ -8,7 +9,7 @@ import routines from "../src/locales/en/routines.json" with { type: "json" };
 // that fix in the person's language with a Resume action. A running routine,
 // or one a person paused, shows nothing.
 
-let render: (routine: Routine) => string;
+let render: (routine: Routine, readerHealth?: ProviderHealth) => string;
 
 const base: Routine = {
   id: "r1",
@@ -55,12 +56,17 @@ before(async () => {
   const { RoutineAutoPauseBanner } = await import(
     "../src/components/agent/routine-auto-pause-banner.tsx"
   );
-  render = (routine) =>
+  render = (routine, readerHealth) =>
     renderToStaticMarkup(
       React.createElement(RoutineAutoPauseBanner, {
         routine,
         onResume: () => undefined,
         resuming: false,
+        readerFor: (provider: string) => ({
+          provider,
+          health: readerHealth,
+          readerIsCreator: true,
+        }),
       }),
     );
 });
@@ -84,6 +90,19 @@ describe("RoutineAutoPauseBanner", () => {
     ok(
       text(render(paused("model_unavailable"))).includes(
         "Pick a model the account can run",
+      ),
+    );
+  });
+
+  it("asks to sign in again when the gateway signed the reader's account out", () => {
+    const html = text(
+      render(paused("creator_not_connected"), "needs_reconnect"),
+    );
+    ok(html.includes("needs to reconnect"), html);
+    ok(!html.includes("has no"), html);
+    ok(
+      text(render(paused("creator_not_connected"), "not_connected")).includes(
+        "has no",
       ),
     );
   });

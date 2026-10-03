@@ -496,6 +496,11 @@
     "signInAgain": "Iniciar sesión de nuevo",
     "launchError": "No se pudo abrir el inicio de sesión. Intenta otra vez."
   },
+  "providerReconnectNotice": {
+    "dueIn_one": "Tu sesión de {{provider}} termina en {{count}} día.",
+    "dueIn_other": "Tu sesión de {{provider}} termina en {{count}} días.",
+    "dueToday": "Tu sesión de {{provider}} termina hoy."
+  },
   "agentProvisioning": {
     "title": "Estamos creando tu empleado de IA",
     "stillStarting": "Tu empleado de IA está tardando más de lo normal en iniciar. Seguimos intentándolo, un momento.",

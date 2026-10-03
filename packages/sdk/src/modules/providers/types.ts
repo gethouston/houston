@@ -54,6 +54,10 @@ export interface ProviderVM {
   /** GitHub Copilot Enterprise domain the credential was issued for, else null.
    *  Absent for every non-Copilot provider. */
   enterpriseUrl?: string | null;
+  /** Epoch ms by which the person must sign in again (a hosted Claude
+   *  subscription login ends about 28 days after it). Absent = no known
+   *  deadline. {@link providerReconnectNotice} says when to warn. */
+  reconnectBy?: number;
 }
 
 /**

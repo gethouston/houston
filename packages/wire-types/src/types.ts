@@ -1042,6 +1042,12 @@ export interface ProviderStatus {
    * that predate it, so treat absence as "read `authState` as before".
    */
   health?: ProviderHealth;
+  /**
+   * Epoch ms by which the person must sign in again (`ProviderInfo.reconnectBy`
+   * in `@houston/protocol`): a hosted Claude subscription login ends about 28
+   * days after it. Absent means no known deadline.
+   */
+  reconnectBy?: number;
 }
 
 /**

@@ -496,6 +496,11 @@
     "signInAgain": "Entrar novamente",
     "launchError": "Não foi possível abrir o login. Tente de novo."
   },
+  "providerReconnectNotice": {
+    "dueIn_one": "Sua sessão no {{provider}} termina em {{count}} dia.",
+    "dueIn_other": "Sua sessão no {{provider}} termina em {{count}} dias.",
+    "dueToday": "Sua sessão no {{provider}} termina hoje."
+  },
   "agentProvisioning": {
     "title": "Estamos criando seu funcionário de IA",
     "stillStarting": "Seu funcionário de IA está demorando mais que o normal para iniciar. Ainda estamos tentando, aguarde um momento.",

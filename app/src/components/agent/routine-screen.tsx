@@ -14,6 +14,7 @@ import { useEffect, useState } from "react";
 import { useTranslation } from "react-i18next";
 import { useRoutineWritesForAnyAgent } from "../../hooks/queries";
 import { useRoutineLabels } from "../../hooks/use-routine-labels";
+import { useRoutineReader } from "../../hooks/use-routine-provider-health";
 import { genericErrorDescription } from "../../lib/error-report";
 import type { Agent } from "../../lib/types";
 import { useUIStore } from "../../stores/ui";
@@ -57,6 +58,7 @@ export function RoutineScreen({
   const addToast = useUIStore((s) => s.addToast);
   const { update: updateRoutine } = useRoutineWritesForAnyAgent();
   const [runsOpen, setRunsOpen] = useState(false);
+  const readerFor = useRoutineReader(routine.created_by);
 
   const save = (updates: RoutineUpdate) =>
     updateRoutine.mutate(
@@ -109,6 +111,7 @@ export function RoutineScreen({
           routine={routine}
           onResume={() => save({ enabled: true })}
           resuming={updateRoutine.isPending}
+          readerFor={readerFor}
         />
         <RoutineScreenSections
           agent={agent}
@@ -130,6 +133,7 @@ export function RoutineScreen({
           setRunsOpen(false);
           onOpenRun(run);
         }}
+        readerFor={readerFor}
       />
     </div>
   );

@@ -23,6 +23,7 @@ import { KeepAliveViews } from "./keep-alive-views";
 import { MobileMoreMenu } from "./mobile-more-menu";
 import { MobileNavBar } from "./mobile-nav-bar";
 import { PlanLifecycle } from "./plan-lifecycle";
+import { ProviderReconnectNotice } from "./provider-reconnect-notice";
 import { ShellPanelCard } from "./shell-panel-card";
 import { Sidebar } from "./sidebar";
 import { TeamStatusBanner } from "./team-status-banner";
@@ -123,6 +124,7 @@ export function WorkspaceShell({
                 )}
               >
                 <TeamStatusBanner />
+                <ProviderReconnectNotice />
                 <div className="flex min-h-0 flex-1 flex-col overflow-hidden">
                   <BootLandingContent landing={landing}>
                     <KeepAliveViews

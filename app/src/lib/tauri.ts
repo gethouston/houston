@@ -1226,6 +1226,12 @@ export interface ProviderStatus {
    * so it stays authenticated. Absent from engines that predate it.
    */
   health?: ProviderHealth;
+  /**
+   * Epoch ms by which the person must sign in again: a hosted Claude
+   * subscription login ends about 28 days after it. Absent = no known
+   * deadline. The SDK's `providerReconnectNotice` says when to warn.
+   */
+  reconnectBy?: number;
 }
 
 /**
@@ -1282,6 +1288,7 @@ export const tauriProvider = {
         // swallow which account answered. Absent stays absent.
         credentialScope: p.credentialScope,
         health: p.health,
+        reconnectBy: p.reconnectBy,
       };
     }),
   /**
@@ -1325,6 +1332,7 @@ export const tauriProvider = {
             // is actually rendered.
             credentialScope: p.credentialScope,
             health: p.health,
+            reconnectBy: p.reconnectBy,
           };
         });
         return out;
@@ -1347,6 +1355,7 @@ export const tauriProvider = {
             cli_name: status.cliName,
             active_model: status.activeModel,
             health: status.health,
+            reconnectBy: status.reconnectBy,
           };
         });
         return out;

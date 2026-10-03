@@ -11,8 +11,9 @@
  */
 
 import type { ModuleContext } from "../../module-context";
-import { mergeProviders, overlayStatus } from "./merge";
+import { mergeProviders, overlayStatus, signInFinished } from "./merge";
 import {
+  type AuthStatus,
   type LoginInfo,
   type LoginOptions,
   type ProviderId,
@@ -51,6 +52,8 @@ export function createProviderOps(
   // after a newer one never flushes a stale snapshot over the fresh one
   // (last-intent wins). Mirrors the activities module's guard.
   const loadSeq = new Map<string, number>();
+  // Agents whose provider list predates a finished sign-in (refreshStatus).
+  const listOwed = new Set<string>();
 
   /**
    * Refreshes which AI providers an agent can use and which one it is signed
@@ -78,8 +81,10 @@ export function createProviderOps(
       client.listProviders(),
       client.authStatus(),
     ]);
-    if (loadSeq.get(agentId) === seq)
-      store.publish(scope, mergeProviders(infos, auth));
+    if (loadSeq.get(agentId) !== seq) return;
+    store.publish(scope, mergeProviders(infos, auth));
+    // A full read settles any list a finished sign-in left owed.
+    listOwed.delete(agentId);
   }
 
   /**
@@ -92,7 +97,27 @@ export function createProviderOps(
     const auth = await ctx.clientFor(agentId).authStatus();
     const scope = providersScope(agentId);
     const prior = store.getSnapshot(scope) as ProvidersViewModel | undefined;
-    store.publish(scope, overlayStatus(prior, auth));
+    const next = overlayStatus(prior, auth);
+    store.publish(scope, next);
+    // A sign-in that just finished started a new login: its deadline
+    // (`reconnectBy`) rides the provider list, which this poll does not read.
+    if (signInFinished(prior, next)) listOwed.add(agentId);
+    if (listOwed.has(agentId)) await readOwedList(agentId, auth);
+  }
+
+  /**
+   * The provider list a finished sign-in left stale. The debt clears only when
+   * a read's snapshot is published (here or by a full refresh), so a failed
+   * or superseded read leaves it for the next poll. A failed read rejects,
+   * after the poll's own answer is already published: the caller reports it.
+   */
+  async function readOwedList(agentId: string, auth: AuthStatus) {
+    const seq = (loadSeq.get(agentId) ?? 0) + 1;
+    loadSeq.set(agentId, seq);
+    const infos = await ctx.clientFor(agentId).listProviders();
+    if (loadSeq.get(agentId) !== seq) return;
+    store.publish(providersScope(agentId), mergeProviders(infos, auth));
+    listOwed.delete(agentId);
   }
 
   /**

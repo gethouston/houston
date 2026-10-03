@@ -11,6 +11,7 @@ import type {
   RoutineAutoPause,
   RoutineRunFailureCode,
 } from "@houston/protocol";
+import { type RoutineReaderAccount, routineFailureCode } from "./failure-view";
 import type { Routine } from "./types";
 
 /** The one thing a person does before resuming an auto-paused routine. */
@@ -54,13 +55,21 @@ const REMEDY: Record<
 /**
  * The notice for an auto-paused routine, or null when the routine is running
  * or a person paused it (a hand pause carries no reason and needs no notice).
+ * `reader` is what the reader's own account says about the pause's provider:
+ * a "not connected" pause on an account the gateway signed out asks to sign
+ * in again (`./failure-view`).
  */
 export function routinePauseNotice(
   routine: Pick<Routine, "enabled"> & { auto_paused?: RoutineAutoPause },
+  reader?: RoutineReaderAccount,
 ): RoutinePauseNotice | null {
   const pause = routine.auto_paused;
   if (routine.enabled || !pause) return null;
-  const { remedy, account } = REMEDY[pause.reason];
+  const reason = routineFailureCode(
+    { code: pause.reason, provider: pause.provider },
+    reader,
+  );
+  const { remedy, account } = REMEDY[reason];
   return {
     remedy,
     ...(account ? { account } : {}),

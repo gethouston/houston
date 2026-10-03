@@ -10,6 +10,9 @@
  * this hook only supplies the probe and the signed-in identity.
  */
 
+import type { RoutineReaderAccount } from "@houston/sdk";
+import { useCallback } from "react";
+import { toDisplayProviderIdOrNull } from "../lib/provider-overrides";
 import {
   type RoutineProviderHealth,
   routineProviderHealth,
@@ -41,4 +44,33 @@ export function useRoutineProviderHealth(
     health: routineProviderHealth(statuses[provider]),
     runsAsCreator: !isCreator,
   };
+}
+
+/**
+ * What the reader's own account says about a provider, for the SDK's routine
+ * failure rules (`routineFailureCode`, `routinePauseNotice`): a run recorded
+ * as "not connected" on an account the gateway signed out reads as "sign in
+ * again". Takes the ENGINE provider id a run failure names.
+ */
+export function useRoutineReader(
+  createdBy: string | undefined,
+): (provider: string) => RoutineReaderAccount {
+  const { statuses } = useProviderStatuses();
+  const { data: session } = useSession();
+  const readerIsCreator = viewerIsRoutineCreator(
+    createdBy,
+    session?.uid ?? null,
+  );
+  return useCallback(
+    (provider: string) => {
+      const status = statuses[toDisplayProviderIdOrNull(provider) ?? provider];
+      return {
+        provider,
+        health: status?.health,
+        credentialScope: status?.credentialScope,
+        readerIsCreator,
+      };
+    },
+    [statuses, readerIsCreator],
+  );
 }

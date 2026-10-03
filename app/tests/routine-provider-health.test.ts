@@ -71,13 +71,20 @@ describe("routineProviderHealth", () => {
       }),
       "not_connected",
     );
+  });
+
+  it("a missing credential the gateway signed out asks to sign in again", () => {
+    // The runtime never pairs a missing credential with needs_reconnect, and
+    // the gateway rewrites a sleeping agent's captured health to match the
+    // store. This pairing is the gateway's sign-out record: the account was
+    // connected and its login ended.
     strictEqual(
       routineProviderHealth({
         authenticated: false,
         auth_state: "unauthenticated",
         health: "needs_reconnect",
       }),
-      "not_connected",
+      "needs_reconnect",
     );
   });
 

@@ -29,7 +29,9 @@
  * painted "Not connected" on every routine of an account whose chat picker
  * (which reads `authenticated`) said Connected, until the pod woke and the
  * proxied answer replaced the capture. `needs_reconnect` and `out_of_credits`
- * are kept: both describe a credential that IS present.
+ * are kept: both describe a credential that IS present, or (for
+ * `needs_reconnect` on a not-connected row) one the gateway signed out, which
+ * only the gateway's own overlay reports.
  *
  * Pure + DOM/i18n-free so every state is unit-tested without a renderer
  * (`app/tests/routine-provider-health.test.ts`).
@@ -73,7 +75,12 @@ export function routineProviderHealth(
   const configured = connectedClaim(status);
   if (status.health) {
     if (configured === undefined) return status.health;
-    if (!configured) return "not_connected";
+    // Not connected because the gateway signed the account out (its login
+    // ended): the remedy is to sign in again, so say so.
+    if (!configured)
+      return status.health === "needs_reconnect"
+        ? "needs_reconnect"
+        : "not_connected";
     return status.health === "not_connected" ? "connected" : status.health;
   }
   // Older engine: no `health` field at all — the denormalized boolean is all

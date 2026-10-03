@@ -10,6 +10,7 @@
  * sentence naming the provider — so "Failed" stops being the whole story.
  */
 
+import { type RoutineReaderAccount, routineFailureCode } from "@houston/sdk";
 import {
   Dialog,
   DialogContent,
@@ -34,6 +35,8 @@ interface Props {
   locale: string;
   /** Opens the clicked run's chat (the caller closes the modal first). */
   onOpenRun: (run: RoutineRun) => void;
+  /** The reader's own account for a provider (`useRoutineReader`). */
+  readerFor: (provider: string) => RoutineReaderAccount;
 }
 
 export function RoutineRunsDialog({
@@ -43,6 +46,7 @@ export function RoutineRunsDialog({
   runsLoading,
   locale,
   onOpenRun,
+  readerFor,
 }: Props) {
   const { t } = useTranslation("routines");
 
@@ -52,7 +56,9 @@ export function RoutineRunsDialog({
   const failureSummary = (run: RoutineRun): string | undefined => {
     if (!run.failure) return undefined;
     const provider = providerName(run.failure.provider);
-    switch (run.failure.code) {
+    // An account the gateway signed out reads as "sign in again", not as
+    // never connected (the SDK's `routineFailureCode`).
+    switch (routineFailureCode(run.failure, readerFor(run.failure.provider))) {
       case "creator_not_connected":
         return t("details.failure.creatorNotConnected", { provider });
       case "team_not_connected":

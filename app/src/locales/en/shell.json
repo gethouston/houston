@@ -496,6 +496,11 @@
     "signInAgain": "Sign in again",
     "launchError": "Could not open sign-in. Try again."
   },
+  "providerReconnectNotice": {
+    "dueIn_one": "Your {{provider}} session ends in {{count}} day.",
+    "dueIn_other": "Your {{provider}} session ends in {{count}} days.",
+    "dueToday": "Your {{provider}} session ends today."
+  },
   "agentProvisioning": {
     "title": "We are creating your AI Employee",
     "stillStarting": "Your AI Employee is taking longer than usual to start. We are still trying, hang tight.",

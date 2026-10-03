@@ -51,6 +51,7 @@ export function ProviderStatusMixin<TBase extends BaseCtor>(Base: TBase) {
           // mapped status byte-identical there.
           credentialScope?: CredentialScope;
           health?: ProviderHealth;
+          reconnectBy?: number;
         }
       >();
       // "unauthenticated" is only ever a CONFIRMED answer from the engine. An
@@ -117,6 +118,12 @@ export function ProviderStatusMixin<TBase extends BaseCtor>(Base: TBase) {
               ? { health: p.health }
               : {}
             : { health: "unreachable" as const }),
+          // The login's sign-in-again deadline (hosted Claude subscription);
+          // conditional like the fields above, so every other answer keeps
+          // its exact shape.
+          ...(reachable && p?.reconnectBy !== undefined
+            ? { reconnectBy: p.reconnectBy }
+            : {}),
         } as ProviderStatus;
       });
     }
@@ -149,6 +156,9 @@ export function ProviderStatusMixin<TBase extends BaseCtor>(Base: TBase) {
           cliPath: null,
           activeModel: status?.activeModel || undefined,
           ...(status?.health ? { health: status.health } : {}),
+          ...(status?.reconnectBy !== undefined
+            ? { reconnectBy: status.reconnectBy }
+            : {}),
         } as ProviderStatus;
       });
     }

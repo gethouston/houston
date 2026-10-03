@@ -121,6 +121,14 @@ export interface ProviderInfo {
    * from pre-PRODUCT-1475 engines, where `configured` is the only signal.
    */
   health?: ProviderHealth;
+  /**
+   * Epoch ms by which the person must sign in again, or the login stops
+   * working. Only the hosted gateway sets it, and only on a Claude
+   * subscription login: Anthropic ends that login about 28 days after it,
+   * however often it is refreshed. Absent everywhere else (desktop, self-host,
+   * API keys, other providers), which means "no known deadline".
+   */
+  reconnectBy?: number;
 }
 
 // ── Per-account provider usage (GET /providers/usage) ───────────────────────

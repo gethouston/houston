@@ -7,7 +7,11 @@
  */
 
 import type { Routine } from "@houston/engine-adapter";
-import { type RoutinePauseNotice, routinePauseNotice } from "@houston/sdk";
+import {
+  type RoutinePauseNotice,
+  type RoutineReaderAccount,
+  routinePauseNotice,
+} from "@houston/sdk";
 import { Button } from "@houston-ai/core";
 import { useTranslation } from "react-i18next";
 import { providerName } from "../../lib/providers";
@@ -16,11 +20,22 @@ interface Props {
   routine: Routine;
   onResume: () => void;
   resuming: boolean;
+  /** The reader's own account for a provider (`useRoutineReader`). */
+  readerFor: (provider: string) => RoutineReaderAccount;
 }
 
-export function RoutineAutoPauseBanner({ routine, onResume, resuming }: Props) {
+export function RoutineAutoPauseBanner({
+  routine,
+  onResume,
+  resuming,
+  readerFor,
+}: Props) {
   const { t } = useTranslation("routines");
-  const notice = routinePauseNotice(routine);
+  const pause = routine.auto_paused;
+  const notice = routinePauseNotice(
+    routine,
+    pause ? readerFor(pause.provider) : undefined,
+  );
   if (!notice) return null;
 
   // Spelled out per remedy rather than built from it: `t()` keys are typed, so
