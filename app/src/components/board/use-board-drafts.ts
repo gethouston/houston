@@ -35,5 +35,5 @@ export function useBoardDrafts(newConversationScope?: string | null) {
     },
     [scopedKey],
   );
-  return { drafts, onDraftChange };
+  return { drafts, onDraftChange, newConversationKey: scopedKey };
 }

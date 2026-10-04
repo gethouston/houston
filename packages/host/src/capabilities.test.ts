@@ -57,3 +57,11 @@ describe("capability profiles: missionTitleOnSend", () => {
     expect(MANAGED_CLOUD_CAPABILITIES.missionTitleOnSend).toBeUndefined();
   });
 });
+
+describe("capability profiles: conversationPrewarm", () => {
+  test("no open-host profile advertises it: only the gateway readies sandboxes while a person types", () => {
+    expect(LOCAL_CAPABILITIES.conversationPrewarm).toBeUndefined();
+    expect(CLOUD_CAPABILITIES.conversationPrewarm).toBeUndefined();
+    expect(MANAGED_CLOUD_CAPABILITIES.conversationPrewarm).toBeUndefined();
+  });
+});

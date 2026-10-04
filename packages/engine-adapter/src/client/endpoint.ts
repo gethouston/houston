@@ -159,10 +159,14 @@ export abstract class EngineEndpoint extends AgentSelection {
       baseUrl: this.baseUrl,
       fetch: this.authFetch,
     });
+    // A bearer rotation lands while the person may be typing: the new SDK
+    // keeps the id a new chat's typing already prewarmed.
+    const typing = this.sdk.turns.typingState();
     this.sdk = createEngineSdk({
       baseUrl: this.baseUrl,
       fetch: this.authFetch,
     });
+    this.sdk.turns.adoptTypingState(typing);
   }
 
   /**

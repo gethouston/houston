@@ -3,6 +3,7 @@ import type { BootCodeVm } from "../code-vm/types";
 import type { AdmissionLimiter } from "./admission";
 import type { applyOp } from "./op-apply";
 import type { TurnCredentialWriter } from "./turn-credential";
+import type { ProviderWarmer } from "./turn-provider-warm";
 import type { TurnRunner } from "./turn-session";
 import type { RunTurnDeps } from "./turn-session-startup";
 import type { turnSharedSkillsStore } from "./turn-shared-skills";
@@ -20,6 +21,9 @@ export interface TurnServerDeps {
   /** Test seam for ordering root removal after hydration settlement. */
   removeTurnRoot?: (root: string) => Promise<void>;
   hydrationSettleTimeoutMs?: number;
+  /** Test seam: the provider connection a prewarm keeps open (default: one
+   *  per server, stopped by the first turn). */
+  providerWarmer?: ProviderWarmer;
   /** Test seam for the worker op executor. */
   runOp?: typeof applyOp;
   concurrency?: number;

@@ -9,7 +9,7 @@ import { queryKeys } from "../../lib/query-keys";
 import { formatVisibleMessageText } from "../../lib/queued-chat";
 import { tauriAttachments } from "../../lib/tauri";
 import type { ToastItem } from "../../stores/ui";
-import type { SendOverrides } from "./board-source";
+import type { NewConversationArgs } from "./board-source";
 
 /**
  * The composer's "start a new mission" send, lifted out of the React layer
@@ -42,7 +42,8 @@ export async function createBoardConversation(
     modelOverride,
     modeOverride,
     mentions,
-  }: { text: string; files: File[] } & SendOverrides,
+    conversationId: claimedId,
+  }: NewConversationArgs,
 ): Promise<string> {
   const {
     path,
@@ -70,6 +71,7 @@ export async function createBoardConversation(
       modelOverride,
       modeOverride,
       mentions,
+      conversationId: claimedId,
       titleText: visible,
       buildPrompt: async (activityId) => {
         const saved = await tauriAttachments.save(

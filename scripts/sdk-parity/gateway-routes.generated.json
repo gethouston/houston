@@ -762,6 +762,14 @@
     "reason": "Stripe posts subscription events here and the signature HMAC over the raw body is the trust boundary; no user session exists"
   },
   {
+    "pattern": "/internal/v1/pool/reconciles",
+    "methods": [
+      "POST"
+    ],
+    "classification": "internal-control-plane",
+    "reason": "the control plane hands a dead pooled turn or a stale routine run to the gateway's pool dispatcher with the internal bearer; no person calls it, the app only reads the settled chat and run history"
+  },
+  {
     "pattern": "/internal/v1/pool/routine-turns",
     "methods": [
       "POST"
@@ -827,6 +835,13 @@
   },
   {
     "pattern": "/v1/agents/{agentSlug}/routines/{routineId}/webhook-key",
+    "methods": [
+      "POST"
+    ],
+    "classification": "sdk"
+  },
+  {
+    "pattern": "/v1/agents/{slug}/conversations/{cid}/prewarm",
     "methods": [
       "POST"
     ],

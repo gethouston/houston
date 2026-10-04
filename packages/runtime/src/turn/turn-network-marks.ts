@@ -8,6 +8,7 @@
 
 let active: Record<string, number> | undefined;
 let ownOrigins: string[] = [];
+let unmarkedFetch: typeof fetch | undefined;
 
 export function setActiveTurnTimings(timings: Record<string, number>) {
   active = timings;
@@ -24,6 +25,12 @@ function requestUrl(input: Parameters<typeof fetch>[0]): string {
   return input.url;
 }
 
+/** The global fetch without the marks: a request that is not the turn's own
+ *  (a prewarm's) rides the same connection pool and stamps nothing. */
+export function untrackedFetch(): typeof fetch {
+  return unmarkedFetch ?? globalThis.fetch;
+}
+
 /** Wrap fetch and WebSocket once. Calls to Houston's own origins are not
  *  provider traffic and are left unmarked. */
 export function installTurnNetworkMarks(houstonOrigins: string[]) {
@@ -35,6 +42,7 @@ export function installTurnNetworkMarks(houstonOrigins: string[]) {
     }
   });
   const realFetch = globalThis.fetch;
+  unmarkedFetch = realFetch;
   globalThis.fetch = async (input, init) => {
     const url = requestUrl(input);
     if (ownOrigins.some((origin) => url.startsWith(origin))) {

@@ -44,6 +44,14 @@ export interface SendOverrides {
   sentForPerson?: true;
 }
 
+/** A new chat's first send. `conversationId` is the id the composer's typing
+ *  already prewarmed (`claimNewConversationId`); absent, the create mints one. */
+export type NewConversationArgs = {
+  text: string;
+  files: File[];
+  conversationId?: string;
+} & SendOverrides;
+
 /**
  * Everything the shared `<MissionBoard>` needs that depends on the board's
  * scope. Anything that can be derived from these fields (panel avatar,
@@ -123,9 +131,7 @@ export interface BoardSource {
     overrides: SendOverrides,
   ) => Promise<void>;
   /** Create a new conversation for the active agent and return its id. */
-  createConversation: (
-    args: { text: string; files: File[] } & SendOverrides,
-  ) => Promise<string>;
+  createConversation: (args: NewConversationArgs) => Promise<string>;
   stopSession: (sessionKey: string) => void;
 
   // ── Drag & drop ───────────────────────────────────────────────────────────

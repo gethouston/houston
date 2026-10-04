@@ -63,6 +63,7 @@ export const OPERATION_POLICY_FLOOR: Readonly<Record<string, OperationPolicy>> =
   "turns.dismissInteraction": { group: "chat", confirm: false, hidden: true, route: "POST /agents/{agentId}/conversations/{conversationId}/dismiss-interaction", rawResponse: true },
   "turns.importMessages": { group: "chat", confirm: false, hidden: true, route: "POST /agents/{agentId}/conversations/{conversationId}/import", rawResponse: true },
   "turns.history": { group: "chat", confirm: false, hidden: false, route: "GET /agents/{agentId}/conversations/{conversationId}/messages", rawResponse: true },
+  "turns.prewarm": { group: "chat", confirm: false, hidden: true, route: "POST /v1/agents/{agentId}/conversations/{conversationId}/prewarm", rawResponse: true },
   "turns.setMode": { group: "chat", confirm: false, hidden: true, route: "POST /agents/{agentId}/conversations/{conversationId}/mode", rawResponse: false },
   "turns.truncate": { group: "chat", confirm: false, hidden: true, route: "POST /agents/{agentId}/conversations/{conversationId}/truncate", rawResponse: false },
   acceptOrgInvite: { group: "spaces", confirm: true, hidden: false, route: "POST /v1/org-invites/{inviteId}/accept", rawResponse: true },

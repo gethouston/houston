@@ -66,6 +66,10 @@
     "./skill-drafts": {
       "types": "./src/modules/skills/drafts.ts",
       "import": "./src/modules/skills/drafts.ts"
+    },
+    "./draft-prewarm": {
+      "types": "./src/modules/turns/draft-prewarm.ts",
+      "import": "./src/modules/turns/draft-prewarm.ts"
     }
   },
   "files": [

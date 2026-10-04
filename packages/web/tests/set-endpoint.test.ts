@@ -80,3 +80,38 @@ test("setEndpoint rebuilds the direct runtime client on the new port (local side
   expect(cap.urls[1]).toBe("http://127.0.0.1:50002/providers");
   expect(cap.bearers[1]).toBe("Bearer t2");
 });
+
+test("setEndpoint keeps the id a new chat's typing already prewarmed", async () => {
+  const urls: string[] = [];
+  vi.stubGlobal(
+    "fetch",
+    vi.fn(async (input: unknown) => {
+      urls.push(String(input));
+      return new Response(
+        JSON.stringify({ outcome: "launching", holdMs: 30_000 }),
+        { status: 202, headers: { "Content-Type": "application/json" } },
+      );
+    }),
+  );
+  const client = new HoustonClient({
+    baseUrl: BASE_A,
+    token: "token-1",
+    controlPlane: true,
+  });
+  const draft = {
+    agentId: "agent",
+    draftKey: "new-conversation:board",
+    text: "h",
+  };
+  await client.draftChanged(draft, { conversationPrewarm: true });
+  const prewarmUrl = urls.find((url) => url.endsWith("/prewarm")) ?? "";
+  const prewarmed = /conversations\/activity-([^/]+)\/prewarm$/.exec(
+    prewarmUrl,
+  )?.[1];
+  expect(prewarmed).toBeTruthy();
+  // The hosted bearer rotation rebuilds the SDK mid-typing.
+  client.setEndpoint({ baseUrl: BASE_A, token: "token-2" });
+  expect(client.claimNewConversationId("new-conversation:board")).toBe(
+    prewarmed,
+  );
+});

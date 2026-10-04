@@ -172,6 +172,7 @@ const ENGINE_CLIENT_OWNERS = new Set([
   "app/src/lib/delegation-facade.ts",
   "app/src/lib/agents-facade.ts",
   "app/src/lib/conversations-facade.ts",
+  "app/src/lib/composer-prewarm-facade.ts",
 ]);
 const ENGINE_CALL_BYPASS = new Set([
   "app/src/components/agent-actions/use-copy-agent.ts",

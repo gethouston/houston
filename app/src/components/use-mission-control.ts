@@ -377,6 +377,8 @@ export function useMissionControl(agents: Agent[]) {
         modelOverride?: string;
         /** Teammates the first message @mentions (HOU-944). */
         mentions?: MessageMention[];
+        /** The id the composer's typing prewarmed (`CreateMissionOptions`). */
+        conversationId?: string;
       },
     ): Promise<string> => {
       const agentPath = agent.folderPath;
@@ -397,6 +399,7 @@ export function useMissionControl(agents: Agent[]) {
             providerOverride: opts?.providerOverride,
             modelOverride: opts?.modelOverride,
             mentions: opts?.mentions,
+            conversationId: opts?.conversationId,
             modeOverride: DEFAULT_TURN_MODE,
             titleText: visible,
             buildPrompt: async (activityId) => {

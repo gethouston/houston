@@ -35,6 +35,7 @@ import { BootMixin } from "./client/boot-mixin";
 import { ChannelsMixin } from "./client/channels-mixin";
 import { ChatControlsMixin } from "./client/chat-controls-mixin";
 import { ChatHistoryMixin } from "./client/chat-history-mixin";
+import { ChatPrewarmMixin } from "./client/chat-prewarm-mixin";
 import { ChatSendMixin } from "./client/chat-send-mixin";
 import { ConfigPrefsMixin } from "./client/config-prefs-mixin";
 import type { HoustonClientOptions } from "./client/context";
@@ -86,6 +87,7 @@ export const MIXINS = [
   ChatHistoryMixin,
   ChatSendMixin,
   ChatControlsMixin,
+  ChatPrewarmMixin,
   SkillsMixin,
   RoutinesMixin,
   SharedSkillsMixin,

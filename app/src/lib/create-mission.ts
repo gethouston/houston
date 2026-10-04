@@ -88,6 +88,14 @@ export interface CreateMissionOptions extends MissionPromptOptions {
   /** Source text used for async AI title generation. Defaults to `text`. */
   titleText?: string;
   /**
+   * The id the new mission's conversation is born with: the one the
+   * composer's typing already prewarmed (`claimNewConversationId`), so the
+   * send lands in the sandbox readied for it. Only a create that mints the id
+   * on the client honors it: the optimistic one and the warming path. The
+   * plain create lets the server mint the id and ignores this.
+   */
+  conversationId?: string;
+  /**
    * A composer send (PRODUCT-1643): resolve the moment the turn is on screen —
    * the board row lands in the background through an id-upsert, so nothing
    * waits on the pod (asleep or not) before the user sees their message.

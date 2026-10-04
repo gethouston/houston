@@ -136,7 +136,7 @@ async function waitFor(cond: () => boolean, ms = 2_000): Promise<void> {
   }
 }
 
-test("registers every turns command: send, the conversation controls and imports, observe, history and attachments/save", () => {
+test("registers every turns command: send, the conversation controls, imports and prewarm, observe, history and attachments/save", () => {
   const { commands } = harness();
   expect([...commands.keys()].sort()).toEqual([
     "turns/attachments/save",
@@ -145,6 +145,7 @@ test("registers every turns command: send, the conversation controls and imports
     "turns/history",
     "turns/importMessages",
     "turns/observe",
+    "turns/prewarm",
     "turns/retryPendingImports",
     "turns/send",
     "turns/setMode",

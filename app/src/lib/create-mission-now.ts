@@ -38,6 +38,7 @@ import {
   missionTitlePlan,
   titleLandedMission,
 } from "./mission-title";
+import { newMissionIds } from "./new-mission-ids";
 import { showSendFailedToast } from "./send-error-toast";
 import { tauriActivity, tauriChat } from "./tauri";
 
@@ -120,8 +121,7 @@ export function createMissionNow(
   const titleText = opts.titleText ?? text;
   const title = opts.title ?? fallbackMissionTitle(titleText);
   const description = text;
-  const conversationId = crypto.randomUUID();
-  const sessionKey = `activity-${conversationId}`;
+  const { conversationId, sessionKey } = newMissionIds(opts.conversationId);
   startMissionNow(agent, text, opts, {
     conversationId,
     sessionKey,

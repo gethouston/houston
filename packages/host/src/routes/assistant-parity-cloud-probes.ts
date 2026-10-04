@@ -128,6 +128,17 @@ export const CLOUD_ONLY_PROBES: readonly CloudOnlyProbe[] = [
   cloudOnly("createApiKey", API_KEYS, { name: "parity probe" }),
   cloudOnly("revokeApiKey", API_KEYS, { id: "no-such-key" }),
 
+  // Readying the sandbox a send will run in, while the person types it.
+  cloudOnly(
+    "turns.prewarm",
+    "a send runs in a per-turn sandbox only behind the hosted gateway, so only it has one to ready while the person types",
+    {
+      agentId: PROBE_AGENT,
+      conversationId: "activity-parity-probe",
+      input: {},
+    },
+  ),
+
   // A routine's webhook, which arrives at the gateway that mints the key
   // authenticating it — a local host has no public address to receive one.
   cloudOnly(

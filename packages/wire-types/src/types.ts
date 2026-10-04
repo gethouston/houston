@@ -218,6 +218,13 @@ export interface Capabilities {
    * workers advertises it; the open host (desktop, self-host) never does.
    */
   missionTitleOnSend?: boolean;
+  /**
+   * The gateway readies the sandbox a person's next send will run in while
+   * they type (`POST /v1/agents/:slug/conversations/:cid/prewarm`). Present
+   * only where the active space's sends run in per-turn sandboxes; the open
+   * host (desktop, self-host) never sets it.
+   */
+  conversationPrewarm?: boolean;
 }
 
 // ---------- Org / roles (multiplayer) ----------

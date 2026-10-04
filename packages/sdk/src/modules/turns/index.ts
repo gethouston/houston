@@ -8,9 +8,16 @@ import {
   createAttachmentsOperation,
 } from "./attachments";
 import { createConversationControls } from "./conversation-controls";
+import {
+  type ComposerDraft,
+  DraftPrewarm,
+  type DraftPrewarmState,
+  type PrewarmCapabilities,
+} from "./draft-prewarm";
 import { startTurnsEventStream } from "./events-stream";
 import type { FeedOutput } from "./feed-output";
 import { createTurnOperations } from "./operations";
+import { randomNonce } from "./random-nonce";
 import { StreamRegistry } from "./stream-registry";
 import { asConversationInput, asSendInput } from "./turn-inputs";
 import { ConversationVmOutput } from "./vm-output";
@@ -58,9 +65,17 @@ export function createTurnsModule(
     registry,
   });
   const { send, observe, history } = operations;
-  // The one-shot conversation controls (stop / mode / dismiss / rewind) register
-  // their own commands; they share the module's client cache and nothing else.
+  // The one-shot conversation controls (stop / mode / dismiss / rewind /
+  // prewarm) register their own commands; they share the module's context and
+  // nothing else.
   const controls = createConversationControls(ctx);
+  // Per instance like the stream registry: typing sessions and the ids minted
+  // for new chats belong to this SDK's composers alone.
+  const drafts = new DraftPrewarm({
+    prewarm: controls.prewarm,
+    now: () => ctx.config.ports.clock.now(),
+    mintId: randomNonce,
+  });
   const attachments = createAttachmentsOperation(ctx);
   const stopEvents =
     ctx.config.reactivity === false
@@ -100,6 +115,26 @@ export function createTurnsModule(
      * {@link buildAttachmentText}.
      */
     saveAttachments: attachments.save,
+    /**
+     * A composer's text changed: prewarm the sandbox its send will run in,
+     * when the deployment serves it and the typing policy says it is due
+     * (`draft-prewarm.ts`). Rejects with the prewarm's own error so the
+     * surface reports it; nothing is shown to the person either way.
+     */
+    draftChanged: (
+      draft: ComposerDraft,
+      capabilities: PrewarmCapabilities,
+    ): Promise<void> => drafts.draftChanged(draft, capabilities),
+    /**
+     * The conversation id a new chat's first send must use: the one typing in
+     * the `draftKey` slot already prewarmed, else a fresh one. Never throws.
+     */
+    claimNewConversationId: (draftKey: string): string =>
+      drafts.claimNewConversationId(draftKey),
+    /** The composers' typing state, for a replacement SDK to adopt. */
+    typingState: (): DraftPrewarmState => drafts.state(),
+    /** Take over the typing state of the SDK this one replaces. */
+    adoptTypingState: (state: DraftPrewarmState): void => drafts.adopt(state),
     /**
      * Drop a conversation's folded transcript from the in-memory VM cache (and
      * its retained snapshot) — call when a surface closes or deletes a

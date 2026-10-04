@@ -1,11 +1,13 @@
 /**
  * The one-shot controls a surface applies to an EXISTING conversation: stop the
  * running turn, switch the mode it runs under, retire its pending interaction,
- * cut the transcript for an edit-and-resend, and write in lines said elsewhere
- * (`conversation-imports.ts`).
+ * cut the transcript for an edit-and-resend, write in lines said elsewhere
+ * (`conversation-imports.ts`), and ready the sandbox the next send runs in
+ * (`conversation-prewarm.ts`).
  *
- * Each is a single request against the agent's own runtime and answers exactly
- * what the runtime said — no stream, no VM fold, no refetch. Kept beside the
+ * Each is a single request that returns exactly what the server said: no
+ * stream, no VM fold, no refetch. The agent's own runtime answers all of them
+ * but the prewarm, which the gateway answers. Kept beside the
  * turn operations rather than inside them because those own the streaming
  * machinery and these own nothing, so a surface that drives the feed itself
  * (the web engine-adapter) binds these unchanged.
@@ -13,6 +15,7 @@
 
 import type { ModuleContext } from "../../module-context";
 import { createConversationImports } from "./conversation-imports";
+import { createConversationPrewarm } from "./conversation-prewarm";
 import {
   asConversationInput,
   asSetModeInput,
@@ -141,5 +144,6 @@ export function createConversationControls(ctx: ModuleContext) {
     dismissInteraction,
     truncate,
     ...createConversationImports(ctx),
+    ...createConversationPrewarm(ctx),
   };
 }

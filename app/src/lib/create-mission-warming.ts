@@ -30,6 +30,7 @@ import { startMissionNow } from "./create-mission-now";
 import { warmingPromptInputs } from "./mission-prompt";
 import { missionRowInput } from "./mission-row";
 import { fallbackMissionTitle } from "./mission-title";
+import { newMissionIds } from "./new-mission-ids";
 
 export function createMissionWhileWarming(
   agent: CreateMissionAgent,
@@ -39,8 +40,7 @@ export function createMissionWhileWarming(
   const titleText = opts.titleText ?? text;
   const title = opts.title ?? fallbackMissionTitle(titleText);
   const description = text;
-  const conversationId = crypto.randomUUID();
-  const sessionKey = `activity-${conversationId}`;
+  const { conversationId, sessionKey } = newMissionIds(opts.conversationId);
 
   // The board row rides the queued send and is WRITTEN at flush time (engine
   // awake, id-upsert idempotent) — a write fired now would be a held request

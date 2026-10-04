@@ -17,6 +17,15 @@ export {
 } from "./attachments";
 export type { DismissInteractionOutcome } from "./conversation-controls";
 export {
+  type TurnPrewarmInput,
+  TurnsHttpError,
+} from "./conversation-prewarm";
+export {
+  type ComposerDraft,
+  PREWARM_REFRESH_MS,
+  type PrewarmCapabilities,
+} from "./draft-prewarm";
+export {
   type BoardStatus,
   type FeedOutput,
   MultiplexFeedOutput,
