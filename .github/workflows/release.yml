@@ -409,7 +409,10 @@ jobs:
     needs: prep
     name: Build macOS (${{ matrix.flavor }})
     runs-on: macos-latest
-    timeout-minutes: 60
+    # Two Apple notarizations (the .app inside the Tauri build, then the DMG)
+    # each wait on Apple's queue, which has taken 13-45 min on a bad night
+    # (2026-10-06). 60 min left no room for both after a ~20 min compile.
+    timeout-minutes: 180
     strategy:
       # fail-fast=false so a staging-leg failure never kills the prod DMG that
       # actually ships (mirrors build-windows). macos_flavors is ["prod"] on the
@@ -1028,7 +1031,7 @@ jobs:
           codesign -vvv "$DMG"
 
       - name: Notarize DMG
-        timeout-minutes: 25
+        timeout-minutes: 90
         run: |
           DMG="${{ steps.artifacts.outputs.dmg }}"
           KEY=~/.appstoreconnect/private_keys/AuthKey_${{ secrets.APPLE_API_KEY }}.p8
