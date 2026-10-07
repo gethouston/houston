@@ -212,7 +212,6 @@ async function titledTurn(opts: {
     } as unknown as TurnRequest,
     turnId: "turn-1",
     root,
-    scope: "turn-1",
     authPath: join(root, "auth.json"),
     signal: new AbortController().signal,
     filesystem,

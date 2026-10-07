@@ -1,10 +1,8 @@
 import type { WireFrame } from "@houston/runtime-client";
-import { runWithActingContext } from "../session/acting-context";
-import { runWithConversationScope } from "../session/bus";
 import type { startClaimHeartbeat } from "./claim-heartbeat";
-import { localModelContextForTurn } from "./local-model-context";
 import type { TurnServerDeps } from "./server-types";
 import { finishTurnDurability } from "./turn-durability";
+import type { EarlyTurnSession } from "./turn-early-session";
 import type { TurnFilesystem } from "./turn-filesystem";
 import type { createTurnLog } from "./turn-log";
 import { landedMissionTitle } from "./turn-mission-title-outcome";
@@ -19,6 +17,7 @@ import { finishRoutineTurn } from "./turn-routine-finish";
 import { routinePhaseTurn, startRoutineRun } from "./turn-routine-start";
 import { unconnectedRoutineTurn } from "./turn-routine-unconnected";
 import type { makeTurnSandboxFetch } from "./turn-sandbox";
+import { runInTurnScope } from "./turn-scope";
 import { runTurn, type TurnOutcome } from "./turn-session";
 import type { TurnSessionStartupTask } from "./turn-session-startup";
 import { landTurnSideWrites } from "./turn-side-writes";
@@ -33,7 +32,6 @@ export async function executeReadyTurn(input: {
   turn: TurnRequest;
   turnId: string;
   root: string;
-  scope: string;
   authPath: string;
   signal: AbortSignal;
   filesystem: TurnFilesystem;
@@ -41,6 +39,8 @@ export async function executeReadyTurn(input: {
   heartbeat: ReturnType<typeof startClaimHeartbeat> | null;
   sandbox: ReturnType<typeof makeTurnSandboxFetch> | null;
   startup?: TurnSessionStartupTask;
+  /** The session the turn opened while it hydrated (turn-early-session.ts). */
+  early?: EarlyTurnSession;
   timings: Record<string, number>;
   emit: (frame: WireFrame) => void;
   turnLog: ReturnType<typeof createTurnLog>;
@@ -76,54 +76,38 @@ export async function executeReadyTurn(input: {
     outcome = unconnectedTurnOutcome(input.turn, input.turnId, input.emit);
   } else {
     try {
-      outcome = await runWithConversationScope(input.scope, () =>
-        runWithActingContext(
-          {
-            credentialScopeKey: `u:turn:${input.turn.workspaceId}:${input.turn.agentId}`,
-            authPath: input.authPath,
-            ...(input.turn.actingToken
-              ? { actingAs: input.turn.actingToken }
-              : {}),
-            localModelTransport: localModelContextForTurn(
-              input.turn,
-              input.deps.poolStoreUrl,
-            ),
-            ...(input.turn.actingAs
-              ? { actingUser: input.turn.actingAs.userId }
-              : {}),
-          },
-          () => {
-            const directories = {
-              ...input.filesystem,
-              turnRoot: input.root,
-            };
-            const request = turnSessionRequest(
-              effectiveTurn,
-              input.turnId,
-              input.emit,
-              input.signal,
-              input.sandbox
-                ? {
-                    call: input.sandbox.call,
-                    warmCode: input.sandbox.warmCode,
-                  }
-                : undefined,
-              input.timings,
-              input.startup,
+      outcome = await runInTurnScope(
+        {
+          turn: input.turn,
+          authPath: input.authPath,
+          poolStoreUrl: input.deps.poolStoreUrl,
+        },
+        () => {
+          const directories = { ...input.filesystem, turnRoot: input.root };
+          const request = turnSessionRequest(
+            effectiveTurn,
+            input.turnId,
+            input.emit,
+            input.signal,
+            input.sandbox
+              ? { call: input.sandbox.call, warmCode: input.sandbox.warmCode }
+              : undefined,
+            input.timings,
+            input.startup,
+            input.early,
+          );
+          // The card may postdate hydration: its title rebases the tree's
+          // board onto a fresh store read (turn-mission-title-remote.ts).
+          if (request.missionTitle)
+            request.readRemoteActivity = remoteActivityReader(
+              input.resolved.store,
+              input.resolved.prefix,
+              input.filesystem,
             );
-            // The card may postdate hydration: its title rebases the tree's
-            // board onto a fresh store read (turn-mission-title-remote.ts).
-            if (request.missionTitle)
-              request.readRemoteActivity = remoteActivityReader(
-                input.resolved.store,
-                input.resolved.prefix,
-                input.filesystem,
-              );
-            return input.deps.runTurn
-              ? input.deps.runTurn(directories, request)
-              : runTurn(directories, request, input.deps.turnSessionDeps);
-          },
-        ),
+          return input.deps.runTurn
+            ? input.deps.runTurn(directories, request)
+            : runTurn(directories, request, input.deps.turnSessionDeps);
+        },
       );
     } catch (error) {
       outcome = {

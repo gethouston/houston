@@ -11,6 +11,7 @@ import type { MessageAuthor } from "../session/attribution";
 import type { MissionTitleRequest } from "../session/mission-title";
 import type { SandboxFetch } from "../session/tools/sandbox-fetch";
 import type { ProvidedContext } from "../session/workspace-context";
+import type { EarlyTurnSession } from "./turn-early-session";
 import type { InTreeMissionTitle } from "./turn-mission-title-outcome";
 import type { RemoteActivityReader } from "./turn-mission-title-remote";
 import type { TurnSessionStartupTask } from "./turn-session-startup";
@@ -73,6 +74,8 @@ export interface TurnSessionRequest {
   timings?: Record<string, number>;
   /** Setup begun after layout resolution and before bulk hydration completes. */
   startup?: TurnSessionStartupTask;
+  /** The session opened, and its CLI started, while the worker answered. */
+  early?: EarlyTurnSession;
 }
 
 export interface TurnSandboxHandle {

@@ -1,7 +1,3 @@
-import {
-  type CompactionCheckpoints,
-  conversationCompactions,
-} from "../../store/conversation-compaction";
 import type {
   CompactionOutcome,
   HarnessSession,
@@ -11,7 +7,7 @@ import type {
 import { compactClaudeSession, compactedPreamble } from "./compact";
 import { toSdkModel } from "./model";
 import type { ClaudeSessionDeps } from "./session-deps";
-import { SessionEventSubscriptions } from "./session-events";
+import { ClaudeSessionLaunch } from "./session-launch";
 import { runTurnAttempt, type TurnAttemptState } from "./session-turn-attempt";
 
 export type { ClaudeQuery, ClaudeSessionDeps, TurnAuth } from "./session-deps";
@@ -26,25 +22,18 @@ export type { ClaudeQuery, ClaudeSessionDeps, TurnAuth } from "./session-deps";
  * throw is swallowed (whatever its shape) so the stop is not double-reported.
  */
 export class ClaudeSession
-  extends SessionEventSubscriptions
+  extends ClaudeSessionLaunch
   implements HarnessSession
 {
-  private disposed = false;
   private aborting = false;
   /** Why the last attempt asked for a fresh rerun, for the warn line. */
   private retryReason = "";
   private abortController: AbortController | undefined;
-  private model: string;
-  private thinkingLevel: ThinkingLevel | undefined;
   private contextTokens: number | undefined;
   private usedAccessDigest: string | undefined;
-  private readonly compactions: CompactionCheckpoints;
 
-  constructor(private readonly deps: ClaudeSessionDeps) {
-    super();
-    this.compactions = deps.compactions ?? conversationCompactions;
-    this.model = deps.model;
-    this.thinkingLevel = deps.thinkingLevel;
+  constructor(deps: ClaudeSessionDeps) {
+    super(deps);
     this.usedAccessDigest = deps.usedAccessDigest;
   }
 
@@ -67,15 +56,14 @@ export class ClaudeSession
     // report names the token this turn actually ran on (PRODUCT-1319).
     const auth = this.deps.refreshAuth();
     this.usedAccessDigest = auth.accessDigest;
-    const checkpoint = this.compactions.read(this.deps.conversationId);
-    const resume = checkpoint
-      ? undefined
-      : this.deps.sessionsStore.resolveResume(this.deps.conversationId);
+    const { checkpoint, launch } = this.nextLaunch(auth.env);
+    const { resume } = launch;
     const prompt = `${checkpoint ? compactedPreamble(checkpoint.summary) : ""}${text}`;
     let outcome = await runTurnAttempt(this.attemptState(), {
       text: prompt,
       resume,
       env: auth.env,
+      warm: await this.warmSlot.take(launch),
     });
     if (outcome === "retry-fresh") {
       // The SDK refused the resume id (its cwd-scoped lookup missed the
@@ -129,6 +117,8 @@ export class ClaudeSession
   dispose(): void {
     if (this.disposed) return;
     this.disposed = true;
+    // Never rejects: a started CLI no prompt took is stopped in the background.
+    void this.warmSlot.release();
     this.abortController?.abort();
     this.events.clearListeners();
   }
@@ -151,6 +141,8 @@ export class ClaudeSession
     customInstructions?: string,
   ): Promise<CompactionOutcome | undefined> {
     if (this.disposed) return undefined;
+    // A started CLI resumed this session; it must exit before the summary runs.
+    await this.warmSlot.release();
     const auth = this.deps.refreshAuth();
     this.usedAccessDigest = auth.accessDigest;
     // Registered as the session's controller so the user's Stop (and dispose)

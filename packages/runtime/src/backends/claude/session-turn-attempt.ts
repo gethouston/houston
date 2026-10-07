@@ -1,29 +1,18 @@
-import type { Options } from "@anthropic-ai/claude-agent-sdk";
 import type { WireEvent } from "@houston/runtime-client";
 import { markTurnOnce } from "../../turn/turn-network-marks";
 import type { HarnessTimingEvent, ThinkingLevel } from "../types";
-import { toSdkEffort } from "./effort";
+import { attemptOptions, openAttemptStream } from "./attempt-options";
+import { rejectedResume } from "./dangling-resume";
 import { classifyText } from "./errors";
 import { createClaudeCallTimer } from "./model-calls";
 import { hasSessionId, isAssistantMessageStart } from "./sdk-message-shapes";
 import type { ClaudeSessionDeps, TurnAuth } from "./session-deps";
+import type { WarmLaunch } from "./session-warm";
 import { houstonToolServerLost } from "./tool-server-lost";
 import { createStreamTranslator } from "./translate";
 
 const errMessage = (err: unknown): string =>
   err instanceof Error ? err.message : String(err);
-
-/**
- * The SDK's rejection of a `resume` id it cannot find. `resolveResume` already
- * drops mappings whose transcript file is gone, but the SDK scopes its lookup
- * to the CURRENT cwd's project slug — after an agent rename moves the
- * workspace directory, the transcript still exists (old slug) yet every resume
- * fails with this error, permanently wedging the conversation (HOU-892 side
- * finding: a weekly routine erroring on every fire after its agent was
- * renamed). Matched on the message because the SDK surfaces it both as a
- * thrown error and as an error result.
- */
-const DANGLING_RESUME_RE = /No conversation found with session ID/i;
 
 /**
  * The exact slice of `ClaudeSession` one attempt reads and writes, handed over
@@ -59,6 +48,8 @@ export interface TurnAttemptInput {
   text: string;
   resume: string | undefined;
   env: TurnAuth["env"];
+  /** A CLI already started with this attempt's exact launch. */
+  warm?: WarmLaunch;
 }
 
 /**
@@ -70,24 +61,16 @@ export interface TurnAttemptInput {
  */
 export async function runTurnAttempt(
   state: TurnAttemptState,
-  { text, resume, env }: TurnAttemptInput,
+  { text, resume, env, warm }: TurnAttemptInput,
 ): Promise<"success" | "failed" | "retry-fresh"> {
-  const abortController = new AbortController();
+  // A started CLI was spawned with its own controller: Stop must reach it.
+  const abortController = warm?.abortController ?? new AbortController();
   state.beginAttempt(abortController);
-
-  const effort = state.thinkingLevel
-    ? toSdkEffort(state.thinkingLevel)
-    : undefined;
-  const options: Options = {
-    ...state.deps.baseOptions,
-    // The per-turn env OVERRIDES the build-time one in baseOptions, so this
-    // spawn carries the currently stored credential (PRODUCT-1355).
-    env,
-    model: state.model,
+  const options = attemptOptions(
+    state.deps.baseOptions,
+    { resume, env, model: state.model, thinkingLevel: state.thinkingLevel },
     abortController,
-    ...(resume ? { resume } : {}),
-    ...(effort ? { thinking: effort.thinking, effort: effort.effort } : {}),
-  };
+  );
 
   const translator = createStreamTranslator({
     onContextTokens: (t) => {
@@ -102,10 +85,18 @@ export async function runTurnAttempt(
   let providerErrored = false;
   let succeeded = false;
   const danglingResume = (message: string): boolean =>
-    resume !== undefined && DANGLING_RESUME_RE.test(message);
+    rejectedResume(resume, message);
   const timer = createClaudeCallTimer();
+  // Its callbacks were bound at spawn; they run in this prompt's context.
+  const leaveScope = warm ? state.deps.promptScope?.enter() : undefined;
   try {
-    for await (const msg of state.deps.query({ prompt: text, options })) {
+    const stream = await openAttemptStream(
+      state.deps.query,
+      text,
+      options,
+      warm,
+    );
+    for await (const msg of stream) {
       if (state.isAborting()) break;
       state.tickLiveness();
       for (const timing of timer(msg)) state.emitTiming(timing);
@@ -186,6 +177,7 @@ export async function runTurnAttempt(
       ),
     });
   } finally {
+    leaveScope?.();
     if (capturedSessionId)
       state.deps.sessionsStore.setSessionId(
         state.deps.conversationId,

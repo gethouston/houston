@@ -110,6 +110,14 @@ export interface HarnessSession {
   ): () => void;
   /** Run one turn; resolves at turn end. Provider errors surface as WireEvents. */
   prompt(text: string): Promise<void>;
+  /**
+   * Start the process the next `prompt` runs on, ahead of it. Never throws.
+   * Optional: only a backend that spawns a process per prompt has one; the
+   * prompt runs as it always does when nothing was started.
+   */
+  warm?(): void;
+  /** Stop what `warm` started if no prompt took it. Resolves once it exited. */
+  releaseWarm?(): Promise<void>;
   /** Abort the in-flight turn (the user's Stop), then settle. */
   abort(): Promise<void>;
   /** Tear down the session and its listeners. Idempotent. */

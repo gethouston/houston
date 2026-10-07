@@ -1,6 +1,11 @@
-import type { Options, SDKMessage } from "@anthropic-ai/claude-agent-sdk";
+import type {
+  Options,
+  SDKMessage,
+  SDKUserMessage,
+} from "@anthropic-ai/claude-agent-sdk";
 import type { CompactionCheckpoints } from "../../store/conversation-compaction";
 import type { ThinkingLevel } from "../types";
+import type { PromptScope } from "./prompt-scope";
 import type { SessionsStore } from "./sessions-store";
 
 /**
@@ -12,6 +17,23 @@ export type ClaudeQuery = (params: {
   prompt: string;
   options: Options;
 }) => AsyncIterable<SDKMessage>;
+
+/**
+ * A CLI process spawned and initialized before its prompt: the SDK's
+ * `startup()` handle, narrowed. `query` sends the prompt (once); a string
+ * prompt ends the run exactly as a string `query()` does.
+ */
+export interface ClaudeWarmQuery {
+  query(
+    prompt: string | AsyncIterable<SDKUserMessage>,
+  ): AsyncIterable<SDKMessage>;
+  close(): void;
+}
+
+/** The SDK's `startup()`: spawn the CLI and finish its initialize handshake. */
+export type ClaudeStartup = (params: {
+  options: Options;
+}) => Promise<ClaudeWarmQuery>;
 
 /**
  * One turn's credential material: the full subprocess env carrying the CURRENT
@@ -56,4 +78,8 @@ export interface ClaudeSessionDeps {
    * api_key or the config-dir credential, where the report must not fire.
    */
   usedAccessDigest?: string;
+  /** Present when the SDK can start a CLI ahead of the prompt (`warm()`). */
+  startup?: ClaudeStartup;
+  /** The scope `baseOptions`' callbacks are bound to (`./prompt-scope.ts`). */
+  promptScope?: PromptScope;
 }

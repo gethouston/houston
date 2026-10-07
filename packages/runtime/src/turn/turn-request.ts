@@ -1,5 +1,6 @@
 import type { WireFrame } from "@houston/runtime-client";
 import { claudePlanBinding } from "../auth/claude-plan";
+import type { EarlyTurnSession } from "./turn-early-session";
 import type { TurnSessionRequest } from "./turn-session";
 import type { TurnSessionStartupTask } from "./turn-session-startup";
 import type { TurnOutcome, TurnSandboxHandle } from "./turn-session-types";
@@ -14,6 +15,7 @@ export function turnSessionRequest(
   sandbox?: TurnSandboxHandle,
   timings?: Record<string, number>,
   startup?: TurnSessionStartupTask,
+  early?: EarlyTurnSession,
 ): TurnSessionRequest {
   const claudePlan = claudePlanBinding(turn.credential);
   return {
@@ -42,6 +44,7 @@ export function turnSessionRequest(
     ...(sandbox ? { sandbox } : {}),
     ...(timings ? { timings } : {}),
     ...(startup ? { startup } : {}),
+    ...(early ? { early } : {}),
     // Either context field present means "use these" (each defaults to ""),
     // mirroring the long-lived server's message-send contract.
     ...(turn.workspaceContext !== undefined || turn.userContext !== undefined

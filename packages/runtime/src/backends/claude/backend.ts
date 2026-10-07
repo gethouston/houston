@@ -6,9 +6,9 @@ import type {
 } from "../types";
 import type { ClaudeBackendDeps } from "./backend-types";
 import { resolveClaudeExecutable } from "./binary-path";
-import { buildClaudeEnv } from "./claude-env";
 import { buildHoustonMcpServer, HOUSTON_MCP_SERVER_NAME } from "./custom-tools";
 import { toSdkModel } from "./model";
+import { bindHooks, createPromptScope } from "./prompt-scope";
 import { CLAUDE_QUERY_DEFAULTS } from "./query-defaults";
 import { assertAnthropicScopeCredential } from "./scope-guard";
 import {
@@ -18,6 +18,8 @@ import {
 } from "./sdk-loader";
 import { installClaudeSdkWarningFilter } from "./sdk-warnings";
 import { type ClaudeQuery, ClaudeSession } from "./session";
+import { makeRefreshAuth } from "./session-auth";
+import type { ClaudeStartup } from "./session-deps";
 import { createSessionsStore } from "./sessions-store";
 import { buildSystemPrompt } from "./system-prompt";
 import { buildSessionHooks } from "./tool-gate-hook";
@@ -71,12 +73,17 @@ export function createClaudeBackend(deps: ClaudeBackendDeps): HarnessBackend {
       assertAnthropicScopeCredential(token);
 
       let query: ClaudeQuery;
+      let startup: ClaudeStartup | undefined;
       let houstonMcp: ReturnType<typeof buildHoustonMcpServer>;
+      // Every callback the CLI calls back into is bound to it, for a CLI
+      // spawned before its prompt (`./prompt-scope.ts`).
+      const scope = createPromptScope();
       try {
         const sdk =
           deps.sdk ??
           (await loadedClaudeSdk(deps.sdkLoad ?? preloadClaudeSdk()));
         query = sdk.query as ClaudeQuery;
+        startup = sdk.startup;
         // Build the in-process MCP server that exposes Houston's custom tools to
         // the subprocess. Built here (not at module load) so the optional SDK's
         // `createSdkMcpServer` is only touched once the SDK is confirmed present.
@@ -93,6 +100,7 @@ export function createClaudeBackend(deps: ClaudeBackendDeps): HarnessBackend {
           // `integration_execute` so Autopilot can act on the user's apps
           // without ever waiting on them.
           mode: opts.mode,
+          scope,
         });
       } catch (err) {
         throw new ClaudeBackendUnavailableError(err);
@@ -108,27 +116,7 @@ export function createClaudeBackend(deps: ClaudeBackendDeps): HarnessBackend {
       // dev/tests): the SDK resolves its own native binary. Only set inside the
       // Bun-compiled desktop sidecar, where require.resolve can't reach it.
       const pathToClaudeCodeExecutable = resolveClaudeExecutable();
-      // The subprocess env, rebuilt from a FRESH credential read on every call.
-      // The session invokes this at the start of each prompt (PRODUCT-1355):
-      // the SDK spawns one subprocess per `query()`, so per-turn env is the
-      // seam that lets a session follow the gateway's token rotation instead of
-      // 401ing forever on the token it was built with. Re-asserting the scope
-      // guard keeps a personal turn whose token vanished a typed refusal, never
-      // a silent fall-through onto the pod-shared (team) credential.
-      const refreshAuth = () => {
-        const fresh = deps.readToken();
-        assertAnthropicScopeCredential(fresh);
-        return {
-          env: buildClaudeEnv(fresh, {
-            configDir: deps.layout.configDir,
-            // A disposable turn supplies this directly. The long-lived layout
-            // resolves it lazily inside the prompt's acting-context scope.
-            credentialStorageDir: deps.layout.credentialStorageDir,
-            homeDir: deps.layout.homeDir,
-          }),
-          accessDigest: fresh?.accessDigest,
-        };
-      };
+      const refreshAuth = makeRefreshAuth(deps);
       // One coherent build-time read for the env AND the digest (the top-of-
       // function `token` read predates the SDK import await, so it is not
       // reused here). Every prompt overrides both with its own fresh read.
@@ -148,12 +136,14 @@ export function createClaudeBackend(deps: ClaudeBackendDeps): HarnessBackend {
         allowedTools: houstonMcp.allowedTools,
         // End the turn after a tool batch in which an offer tool ran after
         // the closing message — the pi path's `terminate` hint, mirrored.
-        hooks: buildSessionHooks(deps.beforeTool),
+        hooks: bindHooks(buildSessionHooks(deps.beforeTool), scope),
         // The role's file policy, whole: an ordinary agent's shared writable
         // roots, or the coordinator's exact-file allowlist (which replaces root
         // containment entirely, so its memory document is the only file this
         // backend's tools can reach).
-        canUseTool: makeCanUseTool(deps.workspaceDir, deps.fileGuard),
+        canUseTool: scope.bind(
+          makeCanUseTool(deps.workspaceDir, deps.fileGuard),
+        ),
         systemPrompt: buildSystemPrompt(
           deps.workspaceDir,
           deps.systemPrompt,
@@ -189,6 +179,8 @@ export function createClaudeBackend(deps: ClaudeBackendDeps): HarnessBackend {
         // report (PRODUCT-1319) — updated by refreshAuth on every prompt so it
         // always names the token the current turn runs on (PRODUCT-1355).
         usedAccessDigest: initialAuth.accessDigest,
+        ...(startup ? { startup } : {}),
+        promptScope: scope,
       });
     },
   };

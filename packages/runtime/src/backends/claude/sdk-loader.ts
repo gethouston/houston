@@ -1,5 +1,6 @@
 import type { createSdkMcpServer } from "@anthropic-ai/claude-agent-sdk";
 import type { ClaudeQuery } from "./session";
+import type { ClaudeStartup } from "./session-deps";
 
 /** Thrown when the optional Claude Agent SDK is not present in this build. */
 export class ClaudeBackendUnavailableError extends Error {
@@ -14,6 +15,8 @@ export class ClaudeBackendUnavailableError extends Error {
 export interface ClaudeSdk {
   query: ClaudeQuery;
   createSdkMcpServer: typeof createSdkMcpServer;
+  /** Spawn a CLI ahead of its prompt (`./session-warm.ts`); absent = never. */
+  startup?: ClaudeStartup;
 }
 
 export type ClaudeSdkLoadResult =
@@ -34,6 +37,7 @@ export function preloadClaudeSdk(
       sdk: {
         query: loaded.query as ClaudeQuery,
         createSdkMcpServer: loaded.createSdkMcpServer,
+        startup: loaded.startup,
       },
     }),
     (error: unknown) => {

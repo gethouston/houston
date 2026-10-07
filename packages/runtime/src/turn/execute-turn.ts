@@ -2,14 +2,19 @@ import type { IncomingMessage, ServerResponse } from "node:http";
 import { join } from "node:path";
 import type { WireFrame } from "@houston/runtime-client";
 import { openSSE } from "../transport/sse";
-import { startClaimHeartbeat } from "./claim-heartbeat";
+import type { startClaimHeartbeat } from "./claim-heartbeat";
 import { executeReadyTurn } from "./execute-ready-turn";
 import { executeShadowTurn } from "./execute-shadow-turn";
 import type { TurnServerDeps } from "./server-types";
 import { startTurnRequestFilesystem } from "./turn-claimed-hydration";
 import { cleanupTurn } from "./turn-cleanup";
 import { writeTurnCredential } from "./turn-credential";
+import {
+  type EarlyTurnSession,
+  startEarlyTurnSession,
+} from "./turn-early-session";
 import type { TurnFilesystemPreparation } from "./turn-filesystem";
+import { startTurnHeartbeat } from "./turn-heartbeat";
 import { TurnSetupError } from "./turn-layout";
 import { createTurnLog } from "./turn-log";
 import { setActiveTurnTimings } from "./turn-network-marks";
@@ -52,6 +57,7 @@ export async function executeTurn(
   let turnSandbox: ReturnType<typeof makeTurnSandboxFetch> | null = null;
   let preparation: TurnFilesystemPreparation | undefined;
   let startup: TurnSessionStartupTask | undefined;
+  let earlySession: EarlyTurnSession | undefined;
   let closeSse: (() => void) | undefined;
   try {
     const sandboxIdentity =
@@ -61,21 +67,7 @@ export async function executeTurn(
       fetchImpl: deps.fetchImpl,
     };
     const resolved = resolveTurnStore(turn, deps.store, storeConfig);
-    heartbeat =
-      turn.claim && turn.hostToken
-        ? startClaimHeartbeat({
-            claim: turn.claim,
-            hostToken: turn.hostToken,
-            onFenced: () => abort.abort(),
-            onMode: (mode) => {
-              if (turn.liveMode) turn.liveMode.current = mode;
-            },
-            ...(deps.fetchImpl ? { fetchImpl: deps.fetchImpl } : {}),
-            ...(deps.heartbeatIntervalMs
-              ? { intervalMs: deps.heartbeatIntervalMs }
-              : {}),
-          })
-        : null;
+    heartbeat = startTurnHeartbeat(deps, turn, abort);
     preparation = await startTurnRequestFilesystem({
       store: resolved.store,
       prefix: resolved.prefix,
@@ -108,26 +100,30 @@ export async function executeTurn(
 
     let sendFrame: ((frame: WireFrame) => void) | undefined;
     const earlyEmit = (frame: WireFrame) => sendFrame?.(frame);
-    if (turn.credential && !turn.routine && !turn.shadow && !deps.runTurn) {
-      startup = startTurnSession(
-        { ...filesystem, turnRoot: root },
-        turnSessionRequest(
-          turn,
-          turnId,
-          earlyEmit,
-          abort.signal,
-          turnSandbox
-            ? { call: turnSandbox.call, warmCode: turnSandbox.warmCode }
-            : undefined,
-          timings,
-        ),
-        deps.turnSessionDeps,
-      );
-    }
+    const directories = { ...filesystem, turnRoot: root };
+    const request = turnSessionRequest(
+      turn,
+      turnId,
+      earlyEmit,
+      abort.signal,
+      turnSandbox
+        ? { call: turnSandbox.call, warmCode: turnSandbox.warmCode }
+        : undefined,
+      timings,
+    );
+    if (turn.credential && !turn.routine && !turn.shadow && !deps.runTurn)
+      startup = startTurnSession(directories, request, deps.turnSessionDeps);
 
     try {
       await preparation.hydrated;
       timings.t_hydrated = performance.now();
+      earlySession = startEarlyTurnSession({
+        turn,
+        request: { ...request, ...(startup ? { startup } : {}) },
+        directories,
+        authPath,
+        poolStoreUrl: deps.poolStoreUrl,
+      });
       const refused = await turnSandbox?.admission();
       if (refused) throw new TurnSetupError("message_refused", refused);
     } catch (error) {
@@ -168,7 +164,6 @@ export async function executeTurn(
         turn,
         turnId,
         root,
-        scope,
         authPath,
         signal: abort.signal,
         filesystem,
@@ -176,6 +171,7 @@ export async function executeTurn(
         heartbeat,
         sandbox: turnSandbox,
         startup,
+        early: earlySession,
         timings,
         emit,
         turnLog,
@@ -185,6 +181,8 @@ export async function executeTurn(
     if (!(error instanceof TurnSetupError)) throw error;
     closeSse = await answerTurnSetupFailure({ deps, turn, turnId, error, res });
   } finally {
+    // The early CLI writes into the root until it exits: stop it first.
+    await earlySession?.close();
     await cleanupTurn({
       root,
       scope,

@@ -4,6 +4,7 @@ import type {
 } from "@anthropic-ai/claude-agent-sdk";
 import { adaptTool } from "./mcp-tool-adapter";
 import { type BridgedToolSetInput, buildBridgedToolSet } from "./mcp-tool-set";
+import type { PromptScope } from "./prompt-scope";
 
 // The bridged tool shape lives with the adapter that consumes it; re-exported
 // so callers keep one import site for the Claude custom-tool bridge.
@@ -32,6 +33,8 @@ export type { BridgedPiTool } from "./mcp-tool-adapter";
  * within `session.prompt()`, itself wrapped by exec-turn's
  * `runWithInteractionCapture` + `runWithActingContext` — so the per-turn
  * AsyncLocalStorage stores propagate into every handler. See `custom-tools.test`.
+ * A CLI started ahead of its prompt (`./session-warm.ts`) spawned its reader
+ * outside those stores; `scope` re-enters the prompt's for each handler.
  */
 
 /** The MCP server name. Tools surface to the model as `mcp__houston__<tool>`. */
@@ -54,6 +57,8 @@ export interface HoustonMcp {
 export interface HoustonMcpInput extends BridgedToolSetInput {
   /** The SDK factory, passed in so this module never imports the optional SDK. */
   createSdkMcpServer: typeof CreateSdkMcpServer;
+  /** Where each tool handler runs (`./prompt-scope.ts`); absent = as called. */
+  scope?: PromptScope;
 }
 
 /**
@@ -61,7 +66,12 @@ export interface HoustonMcpInput extends BridgedToolSetInput {
  * Claude backend, plus the `allowedTools` entries that auto-approve them.
  */
 export function buildHoustonMcpServer(input: HoustonMcpInput): HoustonMcp {
-  const tools = buildBridgedToolSet(input).map(adaptTool);
+  const scope = input.scope;
+  const tools = buildBridgedToolSet(input)
+    .map(adaptTool)
+    .map((tool) =>
+      scope ? { ...tool, handler: scope.bind(tool.handler) } : tool,
+    );
   const server = input.createSdkMcpServer({
     name: HOUSTON_MCP_SERVER_NAME,
     tools,

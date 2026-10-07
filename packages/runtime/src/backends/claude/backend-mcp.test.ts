@@ -25,6 +25,8 @@ const h = vi.hoisted(() => ({
 }));
 
 vi.mock("@anthropic-ai/claude-agent-sdk", () => ({
+  // No early start here: every session spawns through `query`.
+  startup: undefined,
   query: (params: { options: Options }) => {
     h.capturedOptions = params.options;
     return {
