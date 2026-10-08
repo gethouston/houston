@@ -1,0 +1,7 @@
+<?xml version='1.0' encoding='utf-8'?>
+<resources>
+    <string name="app_name">Houston</string>
+    <string name="title_activity_main">Houston</string>
+    <string name="package_name">ai.gethouston.app</string>
+    <string name="custom_url_scheme">ai.gethouston.app</string>
+</resources>

@@ -1,8 +1,17 @@
 import { expect, test } from "vitest";
 import {
+  bootDeployEnvironment,
   classifyDeployEnvironment,
   type DeployEnvironment,
 } from "../src/deploy-environment";
+
+test("native preset overrides localhost while a web tab still classifies its host", () => {
+  expect(bootDeployEnvironment("production", "localhost")).toBe("production");
+  expect(bootDeployEnvironment("preview", "localhost")).toBe("preview");
+  expect(bootDeployEnvironment(undefined, "app.gethouston.ai")).toBe(
+    "production",
+  );
+});
 
 const cases: Array<[string, DeployEnvironment]> = [
   // Production is the single canonical domain.

@@ -9,15 +9,17 @@
  * synchronously in the click and navigating it once the link arrives keeps
  * the open inside the gesture.
  *
- * Web only by construction: the caller gates on the shell. The desktop app
- * hands URLs to the OS browser natively and never needs a reservation.
+ * Native mobile defers opening the in-app browser until navigation; only a
+ * browser tab needs a synchronous empty-tab reservation.
  */
+import { osIsNativeMobile } from "./os-bridge/platform";
+
 export interface ReservedTab {
   /**
    * Point the tab at `url`. `false` when the user already closed the empty tab
    * while the link was minting, so the caller must fall back to a plain open.
    */
-  navigate: (url: string) => boolean;
+  navigate: (url: string) => boolean | Promise<boolean>;
   /** Close the tab if it never received a URL (the link never came). */
   discard: () => void;
 }
@@ -44,6 +46,17 @@ const openEmptyTab: TabOpener = () =>
 export function reserveBrowserTab(
   open: TabOpener = openEmptyTab,
 ): ReservedTab | null {
+  if (osIsNativeMobile()) {
+    return {
+      // Native Browser.open is allowed after the async link-minting hop, so
+      // reserving an empty web tab would only strand a blank WebView.
+      navigate: async (url) => {
+        const { tauriSystem } = await import("./tauri");
+        return tauriSystem.openUrl(url);
+      },
+      discard: () => {},
+    };
+  }
   const tab = open();
   if (tab === null) return null;
   // Sever the opener link BEFORE any page loads in the tab — the same

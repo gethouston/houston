@@ -1,0 +1,33 @@
+{
+  "name": "houston-mobile",
+  "private": true,
+  "version": "0.0.0",
+  "type": "module",
+  "scripts": {
+    "build": "vite build",
+    "sync": "pnpm build && cap sync",
+    "ios": "cap open ios",
+    "android": "cap open android",
+    "run:ios": "cap run ios",
+    "test": "vitest run"
+  },
+  "dependencies": {
+    "@capacitor/app": "^8.1.2",
+    "@capacitor/browser": "^8.0.5",
+    "@capacitor/core": "8.5.3",
+    "@capacitor/keyboard": "^8.0.6",
+    "@capacitor/splash-screen": "^8.0.2",
+    "@tanstack/react-query": "5.101.2",
+    "react": "19.2.7",
+    "react-dom": "19.2.7"
+  },
+  "devDependencies": {
+    "@capacitor/android": "8.5.3",
+    "@capacitor/assets": "3.0.5",
+    "@capacitor/cli": "8.5.3",
+    "@capacitor/ios": "8.5.3",
+    "@types/node": "22.20.0",
+    "vite": "6.4.3",
+    "vitest": "3.2.6"
+  }
+}

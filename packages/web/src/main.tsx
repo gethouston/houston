@@ -13,7 +13,7 @@
 import { applyBootTheme } from "@houston/app/lib/theme-boot";
 import { createRoot } from "react-dom/client";
 import { applyHostModeGlobals } from "./boot-globals";
-import { currentDeployEnvironment } from "./deploy-environment";
+import { bootDeployEnvironment } from "./deploy-environment";
 import {
   type EngineConfig,
   NEW_ENGINE_STORAGE_KEY,
@@ -25,7 +25,10 @@ import {
 // tag their `environment`, and those run as soon as `./app-tree` is imported
 // below. ONE bundle serves both sites, so this is derived from the hostname, not
 // baked at build time (see ./deploy-environment).
-window.__HOUSTON_DEPLOY_ENV__ = currentDeployEnvironment();
+window.__HOUSTON_DEPLOY_ENV__ = bootDeployEnvironment(
+  window.__HOUSTON_DEPLOY_ENV__,
+  window.location.hostname,
+);
 
 // Theme BEFORE the first paint, on the same contract as the desktop entry
 // (app/src/main.tsx): the engine preference is the source of truth but only

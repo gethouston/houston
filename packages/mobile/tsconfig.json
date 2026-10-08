@@ -1,0 +1,14 @@
+{
+  "extends": "../web/tsconfig.json",
+  "compilerOptions": {
+    "types": ["vite/client", "node"]
+  },
+  "include": [
+    "src",
+    "../web/src/vite-env.d.ts",
+    "vite.config.ts",
+    "vitest.config.ts",
+    "capacitor.config.ts"
+  ],
+  "exclude": ["src/**/*.test.ts"]
+}

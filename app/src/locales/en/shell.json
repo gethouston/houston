@@ -451,6 +451,7 @@
     "nativeTriggeredDescription": "Check Sentry for sentry-native-stack-smoke-test."
   },
   "errorToast": {
+    "offlineLaunchTitle": "You're offline",
     "genericDescription": "Something unexpected went wrong. Please try again.",
     "offlineTitle": "Connection lost",
     "offlineDescription": "We can't connect right now. Check your internet connection and try again.",

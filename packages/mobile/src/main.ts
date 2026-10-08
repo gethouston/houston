@@ -1,0 +1,56 @@
+import { Browser } from "@capacitor/browser";
+import { Capacitor } from "@capacitor/core";
+import { setNativeShell } from "../../web/src/shims/native-shell";
+import { publishMobileSurface } from "./surface";
+import { installSystemBars } from "./system-bars";
+
+// These globals precede every shared-app module, including analytics bootstrap.
+publishMobileSurface(
+  window,
+  Capacitor.getPlatform(),
+  __HOUSTON_MOBILE_DEPLOY_ENV__,
+);
+setNativeShell({
+  async openUrl(url) {
+    await Browser.open({ url: new URL(url, window.location.href).href });
+    return true;
+  },
+});
+
+let starting = false;
+let clearOffline: (() => void) | null = null;
+async function reportBootError(error: unknown): Promise<void> {
+  const { logAndReportError } = await import("@houston/app/lib/error-report");
+  logAndReportError("mobile_boot", error);
+}
+installSystemBars((error) => {
+  void reportBootError(error);
+});
+
+async function start(): Promise<void> {
+  if (starting || !navigator.onLine) return;
+  starting = true;
+  clearOffline?.();
+  clearOffline = null;
+  // The web entry publishes the gateway globals before any app store or
+  // error-report module can read them during the native UX import.
+  await import("../../web/src/main");
+  const { installNativeUx } = await import("./native-ux");
+  void installNativeUx().catch((error: unknown) => reportBootError(error));
+}
+
+function launch(): void {
+  void start().catch(reportBootError);
+}
+
+if (navigator.onLine) {
+  launch();
+} else {
+  void import("./offline")
+    .then(({ showOffline }) => {
+      clearOffline = showOffline(launch);
+      window.addEventListener("online", launch, { once: true });
+      if (navigator.onLine) launch();
+    })
+    .catch(reportBootError);
+}

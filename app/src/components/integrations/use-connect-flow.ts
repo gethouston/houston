@@ -123,7 +123,7 @@ export function useConnectFlow(opts: { agentId?: string }): ConnectFlow {
         entry,
         mintLink,
         openUrl: async (url) => {
-          if (tab?.navigate(url)) return true;
+          if (await tab?.navigate(url)) return true;
           const opened = await tauriSystem.openUrl(url);
           if (!opened) {
             analytics.track("integration_connect_tab_blocked", {
