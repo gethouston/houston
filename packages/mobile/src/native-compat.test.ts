@@ -7,7 +7,7 @@ import mobilePackage from "../package.json";
 // This frozen pair forces a native build bump when the plugin set changes.
 // Advance both values only with new iOS/Android native build numbers.
 const nativePluginBaseline = {
-  build: 3,
+  build: 4,
   sha256: "5d02dd44118e0f7e64e71aa2c3b26698f62e1219319f68063ff15f39f47bfe98",
 };
 
@@ -32,7 +32,7 @@ test("native compatibility records the installed Capacitor plugin set", () => {
     compat.min_native_build,
   );
   expect(readFileSync("android/app/build.gradle", "utf8")).toContain(
-    `versionCode ${compat.required_native_build}`,
+    `System.getenv('HOUSTON_NATIVE_BUILD_NUMBER') ?: '${compat.required_native_build}'`,
   );
   expect(
     readFileSync("ios/App/App.xcodeproj/project.pbxproj", "utf8"),

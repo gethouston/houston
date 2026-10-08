@@ -185,3 +185,14 @@ Optional repository variables `HOUSTON_MOBILE_STORE_URL_IOS` and
 the workflow manually with the channel and an existing bundle version. It
 retrieves that archive, reads its recorded version and compatibility floor,
 signs a fresh manifest for the same archive, and replaces only the manifest.
+
+## Release
+
+`.github/workflows/mobile-release.yml` publishes the production iOS and Android
+apps on a release tag or manual `main` dispatch. Missing credentials produce one
+named notice per platform. See `store/release.md` for setup and build numbers.
+
+- Apple secrets: `IOS_GOOGLE_SERVICE_INFO_PLIST_B64` (Firebase iOS config), `ASC_KEY_P8_B64`, `ASC_KEY_ID`, `ASC_ISSUER_ID` (App Store Connect API key).
+- Android secrets: `ANDROID_GOOGLE_SERVICES_JSON_B64` (Firebase Android config), `ANDROID_UPLOAD_KEYSTORE_B64`, `ANDROID_UPLOAD_KEYSTORE_PASSWORD`, `ANDROID_UPLOAD_KEY_ALIAS`, `ANDROID_UPLOAD_KEY_PASSWORD` (local upload key), `PLAY_SERVICE_ACCOUNT_JSON` (Play release service account).
+- Shared secrets: `HOSTED_ENGINE_URL`, `FIREBASE_API_KEY`, `FIREBASE_AUTH_DOMAIN`, `FIREBASE_PROJECT_ID`, `POSTHOG_KEY`, `POSTHOG_HOST`, `SENTRY_DSN` (existing production web values), `HOUSTON_MOBILE_UPDATE_PUBKEY` (OTA public key).
+- Variables: `APPLE_TEAM_ID`, `HOUSTON_APPLE_TEAM_ID` (Apple Developer Team ID), `HOUSTON_ANDROID_CERT_SHA256` (Play App Signing fingerprint), `FIREBASE_APPLE_SERVICE_ID` (Firebase Apple provider), `HOUSTON_MOBILE_STORE_URL_IOS`, `HOUSTON_MOBILE_STORE_URL_ANDROID` (store listing links).

@@ -48,6 +48,7 @@ export default defineConfig(({ mode }) => {
       mode,
       firebaseDefaults,
       path.resolve(__dirname, "src/identity/mobile-identity.ts"),
+      false,
     ),
     {
       plugins: [versionPlugin],

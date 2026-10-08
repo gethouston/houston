@@ -3,6 +3,7 @@ import tailwindcss from "@tailwindcss/vite";
 import react from "@vitejs/plugin-react";
 import { defineConfig, loadEnv, type UserConfig } from "vite";
 import { version } from "./package.json";
+import { appAssociationPlugin } from "./src/app-association";
 
 // packages/web composes the desktop app's React tree (app/src) and runs it in a
 // plain browser tab pointed at the Houston host. The ONLY platform coupling
@@ -19,6 +20,7 @@ export function createWebViteConfig(
   mode: string,
   fallbackEnv: Record<string, string> = {},
   identityModule = path.resolve(__dirname, "src/identity/firebase-popup.ts"),
+  includeAppAssociations = true,
 ): UserConfig {
   // `pnpm dev:host` runs `vite --mode host`: load the shared repo-root .env.local
   // (host token + the frontend's host URL/token) instead of a
@@ -40,7 +42,11 @@ export function createWebViteConfig(
   return {
     envDir,
     cacheDir: path.resolve(__dirname, `node_modules/.vite/dev-${port}`),
-    plugins: [react(), tailwindcss()],
+    plugins: [
+      react(),
+      tailwindcss(),
+      ...(includeAppAssociations ? [appAssociationPlugin(env)] : []),
+    ],
     resolve: {
       alias: [
         // The web-only Firebase Auth surface — the real firebase-js-sdk module.

@@ -7,7 +7,9 @@ android {
         applicationId "ai.gethouston.app"
         minSdkVersion rootProject.ext.minSdkVersion
         targetSdkVersion rootProject.ext.targetSdkVersion
-        versionCode 3
+        // Parenthesised call: `versionCode (x).toInteger()` would parse as
+        // `versionCode(x).toInteger()` and fail on null.
+        versionCode((System.getenv('HOUSTON_NATIVE_BUILD_NUMBER') ?: '4').toInteger())
         versionName "1.0"
         resValue "bool", "houston_firebase_config_present", file('google-services.json').exists() ? "true" : "false"
         testInstrumentationRunner "androidx.test.runner.AndroidJUnitRunner"
@@ -17,8 +19,22 @@ android {
             ignoreAssetsPattern = '!.svn:!.git:!.ds_store:!*.scc:.*:!CVS:!thumbs.db:!picasa.ini:!*~'
         }
     }
+    signingConfigs {
+        upload {
+            storeFile file(System.getenv('ANDROID_UPLOAD_KEYSTORE_PATH') ?: 'upload.keystore')
+            storePassword System.getenv('ANDROID_UPLOAD_KEYSTORE_PASSWORD') ?: ''
+            keyAlias System.getenv('ANDROID_UPLOAD_KEY_ALIAS') ?: ''
+            keyPassword System.getenv('ANDROID_UPLOAD_KEY_PASSWORD') ?: ''
+        }
+    }
     buildTypes {
         release {
+            def signingValues = ['ANDROID_UPLOAD_KEYSTORE_PATH', 'ANDROID_UPLOAD_KEYSTORE_PASSWORD', 'ANDROID_UPLOAD_KEY_ALIAS', 'ANDROID_UPLOAD_KEY_PASSWORD'].collectEntries { key -> [(key): System.getenv(key)] }
+            if (signingValues.values().every { it }) {
+                signingConfig signingConfigs.upload
+            } else if (signingValues.values().any { it }) {
+                throw new GradleException('Incomplete Android upload signing environment')
+            }
             minifyEnabled false
             proguardFiles getDefaultProguardFile('proguard-android.txt'), 'proguard-rules.pro'
         }
