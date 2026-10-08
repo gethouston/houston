@@ -63,17 +63,14 @@ test("OTA requires HTTPS and a release channel when configured", () => {
   ).toThrow("OTA requires");
 });
 
-test("production builds require both store links", () => {
+test("production builds allow absent store links", () => {
   const common = {
     VITE_CONTROL_PLANE_URL: "https://gateway.gethouston.ai",
     FIREBASE_API_KEY: "public-key",
     HOUSTON_MOBILE_DEPLOY_ENV: "production",
   };
-  expect(() => mobileBuildEnv(common)).toThrow("HOUSTON_MOBILE_STORE_URL_IOS");
-  expect(() =>
-    mobileBuildEnv({
-      ...common,
-      HOUSTON_MOBILE_STORE_URL_IOS: "https://apps.apple.com/app/example",
-    }),
-  ).toThrow("HOUSTON_MOBILE_STORE_URL_ANDROID");
+  expect(mobileBuildEnv(common)).toMatchObject({
+    storeUrlIos: "",
+    storeUrlAndroid: "",
+  });
 });

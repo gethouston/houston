@@ -40,3 +40,9 @@ export const pushReportSchema = z.discriminatedUnion("kind", [
 ]);
 
 export type PushReport = z.infer<typeof pushReportSchema>;
+
+/** Keep the ellipsis within the gateway's 200-code-point title limit. */
+export function pushMissionTitle(title: string): string {
+  const points = Array.from(title);
+  return points.length <= 200 ? title : `${points.slice(0, 199).join("")}…`;
+}

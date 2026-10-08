@@ -22,7 +22,7 @@ test("pooled turns stamp contributors and mentions, then post through the turn g
     JSON.stringify([
       {
         id: "m",
-        title: "Review",
+        title: "😀".repeat(201),
         description: "",
         status: "running",
         session_key: "c1",
@@ -35,6 +35,10 @@ test("pooled turns stamp contributors and mentions, then post through the turn g
     headers: Headers;
     body: Record<string, unknown>;
   }[] = [];
+  let releaseMention = () => {};
+  const mentionResponse = new Promise<void>((resolve) => {
+    releaseMention = resolve;
+  });
   const deps = {
     turnLogUrl: "https://gateway.test",
     fetchImpl: async (url: RequestInfo | URL, init?: RequestInit) => {
@@ -43,6 +47,7 @@ test("pooled turns stamp contributors and mentions, then post through the turn g
         headers: new Headers(init?.headers),
         body: JSON.parse(String(init?.body)) as Record<string, unknown>,
       });
+      if (posts.at(-1)?.body.kind === "mentioned") await mentionResponse;
       return new Response(null, { status: 202 });
     },
   } as TurnServerDeps;
@@ -62,7 +67,12 @@ test("pooled turns stamp contributors and mentions, then post through the turn g
     filesystem,
     resolved: { store: agent.store, prefix: PREFIX },
   };
-  await stampPooledTurn(input);
+  const settled = await Promise.race([
+    stampPooledTurn(input).then(() => true),
+    new Promise<false>((resolve) => setTimeout(() => resolve(false), 50)),
+  ]);
+  releaseMention();
+  expect(settled).toBe(true);
   const stored = JSON.parse(
     await readFile(join(agent.prefixRoot, board), "utf8"),
   ) as {
@@ -81,11 +91,16 @@ test("pooled turns stamp contributors and mentions, then post through the turn g
     "turn_settled",
   ]);
   expect(posts[0]?.headers.get("x-houston-acting-as")).toBe("acting-token");
+  expect(posts[0]?.body.mission).toEqual({
+    id: "m",
+    title: `${"😀".repeat(199)}…`,
+  });
   expect(posts[1]?.body).toMatchObject({
     turn_id: "turn-1",
     reason: "finished",
     audience: { user_ids: ["alice", "bob"] },
   });
+  expect(posts[1]?.body.mission).toEqual(posts[0]?.body.mission);
   expect(posts[1]?.url).toBe("https://gateway.test/v1/pod/push/w1/agent-1");
   await reportPooledSettle(input, {
     outcome: { error: "claim_fenced" },
@@ -95,7 +110,7 @@ test("pooled turns stamp contributors and mentions, then post through the turn g
   expect(posts).toHaveLength(2);
 });
 
-test("exhausted push retries reach runtime error reporting without failing the turn", async () => {
+test("settle push makes one claim-bound attempt and reports failure without failing the turn", async () => {
   const agent = await agentStore();
   await seed(
     agent.prefixRoot,
@@ -112,10 +127,13 @@ test("exhausted push retries reach runtime error reporting without failing the t
   );
   const { filesystem } = await claimedTurn(agent, podDocs());
   const errors = vi.spyOn(console, "error").mockImplementation(() => {});
+  const fetchImpl = vi
+    .fn()
+    .mockResolvedValue(new Response(null, { status: 500 }));
   const input = {
     deps: {
       turnLogUrl: "https://gateway.test",
-      fetchImpl: async () => new Response(null, { status: 500 }),
+      fetchImpl,
     } as unknown as TurnServerDeps,
     turn: {
       claim: { token: "claim", bootId: "boot" },
@@ -137,6 +155,7 @@ test("exhausted push retries reach runtime error reporting without failing the t
       expect.stringContaining("[push]"),
       expect.anything(),
     );
+    expect(fetchImpl).toHaveBeenCalledOnce();
   } finally {
     errors.mockRestore();
   }

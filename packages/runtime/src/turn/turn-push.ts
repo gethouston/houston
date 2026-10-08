@@ -12,6 +12,7 @@ import {
   missionAudience,
   notificationReason,
   type PushReport,
+  pushMissionTitle,
 } from "@houston/protocol";
 import type { TurnServerDeps } from "./server-types";
 import { mutateTurnDocument } from "./turn-doc-cas";
@@ -33,13 +34,14 @@ interface TurnPushContext {
 
 let gatewayRefusalWarned = false;
 
-function reporter({ deps, turn }: TurnPushContext) {
+function reporter({ deps, turn }: TurnPushContext, claimBound = false) {
   const url = deps.turnLogUrl ?? process.env.HOUSTON_TURNLOG_URL;
   if (!url || !turn.claim || !turn.hostToken || turn.shadow) return null;
   const { org, agent } = poolIdentity(turn.gcsPrefix);
   return createPushReporter({
     report: { url, orgSlug: org, agentSlug: agent, podToken: turn.hostToken },
     ...(deps.fetchImpl ? { fetchImpl: deps.fetchImpl } : {}),
+    ...(claimBound ? { maxAttempts: 1, requestTimeoutMs: 2_000 } : {}),
     warn: (message) => {
       if (message.includes("later refusals stay quiet")) {
         if (gatewayRefusalWarned) return;
@@ -95,17 +97,19 @@ export async function stampPooledTurn(input: TurnPushContext): Promise<void> {
     });
     const send = reporter(input);
     if (activity && mentioned.length && turn.actingToken && send) {
-      await send(
+      void send(
         {
           v: 1,
           kind: "mentioned",
           conversation_id: turn.conversationId,
-          mission: { id: activity.id, title: activity.title },
+          mission: { id: activity.id, title: pushMissionTitle(activity.title) },
           event_key: input.turnId,
           user_ids: mentioned,
         },
         turn.actingToken,
-      );
+      ).catch((error: unknown) => {
+        console.error("[push] pooled mention report failed", error);
+      });
     }
   } catch (error) {
     console.error("[push] pooled attribution failed", error);
@@ -118,7 +122,7 @@ export async function reportPooledSettle(
   durable: TurnDurabilityResult,
 ): Promise<void> {
   if (durable.outcome.error === "claim_fenced") return;
-  const send = reporter(input);
+  const send = reporter(input, true);
   if (!send) return;
   try {
     const { items } = await loadActivities(
@@ -138,7 +142,7 @@ export async function reportPooledSettle(
       v: 1,
       kind: "turn_settled",
       conversation_id: input.turn.conversationId,
-      mission: { id: activity.id, title: activity.title },
+      mission: { id: activity.id, title: pushMissionTitle(activity.title) },
       turn_id: input.turnId,
       reason,
       question_count,

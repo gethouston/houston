@@ -18,6 +18,11 @@ The routes themselves are declared beside their handlers in
 answers what. This package holds the SHAPES those routes carry, not a second
 copy of the table.
 
+Pooled push reports send mission titles of at most 200 Unicode code points,
+including a final ellipsis when truncated. `pushMissionTitle` applies this
+limit before either `mentioned` or `turn_settled` reports are sent to the
+gateway's 64 KiB `POST /v1/pod/push` endpoint.
+
 Typed-family list GETs (`activities`, `routines`, `routine_runs`, `learnings`,
 and `config`) return an envelope — `{ items, diagnostics }` / `{ config,
 diagnostics }` — because agents write these files with file tools: malformed

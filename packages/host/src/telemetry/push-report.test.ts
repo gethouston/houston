@@ -51,6 +51,28 @@ test("retries network and 5xx three times without throwing", async () => {
   expect(fetchImpl).toHaveBeenCalledTimes(3);
 });
 
+test("a claim-bound report makes one attempt with a two-second deadline", async () => {
+  const timeout = vi.spyOn(AbortSignal, "timeout");
+  const fetchImpl = vi
+    .fn<typeof fetch>()
+    .mockResolvedValue(new Response(null, { status: 500 }));
+  const warn = vi.fn();
+  try {
+    await createPushReporter({
+      report: gateway,
+      fetchImpl,
+      warn,
+      maxAttempts: 1,
+      requestTimeoutMs: 2_000,
+    })(report);
+    expect(fetchImpl).toHaveBeenCalledOnce();
+    expect(timeout).toHaveBeenCalledWith(2_000);
+    expect(warn).toHaveBeenCalledOnce();
+  } finally {
+    timeout.mockRestore();
+  }
+});
+
 test.each([
   401, 404, 503,
 ])("status %s warns once then stays quiet", async (status) => {

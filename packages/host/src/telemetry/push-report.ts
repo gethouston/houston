@@ -8,6 +8,8 @@ export interface PushReporterOptions {
   warn?: (message: string) => void;
   error?: (message: string, cause: unknown) => void;
   retryDelaysMs?: number[];
+  maxAttempts?: number;
+  requestTimeoutMs?: number;
 }
 
 export type PushReporter = (
@@ -23,10 +25,12 @@ export function createPushReporter(opts: PushReporterOptions): PushReporter {
   const warn = opts.warn ?? console.warn;
   const error = opts.error ?? console.error;
   const delays = opts.retryDelaysMs ?? [200, 400];
+  const maxAttempts = opts.maxAttempts ?? 3;
+  const requestTimeoutMs = opts.requestTimeoutMs ?? REQUEST_TIMEOUT_MS;
   let refusalWarned = false;
   let contractErrorReported = false;
   return async (report, actingAs) => {
-    for (let attempt = 0; attempt < 3; attempt++) {
+    for (let attempt = 0; attempt < maxAttempts; attempt++) {
       try {
         const response = await fetchImpl(target, {
           method: "POST",
@@ -36,7 +40,7 @@ export function createPushReporter(opts: PushReporterOptions): PushReporter {
             ...(actingAs ? { "x-houston-acting-as": actingAs } : {}),
           },
           body: JSON.stringify(report),
-          signal: AbortSignal.timeout(REQUEST_TIMEOUT_MS),
+          signal: AbortSignal.timeout(requestTimeoutMs),
         });
         await response.body?.cancel();
         if (response.ok) return;
@@ -63,14 +67,16 @@ export function createPushReporter(opts: PushReporterOptions): PushReporter {
           }
           return;
         }
-        if (attempt === 2) {
-          warn(`[push] gateway answered ${response.status} after 3 attempts`);
+        if (attempt === maxAttempts - 1) {
+          warn(
+            `[push] gateway answered ${response.status} after ${maxAttempts} attempts`,
+          );
           return;
         }
       } catch (cause) {
-        if (attempt === 2) {
+        if (attempt === maxAttempts - 1) {
           warn(
-            `[push] send failed after 3 attempts: ${cause instanceof Error ? cause.message : String(cause)}`,
+            `[push] send failed after ${maxAttempts} attempts: ${cause instanceof Error ? cause.message : String(cause)}`,
           );
           return;
         }

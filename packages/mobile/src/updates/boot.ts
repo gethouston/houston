@@ -31,6 +31,7 @@ export async function installUpdates(): Promise<void> {
       "OTA configuration requires production or preview deploy environment",
     );
   }
+  const nativeBuild = (await App.getInfo()).build;
   const check = createUpdateManager(
     {
       baseUrl,
@@ -39,6 +40,7 @@ export async function installUpdates(): Promise<void> {
       builtinVersion: __HOUSTON_MOBILE_BUNDLE_VERSION__,
       builtinSequence: nativeBuiltinSequence(
         channel,
+        nativeBuild,
         __HOUSTON_MOBILE_BUILTIN_SEQUENCE__,
         localStorage,
       ),
@@ -48,12 +50,17 @@ export async function installUpdates(): Promise<void> {
       now: Date.now,
       isOnline: () => navigator.onLine,
       updater: CapacitorUpdater,
-      nativeBuild: async () => (await App.getInfo()).build,
+      nativeBuild: async () => nativeBuild,
       onRequired: () =>
         showNativeUpdateGate(
           Capacitor.getPlatform() === "ios"
             ? __HOUSTON_MOBILE_STORE_URL_IOS__
             : __HOUSTON_MOBILE_STORE_URL_ANDROID__,
+          () => {
+            void check(true).catch((error: unknown) =>
+              logAndReportError("mobile_update", error),
+            );
+          },
         ),
       report: (error) => logAndReportError("mobile_update", error),
       sequenceStore: {

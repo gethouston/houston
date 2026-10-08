@@ -49,15 +49,6 @@ export function mobileBuildEnv(env: Record<string, string | undefined>): {
       "OTA requires HOUSTON_MOBILE_DEPLOY_ENV production or preview",
     );
   }
-  if (deployEnvironment === "production") {
-    for (const key of [
-      "HOUSTON_MOBILE_STORE_URL_IOS",
-      "HOUSTON_MOBILE_STORE_URL_ANDROID",
-    ] as const) {
-      if (!env[key]?.trim())
-        throw new Error(`Mobile production build requires ${key}`);
-    }
-  }
   return {
     controlPlaneUrl,
     deployEnvironment,

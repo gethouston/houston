@@ -38,8 +38,12 @@ export function createUpdateManager(
   let lastCheck = -Infinity;
   let running = false;
   let required = false;
-  return async function check(): Promise<void> {
-    if (running || required || ports.now() - lastCheck < 30 * 60 * 1000) return;
+  return async function check(force = false): Promise<void> {
+    if (
+      running ||
+      (!force && (required || ports.now() - lastCheck < 30 * 60 * 1000))
+    )
+      return;
     running = true;
     lastCheck = ports.now();
     try {
@@ -84,6 +88,7 @@ export function createUpdateManager(
         ports.onRequired(manifest);
         return;
       }
+      required = false;
       if (nativeBuild < manifest.min_native_build) return;
       const current = (await ports.updater.current()).bundle;
       const version =

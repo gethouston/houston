@@ -78,10 +78,6 @@ jobs:
           test -n "$VITE_CONTROL_PLANE_URL" || { echo '::error::Gateway URL is absent'; exit 1; }
           test -n "$HOUSTON_MOBILE_UPDATE_PUBKEY" || { echo '::error::HOUSTON_MOBILE_UPDATE_PUBKEY is absent'; exit 1; }
           test "$GITHUB_RUN_ATTEMPT" -lt 100
-          if [ "$CHANNEL" = production ]; then
-            test -n "$HOUSTON_MOBILE_STORE_URL_IOS" || { echo '::error::HOUSTON_MOBILE_STORE_URL_IOS is absent'; exit 1; }
-            test -n "$HOUSTON_MOBILE_STORE_URL_ANDROID" || { echo '::error::HOUSTON_MOBILE_STORE_URL_ANDROID is absent'; exit 1; }
-          fi
           export HOUSTON_MOBILE_BUILTIN_SEQUENCE=$((GITHUB_RUN_ID * 100 + GITHUB_RUN_ATTEMPT))
           HOUSTON_MOBILE_DEPLOY_ENV="$CHANNEL" pnpm --filter houston-mobile build
           find packages/mobile/dist -name "*.map" -delete

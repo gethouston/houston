@@ -1,5 +1,11 @@
 import { expect, test } from "vitest";
-import { pushReportSchema } from "./push-report";
+import { pushMissionTitle, pushReportSchema } from "./push-report";
+
+test("push mission titles fit 200 Unicode code points including the ellipsis", () => {
+  expect(pushMissionTitle("a".repeat(200))).toBe("a".repeat(200));
+  expect(pushMissionTitle("😀".repeat(201))).toBe(`${"😀".repeat(199)}…`);
+  expect(Array.from(pushMissionTitle("😀".repeat(201)))).toHaveLength(200);
+});
 
 const common = {
   v: 1,

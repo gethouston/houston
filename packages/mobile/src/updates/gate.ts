@@ -3,8 +3,13 @@ import { Browser } from "@capacitor/browser";
 import { logAndReportError } from "@houston/app/lib/error-report";
 import i18n from "@houston/app/lib/i18n";
 
-export function showNativeUpdateGate(storeUrl: string): void {
+export function showNativeUpdateGate(
+  storeUrl: string,
+  checkAgain: () => void,
+): void {
+  if (document.querySelector("[data-houston-required-update]")) return;
   const gate = document.createElement("main");
+  gate.dataset.houstonRequiredUpdate = "";
   gate.className =
     "fixed inset-0 z-[80] flex min-h-dvh flex-col items-center justify-center gap-4 bg-background px-6 pb-safe pt-safe text-center text-ink";
   const heading = document.createElement("h1");
@@ -28,7 +33,7 @@ export function showNativeUpdateGate(storeUrl: string): void {
     );
     button.addEventListener("click", () => {
       if (!storeUrl) {
-        window.location.reload();
+        checkAgain();
         return;
       }
       void Browser.open({ url: storeUrl }).catch((error: unknown) =>
@@ -36,20 +41,6 @@ export function showNativeUpdateGate(storeUrl: string): void {
       );
     });
     gate.append(button);
-  }
-  if (!storeUrl) {
-    const continueButton = document.createElement("button");
-    continueButton.type = "button";
-    continueButton.className =
-      "min-h-11 rounded-full px-6 text-sm text-ink focus-visible:ring-2 focus-visible:ring-focus";
-    continueButton.textContent = i18n.t("shell:mobileUpdate.continue");
-    continueButton.addEventListener("click", () => {
-      gate.remove();
-      const root = document.getElementById("root");
-      root?.removeAttribute("inert");
-      root?.removeAttribute("aria-hidden");
-    });
-    gate.append(continueButton);
   }
   const root = document.getElementById("root");
   root?.setAttribute("inert", "");

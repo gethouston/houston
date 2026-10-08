@@ -135,6 +135,41 @@ test("required native build gates the app and invalid signatures report", async 
   expect(report).toHaveBeenCalledOnce();
 });
 
+test("required-update retry fetches a fresh manifest immediately", async () => {
+  const gate = vi.fn();
+  const fetcher = vi.fn().mockResolvedValue({
+    ok: true,
+    json: async () => ({
+      ...body,
+      required_native_build: 3,
+      signature: signManifest({ ...body, required_native_build: 3 }, key),
+    }),
+  });
+  const check = createUpdateManager(
+    {
+      baseUrl,
+      publicKey: pubkey,
+      channel: "preview",
+      builtinVersion: "old",
+      builtinSequence: 1,
+    },
+    {
+      fetch: fetcher as typeof fetch,
+      now: () => 0,
+      updater: { current: vi.fn(), download: vi.fn(), next: vi.fn() },
+      nativeBuild: async () => "2",
+      isOnline: () => true,
+      onRequired: gate,
+      report: vi.fn(),
+      sequenceStore: { get: async () => null, set: async () => {} },
+    },
+  );
+  await check();
+  await check(true);
+  expect(fetcher).toHaveBeenCalledTimes(2);
+  expect(gate).toHaveBeenCalledTimes(2);
+});
+
 test("offline checks wait for the next eligible resume without reporting", async () => {
   let now = 0;
   const report = vi.fn();

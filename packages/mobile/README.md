@@ -148,9 +148,9 @@ The first is the public HTTPS object base (production:
 base64 DER SPKI ECDSA P-256 public key. A missing value prints one named `OTA
 OFF` boot breadcrumb. `HOUSTON_MOBILE_DEPLOY_ENV` selects `preview` or
 `production`. `HOUSTON_MOBILE_STORE_URL_IOS` and
-`HOUSTON_MOBILE_STORE_URL_ANDROID` supply the store links on a mandatory native
-update screen. Production builds require both URLs. A local build without a
-store URL shows the translated update screen with a retry button.
+`HOUSTON_MOBILE_STORE_URL_ANDROID` supply optional store links on a mandatory
+native update screen. Without a URL, the gate stays open and its Check again
+button re-fetches the signed manifest.
 An unset deploy environment defaults to `development`; production and preview
 builds name their channel explicitly.
 
@@ -167,8 +167,9 @@ set `required_native_build` to the first build allowed to keep using the app.
 CI bakes `HOUSTON_MOBILE_BUILTIN_SEQUENCE` into each native or OTA bundle as
 `github.run_id * 100 + github.run_attempt`; local builds use zero. Attempts
 stay below 100. The run ID increases between runs across both mobile workflows.
-The store bundle records its baked sequence locally on first boot. OTA bundles
-keep that native baseline when they replace JavaScript, so a newer publish can
+The store bundle records its baked sequence locally per channel and native build
+on first boot. OTA bundles keep that native baseline when they replace JavaScript,
+and each store upgrade seeds its newer floor, so a newer publish can
 roll back to an older OTA zip that still postdates the installed store bundle.
 
 On each main push, `.github/workflows/mobile-updates.yml` builds the preview
@@ -199,8 +200,9 @@ and needs repository secrets `HOUSTON_MOBILE_UPDATE_SIGNING_KEY` (PKCS8 PEM) and
 secrets supply Firebase, gateway, PostHog and Sentry values. The repository
 variable `FIREBASE_APPLE_SERVICE_ID` supplies Android Apple availability in OTA bundles.
 Repository variables `HOUSTON_MOBILE_STORE_URL_IOS` and
-`HOUSTON_MOBILE_STORE_URL_ANDROID` fill the store buttons and are required for
-production builds. To roll back, run
+`HOUSTON_MOBILE_STORE_URL_ANDROID` fill the store buttons when set. Production
+OTA builds permit them to be absent; each store release job skips with one named
+notice when its platform URL is absent. To roll back, run
 the workflow manually with the channel and an existing bundle version. It
 retrieves that archive, reads its recorded version and compatibility floor,
 signs a fresh manifest for the same archive, and replaces only the manifest.
@@ -208,8 +210,9 @@ signs a fresh manifest for the same archive, and replaces only the manifest.
 Push registration is scoped to the current signed-in user. A gateway
 `409 {"code":"device_conflict"}` makes the client persist a new installation ID
 and retry registration once. The gateway transfers another user's row only
-when both its device ID and token match the same install; every other
-cross-user device ID or token conflict returns that 409 without changing a row.
+when the FCM token matches, clearing the previous user's pending outbox in the
+same transaction. A cross-user device ID with a different token
+returns that 409 without changing a row.
 A turn-settled push names up to 512 explicit user
 IDs in mission order; overflow is reported as an error and never broadens the
 audience to everyone.
