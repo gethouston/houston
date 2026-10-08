@@ -7,11 +7,11 @@ import { installSystemBars } from "./system-bars";
 import { notifyMobileReadyAfterRender } from "./updates/ready";
 
 // These globals precede every shared-app module, including analytics bootstrap.
-publishMobileSurface(
-  window,
-  Capacitor.getPlatform(),
-  __HOUSTON_MOBILE_DEPLOY_ENV__,
-);
+publishMobileSurface(window, {
+  platform: Capacitor.getPlatform(),
+  deployEnvironment: __HOUSTON_MOBILE_DEPLOY_ENV__,
+  controlPlaneUrl: __HOUSTON_MOBILE_CONTROL_PLANE_URL__,
+});
 setNativeShell({
   push: mobilePush,
   async openUrl(url) {
@@ -49,8 +49,6 @@ async function start(): Promise<void> {
   clearOffline?.();
   clearOffline = null;
   await earlyPushTapReady;
-  // The web entry publishes the gateway globals before any app store or
-  // error-report module can read them during the native UX import.
   const { installUpdates } = await import("./updates/boot");
   await installUpdates().catch(reportBootError);
   await import("../../web/src/main");

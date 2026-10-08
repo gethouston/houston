@@ -11,20 +11,14 @@
 import {
   type AuthProvider,
   decodeIdTokenClaims,
-  IdentityError,
   type Session,
   type SignInOutcome,
 } from "@houston/app/lib/identity";
-import { initializeApp } from "firebase/app";
 import {
-  type Auth,
-  browserLocalPersistence,
   GoogleAuthProvider,
   getAdditionalUserInfo,
-  getAuth,
   OAuthProvider,
   onIdTokenChanged,
-  setPersistence,
   signInWithCustomToken,
   signInWithPopup,
   signOut,
@@ -32,46 +26,14 @@ import {
   type UserCredential,
   updateProfile,
 } from "firebase/auth";
+import { ready, requireAuth } from "./firebase-auth-instance.ts";
 import { isBenignPopupCancel, mapFirebaseError } from "./firebase-errors.ts";
+
+export { initWebAuth } from "./firebase-auth-instance.ts";
 
 // Firebase tokens live ~1h; used only if a freshly-minted token fails to decode
 // (it never should) so the session isn't born already-stale.
 const DEFAULT_TOKEN_TTL_MS = 3_600_000;
-
-let authInstance: Auth | null = null;
-// Resolves once `setPersistence` settles; sign-in awaits it so the session is
-// stored under browserLocalPersistence before the popup opens.
-let persistenceReady: Promise<unknown> | null = null;
-
-/** Idempotent singleton init: `initializeApp` + `getAuth` + local persistence. */
-export function initWebAuth(config: {
-  apiKey: string;
-  authDomain: string;
-  projectId: string;
-}): void {
-  if (authInstance) return;
-  const app = initializeApp({
-    apiKey: config.apiKey,
-    authDomain: config.authDomain,
-    projectId: config.projectId,
-  });
-  authInstance = getAuth(app);
-  persistenceReady = setPersistence(authInstance, browserLocalPersistence);
-}
-
-function requireAuth(): Auth {
-  if (!authInstance) {
-    // Sign-in before `initWebAuth` is a wiring bug; surface it, don't swallow.
-    throw new IdentityError("operation_not_allowed");
-  }
-  return authInstance;
-}
-
-async function ready(): Promise<Auth> {
-  const auth = requireAuth();
-  if (persistenceReady) await persistenceReady;
-  return auth;
-}
 
 // Assemble the outcome: the app Session + whether this credential CREATED the
 // GCIP account (`getAdditionalUserInfo(...).isNewUser` — the SDK counterpart of

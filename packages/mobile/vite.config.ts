@@ -50,6 +50,9 @@ export default defineConfig(({ mode }) => {
     base: "./",
     publicDir: path.resolve(__dirname, "../web/public"),
     define: {
+      __HOUSTON_MOBILE_CONTROL_PLANE_URL__: JSON.stringify(
+        buildEnv.controlPlaneUrl,
+      ),
       __HOUSTON_MOBILE_DEPLOY_ENV__: JSON.stringify(buildEnv.deployEnvironment),
       __HOUSTON_MOBILE_UPDATE_BASE_URL__: JSON.stringify(
         buildEnv.updateBaseUrl,

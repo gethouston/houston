@@ -2,8 +2,10 @@
 
 This Capacitor 8 package wraps the shared `packages/web` build. Its Vite config
 reuses the web aliases, defines, React setup, and Tailwind setup; the mobile
-entry sets the native surface and deploy environment before loading the web
-entry. All product behavior remains in the shared app and SDK.
+entry sets the native surface, deploy environment and gateway host mode before
+any app module loads, since the app's engine module reads the gateway endpoint
+once when it is evaluated. All product behavior remains in the shared app and
+SDK.
 `assets/logo.png` is derived from `packages/web/public/icons/houston-512.png`;
 the generated icon and splash assets use the light background token.
 
