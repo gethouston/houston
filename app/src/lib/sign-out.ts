@@ -4,21 +4,45 @@
 // getting that ordering wrong is what shipped the "signed back in after a
 // relaunch" / "can't log in again until I quit" pair of bugs.
 
+import { nativeShell } from "../../../packages/web/src/shims/native-shell";
 import { cancelAllConnectFlows } from "../stores/connect-flow";
 import { analytics } from "./analytics";
 import { emitAuthError } from "./auth-error-bus";
+import { logAndReportError } from "./error-report";
 import { purgeAccountLocalState } from "./houston-local-state";
 import { clearSession, stopProactiveRefresh } from "./identity";
 import { cancelPendingAuthorize } from "./identity/desktop-oauth";
 import { resetForIdentityChange } from "./identity-reset";
 import { logger } from "./logger";
 import { osIsTauri } from "./os-bridge";
+import { osIsNativeMobile } from "./os-bridge/platform";
 import { clearPersistedLocalData } from "./query-persist";
 import { cacheSession, forgetActiveIdentity } from "./session-cache";
 import { signOutFailure } from "./sign-out-failure";
+import { tauriPush } from "./tauri";
 
 // Lazy-load the web SDK surface (a no-op stub on desktop; never reached there).
 const loadWebIdentity = () => import("@houston/web-identity");
+
+async function boundedPushCleanup(
+  run: (signal: AbortSignal) => Promise<void>,
+): Promise<void> {
+  const controller = new AbortController();
+  let timer: ReturnType<typeof setTimeout> | undefined;
+  try {
+    await Promise.race([
+      run(controller.signal),
+      new Promise<never>((_, reject) => {
+        timer = setTimeout(() => {
+          controller.abort();
+          reject(new Error("Push sign-out cleanup timed out after 3 seconds"));
+        }, 3000);
+      }),
+    ]);
+  } finally {
+    if (timer) clearTimeout(timer);
+  }
+}
 
 /**
  * Sign out: stop refresh + clear the persisted (desktop) / SDK (web) session,
@@ -36,6 +60,23 @@ const loadWebIdentity = () => import("@houston/web-identity");
  * mounting behind this sign-out renders, and is rethrown typed.
  */
 export async function signOut(): Promise<void> {
+  if (osIsNativeMobile() && nativeShell()?.push.available) {
+    try {
+      await boundedPushCleanup(async (signal) => {
+        const id = await tauriPush.deviceId();
+        await tauriPush.unregister(id, signal);
+      });
+    } catch (error) {
+      logAndReportError("push_sign_out_unregister", error);
+    }
+    try {
+      await boundedPushCleanup(async () => {
+        await nativeShell()?.push.deleteToken();
+      });
+    } catch (error) {
+      logAndReportError("push_sign_out_delete_token", error);
+    }
+  }
   // Before the session goes: a connect poll survives navigation by design, but
   // surviving sign-out would mean it keeps calling the gateway as (and toasting
   // at) a user who has left.

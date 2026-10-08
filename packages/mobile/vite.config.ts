@@ -1,3 +1,4 @@
+import { existsSync } from "node:fs";
 import path from "node:path";
 import { defineConfig, loadEnv, mergeConfig } from "vite";
 import { createWebViteConfig } from "../web/vite.config";
@@ -21,6 +22,14 @@ export default defineConfig(({ mode }) => {
     publicDir: path.resolve(__dirname, "../web/public"),
     define: {
       __HOUSTON_MOBILE_DEPLOY_ENV__: JSON.stringify(deployEnvironment),
+      __HOUSTON_NATIVE_PUSH_IOS_AVAILABLE__: JSON.stringify(
+        existsSync(
+          path.resolve(__dirname, "ios/App/App/GoogleService-Info.plist"),
+        ),
+      ),
+      __HOUSTON_NATIVE_PUSH_ANDROID_AVAILABLE__: JSON.stringify(
+        existsSync(path.resolve(__dirname, "android/app/google-services.json")),
+      ),
     },
     build: {
       outDir: path.resolve(__dirname, "dist"),

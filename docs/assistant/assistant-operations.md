@@ -151,9 +151,12 @@ A person's message can grant one `createAgent` call with the constrained name, c
 | `getPlan` | GET | unconfirmed: read-only HTTP GET | visible | none |
 | `getPreference` | GET | unconfirmed: read-only HTTP GET | UI plumbing; an untyped key/value store the app reads for its own device settings. | key: free text |
 | `preferences.setLocale` | PATCH | unconfirmed: Reversible display preference; the app's own language picker changes it with one click. | visible | workspaceId: resolved:workspaces; locale: free text |
+| `putPushPresence` | PUT | unconfirmed: withheld from dispatch | presence must reflect the actual client window, not a chat action. | input: free text |
+| `registerDevice` | PUT | unconfirmed: withheld from dispatch | a native device's private FCM token and installation id are required. | deviceId: free text; input: free text |
 | `setContext` | PUT | confirmed: host approval required | visible | kind: enum; content: free text |
 | `setMyProfile` | PUT | unconfirmed: Reversible personal display overrides; costs nothing and changes no permissions. | visible | update: free text |
 | `setPreference` | PUT | unconfirmed: withheld from dispatch | UI plumbing; an open key/value write that can clobber any app setting. | key: free text; value: free text |
+| `unregisterDevice` | DELETE | unconfirmed: withheld from dispatch | only the device being unregistered can identify its installation. | deviceId: free text |
 | `createSharedSkill` | POST | unconfirmed: Adds a new shared skill without changing or removing an existing one. | visible | workspaceId: resolved:workspaces; body: free text |
 | `createSkill` | POST | confirmed: host approval required | visible | agentId: resolved:agents; body: free text |
 | `deleteSharedSkill` | DELETE | confirmed: host approval required | visible | workspaceId: resolved:workspaces; slug: resolved:shared-skills |

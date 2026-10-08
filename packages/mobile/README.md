@@ -22,6 +22,21 @@ by default; set it to `preview` or `development` for those builds. The WebView
 hostname is always `localhost`, so this value is baked during the mobile build.
 `FIREBASE_API_KEY` is also required so the cloud sign-in screen can render.
 
+Remote push requires the Firebase client config for each native app:
+
+- iOS: `packages/mobile/ios/App/App/GoogleService-Info.plist`
+- Android: `packages/mobile/android/app/google-services.json`
+
+Commit both files once the Firebase apps are registered. They are public
+Firebase client configuration, not secrets. Without the file for the target
+platform, the app still builds and boots; remote push is unavailable and a
+console breadcrumb names the missing configuration. The iOS build copies its plist into the app
+bundle when present. The Firebase project must register bundle ID
+`ai.gethouston.app` and package name `ai.gethouston.app`. iOS also needs a
+provisioning profile with Push Notifications enabled and APNs credentials in
+Firebase; the Xcode target has its push entitlement and remote-notification
+background mode. Android declares `POST_NOTIFICATIONS` for API 33 and newer.
+
 For a release build, provide the same public identity and telemetry values as
 the cloud web build: `FIREBASE_API_KEY`, `FIREBASE_AUTH_DOMAIN`,
 `FIREBASE_PROJECT_ID`, `POSTHOG_KEY`, `POSTHOG_HOST`, and `SENTRY_DSN`.

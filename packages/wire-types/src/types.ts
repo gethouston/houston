@@ -117,6 +117,8 @@ export interface AssistantHandle {
 export type CustomIntegrationScope = "host" | "agent";
 
 export interface Capabilities {
+  /** Gateway remote push routes and delivery are configured. */
+  push?: boolean;
   localModelBridge?: { versions: number[] };
   profile: "local" | "cloud";
   revealInOs: boolean;

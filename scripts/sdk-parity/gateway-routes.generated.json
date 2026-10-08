@@ -96,6 +96,22 @@
     "reason": "an engine pod reads its agent-scoped custom-integration secrets with the injected pod token, keeping pods outside GCP IAM"
   },
   {
+    "pattern": "/v1/pod/model-calls/",
+    "methods": [
+      "*"
+    ],
+    "classification": "internal-sandbox",
+    "reason": "an engine pod reports per-turn model call timings with its injected host token"
+  },
+  {
+    "pattern": "/v1/pod/push/",
+    "methods": [
+      "*"
+    ],
+    "classification": "internal-sandbox",
+    "reason": "an engine pod or live pooled turn reports mission notification candidates with its scoped bearer; no user client can report a turn"
+  },
+  {
     "pattern": "/v1/pod/shared-endpoint/",
     "methods": [
       "*"
@@ -1218,6 +1234,21 @@
   },
   {
     "pattern": "/v1/agents/{slug}/color",
+    "methods": [
+      "PUT"
+    ],
+    "classification": "sdk"
+  },
+  {
+    "pattern": "/v1/me/push/devices/{device_id}",
+    "methods": [
+      "PUT",
+      "DELETE"
+    ],
+    "classification": "sdk"
+  },
+  {
+    "pattern": "/v1/me/push/presence",
     "methods": [
       "PUT"
     ],

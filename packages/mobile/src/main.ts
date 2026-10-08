@@ -1,6 +1,7 @@
 import { Browser } from "@capacitor/browser";
 import { Capacitor } from "@capacitor/core";
 import { setNativeShell } from "../../web/src/shims/native-shell";
+import { installEarlyPushTap, mobilePush } from "./push";
 import { publishMobileSurface } from "./surface";
 import { installSystemBars } from "./system-bars";
 
@@ -11,11 +12,20 @@ publishMobileSurface(
   __HOUSTON_MOBILE_DEPLOY_ENV__,
 );
 setNativeShell({
+  push: mobilePush,
   async openUrl(url) {
     await Browser.open({ url: new URL(url, window.location.href).href });
     return true;
   },
 });
+const earlyPushTapReady = installEarlyPushTap().catch((error: unknown) =>
+  reportBootError(error),
+);
+if (!mobilePush.available) {
+  console.warn(
+    "[mobile/push] Firebase native config absent; remote push unavailable. Add GoogleService-Info.plist and google-services.json.",
+  );
+}
 
 let starting = false;
 let clearOffline: (() => void) | null = null;
@@ -32,6 +42,7 @@ async function start(): Promise<void> {
   starting = true;
   clearOffline?.();
   clearOffline = null;
+  await earlyPushTapReady;
   // The web entry publishes the gateway globals before any app store or
   // error-report module can read them during the native UX import.
   await import("../../web/src/main");

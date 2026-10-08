@@ -18,5 +18,6 @@ export async function installNativeUx(): Promise<void> {
       online: (online) => onlineManager.setOnline(online),
       focused: (focused) => focusManager.setFocused(focused),
     });
+    if (isActive) window.dispatchEvent(new Event("push-resume"));
   });
 }

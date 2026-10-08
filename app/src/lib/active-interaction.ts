@@ -1,7 +1,5 @@
 import type { PendingInteraction } from "@houston/protocol";
-// Subpath import (like @houston/protocol/model-windows): the app's node:test
-// runner loads value imports for real, and the package index's extensionless
-// import chain only resolves under bundler resolution.
+import { notificationReason } from "@houston/protocol";
 import {
   hasOnlySuggestionSteps,
   isPendingInteraction,
@@ -115,32 +113,17 @@ export function interactionNotificationBodyKey(
   | "sessionComplete.connect"
   | "sessionComplete.credential"
   | "sessionComplete.handsOn" {
-  if (interactionQuestionCount(interaction) > 0)
-    return "sessionComplete.question";
-  if (
-    isPendingInteraction(interaction) &&
-    interaction.steps.some((step) => step.kind === "signin")
-  )
-    return "sessionComplete.signin";
-  if (
-    isPendingInteraction(interaction) &&
-    interaction.steps.some(
-      (step) => step.kind === "connect" || step.kind === "provider_connect",
-    )
-  )
-    return "sessionComplete.connect";
-  if (
-    isPendingInteraction(interaction) &&
-    interaction.steps.some((step) => step.kind === "credential")
-  )
-    return "sessionComplete.credential";
-  if (
-    isPendingInteraction(interaction) &&
-    interaction.steps.some((step) => step.kind === "hands_on")
-  )
-    return "sessionComplete.handsOn";
-
-  return "sessionComplete.body";
+  const reason = notificationReason("needs_you", interaction).reason;
+  const keys = {
+    finished: "sessionComplete.body",
+    question: "sessionComplete.question",
+    signin: "sessionComplete.signin",
+    connect: "sessionComplete.connect",
+    credential: "sessionComplete.credential",
+    hands_on: "sessionComplete.handsOn",
+    error: "sessionComplete.body",
+  } as const;
+  return keys[reason];
 }
 
 /**

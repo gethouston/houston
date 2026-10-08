@@ -9,11 +9,13 @@
  * (`session-notifications.ts`) can gate without an await.
  */
 
+import { nativeShell } from "../../../packages/web/src/shims/native-shell";
 import {
   mapBrowserPermission,
   type NotificationPermissionState,
 } from "./notification-permission";
 import { osIsTauri } from "./os-bridge";
+import { osIsNativeMobile } from "./os-bridge/platform";
 import { isMac } from "./platform";
 import { tauriPreferences } from "./tauri";
 
@@ -37,6 +39,11 @@ export function isSessionNotificationEnabled(): boolean {
   return inAppEnabledCache;
 }
 
+/** Native Firebase client configuration is supplied per platform at build time. */
+export function nativePushAvailable(): boolean {
+  return !osIsNativeMobile() || nativeShell()?.push.available === true;
+}
+
 /** Hydrate the sync cache from persisted prefs. Call once at app start. */
 export async function loadNotificationSettings(): Promise<void> {
   const stored = await tauriPreferences.get(ENABLED_KEY);
@@ -53,6 +60,7 @@ export async function setSessionNotificationEnabled(
 ): Promise<void> {
   inAppEnabledCache = enabled;
   await tauriPreferences.set(ENABLED_KEY, enabled ? null : "false");
+  if (osIsNativeMobile()) window.dispatchEvent(new Event("push-toggle"));
 }
 
 /**
@@ -61,6 +69,8 @@ export async function setSessionNotificationEnabled(
  * always report granted; macOS reads the plugin, web reads `Notification`.
  */
 export async function readOsPermissionGranted(): Promise<boolean> {
+  if (osIsNativeMobile())
+    return (await nativeShell()?.push.permissionState()) === "granted";
   if (osIsTauri()) {
     if (!isMac) return true;
     const { isPermissionGranted } = await import(
@@ -79,6 +89,11 @@ export async function readOsPermissionGranted(): Promise<boolean> {
  * Windows desktop have no dialog and report granted.
  */
 export async function requestOsPermission(): Promise<NotificationPermissionState> {
+  if (osIsNativeMobile()) {
+    const state = (await nativeShell()?.push.requestPermission()) ?? "denied";
+    if (state === "granted") window.dispatchEvent(new Event("push-toggle"));
+    return state;
+  }
   if (osIsTauri()) {
     if (!isMac) return "granted";
     const { requestPermission } = await import(

@@ -7,6 +7,13 @@ const config: CapacitorConfig = {
   // A long-press link preview opens the URL inside WebKit, outside the app's
   // click handlers, so it would bypass the store-safe link guards.
   ios: { allowsLinkPreview: false },
+  experimental: {
+    ios: {
+      spm: {
+        packageOptions: { "@capacitor-firebase/messaging": { symlink: true } },
+      },
+    },
+  },
   plugins: {
     // Native resizes the WebView itself. The existing visualViewport hook
     // measures remaining occlusion, so the composer never gets two insets.
@@ -15,6 +22,7 @@ const config: CapacitorConfig = {
     Keyboard: { resize: "native", resizeOnFullScreen: true },
     SystemBars: { insetsHandling: "css", style: "LIGHT" },
     SplashScreen: { launchAutoHide: true },
+    FirebaseMessaging: { presentationOptions: [] },
   },
 };
 

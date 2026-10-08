@@ -52,6 +52,7 @@ import { ProjectFilesMixin } from "./client/project-files-mixin";
 import { ProviderCredentialsMixin } from "./client/provider-credentials-mixin";
 import { ProviderLoginMixin } from "./client/provider-login-mixin";
 import { ProviderStatusMixin } from "./client/provider-status-mixin";
+import { PushMixin } from "./client/push-mixin";
 import { RoutinesMixin } from "./client/routines-mixin";
 import { SharedSkillsMixin } from "./client/shared-skills-mixin";
 import { SkillsMixin } from "./client/skills-mixin";
@@ -75,6 +76,7 @@ export const MIXINS = [
   DelegationMixin,
   BillingMixin,
   PlanMixin,
+  PushMixin,
   ChannelsMixin,
   SpacesMixin,
   OrgsMixin,

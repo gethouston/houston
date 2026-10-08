@@ -37,6 +37,7 @@ import {
   type DismissInteractionOutcome,
   plusCheckoutRefusal,
 } from "@houston/sdk";
+import type { PushDeviceRegistration } from "@houston/wire-types";
 import { shouldUseClaudeDesktopLogin } from "../components/shell/provider-login-url";
 import { actingUser } from "./acting-user";
 import { isAgentGoneError, isStaleRosterReadError } from "./agent-gone";
@@ -2086,4 +2087,30 @@ export const tauriChannels = {
   /** Open the authorization page; a popup blocker's refusal is the answer. */
   openSlack: (url: string) =>
     channelCall("open_slack", () => tauriSystem.openUrl(url)),
+};
+
+/** Device-scoped C23 push operations. Background failures are reported without a toast. */
+export const tauriPush = {
+  deviceId: () =>
+    call("push_device_id", () => getEngine().pushDeviceId(), undefined, {
+      toast: false,
+    }),
+  register: (id: string, input: PushDeviceRegistration) =>
+    call(
+      "push_register",
+      () => getEngine().registerPushDevice(id, input),
+      undefined,
+      { toast: false },
+    ),
+  unregister: (id: string, signal?: AbortSignal) =>
+    call(
+      "push_unregister",
+      () => getEngine().unregisterPushDevice(id, signal),
+      undefined,
+      { toast: false },
+    ),
+  startPresence: (
+    foreground: () => boolean,
+    onError: (error: unknown) => void,
+  ) => getEngine().startPushPresence(foreground, onError),
 };

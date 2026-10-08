@@ -68,6 +68,7 @@ export * from "./modules/plan/billing-model";
 export * from "./modules/plan/schedule-floor";
 export * from "./modules/plan/trigger-skip-notice";
 export * from "./modules/plan/upgrade-model";
+export { PushCommand, PushHttpError, type PushModule } from "./modules/push";
 // The rules around a skill still being built in chat: what counts as one,
 // which is picked back up, which are listed, and discarding one.
 export {
