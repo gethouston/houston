@@ -28,6 +28,32 @@ export function osIsTauri(): boolean {
   return isTauri();
 }
 
+/** The native mobile shells that wrap the web build (`packages/mobile`). */
+export type NativeMobilePlatform = "ios" | "android";
+
+declare global {
+  interface Window {
+    /** Set by the mobile shell's boot before the app graph loads; absent in
+     *  the desktop app and in a plain browser. */
+    __HOUSTON_SURFACE__?: NativeMobilePlatform;
+  }
+}
+
+/**
+ * Which native mobile shell the frontend runs in, or null on desktop and in a
+ * plain browser. A mobile browser tab is NOT a native shell: it keeps the web
+ * behavior (Stripe checkout, popup sign-in, browser notifications).
+ */
+export function osNativeMobilePlatform(): NativeMobilePlatform | null {
+  if (typeof window === "undefined") return null;
+  return window.__HOUSTON_SURFACE__ ?? null;
+}
+
+/** True inside the iOS or Android app (App Store / Play Store builds). */
+export function osIsNativeMobile(): boolean {
+  return osNativeMobilePlatform() !== null;
+}
+
 export function legacyListen<T>(
   event: string,
   handler: (ev: Event<T>) => void,

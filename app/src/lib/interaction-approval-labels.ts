@@ -4,6 +4,10 @@ import type {
   ChatInteractionOption,
   ChatInteractionStep,
 } from "@houston-ai/chat";
+import {
+  refusesPurchaseApproval,
+  storeRefusalQuestion,
+} from "./purchase-approval";
 
 /**
  * An approval card, said in the READER's language.
@@ -47,6 +51,11 @@ export interface ApprovalCardCopy {
   argumentName: (operation: string, param: string) => string;
   hire: (name: string) => string;
   instructionsLabel: string;
+  /** What a purchase approval says inside a store app, which never sells:
+   *  where the plan is managed. */
+  storeRefusal: string;
+  /** The one answer that card offers; it declines the purchase. */
+  storeRefusalOk: string;
 }
 
 function hireInstructions(source: string): { role?: string; body: string } {
@@ -109,6 +118,8 @@ export function localizeApprovalQuestion(
   if (!isApproval) return { ...step, options };
 
   const operation = step.approval?.operation;
+  if (refusesPurchaseApproval(operation))
+    return storeRefusalQuestion(step, options, copy);
   const sentence =
     operation === undefined ? undefined : copy.sentence(operation);
   if (operation === undefined || sentence === undefined)

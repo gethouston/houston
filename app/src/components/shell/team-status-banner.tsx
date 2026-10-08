@@ -6,6 +6,7 @@ import { useOrgs } from "../../hooks/queries/use-spaces.ts";
 import { useCapabilities } from "../../hooks/use-capabilities.ts";
 import { openAdmin } from "../../lib/open-admin.ts";
 import { hasSpaces, orgRole } from "../../lib/org-roles.ts";
+import { canPurchaseInApp } from "../../lib/purchase-policy.ts";
 import { isTeamWorkspace, orgSlugFromWorkspaceId } from "../../lib/space-id.ts";
 import { teamStatusView } from "../../lib/team-status-model.ts";
 import { useWorkspaceStore } from "../../stores/workspaces.ts";
@@ -21,7 +22,9 @@ import { useWorkspaceStore } from "../../stores/workspaces.ts";
  * (`OrgSummary.degraded`, the member-visible signal that carries no billing
  * detail). The decision itself is the pure {@link teamStatusView}. The trial
  * pill and the owner Upgrade action deep-link into the Admin screen, on the
- * Billing section.
+ * Billing section. The store apps never sell (`canPurchaseInApp`): there the
+ * owner reads that the plan is managed on the web, with no Upgrade action, and
+ * a member reads the limit without being sent to ask for an upgrade.
  */
 export function TeamStatusBanner() {
   const { t } = useTranslation("teams");
@@ -69,6 +72,12 @@ export function TeamStatusBanner() {
     );
   }
 
+  const purchasable = canPurchaseInApp();
+  const upgradable = view.isOwner && purchasable;
+  const message = purchasable
+    ? t(view.isOwner ? "degrade.owner" : "degrade.member")
+    : t(view.isOwner ? "native.degradeOwner" : "native.degradeMember");
+
   return (
     <div
       role="status"
@@ -76,9 +85,9 @@ export function TeamStatusBanner() {
     >
       <span className="flex items-center gap-2 text-ink">
         <AlertTriangle className="size-4 shrink-0 text-danger" />
-        {view.isOwner ? t("degrade.owner") : t("degrade.member")}
+        {message}
       </span>
-      {view.isOwner && (
+      {upgradable && (
         <Button size="sm" className="shrink-0" onClick={openBilling}>
           {t("degrade.upgrade")}
         </Button>

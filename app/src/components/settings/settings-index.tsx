@@ -11,6 +11,7 @@ import { useTranslation } from "react-i18next";
 import { useChannels } from "../../hooks/queries/use-channels";
 import { useCapabilities } from "../../hooks/use-capabilities";
 import { genericErrorDescription } from "../../lib/error-report";
+import { canPurchaseInApp } from "../../lib/purchase-policy";
 import {
   type SettingsSectionId,
   settingsSectionAvailable,
@@ -81,7 +82,9 @@ export function SettingsIndex({
             <SettingsRow
               icon={CreditCard}
               title={t("plan:title")}
-              description={t("plan:nav")}
+              description={
+                canPurchaseInApp() ? t("plan:nav") : t("plan:native.nav")
+              }
               onClick={() => onSelect("plan")}
             />
           )}

@@ -2,8 +2,9 @@ import type { PlanSummary } from "@houston/engine-adapter";
 import { planOffer, planPriceAmounts } from "@houston/sdk";
 import { Button, Card } from "@houston-ai/core";
 import { Check } from "lucide-react";
+import type { ReactNode } from "react";
 import { useTranslation } from "react-i18next";
-import { FallbackLink } from "../../shell/fallback-link";
+import { canPurchaseInApp } from "../../../lib/purchase-policy";
 import { PlanPrice } from "./plan-price";
 
 const BENEFITS = [
@@ -13,18 +14,22 @@ const BENEFITS = [
   "benefitSpaces",
 ] as const;
 
+/** The Free plan's offer of Plus. A sale, so the store apps never draw it. */
 export function UpgradeCard({
   plan,
   onUpgrade,
   upgrading,
-  fallbackUrl,
+  checkoutFallback,
 }: {
   plan: PlanSummary;
   onUpgrade: () => void;
   upgrading: boolean;
-  fallbackUrl: string | null;
+  /** The checkout link to offer when no browser opened, placed by the
+   *  caller (`self-start`). */
+  checkoutFallback?: ReactNode;
 }) {
   const { t, i18n } = useTranslation("plan");
+  if (!canPurchaseInApp()) return null;
   const offer = planOffer(plan, i18n.language);
   return (
     <Card className="gap-5 px-5 py-5 md:px-6">
@@ -45,15 +50,7 @@ export function UpgradeCard({
           {offer ? t("getPlusFor", { amount: offer.amount }) : t("upgrade")}
         </Button>
       </div>
-      {fallbackUrl && (
-        <FallbackLink
-          className="self-start text-sm"
-          href={fallbackUrl}
-          command="plus_checkout_open"
-        >
-          {t("openCheckout")}
-        </FallbackLink>
-      )}
+      {checkoutFallback}
       <div className="grid gap-3 border-t border-line pt-5 md:grid-cols-2 lg:grid-cols-3">
         {BENEFITS.map((benefit) => (
           <p

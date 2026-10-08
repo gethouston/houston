@@ -52,14 +52,12 @@ import type { Agent } from "../../lib/types";
 import { useAgentStore } from "../../stores/agents";
 import { useWorkspaceStore } from "../../stores/workspaces";
 import { useSharePickCopy } from "./pick-step-copy";
-import { InviteStep } from "./share-via-team-invite";
 import {
-  BusyStep,
-  ConfirmStep,
   MoveFailedStep,
-  PickStep,
   SwitchFailedStep,
-} from "./share-via-team-steps";
+} from "./share-via-team-failed-steps";
+import { InviteStep } from "./share-via-team-invite";
+import { BusyStep, ConfirmStep, PickStep } from "./share-via-team-steps";
 
 /**
  * The "share a personal agent by moving it into a team" pipeline (C8

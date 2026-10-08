@@ -25,10 +25,10 @@ import { useEffect } from "react";
 import { queryKeys } from "../../lib/query-keys";
 import { UnauthenticatedCard } from "./provider-error-cards/auth";
 import {
-  PlanMessageLimitCard,
   RateLimitedCard,
   UsageLimitPausedCard,
 } from "./provider-error-cards/limits";
+import { PlanMessageLimitCard } from "./provider-error-cards/plan-limit";
 import {
   ContextOverflowCard,
   ModelUnavailableCard,

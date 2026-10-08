@@ -1,6 +1,8 @@
 import type { BillingSummary } from "@houston/engine-adapter";
 import { useMutation, useQuery } from "@tanstack/react-query";
 import { canSeeBillingTab } from "../../lib/billing-gates";
+import { reportError } from "../../lib/error-report";
+import { refuseNativePurchase } from "../../lib/purchase-policy";
 import { queryKeys } from "../../lib/query-keys";
 import { isTeamWorkspace } from "../../lib/space-id";
 import { tauriOrg, tauriSystem } from "../../lib/tauri";
@@ -56,14 +58,20 @@ export function useBilling() {
 /**
  * Start a Stripe Checkout session for the active team (owner only) and open the
  * returned hosted URL in the OS browser (the app's external-open convention,
- * `tauriSystem.openUrl`). Checkout failures surface via `call()`.
+ * `tauriSystem.openUrl`). Checkout failures surface via `call()`. The store
+ * apps never open it (`refuseNativePurchase`), so the mutation settles empty.
  */
 export function useCheckout() {
   return useMutation({
-    mutationFn: (interval: "monthly" | "annual") =>
-      tauriOrg.createCheckout(interval),
-    onSuccess: ({ url }) => {
-      void tauriSystem.openUrl(url, { command: "billing_checkout_open" });
+    mutationFn: async (interval: "monthly" | "annual") =>
+      refuseNativePurchase("billing_checkout", reportError)
+        ? null
+        : tauriOrg.createCheckout(interval),
+    onSuccess: (session) => {
+      if (!session) return;
+      void tauriSystem.openUrl(session.url, {
+        command: "billing_checkout_open",
+      });
     },
   });
 }
@@ -71,13 +79,17 @@ export function useCheckout() {
 /**
  * Open the Stripe customer portal for the active team (owner only) in the OS
  * browser — card, invoices, interval switch, cancel. Portal failures surface
- * via `call()`.
+ * via `call()`. The store apps never open it (`refuseNativePurchase`).
  */
 export function usePortal() {
   return useMutation({
-    mutationFn: () => tauriOrg.createPortal(),
-    onSuccess: ({ url }) => {
-      void tauriSystem.openUrl(url, { command: "billing_portal_open" });
+    mutationFn: async () =>
+      refuseNativePurchase("billing_portal", reportError)
+        ? null
+        : tauriOrg.createPortal(),
+    onSuccess: (session) => {
+      if (!session) return;
+      void tauriSystem.openUrl(session.url, { command: "billing_portal_open" });
     },
   });
 }

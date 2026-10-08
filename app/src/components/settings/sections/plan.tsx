@@ -3,9 +3,11 @@ import { useTranslation } from "react-i18next";
 import { usePlan, usePlusPortal } from "../../../hooks/queries/use-plan";
 import { usePlusCheckout } from "../../../hooks/queries/use-plus-checkout";
 import { useUIStore } from "../../../stores/ui";
-import { CurrentPlanCard, UsageCard } from "./billing-cards";
+import { FallbackLink } from "../../shell/fallback-link";
+import { UsageCard } from "./billing-cards";
 import { BillingInvoices } from "./billing-invoices";
 import { UpgradeCard } from "./billing-upgrade-card";
+import { CurrentPlanCard } from "./plan-current-card";
 
 export function PlanSection() {
   const { t } = useTranslation("plan");
@@ -52,7 +54,17 @@ export function PlanSection() {
             plan={plan}
             managing={portal.isPending}
             onManage={() => portal.mutate()}
-            portalUrl={portal.fallbackUrl}
+            portalFallback={
+              portal.fallbackUrl && (
+                <FallbackLink
+                  className="mt-4 self-start text-sm"
+                  href={portal.fallbackUrl}
+                  command="plus_portal_open"
+                >
+                  {t("openPortal")}
+                </FallbackLink>
+              )
+            }
           />
           {plan.plan === "free" && (
             <>
@@ -60,7 +72,17 @@ export function PlanSection() {
                 plan={plan}
                 upgrading={checkout.outstanding}
                 onUpgrade={checkout.start}
-                fallbackUrl={checkout.fallbackUrl}
+                checkoutFallback={
+                  checkout.fallbackUrl && (
+                    <FallbackLink
+                      className="self-start text-sm"
+                      href={checkout.fallbackUrl}
+                      command="plus_checkout_open"
+                    >
+                      {t("openCheckout")}
+                    </FallbackLink>
+                  )
+                }
               />
               <UsageCard plan={plan} />
             </>

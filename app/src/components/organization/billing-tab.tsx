@@ -5,6 +5,8 @@ import {
   useCheckout,
   usePortal,
 } from "../../hooks/queries/use-billing.ts";
+import { canPurchaseInApp } from "../../lib/purchase-policy.ts";
+import { PlanWebNote } from "../shell/plan-web-note.tsx";
 import { billingAction, trialDaysLeft } from "./billing-tab-model.ts";
 import type { OrgTabProps } from "./organization-view.tsx";
 
@@ -13,8 +15,10 @@ import type { OrgTabProps } from "./organization-view.tsx";
  * the status, seat count, and either checkout buttons (monthly/annual) or a
  * "Manage billing" portal button once subscribed; an admin sees the same info
  * read-only with an "ask the owner" note (C8 admin degrade asymmetry — only the
- * owner can check out). Only mounts for owner/admin on a team space (the view
- * gates the tab via `canSeeBillingTab`), so a member never reaches it.
+ * owner can check out). Inside a store app the owner reads that the plan is
+ * managed on the web instead (`purchase-policy`). Only mounts for owner/admin
+ * on a team space (the view gates the tab via `canSeeBillingTab`), so a member
+ * never reaches it.
  *
  * All writes route through the billing hooks' `call()` wrapper, which surfaces
  * failures as a toast + report — no silent failures here.
@@ -44,7 +48,7 @@ export default function BillingTab({ ctx }: OrgTabProps) {
     billing.status === "trialing" && daysLeft !== null
       ? t("billing.status.trialingDays", { count: daysLeft })
       : t(`billing.status.${billing.status}`);
-  const action = billingAction(billing, ctx.isOwner);
+  const action = billingAction(billing, ctx.isOwner, canPurchaseInApp());
 
   return (
     <div className="flex max-w-xl flex-col gap-6 py-6">
@@ -75,6 +79,8 @@ export default function BillingTab({ ctx }: OrgTabProps) {
         </div>
       )}
 
+      {action === "web" && <PlanWebNote variant="managed" />}
+
       {action === "portal" && (
         <div>
           <AsyncButton onClick={() => portal.mutateAsync()}>
@@ -84,7 +90,9 @@ export default function BillingTab({ ctx }: OrgTabProps) {
       )}
 
       {!ctx.isOwner && (
-        <p className="text-sm text-ink-muted">{t("billing.askOwner")}</p>
+        <p className="text-sm text-ink-muted">
+          {canPurchaseInApp() ? t("billing.askOwner") : t("native.askOwner")}
+        </p>
       )}
     </div>
   );

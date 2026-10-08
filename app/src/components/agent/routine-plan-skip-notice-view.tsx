@@ -3,6 +3,9 @@
  * (the SDK's `triggerPlanSkipNotice` decides the reason and the actions) and
  * one button per action. Props only, so the routine screen and the runs
  * dialog draw the same thing and a test can render it without a query.
+ *
+ * The store apps never sell (`canPurchaseInApp`): there Upgrade is dropped
+ * and the copy that pointed to Plus says the plan is managed on the web.
  */
 
 import type {
@@ -11,6 +14,7 @@ import type {
 } from "@houston/sdk";
 import { Button } from "@houston-ai/core";
 import { useTranslation } from "react-i18next";
+import { canPurchaseInApp } from "../../lib/purchase-policy";
 import { RoutineNoticeCard } from "./routine-notice-card";
 
 interface Props {
@@ -37,15 +41,23 @@ export function RoutinePlanSkipNoticeView({
   className,
 }: Props) {
   const { t } = useTranslation("plan");
+  const purchasable = canPurchaseInApp();
+  const actions = purchasable
+    ? notice.actions
+    : notice.actions.filter((action) => action !== "upgrade");
 
   // Spelled out per reason rather than built from it: `t()` keys are typed,
   // so a template-literal key would compile past a typo.
   const body = (): string => {
     switch (notice.reason) {
       case "min_interval":
-        return t("triggerSkipped.minInterval");
+        return purchasable
+          ? t("triggerSkipped.minInterval")
+          : t("native.triggerSkipped.minInterval");
       case "routine_limit":
-        return t("triggerSkipped.routineLimit");
+        return purchasable
+          ? t("triggerSkipped.routineLimit")
+          : t("native.triggerSkipped.routineLimit");
       case "routine_limit_paused":
         return t("triggerSkipped.routineLimitPaused");
       case "inactive_paused":
@@ -53,7 +65,9 @@ export function RoutinePlanSkipNoticeView({
       case "inactive_resumed":
         return t("triggerSkipped.inactiveResumed");
       case "creator_plan":
-        return t("triggerSkipped.creatorPlan");
+        return purchasable
+          ? t("triggerSkipped.creatorPlan")
+          : t("native.triggerSkipped.creatorPlan");
     }
   };
   const label = (action: TriggerPlanSkipAction): string => {
@@ -78,8 +92,8 @@ export function RoutinePlanSkipNoticeView({
       layout={layout}
       className={className}
       actions={
-        notice.actions.length > 0 &&
-        notice.actions.map((action) => (
+        actions.length > 0 &&
+        actions.map((action) => (
           <Button
             key={action}
             // The way out (Upgrade, Resume) is the filled pill, like the

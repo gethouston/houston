@@ -22,9 +22,14 @@ import { useCapabilities } from "../../hooks/use-capabilities";
 import { useRoutineLabels } from "../../hooks/use-routine-labels";
 import { logAndReportError } from "../../lib/error-report";
 import { markPlanPresence, planPresenceDue } from "../../lib/plan-session";
+import {
+  canPurchaseInApp,
+  storeSafePlanDialog,
+} from "../../lib/purchase-policy";
 import { tauriOrg } from "../../lib/tauri";
 import { useUIStore } from "../../stores/ui";
 import { PlanAnnouncementDialog } from "./plan-announcement-dialog";
+import { PlanWebNote } from "./plan-web-note";
 import { createUserDismissal } from "./user-dismissal";
 
 export function PlanLifecycle() {
@@ -35,11 +40,8 @@ export function PlanLifecycle() {
   const [keepDismissed, setKeepDismissed] = useState(false);
   const keepRequested = useUIStore((s) => s.planKeepDialogOpen);
   const setKeepRequested = useUIStore((s) => s.setPlanKeepDialogOpen);
-  const dialog = planDialog(
-    plan,
-    resumeDismissed,
-    keepDismissed,
-    keepRequested,
+  const dialog = storeSafePlanDialog(
+    planDialog(plan, resumeDismissed, keepDismissed, keepRequested),
   );
   const routines = usePlanRoutines(dialog === "keep" || keepRequested);
   const resume = useResumeRoutines();
@@ -170,15 +172,19 @@ export function PlanLifecycle() {
             ))}
           </div>
           <DialogFooter>
-            <Button
-              variant="outline"
-              onClick={() => {
-                closeKeep();
-                openSettings("plan");
-              }}
-            >
-              {t("upgrade")}
-            </Button>
+            {canPurchaseInApp() ? (
+              <Button
+                variant="outline"
+                onClick={() => {
+                  closeKeep();
+                  openSettings("plan");
+                }}
+              >
+                {t("upgrade")}
+              </Button>
+            ) : (
+              <PlanWebNote variant="manage" />
+            )}
           </DialogFooter>
         </DialogContent>
       </Dialog>

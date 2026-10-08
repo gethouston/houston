@@ -4,6 +4,7 @@ import { showExpectedStateToast } from "./error-toast";
 import i18n from "./i18n";
 import { logger } from "./logger";
 import { osOpenUrl } from "./os-bridge";
+import { blocksPurchaseUrl } from "./purchase-policy";
 import { planUrlOpenFailure } from "./url-open-failure";
 
 export interface OpenExternalUrlOptions {
@@ -25,6 +26,10 @@ export interface OpenExternalUrlOptions {
  * report. Everything else is a red toast that reports. The raw diagnostic
  * always reaches the frontend log.
  *
+ * A payment page never opens inside a store app (`blocksPurchaseUrl`): an
+ * agent can still write a checkout link in chat, so the person reads where
+ * their plan is managed instead. Expected, so nothing is reported.
+ *
  * Flows that decide on the failure themselves (the identity sign-ins, which
  * fail an attempt fast when the browser never opens) call `osOpenUrl`
  * directly and keep the rejection.
@@ -33,6 +38,13 @@ export async function openExternalUrl(
   url: string,
   options: OpenExternalUrlOptions = {},
 ): Promise<boolean> {
+  if (blocksPurchaseUrl(url)) {
+    showExpectedStateToast(
+      i18n.t("plan:native.purchaseLinkTitle"),
+      i18n.t("plan:managedOnWeb"),
+    );
+    return false;
+  }
   try {
     return await osOpenUrl(url);
   } catch (err) {
