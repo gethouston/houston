@@ -1,0 +1,46 @@
+{
+  "project_info": {
+    "project_number": "1056698080170",
+    "project_id": "gethouston",
+    "storage_bucket": "gethouston.firebasestorage.app"
+  },
+  "client": [
+    {
+      "client_info": {
+        "mobilesdk_app_id": "1:1056698080170:android:3a760bb348be321ed929d3",
+        "android_client_info": {
+          "package_name": "ai.gethouston.app"
+        }
+      },
+      "oauth_client": [
+        {
+          "client_id": "1056698080170-pf7ufqvulvij3d9vt83smuj7gm5dmkue.apps.googleusercontent.com",
+          "client_type": 3
+        }
+      ],
+      "api_key": [
+        {
+          "current_key": "AIzaSyDsdsjUylqayV1pkd-gH0dVThTmLvhQG-Y"
+        }
+      ],
+      "services": {
+        "appinvite_service": {
+          "other_platform_oauth_client": [
+            {
+              "client_id": "1056698080170-bhuliu4bvtgfleeivc6mfivutnh983v5.apps.googleusercontent.com",
+              "client_type": 3
+            },
+            {
+              "client_id": "1056698080170-mi2ubklt638ls8v02qgd6ia0bftjrj47.apps.googleusercontent.com",
+              "client_type": 2,
+              "ios_info": {
+                "bundle_id": "ai.gethouston.app"
+              }
+            }
+          ]
+        }
+      }
+    }
+  ],
+  "configuration_version": "1"
+}
