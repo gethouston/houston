@@ -18,6 +18,7 @@ const shim = (file: string) => path.resolve(__dirname, "src/shims", file);
 export function createWebViteConfig(
   mode: string,
   fallbackEnv: Record<string, string> = {},
+  identityModule = path.resolve(__dirname, "src/identity/firebase-popup.ts"),
 ): UserConfig {
   // `pnpm dev:host` runs `vite --mode host`: load the shared repo-root .env.local
   // (host token + the frontend's host URL/token) instead of a
@@ -47,10 +48,7 @@ export function createWebViteConfig(
         // ships to desktop.
         {
           find: "@houston/web-identity",
-          replacement: path.resolve(
-            __dirname,
-            "src/identity/firebase-popup.ts",
-          ),
+          replacement: identityModule,
         },
         { find: "@tauri-apps/api/core", replacement: shim("tauri-core.ts") },
         { find: "@tauri-apps/api/event", replacement: shim("tauri-event.ts") },

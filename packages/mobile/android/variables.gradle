@@ -13,4 +13,9 @@ ext {
     androidxJunitVersion = '1.3.0'
     androidxEspressoCoreVersion = '3.7.0'
     cordovaAndroidVersion = '14.0.1'
+    // @capacitor-firebase/authentication provider SDKs: Google only. Apple uses
+    // Firebase's browser flow, and the app ships no Facebook SDK.
+    rgcfaIncludeGoogle = true
+    rgcfaIncludeFacebook = false
+    androidxCredentialsVersion = '1.3.0'
 }

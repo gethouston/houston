@@ -24,20 +24,64 @@ by default; set it to `preview` or `development` for those builds. The WebView
 hostname is always `localhost`, so this value is baked during the mobile build.
 `FIREBASE_API_KEY` is also required so the cloud sign-in screen can render.
 
-Remote push requires the Firebase client config for each native app:
+Remote push and native provider sign-in require the Firebase client config for each native app:
 
 - iOS: `packages/mobile/ios/App/App/GoogleService-Info.plist`
 - Android: `packages/mobile/android/app/google-services.json`
 
 Commit both files once the Firebase apps are registered. They are public
 Firebase client configuration, not secrets. Without the file for the target
-platform, the app still builds and boots; remote push is unavailable and a
-console breadcrumb names the missing configuration. The iOS build copies its plist into the app
+platform, the app still builds and boots; remote push and native Google/Apple
+sign-in are unavailable, email code sign-in remains available, and a console
+breadcrumb names the missing configuration. The iOS build copies its plist into the app
 bundle when present. The Firebase project must register bundle ID
 `ai.gethouston.app` and package name `ai.gethouston.app`. iOS also needs a
 provisioning profile with Push Notifications enabled and APNs credentials in
 Firebase; the Xcode target has its push entitlement and remote-notification
 background mode. Android declares `POST_NOTIFICATIONS` for API 33 and newer.
+
+## Native sign-in setup
+
+The mobile shell uses `@capacitor-firebase/authentication` with
+`skipNativeAuth: true`. Google and Apple supply native provider credentials to
+the Firebase JavaScript SDK, which owns the session and email code sign-in.
+There is no separate Firebase native session. The web and desktop builds keep
+their existing sign-in flows.
+
+1. Register the iOS bundle ID and Android package `ai.gethouston.app` in the
+   same Firebase project as the web app. Download their respective config
+   files to the paths above, then run `sync`. The files enable push and native
+   Google sign-in on that platform; the iOS file also enables Apple when its
+   Apple Developer/Firebase setup below is complete.
+2. In Firebase Authentication, enable Google. For Android, register the SHA-1
+   of each development/release signing certificate and the Google Play App
+   Signing certificate. Download an updated `google-services.json` after adding
+   fingerprints. The native project includes the plugin's Google and Android
+   Credential Manager dependencies.
+3. For iOS Google sign-in, `sync` reads `REVERSED_CLIENT_ID` from the plist and
+   writes its callback URL scheme into the app's `Info.plist`. The app delegate
+   forwards that callback to Firebase Auth and Capacitor. Re-run `sync` after
+   replacing the Firebase plist.
+4. In Apple Developer, enable Sign in with Apple for `ai.gethouston.app` and
+   regenerate the provisioning profile with that capability. The Xcode target
+   already has the entitlement. Create a Services ID for Android's browser
+   flow, associate it with the app, and register
+   `https://gethouston.firebaseapp.com/__/auth/handler` as its Return URL (use
+   the actual Firebase project ID if different). Create a Sign in with Apple
+   private key and note its Key ID and Apple Team ID. In Firebase Authentication,
+   enable Apple and enter the Services ID, Team ID, Key ID and private key.
+   Supply the public Services ID as `FIREBASE_APPLE_SERVICE_ID` for both mobile
+   builds; without it, the app hides Apple and logs a named breadcrumb.
+   Apple on Android opens the Firebase browser flow, while iOS uses the native
+   Apple authorization sheet. Both require `skipNativeAuth` and return the raw
+   nonce for the JavaScript credential.
+
+Microsoft is hidden in the native apps. Capawesome's Firebase JavaScript SDK
+guide states its Microsoft flow cannot be bridged with `skipNativeAuth`; the
+result cannot establish the JavaScript session used by Houston. Supporting it
+requires a system-browser Microsoft OAuth flow and a gateway exchange to a
+Firebase custom token, then the existing JavaScript `signInWithCustomToken`
+path. Native Microsoft needs that backend flow before a button can be offered.
 
 For a release build, provide the same public identity and telemetry values as
 the cloud web build: `FIREBASE_API_KEY`, `FIREBASE_AUTH_DOMAIN`,
@@ -47,6 +91,34 @@ Local builds also read the public `FIREBASE_*` values from the repository's
 file enter the mobile bundle.
 `VITE_AGENTSTORE_GATEWAY_URL` and `VITE_CLIENT_METRICS_GATEWAY_URL` can target
 the gateway independently when needed. Do not put credentials in native source.
+
+## Native dependency policy
+
+The apps link no Facebook SDK and no analytics or ad-measurement SDK (Firebase
+Analytics, GoogleAppMeasurement, Google Ads on-device conversion). The App
+Store privacy labels and the Play data-safety form depend on it. The Firebase
+authentication plugin includes provider SDKs by default, so the provider set is
+pinned in configuration that survives `sync`:
+
+- iOS: `capacitor.config.ts` sets the plugin's SwiftPM package trait to
+  `Google` (with `swiftToolsVersion` 6.1, which traits require). `sync` writes
+  it into `ios/App/CapApp-SPM/Package.swift`. SwiftPM still lists
+  `facebook-ios-sdk`, `googleappmeasurement` and the ads package in
+  `Package.resolved`, since resolution covers every declared package; none of
+  them is built or linked.
+- Android: `android/variables.gradle` sets `rgcfaIncludeGoogle = true` and
+  `rgcfaIncludeFacebook = false`.
+
+`scripts/native-dependency-policy.test.ts` fails when any installed plugin
+would link a banned SDK under the configured traits or Gradle flags, when the
+generated `Package.swift` is stale, or when the Xcode target links a package
+product other than `CapApp-SPM`. FirebaseCore and Messaging keep Google's
+analytics interop interfaces (`FIRAnalyticsInterop`,
+`firebase-measurement-connector`); they contain no measurement code. After
+changing native plugins, confirm the built app: `App.app/Frameworks` holds only
+`Capacitor` and `Cordova`, and
+`./gradlew :app:dependencies --configuration releaseRuntimeClasspath` lists no
+`com.facebook`, `firebase-analytics` or `play-services-measurement` artifact.
 
 ## Build and run
 
@@ -106,8 +178,9 @@ healthy bundle does not roll back only because the device has no network.
 CI uses the existing `github-deploy-web` Workload Identity Federation identity
 and needs repository secrets `HOUSTON_MOBILE_UPDATE_SIGNING_KEY` (PKCS8 PEM) and
 `HOUSTON_MOBILE_UPDATE_PUBKEY` (matching base64 DER SPKI). Existing web build
-secrets supply Firebase, gateway, PostHog and Sentry values. Optional repository
-variables `HOUSTON_MOBILE_STORE_URL_IOS` and
+secrets supply Firebase, gateway, PostHog and Sentry values. The repository
+variable `FIREBASE_APPLE_SERVICE_ID` supplies Apple availability in OTA bundles.
+Optional repository variables `HOUSTON_MOBILE_STORE_URL_IOS` and
 `HOUSTON_MOBILE_STORE_URL_ANDROID` fill the store buttons. To roll back, run
 the workflow manually with the channel and an existing bundle version. It
 retrieves that archive, reads its recorded version and compatibility floor,

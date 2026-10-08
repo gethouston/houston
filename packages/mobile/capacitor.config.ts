@@ -10,7 +10,18 @@ const config: CapacitorConfig = {
   experimental: {
     ios: {
       spm: {
-        packageOptions: { "@capacitor-firebase/messaging": { symlink: true } },
+        // Package traits need Swift tools 6.1. The plugin's default traits link
+        // the Facebook SDK; "Google" alone keeps GoogleSignIn, and Apple uses
+        // the system AuthenticationServices framework.
+        // https://github.com/capawesome-team/capacitor-firebase/tree/main/packages/authentication#package-traits
+        swiftToolsVersion: "6.1",
+        packageTraits: { "@capacitor-firebase/authentication": ["Google"] },
+        // Capawesome's documented fix for a SwiftPM package identity collision:
+        // https://github.com/capawesome-team/capacitor-firebase/issues/959
+        packageOptions: {
+          "@capacitor-firebase/authentication": { symlink: true },
+          "@capacitor-firebase/messaging": { symlink: true },
+        },
       },
     },
   },
@@ -23,6 +34,10 @@ const config: CapacitorConfig = {
     SystemBars: { insetsHandling: "css", style: "LIGHT" },
     SplashScreen: { launchAutoHide: true },
     FirebaseMessaging: { presentationOptions: [] },
+    FirebaseAuthentication: {
+      skipNativeAuth: true,
+      providers: ["google.com", "apple.com", "microsoft.com"],
+    },
     // Capgo v8.52.1 settings document manual mode and all three cloud URLs:
     // https://capgo.app/docs/plugins/updater/settings/
     // Its iOS and Android plugin load empty configured URLs without defaults.

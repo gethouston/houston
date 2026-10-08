@@ -43,40 +43,64 @@ export default defineConfig(({ mode }) => {
       });
     },
   };
-  return mergeConfig(createWebViteConfig(mode, firebaseDefaults), {
-    plugins: [versionPlugin],
-    root: __dirname,
-    envDir: __dirname,
-    base: "./",
-    publicDir: path.resolve(__dirname, "../web/public"),
-    define: {
-      __HOUSTON_MOBILE_CONTROL_PLANE_URL__: JSON.stringify(
-        buildEnv.controlPlaneUrl,
-      ),
-      __HOUSTON_MOBILE_DEPLOY_ENV__: JSON.stringify(buildEnv.deployEnvironment),
-      __HOUSTON_MOBILE_UPDATE_BASE_URL__: JSON.stringify(
-        buildEnv.updateBaseUrl,
-      ),
-      __HOUSTON_MOBILE_UPDATE_PUBKEY__: JSON.stringify(
-        buildEnv.updatePublicKey,
-      ),
-      __HOUSTON_MOBILE_STORE_URL_IOS__: JSON.stringify(buildEnv.storeUrlIos),
-      __HOUSTON_MOBILE_STORE_URL_ANDROID__: JSON.stringify(
-        buildEnv.storeUrlAndroid,
-      ),
-      __HOUSTON_MOBILE_BUNDLE_VERSION__: JSON.stringify(bundleVersion),
-      __HOUSTON_NATIVE_PUSH_IOS_AVAILABLE__: JSON.stringify(
-        existsSync(
-          path.resolve(__dirname, "ios/App/App/GoogleService-Info.plist"),
+  return mergeConfig(
+    createWebViteConfig(
+      mode,
+      firebaseDefaults,
+      path.resolve(__dirname, "src/identity/mobile-identity.ts"),
+    ),
+    {
+      plugins: [versionPlugin],
+      root: __dirname,
+      envDir: __dirname,
+      base: "./",
+      publicDir: path.resolve(__dirname, "../web/public"),
+      define: {
+        __HOUSTON_MOBILE_CONTROL_PLANE_URL__: JSON.stringify(
+          buildEnv.controlPlaneUrl,
         ),
-      ),
-      __HOUSTON_NATIVE_PUSH_ANDROID_AVAILABLE__: JSON.stringify(
-        existsSync(path.resolve(__dirname, "android/app/google-services.json")),
-      ),
+        __HOUSTON_MOBILE_DEPLOY_ENV__: JSON.stringify(
+          buildEnv.deployEnvironment,
+        ),
+        __HOUSTON_MOBILE_UPDATE_BASE_URL__: JSON.stringify(
+          buildEnv.updateBaseUrl,
+        ),
+        __HOUSTON_MOBILE_UPDATE_PUBKEY__: JSON.stringify(
+          buildEnv.updatePublicKey,
+        ),
+        __HOUSTON_MOBILE_STORE_URL_IOS__: JSON.stringify(buildEnv.storeUrlIos),
+        __HOUSTON_MOBILE_STORE_URL_ANDROID__: JSON.stringify(
+          buildEnv.storeUrlAndroid,
+        ),
+        __HOUSTON_MOBILE_BUNDLE_VERSION__: JSON.stringify(bundleVersion),
+        __HOUSTON_NATIVE_PUSH_IOS_AVAILABLE__: JSON.stringify(
+          existsSync(
+            path.resolve(__dirname, "ios/App/App/GoogleService-Info.plist"),
+          ),
+        ),
+        __HOUSTON_NATIVE_PUSH_ANDROID_AVAILABLE__: JSON.stringify(
+          existsSync(
+            path.resolve(__dirname, "android/app/google-services.json"),
+          ),
+        ),
+        __HOUSTON_NATIVE_AUTH_IOS_CONFIG__: JSON.stringify(
+          existsSync(
+            path.resolve(__dirname, "ios/App/App/GoogleService-Info.plist"),
+          ),
+        ),
+        __HOUSTON_NATIVE_AUTH_ANDROID_CONFIG__: JSON.stringify(
+          existsSync(
+            path.resolve(__dirname, "android/app/google-services.json"),
+          ),
+        ),
+        __HOUSTON_NATIVE_APPLE_SERVICE_ID__: JSON.stringify(
+          env.FIREBASE_APPLE_SERVICE_ID?.trim() ?? "",
+        ),
+      },
+      build: {
+        outDir: path.resolve(__dirname, "dist"),
+        rollupOptions: { input: path.resolve(__dirname, "index.html") },
+      },
     },
-    build: {
-      outDir: path.resolve(__dirname, "dist"),
-      rollupOptions: { input: path.resolve(__dirname, "index.html") },
-    },
-  });
+  );
 });

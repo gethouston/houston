@@ -7,8 +7,8 @@ import mobilePackage from "../package.json";
 // This frozen pair forces a native build bump when the plugin set changes.
 // Advance both values only with new iOS/Android native build numbers.
 const nativePluginBaseline = {
-  build: 2,
-  sha256: "9214b1ffafdebe371a58b706ef8d6593e6d40143af59a7d6b6d37e2ec31dbb68",
+  build: 3,
+  sha256: "5d02dd44118e0f7e64e71aa2c3b26698f62e1219319f68063ff15f39f47bfe98",
 };
 
 test("native compatibility records the installed Capacitor plugin set", () => {

@@ -8,69 +8,25 @@
 // web and desktop share one model of "signed in" and one error UI. Every export
 // here has an identical-signature counterpart in the desktop stub.
 
-import {
-  type AuthProvider,
-  decodeIdTokenClaims,
-  type Session,
-  type SignInOutcome,
-} from "@houston/app/lib/identity";
+import type { Session, SignInOutcome } from "@houston/app/lib/identity";
 import {
   GoogleAuthProvider,
-  getAdditionalUserInfo,
   OAuthProvider,
   onIdTokenChanged,
   signInWithCustomToken,
   signInWithPopup,
   signOut,
-  type User,
-  type UserCredential,
-  updateProfile,
 } from "firebase/auth";
 import { ready, requireAuth } from "./firebase-auth-instance.ts";
 import { isBenignPopupCancel, mapFirebaseError } from "./firebase-errors.ts";
+import {
+  backfillAccountProfile,
+  toOutcome,
+  toSession,
+} from "./firebase-session.ts";
 
 export { initWebAuth } from "./firebase-auth-instance.ts";
-
-// Firebase tokens live ~1h; used only if a freshly-minted token fails to decode
-// (it never should) so the session isn't born already-stale.
-const DEFAULT_TOKEN_TTL_MS = 3_600_000;
-
-// Assemble the outcome: the app Session + whether this credential CREATED the
-// GCIP account (`getAdditionalUserInfo(...).isNewUser` — the SDK counterpart of
-// the REST `isNewUser` field the desktop path reads).
-async function toOutcome(cred: UserCredential): Promise<SignInOutcome> {
-  return {
-    session: await toSession(cred.user),
-    isNewUser: getAdditionalUserInfo(cred)?.isNewUser === true,
-  };
-}
-
-/**
- * Backfill the ACCOUNT RECORD's photo/name from the provider identity when the
- * record lacks them. GCIP only mints the `picture`/`name` ID-token claims from
- * the account record — NOT from the federated identity — so without this a
- * Google account whose record was created photo-less signs in with a token
- * that carries no `picture`, and the gateway (which trusts the token) serves
- * initials to every teammate forever. Best-effort: a failure leaves the
- * session exactly as it was, and the token is force-refreshed after a write so
- * the very first gateway request carries the claim.
- */
-async function backfillAccountProfile(user: User): Promise<void> {
-  const provider = user.providerData[0];
-  if (!provider) return;
-  const patch: { photoURL?: string; displayName?: string } = {};
-  if (!user.photoURL && provider.photoURL) patch.photoURL = provider.photoURL;
-  if (!user.displayName && provider.displayName)
-    patch.displayName = provider.displayName;
-  if (!patch.photoURL && !patch.displayName) return;
-  try {
-    await updateProfile(user, patch);
-    await user.getIdToken(true);
-  } catch (e) {
-    // Cosmetic identity only — the sign-in itself succeeded. Log for /debug.
-    console.error("account profile backfill failed", e);
-  }
-}
+export { toSession } from "./firebase-session.ts";
 
 async function popupSignIn(
   provider: GoogleAuthProvider | OAuthProvider,
@@ -161,38 +117,4 @@ export async function webCurrentSession(): Promise<Session | null> {
   // the account record is missing what the provider identity carries.
   await backfillAccountProfile(user);
   return await toSession(user);
-}
-
-function toAuthProvider(providerId: string | undefined): AuthProvider {
-  switch (providerId) {
-    case "google.com":
-      return "google.com";
-    case "microsoft.com":
-      return "microsoft.com";
-    case "apple.com":
-      return "apple.com";
-    case "password":
-      return "password";
-    default:
-      return "custom";
-  }
-}
-
-/** Build the app's identity `Session` from a Firebase user. */
-export async function toSession(user: User): Promise<Session> {
-  const idToken = await user.getIdToken();
-  const exp = decodeIdTokenClaims(idToken)?.exp;
-  const expiresAt =
-    typeof exp === "number" ? exp * 1000 : Date.now() + DEFAULT_TOKEN_TTL_MS;
-  return {
-    idToken,
-    refreshToken: user.refreshToken,
-    uid: user.uid,
-    email: user.email ?? "",
-    emailVerified: user.emailVerified,
-    displayName: user.displayName,
-    photoUrl: user.photoURL,
-    provider: toAuthProvider(user.providerData[0]?.providerId),
-    expiresAt,
-  };
 }

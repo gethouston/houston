@@ -1,6 +1,9 @@
 /** Registered only by the Capacitor entry, before the shared app graph loads. */
 export interface NativeShell {
   openUrl(url: string): Promise<boolean>;
+  identity: {
+    providers: Readonly<Record<"google" | "apple" | "azure", boolean>>;
+  };
   push: {
     available: boolean;
     permissionState(): Promise<"granted" | "denied" | "default">;

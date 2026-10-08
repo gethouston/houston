@@ -20,10 +20,11 @@ function sourceFiles(dir: string): string[] {
 
 /** Opens checkout or the portal, formats a price, or draws a sale. */
 const ENTRY_POINT =
-  /\b(usePlusCheckout|usePlusPortal|useCheckout|usePortal|planPriceAmounts|planOffer|planAnnouncementView)\(|<(PlanPrice|UpgradeCard|BillingInvoices|PlanAnnouncementDialog)\b/;
+  /\b(usePlusCheckout|usePlusPortal|useCheckout|usePortal|planPriceAmounts|planOffer|planAnnouncementView)\(|<(PlanPrice|UpgradeCard|BillingInvoices|PlanAnnouncementDialog|ReferralPanel)\b/;
 
 /** Each entry point and the file whose policy check gates it. */
 const GATED_BY: Record<string, string> = {
+  "components/auth/sign-in-screen.tsx": "components/auth/sign-in-screen.tsx",
   "components/organization/billing-tab.tsx":
     "components/organization/billing-tab.tsx",
   "components/settings/sections/billing-upgrade-card.tsx":
@@ -54,6 +55,7 @@ const UPSELL_SURFACES = [
   "components/shell/provider-error-cards/plan-limit.tsx",
   "components/shell/team-status-banner.tsx",
   "lib/plan-floor-toast.ts",
+  "components/auth/referral-panel.tsx",
 ];
 
 const consultsPolicy = (file: string) =>
