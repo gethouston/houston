@@ -67,5 +67,13 @@
 	</array>
 	<key>UIViewControllerBasedStatusBarAppearance</key>
 	<true/>
+<!-- Houston Google sign-in URL scheme -->
+	<key>CFBundleURLTypes</key>
+	<array>
+		<dict>
+			<key>CFBundleURLSchemes</key>
+			<array><string>com.googleusercontent.apps.1056698080170-mi2ubklt638ls8v02qgd6ia0bftjrj47</string></array>
+		</dict>
+	</array>
 </dict>
 </plist>
