@@ -21,12 +21,12 @@ export type PushDeviceRegistration = z.infer<
 >;
 
 export const pushPresenceSchema = z.object({
-  client_id: z.string().uuid(),
+  client_id: z.uuid(),
   foreground: z.boolean(),
 });
 export type PushPresence = z.infer<typeof pushPresenceSchema>;
 
 export const pushDeviceResponseSchema = z.object({
-  device_id: z.string().uuid(),
+  device_id: z.uuid(),
 });
 export type PushDeviceResponse = z.infer<typeof pushDeviceResponseSchema>;
