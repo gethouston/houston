@@ -98,7 +98,9 @@ export function WorkspaceShell({
       {/* The PHONE is one flat background edge to edge: no gutter frame, no
           floating screen card. The desktop keeps the Arc canvas, where the
           transparent frame lets the window background read through. */}
-      <div className="flex h-dvh flex-col bg-background text-ink md:bg-transparent">
+      {/* pt-safe: the frame, not each screen's header, clears the status bar
+          (the native apps draw edge to edge); 0 wherever there is none. */}
+      <div className="flex h-dvh flex-col bg-background pt-safe text-ink md:bg-transparent">
         <div className="flex min-h-0 flex-1">
           <Sidebar>
             {/* Transparent row: on the desktop the window gutter shows in the
