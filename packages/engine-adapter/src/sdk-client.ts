@@ -25,8 +25,8 @@ import { createDevicePrefsStore } from "./client/device-prefs";
 // The barrel, never `cp/transient-retry` directly: the web suite mocks
 // `./control-plane` wholesale and a submodule import would bypass the mock.
 import { transientRetryFetch } from "./control-plane";
-import { sharedPageLifecycle } from "./page-lifecycle";
 import { jwtSub } from "./conversation-cache-identity";
+import { sharedPageLifecycle } from "./page-lifecycle";
 
 /** Namespace for every SDK-owned `localStorage` key, so nothing the SDK
  *  persists can collide with the adapter's existing browser state. */
