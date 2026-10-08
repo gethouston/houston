@@ -24,20 +24,19 @@ import { useLocalePreference } from "@houston/app/hooks/use-locale-preference";
 import { useSession } from "@houston/app/hooks/use-session";
 import { useUsageAccrual } from "@houston/app/hooks/use-usage-accrual";
 import { IdentityKeyedApp } from "@houston/app/identity-keyed-app";
-import { analytics, classifyAnalyticsError } from "@houston/app/lib/analytics";
 import { isEngineReady, whenEngineReady } from "@houston/app/lib/engine";
-import { showErrorToast } from "@houston/app/lib/error-toast";
 import { installGlobalErrorHandlers } from "@houston/app/lib/global-error-handlers";
 import i18n from "@houston/app/lib/i18n";
 import { isIdentityConfigured } from "@houston/app/lib/identity";
-import { initFrontendLogging, logger } from "@houston/app/lib/logger";
+import { initFrontendLogging } from "@houston/app/lib/logger";
 import { queryClient } from "@houston/app/lib/query-client";
 import { initSentry } from "@houston/app/lib/sentry";
 import { loadThemePreference } from "@houston/app/lib/theme";
 import { TooltipProvider } from "@houston-ai/core";
 import { QueryClientProvider } from "@tanstack/react-query";
-import { Component, type ReactNode, useEffect, useState } from "react";
+import { type ReactNode, useEffect, useState } from "react";
 import { I18nextProvider } from "react-i18next";
+import { ErrorBoundary } from "./app-error-boundary";
 import {
   ProductAnalyticsSinkMount,
   WebSessionStartMount,
@@ -58,64 +57,6 @@ initFrontendLogging();
 // noise (Supabase Web Locks steal, HOU-435). Must run AFTER initFrontendLogging()
 // so the console.error → log file patch is already in place.
 installGlobalErrorHandlers();
-
-class ErrorBoundary extends Component<
-  { children: ReactNode },
-  { error: Error | null }
-> {
-  state: { error: Error | null } = { error: null };
-  static getDerivedStateFromError(error: Error) {
-    return { error };
-  }
-  componentDidCatch(error: Error) {
-    logger.error(`[react-crash] ${error.message}`, error.stack);
-    analytics.captureException(error, {
-      source: "react_crash",
-      error_kind: classifyAnalyticsError(error.message),
-    });
-    showErrorToast("react_crash", error.message, error);
-  }
-  render() {
-    if (this.state.error) {
-      // The token CSS is a static import of this module (globals.css, below), so
-      // the --ht-* vars are already in the document when the tree crashes.
-      return (
-        <div
-          style={{
-            position: "fixed",
-            inset: 0,
-            padding: 32,
-            background: "var(--ht-base)",
-            color: "var(--ht-ink)",
-            fontFamily: "ui-monospace, Menlo, monospace",
-            fontSize: 13,
-            whiteSpace: "pre-wrap",
-            overflow: "auto",
-            zIndex: 999999,
-          }}
-        >
-          <h1
-            style={{
-              color: "var(--ht-danger)",
-              fontSize: 24,
-              margin: 0,
-              marginBottom: 16,
-            }}
-          >
-            App crashed
-          </h1>
-          <p style={{ fontSize: 15, marginBottom: 16, color: "var(--ht-ink)" }}>
-            {this.state.error.message}
-          </p>
-          <pre style={{ fontSize: 12, opacity: 0.85 }}>
-            {this.state.error.stack}
-          </pre>
-        </div>
-      );
-    }
-    return this.props.children;
-  }
-}
 
 /**
  * Blocks render until the engine adapter is bootstrapped. On web the handshake

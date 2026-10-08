@@ -23,6 +23,17 @@ const config: CapacitorConfig = {
     SystemBars: { insetsHandling: "css", style: "LIGHT" },
     SplashScreen: { launchAutoHide: true },
     FirebaseMessaging: { presentationOptions: [] },
+    // Capgo v8.52.1 settings document manual mode and all three cloud URLs:
+    // https://capgo.app/docs/plugins/updater/settings/
+    // Its iOS and Android plugin load empty configured URLs without defaults.
+    CapacitorUpdater: {
+      autoUpdate: false,
+      updateUrl: "",
+      channelUrl: "",
+      statsUrl: "",
+      shakeMenu: false,
+      appReadyTimeout: 30000,
+    },
   },
 };
 

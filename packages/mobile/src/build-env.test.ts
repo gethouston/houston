@@ -21,6 +21,10 @@ test("mobile deploy environment defaults to production and validates overrides",
   ).toEqual({
     controlPlaneUrl: gateway,
     deployEnvironment: "production",
+    updateBaseUrl: "",
+    updatePublicKey: "",
+    storeUrlIos: "",
+    storeUrlAndroid: "",
   });
   expect(
     mobileBuildEnv({
@@ -36,4 +40,25 @@ test("mobile deploy environment defaults to production and validates overrides",
       HOUSTON_MOBILE_DEPLOY_ENV: "staging",
     }),
   ).toThrow("HOUSTON_MOBILE_DEPLOY_ENV");
+});
+
+test("OTA requires HTTPS and a release channel when configured", () => {
+  const common = {
+    VITE_CONTROL_PLANE_URL: "https://gateway.gethouston.ai",
+    FIREBASE_API_KEY: "public-key",
+  };
+  expect(() =>
+    mobileBuildEnv({
+      ...common,
+      HOUSTON_MOBILE_UPDATE_BASE_URL: "http://updates.example",
+    }),
+  ).toThrow("HOUSTON_MOBILE_UPDATE_BASE_URL");
+  expect(() =>
+    mobileBuildEnv({
+      ...common,
+      HOUSTON_MOBILE_DEPLOY_ENV: "development",
+      HOUSTON_MOBILE_UPDATE_BASE_URL: "https://updates.example",
+      HOUSTON_MOBILE_UPDATE_PUBKEY: "public-key",
+    }),
+  ).toThrow("OTA requires");
 });

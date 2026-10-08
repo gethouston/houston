@@ -18,6 +18,7 @@
     "@capacitor/core": "8.5.3",
     "@capacitor/keyboard": "^8.0.6",
     "@capacitor/splash-screen": "^8.0.2",
+    "@capgo/capacitor-updater": "8.52.1",
     "@tanstack/react-query": "5.101.2",
     "react": "19.2.7",
     "react-dom": "19.2.7"

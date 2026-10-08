@@ -711,5 +711,10 @@
     "retryLabel": "Tentar contratar {{name}} de novo",
     "removeLabel": "Remover {{name}}",
     "nameHeading": "Nome"
+  },
+  "mobileUpdate": {
+    "title": "Atualize o Houston para continuar",
+    "description": "Uma versão mais recente do app é necessária. Atualize o Houston pela loja de aplicativos.",
+    "openStore": "Abrir loja"
   }
 }

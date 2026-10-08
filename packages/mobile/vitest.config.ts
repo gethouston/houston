@@ -7,5 +7,5 @@ export default defineConfig({
       "@houston/app": path.resolve(__dirname, "../../app/src"),
     },
   },
-  test: { include: ["src/**/*.test.ts"] },
+  test: { include: ["src/**/*.test.ts", "scripts/**/*.test.ts"] },
 });

@@ -63,3 +63,50 @@ generated projects in their IDEs. `run:ios` runs on an available simulator.
 To build in Xcode directly, open `packages/mobile/ios/App/App.xcodeproj` and
 select an iOS simulator. Android Studio opens `packages/mobile/android`;
 build or run the `app` target there after `sync`.
+
+## Over-the-air updates
+
+The native updater runs in manual mode. A mobile build enables OTA when both
+`HOUSTON_MOBILE_UPDATE_BASE_URL` and `HOUSTON_MOBILE_UPDATE_PUBKEY` are present.
+The first is the public HTTPS object base (production:
+`https://storage.googleapis.com/houston-mobile-updates`); the second is the
+base64 DER SPKI ECDSA P-256 public key. A missing value prints one named `OTA
+OFF` boot breadcrumb. `HOUSTON_MOBILE_DEPLOY_ENV` selects `preview` or
+`production`. `HOUSTON_MOBILE_STORE_URL_IOS` and
+`HOUSTON_MOBILE_STORE_URL_ANDROID` supply the store link on a mandatory native
+update screen; without one, that platform shows the translated screen without
+a button.
+
+The mobile Vite build writes `dist/version.json` with
+`<root package semver>+<git short sha>` and embeds the same version in the app.
+It also copies `native-compat.json` into the bundle. A change to native code or
+the Capacitor plugin dependencies requires a new iOS `CURRENT_PROJECT_VERSION`
+and Android `versionCode` and an update to `native-compat.json`'s
+`min_native_build` and `required_native_build`. The plugin dependency fingerprint
+test pins both the native build and dependency fingerprint, so updating the
+plugin set requires advancing that test baseline with the native build. Set
+`min_native_build` to the first native build capable of running the bundle;
+set `required_native_build` to the first build allowed to keep using the app.
+
+On each main push, `.github/workflows/mobile-updates.yml` builds the preview
+bundle with the staging gateway. On release publication, it builds the
+production bundle with the production gateway. Both jobs zip `dist`, hash the
+zip with SHA-256, sign canonical JSON with a PKCS8 PEM ECDSA P-256 key, upload
+`<channel>/<version>.zip`, then upload `<channel>/manifest.json` last with
+`Cache-Control: no-store`. The signature uses IEEE P1363 `r||s` bytes so
+WebCrypto can verify it. The manifest request uses CapacitorHttp native networking, since GCS path-style
+object URLs require bucket CORS for browser fetch. Each native launch and
+eligible resume checks the signed manifest and queues a compatible bundle for the next launch or
+background transition. The updater rolls back a bundle that does not report
+ready within 30 seconds. The offline first frame also reports ready so a
+healthy bundle does not roll back only because the device has no network.
+
+CI uses the existing `github-deploy-web` Workload Identity Federation identity
+and needs repository secrets `HOUSTON_MOBILE_UPDATE_SIGNING_KEY` (PKCS8 PEM) and
+`HOUSTON_MOBILE_UPDATE_PUBKEY` (matching base64 DER SPKI). Existing web build
+secrets supply Firebase, gateway, PostHog and Sentry values. Optional repository
+variables `HOUSTON_MOBILE_STORE_URL_IOS` and
+`HOUSTON_MOBILE_STORE_URL_ANDROID` fill the store buttons. To roll back, run
+the workflow manually with the channel and an existing bundle version. It
+retrieves that archive, reads its recorded version and compatibility floor,
+signs a fresh manifest for the same archive, and replaces only the manifest.

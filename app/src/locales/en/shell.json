@@ -711,5 +711,10 @@
     "retryLabel": "Try hiring {{name}} again",
     "removeLabel": "Remove {{name}}",
     "nameHeading": "Name"
+  },
+  "mobileUpdate": {
+    "title": "Update Houston to continue",
+    "description": "A newer app version is required. Update Houston from your app store.",
+    "openStore": "Open store"
   }
 }
