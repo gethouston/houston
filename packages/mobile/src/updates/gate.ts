@@ -2,10 +2,18 @@ import "@houston/app/styles/globals.css";
 import { Browser } from "@capacitor/browser";
 import { logAndReportError } from "@houston/app/lib/error-report";
 import i18n from "@houston/app/lib/i18n";
+import type { UpdateCheckResult } from "./manager";
+
+export function clearNativeUpdateGate(): void {
+  document.querySelector("[data-houston-required-update]")?.remove();
+  const root = document.getElementById("root");
+  root?.removeAttribute("inert");
+  root?.removeAttribute("aria-hidden");
+}
 
 export function showNativeUpdateGate(
   storeUrl: string,
-  checkAgain: () => void,
+  checkAgain: () => Promise<UpdateCheckResult>,
 ): void {
   if (document.querySelector("[data-houston-required-update]")) return;
   const gate = document.createElement("main");
@@ -23,25 +31,63 @@ export function showNativeUpdateGate(
       : "shell:mobileUpdate.retryDescription",
   );
   gate.append(heading, description);
-  {
+  if (storeUrl) {
     const button = document.createElement("button");
     button.type = "button";
     button.className =
       "min-h-11 rounded-full bg-cta px-6 text-sm font-medium text-cta-text focus-visible:ring-2 focus-visible:ring-focus";
-    button.textContent = i18n.t(
-      storeUrl ? "shell:mobileUpdate.openStore" : "shell:mobileUpdate.retry",
-    );
+    button.textContent = i18n.t("shell:mobileUpdate.openStore");
     button.addEventListener("click", () => {
-      if (!storeUrl) {
-        checkAgain();
-        return;
-      }
       void Browser.open({ url: storeUrl }).catch((error: unknown) =>
         logAndReportError("mobile_update_store", error),
       );
     });
     gate.append(button);
   }
+  const retry = document.createElement("button");
+  retry.type = "button";
+  retry.dataset.houstonCheckAgain = "";
+  retry.className =
+    "min-h-11 rounded-full bg-cta px-6 text-sm font-medium text-cta-text focus-visible:ring-2 focus-visible:ring-focus";
+  retry.textContent = i18n.t("shell:mobileUpdate.retry");
+  retry.setAttribute("aria-busy", "false");
+  const status = document.createElement("p");
+  status.setAttribute("role", "status");
+  status.className = "text-sm text-ink-muted";
+  let checking = false;
+  retry.addEventListener("click", () => {
+    if (checking) {
+      status.textContent = i18n.t("shell:mobileUpdate.checking");
+      return;
+    }
+    checking = true;
+    retry.setAttribute("aria-busy", "true");
+    retry.textContent = i18n.t("shell:mobileUpdate.checking");
+    status.textContent = i18n.t("shell:mobileUpdate.checking");
+    try {
+      void Promise.resolve(checkAgain())
+        .then((result) => {
+          if (result === "clear") clearNativeUpdateGate();
+          else if (result === "required")
+            status.textContent = i18n.t("shell:mobileUpdate.stillRequired");
+          else status.textContent = "";
+        })
+        .catch((error: unknown) =>
+          logAndReportError("mobile_update_check", error),
+        )
+        .finally(() => {
+          checking = false;
+          retry.setAttribute("aria-busy", "false");
+          retry.textContent = i18n.t("shell:mobileUpdate.retry");
+        });
+    } catch (error) {
+      checking = false;
+      retry.setAttribute("aria-busy", "false");
+      retry.textContent = i18n.t("shell:mobileUpdate.retry");
+      logAndReportError("mobile_update_check", error);
+    }
+  });
+  gate.append(retry, status);
   const root = document.getElementById("root");
   root?.setAttribute("inert", "");
   root?.setAttribute("aria-hidden", "true");

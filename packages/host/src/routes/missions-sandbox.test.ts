@@ -964,6 +964,7 @@ test("settle hands a well-formed model-call report to the sink, any mission", as
 });
 
 test("managed settle reports relevance and reason; stopped and local turns never call out", async () => {
+  await saveActivities(vfs, root, [{ ...PARENT, title: "😀".repeat(201) }]);
   const reports: import("@houston/protocol").PushReport[] = [];
   const sink = {
     pushReports: async (report: import("@houston/protocol").PushReport) => {
@@ -1005,7 +1006,7 @@ test("managed settle reports relevance and reason; stopped and local turns never
       v: 1,
       kind: "turn_settled",
       conversation_id: "conv-parent",
-      mission: { id: "parent-1", title: "Plan the launch" },
+      mission: { id: "parent-1", title: `${"😀".repeat(199)}…` },
       turn_id: "turn-finished",
       reason: "finished",
       question_count: 0,

@@ -1,3 +1,4 @@
+import { readFileSync } from "node:fs";
 import { expect, test } from "vitest";
 import { pushMissionTitle, pushReportSchema } from "./push-report";
 
@@ -5,6 +6,15 @@ test("push mission titles fit 200 Unicode code points including the ellipsis", (
   expect(pushMissionTitle("a".repeat(200))).toBe("a".repeat(200));
   expect(pushMissionTitle("😀".repeat(201))).toBe(`${"😀".repeat(199)}…`);
   expect(Array.from(pushMissionTitle("😀".repeat(201)))).toHaveLength(200);
+});
+
+test("title limit is documented as an engine limit", () => {
+  const source = readFileSync(
+    new URL("./push-report.ts", import.meta.url),
+    "utf8",
+  );
+  expect(source).toContain("engine's 200-code-point title limit");
+  expect(source).not.toContain("gateway's 200-code-point title limit");
 });
 
 const common = {

@@ -18,10 +18,11 @@ The routes themselves are declared beside their handlers in
 answers what. This package holds the SHAPES those routes carry, not a second
 copy of the table.
 
-Pooled push reports send mission titles of at most 200 Unicode code points,
-including a final ellipsis when truncated. `pushMissionTitle` applies this
-limit before either `mentioned` or `turn_settled` reports are sent to the
-gateway's 64 KiB `POST /v1/pod/push` endpoint.
+Push reports send mission titles of at most 200 Unicode code points, including
+a final ellipsis when truncated. This is the engine's own limit;
+`pushMissionTitle` applies it before either `mentioned` or `turn_settled`
+reports are sent. The gateway renders at most 100 runes and caps the
+`POST /v1/pod/push` body at 64 KiB.
 
 Typed-family list GETs (`activities`, `routines`, `routine_runs`, `learnings`,
 and `config`) return an envelope — `{ items, diagnostics }` / `{ config,

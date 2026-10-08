@@ -170,6 +170,129 @@ test("required-update retry fetches a fresh manifest immediately", async () => {
   expect(gate).toHaveBeenCalledTimes(2);
 });
 
+test("a forced check clears a lifted native requirement", async () => {
+  const requiredBody = { ...body, required_native_build: 3 };
+  const fetcher = vi
+    .fn()
+    .mockResolvedValueOnce({
+      ok: true,
+      json: async () => ({
+        ...requiredBody,
+        signature: signManifest(requiredBody, key),
+      }),
+    })
+    .mockResolvedValue({
+      ok: true,
+      json: async () => ({ ...body, signature: signManifest(body, key) }),
+    });
+  const onCleared = vi.fn();
+  const onRequired = vi.fn();
+  const check = createUpdateManager(
+    {
+      baseUrl,
+      publicKey: pubkey,
+      channel: "preview",
+      builtinVersion: body.version,
+      builtinSequence: 1,
+    },
+    {
+      fetch: fetcher as typeof fetch,
+      now: () => 0,
+      updater: {
+        current: async () => ({
+          bundle: { id: "builtin", version: body.version },
+        }),
+        download: vi.fn(),
+        next: vi.fn(),
+      },
+      nativeBuild: async () => "2",
+      isOnline: () => true,
+      onRequired,
+      onCleared,
+      report: vi.fn(),
+      sequenceStore: { get: async () => null, set: async () => {} },
+    },
+  );
+  expect(await check()).toBe("required");
+  expect(await check(true)).toBe("clear");
+  expect(onRequired).toHaveBeenCalledOnce();
+  expect(onCleared).toHaveBeenCalledOnce();
+});
+
+test("native-build rejection is reported and the next check retries it", async () => {
+  const nativeBuild = vi
+    .fn()
+    .mockRejectedValueOnce(new Error("native info failed"))
+    .mockResolvedValue("2");
+  const report = vi.fn();
+  const check = createUpdateManager(
+    {
+      baseUrl,
+      publicKey: pubkey,
+      channel: "preview",
+      builtinVersion: body.version,
+      builtinSequence: (build) => Number(build),
+    },
+    {
+      fetch: vi.fn().mockResolvedValue({
+        ok: true,
+        json: async () => ({ ...body, signature: signManifest(body, key) }),
+      }) as typeof fetch,
+      now: () => 0,
+      updater: {
+        current: async () => ({
+          bundle: { id: "builtin", version: body.version },
+        }),
+        download: vi.fn(),
+        next: vi.fn(),
+      },
+      nativeBuild,
+      isOnline: () => true,
+      onRequired: vi.fn(),
+      report,
+      sequenceStore: { get: async () => null, set: async () => {} },
+    },
+  );
+  await check();
+  expect(report).toHaveBeenCalledWith(
+    expect.objectContaining({ message: "native info failed" }),
+  );
+  await check();
+  expect(nativeBuild).toHaveBeenCalledTimes(2);
+  expect(report).toHaveBeenCalledOnce();
+});
+
+test("a native info TypeError is reported instead of classified as a fetch outage", async () => {
+  const report = vi.fn();
+  const failure = new TypeError("native bridge unavailable");
+  const check = createUpdateManager(
+    {
+      baseUrl,
+      publicKey: pubkey,
+      channel: "preview",
+      builtinVersion: body.version,
+      builtinSequence: 1,
+    },
+    {
+      fetch: vi.fn().mockResolvedValue({
+        ok: true,
+        json: async () => ({ ...body, signature: signManifest(body, key) }),
+      }) as typeof fetch,
+      now: () => 0,
+      updater: { current: vi.fn(), download: vi.fn(), next: vi.fn() },
+      nativeBuild: async () => {
+        throw failure;
+      },
+      isOnline: () => true,
+      onRequired: vi.fn(),
+      report,
+      sequenceStore: { get: async () => null, set: async () => {} },
+    },
+  );
+  await check();
+  expect(report).toHaveBeenCalledWith(failure);
+});
+
 test("offline checks wait for the next eligible resume without reporting", async () => {
   let now = 0;
   const report = vi.fn();

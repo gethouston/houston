@@ -55,9 +55,11 @@ function reporter({ deps, turn }: TurnPushContext, claimBound = false) {
 }
 
 /** Stamp the same contributor and mention aggregate as a standing pod. */
-export async function stampPooledTurn(input: TurnPushContext): Promise<void> {
+export async function stampPooledTurn(input: TurnPushContext): Promise<{
+  mentionReport?: Promise<void>;
+}> {
   const { turn, filesystem } = input;
-  if (!turn.actingAs || !turn.claim) return;
+  if (!turn.actingAs || !turn.claim) return {};
   const mentioned = [
     ...new Set((turn.mentions ?? []).map((m) => m.userId)),
   ].slice(0, 32);
@@ -95,9 +97,9 @@ export async function stampPooledTurn(input: TurnPushContext): Promise<void> {
         return next;
       },
     });
-    const send = reporter(input);
+    const send = reporter(input, true);
     if (activity && mentioned.length && turn.actingToken && send) {
-      void send(
+      const mentionReport = send(
         {
           v: 1,
           kind: "mentioned",
@@ -110,17 +112,21 @@ export async function stampPooledTurn(input: TurnPushContext): Promise<void> {
       ).catch((error: unknown) => {
         console.error("[push] pooled mention report failed", error);
       });
+      return { mentionReport };
     }
   } catch (error) {
     console.error("[push] pooled attribution failed", error);
   }
+  return {};
 }
 
 /** Called after durability, before the terminal frame closes the claim. */
 export async function reportPooledSettle(
   input: TurnPushContext,
   durable: TurnDurabilityResult,
+  mentionReport?: Promise<void>,
 ): Promise<void> {
+  await mentionReport;
   if (durable.outcome.error === "claim_fenced") return;
   const send = reporter(input, true);
   if (!send) return;

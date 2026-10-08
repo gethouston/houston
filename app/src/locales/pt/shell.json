@@ -717,6 +717,8 @@
     "description": "Uma versão mais recente do app é necessária. Atualize o Houston pela loja de aplicativos.",
     "retryDescription": "Uma versão mais recente do app é necessária. Verifique novamente se há uma atualização.",
     "openStore": "Abrir loja",
-    "retry": "Verificar novamente"
+    "retry": "Verificar novamente",
+    "checking": "Verificando atualizações…",
+    "stillRequired": "Ainda é necessário atualizar o aplicativo."
   }
 }

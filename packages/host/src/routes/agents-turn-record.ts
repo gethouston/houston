@@ -1,6 +1,7 @@
 import {
   normalizeTurnMode,
   parseMentions,
+  pushMissionTitle,
   type TurnMode,
 } from "@houston/protocol";
 import { assistantRuntimeRole } from "../launcher/assistant-role";
@@ -133,7 +134,7 @@ export const stampAttribution: TurnSeam = async (ctx) => {
           v: 1,
           kind: "mentioned",
           conversation_id: ctx.turnConversationId,
-          mission: { id: activity.id, title: activity.title },
+          mission: { id: activity.id, title: pushMissionTitle(activity.title) },
           event_key: eventKey,
           user_ids: [...new Set(mentionedIds)].slice(0, 32),
         },

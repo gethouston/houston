@@ -2,7 +2,7 @@ import { App } from "@capacitor/app";
 import { Capacitor, CapacitorHttp } from "@capacitor/core";
 import { CapacitorUpdater } from "@capgo/capacitor-updater";
 import { logAndReportError } from "@houston/app/lib/error-report";
-import { showNativeUpdateGate } from "./gate";
+import { clearNativeUpdateGate, showNativeUpdateGate } from "./gate";
 import { createUpdateManager } from "./manager";
 import { nativeBuiltinSequence } from "./native-sequence";
 
@@ -31,37 +31,34 @@ export async function installUpdates(): Promise<void> {
       "OTA configuration requires production or preview deploy environment",
     );
   }
-  const nativeBuild = (await App.getInfo()).build;
   const check = createUpdateManager(
     {
       baseUrl,
       publicKey,
       channel,
       builtinVersion: __HOUSTON_MOBILE_BUNDLE_VERSION__,
-      builtinSequence: nativeBuiltinSequence(
-        channel,
-        nativeBuild,
-        __HOUSTON_MOBILE_BUILTIN_SEQUENCE__,
-        localStorage,
-      ),
+      builtinSequence: (nativeBuild) =>
+        nativeBuiltinSequence(
+          channel,
+          nativeBuild,
+          __HOUSTON_MOBILE_BUILTIN_SEQUENCE__,
+          localStorage,
+        ),
     },
     {
       fetch: nativeManifestFetch,
       now: Date.now,
       isOnline: () => navigator.onLine,
       updater: CapacitorUpdater,
-      nativeBuild: async () => nativeBuild,
+      nativeBuild: async () => (await App.getInfo()).build,
       onRequired: () =>
         showNativeUpdateGate(
           Capacitor.getPlatform() === "ios"
             ? __HOUSTON_MOBILE_STORE_URL_IOS__
             : __HOUSTON_MOBILE_STORE_URL_ANDROID__,
-          () => {
-            void check(true).catch((error: unknown) =>
-              logAndReportError("mobile_update", error),
-            );
-          },
+          () => check(true),
         ),
+      onCleared: clearNativeUpdateGate,
       report: (error) => logAndReportError("mobile_update", error),
       sequenceStore: {
         get: async () =>

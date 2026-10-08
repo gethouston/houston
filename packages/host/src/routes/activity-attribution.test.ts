@@ -231,7 +231,7 @@ test("a turn whose body carries mentions stamps `mentioned` on the mission", asy
     JSON.stringify([
       {
         id: "m4",
-        title: "Mentions",
+        title: "😀".repeat(201),
         description: "",
         status: "running",
         session_key: "conv-mentions",
@@ -272,7 +272,7 @@ test("a turn whose body carries mentions stamps `mentioned` on the mission", asy
       v: 1,
       kind: "mentioned",
       conversation_id: "conv-mentions",
-      mission: { id: "m4", title: "Mentions" },
+      mission: { id: "m4", title: `${"😀".repeat(199)}…` },
       event_key: "mention-nonce",
       user_ids: ["supa-grace", "supa-alan"],
     },

@@ -1,7 +1,22 @@
 import type { WireFrame } from "@houston/runtime-client";
-import type { createTurnLog } from "./turn-log";
+import type { TurnServerDeps } from "./server-types";
+import type { TurnFilesystem } from "./turn-filesystem";
+import { createTurnLog } from "./turn-log";
 import type { makeTurnSandboxFetch } from "./turn-sandbox";
-import type { createTurnTranscript } from "./turn-transcript";
+import { createTurnTranscript } from "./turn-transcript";
+import type { TurnRequest } from "./types";
+
+export function prepareTurnStreams(
+  deps: TurnServerDeps,
+  turn: TurnRequest,
+  turnId: string,
+  filesystem: TurnFilesystem,
+) {
+  return {
+    turnLog: createTurnLog(deps, turn),
+    transcript: createTurnTranscript(deps, { ...turn, turnId }, filesystem),
+  };
+}
 
 export function createTurnEmitter(
   send: (frame: WireFrame) => void,

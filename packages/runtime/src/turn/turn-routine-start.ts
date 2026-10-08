@@ -1,7 +1,9 @@
+import type { WireFrame } from "@houston/runtime-client";
 import type { ObjectStore } from "@houston/runtime-client/object-sync";
 import type { TurnServerDeps } from "./server-types";
 import { mutateTurnDocument, TurnDocConflictError } from "./turn-doc-cas";
 import { type TurnFilesystem, turnRoutineRunsKey } from "./turn-filesystem";
+import type { createTurnLog } from "./turn-log";
 import {
   prepareRoutineTurn,
   type RoutinePhase,
@@ -10,6 +12,27 @@ import {
 import { publishTurnRunsDoc } from "./turn-runs-doc";
 import { docNotLandedReason } from "./turn-view-publish";
 import type { TurnRequest } from "./types";
+
+export async function answerRoutineStartFailure(
+  input: {
+    turnId: string;
+    emit: (frame: WireFrame) => void;
+    turnLog: ReturnType<typeof createTurnLog>;
+    mentionReport?: Promise<void>;
+  },
+  error: unknown,
+): Promise<void> {
+  await input.mentionReport;
+  input.emit({
+    type: "error",
+    data: {
+      message: error instanceof Error ? error.message : String(error),
+      code: error instanceof RoutineTurnError ? error.code : "routine_error",
+    },
+    turnId: input.turnId,
+  } as WireFrame);
+  await input.turnLog?.flush();
+}
 
 /**
  * Start a pooled routine run against the STORE's run history, not only the

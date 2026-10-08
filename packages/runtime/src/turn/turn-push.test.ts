@@ -67,12 +67,13 @@ test("pooled turns stamp contributors and mentions, then post through the turn g
     filesystem,
     resolved: { store: agent.store, prefix: PREFIX },
   };
-  const settled = await Promise.race([
-    stampPooledTurn(input).then(() => true),
-    new Promise<false>((resolve) => setTimeout(() => resolve(false), 50)),
+  const stamped = await Promise.race([
+    stampPooledTurn(input),
+    new Promise<never>((_, reject) =>
+      setTimeout(() => reject(new Error("stamp blocked on push")), 50),
+    ),
   ]);
-  releaseMention();
-  expect(settled).toBe(true);
+  expect(stamped.mentionReport).toBeDefined();
   const stored = JSON.parse(
     await readFile(join(agent.prefixRoot, board), "utf8"),
   ) as {
@@ -81,11 +82,19 @@ test("pooled turns stamp contributors and mentions, then post through the turn g
   }[];
   expect(stored[0]?.contributors?.[0]?.user_id).toBe("alice");
   expect(stored[0]?.mentioned?.[0]?.user_id).toBe("bob");
-  await reportPooledSettle(input, {
-    outcome: {},
-    poolWritesOutOfScope: 0,
-    changed: [],
-  });
+  const reporting = reportPooledSettle(
+    input,
+    {
+      outcome: {},
+      poolWritesOutOfScope: 0,
+      changed: [],
+    },
+    stamped.mentionReport,
+  );
+  await new Promise((resolve) => setTimeout(resolve, 20));
+  expect(posts).toHaveLength(1);
+  releaseMention();
+  await reporting;
   expect(posts.map((post) => post.body.kind)).toEqual([
     "mentioned",
     "turn_settled",

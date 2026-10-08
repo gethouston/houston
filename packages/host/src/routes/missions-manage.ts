@@ -12,6 +12,7 @@ import {
   type PendingInteraction,
   type PushReport,
   parseModelCallReport,
+  pushMissionTitle,
 } from "@houston/protocol";
 import { assistantRuntimeRole } from "../launcher/assistant-role";
 import { withDocLock } from "./doc-lock";
@@ -169,7 +170,7 @@ export async function handleMissionSettle(
           v: 1,
           kind: "turn_settled",
           conversation_id: cid,
-          mission: { id: current.id, title: current.title },
+          mission: { id: current.id, title: pushMissionTitle(current.title) },
           turn_id: turnId,
           reason,
           question_count,

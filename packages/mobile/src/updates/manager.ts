@@ -18,6 +18,7 @@ export interface UpdatePorts {
   nativeBuild(): Promise<string>;
   isOnline(): boolean;
   onRequired(manifest: UpdateManifest): void;
+  onCleared?(): void;
   report(error: unknown): void;
   sequenceStore: {
     get(): Promise<string | null>;
@@ -25,26 +26,30 @@ export interface UpdatePorts {
   };
 }
 
+export type UpdateCheckResult = "required" | "clear" | "unavailable";
+
 export function createUpdateManager(
   config: {
     baseUrl: string;
     publicKey: string;
     channel: "production" | "preview";
     builtinVersion: string;
-    builtinSequence: number;
+    builtinSequence: number | ((nativeBuild: string) => number);
   },
   ports: UpdatePorts,
 ) {
   let lastCheck = -Infinity;
-  let running = false;
+  let running: Promise<UpdateCheckResult> | null = null;
   let required = false;
-  return async function check(force = false): Promise<void> {
-    if (
-      running ||
-      (!force && (required || ports.now() - lastCheck < 30 * 60 * 1000))
-    )
-      return;
-    running = true;
+  return function check(force = false): Promise<UpdateCheckResult> {
+    if (running) return running;
+    if (!force && (required || ports.now() - lastCheck < 30 * 60 * 1000))
+      return Promise.resolve("unavailable");
+    running = runCheck();
+    return running;
+  };
+
+  async function runCheck(): Promise<UpdateCheckResult> {
     lastCheck = ports.now();
     try {
       let response: Response;
@@ -54,7 +59,7 @@ export function createUpdateManager(
           { cache: "no-store" },
         );
       } catch (error) {
-        if (error instanceof TypeError) return; // Fetch network failure; retry on a later resume.
+        if (error instanceof TypeError) return "unavailable"; // Fetch network failure; retry on a later resume.
         throw error;
       }
       if (!response.ok) {
@@ -63,7 +68,7 @@ export function createUpdateManager(
           response.status === 408 ||
           response.status === 429
         )
-          return;
+          return "unavailable";
         throw new Error(`OTA manifest HTTP ${response.status}`);
       }
       const manifest = await verifyManifest(
@@ -73,29 +78,42 @@ export function createUpdateManager(
       );
       if (manifest.channel !== config.channel)
         throw new Error("OTA manifest channel mismatch");
-      const saved = await ports.sequenceStore.get();
-      const highest = saved === null ? 0 : Number(saved);
-      if (!Number.isSafeInteger(highest) || highest < 0)
-        throw new Error("Invalid stored OTA sequence");
-      if (manifest.sequence <= Math.max(highest, config.builtinSequence))
-        return;
-      if (manifest.bundle_sequence < config.builtinSequence) return;
-      const nativeBuild = Number(await ports.nativeBuild());
+      let nativeBuildText: string;
+      try {
+        nativeBuildText = await ports.nativeBuild();
+      } catch (error) {
+        lastCheck = -Infinity;
+        ports.report(error);
+        return "unavailable";
+      }
+      const nativeBuild = Number(nativeBuildText);
       if (!Number.isSafeInteger(nativeBuild) || nativeBuild < 1)
         throw new Error("Invalid native build number");
       if (nativeBuild < manifest.required_native_build) {
         required = true;
         ports.onRequired(manifest);
-        return;
+        return "required";
       }
+      if (required) ports.onCleared?.();
       required = false;
-      if (nativeBuild < manifest.min_native_build) return;
+      const builtinSequence =
+        typeof config.builtinSequence === "function"
+          ? config.builtinSequence(nativeBuildText)
+          : config.builtinSequence;
+      const saved = await ports.sequenceStore.get();
+      const highest = saved === null ? 0 : Number(saved);
+      if (!Number.isSafeInteger(highest) || highest < 0)
+        throw new Error("Invalid stored OTA sequence");
+      if (manifest.sequence <= Math.max(highest, builtinSequence))
+        return "clear";
+      if (manifest.bundle_sequence < builtinSequence) return "clear";
+      if (nativeBuild < manifest.min_native_build) return "clear";
       const current = (await ports.updater.current()).bundle;
       const version =
         current.id === "builtin" ? config.builtinVersion : current.version;
       if (version === manifest.version) {
         await ports.sequenceStore.set(String(manifest.sequence));
-        return;
+        return "clear";
       }
       const bundle = await ports.updater.download({
         url: manifest.url,
@@ -104,13 +122,17 @@ export function createUpdateManager(
       });
       await ports.updater.next({ id: bundle.id });
       await ports.sequenceStore.set(String(manifest.sequence));
+      return "clear";
     } catch (error) {
-      if (!ports.isOnline() || isConnectivityFailure(error)) return;
+      lastCheck = -Infinity;
+      if (!ports.isOnline() || isConnectivityFailure(error))
+        return "unavailable";
       ports.report(error);
+      return "unavailable";
     } finally {
-      running = false;
+      running = null;
     }
-  };
+  }
 }
 
 function isConnectivityFailure(error: unknown): boolean {
