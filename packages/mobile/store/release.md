@@ -28,7 +28,7 @@ Create these repository variables:
 | `APPLE_TEAM_ID`, `HOUSTON_APPLE_TEAM_ID` | The same Apple Developer Team ID. The first signs iOS; the second builds the web association file. |
 | `HOUSTON_ANDROID_CERT_SHA256` | Comma-separated SHA-256 fingerprints of the **Play App Signing** certificates from Play Console for `assetlinks.json`. The local upload certificate is a different key. |
 | `FIREBASE_APPLE_SERVICE_ID` | Existing Apple Services ID configured in Firebase Authentication. |
-| `HOUSTON_MOBILE_STORE_URL_IOS`, `HOUSTON_MOBILE_STORE_URL_ANDROID` | Store listing URLs, once the listings exist. These fill the mandatory-update buttons. |
+| `HOUSTON_MOBILE_STORE_URL_IOS`, `HOUSTON_MOBILE_STORE_URL_ANDROID` | Required store listing URLs. Production builds fail when either is absent. |
 
 The committed `native-compat.json`, Xcode `CURRENT_PROJECT_VERSION`, and Gradle
 `versionCode` remain the native compatibility floor (currently 4). Store jobs

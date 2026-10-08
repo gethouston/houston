@@ -56,10 +56,12 @@ const CAPS: Capabilities = {
  *  down or the runtime would receive an empty message. */
 let forwardedBody: string | undefined;
 const pushReports: { report: PushReport; actingAs?: string }[] = [];
+let blockPush: Promise<void> | null = null;
 
 const deps = (): ControlPlaneDeps => ({
   pushReports: async (report, actingAs) => {
     pushReports.push({ report, ...(actingAs ? { actingAs } : {}) });
+    await blockPush;
   },
   verifier,
   store,
@@ -280,6 +282,54 @@ test("a turn whose body carries mentions stamps `mentioned` on the mission", asy
     text: "hey @Grace @Alan",
     mentions: [{ userId: "supa-grace" }, { userId: "supa-alan" }],
   });
+});
+
+test("mention push cannot hold up turn forwarding", async () => {
+  const previous = await vfs.readText(docKey(root, "activity"));
+  await vfs.writeText(
+    docKey(root, "activity"),
+    JSON.stringify([
+      {
+        id: "m-push",
+        title: "Mentions",
+        description: "",
+        status: "running",
+        session_key: "conv-push",
+      },
+    ]),
+  );
+  let release: (() => void) | undefined;
+  blockPush = new Promise<void>((resolve) => {
+    release = resolve;
+  });
+  try {
+    const sent = fetch(
+      `${frontedBase}/agents/${agentId}/conversations/conv-push/messages`,
+      {
+        method: "POST",
+        headers: {
+          ...auth("alice"),
+          "x-houston-acting-as": actingToken("supa-6", "Ada"),
+        },
+        body: JSON.stringify({
+          text: "@Grace",
+          nonce: "push-nonce",
+          mentions: [{ userId: "supa-grace" }],
+        }),
+      },
+    );
+    const status = await Promise.race([
+      sent.then((response) => response.status),
+      new Promise<number>((resolve) => setTimeout(() => resolve(0), 50)),
+    ]);
+    expect(status).toBe(202);
+    await sent;
+  } finally {
+    release?.();
+    blockPush = null;
+    if (previous !== null)
+      await vfs.writeText(docKey(root, "activity"), previous);
+  }
 });
 
 test("mentioning the same person again overwrites the entry (latest wins)", async () => {

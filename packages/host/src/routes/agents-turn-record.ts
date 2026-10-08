@@ -127,16 +127,20 @@ export const stampAttribution: TurnSeam = async (ctx) => {
     ctx.actingAs &&
     ctx.pushReports
   ) {
-    await ctx.pushReports(
-      {
-        v: 1,
-        kind: "mentioned",
-        conversation_id: ctx.turnConversationId,
-        mission: { id: activity.id, title: activity.title },
-        event_key: eventKey,
-        user_ids: [...new Set(mentionedIds)].slice(0, 32),
-      },
-      ctx.actingAs,
-    );
+    void ctx
+      .pushReports(
+        {
+          v: 1,
+          kind: "mentioned",
+          conversation_id: ctx.turnConversationId,
+          mission: { id: activity.id, title: activity.title },
+          event_key: eventKey,
+          user_ids: [...new Set(mentionedIds)].slice(0, 32),
+        },
+        ctx.actingAs,
+      )
+      .catch((error: unknown) =>
+        console.error("[push] mention report failed", error),
+      );
   }
 };

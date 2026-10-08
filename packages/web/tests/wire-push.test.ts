@@ -59,6 +59,45 @@ test("register device uses exact C23 request", async () => {
   expectCall("PUT", `/v1/me/push/devices/${DEVICE}`, JSON.stringify(input));
 });
 
+test("device conflict retries once with a newly persisted id", async () => {
+  const input = {
+    token: "fcm-token",
+    platform: "ios" as const,
+    locale: "en",
+    app_version: "1",
+  };
+  stubRoutedConflict();
+  const value = client();
+  const result = await value.registerPushDevice(DEVICE, input);
+  expect(calls).toHaveLength(2);
+  expect(calls[0]?.url).toBe(`${BASE}/v1/me/push/devices/${DEVICE}`);
+  expect(calls[1]?.url).toBe(`${BASE}/v1/me/push/devices/${result.device_id}`);
+  expect(result.device_id).not.toBe(DEVICE);
+  expect(localStorage.getItem("houston.pref.push.device_id")).toBe(
+    result.device_id,
+  );
+  for (const call of calls) {
+    expect(call.method).toBe("PUT");
+    expect(call.body).toBe(JSON.stringify(input));
+    expect([...call.headers.entries()]).toEqual([
+      ["authorization", "Bearer t"],
+      ["content-type", "application/json"],
+      ["x-houston-org", ORG],
+    ]);
+  }
+});
+
+function stubRoutedConflict() {
+  let first = true;
+  stubFetch(() => {
+    if (first) {
+      first = false;
+      return json(409, { code: "device_conflict" });
+    }
+    return json(200, { device_id: calls.at(-1)?.url.split("/").at(-1) });
+  });
+}
+
 test("unregister device uses exact C23 request", async () => {
   stubFetch(() => new Response(null, { status: 204 }));
   await client().unregisterPushDevice(DEVICE);

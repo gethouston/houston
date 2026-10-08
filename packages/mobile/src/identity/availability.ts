@@ -16,7 +16,7 @@ export function providerAvailability(
     platform === "ios" ? config.iosFirebase : config.androidFirebase;
   return {
     google: firebase,
-    apple: firebase && !!config.appleServiceId,
+    apple: firebase && (platform === "ios" || !!config.appleServiceId),
     // Capawesome's Firebase JS SDK guide explicitly excludes Microsoft with
     // skipNativeAuth: https://github.com/capawesome-team/capacitor-firebase/blob/main/packages/authentication/docs/firebase-js-sdk.md#quirks
     azure: false,
@@ -36,7 +36,11 @@ export function authBootBreadcrumbs(
     messages.push(
       "[mobile/auth] Google and Apple OFF: add android/app/google-services.json and sync.",
     );
-  if (firebasePresent(platform, config) && !config.appleServiceId)
+  if (
+    platform === "android" &&
+    firebasePresent(platform, config) &&
+    !config.appleServiceId
+  )
     messages.push(
       "[mobile/auth] Apple OFF: configure the Apple Services ID in Firebase, then set FIREBASE_APPLE_SERVICE_ID when building.",
     );

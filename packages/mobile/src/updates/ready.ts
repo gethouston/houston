@@ -11,9 +11,7 @@ export function notifyMobileReadyAfterRender(
     if (
       ready ||
       !root.hasChildNodes() ||
-      root.querySelector(
-        "[data-houston-boot-loading], [data-houston-boot-crashed]",
-      )
+      root.querySelector("[data-houston-boot-crashed]")
     )
       return;
     ready = true;

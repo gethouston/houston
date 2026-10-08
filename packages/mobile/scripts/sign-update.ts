@@ -26,6 +26,7 @@ if (process.argv[1]?.endsWith("sign-update.ts")) {
   const [zipPath, versionPath, compatPath, channel, baseUrl, outputPath] =
     process.argv.slice(2);
   const pem = process.env.HOUSTON_MOBILE_UPDATE_SIGNING_KEY;
+  const sequence = Number(process.env.HOUSTON_MOBILE_UPDATE_SEQUENCE);
   if (
     !zipPath ||
     !versionPath ||
@@ -33,17 +34,21 @@ if (process.argv[1]?.endsWith("sign-update.ts")) {
     !channel ||
     !baseUrl ||
     !outputPath ||
-    !pem
+    !pem ||
+    !Number.isSafeInteger(sequence) ||
+    sequence < 1
   ) {
     throw new Error(
-      "Usage: sign-update.ts ZIP VERSION_JSON COMPAT_JSON CHANNEL BASE_URL MANIFEST_JSON; set HOUSTON_MOBILE_UPDATE_SIGNING_KEY",
+      "Usage: sign-update.ts ZIP VERSION_JSON COMPAT_JSON CHANNEL BASE_URL MANIFEST_JSON; set HOUSTON_MOBILE_UPDATE_SIGNING_KEY and HOUSTON_MOBILE_UPDATE_SEQUENCE",
     );
   }
   if (channel !== "production" && channel !== "preview")
     throw new Error("Invalid OTA channel");
-  const version = (
-    JSON.parse(readFileSync(versionPath, "utf8")) as { version: string }
-  ).version;
+  const versionFile = JSON.parse(readFileSync(versionPath, "utf8")) as {
+    version: string;
+    bundle_sequence: number;
+  };
+  const version = versionFile.version;
   const compat = JSON.parse(readFileSync(compatPath, "utf8")) as {
     min_native_build: number;
     required_native_build: number;
@@ -51,6 +56,12 @@ if (process.argv[1]?.endsWith("sign-update.ts")) {
   if (!/^\d+\.\d+\.\d+(?:-[0-9A-Za-z.-]+)?\+[0-9a-f]{7,}$/.test(version)) {
     throw new Error("Invalid OTA bundle version");
   }
+  if (
+    !Number.isSafeInteger(versionFile.bundle_sequence) ||
+    versionFile.bundle_sequence < 1 ||
+    versionFile.bundle_sequence > sequence
+  )
+    throw new Error("Invalid OTA bundle sequence");
   if (
     !Number.isSafeInteger(compat.min_native_build) ||
     compat.min_native_build < 1 ||
@@ -70,6 +81,9 @@ if (process.argv[1]?.endsWith("sign-update.ts")) {
   ).href;
   const body: UpdateManifestBody = {
     v: 1,
+    channel,
+    sequence,
+    bundle_sequence: versionFile.bundle_sequence,
     version,
     url,
     sha256,

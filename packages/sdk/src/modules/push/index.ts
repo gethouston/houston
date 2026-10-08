@@ -63,7 +63,8 @@ export function createPushModule(ctx: ModuleContext): PushModule {
     deviceId,
     registerDevice: (id, input, signal) => {
       input = pushDeviceRegistrationSchema.parse(input);
-      const key = JSON.stringify([id, input]);
+      const userId = ctx.config.ports.userId?.() ?? null;
+      const key = JSON.stringify([userId, id, input]);
       if (registrationInFlight?.key === key)
         return registrationInFlight.promise;
       if (registrationInFlight) {
@@ -79,17 +80,30 @@ export function createPushModule(ctx: ModuleContext): PushModule {
           const prior = JSON.parse(stored) as {
             input: PushDeviceRegistration;
             at: number;
+            userId?: string;
           };
+          if (prior.userId !== userId) await prefs.delete(REGISTRATION_KEY);
           if (
+            userId &&
+            prior.userId === userId &&
             JSON.stringify(prior.input) === JSON.stringify(input) &&
             ctx.config.ports.clock.now() - prior.at < DAY_MS
           )
             return { device_id: id };
         }
-        const result = await registerDevice(scope, id, input, signal);
+        let result: PushDeviceResponse;
+        try {
+          result = await registerDevice(scope, id, input, signal);
+        } catch (error) {
+          if (!isDeviceConflict(error)) throw error;
+          const fresh = crypto.randomUUID();
+          await prefs.set(DEVICE_KEY, fresh);
+          idPromise = Promise.resolve(fresh);
+          result = await registerDevice(scope, fresh, input, signal);
+        }
         await prefs.set(
           REGISTRATION_KEY,
-          JSON.stringify({ input, at: ctx.config.ports.clock.now() }),
+          JSON.stringify({ input, at: ctx.config.ports.clock.now(), userId }),
         );
         return result;
       })();
@@ -149,4 +163,16 @@ export function createPushModule(ctx: ModuleContext): PushModule {
     module.reportPresence((p as { foreground: boolean }).foreground),
   );
   return module;
+}
+
+function isDeviceConflict(error: unknown): boolean {
+  if (!(error instanceof PushHttpError) || error.status !== 409) return false;
+  try {
+    return (
+      (JSON.parse(error.message) as { code?: unknown }).code ===
+      "device_conflict"
+    );
+  } catch {
+    return false;
+  }
 }

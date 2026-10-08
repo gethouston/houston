@@ -3,7 +3,7 @@ import { z } from "zod";
 const missionSchema = z.object({ id: z.string(), title: z.string() }).strict();
 export const missionAudienceSchema = z.union([
   z.object({ everyone: z.literal(true) }).strict(),
-  z.object({ user_ids: z.array(z.string()).max(64) }).strict(),
+  z.object({ user_ids: z.array(z.string()).max(512) }).strict(),
 ]);
 const common = {
   v: z.literal(1),

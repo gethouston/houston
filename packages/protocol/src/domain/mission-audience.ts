@@ -7,6 +7,7 @@ export function missionAudience(
   activity:
     | Pick<Activity, "created_by" | "contributors" | "mentioned">
     | undefined,
+  reportOverflow?: (overflow: number) => void,
 ): MissionAudience {
   if (!activity) return { everyone: true };
   const ids = new Set<string>();
@@ -18,8 +19,7 @@ export function missionAudience(
     if (mention.user_id && mention.by !== mention.user_id)
       ids.add(mention.user_id);
   }
-  // The wire caps explicit recipients; failing open preserves relevance.
-  return ids.size === 0 || ids.size > 64
-    ? { everyone: true }
-    : { user_ids: [...ids] };
+  if (ids.size === 0) return { everyone: true };
+  if (ids.size > 512) reportOverflow?.(ids.size - 512);
+  return { user_ids: [...ids].slice(0, 512) };
 }

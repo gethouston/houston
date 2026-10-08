@@ -46,7 +46,13 @@ test("rejects unknown fields, negative questions and oversized recipient lists",
   expect(
     pushReportSchema.safeParse({
       ...settled,
-      audience: { user_ids: Array(65).fill("u") },
+      audience: { user_ids: Array(512).fill("u") },
+    }).success,
+  ).toBe(true);
+  expect(
+    pushReportSchema.safeParse({
+      ...settled,
+      audience: { user_ids: Array(513).fill("u") },
     }).success,
   ).toBe(false);
   expect(

@@ -1,4 +1,13 @@
+import { execFileSync } from "node:child_process";
 import { generateKeyPairSync, webcrypto } from "node:crypto";
+import {
+  mkdirSync,
+  mkdtempSync,
+  readFileSync,
+  rmSync,
+  writeFileSync,
+} from "node:fs";
+import { join, resolve } from "node:path";
 import { expect, test } from "vitest";
 import {
   type UpdateManifestBody,
@@ -16,6 +25,9 @@ test("signer emits canonical P1363 signatures verified by the app", async () => 
     .toString("base64");
   const body: UpdateManifestBody = {
     v: 1,
+    channel: "production",
+    sequence: 10,
+    bundle_sequence: 10,
     version: "0.5.41+abc1234",
     url: "https://storage.googleapis.com/houston-mobile-updates/production/a.zip",
     sha256: "a".repeat(64),
@@ -41,4 +53,90 @@ test("signer emits canonical P1363 signatures verified by the app", async () => 
       webcrypto.subtle as SubtleCrypto,
     ),
   ).rejects.toThrow("signature");
+  await expect(
+    verifyManifest(
+      { ...signed, channel: "preview" },
+      "https://storage.googleapis.com/houston-mobile-updates",
+      pubkey,
+      webcrypto.subtle as SubtleCrypto,
+    ),
+  ).rejects.toThrow();
+  await expect(
+    verifyManifest(
+      { ...signed, sequence: 11 },
+      "https://storage.googleapis.com/houston-mobile-updates",
+      pubkey,
+      webcrypto.subtle as SubtleCrypto,
+    ),
+  ).rejects.toThrow("signature");
+});
+
+test("rollback signer gives an existing zip a new publish sequence", async () => {
+  const keys = generateKeyPairSync("ec", { namedCurve: "prime256v1" });
+  const pem = keys.privateKey
+    .export({ type: "pkcs8", format: "pem" })
+    .toString();
+  const pubkey = keys.publicKey
+    .export({ type: "spki", format: "der" })
+    .toString("base64");
+  const root = resolve(process.cwd(), "../..");
+  const cache = join(root, "node_modules/.cache");
+  mkdirSync(cache, { recursive: true });
+  const dir = mkdtempSync(join(cache, "mobile-rollback-test-"));
+  try {
+    const zip = join(dir, "old.zip");
+    const version = join(dir, "version.json");
+    const compat = join(dir, "native-compat.json");
+    const output = join(dir, "manifest.json");
+    writeFileSync(zip, "old bundle");
+    writeFileSync(
+      version,
+      JSON.stringify({ version: "0.5.41+abc1234", bundle_sequence: 8 }),
+    );
+    writeFileSync(
+      compat,
+      JSON.stringify({ min_native_build: 2, required_native_build: 2 }),
+    );
+    execFileSync(
+      "pnpm",
+      [
+        "exec",
+        "tsx",
+        "packages/mobile/scripts/sign-update.ts",
+        zip,
+        version,
+        compat,
+        "production",
+        "https://storage.googleapis.com/houston-mobile-updates",
+        output,
+      ],
+      {
+        cwd: root,
+        env: {
+          ...process.env,
+          HOUSTON_MOBILE_UPDATE_SIGNING_KEY: pem,
+          HOUSTON_MOBILE_UPDATE_SEQUENCE: "12",
+        },
+      },
+    );
+    const signed = JSON.parse(
+      readFileSync(output, "utf8"),
+    ) as UpdateManifestBody & { signature: string };
+    expect(signed).toMatchObject({
+      channel: "production",
+      sequence: 12,
+      bundle_sequence: 8,
+      version: "0.5.41+abc1234",
+    });
+    await expect(
+      verifyManifest(
+        signed,
+        "https://storage.googleapis.com/houston-mobile-updates",
+        pubkey,
+        webcrypto.subtle as SubtleCrypto,
+      ),
+    ).resolves.toEqual(signed);
+  } finally {
+    rmSync(dir, { recursive: true, force: true });
+  }
 });

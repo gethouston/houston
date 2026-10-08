@@ -1013,3 +1013,27 @@ test("managed settle reports relevance and reason; stopped and local turns never
     },
   ]);
 });
+
+test("settle answers while the push reporter is still pending", async () => {
+  let finish: (() => void) | undefined;
+  const pending = new Promise<void>((resolve) => {
+    finish = resolve;
+  });
+  const callPromise = call(
+    "POST",
+    "/sandbox/missions/settle",
+    {
+      conversation_id: "conv-parent",
+      turn_id: "turn-late-push",
+      status: "needs_you",
+    },
+    { pushReports: async () => pending },
+  );
+  const answered = await Promise.race([
+    callPromise.then(() => true),
+    new Promise<false>((resolve) => setTimeout(() => resolve(false), 30)),
+  ]);
+  finish?.();
+  await callPromise;
+  expect(answered).toBe(true);
+});

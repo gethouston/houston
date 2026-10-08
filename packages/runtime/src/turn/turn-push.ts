@@ -45,8 +45,10 @@ function reporter({ deps, turn }: TurnPushContext) {
         if (gatewayRefusalWarned) return;
         gatewayRefusalWarned = true;
       }
-      console.warn(message);
+      if (message.includes("later refusals stay quiet")) console.warn(message);
+      else console.error(message, new Error(message));
     },
+    error: (message, cause) => console.error(message, cause),
   });
 }
 
@@ -106,7 +108,7 @@ export async function stampPooledTurn(input: TurnPushContext): Promise<void> {
       );
     }
   } catch (error) {
-    console.warn("[push] pooled attribution failed", error);
+    console.error("[push] pooled attribution failed", error);
   }
 }
 
@@ -140,10 +142,12 @@ export async function reportPooledSettle(
       turn_id: input.turnId,
       reason,
       question_count,
-      audience: missionAudience(activity),
+      audience: missionAudience(activity, (overflow) =>
+        console.error(`[push] mission audience exceeded 512 by ${overflow}`),
+      ),
     };
     await send(report);
   } catch (error) {
-    console.warn("[push] pooled settle report failed", error);
+    console.error("[push] pooled settle report failed", error);
   }
 }

@@ -15,7 +15,7 @@ export function mobileBuildEnv(env: Record<string, string | undefined>): {
   if (!env.FIREBASE_API_KEY?.trim()) {
     throw new Error("Mobile build requires FIREBASE_API_KEY for sign-in");
   }
-  const deployEnvironment = env.HOUSTON_MOBILE_DEPLOY_ENV || "production";
+  const deployEnvironment = env.HOUSTON_MOBILE_DEPLOY_ENV || "development";
   if (
     deployEnvironment !== "production" &&
     deployEnvironment !== "preview" &&
@@ -48,6 +48,15 @@ export function mobileBuildEnv(env: Record<string, string | undefined>): {
     throw new Error(
       "OTA requires HOUSTON_MOBILE_DEPLOY_ENV production or preview",
     );
+  }
+  if (deployEnvironment === "production") {
+    for (const key of [
+      "HOUSTON_MOBILE_STORE_URL_IOS",
+      "HOUSTON_MOBILE_STORE_URL_ANDROID",
+    ] as const) {
+      if (!env[key]?.trim())
+        throw new Error(`Mobile production build requires ${key}`);
+    }
   }
   return {
     controlPlaneUrl,

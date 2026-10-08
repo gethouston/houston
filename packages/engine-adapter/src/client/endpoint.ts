@@ -96,7 +96,11 @@ export abstract class EngineEndpoint extends AgentSelection {
     // fires NO request — it only holds the write surface for later waves. It
     // rides the SAME `authFetch`, so bearer/401-refresh/active-space match,
     // under the SAME read retry (`createEngineSdk` wraps it).
-    this.sdk = createEngineSdk({ baseUrl: this.baseUrl, fetch: authFetch });
+    this.sdk = createEngineSdk({
+      baseUrl: this.baseUrl,
+      fetch: authFetch,
+      liveToken: () => liveToken(this.token),
+    });
     // Mark the new TS engine as the active backend so the frontend can surface
     // new-engine-only capabilities (e.g. API-key providers like OpenCode).
     if (typeof window !== "undefined") {
@@ -123,6 +127,7 @@ export abstract class EngineEndpoint extends AgentSelection {
     return createEngineSdk({
       baseUrl: this.baseUrl,
       fetch: gatewayAuthFetch(this.token, () => orgSlug),
+      liveToken: () => liveToken(this.token),
     });
   }
 
@@ -165,6 +170,7 @@ export abstract class EngineEndpoint extends AgentSelection {
     this.sdk = createEngineSdk({
       baseUrl: this.baseUrl,
       fetch: this.authFetch,
+      liveToken: () => liveToken(this.token),
     });
     this.sdk.turns.adoptTypingState(typing);
   }

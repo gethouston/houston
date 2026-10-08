@@ -4,6 +4,7 @@ import { CapacitorUpdater } from "@capgo/capacitor-updater";
 import { logAndReportError } from "@houston/app/lib/error-report";
 import { showNativeUpdateGate } from "./gate";
 import { createUpdateManager } from "./manager";
+import { nativeBuiltinSequence } from "./native-sequence";
 
 export async function installUpdates(): Promise<void> {
   const reported = new Set<string>();
@@ -36,6 +37,11 @@ export async function installUpdates(): Promise<void> {
       publicKey,
       channel,
       builtinVersion: __HOUSTON_MOBILE_BUNDLE_VERSION__,
+      builtinSequence: nativeBuiltinSequence(
+        channel,
+        __HOUSTON_MOBILE_BUILTIN_SEQUENCE__,
+        localStorage,
+      ),
     },
     {
       fetch: nativeManifestFetch,
@@ -50,6 +56,12 @@ export async function installUpdates(): Promise<void> {
             : __HOUSTON_MOBILE_STORE_URL_ANDROID__,
         ),
       report: (error) => logAndReportError("mobile_update", error),
+      sequenceStore: {
+        get: async () =>
+          localStorage.getItem(`houston.ota.sequence.${channel}`),
+        set: async (value) =>
+          localStorage.setItem(`houston.ota.sequence.${channel}`, value),
+      },
     },
   );
   await App.addListener("appStateChange", ({ isActive }) => {

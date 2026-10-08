@@ -24,6 +24,9 @@ export default defineConfig(({ mode }) => {
     encoding: "utf8",
   }).trim();
   const bundleVersion = `${appVersion}+${sha}`;
+  const builtinSequence = Number(env.HOUSTON_MOBILE_BUILTIN_SEQUENCE ?? 0);
+  if (!Number.isSafeInteger(builtinSequence) || builtinSequence < 0)
+    throw new Error("Invalid HOUSTON_MOBILE_BUILTIN_SEQUENCE");
   const nativeCompat = readFileSync(
     path.resolve(__dirname, "native-compat.json"),
     "utf8",
@@ -34,7 +37,10 @@ export default defineConfig(({ mode }) => {
       this.emitFile({
         type: "asset",
         fileName: "version.json",
-        source: JSON.stringify({ version: bundleVersion }),
+        source: JSON.stringify({
+          version: bundleVersion,
+          bundle_sequence: builtinSequence,
+        }),
       });
       this.emitFile({
         type: "asset",
@@ -74,6 +80,7 @@ export default defineConfig(({ mode }) => {
           buildEnv.storeUrlAndroid,
         ),
         __HOUSTON_MOBILE_BUNDLE_VERSION__: JSON.stringify(bundleVersion),
+        __HOUSTON_MOBILE_BUILTIN_SEQUENCE__: JSON.stringify(builtinSequence),
         __HOUSTON_NATIVE_PUSH_IOS_AVAILABLE__: JSON.stringify(
           existsSync(
             path.resolve(__dirname, "ios/App/App/GoogleService-Info.plist"),

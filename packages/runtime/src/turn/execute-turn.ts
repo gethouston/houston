@@ -25,6 +25,7 @@ import {
 } from "./turn-session-startup";
 import { answerTurnSetupFailure } from "./turn-setup-failure";
 import { snapshotPooledTurnSharedSkills } from "./turn-shared-skills";
+import { createTurnEmitter } from "./turn-sse-emitter";
 import { poolIdentity, resolveTurnStore } from "./turn-store";
 import { createTurnTranscript } from "./turn-transcript";
 import type { TurnRequest } from "./types";
@@ -153,14 +154,7 @@ export async function executeTurn(
       { ...turn, turnId },
       filesystem,
     );
-    const emit = (raw: WireFrame) => {
-      const frame = turnSandbox ? turnSandbox.present(raw) : raw;
-      sse.send(turnLog ? turnLog.record(frame) : frame);
-      // The runtime persists the user message right before this frame; land
-      // its transcript row now so a gateway that restarts mid-turn can rebuild
-      // the turn. Errors are remembered and surfaced at durability time.
-      if (frame.type === "user") void transcript?.publishUser();
-    };
+    const emit = createTurnEmitter(sse.send, turnSandbox, turnLog, transcript);
     sendFrame = emit;
 
     if (turn.shadow)

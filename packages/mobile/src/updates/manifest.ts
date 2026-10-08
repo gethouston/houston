@@ -1,5 +1,8 @@
 export interface UpdateManifestBody {
   v: 1;
+  channel: "production" | "preview";
+  sequence: number;
+  bundle_sequence: number;
   version: string;
   url: string;
   sha256: string;
@@ -13,9 +16,12 @@ export interface UpdateManifest extends UpdateManifestBody {
 }
 
 const bodyKeys = [
+  "bundle_sequence",
+  "channel",
   "min_native_build",
   "published_at",
   "required_native_build",
+  "sequence",
   "sha256",
   "url",
   "v",
@@ -46,6 +52,12 @@ export async function verifyManifest(
     Object.keys(value).sort().join(",") !==
       [...bodyKeys, "signature"].sort().join(",") ||
     value.v !== 1 ||
+    (value.channel !== "production" && value.channel !== "preview") ||
+    !Number.isSafeInteger(value.sequence) ||
+    (value.sequence as number) < 1 ||
+    !Number.isSafeInteger(value.bundle_sequence) ||
+    (value.bundle_sequence as number) < 1 ||
+    (value.bundle_sequence as number) > (value.sequence as number) ||
     typeof value.version !== "string" ||
     !value.version ||
     typeof value.url !== "string" ||
@@ -65,7 +77,9 @@ export async function verifyManifest(
   if (
     url.protocol !== "https:" ||
     url.origin !== base.origin ||
-    !url.pathname.startsWith(`${base.pathname.replace(/\/$/, "")}/`)
+    !url.pathname.startsWith(
+      `${base.pathname.replace(/\/$/, "")}/${value.channel}/`,
+    )
   ) {
     throw new Error("OTA bundle URL is outside update base");
   }

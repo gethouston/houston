@@ -26,6 +26,7 @@ import { createDevicePrefsStore } from "./client/device-prefs";
 // `./control-plane` wholesale and a submodule import would bypass the mock.
 import { transientRetryFetch } from "./control-plane";
 import { sharedPageLifecycle } from "./page-lifecycle";
+import { jwtSub } from "./conversation-cache-identity";
 
 /** Namespace for every SDK-owned `localStorage` key, so nothing the SDK
  *  persists can collide with the adapter's existing browser state. */
@@ -97,6 +98,7 @@ export interface EngineSdkOptions {
    * The read retry is added HERE, not by the caller (see {@link createEngineSdk}).
    */
   fetch: typeof fetch;
+  liveToken?: () => string;
 }
 
 /**
@@ -119,6 +121,9 @@ export function createEngineSdk(opts: EngineSdkOptions): HoustonSdk {
     reactivity: false,
     ports: {
       fetch: transientRetryFetch(opts.fetch),
+      userId: opts.liveToken
+        ? () => jwtSub(opts.liveToken?.() ?? "")
+        : undefined,
       storage: createWebStorage(),
       // The DEVICE's own preferences, in the layout the adapter has always
       // written (`houston.pref.*`): an SDK module that owns a device preference

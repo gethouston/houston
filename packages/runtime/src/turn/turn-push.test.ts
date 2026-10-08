@@ -1,6 +1,6 @@
 import { readFile } from "node:fs/promises";
 import { join } from "node:path";
-import { expect, test } from "vitest";
+import { expect, test, vi } from "vitest";
 import type { TurnServerDeps } from "./server-types";
 import { reportPooledSettle, stampPooledTurn } from "./turn-push";
 import {
@@ -93,4 +93,51 @@ test("pooled turns stamp contributors and mentions, then post through the turn g
     changed: [],
   });
   expect(posts).toHaveLength(2);
+});
+
+test("exhausted push retries reach runtime error reporting without failing the turn", async () => {
+  const agent = await agentStore();
+  await seed(
+    agent.prefixRoot,
+    `${WORKSPACE_REL}/.houston/activity/activity.json`,
+    JSON.stringify([
+      {
+        id: "m",
+        title: "Review",
+        description: "",
+        status: "running",
+        session_key: "c1",
+      },
+    ]),
+  );
+  const { filesystem } = await claimedTurn(agent, podDocs());
+  const errors = vi.spyOn(console, "error").mockImplementation(() => {});
+  const input = {
+    deps: {
+      turnLogUrl: "https://gateway.test",
+      fetchImpl: async () => new Response(null, { status: 500 }),
+    } as unknown as TurnServerDeps,
+    turn: {
+      claim: { token: "claim", bootId: "boot" },
+      hostToken: "turn-bearer",
+      gcsPrefix: PREFIX,
+      conversationId: "c1",
+    } as TurnRequest,
+    turnId: "turn-1",
+    filesystem,
+    resolved: { store: agent.store, prefix: PREFIX },
+  };
+  try {
+    await reportPooledSettle(input, {
+      outcome: {},
+      poolWritesOutOfScope: 0,
+      changed: [],
+    });
+    expect(errors).toHaveBeenCalledWith(
+      expect.stringContaining("[push]"),
+      expect.anything(),
+    );
+  } finally {
+    errors.mockRestore();
+  }
 });

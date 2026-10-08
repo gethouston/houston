@@ -12,20 +12,44 @@ export function showNativeUpdateGate(storeUrl: string): void {
   heading.textContent = i18n.t("shell:mobileUpdate.title");
   const description = document.createElement("p");
   description.className = "max-w-sm text-base text-ink-muted";
-  description.textContent = i18n.t("shell:mobileUpdate.description");
+  description.textContent = i18n.t(
+    storeUrl
+      ? "shell:mobileUpdate.description"
+      : "shell:mobileUpdate.retryDescription",
+  );
   gate.append(heading, description);
-  if (storeUrl) {
+  {
     const button = document.createElement("button");
     button.type = "button";
     button.className =
       "min-h-11 rounded-full bg-cta px-6 text-sm font-medium text-cta-text focus-visible:ring-2 focus-visible:ring-focus";
-    button.textContent = i18n.t("shell:mobileUpdate.openStore");
+    button.textContent = i18n.t(
+      storeUrl ? "shell:mobileUpdate.openStore" : "shell:mobileUpdate.retry",
+    );
     button.addEventListener("click", () => {
+      if (!storeUrl) {
+        window.location.reload();
+        return;
+      }
       void Browser.open({ url: storeUrl }).catch((error: unknown) =>
         logAndReportError("mobile_update_store", error),
       );
     });
     gate.append(button);
+  }
+  if (!storeUrl) {
+    const continueButton = document.createElement("button");
+    continueButton.type = "button";
+    continueButton.className =
+      "min-h-11 rounded-full px-6 text-sm text-ink focus-visible:ring-2 focus-visible:ring-focus";
+    continueButton.textContent = i18n.t("shell:mobileUpdate.continue");
+    continueButton.addEventListener("click", () => {
+      gate.remove();
+      const root = document.getElementById("root");
+      root?.removeAttribute("inert");
+      root?.removeAttribute("aria-hidden");
+    });
+    gate.append(continueButton);
   }
   const root = document.getElementById("root");
   root?.setAttribute("inert", "");

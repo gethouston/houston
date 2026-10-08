@@ -34,7 +34,7 @@ test("configured Google and Apple follow their platform requirements", () => {
   };
   expect(providerAvailability("ios", files)).toEqual({
     google: true,
-    apple: false,
+    apple: true,
     azure: false,
   });
   expect(providerAvailability("android", files)).toEqual({

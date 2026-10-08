@@ -19,6 +19,10 @@ export interface UpdatePorts {
   isOnline(): boolean;
   onRequired(manifest: UpdateManifest): void;
   report(error: unknown): void;
+  sequenceStore: {
+    get(): Promise<string | null>;
+    set(value: string): Promise<void>;
+  };
 }
 
 export function createUpdateManager(
@@ -27,6 +31,7 @@ export function createUpdateManager(
     publicKey: string;
     channel: "production" | "preview";
     builtinVersion: string;
+    builtinSequence: number;
   },
   ports: UpdatePorts,
 ) {
@@ -62,6 +67,15 @@ export function createUpdateManager(
         config.baseUrl,
         config.publicKey,
       );
+      if (manifest.channel !== config.channel)
+        throw new Error("OTA manifest channel mismatch");
+      const saved = await ports.sequenceStore.get();
+      const highest = saved === null ? 0 : Number(saved);
+      if (!Number.isSafeInteger(highest) || highest < 0)
+        throw new Error("Invalid stored OTA sequence");
+      if (manifest.sequence <= Math.max(highest, config.builtinSequence))
+        return;
+      if (manifest.bundle_sequence < config.builtinSequence) return;
       const nativeBuild = Number(await ports.nativeBuild());
       if (!Number.isSafeInteger(nativeBuild) || nativeBuild < 1)
         throw new Error("Invalid native build number");
@@ -74,13 +88,17 @@ export function createUpdateManager(
       const current = (await ports.updater.current()).bundle;
       const version =
         current.id === "builtin" ? config.builtinVersion : current.version;
-      if (version === manifest.version) return;
+      if (version === manifest.version) {
+        await ports.sequenceStore.set(String(manifest.sequence));
+        return;
+      }
       const bundle = await ports.updater.download({
         url: manifest.url,
         version: manifest.version,
         checksum: manifest.sha256,
       });
       await ports.updater.next({ id: bundle.id });
+      await ports.sequenceStore.set(String(manifest.sequence));
     } catch (error) {
       if (!ports.isOnline() || isConnectivityFailure(error)) return;
       ports.report(error);

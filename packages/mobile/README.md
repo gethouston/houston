@@ -70,8 +70,9 @@ their existing sign-in flows.
    the actual Firebase project ID if different). Create a Sign in with Apple
    private key and note its Key ID and Apple Team ID. In Firebase Authentication,
    enable Apple and enter the Services ID, Team ID, Key ID and private key.
-   Supply the public Services ID as `FIREBASE_APPLE_SERVICE_ID` for both mobile
-   builds; without it, the app hides Apple and logs a named breadcrumb.
+   Supply the public Services ID as `FIREBASE_APPLE_SERVICE_ID` for Android's
+   browser flow. iOS offers native Apple whenever its Firebase config enables
+   Google; the Services ID is not an iOS availability gate.
    Apple on Android opens the Firebase browser flow, while iOS uses the native
    Apple authorization sheet. Both require `skipNativeAuth` and return the raw
    nonce for the JavaScript credential.
@@ -147,9 +148,11 @@ The first is the public HTTPS object base (production:
 base64 DER SPKI ECDSA P-256 public key. A missing value prints one named `OTA
 OFF` boot breadcrumb. `HOUSTON_MOBILE_DEPLOY_ENV` selects `preview` or
 `production`. `HOUSTON_MOBILE_STORE_URL_IOS` and
-`HOUSTON_MOBILE_STORE_URL_ANDROID` supply the store link on a mandatory native
-update screen; without one, that platform shows the translated screen without
-a button.
+`HOUSTON_MOBILE_STORE_URL_ANDROID` supply the store links on a mandatory native
+update screen. Production builds require both URLs. A local build without a
+store URL shows the translated update screen with a retry button.
+An unset deploy environment defaults to `development`; production and preview
+builds name their channel explicitly.
 
 The mobile Vite build writes `dist/version.json` with
 `<root package semver>+<git short sha>` and embeds the same version in the app.
@@ -161,6 +164,12 @@ test pins both the native build and dependency fingerprint, so updating the
 plugin set requires advancing that test baseline with the native build. Set
 `min_native_build` to the first native build capable of running the bundle;
 set `required_native_build` to the first build allowed to keep using the app.
+CI bakes `HOUSTON_MOBILE_BUILTIN_SEQUENCE` into each native or OTA bundle as
+`github.run_id * 100 + github.run_attempt`; local builds use zero. Attempts
+stay below 100. The run ID increases between runs across both mobile workflows.
+The store bundle records its baked sequence locally on first boot. OTA bundles
+keep that native baseline when they replace JavaScript, so a newer publish can
+roll back to an older OTA zip that still postdates the installed store bundle.
 
 On each main push, `.github/workflows/mobile-updates.yml` builds the preview
 bundle with the staging gateway. On release publication, it builds the
@@ -172,19 +181,38 @@ WebCrypto can verify it. The manifest request uses CapacitorHttp native networki
 object URLs require bucket CORS for browser fetch. Each native launch and
 eligible resume checks the signed manifest and queues a compatible bundle for the next launch or
 background transition. The updater rolls back a bundle that does not report
-ready within 30 seconds. The offline first frame also reports ready so a
-healthy bundle does not roll back only because the device has no network.
+ready within 30 seconds. The first committed app shell, including its loading
+view, reports ready, so a slow network does not roll back a healthy bundle.
+The signed manifest includes its channel, increasing publish `sequence`, and
+the zip's original `bundle_sequence` from `version.json`. The app
+rejects another channel, a sequence at or below the highest locally accepted
+sequence, a publish sequence at or below its built-in sequence, and any zip
+whose original bundle sequence is below that built-in sequence. It persists the
+highest accepted sequence per channel. A rollback reuses an old zip but signs a
+new manifest with the current run's higher sequence.
+The publish workflow compares the new sequence with the channel's current
+manifest and refuses a rerun that would lower it.
 
 CI uses the existing `github-deploy-web` Workload Identity Federation identity
 and needs repository secrets `HOUSTON_MOBILE_UPDATE_SIGNING_KEY` (PKCS8 PEM) and
 `HOUSTON_MOBILE_UPDATE_PUBKEY` (matching base64 DER SPKI). Existing web build
 secrets supply Firebase, gateway, PostHog and Sentry values. The repository
-variable `FIREBASE_APPLE_SERVICE_ID` supplies Apple availability in OTA bundles.
-Optional repository variables `HOUSTON_MOBILE_STORE_URL_IOS` and
-`HOUSTON_MOBILE_STORE_URL_ANDROID` fill the store buttons. To roll back, run
+variable `FIREBASE_APPLE_SERVICE_ID` supplies Android Apple availability in OTA bundles.
+Repository variables `HOUSTON_MOBILE_STORE_URL_IOS` and
+`HOUSTON_MOBILE_STORE_URL_ANDROID` fill the store buttons and are required for
+production builds. To roll back, run
 the workflow manually with the channel and an existing bundle version. It
 retrieves that archive, reads its recorded version and compatibility floor,
 signs a fresh manifest for the same archive, and replaces only the manifest.
+
+Push registration is scoped to the current signed-in user. A gateway
+`409 {"code":"device_conflict"}` makes the client persist a new installation ID
+and retry registration once. The gateway transfers another user's row only
+when both its device ID and token match the same install; every other
+cross-user device ID or token conflict returns that 409 without changing a row.
+A turn-settled push names up to 512 explicit user
+IDs in mission order; overflow is reported as an error and never broadens the
+audience to everyone.
 
 ## Release
 

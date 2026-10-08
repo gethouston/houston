@@ -26,6 +26,8 @@ const PERSONAL_PLAN =
   "the personal plan (usage limit, Plus) is metered and billed by the hosted gateway";
 const PLAN_ROUTINES =
   "the plan's routine limits are enforced by the hosted control plane's scheduler";
+const NATIVE_PUSH =
+  "device registrations and foreground presence belong to the hosted gateway";
 
 export const CLOUD_ONLY_PROBES: readonly CloudOnlyProbe[] = [
   // The space itself, and who is in it.
@@ -70,6 +72,19 @@ export const CLOUD_ONLY_PROBES: readonly CloudOnlyProbe[] = [
   cloudOnly("listPlusInvoices", PERSONAL_PLAN),
   cloudOnly("dismissPlanAnnouncement", PERSONAL_PLAN),
   cloudOnly("reportPresence", PERSONAL_PLAN),
+  cloudOnly("putPushPresence", NATIVE_PUSH, {
+    input: { client_id: "parity-device", foreground: false },
+  }),
+  cloudOnly("registerDevice", NATIVE_PUSH, {
+    deviceId: "parity-device",
+    input: {
+      token: "parity-token",
+      platform: "ios",
+      locale: "en",
+      app_version: "1",
+    },
+  }),
+  cloudOnly("unregisterDevice", NATIVE_PUSH, { deviceId: "parity-device" }),
   cloudOnly("listPlanRoutines", PLAN_ROUTINES),
   cloudOnly("keepRoutine", PLAN_ROUTINES, {
     orgSlug: "no-such-org",

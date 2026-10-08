@@ -12,6 +12,9 @@ const pubkey = keys.publicKey
 const baseUrl = "https://storage.googleapis.com/houston-mobile-updates";
 const body: UpdateManifestBody = {
   v: 1,
+  channel: "preview",
+  sequence: 10,
+  bundle_sequence: 10,
   version: "0.5.41+new",
   url: `${baseUrl}/preview/new.zip`,
   sha256: "a".repeat(64),
@@ -35,6 +38,7 @@ test("checks signed manifest, downloads once, and stages next without reload", a
       publicKey: pubkey,
       channel: "preview",
       builtinVersion: "0.5.41+old",
+      builtinSequence: 1,
     },
     {
       fetch: fetcher as typeof fetch,
@@ -50,6 +54,7 @@ test("checks signed manifest, downloads once, and stages next without reload", a
       isOnline: () => true,
       onRequired: vi.fn(),
       report,
+      sequenceStore: { get: async () => null, set: async () => {} },
     },
   );
   await check();
@@ -75,7 +80,13 @@ test("required native build gates the app and invalid signatures report", async 
   const report = vi.fn();
   const updater = { current: vi.fn(), download: vi.fn(), next: vi.fn() };
   const check = createUpdateManager(
-    { baseUrl, publicKey: pubkey, channel: "preview", builtinVersion: "old" },
+    {
+      baseUrl,
+      publicKey: pubkey,
+      channel: "preview",
+      builtinVersion: "old",
+      builtinSequence: 1,
+    },
     {
       fetch: vi.fn().mockResolvedValue({
         ok: true,
@@ -91,6 +102,7 @@ test("required native build gates the app and invalid signatures report", async 
       isOnline: () => true,
       onRequired: gate,
       report,
+      sequenceStore: { get: async () => null, set: async () => {} },
     },
   );
   await check();
@@ -98,7 +110,13 @@ test("required native build gates the app and invalid signatures report", async 
   expect(updater.download).not.toHaveBeenCalled();
   expect(report).not.toHaveBeenCalled();
   const invalid = createUpdateManager(
-    { baseUrl, publicKey: pubkey, channel: "preview", builtinVersion: "old" },
+    {
+      baseUrl,
+      publicKey: pubkey,
+      channel: "preview",
+      builtinVersion: "old",
+      builtinSequence: 1,
+    },
     {
       fetch: vi.fn().mockResolvedValue({
         ok: true,
@@ -110,6 +128,7 @@ test("required native build gates the app and invalid signatures report", async 
       isOnline: () => true,
       onRequired: gate,
       report,
+      sequenceStore: { get: async () => null, set: async () => {} },
     },
   );
   await invalid();
@@ -139,6 +158,7 @@ test("offline checks wait for the next eligible resume without reporting", async
       publicKey: pubkey,
       channel: "preview",
       builtinVersion: body.version,
+      builtinSequence: 1,
     },
     {
       fetch: fetcher as typeof fetch,
@@ -148,6 +168,7 @@ test("offline checks wait for the next eligible resume without reporting", async
       isOnline: () => true,
       onRequired: vi.fn(),
       report,
+      sequenceStore: { get: async () => null, set: async () => {} },
     },
   );
   await check();
@@ -162,7 +183,13 @@ test("a build below the OTA minimum keeps its current bundle without gating", as
   const gate = vi.fn();
   const updater = { current: vi.fn(), download: vi.fn(), next: vi.fn() };
   const check = createUpdateManager(
-    { baseUrl, publicKey: pubkey, channel: "preview", builtinVersion: "old" },
+    {
+      baseUrl,
+      publicKey: pubkey,
+      channel: "preview",
+      builtinVersion: "old",
+      builtinSequence: 1,
+    },
     {
       fetch: vi.fn().mockResolvedValue({
         ok: true,
@@ -178,9 +205,218 @@ test("a build below the OTA minimum keeps its current bundle without gating", as
       isOnline: () => true,
       onRequired: gate,
       report: vi.fn(),
+      sequenceStore: { get: async () => null, set: async () => {} },
     },
   );
   await check();
   expect(gate).not.toHaveBeenCalled();
   expect(updater.download).not.toHaveBeenCalled();
+});
+
+test("legacy signed manifests cannot stage a downgrade", async () => {
+  const download = vi.fn();
+  const report = vi.fn();
+  const check = createUpdateManager(
+    {
+      baseUrl,
+      publicKey: pubkey,
+      channel: "preview",
+      builtinVersion: "0.5.42+new",
+      builtinSequence: 11,
+    },
+    {
+      fetch: vi.fn().mockResolvedValue({
+        ok: true,
+        json: async () => {
+          const {
+            channel: _channel,
+            sequence: _sequence,
+            bundle_sequence: _bundleSequence,
+            ...legacy
+          } = body;
+          return {
+            ...legacy,
+            signature: signManifest(legacy as UpdateManifestBody, key),
+          };
+        },
+      }) as typeof fetch,
+      now: () => 0,
+      updater: {
+        current: async () => ({
+          bundle: { id: "builtin", version: "0.5.42+new" },
+        }),
+        download,
+        next: vi.fn(),
+      },
+      nativeBuild: async () => "2",
+      isOnline: () => true,
+      onRequired: vi.fn(),
+      report,
+      sequenceStore: { get: async () => null, set: async () => {} },
+    },
+  );
+  await check();
+  expect(download).not.toHaveBeenCalled();
+  expect(report).toHaveBeenCalledOnce();
+});
+
+test("signed preview manifest cannot cross into production", async () => {
+  const download = vi.fn();
+  const report = vi.fn();
+  const check = createUpdateManager(
+    {
+      baseUrl,
+      publicKey: pubkey,
+      channel: "production",
+      builtinVersion: "old",
+      builtinSequence: 1,
+    },
+    {
+      fetch: vi.fn().mockResolvedValue({
+        ok: true,
+        json: async () => ({ ...body, signature: signManifest(body, key) }),
+      }) as typeof fetch,
+      now: () => 0,
+      updater: {
+        current: async () => ({ bundle: { id: "builtin", version: "old" } }),
+        download,
+        next: vi.fn(),
+      },
+      nativeBuild: async () => "2",
+      isOnline: () => true,
+      onRequired: vi.fn(),
+      report,
+      sequenceStore: { get: async () => null, set: async () => {} },
+    },
+  );
+  await check();
+  expect(download).not.toHaveBeenCalled();
+  expect(report).toHaveBeenCalledOnce();
+});
+
+test("stored and built-in sequences reject replay before download", async () => {
+  const download = vi.fn();
+  for (const [stored, builtin] of [
+    ["10", 1],
+    [null, 10],
+  ] as const) {
+    const check = createUpdateManager(
+      {
+        baseUrl,
+        publicKey: pubkey,
+        channel: "preview",
+        builtinVersion: "newer",
+        builtinSequence: builtin,
+      },
+      {
+        fetch: vi.fn().mockResolvedValue({
+          ok: true,
+          json: async () => ({ ...body, signature: signManifest(body, key) }),
+        }) as typeof fetch,
+        now: () => 0,
+        updater: {
+          current: async () => ({
+            bundle: { id: "builtin", version: "newer" },
+          }),
+          download,
+          next: vi.fn(),
+        },
+        nativeBuild: async () => "2",
+        isOnline: () => true,
+        onRequired: vi.fn(),
+        report: vi.fn(),
+        sequenceStore: { get: async () => stored, set: async () => {} },
+      },
+    );
+    await check();
+  }
+  expect(download).not.toHaveBeenCalled();
+});
+
+test("a freshly republished old zip cannot replace a newer built-in bundle", async () => {
+  const republished = {
+    ...body,
+    sequence: 12,
+    bundle_sequence: 9,
+    version: "0.5.40+old",
+  };
+  const download = vi.fn();
+  const check = createUpdateManager(
+    {
+      baseUrl,
+      publicKey: pubkey,
+      channel: "preview",
+      builtinVersion: "0.5.42+new",
+      builtinSequence: 11,
+    },
+    {
+      fetch: vi.fn().mockResolvedValue({
+        ok: true,
+        json: async () => ({
+          ...republished,
+          signature: signManifest(republished, key),
+        }),
+      }) as typeof fetch,
+      now: () => 0,
+      updater: {
+        current: async () => ({
+          bundle: { id: "builtin", version: "0.5.42+new" },
+        }),
+        download,
+        next: vi.fn(),
+      },
+      nativeBuild: async () => "2",
+      isOnline: () => true,
+      onRequired: vi.fn(),
+      report: vi.fn(),
+      sequenceStore: { get: async () => null, set: async () => {} },
+    },
+  );
+  await check();
+  expect(download).not.toHaveBeenCalled();
+});
+
+test("a higher publish sequence rolls back an OTA zip above the native baseline", async () => {
+  const rollback = {
+    ...body,
+    sequence: 12,
+    bundle_sequence: 8,
+    version: "0.5.40+old",
+  };
+  const download = vi.fn().mockResolvedValue({ id: "rollback" });
+  const set = vi.fn();
+  const check = createUpdateManager(
+    {
+      baseUrl,
+      publicKey: pubkey,
+      channel: "preview",
+      builtinVersion: "0.5.39+builtin",
+      builtinSequence: 7,
+    },
+    {
+      fetch: vi.fn().mockResolvedValue({
+        ok: true,
+        json: async () => ({
+          ...rollback,
+          signature: signManifest(rollback, key),
+        }),
+      }) as typeof fetch,
+      now: () => 0,
+      updater: {
+        current: async () => ({
+          bundle: { id: "current", version: "0.5.42+new" },
+        }),
+        download,
+        next: vi.fn(),
+      },
+      nativeBuild: async () => "2",
+      isOnline: () => true,
+      onRequired: vi.fn(),
+      report: vi.fn(),
+      sequenceStore: { get: async () => "11", set },
+    },
+  );
+  await check();
+  expect(download).toHaveBeenCalledOnce();
+  expect(set).toHaveBeenCalledWith("12");
 });

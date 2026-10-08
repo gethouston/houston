@@ -715,6 +715,9 @@
   "mobileUpdate": {
     "title": "Atualize o Houston para continuar",
     "description": "Uma versão mais recente do app é necessária. Atualize o Houston pela loja de aplicativos.",
-    "openStore": "Abrir loja"
+    "retryDescription": "Uma versão mais recente do app é necessária. Tente novamente para verificar o link da loja.",
+    "openStore": "Abrir loja",
+    "retry": "Tentar novamente",
+    "continue": "Continuar por enquanto"
   }
 }

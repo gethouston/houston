@@ -1,4 +1,4 @@
-import { expect, test } from "vitest";
+import { expect, test, vi } from "vitest";
 import { missionAudience } from "./mission-audience";
 
 test("unknown and unattributed missions reach every eligible member", () => {
@@ -19,12 +19,17 @@ test("creator, contributors, and other-authored mentions are deduplicated", () =
   ).toEqual({ user_ids: ["owner", "peer", "reader"] });
 });
 
-test("an oversized aggregate fails open instead of dropping eligible users", () => {
+test("an oversized aggregate keeps the first 512 recipients without broadening", () => {
+  const reportOverflow = vi.fn();
   expect(
-    missionAudience({
-      contributors: Array.from({ length: 65 }, (_, i) => ({
-        user_id: String(i),
-      })),
-    }),
-  ).toEqual({ everyone: true });
+    missionAudience(
+      {
+        contributors: Array.from({ length: 513 }, (_, i) => ({
+          user_id: String(i),
+        })),
+      },
+      reportOverflow,
+    ),
+  ).toEqual({ user_ids: Array.from({ length: 512 }, (_, i) => String(i)) });
+  expect(reportOverflow).toHaveBeenCalledWith(1);
 });
