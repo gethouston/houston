@@ -7,6 +7,8 @@ import {
   upsertById,
 } from "@houston/domain";
 import {
+  missionAudience,
+  notificationReason,
   type PendingInteraction,
   parseModelCallReport,
 } from "@houston/protocol";
@@ -133,6 +135,8 @@ export async function handleMissionSettle(
   const cid =
     typeof body.conversation_id === "string" ? body.conversation_id : "";
   const status = body.status;
+  const turnId = typeof body.turn_id === "string" ? body.turn_id : "";
+  const stopped = body.stopped === true;
   if (!cid || (status !== "needs_you" && status !== "error")) {
     json(res, 400, { error: "missing 'conversation_id' or invalid 'status'" });
     return;
@@ -152,8 +156,24 @@ export async function handleMissionSettle(
   const settled = await withDocLock(`${ctx.root}#activity`, async () => {
     const { items } = await loadActivities(ctx.vfs, ctx.root);
     const current = items.find((a) => missionConversationKey(a) === cid);
-    if (!current?.origin_session_key) return false;
-    if (current.status !== "running") return false;
+    if (current && turnId && !stopped && ctx.deps.pushReports) {
+      const { reason, question_count } = notificationReason(
+        status,
+        interaction,
+      );
+      await ctx.deps.pushReports({
+        v: 1,
+        kind: "turn_settled",
+        conversation_id: cid,
+        mission: { id: current.id, title: current.title },
+        turn_id: turnId,
+        reason,
+        question_count,
+        audience: missionAudience(current),
+      });
+    }
+    if (!current?.origin_session_key || current.status !== "running")
+      return false;
     const applied = applyActivityUpdate(
       current,
       { status, pending_interaction: interaction },

@@ -48,14 +48,14 @@ describe("revokeResume", () => {
     expect(read().messages[1]?.interrupted).toEqual({
       cause: "engine_restart",
     });
-    expect(settle).toHaveBeenCalledWith("chat", "error", null);
+    expect(settle).toHaveBeenCalledWith("chat", "error", null, "t-1", false);
   });
 
   it("still settles the card when there is no reply to rewrite", () => {
     settle.mockClear();
     const { dataDir } = seed([]);
     revokeResume(dataDir, "chat", "t-1");
-    expect(settle).toHaveBeenCalledWith("chat", "error", null);
+    expect(settle).toHaveBeenCalledWith("chat", "error", null, "t-1", false);
   });
 });
 

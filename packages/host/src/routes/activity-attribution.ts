@@ -7,7 +7,11 @@ import {
   upsertContributor,
   upsertMentions,
 } from "@houston/domain";
-import type { ActivityContributor, HoustonEvent } from "@houston/protocol";
+import type {
+  Activity,
+  ActivityContributor,
+  HoustonEvent,
+} from "@houston/protocol";
 
 /**
  * Teams attribution: stamp the acting human as a contributor on the mission a
@@ -35,7 +39,7 @@ export async function stampTurnAttribution(
   /** Teammates named in this turn's body; `[]` when the message named nobody. */
   mentionedIds: string[],
   emit?: (event: HoustonEvent) => void,
-): Promise<void> {
+): Promise<Activity | undefined> {
   try {
     const { items } = await loadActivities(store, root);
     const activity = items.find((a) => addressesMission(a, cid));
@@ -46,9 +50,10 @@ export async function stampTurnAttribution(
       new Date().toISOString(),
       author.user_id,
     );
-    if (next === activity) return; // nothing changed — no write, no event.
+    if (next === activity) return activity; // nothing changed — no write, no event.
     await saveActivities(store, root, upsertById(items, next));
     emit?.({ type: "ActivityChanged", agentPath: agentId });
+    return next;
   } catch (err) {
     // Attribution is metadata; a stamping failure must not break the turn.
     console.error(`[attribution] stamp failed for ${agentId}/${cid}:`, err);

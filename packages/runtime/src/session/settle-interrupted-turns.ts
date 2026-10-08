@@ -114,7 +114,7 @@ export interface SettleInterruptedTurnsOptions {
   /** Test seam; defaults to the console error the Sentry capture feeds on. */
   report?: (error: EngineRestartedMidTurnError) => void;
   /** Test seam; defaults to the control-plane mission settle. */
-  settleMission?: (conversationId: string) => void;
+  settleMission?: (conversationId: string, turnId: string) => void;
   now?: () => number;
 }
 
@@ -138,8 +138,8 @@ export function settleInterruptedTurns(
       console.error("[turn] engine restarted mid-turn", error));
   const settleMission =
     opts.settleMission ??
-    ((conversationId: string) =>
-      reportMissionSettle(conversationId, "error", null));
+    ((conversationId: string, turnId: string) =>
+      reportMissionSettle(conversationId, "error", null, turnId, false));
   const now = opts.now ?? Date.now;
   const conversationsDir = join(opts.dataDir, "conversations");
   const settled: InflightTurnMarker[] = [];
@@ -178,7 +178,7 @@ export function settleInterruptedTurns(
     // Skipped for a turn this boot is about to run again: the host applies at
     // most ONE settle per mission, so an `error` reported now would be the
     // card's final word and the resumed turn's real settle would be dropped.
-    if (!resume) settleMission(marker.conversationId);
+    if (!resume) settleMission(marker.conversationId, marker.turnId);
     report(
       new EngineRestartedMidTurnError(
         marker,

@@ -17,7 +17,9 @@ export {
   HANDS_ON_SURFACES,
   isHandsOnSurface,
 } from "./domain/interaction-types";
+export * from "./domain/mission-audience";
 export * from "./domain/mission-starter";
+export * from "./domain/notification-reason";
 export * from "./domain/portable";
 export * from "./domain/routine";
 export * from "./domain/routine-runs";
@@ -37,6 +39,7 @@ export * from "./model-windows";
 export * from "./plan-min-interval";
 export * from "./provider-catalog";
 export * from "./provider-error";
+export * from "./push-report";
 export * from "./scratch";
 export * from "./turn-limits";
 export * from "./wire";

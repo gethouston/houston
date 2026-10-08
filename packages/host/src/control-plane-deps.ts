@@ -160,6 +160,8 @@ export interface ControlPlaneDeps {
   triggersEnabled?: boolean;
   /** Turn-end model-call reports, forwarded to the gateway (managed pods). */
   modelCallReports?: MissionsDeps["modelCallReports"];
+  /** Managed-pod push ingest; absent on desktop and self-host. */
+  pushReports?: MissionsDeps["pushReports"];
   corsOrigin?: string;
   /**
    * Prometheus exposition for GET /metrics (HOU-1011): the boot-span ledger,

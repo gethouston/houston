@@ -13,6 +13,7 @@ import type {
   RuntimeChannel,
   WorkspaceStore,
 } from "../ports";
+import type { PushReporter } from "../telemetry/push-report";
 import type { Vfs } from "../vfs";
 import { bearer, json } from "./http";
 import { handleAgentDirectory, handleAgentProfile } from "./missions-agents";
@@ -66,6 +67,7 @@ export interface MissionsDeps {
    * (telemetry/model-call-report.ts). Absent off a managed pod: dropped.
    */
   modelCallReports?: (report: ModelCallReport) => void;
+  pushReports?: PushReporter;
 }
 
 /**

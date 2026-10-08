@@ -40,6 +40,8 @@ vi.mock("./mission-settle", () => ({
     _id: string,
     status: string,
     _interaction: unknown,
+    _turnId: string,
+    _stopped: boolean,
     modelCalls?: ModelCallReport,
   ) => state.settles.push({ status, modelCalls }),
 }));

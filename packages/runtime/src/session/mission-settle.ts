@@ -35,6 +35,8 @@ export function reportMissionSettle(
   conversationId: string,
   status: "needs_you" | "error",
   pendingInteraction: PendingInteraction | null,
+  turnId: string,
+  stopped: boolean,
   modelCalls?: ModelCallReport,
   opts: MissionSettleOptions = {},
 ): void {
@@ -56,6 +58,8 @@ export function reportMissionSettle(
       },
       body: JSON.stringify({
         conversation_id: conversationId,
+        turn_id: turnId,
+        stopped,
         status,
         pending_interaction: pendingInteraction,
         ...(modelCalls ? { model_calls: modelCalls } : {}),

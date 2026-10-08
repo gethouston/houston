@@ -9,6 +9,7 @@ import type { TurnFilesystem } from "./turn-filesystem";
 import type { createTurnLog } from "./turn-log";
 import { landedMissionTitle } from "./turn-mission-title-outcome";
 import { remoteActivityReader } from "./turn-mission-title-remote";
+import { reportPooledSettle } from "./turn-push";
 import {
   turnIsUnconnected,
   turnSessionRequest,
@@ -182,6 +183,7 @@ export async function executeReadyTurn(input: {
     }),
   ]);
   input.timings.t_durable = performance.now();
+  await reportPooledSettle(input, durable);
   input.emit(
     durableTerminalFrame(
       durable,

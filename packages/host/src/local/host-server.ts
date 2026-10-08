@@ -8,6 +8,7 @@ import { storeSyncRunsLock } from "../schedule/runs-lock";
 import { type ControlPlaneDeps, createControlPlaneServer } from "../server";
 import { StoreSyncDaemon } from "../store-sync";
 import { createModelCallForwarder } from "../telemetry/model-call-report";
+import { createPushReporter } from "../telemetry/push-report";
 import { FsVfs } from "../vfs";
 import { managedBridgeCapability } from "./bridge-capability";
 import type { createHostBase } from "./host-base";
@@ -155,6 +156,9 @@ export function createHostServer(
     // pod forwards them to the gateway's metrics (same quadruple as usage).
     modelCallReports: opts.usageReporting
       ? createModelCallForwarder({ report: opts.usageReporting })
+      : undefined,
+    pushReports: opts.usageReporting
+      ? createPushReporter({ report: opts.usageReporting })
       : undefined,
     storeFenced: syncDaemon ? () => syncDaemon.fenced : undefined,
     storeWritable: syncDaemon ? () => syncDaemon.writable() : undefined,

@@ -108,7 +108,7 @@ describe("settleInterruptedTurns", () => {
       turnId: "t-9",
       interrupted: { cause: "engine_restart", tool: "bash" },
     });
-    expect(settleMission).toHaveBeenCalledWith("chat");
+    expect(settleMission).toHaveBeenCalledWith("chat", "t-9");
     expect(report).toHaveBeenCalledTimes(1);
     const error = report.mock.calls[0]?.[0] as EngineRestartedMidTurnError;
     expect(error).toBeInstanceOf(EngineRestartedMidTurnError);
@@ -328,7 +328,7 @@ describe("settleInterruptedTurns resume decisions (PRODUCT-1785)", () => {
     expect(read("loop").messages.at(-1)?.interrupted).toEqual({
       cause: "engine_restart",
     });
-    expect(settleMission).toHaveBeenCalledWith("loop");
+    expect(settleMission).toHaveBeenCalledWith("loop", "t-2");
   });
 
   it("a marker whose user message is gone is not resumable", () => {

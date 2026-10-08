@@ -13,6 +13,7 @@ import type { TurnFilesystemPreparation } from "./turn-filesystem";
 import { TurnSetupError } from "./turn-layout";
 import { createTurnLog } from "./turn-log";
 import { setActiveTurnTimings } from "./turn-network-marks";
+import { stampPooledTurn } from "./turn-push";
 import { turnSessionRequest } from "./turn-request";
 import { prepareTurnRoot } from "./turn-root";
 import type { makeTurnSandboxFetch } from "./turn-sandbox";
@@ -145,6 +146,8 @@ export async function executeTurn(
         timings,
       });
     const turnLog = createTurnLog(deps, turn);
+    if (!turn.shadow)
+      await stampPooledTurn({ deps, turn, turnId, filesystem, resolved });
     const transcript = createTurnTranscript(
       deps,
       { ...turn, turnId },
