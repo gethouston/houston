@@ -1,6 +1,6 @@
 [package]
 name = "houston-app"
-version = "0.5.41"
+version = "1.0.7"
 edition = "2021"
 
 [lib]
