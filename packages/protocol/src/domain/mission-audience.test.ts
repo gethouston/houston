@@ -1,0 +1,35 @@
+import { expect, test, vi } from "vitest";
+import { missionAudience } from "./mission-audience";
+
+test("unknown and unattributed missions reach every eligible member", () => {
+  expect(missionAudience(undefined)).toEqual({ everyone: true });
+  expect(missionAudience({})).toEqual({ everyone: true });
+});
+
+test("creator, contributors, and other-authored mentions are deduplicated", () => {
+  expect(
+    missionAudience({
+      created_by: "owner",
+      contributors: [{ user_id: "owner" }, { user_id: "peer" }],
+      mentioned: [
+        { user_id: "reader", at: "now", by: "owner" },
+        { user_id: "self", at: "now", by: "self" },
+      ],
+    }),
+  ).toEqual({ user_ids: ["owner", "peer", "reader"] });
+});
+
+test("an oversized aggregate keeps the first 512 recipients without broadening", () => {
+  const reportOverflow = vi.fn();
+  expect(
+    missionAudience(
+      {
+        contributors: Array.from({ length: 513 }, (_, i) => ({
+          user_id: String(i),
+        })),
+      },
+      reportOverflow,
+    ),
+  ).toEqual({ user_ids: Array.from({ length: 512 }, (_, i) => String(i)) });
+  expect(reportOverflow).toHaveBeenCalledWith(1);
+});

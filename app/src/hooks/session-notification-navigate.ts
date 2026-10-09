@@ -4,6 +4,7 @@ import { useAgentSettingsNav } from "../components/team-view/agent-settings-nav-
 import { canOpenAgentSettings } from "../lib/agent-nav";
 import { isIntegrationSetupMode } from "../lib/integration-chat-setup";
 import { logger } from "../lib/logger";
+import { openMissionChat } from "../lib/mission-chat";
 import {
   activityIdForSessionKey,
   type NotificationNav,
@@ -13,6 +14,7 @@ import {
   openAgentSection,
   openAgentSettings,
 } from "../lib/open-agent";
+import { osIsNativeMobile } from "../lib/os-bridge/platform";
 import { queryClient } from "../lib/query-client";
 import { queryKeys } from "../lib/query-keys";
 import { isRoutineSetupMode } from "../lib/routine-chat-setup";
@@ -175,6 +177,10 @@ export async function navigateToNotificationTarget({
   }
   // A standard mission: the agent's board, where its card lives, then the
   // mission published for that board to open.
+  if (osIsNativeMobile()) {
+    openMissionChat(agent, target.activityId);
+    return;
+  }
   openAgentBoard(agent.id, {
     onOpened: () =>
       useUIStore.getState().setActivityPanelId(target.activityId, {

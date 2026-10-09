@@ -1,3 +1,4 @@
+import { missionAudience } from "@houston/protocol";
 import type { UserProfile } from "../hooks/queries/use-user-profiles.ts";
 import {
   buildMissionPeople,
@@ -141,5 +142,6 @@ export function isRelevantToMe(
   selfId: string | null,
 ): boolean {
   if (selfId === null || !conv) return true;
-  return missionIsMine(conv, selfId) || missionMentionsMe(conv, selfId);
+  const audience = missionAudience(conv);
+  return "everyone" in audience || audience.user_ids.includes(selfId);
 }

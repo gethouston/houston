@@ -41,6 +41,7 @@ export function settleStoppedBeforePrompt(
     stopped: true,
     turnId,
   });
-  // Same settle as a stop mid-prompt: back to the user, no interaction.
-  reportMissionSettle(id, "needs_you", null, setup.modelCalls);
+  // Same settle as a stop mid-prompt: back to the user, no interaction, and
+  // `stopped` so no push notification goes out for it.
+  reportMissionSettle(id, "needs_you", null, turnId, true, setup.modelCalls);
 }

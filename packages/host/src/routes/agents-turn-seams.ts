@@ -2,6 +2,7 @@ import type { ServerResponse } from "node:http";
 import type { ActivityContributor, HoustonEvent } from "@houston/protocol";
 import type { Agent, Workspace } from "../domain/types";
 import type { WorkspacePaths } from "../paths";
+import type { PushReporter } from "../telemetry/push-report";
 import type { Vfs } from "../vfs";
 import {
   clearDeletedApprovals,
@@ -26,6 +27,7 @@ import type { TurnBody } from "./turn-body";
  * they must run in.
  */
 export interface TurnSeamCtx {
+  readonly pushReports?: PushReporter;
   readonly vfs?: Vfs;
   readonly paths: WorkspacePaths;
   readonly agent: Agent;

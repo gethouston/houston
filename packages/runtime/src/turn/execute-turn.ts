@@ -11,8 +11,8 @@ import { cleanupTurn } from "./turn-cleanup";
 import { writeTurnCredential } from "./turn-credential";
 import type { TurnFilesystemPreparation } from "./turn-filesystem";
 import { TurnSetupError } from "./turn-layout";
-import { createTurnLog } from "./turn-log";
 import { setActiveTurnTimings } from "./turn-network-marks";
+import { stampPooledTurn } from "./turn-push";
 import { turnSessionRequest } from "./turn-request";
 import { prepareTurnRoot } from "./turn-root";
 import type { makeTurnSandboxFetch } from "./turn-sandbox";
@@ -24,8 +24,8 @@ import {
 } from "./turn-session-startup";
 import { answerTurnSetupFailure } from "./turn-setup-failure";
 import { snapshotPooledTurnSharedSkills } from "./turn-shared-skills";
+import { createTurnEmitter, prepareTurnStreams } from "./turn-sse-emitter";
 import { poolIdentity, resolveTurnStore } from "./turn-store";
-import { createTurnTranscript } from "./turn-transcript";
 import type { TurnRequest } from "./types";
 
 /** Execute one admitted turn inside an isolated, disposable filesystem root. */
@@ -53,6 +53,7 @@ export async function executeTurn(
   let preparation: TurnFilesystemPreparation | undefined;
   let startup: TurnSessionStartupTask | undefined;
   let closeSse: (() => void) | undefined;
+  let mentionReport: Promise<void> | undefined;
   try {
     const sandboxIdentity =
       turn.grant && turn.hostToken ? poolIdentity(turn.gcsPrefix) : undefined;
@@ -144,20 +145,15 @@ export async function executeTurn(
         workspaceDir: filesystem.workspaceDir,
         timings,
       });
-    const turnLog = createTurnLog(deps, turn);
-    const transcript = createTurnTranscript(
+    const pushContext = { deps, turn, turnId, filesystem, resolved };
+    if (!turn.shadow) ({ mentionReport } = await stampPooledTurn(pushContext));
+    const { turnLog, transcript } = prepareTurnStreams(
       deps,
-      { ...turn, turnId },
+      turn,
+      turnId,
       filesystem,
     );
-    const emit = (raw: WireFrame) => {
-      const frame = turnSandbox ? turnSandbox.present(raw) : raw;
-      sse.send(turnLog ? turnLog.record(frame) : frame);
-      // The runtime persists the user message right before this frame; land
-      // its transcript row now so a gateway that restarts mid-turn can rebuild
-      // the turn. Errors are remembered and surfaced at durability time.
-      if (frame.type === "user") void transcript?.publishUser();
-    };
+    const emit = createTurnEmitter(sse.send, turnSandbox, turnLog, transcript);
     sendFrame = emit;
 
     if (turn.shadow)
@@ -180,11 +176,13 @@ export async function executeTurn(
         emit,
         turnLog,
         transcript,
+        mentionReport,
       });
   } catch (error) {
     if (!(error instanceof TurnSetupError)) throw error;
     closeSse = await answerTurnSetupFailure({ deps, turn, turnId, error, res });
   } finally {
+    await mentionReport;
     await cleanupTurn({
       root,
       scope,

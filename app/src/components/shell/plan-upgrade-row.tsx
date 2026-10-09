@@ -9,6 +9,7 @@ import { CircleAlert, Gauge, type LucideIcon } from "lucide-react";
 import { useTranslation } from "react-i18next";
 import { usePlan } from "../../hooks/queries/use-plan";
 import type { NavMode } from "../../lib/nav-stack";
+import { canPurchaseInApp } from "../../lib/purchase-policy";
 import { useUIStore } from "../../stores/ui";
 
 /** Plain Free draws no glyph beside its words; the icon rail, which has
@@ -50,6 +51,10 @@ const RAIL_PILL =
  * rows, the icon rail the glyph alone with the same name as a tooltip. The
  * phone's More card draws it as its own sheet row, navigating with
  * `nav: "reset"`. Every variant closes More, a no-op on the desktop.
+ *
+ * The store apps never sell (`canPurchaseInApp`): there the row is the usage
+ * status alone, with no chip, and plain Free (nothing but the offer) draws
+ * nothing.
  */
 export function PlanUpgradeRow({
   collapsed = false,
@@ -65,10 +70,12 @@ export function PlanUpgradeRow({
   const openSettings = useUIStore((s) => s.openSettings);
   const setMobileMoreOpen = useUIStore((s) => s.setMobileMoreOpen);
   const view = planUpgradeView(plan);
-  if (!view) return null;
+  const purchasable = canPurchaseInApp();
+  if (!view || (!purchasable && view.status === "free")) return null;
 
   const status = t(`sidebar.${view.status}`, { percent: view.percent });
-  const name = t("sidebar.label", { status });
+  const name = purchasable ? t("sidebar.label", { status }) : status;
+  const chip = purchasable && <UpgradeChip label={t("sidebar.upgrade")} />;
   const Icon = GLYPH[view.status];
   const RailIcon = Icon ?? Gauge;
   const tone = TONE[view.status];
@@ -91,7 +98,7 @@ export function PlanUpgradeRow({
           {Icon && <Icon aria-hidden="true" className={cn("size-5", tone)} />}
         </span>
         <span className="min-w-0 flex-1 truncate tabular-nums">{status}</span>
-        <UpgradeChip label={t("sidebar.upgrade")} />
+        {chip}
       </button>
     );
 
@@ -131,7 +138,7 @@ export function PlanUpgradeRow({
         >
           {status}
         </span>
-        <UpgradeChip label={t("sidebar.upgrade")} />
+        {chip}
       </button>
     </div>
   );

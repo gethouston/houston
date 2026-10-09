@@ -442,6 +442,7 @@
     "argument": "{{name}} \"{{value}}\"",
     "exactValue": "The exact {{name}}:",
     "truncated_one": "[and {{formatted}} more character, all of which would be written]",
-    "truncated_other": "[and {{formatted}} more characters, all of which would be written]"
+    "truncated_other": "[and {{formatted}} more characters, all of which would be written]",
+    "storeRefusalOk": "Got it"
   }
 }

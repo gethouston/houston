@@ -11,6 +11,7 @@ import {
   notificationRowState,
 } from "../../../lib/notification-permission";
 import {
+  nativePushAvailable,
   readOsPermissionGranted,
   requestOsPermission,
   setSessionNotificationEnabled,
@@ -99,6 +100,7 @@ export function NotificationsSection() {
   };
 
   const rowState = notificationRowState({ inAppEnabled, osGranted, isWeb });
+  if (!nativePushAvailable()) return null;
   const showOpenSettings = canOpenSettings && inAppEnabled && !osGranted;
 
   return (

@@ -33,7 +33,7 @@ export function revokeResume(
   // The settle skipped this for the turn it expected to run again; nothing else
   // will ever settle the card, so it is reported here instead. Fire-and-forget
   // and idempotent — the host applies at most one settle per mission.
-  reportMissionSettle(conversationId, "error", null);
+  reportMissionSettle(conversationId, "error", null, turnId, false);
 }
 
 /**

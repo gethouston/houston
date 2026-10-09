@@ -845,6 +845,8 @@ export async function execTurn(
       id,
       providerError ? "error" : "needs_you",
       providerError || stopped ? null : (pendingInteraction ?? null),
+      turnId,
+      stopped,
       modelCalls?.report(turnId),
     );
   } catch (err) {
@@ -952,7 +954,14 @@ export async function execTurn(
     // The thrown-failure twin of the clean path's report above: an
     // agent-started mission's card must reach `error` even with no client
     // observing this conversation.
-    reportMissionSettle(id, "error", null, modelCalls?.report(turnId));
+    reportMissionSettle(
+      id,
+      "error",
+      null,
+      turnId,
+      conv.stoppedTurnId === turnId,
+      modelCalls?.report(turnId),
+    );
   } finally {
     // Detach first, while the stop marker below still gates this turn's
     // frames. Undefined only if resolveModel/switchBackendIfNeeded threw

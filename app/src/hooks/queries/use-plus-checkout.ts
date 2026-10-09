@@ -7,6 +7,7 @@ import i18n from "../../lib/i18n";
 import { osFocusWindow } from "../../lib/os-bridge";
 import { plusCheckout as tracker } from "../../lib/plan-session";
 import { surfacePlusCheckoutFailure } from "../../lib/plus-checkout-failure";
+import { refuseNativePurchase } from "../../lib/purchase-policy";
 import { queryKeys } from "../../lib/query-keys";
 import { tauriOrg, tauriSystem } from "../../lib/tauri";
 
@@ -20,12 +21,14 @@ function useCheckoutState() {
  * A checkout trigger's view: `start` opens Stripe unless a checkout is already
  * outstanding (`outstanding` disables every trigger meanwhile), `fallbackUrl`
  * is the link to offer when no browser opened, `succeeded` confirms the
- * upgrade this app started.
+ * upgrade this app started. The store apps never open Stripe
+ * (`refuseNativePurchase`).
  */
 export function usePlusCheckout() {
   const queryClient = useQueryClient();
   const state = useCheckoutState();
   const start = useCallback(() => {
+    if (refuseNativePurchase("plus_checkout", reportError)) return;
     void tracker
       .start({
         create: tauriOrg.createPlusCheckout,

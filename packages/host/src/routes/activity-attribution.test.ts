@@ -1,6 +1,6 @@
 import type { Server, ServerResponse } from "node:http";
 import { docKey } from "@houston/domain";
-import type { Activity, Capabilities } from "@houston/protocol";
+import type { Activity, Capabilities, PushReport } from "@houston/protocol";
 import { afterAll, beforeAll, expect, test, vi } from "vitest";
 import { ProxyChannel } from "../channel/proxy";
 import { MemoryCredentialStore } from "../credentials/store";
@@ -55,8 +55,14 @@ const CAPS: Capabilities = {
  *  route drains the turn body to read its mentions, so it MUST hand the buffer
  *  down or the runtime would receive an empty message. */
 let forwardedBody: string | undefined;
+const pushReports: { report: PushReport; actingAs?: string }[] = [];
+let blockPush: Promise<void> | null = null;
 
 const deps = (): ControlPlaneDeps => ({
+  pushReports: async (report, actingAs) => {
+    pushReports.push({ report, ...(actingAs ? { actingAs } : {}) });
+    await blockPush;
+  },
   verifier,
   store,
   credentials,
@@ -225,7 +231,7 @@ test("a turn whose body carries mentions stamps `mentioned` on the mission", asy
     JSON.stringify([
       {
         id: "m4",
-        title: "Mentions",
+        title: "😀".repeat(201),
         description: "",
         status: "running",
         session_key: "conv-mentions",
@@ -242,6 +248,7 @@ test("a turn whose body carries mentions stamps `mentioned` on the mission", asy
       },
       body: JSON.stringify({
         text: "hey @Grace @Alan",
+        nonce: "mention-nonce",
         mentions: [{ userId: "supa-grace" }, { userId: "supa-alan" }],
       }),
     },
@@ -259,11 +266,70 @@ test("a turn whose body carries mentions stamps `mentioned` on the mission", asy
   }
   // The contributor stamp rides the SAME single pass.
   expect(m4?.contributors).toEqual([{ user_id: "supa-6", name: "Ada" }]);
+  expect(pushReports).toContainEqual({
+    actingAs: actingToken("supa-6", "Ada"),
+    report: {
+      v: 1,
+      kind: "mentioned",
+      conversation_id: "conv-mentions",
+      mission: { id: "m4", title: `${"😀".repeat(199)}…` },
+      event_key: "mention-nonce",
+      user_ids: ["supa-grace", "supa-alan"],
+    },
+  });
   // …and the drained body still reached the channel intact.
   expect(forwardedBody && JSON.parse(forwardedBody)).toMatchObject({
     text: "hey @Grace @Alan",
     mentions: [{ userId: "supa-grace" }, { userId: "supa-alan" }],
   });
+});
+
+test("mention push cannot hold up turn forwarding", async () => {
+  const previous = await vfs.readText(docKey(root, "activity"));
+  await vfs.writeText(
+    docKey(root, "activity"),
+    JSON.stringify([
+      {
+        id: "m-push",
+        title: "Mentions",
+        description: "",
+        status: "running",
+        session_key: "conv-push",
+      },
+    ]),
+  );
+  let release: (() => void) | undefined;
+  blockPush = new Promise<void>((resolve) => {
+    release = resolve;
+  });
+  try {
+    const sent = fetch(
+      `${frontedBase}/agents/${agentId}/conversations/conv-push/messages`,
+      {
+        method: "POST",
+        headers: {
+          ...auth("alice"),
+          "x-houston-acting-as": actingToken("supa-6", "Ada"),
+        },
+        body: JSON.stringify({
+          text: "@Grace",
+          nonce: "push-nonce",
+          mentions: [{ userId: "supa-grace" }],
+        }),
+      },
+    );
+    const status = await Promise.race([
+      sent.then((response) => response.status),
+      new Promise<number>((resolve) => setTimeout(() => resolve(0), 50)),
+    ]);
+    expect(status).toBe(202);
+    await sent;
+  } finally {
+    release?.();
+    blockPush = null;
+    if (previous !== null)
+      await vfs.writeText(docKey(root, "activity"), previous);
+  }
 });
 
 test("mentioning the same person again overwrites the entry (latest wins)", async () => {

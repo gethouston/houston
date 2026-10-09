@@ -24,6 +24,7 @@ import {
   hasPrepromptAsked,
   markCatchNetDismissed,
   markPrepromptAsked,
+  nativePushAvailable,
   readOsPermissionGranted,
   requestOsPermission,
 } from "./notification-settings";
@@ -100,6 +101,7 @@ async function runPermissionCta(deps: NudgeDeps): Promise<void> {
 export async function maybeShowFirstMissionPrompt(
   deps: NudgeDeps,
 ): Promise<void> {
+  if (!nativePushAvailable()) return;
   // Guarded: this is fire-and-forget from the send path and its prefs reads can
   // reject (the engine already surfaces such a failure via `call()`), so we must
   // not leave an unhandled rejection. A failed read just means no nudge.
@@ -132,6 +134,7 @@ export async function maybeShowFirstMissionPrompt(
 export async function maybeShowMissedPingCallout(
   deps: NudgeDeps,
 ): Promise<void> {
+  if (!nativePushAvailable()) return;
   // Guarded like the pre-prompt above: fire-and-forget on focus, prefs reads can
   // reject, so never leave an unhandled rejection.
   try {

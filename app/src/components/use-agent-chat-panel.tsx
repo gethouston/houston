@@ -136,6 +136,7 @@ import {
   normalizeLegacyModel,
   validEffortOrDefault,
 } from "../lib/providers";
+import { blocksPurchaseUrl } from "../lib/purchase-policy";
 import { queryKeys } from "../lib/query-keys";
 import { reportRejection } from "../lib/report-rejection";
 import { showSendFailedToast } from "../lib/send-error-toast";
@@ -1466,7 +1467,10 @@ export function useAgentChatPanel({
     [path, selectedSessionKey, resolveSendPin, turnMode, addToast, t],
   );
   const renderLink = useCallback<NonNullable<AIBoardProps["renderLink"]>>(
-    ({ href }) => {
+    ({ href, children }) => {
+      // A payment link (a checkout the AI Manager started elsewhere) is
+      // plain text in the store apps, which never sell.
+      if (blocksPurchaseUrl(href)) return <span>{children}</span>;
       if (!integrationsEnabled || !agent) return undefined;
       const toolkit = parseToolkitFromHref(href);
       if (!toolkit) return undefined;

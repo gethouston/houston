@@ -37,7 +37,10 @@ export function WorkspaceLoading() {
   }, []);
 
   return (
-    <div className="canvas-screen fixed inset-0 flex flex-col bg-background">
+    <div
+      data-houston-boot-loading
+      className="canvas-screen fixed inset-0 flex flex-col bg-background"
+    >
       <WindowDragStrip />
       <div className="flex flex-1 items-center justify-center px-6">
         <motion.div

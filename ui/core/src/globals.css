@@ -53,18 +53,20 @@
    needs design padding stacks it via calc, e.g.
    pb-[calc(env(safe-area-inset-bottom)+theme(spacing.2))]. Requires
    viewport-fit=cover on the viewport meta (app/index.html +
-   packages/web/index.html) or every env() resolves to 0. */
+   packages/web/index.html) or every env() resolves to 0. Capacitor 8's
+   SystemBars supplies --safe-area-inset-* on older Android WebViews where
+   env() reports the wrong edge-to-edge insets. */
 @utility pt-safe {
-  padding-top: env(safe-area-inset-top, 0px);
+  padding-top: var(--safe-area-inset-top, env(safe-area-inset-top, 0px));
 }
 @utility pb-safe {
-  padding-bottom: env(safe-area-inset-bottom, 0px);
+  padding-bottom: var(--safe-area-inset-bottom, env(safe-area-inset-bottom, 0px));
 }
 @utility pl-safe {
-  padding-left: env(safe-area-inset-left, 0px);
+  padding-left: var(--safe-area-inset-left, env(safe-area-inset-left, 0px));
 }
 @utility pr-safe {
-  padding-right: env(safe-area-inset-right, 0px);
+  padding-right: var(--safe-area-inset-right, env(safe-area-inset-right, 0px));
 }
 
 /* Corner radius. Kept as a PLAIN :root var (not a @theme token) so the four

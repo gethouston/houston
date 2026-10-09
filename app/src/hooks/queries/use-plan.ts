@@ -3,6 +3,7 @@ import { planLaunchRefreshDelay } from "@houston/sdk";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { useState } from "react";
 import { reportError } from "../../lib/error-report";
+import { refuseNativePurchase } from "../../lib/purchase-policy";
 import { queryKeys } from "../../lib/query-keys";
 import { tauriOrg, tauriSystem } from "../../lib/tauri";
 import { useCapabilities } from "../use-capabilities";
@@ -61,14 +62,20 @@ export function usePlusInvoices() {
 
 /**
  * Opens the Stripe customer portal. `fallbackUrl` is the link to offer when no
- * browser opened; failures are surfaced by the engine call itself.
+ * browser opened; failures are surfaced by the engine call itself. The store
+ * apps never open it (`refuseNativePurchase`), so the mutation settles empty.
  */
 export function usePlusPortal() {
   const [fallbackUrl, setFallbackUrl] = useState<string | null>(null);
   const portal = useMutation({
-    mutationFn: tauriOrg.createPlusPortal,
+    mutationFn: async () =>
+      refuseNativePurchase("plus_portal", reportError)
+        ? null
+        : tauriOrg.createPlusPortal(),
     onMutate: () => setFallbackUrl(null),
-    onSuccess: async ({ url }) => {
+    onSuccess: async (session) => {
+      if (!session) return;
+      const { url } = session;
       const opened = await tauriSystem.openUrl(url, {
         command: "plus_portal_open",
       });

@@ -89,6 +89,8 @@ export function useApprovalCardCopy(): ApprovalCardCopy {
             : humanize(param)),
       hire: (name) => t("approvalCard.hire", { name }),
       instructionsLabel: t("approvalCard.instructionsLabel"),
+      storeRefusal: t("plan:managedOnWeb"),
+      storeRefusalOk: t("approvalCard.storeRefusalOk"),
     };
   }, [t, language]);
 }

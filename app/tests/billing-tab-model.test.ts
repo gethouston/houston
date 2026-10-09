@@ -35,25 +35,52 @@ describe("isSubscribed", () => {
 
 describe("billingAction", () => {
   it("is none for a non-owner (admin sees billing read-only)", () => {
-    strictEqual(billingAction(billing({ status: "expired" }), false), "none");
-    strictEqual(billingAction(billing({ status: "active" }), false), "none");
+    strictEqual(
+      billingAction(billing({ status: "expired" }), false, true),
+      "none",
+    );
+    strictEqual(
+      billingAction(billing({ status: "active" }), false, true),
+      "none",
+    );
   });
 
   it("is checkout for an owner on an unsubscribed team", () => {
-    strictEqual(billingAction(billing({ status: "free" }), true), "checkout");
     strictEqual(
-      billingAction(billing({ status: "trialing" }), true),
+      billingAction(billing({ status: "free" }), true, true),
       "checkout",
     );
     strictEqual(
-      billingAction(billing({ status: "expired" }), true),
+      billingAction(billing({ status: "trialing" }), true, true),
+      "checkout",
+    );
+    strictEqual(
+      billingAction(billing({ status: "expired" }), true, true),
       "checkout",
     );
   });
 
   it("is portal for an owner on a subscribed team", () => {
-    strictEqual(billingAction(billing({ status: "active" }), true), "portal");
-    strictEqual(billingAction(billing({ status: "past_due" }), true), "portal");
+    strictEqual(
+      billingAction(billing({ status: "active" }), true, true),
+      "portal",
+    );
+    strictEqual(
+      billingAction(billing({ status: "past_due" }), true, true),
+      "portal",
+    );
+  });
+
+  it("is web for an owner inside a store app, whatever the status", () => {
+    for (const status of ["free", "trialing", "expired", "active"] as const)
+      strictEqual(billingAction(billing({ status }), true, false), "web");
+  });
+
+  it("stays none for a non-owner inside a store app", () => {
+    strictEqual(
+      billingAction(billing({ status: "expired" }), false, false),
+      "none",
+    );
   });
 });
 

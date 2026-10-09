@@ -7,8 +7,12 @@ import {
   upsertById,
 } from "@houston/domain";
 import {
+  missionAudience,
+  notificationReason,
   type PendingInteraction,
+  type PushReport,
   parseModelCallReport,
+  pushMissionTitle,
 } from "@houston/protocol";
 import { assistantRuntimeRole } from "../launcher/assistant-role";
 import { withDocLock } from "./doc-lock";
@@ -133,6 +137,8 @@ export async function handleMissionSettle(
   const cid =
     typeof body.conversation_id === "string" ? body.conversation_id : "";
   const status = body.status;
+  const turnId = typeof body.turn_id === "string" ? body.turn_id : "";
+  const stopped = body.stopped === true;
   if (!cid || (status !== "needs_you" && status !== "error")) {
     json(res, 400, { error: "missing 'conversation_id' or invalid 'status'" });
     return;
@@ -149,19 +155,49 @@ export async function handleMissionSettle(
   liveTurns.end(ctx.agent.id, cid);
   const modelCalls = parseModelCallReport(body.model_calls);
   if (modelCalls) ctx.deps.modelCallReports?.(modelCalls);
-  const settled = await withDocLock(`${ctx.root}#activity`, async () => {
-    const { items } = await loadActivities(ctx.vfs, ctx.root);
-    const current = items.find((a) => missionConversationKey(a) === cid);
-    if (!current?.origin_session_key) return false;
-    if (current.status !== "running") return false;
-    const applied = applyActivityUpdate(
-      current,
-      { status, pending_interaction: interaction },
-      new Date().toISOString(),
-    );
-    await saveActivities(ctx.vfs, ctx.root, upsertById(items, applied));
-    return true;
-  });
+  const { settled, report } = await withDocLock(
+    `${ctx.root}#activity`,
+    async () => {
+      const { items } = await loadActivities(ctx.vfs, ctx.root);
+      const current = items.find((a) => missionConversationKey(a) === cid);
+      let report: PushReport | undefined;
+      if (current && turnId && !stopped && ctx.deps.pushReports) {
+        const { reason, question_count } = notificationReason(
+          status,
+          interaction,
+        );
+        report = {
+          v: 1,
+          kind: "turn_settled",
+          conversation_id: cid,
+          mission: { id: current.id, title: pushMissionTitle(current.title) },
+          turn_id: turnId,
+          reason,
+          question_count,
+          audience: missionAudience(current, (overflow) =>
+            console.error(
+              `[push] mission audience exceeded 512 by ${overflow}`,
+            ),
+          ),
+        };
+      }
+      if (!current?.origin_session_key || current.status !== "running")
+        return { settled: false, report };
+      const applied = applyActivityUpdate(
+        current,
+        { status, pending_interaction: interaction },
+        new Date().toISOString(),
+      );
+      await saveActivities(ctx.vfs, ctx.root, upsertById(items, applied));
+      return { settled: true, report };
+    },
+  );
+  if (report && ctx.deps.pushReports)
+    void ctx.deps
+      .pushReports(report)
+      .catch((error: unknown) =>
+        console.error("[push] settle report failed", error),
+      );
   if (settled) fireActivityChanged(ctx);
   json(res, 200, { ok: settled });
 }

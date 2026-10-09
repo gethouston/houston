@@ -1,0 +1,123 @@
+name: Mobile OTA updates
+
+on:
+  push:
+    branches: [main]
+  release:
+    types: [published]
+  workflow_dispatch:
+    inputs:
+      channel:
+        description: Channel to roll back
+        required: true
+        type: choice
+        options: [preview, production]
+      version:
+        description: Existing bundle version to restore
+        required: true
+        type: string
+
+permissions:
+  contents: read
+  id-token: write
+
+concurrency:
+  group: mobile-updates-${{ github.event_name == 'workflow_dispatch' && inputs.channel || github.event_name == 'push' && 'preview' || 'production' }}
+  cancel-in-progress: false
+
+jobs:
+  publish:
+    if: ${{ github.repository == 'gethouston/houston' && (github.event_name != 'release' || startsWith(github.event.release.tag_name, 'cloud-v') || (startsWith(github.event.release.tag_name, 'v') && !github.event.release.prerelease)) }}
+    runs-on: ubuntu-latest
+    timeout-minutes: 25
+    env:
+      CHANNEL: ${{ github.event_name == 'workflow_dispatch' && inputs.channel || github.event_name == 'push' && 'preview' || 'production' }}
+      BASE_URL: https://storage.googleapis.com/houston-mobile-updates
+      ROLLBACK_VERSION: ${{ inputs.version }}
+    steps:
+      - name: Checkout release or main
+        uses: actions/checkout@v6
+        with:
+          ref: ${{ github.event_name == 'release' && github.event.release.tag_name || github.sha }}
+      - name: Setup pnpm
+        uses: pnpm/action-setup@v6
+      - name: Setup Node.js
+        uses: actions/setup-node@v6
+        with:
+          node-version: 20
+          cache: pnpm
+      - name: Install dependencies
+        run: pnpm install --frozen-lockfile
+      - name: Auth to GCP
+        uses: google-github-actions/auth@v2
+        with:
+          workload_identity_provider: projects/1056698080170/locations/global/workloadIdentityPools/github/providers/houston
+          service_account: github-deploy-web@gethouston.iam.gserviceaccount.com
+      - name: Setup gcloud
+        uses: google-github-actions/setup-gcloud@v3
+      - name: Build mobile bundle
+        if: ${{ github.event_name != 'workflow_dispatch' }}
+        env:
+          VITE_CONTROL_PLANE_URL: ${{ github.event_name == 'push' && secrets.HOSTED_ENGINE_URL_STAGING || secrets.HOSTED_ENGINE_URL }}
+          VITE_AGENTSTORE_GATEWAY_URL: ${{ github.event_name == 'push' && secrets.HOSTED_ENGINE_URL_STAGING || secrets.HOSTED_ENGINE_URL }}
+          VITE_CLIENT_METRICS_GATEWAY_URL: ${{ github.event_name == 'push' && secrets.HOSTED_ENGINE_URL_STAGING || secrets.HOSTED_ENGINE_URL }}
+          VITE_AGENTSTORE_SITE_URL: ${{ github.event_name == 'push' && 'https://staging-agents.gethouston.ai' || '' }}
+          FIREBASE_API_KEY: ${{ secrets.FIREBASE_API_KEY }}
+          FIREBASE_AUTH_DOMAIN: ${{ secrets.FIREBASE_AUTH_DOMAIN }}
+          FIREBASE_PROJECT_ID: ${{ secrets.FIREBASE_PROJECT_ID }}
+          FIREBASE_APPLE_SERVICE_ID: ${{ vars.FIREBASE_APPLE_SERVICE_ID }}
+          POSTHOG_KEY: ${{ secrets.POSTHOG_KEY }}
+          POSTHOG_HOST: ${{ secrets.POSTHOG_HOST }}
+          SENTRY_DSN: ${{ secrets.SENTRY_DSN }}
+          HOUSTON_MOBILE_UPDATE_PUBKEY: ${{ secrets.HOUSTON_MOBILE_UPDATE_PUBKEY }}
+          HOUSTON_MOBILE_STORE_URL_IOS: ${{ vars.HOUSTON_MOBILE_STORE_URL_IOS }}
+          HOUSTON_MOBILE_STORE_URL_ANDROID: ${{ vars.HOUSTON_MOBILE_STORE_URL_ANDROID }}
+          HOUSTON_MOBILE_UPDATE_BASE_URL: https://storage.googleapis.com/houston-mobile-updates
+        run: |
+          set -euo pipefail
+          test -n "$VITE_CONTROL_PLANE_URL" || { echo '::error::Gateway URL is absent'; exit 1; }
+          test -n "$HOUSTON_MOBILE_UPDATE_PUBKEY" || { echo '::error::HOUSTON_MOBILE_UPDATE_PUBKEY is absent'; exit 1; }
+          test "$GITHUB_RUN_ATTEMPT" -lt 100
+          export HOUSTON_MOBILE_BUILTIN_SEQUENCE=$((GITHUB_RUN_ID * 100 + GITHUB_RUN_ATTEMPT))
+          HOUSTON_MOBILE_DEPLOY_ENV="$CHANNEL" pnpm --filter houston-mobile build
+          find packages/mobile/dist -name "*.map" -delete
+          cd packages/mobile/dist
+          zip -q -r ../update.zip .
+      - name: Select bundle version
+        run: |
+          set -euo pipefail
+          if [ "${{ github.event_name }}" = workflow_dispatch ]; then
+            [[ "$ROLLBACK_VERSION" =~ ^[0-9]+\.[0-9]+\.[0-9]+\+[0-9a-f]{7,}$ ]] || { echo '::error::Invalid bundle version'; exit 1; }
+            gcloud storage cp "gs://houston-mobile-updates/$CHANNEL/$ROLLBACK_VERSION.zip" packages/mobile/update.zip
+            unzip -p packages/mobile/update.zip version.json > packages/mobile/version.json
+            unzip -p packages/mobile/update.zip native-compat.json > packages/mobile/compat-to-sign.json
+          else
+            cp packages/mobile/dist/version.json packages/mobile/version.json
+            cp packages/mobile/native-compat.json packages/mobile/compat-to-sign.json
+          fi
+          VERSION=$(jq -r .version packages/mobile/version.json)
+          echo "version=$VERSION" >> "$GITHUB_ENV"
+      - name: Sign manifest
+        env:
+          HOUSTON_MOBILE_UPDATE_SIGNING_KEY: ${{ secrets.HOUSTON_MOBILE_UPDATE_SIGNING_KEY }}
+        run: |
+          set -euo pipefail
+          test -n "$HOUSTON_MOBILE_UPDATE_SIGNING_KEY" || { echo '::error::HOUSTON_MOBILE_UPDATE_SIGNING_KEY is absent'; exit 1; }
+          test "$GITHUB_RUN_ATTEMPT" -lt 100
+          export HOUSTON_MOBILE_UPDATE_SEQUENCE=$((GITHUB_RUN_ID * 100 + GITHUB_RUN_ATTEMPT))
+          if gcloud storage ls "gs://houston-mobile-updates/$CHANNEL/manifest.json" >/dev/null 2>&1; then
+            current=$(gcloud storage cat "gs://houston-mobile-updates/$CHANNEL/manifest.json" | jq -r '.sequence // 0')
+            test "$HOUSTON_MOBILE_UPDATE_SEQUENCE" -gt "$current" || { echo '::error::OTA sequence must increase for this channel'; exit 1; }
+          fi
+          pnpm exec tsx packages/mobile/scripts/sign-update.ts \
+            packages/mobile/update.zip packages/mobile/version.json packages/mobile/compat-to-sign.json \
+            "$CHANNEL" "$BASE_URL" packages/mobile/manifest.json
+      - name: Upload zip, then manifest
+        run: |
+          set -euo pipefail
+          if [ "${{ github.event_name }}" != workflow_dispatch ]; then
+            gcloud storage cp --cache-control='public,max-age=31536000,immutable' \
+              packages/mobile/update.zip "gs://houston-mobile-updates/$CHANNEL/$version.zip"
+          fi
+          gcloud storage cp --cache-control='no-store' packages/mobile/manifest.json \
+            "gs://houston-mobile-updates/$CHANNEL/manifest.json"

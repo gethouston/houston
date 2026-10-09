@@ -1,6 +1,7 @@
 import {
   normalizeTurnMode,
   parseMentions,
+  pushMissionTitle,
   type TurnMode,
 } from "@houston/protocol";
 import { assistantRuntimeRole } from "../launcher/assistant-role";
@@ -92,12 +93,14 @@ export const stampAttribution: TurnSeam = async (ctx) => {
     return;
   if (ctx.message.duplicate) return;
   let mentionedIds: string[] = [];
+  let eventKey: string | undefined;
   try {
     const parsed = JSON.parse(
       (await ctx.body.read()).toString("utf8") || "{}",
-    ) as { mentions?: unknown };
+    ) as { mentions?: unknown; nonce?: unknown };
     // The same shared guard the runtime and the cloud turn parser apply.
     mentionedIds = (parseMentions(parsed.mentions) ?? []).map((m) => m.userId);
+    eventKey = typeof parsed.nonce === "string" ? parsed.nonce : undefined;
   } catch {
     // An unparseable body carries no mentions to stamp, and deciding what to
     // tell the client is not this seam's business — the channel this request is
@@ -109,7 +112,7 @@ export const stampAttribution: TurnSeam = async (ctx) => {
     // relayed verbatim. Swallow here only because the request keeps travelling;
     // it never ends on a silent success.
   }
-  await stampTurnAttribution(
+  const activity = await stampTurnAttribution(
     ctx.vfs,
     ctx.paths.agentRoot(ctx.workspace, ctx.agent),
     ctx.agent.id,
@@ -118,4 +121,27 @@ export const stampAttribution: TurnSeam = async (ctx) => {
     mentionedIds,
     ctx.emit,
   );
+  if (
+    activity &&
+    mentionedIds.length &&
+    eventKey &&
+    ctx.actingAs &&
+    ctx.pushReports
+  ) {
+    void ctx
+      .pushReports(
+        {
+          v: 1,
+          kind: "mentioned",
+          conversation_id: ctx.turnConversationId,
+          mission: { id: activity.id, title: pushMissionTitle(activity.title) },
+          event_key: eventKey,
+          user_ids: [...new Set(mentionedIds)].slice(0, 32),
+        },
+        ctx.actingAs,
+      )
+      .catch((error: unknown) =>
+        console.error("[push] mention report failed", error),
+      );
+  }
 };

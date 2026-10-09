@@ -10,6 +10,7 @@ import {
   isExpectedInviteError,
   teamIsInSwitcher,
 } from "../../lib/invite-model";
+import { canPurchaseInApp } from "../../lib/purchase-policy";
 import { queryKeys } from "../../lib/query-keys";
 import { tauriOrg } from "../../lib/tauri";
 import { useUIStore } from "../../stores/ui";
@@ -107,6 +108,15 @@ export function useDeclineInvite() {
 function showInviteFailure(t: TFunction<"teams">, err: unknown): void {
   const failure = classifyInviteError(err);
   if (failure === "unknown") return;
+  // The store apps never sell: a team out of trial is stated as a limit there,
+  // without sending the person to ask for an upgrade.
+  if (failure === "needs_upgrade" && !canPurchaseInApp()) {
+    showExpectedStateToast(
+      t("native.inviteNeedsUpgradeTitle"),
+      t("native.inviteNeedsUpgradeBody"),
+    );
+    return;
+  }
   const key = FAILURE_COPY[failure];
   showExpectedStateToast(
     t(`inviteInbox.errors.${key}Title`),

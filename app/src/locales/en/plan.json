@@ -115,5 +115,19 @@
     "preview": "Preview: {{percent}}% used",
     "upgrade": "Upgrade",
     "label": "Upgrade to Plus. {{status}}"
+  },
+  "managedOnWeb": "Your plan is managed on the web at gethouston.ai.",
+  "manageOnWeb": "Manage your plan on the web.",
+  "native": {
+    "nav": "Your personal plan and usage",
+    "limitBody": "Your usage resets {{time}}. Manage your plan on the web.",
+    "limitBodyNoTime": "Your usage resets later this week. Manage your plan on the web.",
+    "shortIntervalBody": "Nothing was saved. Pick a slower schedule.",
+    "triggerSkipped": {
+      "minInterval": "Your Free plan limits how often this routine can run. Manage your plan on the web.",
+      "routineLimit": "Free keeps one routine running, and the one that stays active is a different one. Choose this routine to keep it running instead, or manage your plan on the web.",
+      "creatorPlan": "This routine runs on its creator's Free plan, which limits how often it can run."
+    },
+    "purchaseLinkTitle": "This link isn't available in the app"
   }
 }

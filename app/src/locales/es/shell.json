@@ -451,6 +451,7 @@
     "nativeTriggeredDescription": "Revisa Sentry para sentry-native-stack-smoke-test."
   },
   "errorToast": {
+    "offlineLaunchTitle": "Estás sin conexión",
     "genericDescription": "Algo inesperado salió mal. Inténtalo de nuevo.",
     "offlineTitle": "Sin conexión",
     "offlineDescription": "No podemos conectarnos en este momento. Revisa tu conexión a internet e inténtalo de nuevo.",
@@ -710,5 +711,14 @@
     "retryLabel": "Volver a contratar a {{name}}",
     "removeLabel": "Quitar a {{name}}",
     "nameHeading": "Nombre"
+  },
+  "mobileUpdate": {
+    "title": "Actualiza Houston para continuar",
+    "description": "Se requiere una versión más reciente. Actualiza Houston desde la tienda de aplicaciones.",
+    "retryDescription": "Se requiere una versión más reciente. Vuelve a buscar una actualización.",
+    "openStore": "Abrir tienda",
+    "retry": "Volver a buscar",
+    "checking": "Buscando actualizaciones…",
+    "stillRequired": "Todavía se requiere una actualización de la aplicación."
   }
 }

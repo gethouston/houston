@@ -10,12 +10,19 @@ import {
 } from "../../lib/auth";
 import { describeLastSignIn, readLastSignIn } from "../../lib/last-sign-in";
 import { logger } from "../../lib/logger";
+import { canPurchaseInApp } from "../../lib/purchase-policy";
 import { FirstRunScreen } from "../onboarding/first-run-screen";
 import { authErrorKey } from "./auth-errors";
 import { ContinueLastSignIn } from "./continue-last-sign-in";
 import { EmailSignIn } from "./email-sign-in";
-import { type Provider, ProviderButtonRow } from "./provider-button-row";
-import { LegalFooter, ReferralPanel } from "./sign-in-panels";
+import {
+  hasAvailableProviders,
+  type Provider,
+  ProviderButtonRow,
+  providerAvailable,
+} from "./provider-button-row";
+import { ReferralPanel } from "./referral-panel";
+import { LegalFooter } from "./sign-in-panels";
 
 const SIGN_IN_BY_PROVIDER = {
   google: signInWithGoogle,
@@ -24,36 +31,14 @@ const SIGN_IN_BY_PROVIDER = {
 } as const;
 
 /**
- * Full-screen sign-in overlay. Rendered by App.tsx when identity (Firebase) is
- * configured but no session is present (the local account login), and by the
- * cloud engine gate (HostedEngineGate) for the remote-connection login. Keeps
- * copy product-benefit-focused — the audience is non-technical, so no mention
- * of OAuth / tokens / APIs.
- *
- * Two-panel card: the LEFT panel is the sign-in itself — Google / Apple /
- * Microsoft as one row of icon pills, then passwordless email under the
- * divider (the 6-digit code stays fully in-app); the RIGHT panel is a calm
- * value note on the filled action surface. A plain white card on the calm grey
- * {@link FirstRunScreen} background (pinned light, so it reads the same in both
- * app themes). Wordmark sits top-left of the screen and the legal links anchor
- * the footer.
- *
- * Returning user: when a device-local last-sign-in exists, a prominent filled
- * {@link ContinueLastSignIn} button leads the panel ("Continue with Google" +
- * the masked address), the one-click way back to the same account; the pills and
- * email form drop below an "or use another way" divider. The button owns the
- * screen's single filled slot, so the email send button steps down to secondary
- * while it shows. Choosing the email continue collapses the chrome to a focused
- * code entry.
- *
- * Re-click semantics: the provider spinner is on only until the system browser
- * opens (`onBrowserOpened` clears it). After that the buttons are free — a
- * re-click starts a fresh PKCE attempt that SUPERSEDES the previous one (the
- * abandoned attempt resolves benignly, no error). Unmounting the screen (e.g.
- * the user finishes email sign-in while a Google tab is still open) cancels any
- * in-flight loopback authorize so a late callback can't overwrite the session.
+ * Shared sign-in screen for local and hosted sessions. A remembered provider
+ * gets the filled continue button; native builds offer only configured native
+ * providers and omit the referral promotion. Email code sign-in stays available.
+ * The desktop loopback flow is cancelled on unmount so a late callback cannot
+ * replace a session established through another method.
  */
 export function SignInScreen() {
+  const showReferral = canPurchaseInApp();
   const { t } = useTranslation("errors");
   const { t: tAuth } = useTranslation("auth");
   const [pending, setPending] = useState<Provider | null>(null);
@@ -124,7 +109,11 @@ export function SignInScreen() {
   // Once the email flow is running, the returning-user chrome collapses so the
   // user sees only the code entry.
   const emailFlowActive = emailAutoSubmit !== null;
-  const showContinue = lastSignIn !== null && !emailFlowActive;
+  const showContinue =
+    lastSignIn !== null &&
+    !emailFlowActive &&
+    (lastSignIn.highlight === "email" ||
+      providerAvailable(lastSignIn.highlight));
   const continueTitle =
     lastSignIn &&
     (lastSignIn.providerName
@@ -144,8 +133,12 @@ export function SignInScreen() {
         {/* A plain white card, hairline + soft shadow, floating on the grey
             first-run background. The FirstRunScreen wrapper pins light, so the
             login reads the same bright way in both app themes. */}
-        <div className="grid w-full max-w-3xl grid-cols-1 overflow-hidden rounded-2xl border border-line bg-card text-ink shadow-raised md:grid-cols-3">
-          <div className="flex flex-col gap-5 bg-card p-6 md:col-span-2 md:p-8">
+        <div
+          className={`grid w-full max-w-3xl grid-cols-1 overflow-hidden rounded-2xl border border-line bg-card text-ink shadow-raised${showReferral ? " md:grid-cols-3" : ""}`}
+        >
+          <div
+            className={`flex flex-col gap-5 bg-card p-6 md:p-8${showReferral ? " md:col-span-2" : ""}`}
+          >
             <h1 className="text-lg font-medium">{tAuth("title")}</h1>
 
             {showContinue && lastSignIn && continueTitle && (
@@ -165,7 +158,9 @@ export function SignInScreen() {
             {!emailFlowActive && (
               <>
                 <ProviderButtonRow pending={pending} onSignIn={handleSignIn} />
-                <Divider label={tAuth("divider.or")} />
+                {hasAvailableProviders() && (
+                  <Divider label={tAuth("divider.or")} />
+                )}
               </>
             )}
 
@@ -177,7 +172,7 @@ export function SignInScreen() {
             {error && <p className="text-xs text-danger">{error}</p>}
           </div>
 
-          <ReferralPanel />
+          {showReferral && <ReferralPanel />}
         </div>
       </div>
 

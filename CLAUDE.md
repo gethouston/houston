@@ -15,6 +15,7 @@ Houston is ONE TypeScript engine — the **pi runtime** (`packages/runtime`, the
 | `packages/engine-adapter` | The engine client: every fetch, SSE stream and socket the frontends make, binding `@houston/sdk` against the host |
 | `packages/wire-types` | Protocol v3 as the client sees it: wire shapes, the local-model-bridge port, the `Retry-After` parser. No I/O |
 | `packages/web` | Web build of `app/src` + Playwright e2e/visual suites (see `packages/web/e2e/README.md`) |
+| `packages/mobile` | Capacitor 8 iOS + Android shell around the `packages/web` build (cloud-only). Native glue only, no domain logic |
 | `ui/` | `@houston-ai/*` React packages, props-only |
 | `packages/design-tokens` | Visual values. Tokens win over any hardcoded literal |
 | `agentstore/` | Agent Store frontend (agents.gethouston.ai) |

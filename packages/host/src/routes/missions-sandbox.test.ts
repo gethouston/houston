@@ -138,6 +138,7 @@ async function call(
     /** The plan limits the host recorded on the parent turn. */
     limits?: TurnLimits;
     modelCallReports?: (report: ModelCallReport) => void;
+    pushReports?: import("../telemetry/push-report").PushReporter;
   } = {},
 ) {
   const headers: Record<string, string> = {
@@ -171,6 +172,7 @@ async function call(
       ...(opts.modelCallReports
         ? { modelCallReports: opts.modelCallReports }
         : {}),
+      ...(opts.pushReports ? { pushReports: opts.pushReports } : {}),
     },
     method,
     path,
@@ -959,4 +961,80 @@ test("settle hands a well-formed model-call report to the sink, any mission", as
     sink,
   );
   expect(reports).toEqual([modelCalls]);
+});
+
+test("managed settle reports relevance and reason; stopped and local turns never call out", async () => {
+  await saveActivities(vfs, root, [{ ...PARENT, title: "😀".repeat(201) }]);
+  const reports: import("@houston/protocol").PushReport[] = [];
+  const sink = {
+    pushReports: async (report: import("@houston/protocol").PushReport) => {
+      reports.push(report);
+    },
+  };
+  await call("POST", "/sandbox/missions/settle", {
+    conversation_id: "conv-parent",
+    turn_id: "turn-local",
+    stopped: false,
+    status: "needs_you",
+  });
+  expect(reports).toHaveLength(0);
+  await call(
+    "POST",
+    "/sandbox/missions/settle",
+    {
+      conversation_id: "conv-parent",
+      turn_id: "turn-stopped",
+      stopped: true,
+      status: "needs_you",
+    },
+    sink,
+  );
+  expect(reports).toHaveLength(0);
+  await call(
+    "POST",
+    "/sandbox/missions/settle",
+    {
+      conversation_id: "conv-parent",
+      turn_id: "turn-finished",
+      stopped: false,
+      status: "needs_you",
+    },
+    sink,
+  );
+  expect(reports).toEqual([
+    {
+      v: 1,
+      kind: "turn_settled",
+      conversation_id: "conv-parent",
+      mission: { id: "parent-1", title: `${"😀".repeat(199)}…` },
+      turn_id: "turn-finished",
+      reason: "finished",
+      question_count: 0,
+      audience: { everyone: true },
+    },
+  ]);
+});
+
+test("settle answers while the push reporter is still pending", async () => {
+  let finish: (() => void) | undefined;
+  const pending = new Promise<void>((resolve) => {
+    finish = resolve;
+  });
+  const callPromise = call(
+    "POST",
+    "/sandbox/missions/settle",
+    {
+      conversation_id: "conv-parent",
+      turn_id: "turn-late-push",
+      status: "needs_you",
+    },
+    { pushReports: async () => pending },
+  );
+  const answered = await Promise.race([
+    callPromise.then(() => true),
+    new Promise<false>((resolve) => setTimeout(() => resolve(false), 30)),
+  ]);
+  finish?.();
+  await callPromise;
+  expect(answered).toBe(true);
 });

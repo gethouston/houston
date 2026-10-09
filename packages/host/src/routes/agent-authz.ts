@@ -13,6 +13,7 @@ import type { EventHub } from "../events/hub";
 import type { CustomIntegrationManager } from "../integrations/custom/manager";
 import { CloudPaths, type WorkspacePaths } from "../paths";
 import type { RuntimeChannel, WorkspaceStore } from "../ports";
+import type { PushReporter } from "../telemetry/push-report";
 import type { Vfs } from "../vfs";
 import { json } from "./http";
 
@@ -23,6 +24,7 @@ import { json } from "./http";
  */
 
 export interface AgentRouteDeps {
+  pushReports?: PushReporter;
   store: WorkspaceStore;
   /** RuntimeChannel per workspace hosting model; a missing entry answers 503. */
   channels: Partial<Record<WorkspaceRuntime, RuntimeChannel>>;

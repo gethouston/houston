@@ -41,6 +41,9 @@ interface Window {
    *  managed cloud when a control plane is baked in, else a self-host
    *  connection. Set by main.tsx before the app graph loads. */
   __HOUSTON_DEPLOYMENT__?: "managed-cloud" | "desktop" | "selfhost";
+  /** Native mobile shell (packages/mobile), set before the app graph loads;
+   *  absent in a browser. Mirrors app/src/lib/os-bridge/platform.ts. */
+  __HOUSTON_SURFACE__?: "ios" | "android";
   /** Hosted-session refresher: mints a fresh Supabase access token on a
    *  gateway 401 so the adapter can replay the request (HOU-687). */
   __HOUSTON_SESSION_REFRESH__?: () => Promise<string | null>;

@@ -442,6 +442,7 @@
     "argument": "{{name}} \"{{value}}\"",
     "exactValue": "Conteúdo exato de {{name}}:",
     "truncated_one": "[e mais {{formatted}} caractere, que também seria escrito]",
-    "truncated_other": "[e mais {{formatted}} caracteres, que também seriam escritos]"
+    "truncated_other": "[e mais {{formatted}} caracteres, que também seriam escritos]",
+    "storeRefusalOk": "Entendi"
   }
 }

@@ -115,5 +115,19 @@
     "preview": "Vista previa: {{percent}}% usado",
     "upgrade": "Pásate a Plus",
     "label": "Pásate a Plus. {{status}}"
+  },
+  "managedOnWeb": "Tu plan se administra en la web, en gethouston.ai.",
+  "manageOnWeb": "Administra tu plan en la web.",
+  "native": {
+    "nav": "Tu plan personal y uso",
+    "limitBody": "Tu uso se reinicia {{time}}. Administra tu plan en la web.",
+    "limitBodyNoTime": "Tu uso se reinicia más adelante esta semana. Administra tu plan en la web.",
+    "shortIntervalBody": "No se guardó nada. Elige un horario menos frecuente.",
+    "triggerSkipped": {
+      "minInterval": "Tu plan Gratis limita cuántas veces puede ejecutarse esta rutina. Administra tu plan en la web.",
+      "routineLimit": "Gratis mantiene una rutina activa, y la que sigue activa es otra. Elige esta rutina para mantenerla activa, o administra tu plan en la web.",
+      "creatorPlan": "Esta rutina usa el plan Gratis de quien la creó, que limita cuántas veces puede ejecutarse."
+    },
+    "purchaseLinkTitle": "Este enlace no está disponible en la app"
   }
 }

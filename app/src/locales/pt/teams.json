@@ -593,5 +593,15 @@
   "agentNav": {
     "settingsUnavailable": "Não conseguimos abrir as configurações deste Funcionário de IA",
     "settingsUnavailableBody": "Este Funcionário de IA não está mais neste espaço. Ele pode ter sido removido ou movido."
+  },
+  "native": {
+    "askOwner": "Só o proprietário pode alterar o plano da sua equipe.",
+    "degradeOwner": "O teste da sua equipe terminou. Gerencie seu plano na web.",
+    "degradeMember": "O teste da sua equipe terminou. O plano da sua equipe não inclui alterações no momento.",
+    "writeBlockedTitle": "Não incluído no plano da sua equipe",
+    "writeBlockedBody": "O teste da sua equipe terminou, então o plano da sua equipe não inclui esta alteração no momento.",
+    "inviteNeedsUpgradeTitle": "Esta equipe não pode adicionar pessoas no momento",
+    "inviteNeedsUpgradeBody": "O teste dela terminou, então o plano dela não inclui novas pessoas no momento.",
+    "moveNeedsUpgrade": "O plano desta equipe não inclui mover Funcionários de IA para ela no momento."
   }
 }

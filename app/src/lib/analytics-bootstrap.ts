@@ -7,6 +7,7 @@
  */
 
 import posthog from "posthog-js";
+import { nativeTelemetryTag } from "./native-telemetry";
 import { currentPlatformOs } from "./platform";
 
 // __POSTHOG_KEY__, __POSTHOG_HOST__, __APP_VERSION__ declared in vite-env.d.ts,
@@ -46,6 +47,7 @@ export function baseSuperProps() {
     is_debug: import.meta.env.DEV,
     session_id: ANALYTICS_SESSION_ID,
     ...(deployEnv ? { environment: deployEnv } : {}),
+    ...nativeTelemetryTag(),
   };
 }
 

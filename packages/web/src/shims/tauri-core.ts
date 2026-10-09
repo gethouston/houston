@@ -20,6 +20,7 @@
  */
 
 import { gatewayAuthFetch } from "@houston/engine-adapter/cp/fetch";
+import { nativeShell } from "./native-shell";
 
 /** Mirror of `@tauri-apps/api`'s `isTauri()` — always false in the web build. */
 export function isTauri(): boolean {
@@ -120,6 +121,8 @@ export async function invoke<T = unknown>(
     case "open_url": {
       const url = typeof args?.url === "string" ? args.url : "";
       if (!url) return false as T;
+      const shell = nativeShell();
+      if (shell) return (await shell.openUrl(url)) as T;
       // Returns whether the browser TOOK the URL. A null handle is the popup
       // blocker refusing the open (Safari/Firefox after an async hop) — the
       // caller turns that into an explicit "open it yourself" click. No
@@ -131,6 +134,7 @@ export async function invoke<T = unknown>(
       return (tab !== null) as T;
     }
     case "show_session_notification": {
+      if (nativeShell()) return undefined as T;
       const title = typeof args?.title === "string" ? args.title : "Houston";
       const body = typeof args?.body === "string" ? args.body : "";
       try {

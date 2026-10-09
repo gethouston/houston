@@ -16,9 +16,11 @@ import { useIntegrationSessionSync } from "./hooks/use-integration-session-sync"
 import { useLocalBridgeAutoReconnect } from "./hooks/use-local-bridge-autoreconnect";
 import { useMentionNotifications } from "./hooks/use-mention-notifications";
 import { useMoveResume } from "./hooks/use-move-resume";
+import { useNativePush } from "./hooks/use-native-push";
 import { useNotificationNudges } from "./hooks/use-notification-nudges";
 import { usePerfSpans } from "./hooks/use-perf-spans";
 import { useProviderCatalog } from "./hooks/use-provider-catalog";
+import { usePushPresence } from "./hooks/use-push-presence";
 import { useReadCursorTracker } from "./hooks/use-read-cursors";
 import { useScreenPrefetch } from "./hooks/use-screen-prefetch";
 import { SessionUnavailableError, useSession } from "./hooks/use-session";
@@ -81,6 +83,8 @@ export default function App() {
     error: sessionError,
     refetch: refetchSession,
   } = useSession();
+  usePushPresence(Boolean(session));
+  useNativePush(Boolean(session));
 
   // The SDK owns reconnect, renewal and identity fencing for desktop models.
   useLocalBridgeAutoReconnect(session?.uid ?? null);

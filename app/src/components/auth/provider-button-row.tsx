@@ -2,9 +2,21 @@ import { Button } from "@houston-ai/core";
 import { Loader2 } from "lucide-react";
 import type { ReactNode } from "react";
 import { useTranslation } from "react-i18next";
+import { nativeShell } from "../../../../packages/web/src/shims/native-shell";
+import { osIsNativeMobile } from "../../lib/os-bridge/platform";
 import { AppleIcon, GoogleIcon, MicrosoftIcon } from "./provider-brand-icons";
 
 export type Provider = "google" | "apple" | "azure";
+
+export function providerAvailable(provider: Provider): boolean {
+  return (
+    !osIsNativeMobile() || nativeShell()?.identity.providers[provider] === true
+  );
+}
+
+export function hasAvailableProviders(): boolean {
+  return (["google", "apple", "azure"] as const).some(providerAvailable);
+}
 
 /**
  * The OAuth options as a single row of icon-only pills under the email field.
@@ -24,32 +36,39 @@ export function ProviderButtonRow({
   onSignIn: (provider: Provider) => () => void;
 }) {
   const { t } = useTranslation("auth");
+  if (!hasAvailableProviders()) return null;
   return (
     <div className="flex items-center gap-2.5">
-      <ProviderIconButton
-        label={t("continueWith", { provider: "Google" })}
-        pending={pending === "google"}
-        disabled={pending !== null}
-        onClick={onSignIn("google")}
-      >
-        <GoogleIcon />
-      </ProviderIconButton>
-      <ProviderIconButton
-        label={t("continueWith", { provider: "Apple" })}
-        pending={pending === "apple"}
-        disabled={pending !== null}
-        onClick={onSignIn("apple")}
-      >
-        <AppleIcon />
-      </ProviderIconButton>
-      <ProviderIconButton
-        label={t("continueWith", { provider: "Microsoft" })}
-        pending={pending === "azure"}
-        disabled={pending !== null}
-        onClick={onSignIn("azure")}
-      >
-        <MicrosoftIcon />
-      </ProviderIconButton>
+      {providerAvailable("google") && (
+        <ProviderIconButton
+          label={t("continueWith", { provider: "Google" })}
+          pending={pending === "google"}
+          disabled={pending !== null}
+          onClick={onSignIn("google")}
+        >
+          <GoogleIcon />
+        </ProviderIconButton>
+      )}
+      {providerAvailable("apple") && (
+        <ProviderIconButton
+          label={t("continueWith", { provider: "Apple" })}
+          pending={pending === "apple"}
+          disabled={pending !== null}
+          onClick={onSignIn("apple")}
+        >
+          <AppleIcon />
+        </ProviderIconButton>
+      )}
+      {providerAvailable("azure") && (
+        <ProviderIconButton
+          label={t("continueWith", { provider: "Microsoft" })}
+          pending={pending === "azure"}
+          disabled={pending !== null}
+          onClick={onSignIn("azure")}
+        >
+          <MicrosoftIcon />
+        </ProviderIconButton>
+      )}
     </div>
   );
 }

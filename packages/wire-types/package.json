@@ -21,7 +21,8 @@
     "typecheck": "tsgo --noEmit"
   },
   "dependencies": {
-    "@houston/protocol": "workspace:*"
+    "@houston/protocol": "workspace:*",
+    "zod": "4.4.3"
   },
   "devDependencies": {
     "@typescript/native-preview": "7.0.0-dev.20260607.1",

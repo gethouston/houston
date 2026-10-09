@@ -451,6 +451,7 @@
     "nativeTriggeredDescription": "Check Sentry for sentry-native-stack-smoke-test."
   },
   "errorToast": {
+    "offlineLaunchTitle": "You're offline",
     "genericDescription": "Something unexpected went wrong. Please try again.",
     "offlineTitle": "Connection lost",
     "offlineDescription": "We can't connect right now. Check your internet connection and try again.",
@@ -710,5 +711,14 @@
     "retryLabel": "Try hiring {{name}} again",
     "removeLabel": "Remove {{name}}",
     "nameHeading": "Name"
+  },
+  "mobileUpdate": {
+    "title": "Update Houston to continue",
+    "description": "A newer app version is required. Update Houston from your app store.",
+    "retryDescription": "A newer app version is required. Check again for an update.",
+    "openStore": "Open store",
+    "retry": "Check again",
+    "checking": "Checking for updates…",
+    "stillRequired": "An app update is still required."
   }
 }

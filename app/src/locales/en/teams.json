@@ -593,5 +593,15 @@
   "agentNav": {
     "settingsUnavailable": "We couldn't open this AI Employee's settings",
     "settingsUnavailableBody": "This AI Employee is no longer in this space. It may have been removed or moved."
+  },
+  "native": {
+    "askOwner": "Only the owner can change your team's plan.",
+    "degradeOwner": "Your team's trial ended. Manage your plan on the web.",
+    "degradeMember": "Your team's trial ended. Your team's plan doesn't include changes right now.",
+    "writeBlockedTitle": "Not included in your team's plan",
+    "writeBlockedBody": "Your team's trial ended, so your team's plan doesn't include this change right now.",
+    "inviteNeedsUpgradeTitle": "This team can't add people right now",
+    "inviteNeedsUpgradeBody": "Its trial ended, so its plan doesn't include new people right now.",
+    "moveNeedsUpgrade": "This team's plan doesn't include moving AI Employees into it right now."
   }
 }

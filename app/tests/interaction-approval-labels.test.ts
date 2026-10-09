@@ -5,6 +5,8 @@ import {
   type ApprovalCardCopy,
   localizeApprovalQuestion,
 } from "../src/lib/interaction-approval-labels.ts";
+import { approvalsFromAnswers } from "../src/lib/interaction-approvals.ts";
+import { enterNativeApp } from "./support/native-surface.ts";
 
 /**
  * A safety card the reader cannot read is a card they cannot answer. The HOST
@@ -40,6 +42,8 @@ function copyFor(locale: string): ApprovalCardCopy {
       param,
     hire: (name) => fill(card.hire, { name }),
     instructionsLabel: card.instructionsLabel,
+    storeRefusal: read(`../src/locales/${locale}/plan.json`).managedOnWeb,
+    storeRefusalOk: card.storeRefusalOk,
   };
 }
 
@@ -231,4 +235,86 @@ test("nested confirmation facts read as labeled text", () => {
   ok(step.question.includes("Collect receipts"));
   ok(step.detail?.includes("Follow up\n- On Friday"));
   ok(!`${step.question}${step.detail}`.includes("{"));
+});
+
+// Store-safe payments: inside the iOS/Android app the AI Manager can never get
+// a purchase approved. Its card says where the plan is managed and only
+// declines, so the host refuses the call and the manager reads the sentence.
+const PURCHASES = [
+  "createPlusCheckout",
+  "createCheckout",
+  "createPlusPortal",
+  "createPortal",
+] as const;
+
+for (const operation of PURCHASES)
+  test(`${operation} keeps its approval card off the store apps`, () => {
+    const step = localizeApprovalQuestion(
+      approvalStep({ detail: undefined, approval: { operation, args: [] } }),
+      copyFor("en"),
+    );
+    deepStrictEqual(
+      step.options?.map((option) => option.id),
+      ["approve", "decline"],
+    );
+    ok(!step.question.includes(copyFor("en").storeRefusal));
+  });
+
+for (const locale of LOCALES)
+  test(`${locale}: a purchase approval in a store app only declines`, () => {
+    const leave = enterNativeApp();
+    try {
+      const copy = copyFor(locale);
+      const step = localizeApprovalQuestion(
+        approvalStep({
+          approval: { operation: "createPlusCheckout", args: [] },
+        }),
+        copy,
+      );
+      strictEqual(step.question, copy.storeRefusal);
+      ok(step.question.includes("gethouston.ai"));
+      strictEqual(step.detail, undefined);
+      deepStrictEqual(step.options, [
+        { kind: "approval", id: "decline", label: copy.storeRefusalOk },
+      ]);
+      // Answering it sends a DENY receipt: nothing can approve the checkout.
+      const approvals = approvalsFromAnswers(
+        [{ ...step, id: "x", requestId: "host-issued" }],
+        [
+          {
+            stepId: "x",
+            question: step.question,
+            answer: copy.storeRefusalOk,
+            source: "option",
+            optionId: "decline",
+          },
+        ],
+      );
+      deepStrictEqual(approvals, [
+        { requestId: "host-issued", decision: "deny" },
+      ]);
+    } finally {
+      leave();
+    }
+  });
+
+test("other approvals in a store app keep both answers", () => {
+  const leave = enterNativeApp("android");
+  try {
+    const step = localizeApprovalQuestion(
+      approvalStep({
+        approval: {
+          operation: "deleteAgent",
+          args: [{ name: "id", value: "Personal/Dobby", long: false }],
+        },
+      }),
+      copyFor("en"),
+    );
+    deepStrictEqual(
+      step.options?.map((option) => option.id),
+      ["approve", "decline"],
+    );
+  } finally {
+    leave();
+  }
 });

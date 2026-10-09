@@ -46,7 +46,9 @@ test("posts the settle payload with the sandbox bearer", async () => {
     return new Response(null, { status: 200 });
   };
 
-  reportMissionSettle("conv-1", "needs_you", null, undefined, { fetchImpl });
+  reportMissionSettle("conv-1", "needs_you", null, "turn-1", false, undefined, {
+    fetchImpl,
+  });
   await settled(() => calls.length === 1);
 
   expect(calls[0]?.url).toBe(
@@ -56,6 +58,8 @@ test("posts the settle payload with the sandbox bearer", async () => {
   expect(headers.authorization).toBe("Bearer sbx-token");
   expect(JSON.parse(String(calls[0]?.init.body))).toEqual({
     conversation_id: "conv-1",
+    turn_id: "turn-1",
+    stopped: false,
     status: "needs_you",
     pending_interaction: null,
   });
@@ -71,7 +75,7 @@ test("a transient network drop retries and succeeds silently", async () => {
     return new Response(null, { status: 200 });
   };
 
-  reportMissionSettle("conv-2", "error", null, undefined, {
+  reportMissionSettle("conv-2", "error", null, "turn-2", false, undefined, {
     fetchImpl,
     retryDelaysMs: [0, 0],
   });
@@ -88,7 +92,7 @@ test("a settle that fails every attempt logs WARN, never console.error", async (
     throw new TypeError("fetch failed");
   };
 
-  reportMissionSettle("conv-3", "error", null, undefined, {
+  reportMissionSettle("conv-3", "error", null, "turn-3", false, undefined, {
     fetchImpl,
     retryDelaysMs: [0, 0],
   });
@@ -107,7 +111,9 @@ test("no control plane configured means no request at all", async () => {
     return new Response(null, { status: 200 });
   };
 
-  reportMissionSettle("conv-4", "needs_you", null, undefined, { fetchImpl });
+  reportMissionSettle("conv-4", "needs_you", null, "turn-4", true, undefined, {
+    fetchImpl,
+  });
   await new Promise((resolve) => setImmediate(resolve));
 
   expect(attempts).toBe(0);
@@ -128,7 +134,9 @@ test("carries the turn's model-call report as model_calls", async () => {
     droppedCalls: 0,
   };
 
-  reportMissionSettle("conv-5", "needs_you", null, report, { fetchImpl });
+  reportMissionSettle("conv-5", "needs_you", null, "turn-5", false, report, {
+    fetchImpl,
+  });
   await settled(() => bodies.length === 1);
 
   expect(bodies[0]).toMatchObject({ model_calls: report });

@@ -52,3 +52,11 @@ export function currentDeployEnvironment(): DeployEnvironment {
   if (typeof window === "undefined") return "development";
   return classifyDeployEnvironment(window.location.hostname);
 }
+
+/** Native builds publish their deploy target before this web entry loads. */
+export function bootDeployEnvironment(
+  preset: DeployEnvironment | undefined,
+  hostname: string,
+): DeployEnvironment {
+  return preset ?? classifyDeployEnvironment(hostname);
+}

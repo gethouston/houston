@@ -25,6 +25,22 @@ function fakeTab() {
 }
 
 describe("reserveBrowserTab", () => {
+  it("does not claim an empty tab in the native shell", () => {
+    const originalWindow = globalThis.window;
+    globalThis.window = { __HOUSTON_SURFACE__: "ios" } as Window &
+      typeof globalThis;
+    try {
+      const reserved = reserveBrowserTab(() => {
+        throw new Error("native must not claim a web tab");
+      });
+      strictEqual(reserved !== null, true);
+      reserved?.discard();
+    } finally {
+      if (originalWindow === undefined)
+        Reflect.deleteProperty(globalThis, "window");
+      else globalThis.window = originalWindow;
+    }
+  });
   it("claims the tab, disowns its opener, and navigates it later", () => {
     const { tab } = fakeTab();
     const reserved = reserveBrowserTab(() => tab);

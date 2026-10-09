@@ -26,16 +26,20 @@ export function isSubscribed(billing: BillingSummary): boolean {
  * The primary billing action available to the caller on this team:
  * - `none` for a non-owner (admins see billing read-only and are told to ask
  *   the owner — C8 admin degrade asymmetry; only the owner can check out/manage);
+ * - `web` for the owner inside a store app, which never sells (`purchase-policy`):
+ *   the plan is managed on the website, said as plain text;
  * - `portal` when subscribed (Manage billing → Stripe customer portal);
  * - `checkout` otherwise (any non-`active` status, per C8 — start a subscription).
  */
-export type BillingAction = "none" | "checkout" | "portal";
+export type BillingAction = "none" | "web" | "checkout" | "portal";
 
 export function billingAction(
   billing: BillingSummary,
   isOwner: boolean,
+  purchasable: boolean,
 ): BillingAction {
   if (!isOwner) return "none";
+  if (!purchasable) return "web";
   return isSubscribed(billing) ? "portal" : "checkout";
 }
 

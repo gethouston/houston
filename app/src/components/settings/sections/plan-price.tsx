@@ -1,9 +1,12 @@
 import type { PlanSummary } from "@houston/engine-adapter";
 import { planPriceAmounts } from "@houston/sdk";
 import { useTranslation } from "react-i18next";
+import { canPurchaseInApp } from "../../../lib/purchase-policy";
 
+/** Plus's monthly price. The store apps show no price, ever. */
 export function PlanPrice({ plan }: { plan: PlanSummary }) {
   const { t, i18n } = useTranslation("plan");
+  if (!canPurchaseInApp()) return null;
   const price = planPriceAmounts(plan, i18n.language);
   return (
     <span className="inline-flex flex-wrap items-center gap-2 text-sm text-ink-muted">

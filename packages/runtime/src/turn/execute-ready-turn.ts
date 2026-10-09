@@ -9,14 +9,18 @@ import type { TurnFilesystem } from "./turn-filesystem";
 import type { createTurnLog } from "./turn-log";
 import { landedMissionTitle } from "./turn-mission-title-outcome";
 import { remoteActivityReader } from "./turn-mission-title-remote";
+import { reportPooledSettle } from "./turn-push";
 import {
   turnIsUnconnected,
   turnSessionRequest,
   unconnectedTurnOutcome,
 } from "./turn-request";
-import { RoutineTurnError } from "./turn-routine";
 import { finishRoutineTurn } from "./turn-routine-finish";
-import { routinePhaseTurn, startRoutineRun } from "./turn-routine-start";
+import {
+  answerRoutineStartFailure,
+  routinePhaseTurn,
+  startRoutineRun,
+} from "./turn-routine-start";
 import { unconnectedRoutineTurn } from "./turn-routine-unconnected";
 import type { makeTurnSandboxFetch } from "./turn-sandbox";
 import { runTurn, type TurnOutcome } from "./turn-session";
@@ -45,6 +49,7 @@ export async function executeReadyTurn(input: {
   emit: (frame: WireFrame) => void;
   turnLog: ReturnType<typeof createTurnLog>;
   transcript: ReturnType<typeof createTurnTranscript>;
+  mentionReport?: Promise<void>;
 }): Promise<void> {
   let routinePhase = null;
   let effectiveTurn = input.turn;
@@ -56,17 +61,7 @@ export async function executeReadyTurn(input: {
       });
       effectiveTurn = routinePhaseTurn(input.turn, routinePhase);
     } catch (error) {
-      const code =
-        error instanceof RoutineTurnError ? error.code : "routine_error";
-      input.emit({
-        type: "error",
-        data: {
-          message: error instanceof Error ? error.message : String(error),
-          code,
-        },
-        turnId: input.turnId,
-      } as WireFrame);
-      await input.turnLog?.flush();
+      await answerRoutineStartFailure(input, error);
       return;
     }
   }
@@ -182,6 +177,7 @@ export async function executeReadyTurn(input: {
     }),
   ]);
   input.timings.t_durable = performance.now();
+  await reportPooledSettle(input, durable, input.mentionReport);
   input.emit(
     durableTerminalFrame(
       durable,

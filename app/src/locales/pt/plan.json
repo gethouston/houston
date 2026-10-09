@@ -115,5 +115,19 @@
     "preview": "Prévia: {{percent}}% usado",
     "upgrade": "Assinar Plus",
     "label": "Assine o Plus. {{status}}"
+  },
+  "managedOnWeb": "Seu plano é gerenciado na web, em gethouston.ai.",
+  "manageOnWeb": "Gerencie seu plano na web.",
+  "native": {
+    "nav": "Seu plano pessoal e uso",
+    "limitBody": "Seu uso é renovado {{time}}. Gerencie seu plano na web.",
+    "limitBodyNoTime": "Seu uso é renovado ainda nesta semana. Gerencie seu plano na web.",
+    "shortIntervalBody": "Nada foi salvo. Escolha uma frequência menor.",
+    "triggerSkipped": {
+      "minInterval": "Seu plano Grátis limita quantas vezes esta rotina pode rodar. Gerencie seu plano na web.",
+      "routineLimit": "O plano Grátis mantém uma rotina ativa, e a que continua ativa é outra. Escolha esta rotina para mantê-la ativa, ou gerencie seu plano na web.",
+      "creatorPlan": "Esta rotina usa o plano Grátis de quem a criou, que limita quantas vezes ela pode rodar."
+    },
+    "purchaseLinkTitle": "Este link não está disponível no app"
   }
 }

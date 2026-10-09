@@ -46,6 +46,8 @@ const DEVICE_LOCAL_KEY_PREFIXES = [
   "houston.web.agents",
   "houston.web.agentfile:",
   "houston.pendingAgentMoves",
+  "houston.pref.push.device_id",
+  "houston.pref.notifications_enabled",
 ] as const;
 
 /** Remove every ACCOUNT-scoped `houston.*` key — prefs mirrors, sidebar

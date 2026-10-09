@@ -11,6 +11,7 @@ import {
   recordMissedPing,
 } from "../lib/notification-settings";
 import { osIsTauri, osShowSessionNotification } from "../lib/os-bridge";
+import { osIsNativeMobile } from "../lib/os-bridge/platform";
 import { isMac } from "../lib/platform";
 import { navigateToNotificationTarget } from "./session-notification-navigate";
 
@@ -37,6 +38,7 @@ export async function sendSessionNotification(
   body: string,
   nav?: NotificationNav,
 ) {
+  if (osIsNativeMobile()) return;
   try {
     // The send chokepoint gate: the in-app toggle OFF suppresses everything.
     if (!isSessionNotificationEnabled()) return;

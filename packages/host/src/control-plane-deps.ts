@@ -1,5 +1,6 @@
 import type { Capabilities } from "@houston/protocol";
 import type { MountAdmin } from "./admin-seam";
+import type { ControlPlaneAssistantDeps } from "./control-plane-assistant-deps";
 import type { SharedEndpointStore } from "./credentials/remote-shared-endpoint-store";
 import type { ViewFamily } from "./docs/view-capture";
 import type { Agent, Workspace, WorkspaceRuntime } from "./domain/types";
@@ -14,8 +15,6 @@ import type {
   WorkspaceStore,
 } from "./ports";
 import type { AgentConfigsDeps } from "./routes/agent-configs";
-import type { AssistantDeps } from "./routes/assistant";
-import type { AssistantSandboxDeps } from "./routes/assistant-sandbox-deps";
 import type { CredentialServeHealer } from "./routes/credential-healer";
 import type { CustomIntegrationDeps } from "./routes/custom-integrations";
 import type { IntegrationDeps } from "./routes/integrations";
@@ -31,7 +30,7 @@ import type { Vfs } from "./vfs";
  * pod) differs from another ONLY in what it sets here — an absent dependency is
  * a documented, named refusal on the routes that need it, never a crash.
  */
-export interface ControlPlaneDeps {
+export interface ControlPlaneDeps extends ControlPlaneAssistantDeps {
   verifier: TokenVerifier;
   /** Authenticated agent-scoped request seen for this agent id (docs/projector binding). */
   addressedAgent?: (agentId: string) => void;
@@ -160,6 +159,8 @@ export interface ControlPlaneDeps {
   triggersEnabled?: boolean;
   /** Turn-end model-call reports, forwarded to the gateway (managed pods). */
   modelCallReports?: MissionsDeps["modelCallReports"];
+  /** Managed-pod push ingest; absent on desktop and self-host. */
+  pushReports?: MissionsDeps["pushReports"];
   corsOrigin?: string;
   /**
    * Prometheus exposition for GET /metrics (HOU-1011): the boot-span ledger,
@@ -177,24 +178,4 @@ export interface ControlPlaneDeps {
   storeWritable?: () => Promise<boolean>;
   /** Ship an acknowledged write to the store now (store-sync/daemon.ts). */
   storeSyncAfterWrite?: () => void;
-  /**
-   * Materialize a synthetic (dot-named) agent's directory — the personal
-   * assistant's home (routes/assistant.ts). Local filesystem profiles only;
-   * absent → `GET /v1/assistant` answers 503 instead of handing out an address
-   * that resolves to nothing.
-   */
-  ensureSyntheticAgentDir?: AssistantDeps["ensureSyntheticAgentDir"];
-  /**
-   * Where this deployment performs user-facing Houston operations, from the
-   * one resolver (`routes/assistant-wiring.ts`): the gateway on a fronted pod,
-   * this host itself when nothing fronts it. Absent → the runtime-facing
-   * dispatcher falls back to reading the configured env pair alone.
-   */
-  assistantGateway?: AssistantSandboxDeps["assistantGateway"];
-  /**
-   * Operations this deployment cannot perform, from the same boot-time
-   * resolution (`local/host-base.ts`). Absent → nothing is withheld, which is
-   * the right answer behind a gateway that serves the whole surface.
-   */
-  unservedOperations?: AssistantSandboxDeps["unservedOperations"];
 }

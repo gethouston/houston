@@ -4,6 +4,7 @@ import { Badge, Button, Card, Skeleton } from "@houston-ai/core";
 import { useTranslation } from "react-i18next";
 import { usePlusInvoices } from "../../../hooks/queries/use-plan";
 import { openExternalUrl } from "../../../lib/open-external-url";
+import { canPurchaseInApp } from "../../../lib/purchase-policy";
 
 function InvoiceRow({ invoice }: { invoice: PlusInvoice }) {
   const { t, i18n } = useTranslation("plan");
@@ -37,7 +38,15 @@ function InvoiceRow({ invoice }: { invoice: PlusInvoice }) {
   );
 }
 
+/**
+ * Recent invoices: amounts paid and Stripe's hosted invoice pages, where an
+ * open invoice can be paid. Billing, so the store apps never draw it.
+ */
 export function BillingInvoices() {
+  return canPurchaseInApp() ? <InvoiceList /> : null;
+}
+
+function InvoiceList() {
   const { t } = useTranslation("plan");
   const invoices = usePlusInvoices();
   return (

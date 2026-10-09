@@ -52,6 +52,7 @@ defineProxyFamily({
     const ctx = { workspace: authz.workspace, agent: authz.agent };
     const message: TurnMessageState = { duplicate: false };
     const seams = {
+      ...(deps.pushReports ? { pushReports: deps.pushReports } : {}),
       ...(deps.vfs ? { vfs: deps.vfs } : {}),
       paths: deps.paths ?? DEFAULT_PATHS,
       agent: authz.agent,

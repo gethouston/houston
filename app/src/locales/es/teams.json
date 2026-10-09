@@ -593,5 +593,15 @@
   "agentNav": {
     "settingsUnavailable": "No pudimos abrir la configuración de este Empleado de IA",
     "settingsUnavailableBody": "Este Empleado de IA ya no está en este espacio. Puede que lo hayan eliminado o movido."
+  },
+  "native": {
+    "askOwner": "Solo el propietario puede cambiar el plan de tu equipo.",
+    "degradeOwner": "La prueba de tu equipo terminó. Administra tu plan en la web.",
+    "degradeMember": "La prueba de tu equipo terminó. El plan de tu equipo no incluye cambios por ahora.",
+    "writeBlockedTitle": "No está incluido en el plan de tu equipo",
+    "writeBlockedBody": "La prueba de tu equipo terminó, así que el plan de tu equipo no incluye este cambio por ahora.",
+    "inviteNeedsUpgradeTitle": "Este equipo no puede sumar personas por ahora",
+    "inviteNeedsUpgradeBody": "Su prueba terminó, así que su plan no incluye personas nuevas por ahora.",
+    "moveNeedsUpgrade": "El plan de este equipo no incluye mover Empleados de IA a él por ahora."
   }
 }

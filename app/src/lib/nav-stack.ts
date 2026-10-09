@@ -59,6 +59,11 @@ export interface NavState {
   navIndex: number;
 }
 
+/** Native back uses the same cursor as the web history mirror. */
+export function canNavigateBack(state: NavState): boolean {
+  return state.navIndex > 0;
+}
+
 /**
  * How a navigation lands on the stack:
  * - `push`: a new place (rail click, drill-in, panel open).

@@ -91,6 +91,8 @@ export interface PageLifecycle {
  * `fetch` signature exactly so the runtime-client can be driven by it.
  */
 export interface SdkPorts {
+  /** Current authenticated user; null disables account-specific device caches. */
+  userId?: () => string | null;
   /** HTTP transport, shaped exactly like the global `fetch`. */
   fetch: typeof fetch;
   /** Persistent key/value storage the SDK keeps its OWN state in (the session

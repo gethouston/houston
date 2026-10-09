@@ -1,5 +1,5 @@
 import { equal, ok } from "node:assert/strict";
-import { before, describe, it } from "node:test";
+import { afterEach, before, describe, it } from "node:test";
 import {
   type TriggerPlanSkipNotice,
   triggerPlanSkipNotice,
@@ -8,6 +8,7 @@ import type { PlanSummary, TriggerPlanSkipCode } from "@houston/wire-types";
 import en from "../src/locales/en/plan.json" with { type: "json" };
 import es from "../src/locales/es/plan.json" with { type: "json" };
 import pt from "../src/locales/pt/plan.json" with { type: "json" };
+import { enterNativeApp } from "./support/native-surface.ts";
 
 // The routine screen and runs dialog notice for trigger events the Free plan
 // refused: the SDK picks the reason and the actions, the view says it in the
@@ -170,6 +171,70 @@ describe("RoutinePlanSkipNoticeView", () => {
       ok(html.includes("21"), html);
       ok(html.includes(resources[language].upgrade), html);
       equal(html.includes("skipped"), false);
+    });
+  }
+});
+
+// Inside the iOS/Android app Houston never sells: Upgrade is dropped and the
+// copy that pointed to Plus says the plan is managed on the web instead.
+describe("RoutinePlanSkipNoticeView inside a store app", () => {
+  let leave: (() => void) | null = null;
+  afterEach(() => {
+    leave?.();
+    leave = null;
+  });
+
+  it("drops Upgrade and points to the web on the interval floor", async () => {
+    leave = enterNativeApp();
+    const html = await render(noticeFor("plan_min_interval", 21));
+    ok(html.includes(en.native.triggerSkipped.minInterval), html);
+    equal(html.includes(en.upgrade), false, html);
+    equal(html.includes("Plus"), false, html);
+  });
+
+  it("keeps Choose routine and drops Upgrade on the routine limit", async () => {
+    leave = enterNativeApp("android");
+    const html = await render(noticeFor("plan_routine_limit", 3));
+    ok(html.includes(en.native.triggerSkipped.routineLimit), html);
+    ok(html.includes(en.chooseRoutine), html);
+    equal(html.includes(en.upgrade), false, html);
+  });
+
+  it("keeps Resume and drops Upgrade while routines are paused", async () => {
+    leave = enterNativeApp();
+    const html = await render(
+      noticeFor("plan_inactive", 2, {
+        ...free,
+        routines: { ...(free.routines as never), paused: true },
+      }),
+    );
+    ok(html.includes(en.resume), html);
+    equal(html.includes(en.upgrade), false, html);
+  });
+
+  it("tells a teammate about the creator's plan without naming Plus", async () => {
+    leave = enterNativeApp();
+    const html = await render(
+      noticeFor(
+        "plan_routine_limit",
+        4,
+        { ...free, plan: "plus" },
+        { ...creator, viewerId: "u2" },
+      ),
+    );
+    ok(html.includes(en.native.triggerSkipped.creatorPlan), html);
+    equal(html.includes("Plus"), false, html);
+  });
+
+  for (const language of ["es", "pt"] as const) {
+    it(`renders the store copy in ${language}`, async () => {
+      leave = enterNativeApp();
+      const html = await render(noticeFor("plan_min_interval", 21), language);
+      ok(
+        html.includes(resources[language].native.triggerSkipped.minInterval),
+        html,
+      );
+      equal(html.includes(resources[language].upgrade), false, html);
     });
   }
 });

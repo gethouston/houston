@@ -100,6 +100,8 @@ jobs:
           POSTHOG_KEY: ${{ secrets.POSTHOG_KEY }}
           POSTHOG_HOST: ${{ secrets.POSTHOG_HOST }}
           SENTRY_DSN: ${{ secrets.SENTRY_DSN }}
+          HOUSTON_APPLE_TEAM_ID: ${{ vars.HOUSTON_APPLE_TEAM_ID }}
+          HOUSTON_ANDROID_CERT_SHA256: ${{ vars.HOUSTON_ANDROID_CERT_SHA256 }}
         run: |
           set -euo pipefail
           # A missing gateway URL would silently ship a staging app that falls
