@@ -1075,6 +1075,21 @@
     "classification": "sdk"
   },
   {
+    "pattern": "/v1/channels/whatsapp/events",
+    "methods": [
+      "POST"
+    ],
+    "classification": "infra",
+    "reason": "Kapso's WhatsApp message webhook, authenticated by its HMAC-SHA256 signature over the raw body; no Houston client calls it"
+  },
+  {
+    "pattern": "/v1/channels/whatsapp/link",
+    "methods": [
+      "POST"
+    ],
+    "classification": "sdk"
+  },
+  {
     "pattern": "/v1/client-metrics",
     "methods": [
       "POST"

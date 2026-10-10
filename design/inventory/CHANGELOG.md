@@ -3,6 +3,14 @@
 Every `version` bump in `inventory.yaml` needs a matching entry here (enforced by
 `pnpm check:parity`). Newest first. Use `## vN` headings.
 
+## v129 - 2026-10-10
+
+Messaging channels settings shows separate Slack and WhatsApp provider cards.
+WhatsApp pairing offers a full-width phone link and a desktop QR code (dark on
+a light tile in every theme) for the prefilled message, with a copyable command
+and a waiting state that lasts as long as the code and clears once the
+connection lands.
+
 ## v128 - 2026-10-09
 
 The first day offer knows when no AI is connected. A new hire's first day

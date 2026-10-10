@@ -185,6 +185,7 @@
       "AI Models",
       "Integrations",
       "Routines",
+      "Settings",
       "Store website",
       "Web app",
       "Your Agents",
@@ -192,7 +193,7 @@
       "ui/events (library)",
       "ui/store (library)"
     ],
-    "fileCount": 11
+    "fileCount": 12
   },
   "core-button": {
     "surfaces": [
@@ -224,7 +225,7 @@
       "ui/routines (library)",
       "ui/store (library)"
     ],
-    "fileCount": 151
+    "fileCount": 155
   },
   "core-button-group": {
     "surfaces": [
@@ -303,7 +304,7 @@
       "ui/routines (library)",
       "ui/store (library)"
     ],
-    "fileCount": 16
+    "fileCount": 15
   },
   "core-dialog": {
     "surfaces": [
@@ -384,7 +385,7 @@
       "Settings",
       "app/src/components"
     ],
-    "fileCount": 7
+    "fileCount": 8
   },
   "core-highlighted-text": {
     "surfaces": [
@@ -409,7 +410,7 @@
       "ui/chat (library)",
       "ui/store (library)"
     ],
-    "fileCount": 36
+    "fileCount": 38
   },
   "core-hover-card": {
     "surfaces": [
@@ -596,7 +597,7 @@
       "ui/layout (library)",
       "ui/routines (library)"
     ],
-    "fileCount": 15
+    "fileCount": 16
   },
   "core-verified-badge": {
     "surfaces": [

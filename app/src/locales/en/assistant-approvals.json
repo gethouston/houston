@@ -24,7 +24,7 @@
     "deleteSkill": "Delete this skill so the AI Employee no longer has it.",
     "detectAgentCustomIntegration": "Check what kind of service this link points to, using this AI Employee.",
     "detectCustomIntegration": "Check what kind of service this link points to.",
-    "disconnectChannel": "Disconnect Houston from this Slack account. It stops reading and answering there.",
+    "disconnectChannel": "Disconnect Houston from this messaging account. It stops reading and answering there.",
     "forgetCredential": "Sign this workspace out of the AI account.",
     "installAgentFromGithub": "Install an AI Employee from a GitHub repository.",
     "integrations.disconnect": "Disconnect an outside app from your account.",
@@ -117,7 +117,7 @@
       "slug": "skill"
     },
     "disconnectChannel": {
-      "connectionId": "Slack account"
+      "connectionId": "messaging account"
     },
     "integrations.disconnect": {
       "toolkit": "app"

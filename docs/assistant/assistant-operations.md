@@ -40,6 +40,7 @@ A person's message can grant one `createAgent` call with the constrained name, c
 | `disconnectChannel` | DELETE | confirmed: host approval required | visible | connectionId: open: A messaging account is not a directory entry, so read its connection id from getChannels. |
 | `getChannels` | GET | unconfirmed: read-only HTTP GET | visible | none |
 | `linkSlack` | POST | unconfirmed: withheld from dispatch | the code IS the credential for the pairing window, so anyone it reaches can bind their own Slack account to this person's assistant. | none |
+| `linkWhatsApp` | POST | unconfirmed: withheld from dispatch | the code IS the credential for the pairing window, so anyone it reaches can bind their own WhatsApp account to this person's assistant. | none |
 | `conversations.delete` | DELETE | confirmed: host approval required | visible | agentId: resolved:agents; id: open: A chat lives in the agent's own engine, not in the directory, so read its id from conversations.list. |
 | `conversations.list` | GET | unconfirmed: read-only HTTP GET | visible | agentId: resolved:agents |
 | `conversations.rename` | PATCH | unconfirmed: Retitles a chat; everything said in it is untouched, and the title is changed back the same way. | visible | agentId: resolved:agents; id: open: A chat lives in the agent's own engine, not in the directory, so read its id from conversations.list.; title: free text |

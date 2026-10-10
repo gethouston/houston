@@ -4,6 +4,7 @@ import { MessageSquare, Plus } from "lucide-react";
 import { useTranslation } from "react-i18next";
 import type { SlackHandoff } from "../../../lib/channel-handoff";
 import { SettingsCard } from "../settings-row";
+import { ChannelConnectionRow } from "./channel-connection-row";
 import { ChannelLinkCommand } from "./channel-link-command";
 
 /**
@@ -49,43 +50,32 @@ export function ChannelsSlackCard({
           <p className="text-sm text-ink-muted">{t("channels.empty")}</p>
         )}
         {connections.map((connection) => (
-          <div
+          <ChannelConnectionRow
             key={connection.id}
-            className="flex flex-col gap-2 md:flex-row md:items-center md:justify-between"
-          >
-            <div className="min-w-0">
-              <p className="break-words text-sm text-ink">
-                {connection.accountLabel}
-              </p>
-              <p className="text-xs text-ink-muted">
-                {t("channels.connected")}
-              </p>
-            </div>
-            <Button
-              variant="ghost"
-              size="sm"
-              disabled={busy}
-              onClick={() => onDisconnect(connection)}
-            >
-              {t("channels.disconnect")}
-            </Button>
-          </div>
+            connection={connection}
+            busy={busy}
+            onDisconnect={onDisconnect}
+          />
         ))}
         {connectable ? (
           <div className="space-y-3">
             <Button disabled={busy} onClick={onConnect}>
               <Plus className="size-4" />
-              {t(connecting ? "channels.connecting" : "channels.connect")}
+              {t(
+                connecting
+                  ? "channels.slack.connecting"
+                  : "channels.slack.connect",
+              )}
             </Button>
             {handoff.kind === "open" && (
               <p role="status" className="text-sm text-ink-muted">
-                {t("channels.finishInSlack")}
+                {t("channels.slack.finishInSlack")}
               </p>
             )}
             {handoff.kind === "blocked" && (
               <div className="space-y-2">
                 <p role="status" className="text-sm text-ink-muted">
-                  {t("channels.blocked")}
+                  {t("channels.slack.blocked")}
                 </p>
                 <Button
                   size="sm"
@@ -93,7 +83,7 @@ export function ChannelsSlackCard({
                   disabled={busy}
                   onClick={() => onOpen(handoff.url)}
                 >
-                  {t("channels.openSlack")}
+                  {t("channels.slack.openSlack")}
                 </Button>
               </div>
             )}
@@ -104,14 +94,21 @@ export function ChannelsSlackCard({
                 disabled={busy}
                 onClick={onLink}
               >
-                {t(link ? "channels.newCode" : "channels.alreadyAdded")}
+                {t(link ? "channels.newCode" : "channels.slack.alreadyAdded")}
               </Button>
             </div>
-            {link && <ChannelLinkCommand link={link} />}
+            {link && (
+              <ChannelLinkCommand
+                key={link.code}
+                link={link}
+                instruction={t("channels.slack.linkInstructions")}
+                label={t("channels.slack.commandLabel")}
+              />
+            )}
           </div>
         ) : (
           <p role="status" className="text-sm text-ink-muted">
-            {t("channels.notConfigured")}
+            {t("channels.slack.notConfigured")}
           </p>
         )}
       </div>

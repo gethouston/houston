@@ -94,6 +94,20 @@ describe("the channels requests", () => {
     ]);
   });
 
+  it("mints a WhatsApp pairing link with an empty JSON body", async () => {
+    const link = {
+      code: "ABCDEFGH234567AB",
+      expiresAt: "2026-09-24T13:00:00Z",
+      phoneNumber: "+15550001111",
+      url: "https://wa.me/15550001111?text=connect+ABCDEFGH234567AB",
+    };
+    const { sdk, calls } = ok(link);
+    expect(await sdk.channels.linkWhatsApp()).toEqual(link);
+    expect(calls).toEqual([
+      { method: "POST", url: `${BASE}/v1/channels/whatsapp/link`, body: "{}" },
+    ]);
+  });
+
   it("redeems the callback ticket as the whole body", async () => {
     const { sdk, calls } = ok({ connection: CONNECTION });
     expect(await sdk.channels.completeSlack(TICKET)).toEqual({
@@ -181,6 +195,22 @@ describe("the dispatch path", () => {
     expect(result).toMatchObject({ ok: true, value: STATUS });
     expect(calls).toEqual([
       { method: "GET", url: `${BASE}/v1/channels`, body: null },
+    ]);
+  });
+
+  it("dispatches WhatsApp linking through the facade handler", async () => {
+    const link = {
+      code: "ABCDEFGH234567AB",
+      expiresAt: "2026-09-24T13:00:00Z",
+      phoneNumber: "+15550001111",
+      url: "https://wa.me/15550001111?text=connect+ABCDEFGH234567AB",
+    };
+    const { sdk, calls } = ok(link);
+    expect(
+      await sdk.dispatch({ id: "4", type: ChannelsCommand.LinkWhatsApp }),
+    ).toMatchObject({ ok: true, value: link });
+    expect(calls).toEqual([
+      { method: "POST", url: `${BASE}/v1/channels/whatsapp/link`, body: "{}" },
     ]);
   });
 });

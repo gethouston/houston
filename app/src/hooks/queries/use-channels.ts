@@ -1,13 +1,13 @@
+import {
+  type ChannelWatches,
+  channelWatchPollMs,
+} from "@houston/sdk/channels/watch";
 import type { ChannelStatus } from "@houston/wire-types";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
-import { useCallback } from "react";
+import { useCallback, useState } from "react";
 import { useTranslation } from "react-i18next";
 import { channelsWithout } from "../../lib/account-cache-patches";
-import {
-  type ChannelWatch,
-  channelWatchActive,
-  type SlackAuthorization,
-} from "../../lib/channel-handoff";
+import type { SlackAuthorization } from "../../lib/channel-handoff";
 import { silenceChannelCall } from "../../lib/channel-silence";
 import { logAndReportError } from "../../lib/error-report";
 import { runOptimisticWrite } from "../../lib/optimistic-core";
@@ -20,10 +20,10 @@ import { inChannelWorkspace } from "../channel-workspace-scope";
 
 /**
  * The endpoint describes availability; absent deployments expose no nav row.
- * `watch` is the hand-off the Channels section has outstanding, if any; the nav
- * row reads availability only and never polls.
+ * `watches` are the hand-offs the Channels section has outstanding, one per
+ * provider at most; the nav row reads availability only and never polls.
  */
-export function useChannels(watch: ChannelWatch | null = null) {
+export function useChannels(watches: ChannelWatches = {}) {
   const spaceId = useWorkspaceStore((s) => s.current?.id);
   return useQuery({
     queryKey: queryKeys.channels(spaceId),
@@ -36,16 +36,13 @@ export function useChannels(watch: ChannelWatch | null = null) {
     retry: false,
     refetchOnWindowFocus: "always",
     // A connection is made on the gateway, never in this tab, so nothing here
-    // is told when it lands: poll while a hand-off is outstanding, and stop the
-    // moment it arrives (or the person is plainly not coming back).
+    // is told when it lands: the SDK's watch policy says when to poll.
     refetchInterval: (query) =>
-      channelWatchActive(
-        watch,
-        query.state.data?.connections.length ?? 0,
+      channelWatchPollMs(
+        watches,
+        query.state.data?.connections ?? [],
         Date.now(),
-      )
-        ? 5_000
-        : false,
+      ),
   });
 }
 
@@ -80,6 +77,13 @@ export function useChannelActions() {
       ),
     gcTime: 0,
   });
+  const linkWhatsApp = useMutation({
+    mutationFn: () =>
+      inChannelWorkspace(spaceId, (_assert, signal) =>
+        tauriChannels.linkWhatsApp(signal),
+      ),
+    gcTime: 0,
+  });
   /**
    * Redeem the callback ticket. This is what BINDS the Slack account to the
    * signed-in user, so it runs from the app with its own credential rather than
@@ -92,13 +96,17 @@ export function useChannelActions() {
       ),
     onSuccess: invalidateHere,
   });
+  const [disconnecting, setDisconnecting] = useState(0);
   /**
    * Optimistic: the account leaves the card on the click. A refusal the
    * section answers itself (no channels here, the user moved away) only
-   * rolls back; the refetch shows the truth.
+   * rolls back; the refetch shows the truth. `disconnecting` stays up until
+   * the write settles: a hand-off started meanwhile would record the ids
+   * without the removed account, and a rollback would then read as a landing.
    */
   const disconnect = useCallback(
-    (id: string) =>
+    (id: string) => {
+      setDisconnecting((n) => n + 1);
       void runOptimisticWrite(
         {
           qc,
@@ -124,8 +132,17 @@ export function useChannelActions() {
           tellOptimisticRefusal(command, err, copy);
         },
         logAndReportError,
-      ),
+      ).finally(() => setDisconnecting((n) => n - 1));
+    },
     [qc, spaceId, t],
   );
-  return { connect, reopen, complete, link, disconnect };
+  return {
+    connect,
+    reopen,
+    complete,
+    link,
+    linkWhatsApp,
+    disconnect,
+    disconnecting: disconnecting > 0,
+  };
 }

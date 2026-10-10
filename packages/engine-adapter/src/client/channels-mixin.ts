@@ -6,7 +6,9 @@ import {
   parseChannelStatus,
   parseSlackAuthorization,
   parseSlackCompletion,
+  parseWhatsAppLink,
   slackTicket,
+  type WhatsAppLink,
 } from "@houston/wire-types";
 import { HoustonEngineError } from "./errors";
 import type { BaseCtor } from "./mixin";
@@ -18,8 +20,8 @@ import { viaSdk } from "./sdk-error";
  *
  * Every answer is parsed before it leaves this seam (`@houston/wire-types`):
  * an absent or mistyped field is a refusal rather than a silent default, and
- * the only URL this app ever hands a browser is Slack's own authorization
- * endpoint. The SDK stays honest about the wire; the guard lives here, where
+ * external URLs are restricted to their providers' trusted destinations.
+ * The SDK stays honest about the wire; the guard lives here, where
  * the value actually reaches a screen and a browser.
  *
  * Off the gateway (`this.ctx.cp === null`) there is no channels concept at
@@ -53,6 +55,14 @@ export function ChannelsMixin<TBase extends BaseCtor>(Base: TBase) {
       return parseChannelLink(
         await viaSdk("/v1/channels/slack/link", () =>
           this.ctx.sdk.channels.linkSlack(signal),
+        ),
+      );
+    }
+    async linkWhatsApp(signal?: AbortSignal): Promise<WhatsAppLink> {
+      this.requireGateway();
+      return parseWhatsAppLink(
+        await viaSdk("/v1/channels/whatsapp/link", () =>
+          this.ctx.sdk.channels.linkWhatsApp(signal),
         ),
       );
     }

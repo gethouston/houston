@@ -161,7 +161,7 @@ Workspace ("Tax Practice")
   └── Agent ("Client Comms")       ← board, files, integrations
 ```
 
-Each kanban card is a Claude conversation. Click a card to see the full chat. Connect Slack and the same conversation becomes a thread.
+Each kanban card is a Claude conversation. Click a card to see the full chat. Connect Slack or WhatsApp to talk to Houston from a messaging app.
 
 ---
 

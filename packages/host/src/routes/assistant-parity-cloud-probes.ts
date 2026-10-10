@@ -105,10 +105,11 @@ export const CLOUD_ONLY_PROBES: readonly CloudOnlyProbe[] = [
     AGENT,
   ),
 
-  // Messaging channels: the assistant answering in Slack.
+  // Messaging channels: the assistant answering in Slack and WhatsApp.
   cloudOnly("getChannels", CHANNELS),
   cloudOnly("connectSlack", CHANNELS),
   cloudOnly("linkSlack", CHANNELS),
+  cloudOnly("linkWhatsApp", CHANNELS),
   cloudOnly("completeSlack", CHANNELS, { ticket: "no-such-ticket" }),
   cloudOnly("disconnectChannel", CHANNELS, {
     connectionId: "no-such-connection",

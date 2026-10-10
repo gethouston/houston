@@ -62,7 +62,15 @@ const AVATAR_WORDS: Record<string, ColorWord> = {
   },
 };
 
-/** Avatar families exactly one feature owns. */
+/** Families exactly one feature owns: the avatars and the QR pair. */
 export const PALETTE_WORDS: Record<string, ColorWord> = {
   ...AVATAR_WORDS,
+  "qr-ink": {
+    label: "QR ink",
+    role: "The modules of a QR code. Black in every theme, because many phone scanners reject an inverted code.",
+  },
+  "qr-tile": {
+    label: "QR tile",
+    role: "The light tile a QR code sits on, in every theme, so the code keeps its contrast in dark mode.",
+  },
 };

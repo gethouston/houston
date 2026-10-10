@@ -16,8 +16,8 @@ import { paletteText } from "./palette-text.mjs";
  * The families Houston AUTHORS rather than derives; an imported palette inherits
  * them from the Houston set of its own mode, unchanged. They are identity (agent
  * helmets and the employee badge metal they are mixed through, file-type
- * glyphs, human avatars), the brand comet, and one effect
- * wash: none of them is a surface a terminal palette gets a say in, and each is
+ * glyphs, human avatars), the brand comet, one effect wash, and the QR pair
+ * (a scanner reads dark modules on a light tile, whatever the scheme): none of them is a surface a terminal palette gets a say in, and each is
  * already contrast-tuned against the ladder every palette keeps. The status
  * family and the link are inherited for the same reason, but they are re-measured
  * on the palette's surfaces, so `palette-status.mjs` owns them.
@@ -29,6 +29,7 @@ const AUTHORED = [
   "filetype-",
   "person-",
   "flash",
+  "qr-",
 ];
 
 const isAuthored = (name) =>

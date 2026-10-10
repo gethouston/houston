@@ -2,14 +2,14 @@
  * The channels REST calls, over the injected `fetch`.
  *
  * These are HOSTED-GATEWAY routes: a messaging connection belongs to the
- * managed cloud (it is the gateway that holds the Slack app's credentials and
+ * managed cloud (it is the gateway that holds provider credentials and
  * receives its events), so no host serves them and the runtime client has no
  * surface for them. They go straight through {@link httpRequest} with literal
  * paths, which is also what keeps them visible to the assistant's catalog.
  *
  * Nothing here degrades. A non-2xx throws a `ChannelsHttpError` (`index.ts`)
  * carrying the HTTP `status`, and the surface decides what a 404/501/503 means
- * for its screen — a deployment with no Slack app is a state to render, not an
+ * for its screen — a deployment with no messaging provider is a state to render, not an
  * error to report.
  */
 
@@ -19,6 +19,7 @@ import type {
   ChannelStatus,
   SlackAuthorization,
   SlackCompletion,
+  WhatsAppLink,
 } from "./types";
 
 /**
@@ -27,7 +28,7 @@ import type {
  * The providers this deployment knows, whether each one is configured, and the
  * connections bound in the caller's active space. Throws on every failure,
  * including the deployments that serve no channels at all (404/501) and one
- * whose Slack app is not configured (503) — the surface reads those three as
+ * whose provider is not configured (503) — the surface reads those three as
  * "nothing to connect here" and renders the section accordingly.
  * @assistant group:channels
  */
@@ -82,6 +83,26 @@ export async function linkSlack(
 }
 
 /**
+ * Creates the expiring code that pairs a WhatsApp account with the assistant.
+ *
+ * The person sends the prefilled command to Houston's WhatsApp number. The
+ * returned URL opens that message in WhatsApp.
+ * @assistant group:channels
+ * @assistant hidden: the code IS the credential for the pairing window, so anyone it reaches can bind their own WhatsApp account to this person's assistant.
+ */
+export async function linkWhatsApp(
+  scope: HttpScope,
+  signal?: AbortSignal,
+): Promise<WhatsAppLink> {
+  const res = await httpRequest(scope, "/v1/channels/whatsapp/link", {
+    method: "POST",
+    body: JSON.stringify({}),
+    signal,
+  });
+  return (await res.json()) as WhatsAppLink;
+}
+
+/**
  * Finishes a Slack connection the person just approved in their browser.
  *
  * Bind the connection Slack approved to the signed-in user. The OAuth callback
@@ -109,12 +130,12 @@ export async function completeSlack(
  * Disconnects a messaging account from the personal assistant.
  *
  * Remove one connection. The assistant stops reading and answering in that
- * account immediately; reconnecting means going through Slack again.
+ * account immediately; reconnecting means pairing that account again.
  * @param connectionId The connection this acts on, by the id getChannels
  *   returns. An account label is not its id, so read the id from getChannels
  *   first.
  * @assistant group:channels
- * @assistant confirm: outward. It cuts the person's Slack workspace off from their assistant, and every conversation they were having there stops being answered.
+ * @assistant confirm: outward. It cuts the person's messaging account off from their assistant, and conversations there stop being answered.
  */
 export async function disconnectChannel(
   scope: HttpScope,

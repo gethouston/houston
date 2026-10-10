@@ -32,6 +32,8 @@ test("channels mixin uses live authenticated current-space gateway transport", a
     method: string;
     org: string | null;
     auth: string | null;
+    body: string | null;
+    contentType: string | null;
   }[] = [];
   const connection = {
     id: "connection-1",
@@ -45,6 +47,12 @@ test("channels mixin uses live authenticated current-space gateway transport", a
     { url: "https://slack.com/oauth/v2/authorize?state=opaque" },
     { connection },
     { code: "ABCD-1234", expiresAt: "2026-09-08T13:00:00Z" },
+    {
+      code: "ABCDEFGH234567AB",
+      expiresAt: "2026-09-24T13:00:00Z",
+      phoneNumber: "+15550001111",
+      url: "https://wa.me/15550001111?text=connect+ABCDEFGH234567AB",
+    },
   ];
   globalThis.fetch = vi.fn(async (url, init) => {
     const headers = new Headers(init?.headers);
@@ -53,6 +61,8 @@ test("channels mixin uses live authenticated current-space gateway transport", a
       method: init?.method ?? "GET",
       org: headers.get("x-houston-org"),
       auth: headers.get("Authorization"),
+      body: typeof init?.body === "string" ? init.body : null,
+      contentType: headers.get("Content-Type"),
     });
     return responses.length
       ? Response.json(responses.shift())
@@ -68,6 +78,7 @@ test("channels mixin uses live authenticated current-space gateway transport", a
   await client.connectSlack();
   expect(await client.completeSlack("Tk7-ticket.value_~9")).toEqual(connection);
   await client.linkSlack();
+  expect((await client.linkWhatsApp()).phoneNumber).toBe("+15550001111");
   client.setActiveOrg(null);
   await client.disconnectChannel("connection/a");
   expect(calls.map(({ url, method }) => [method, url])).toEqual([
@@ -75,13 +86,22 @@ test("channels mixin uses live authenticated current-space gateway transport", a
     ["POST", "https://gateway.test/v1/channels/slack/connect"],
     ["POST", "https://gateway.test/v1/channels/slack/complete"],
     ["POST", "https://gateway.test/v1/channels/slack/link"],
+    ["POST", "https://gateway.test/v1/channels/whatsapp/link"],
     ["DELETE", "https://gateway.test/v1/channels/connections/connection%2Fa"],
   ]);
   expect(calls.every((call) => call.auth === "Bearer live-token")).toBe(true);
   expect(
-    calls.slice(0, 4).every((call) => call.org === "0123456789abcdef"),
+    calls.slice(0, 5).every((call) => call.org === "0123456789abcdef"),
   ).toBe(true);
-  expect(calls[4].org).toBe(null);
+  expect(calls[5].org).toBe(null);
+  expect(calls[4]).toMatchObject({
+    method: "POST",
+    url: "https://gateway.test/v1/channels/whatsapp/link",
+    auth: "Bearer live-token",
+    org: "0123456789abcdef",
+    body: "{}",
+    contentType: "application/json",
+  });
 });
 
 test("a local deployment exposes channels as unsupported without a network request", async () => {
@@ -93,6 +113,7 @@ test("a local deployment exposes channels as unsupported without a network reque
     controlPlane: false,
   });
   await expect(client.getChannels()).rejects.toMatchObject({ status: 501 });
+  await expect(client.linkWhatsApp()).rejects.toMatchObject({ status: 501 });
   expect(fetch).not.toHaveBeenCalled();
 });
 

@@ -1,12 +1,12 @@
 /**
  * The channels wire shapes and their guards. Every value the gateway returns is
  * parsed here before any surface sees it: an absent or mistyped field is a
- * refusal, never a silent default, and nothing but Slack's own authorization
- * endpoint is ever handed to a browser.
+ * refusal, never a silent default. External links are separately guarded
+ * against their providers' trusted destinations.
  */
 
 /** The messaging providers this app knows how to render. */
-export const CHANNEL_PROVIDER_IDS = ["slack"] as const;
+export const CHANNEL_PROVIDER_IDS = ["slack", "whatsapp"] as const;
 
 export type ChannelProviderId = (typeof CHANNEL_PROVIDER_IDS)[number];
 

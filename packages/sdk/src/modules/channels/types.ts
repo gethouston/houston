@@ -21,6 +21,7 @@ export const ChannelsCommand = {
   Get: "channels/get",
   ConnectSlack: "channels/connectSlack",
   LinkSlack: "channels/linkSlack",
+  LinkWhatsApp: "channels/linkWhatsApp",
   CompleteSlack: "channels/completeSlack",
   Disconnect: "channels/disconnect",
 } as const;
@@ -33,7 +34,7 @@ export type ChannelsCommandType =
  * command payload arrives untyped, and a union is not a value to check it
  * against. A provider the gateway starts offering must be added here too.
  */
-export const CHANNEL_PROVIDER_IDS = ["slack"] as const;
+export const CHANNEL_PROVIDER_IDS = ["slack", "whatsapp"] as const;
 
 export type ChannelProviderId = (typeof CHANNEL_PROVIDER_IDS)[number];
 
@@ -62,6 +63,11 @@ export interface ChannelStatus {
 export interface ChannelLink {
   code: string;
   expiresAt: string;
+}
+
+export interface WhatsAppLink extends ChannelLink {
+  phoneNumber: string;
+  url: string;
 }
 
 /** Slack's own authorization endpoint, for the person's browser to open. */

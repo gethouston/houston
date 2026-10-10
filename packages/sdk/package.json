@@ -51,6 +51,10 @@
       "types": "./src/modules/routines/plan-floor-quiet.ts",
       "import": "./src/modules/routines/plan-floor-quiet.ts"
     },
+    "./channels/watch": {
+      "types": "./src/modules/channels/watch.ts",
+      "import": "./src/modules/channels/watch.ts"
+    },
     "./routines/webhook-key-access": {
       "types": "./src/modules/routines/webhook-key-access.ts",
       "import": "./src/modules/routines/webhook-key-access.ts"

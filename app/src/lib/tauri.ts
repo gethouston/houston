@@ -2066,6 +2066,8 @@ export const tauriChannels = {
     channelCall("connect_slack", () => getEngine().connectSlack(signal)),
   linkSlack: (signal?: AbortSignal) =>
     channelCall("link_slack", () => getEngine().linkSlack(signal)),
+  linkWhatsApp: (signal?: AbortSignal) =>
+    channelCall("link_whatsapp", () => getEngine().linkWhatsApp(signal)),
   completeSlack: (ticket: string, signal?: AbortSignal) =>
     channelCall("complete_slack", () =>
       getEngine().completeSlack(ticket, signal),

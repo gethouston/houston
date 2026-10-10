@@ -4,41 +4,27 @@ import {
 } from "@houston/engine-adapter";
 import { Button, Input } from "@houston-ai/core";
 import { Check, Copy } from "lucide-react";
-import { useEffect, useState } from "react";
+import { useState } from "react";
 import { useTranslation } from "react-i18next";
 import { channelLinkExpired } from "../../../lib/channel-link-expiry";
 import { showErrorToast } from "../../../lib/error-toast";
+import { useChannelLinkExpired } from "./use-channel-link-expired";
 
-export function ChannelLinkCommand({ link }: { link: ChannelLink }) {
+export function ChannelLinkCommand({
+  link,
+  instruction,
+  label,
+}: {
+  link: ChannelLink;
+  instruction: string;
+  label: string;
+}) {
   const { t, i18n } = useTranslation("settings");
   const [copied, setCopied] = useState(false);
-  const [expired, setExpired] = useState(channelLinkExpired(link.expiresAt));
+  const expired = useChannelLinkExpired(link.expiresAt);
   const command = channelConnectCommand(link.code);
-  useEffect(() => {
-    setCopied(false);
-    let timer: ReturnType<typeof setTimeout>;
-    const refresh = () => {
-      clearTimeout(timer);
-      const expired = channelLinkExpired(link.expiresAt);
-      setExpired(expired);
-      if (!expired)
-        timer = setTimeout(
-          refresh,
-          Math.min(60_000, Date.parse(link.expiresAt) - Date.now()),
-        );
-    };
-    refresh();
-    window.addEventListener("focus", refresh);
-    document.addEventListener("visibilitychange", refresh);
-    return () => {
-      clearTimeout(timer);
-      window.removeEventListener("focus", refresh);
-      document.removeEventListener("visibilitychange", refresh);
-    };
-  }, [link]);
   async function copy() {
     if (channelLinkExpired(link.expiresAt)) {
-      setExpired(true);
       return;
     }
     try {
@@ -54,7 +40,7 @@ export function ChannelLinkCommand({ link }: { link: ChannelLink }) {
   }
   return (
     <div className="space-y-3 rounded-xl bg-input p-4">
-      <p className="text-sm text-ink">{t("channels.linkInstructions")}</p>
+      <p className="text-sm text-ink">{instruction}</p>
       {expired ? (
         <p role="status" className="text-sm text-ink-muted">
           {t("channels.linkExpired")}
@@ -64,7 +50,7 @@ export function ChannelLinkCommand({ link }: { link: ChannelLink }) {
           <div className="flex flex-col gap-2 md:flex-row">
             <Input
               readOnly
-              aria-label={t("channels.commandLabel")}
+              aria-label={label}
               value={command}
               className="font-mono text-base"
             />

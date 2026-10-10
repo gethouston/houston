@@ -36,7 +36,7 @@
 #   a11y     roles / labels / focus expectations the surface must honor
 #   since    inventory version this component first appeared in
 
-version: 128
+version: 129
 
 components:
   - id: agent-delegation-settings
@@ -2234,12 +2234,16 @@ components:
   - id: messaging-channels-settings
     title: Messaging channels settings
     purpose: Connect messaging identities to the personal assistant in the selected Houston space.
-    anatomy: [section-header, space-label, provider-row, connection-list, connect-action, pairing-command, disconnect-confirmation]
-    states: [loading, empty, connected, connecting, completing, pairing-code, expired-code, link-refused, unavailable]
+    anatomy: [section-header, space-label, provider-card, connection-list, connect-action, pairing-command, whatsapp-qr, disconnect-confirmation]
+    states: [loading, empty, connected, connecting, completing, pairing-code, expired-code, waiting, link-refused, unavailable]
     variants: [phone, desktop]
     behavior: >-
       OAuth connects Slack; an expiring command pairs an existing Slack installation.
-      Both bind the same personal assistant conversation. Returning from Slack
+      WhatsApp pairs through an expiring command sent to Houston's number, opened
+      from a full-width phone link or a desktop QR code (dark on a light tile in
+      every theme). The section waits for that connection for as long as the code
+      lives, and a landed connection clears the spent code. Both providers bind
+      the personal assistant. Returning from Slack
       redeems a one-time ticket on the authenticated client, which is what binds
       the connection: the section reports that it is finishing, refreshes the list
       when it succeeds, and says the link is invalid or already connected when the
@@ -2249,7 +2253,7 @@ components:
       assistant links resolve live membership before selecting the linked
       conversation's space.
     a11y: >-
-      Real labeled buttons, a read-only labeled command input, status messages,
+      Real labeled buttons, "Open WhatsApp" as a real link, a read-only labeled command input, labeled QR code, status messages,
       and a focus-managed disconnect confirmation. All controls remain visible.
     since: 94
 

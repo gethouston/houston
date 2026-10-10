@@ -13,7 +13,7 @@
 
 surface: web
 enforced: true
-inventoryVersion: 128
+inventoryVersion: 129
 
 components:
   manager-avatar:
@@ -333,7 +333,7 @@ components:
     ref: "app/src/components/academy/ (academy-path.tsx, academy-chapter-section.tsx, academy-path-node.tsx over the pure academy-path-state.ts), lessons in academy/lessons/registry.ts"
   messaging-channels-settings:
     status: implemented
-    ref: app/src/components/settings/sections/channels.tsx
+    ref: "app/src/components/settings/sections/channels.tsx (provider cards channels-slack-card.tsx and channels-whatsapp-card.tsx, the code in channels-whatsapp-link.tsx, the watch in use-watched-channels.ts over @houston/sdk/channels/watch)"
   api-keys-settings:
     status: implemented
     ref: "app/src/components/settings/sections/api-keys.tsx (ApiKeysBody in api-keys-body.tsx, ApiOrgId in api-org-id.tsx, ApiKeyCreateDialog in api-key-create-dialog.tsx, the shared CopyIdRow in settings/copy-id-row.tsx) over lib/api-keys-model.ts; the employee card is agent-settings/agent-api-access.tsx"

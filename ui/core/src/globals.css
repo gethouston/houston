@@ -250,6 +250,10 @@
   --color-person-initials: var(--ht-person-initials);
   --color-person-overflow: var(--ht-person-overflow);
   --color-person-overflow-text: var(--ht-person-overflow-text);
+  /* A QR code is dark modules on a light tile in EVERY theme and palette:
+     many phone scanners reject an inverted code. */
+  --color-qr-ink: var(--ht-qr-ink);
+  --color-qr-tile: var(--ht-qr-tile);
   /* --shadow-* is Tailwind v4's box-shadow namespace: each tier IS the
      `shadow-<tier>` utility, themed by its token, so no `dark:` fork exists. */
   --shadow-edge: var(--ht-shadow-edge);

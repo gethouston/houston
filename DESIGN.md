@@ -105,6 +105,7 @@ Reserved families — do not reach for outside their home:
 - `person-{slate,sage,mauve,taupe,indigo}` + `person-initials` + `person-overflow`/`person-overflow-text`: HUMAN avatar palette (mission face stacks). Deliberately desaturated so teammates never compete with agent helmets. Pick a tone with `personToneClass(id)` from `@houston-ai/board` — never by list index, or a person's colour changes when the roster does.
 - `glow-{blue,indigo,orange,amber}` + `glow-blue-wash`/`glow-blue-shadow`: the running comet (card glow, avatar ring, progress line), theme-invariant, consumed only by the `.card-running-glow` / `.avatar-running-ring` / `.running-glow-line` recipes in `ui/core/src/motion.css`; never as decorative colour elsewhere.
 - `flash`: the routines section flash wash (`ui/routines`), a white alpha in both themes.
+- `qr-ink` / `qr-tile`: a QR code's modules and the tile under them, black on white in EVERY theme and palette (an inverted code fails many phone scanners). `bg-qr-tile` on the tile, `text-qr-ink` + `currentColor` as the code's foreground.
 - `person-name-{slate,sage,mauve,taupe,indigo}`: the same five hues retuned for TEXT (the avatar fills carry white initials and land at ~3:1 as text). One person, one tone: `personNameToneClass(id)` from `@houston-ai/board` indexes the same hash as `personToneClass`. Text-only — never use these as fills.
 
 ## 5. Motion rules

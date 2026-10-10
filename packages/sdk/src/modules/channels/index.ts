@@ -1,6 +1,6 @@
 /**
  * The channels module — the messaging accounts a person's assistant answers
- * in: what is connected today, the two ways to connect Slack, and removal.
+ * in: what is connected today, Slack and WhatsApp pairing, and removal.
  *
  * These are pure commands over hosted-gateway routes: the listing is read when
  * the Channels screen opens and every other call is a button's one-shot, so
@@ -23,6 +23,7 @@ import {
   disconnectChannel,
   getChannels,
   linkSlack,
+  linkWhatsApp,
 } from "./http";
 import {
   type ChannelLink,
@@ -31,6 +32,7 @@ import {
   requireTicket,
   type SlackAuthorization,
   type SlackCompletion,
+  type WhatsAppLink,
 } from "./types";
 
 export type {
@@ -42,6 +44,7 @@ export type {
   ChannelsCommandType,
   SlackAuthorization,
   SlackCompletion,
+  WhatsAppLink,
 } from "./types";
 export { CHANNEL_PROVIDER_IDS, ChannelsCommand } from "./types";
 
@@ -53,6 +56,8 @@ export interface ChannelsModule {
   connectSlack(signal?: AbortSignal): Promise<SlackAuthorization>;
   /** An expiring code that pairs an already-installed Slack workspace. */
   linkSlack(signal?: AbortSignal): Promise<ChannelLink>;
+  /** An expiring code and prefilled message for WhatsApp pairing. */
+  linkWhatsApp(signal?: AbortSignal): Promise<WhatsAppLink>;
   /** Redeem the one-time ticket a Slack callback returned with. */
   completeSlack(ticket: string, signal?: AbortSignal): Promise<SlackCompletion>;
   /** Remove one connection, by the id `getChannels` returns. */
@@ -73,6 +78,7 @@ export function createChannelsModule(ctx: ModuleContext): ChannelsModule {
     getChannels: (signal) => getChannels(scope, signal),
     connectSlack: (signal) => connectSlack(scope, signal),
     linkSlack: (signal) => linkSlack(scope, signal),
+    linkWhatsApp: (signal) => linkWhatsApp(scope, signal),
     completeSlack: (ticket, signal) => completeSlack(scope, ticket, signal),
     disconnectChannel: (connectionId, signal) =>
       disconnectChannel(scope, connectionId, signal),
@@ -83,6 +89,9 @@ export function createChannelsModule(ctx: ModuleContext): ChannelsModule {
     module.connectSlack(),
   );
   ctx.registerCommand(ChannelsCommand.LinkSlack, () => module.linkSlack());
+  ctx.registerCommand(ChannelsCommand.LinkWhatsApp, () =>
+    module.linkWhatsApp(),
+  );
   ctx.registerCommand(ChannelsCommand.CompleteSlack, (p) =>
     module.completeSlack(requireTicket(p, "ticket")),
   );

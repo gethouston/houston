@@ -163,6 +163,12 @@
     "flash": {
       "$value": "{color.alpha.white-a65}"
     },
+    "qr-ink": {
+      "$value": "{color.base.black}"
+    },
+    "qr-tile": {
+      "$value": "{color.base.white}"
+    },
     "sidebar": {
       "$value": "{color.base.transparent}"
     },

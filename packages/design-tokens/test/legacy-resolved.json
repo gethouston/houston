@@ -1,5 +1,5 @@
 {
-  "$note": "Pre-adoption resolved values, extracted from the hand-written CSS at commit d3322e3: the baseline that proves the token refactor moved zero pixels. Two entries are deliberate moves off that baseline, pinned here at their new values. Dark card-solid and tab-active were retuned to #1e1e20, the frosted screen's own composited tone, so a board card reads as the screen showing through its column tray. The -ink status hues are new tokens with no pre-adoption ancestor. So are the five cta roles, which pin the primary button's shipped literals from ui/core/src/canvas.css. See README.md.",
+  "$note": "Pre-adoption resolved values, extracted from the hand-written CSS at commit d3322e3: the baseline that proves the token refactor moved zero pixels. Two entries are deliberate moves off that baseline, pinned here at their new values. Dark card-solid and tab-active were retuned to #1e1e20, the frosted screen's own composited tone, so a board card reads as the screen showing through its column tray. The -ink status hues are new tokens with no pre-adoption ancestor. So are the five cta roles, which pin the primary button's shipped literals from ui/core/src/canvas.css, and the qr pair, which keeps a scannable QR code dark-on-light in every theme. See README.md.",
   "light": {
     "ht-base": "#f2f5f9",
     "ht-background": "#ffffff",
@@ -53,6 +53,8 @@
     "ht-highlight": "rgba(250, 204, 21, 0.45)",
     "ht-highlight-text": "#3f2d00",
     "ht-flash": "rgba(255, 255, 255, 0.65)",
+    "ht-qr-ink": "#000000",
+    "ht-qr-tile": "#ffffff",
     "ht-sidebar": "transparent",
     "ht-sidebar-text": "#0d0d0d",
     "ht-sidebar-line": "rgba(13, 13, 13, 0.06)",
@@ -156,6 +158,8 @@
     "ht-highlight": "rgba(234, 179, 8, 0.34)",
     "ht-highlight-text": "#fde68a",
     "ht-flash": "rgba(255, 255, 255, 0.14)",
+    "ht-qr-ink": "#000000",
+    "ht-qr-tile": "#ffffff",
     "ht-sidebar": "transparent",
     "ht-sidebar-text": "#e5e5e5",
     "ht-sidebar-line": "rgba(255, 255, 255, 0.08)",

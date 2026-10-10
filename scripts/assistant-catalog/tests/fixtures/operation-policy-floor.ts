@@ -137,6 +137,7 @@ export const OPERATION_POLICY_FLOOR: Readonly<Record<string, OperationPolicy>> =
   integrationToolkits: { group: "integrations", confirm: false, hidden: false, route: "GET /v1/integrations/{provider}/toolkits", rawResponse: true },
   keepRoutine: { group: "routines", confirm: true, hidden: false, route: "PUT /v1/me/routines/keep", rawResponse: true },
   linkSlack: { group: "channels", confirm: false, hidden: true, route: "POST /v1/channels/slack/link", rawResponse: true },
+  linkWhatsApp: { group: "channels", confirm: false, hidden: true, route: "POST /v1/channels/whatsapp/link", rawResponse: true },
   listActivities: { group: "missions", confirm: false, hidden: false, route: "GET /agents/{agentId}/activities", rawResponse: true },
   listAgentProviders: { group: "providers", confirm: false, hidden: false, route: "GET /agents/{agentId}/providers", rawResponse: true },
   listAgents: { group: "agents", confirm: false, hidden: false, route: "GET /agents", rawResponse: true },

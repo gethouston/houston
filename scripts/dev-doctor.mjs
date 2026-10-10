@@ -101,7 +101,7 @@ if (Object.keys(committed).length === 0)
 // override exactly these; every other overlap is a drift and fails below.
 const PER_DEVELOPER = {
   GW_PUBLIC_BASE_URL:
-    "a public https tunnel to the local gateway, for Slack channel testing",
+    "a public https tunnel to the local gateway, for Slack and WhatsApp channel testing",
 };
 const overlap = Object.keys(local).filter(
   (k) => k in committed && !(k in PER_DEVELOPER),
@@ -180,6 +180,16 @@ if (slackCredentials && !tunnel)
   console.log(
     `  ${paint.warn("!")} SLACK_* is set but no tunnel — Slack cannot reach the local gateway; set CLOUDFLARE_TUNNEL + GW_PUBLIC_BASE_URL in .env.local`,
   );
+const kapsoCredentials =
+  env.KAPSO_API_KEY &&
+  env.KAPSO_PHONE_NUMBER_ID &&
+  env.KAPSO_WEBHOOK_SECRET &&
+  env.KAPSO_PHONE_NUMBER;
+const whatsAppChannel = kapsoCredentials && tunnel;
+if (kapsoCredentials && !tunnel)
+  console.log(
+    `  ${paint.warn("!")} KAPSO_* is set but no tunnel — Kapso cannot reach the local gateway; set CLOUDFLARE_TUNNEL + GW_PUBLIC_BASE_URL in .env.local`,
+  );
 if (desktopProfile === "cloud" && !desktopLogin)
   console.log(
     `  ${paint.warn("!")} DEV_DESKTOP_PROFILE=cloud needs GOOGLE_DESKTOP_CLIENT_ID(+_SECRET) — the app pane will refuse to start`,
@@ -198,6 +208,7 @@ ${paint.bold("── pnpm dev · feature matrix ──────────�
   ${integrations ? on : off} integrations   ${integrations ? "Composio configured" : "set COMPOSIO_API_KEY in .env.local to enable connected apps"}
   ${tunnel ? on : off} public tunnel  ${tunnel ? `cloudflared ${env.CLOUDFLARE_TUNNEL} → ${env.GW_PUBLIC_BASE_URL} → :9080` : "gateway is localhost-only — set CLOUDFLARE_TUNNEL + GW_PUBLIC_BASE_URL in .env.local for a public https hostname"}
   ${slackChannel ? on : off} slack channel  ${slackChannel ? "Slack app configured — Settings → Channels on the web pane" : "set SLACK_APP_ID + SLACK_CLIENT_ID + SLACK_CLIENT_SECRET + SLACK_SIGNING_SECRET in .env.local plus the tunnel above (see cloud/docs/slack/README.md)"}
+  ${whatsAppChannel ? on : off} whatsapp       ${whatsAppChannel ? "Kapso number configured — Settings → Channels on the web pane" : "set KAPSO_API_KEY + KAPSO_PHONE_NUMBER_ID + KAPSO_WEBHOOK_SECRET + KAPSO_PHONE_NUMBER in .env.local plus the tunnel above (see cloud/docs/whatsapp/README.md)"}
   ${env.ANTHROPIC_API_KEY ? on : off} agent turns    ${env.ANTHROPIC_API_KEY ? "engines seeded with ANTHROPIC_API_KEY" : "no ANTHROPIC_API_KEY — connect a provider in-app per agent"}
   ${env.COMPOSIO_API_KEY && env.COMPOSIO_WEBHOOK_SECRET ? on : off} triggers       ${env.COMPOSIO_API_KEY && env.COMPOSIO_WEBHOOK_SECRET ? "Composio key + webhook secret present" : "need COMPOSIO_API_KEY + COMPOSIO_WEBHOOK_SECRET"}
   ${env.GW_ACCOUNT_PURGE_GCIP === "off" ? off : on} account delete ${env.GW_ACCOUNT_PURGE_GCIP === "off" ? "hosted data purged; the GCIP auth user SURVIVES (GW_ACCOUNT_PURGE_GCIP=off — dev shares the prod identity project)" : "full purge including the GCIP auth user"}

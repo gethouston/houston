@@ -84,6 +84,7 @@ export const PUBLISHED_OPERATION_FLOOR: readonly string[] = [
   "integrations.setSession",
   "integrations.writes.disconnect",
   "linkSlack",
+  "linkWhatsApp",
   "listActivities",
   "listAgentProviders",
   "listAgents",

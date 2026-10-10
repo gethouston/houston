@@ -24,7 +24,7 @@
     "deleteSkill": "Excluir esta habilidade para que o funcionário de IA não a tenha mais.",
     "detectAgentCustomIntegration": "Verificar para que tipo de serviço este link aponta, usando este funcionário de IA.",
     "detectCustomIntegration": "Verificar para que tipo de serviço este link aponta.",
-    "disconnectChannel": "Desconectar o Houston desta conta do Slack. Ele vai parar de ler e responder por lá.",
+    "disconnectChannel": "Desconectar o Houston desta conta de mensagens. Ele vai parar de ler e responder por lá.",
     "forgetCredential": "Desconectar este espaço de trabalho da conta de IA.",
     "installAgentFromGithub": "Instalar um funcionário de IA a partir de um repositório do GitHub.",
     "integrations.disconnect": "Desconectar um app externo da sua conta.",
@@ -117,7 +117,7 @@
       "slug": "habilidade"
     },
     "disconnectChannel": {
-      "connectionId": "conta do Slack"
+      "connectionId": "conta de mensagens"
     },
     "integrations.disconnect": {
       "toolkit": "app"
