@@ -1,3 +1,4 @@
+import { readFile } from "node:fs/promises";
 import {
   FAKE_HOST_URL,
   SEED_AGENT_ID,
@@ -51,11 +52,15 @@ async function arm(
   });
 }
 
-/** The org chart's body, and one AI Employee's line in its ledger. */
+/**
+ * The org chart's body, and one AI Employee's line in its ledger (the tree
+ * above it lists the same AI Employees, so the line is found in the ledger).
+ */
 const chart = (page: Page) =>
   screen(page).locator("[data-admin-section-body='orgChart']");
 const line = (page: Page, name: string): Locator =>
   chart(page)
+    .getByRole("region", { name: "AI Employees, ranked" })
     .getByRole("listitem")
     .filter({
       has: page.getByRole("button", { name: `Open ${name}'s board` }),
@@ -199,4 +204,114 @@ test("an admin's chart is theirs: people hidden where they only use an AI Employ
   await expect(line(page, "Finance Bot")).toContainText("People hidden");
   await expect(line(page, "Scout")).toContainText("Everyone");
   await expect(line(page, "Scout")).not.toContainText("People hidden");
+});
+
+test("the org chart draws its people and AI Employees, and shares an image with a post", async ({
+  page,
+  request,
+}) => {
+  await request.post(`${FAKE_HOST_URL}/__test__/org`, {
+    data: {
+      members: [
+        {
+          userId: "u-self",
+          email: "you@acme.test",
+          role: "owner",
+          displayName: "Olga Owner",
+        },
+        {
+          userId: "u-sara",
+          email: "sara@acme.test",
+          role: "admin",
+          displayName: "Sara Diaz",
+        },
+        {
+          userId: "u-tom",
+          email: "tom@acme.test",
+          role: "user",
+          displayName: "Tom Reed",
+        },
+      ],
+      agents: [
+        { id: SEED_AGENT_ID, name: SEED_AGENT_NAME, everyone: true },
+        {
+          id: "scout",
+          name: "Scout",
+          assignments: [{ userId: "u-sara", access: "manager" }],
+        },
+        {
+          id: "inbox",
+          name: "Inbox Keeper",
+          assignments: [{ userId: "u-tom", access: "user" }],
+        },
+      ],
+    },
+  });
+  await arm(request, OWNER_CAPS, null);
+  await page.goto("/");
+  await openAdminSection(page, "Org chart");
+
+  const tree = chart(page).getByRole("region", { name: "Org chart" });
+  await expect(tree.getByText("3 people, 3 AI Employees")).toBeVisible();
+  for (const name of ["Olga Owner", "Sara Diaz", "Tom Reed"])
+    await expect(
+      tree.getByRole("button", { name: `Open ${name} in People` }),
+    ).toBeVisible();
+  for (const name of [SEED_AGENT_NAME, "Scout", "Inbox Keeper"])
+    await expect(
+      tree.getByRole("button", { name: `Open ${name}'s board` }),
+    ).toBeVisible();
+  // The lines are drawn from the cards themselves: they exist, and the one
+  // across the people ends at the outermost people, never past them.
+  const reach = await tree.evaluate((section) => {
+    const svg = section.querySelector("svg[data-reveal-lines]");
+    const d = svg?.querySelector("path")?.getAttribute("d") ?? "";
+    const origin = svg?.getBoundingClientRect();
+    const xs = [...d.matchAll(/(-?[\d.]+) (-?[\d.]+)/g)].map((m) =>
+      Number(m[1]),
+    );
+    const people = [...section.querySelectorAll("[data-tree-node^='p:']")].map(
+      (node) => {
+        const r = node.getBoundingClientRect();
+        return r.left + r.width / 2 - (origin?.left ?? 0);
+      },
+    );
+    return {
+      segments: d.split("M").length - 1,
+      overshoot: Math.max(...xs) - Math.max(...people),
+      undershoot: Math.min(...people) - Math.min(...xs),
+    };
+  });
+  // root to 3 people, plus each person's AI Employee.
+  expect(reach.segments).toBe(6);
+  expect(reach.overshoot).toBeLessThan(1);
+  expect(reach.undershoot).toBeLessThan(1);
+
+  // The ledger is still there under the chart.
+  await expect(line(page, "Scout")).toBeVisible();
+
+  await tree.getByRole("button", { name: "Share", exact: true }).click();
+  const dialog = page.getByRole("dialog", { name: "Share your org chart" });
+  await expect(
+    dialog.getByRole("img", { name: "Your org chart as an image" }),
+  ).toBeVisible();
+  const post = dialog.getByRole("textbox", { name: "Your post" });
+  await expect(post).toHaveValue(/3 people and 3 AI Employees/);
+  await expect(post).toHaveValue(/gethouston\.ai/);
+  await expect(post).not.toHaveValue(/—/);
+  await expect(
+    dialog.getByRole("button", { name: "Share on LinkedIn" }),
+  ).toBeVisible();
+
+  const downloading = page.waitForEvent("download");
+  await dialog.getByRole("button", { name: "Download image" }).click();
+  const download = await downloading;
+  expect(download.suggestedFilename()).toMatch(/^[a-z0-9-]+-org-chart\.png$/);
+  const png = test.info().outputPath("share-card.png");
+  await download.saveAs(png);
+  const bytes = await readFile(png);
+  // A PNG, 1200 x 1200 (IHDR width and height, big-endian).
+  expect(bytes.subarray(1, 4).toString("ascii")).toBe("PNG");
+  expect(bytes.readUInt32BE(16)).toBe(1200);
+  expect(bytes.readUInt32BE(20)).toBe(1200);
 });

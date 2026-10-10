@@ -1,6 +1,7 @@
 {
   "duration": {
     "$type": "duration",
+    "press": { "$value": "160ms" },
     "fast": { "$value": "200ms" },
     "elegant": { "$value": "582ms" },
     "common": { "$value": "667ms" },

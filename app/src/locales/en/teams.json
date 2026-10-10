@@ -576,7 +576,38 @@
     "retry": "Try again",
     "loading": "Loading your org chart...",
     "empty": "No AI Employees yet",
-    "emptyBody": "Hire your first AI Employee and it appears here, with the people who manage it and use it."
+    "emptyBody": "Hire your first AI Employee and it appears here, with the people who manage it and use it.",
+    "tree": {
+      "title": "Who works here",
+      "label": "Org chart",
+      "moreAgents_one": "{{count}} more AI Employee",
+      "moreAgents_other": "{{count}} more AI Employees",
+      "morePeople_one": "{{count}} more person",
+      "morePeople_other": "{{count}} more people"
+    },
+    "share": {
+      "open": "Share",
+      "title": "Share your org chart",
+      "description": "Show your whole team, people and AI Employees together, on LinkedIn or anywhere else.",
+      "previewAlt": "Your org chart as an image",
+      "drawing": "Drawing your org chart...",
+      "failed": "The image could not be drawn.",
+      "postLabel": "Your post",
+      "linkedInHint": "LinkedIn opens with your post filled in, and the text is copied too. LinkedIn cannot attach an image from a link, so download the image and add it to your post.",
+      "linkedIn": "Share on LinkedIn",
+      "download": "Download image",
+      "downloaded": "Downloaded",
+      "copyImage": "Copy image",
+      "copied": "Copied",
+      "native": "Share to an app",
+      "cardKicker": "Our org chart",
+      "cardCounts": "{{people}}, {{agents}}",
+      "site": "gethouston.ai",
+      "post": "This is the team at {{company}}: {{people}} and {{agents}}, working side by side.\n\nEvery AI Employee on our org chart has a job, a manager and real work to show for it. We run it all on Houston.\n\nBuild your own team at gethouston.ai\n\n#AI #FutureOfWork",
+      "postPersonal": "Meet my team on Houston: me and {{agents}}, each with a job of its own.\n\nBuild your own team at gethouston.ai\n\n#AI #FutureOfWork",
+      "linkedInBlocked": "Your browser kept LinkedIn from opening.",
+      "openLinkedIn": "Open LinkedIn"
+    }
   },
   "phoneEmployee": {
     "emptyGroup": {

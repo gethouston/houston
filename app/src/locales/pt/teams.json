@@ -576,7 +576,38 @@
     "retry": "Tentar novamente",
     "loading": "Carregando seu organograma...",
     "empty": "Ainda não há funcionários de IA",
-    "emptyBody": "Contrate seu primeiro funcionário de IA e ele aparece aqui, com as pessoas que o gerenciam e o usam."
+    "emptyBody": "Contrate seu primeiro funcionário de IA e ele aparece aqui, com as pessoas que o gerenciam e o usam.",
+    "tree": {
+      "title": "Quem trabalha aqui",
+      "label": "Organograma",
+      "moreAgents_one": "Mais {{count}} funcionário de IA",
+      "moreAgents_other": "Mais {{count}} funcionários de IA",
+      "morePeople_one": "Mais {{count}} pessoa",
+      "morePeople_other": "Mais {{count}} pessoas"
+    },
+    "share": {
+      "open": "Compartilhar",
+      "title": "Compartilhe seu organograma",
+      "description": "Mostre toda a sua equipe, pessoas e funcionários de IA juntos, no LinkedIn ou onde você quiser.",
+      "previewAlt": "Seu organograma como imagem",
+      "drawing": "Desenhando seu organograma...",
+      "failed": "Não foi possível desenhar a imagem.",
+      "postLabel": "Sua publicação",
+      "linkedInHint": "O LinkedIn abre com sua publicação preenchida e o texto também fica copiado. O LinkedIn não consegue anexar uma imagem a partir de um link, então baixe a imagem e adicione à sua publicação.",
+      "linkedIn": "Compartilhar no LinkedIn",
+      "download": "Baixar imagem",
+      "downloaded": "Baixada",
+      "copyImage": "Copiar imagem",
+      "copied": "Copiada",
+      "native": "Compartilhar em um app",
+      "cardKicker": "Nosso organograma",
+      "cardCounts": "{{people}}, {{agents}}",
+      "site": "gethouston.ai",
+      "post": "Esta é a equipe da {{company}}: {{people}} e {{agents}}, trabalhando lado a lado.\n\nCada funcionário de IA do nosso organograma tem um cargo, alguém que o gerencia e trabalho de verdade para mostrar. Tudo roda no Houston.\n\nMonte sua própria equipe em gethouston.ai\n\n#IA #FuturoDoTrabalho",
+      "postPersonal": "Conheça minha equipe no Houston: eu e {{agents}}, cada um com seu próprio trabalho.\n\nMonte sua própria equipe em gethouston.ai\n\n#IA #FuturoDoTrabalho",
+      "linkedInBlocked": "Seu navegador impediu que o LinkedIn abrisse.",
+      "openLinkedIn": "Abrir o LinkedIn"
+    }
   },
   "phoneEmployee": {
     "emptyGroup": {

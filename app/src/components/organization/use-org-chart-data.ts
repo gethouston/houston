@@ -9,6 +9,8 @@ import {
   messagesCounted,
   orgChartScope,
 } from "./org-chart-scope";
+import { SHARE_CARD_CAPS } from "./org-chart-share-model";
+import { buildOrgTree, SCREEN_TREE_CAPS } from "./org-chart-tree";
 import {
   buildLedger,
   ledgerColumns,
@@ -18,6 +20,7 @@ import {
 } from "./org-chart-view-model";
 import type { OrgViewContext } from "./organization-view";
 import { rosterPersonName } from "./people-tab-model";
+import { useStableByContent } from "./use-stable-by-content";
 
 /**
  * Everything the org chart draws, read and ranked. Time worked is read only
@@ -59,6 +62,20 @@ export function useOrgChartData(ctx: OrgViewContext) {
     () => buildLedger(agents, members ?? [], { work, usage: counts, scope }),
     [agents, members, work, counts, scope],
   );
+  const trees = useMemo(() => {
+    const input = {
+      agents,
+      members: members ?? [],
+      name: ctx.org.name,
+      personal: ctx.isPersonal,
+    };
+    return {
+      screen: buildOrgTree(input, SCREEN_TREE_CAPS),
+      share: buildOrgTree(input, SHARE_CARD_CAPS),
+    };
+  }, [agents, members, ctx.org.name, ctx.isPersonal]);
+  const screenTree = useStableByContent(trees.screen);
+  const shareTree = useStableByContent(trees.share);
   const figures = heroFigures({
     scope,
     lines,
@@ -88,6 +105,7 @@ export function useOrgChartData(ctx: OrgViewContext) {
     state: orgChartState({ agentsLoaded, agentCount: agents.length }),
     title: ctx.isPersonal && owner ? rosterPersonName(owner) : ctx.org.name,
     lines,
+    trees: { screen: screenTree, share: shareTree },
     lead,
     reads: { hours, messages },
     columns: ledgerColumns(lead, messages, ctx.isPersonal),

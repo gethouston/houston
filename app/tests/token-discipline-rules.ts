@@ -41,6 +41,7 @@ export const SANCTIONED = [
   "ui/showcase/specimens/foundations/effects-parts.ts",
   "ui/core/src/color-contrast.ts",
   "agentstore/src/lib/og-card.tsx",
+  "app/src/components/organization/org-chart-share-card-art.ts",
 ];
 
 export interface Rule {
