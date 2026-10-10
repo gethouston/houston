@@ -88,6 +88,13 @@ export interface ModelPickerProps {
   onSelect: (id: string) => void;
   /** Opens the app's provider-connection surface (the footer affordance). */
   onConnectMore?: () => void;
+  /**
+   * The empty state's primary action (labelled `noProvidersAction`). Omit to
+   * reuse `onConnectMore`; pass `null` for an empty state with no action. For
+   * an empty list that connecting another AI would not fix (the consumer
+   * filtered every connected provider out), so the button never misleads.
+   */
+  onEmptyStateAction?: (() => void) | null;
   /** App-supplied branded logo for a provider (falls back to an initial). */
   renderProviderIcon?: (
     providerId: string,

@@ -6,13 +6,12 @@ import {
   ResponsivePopoverTrigger,
 } from "@houston-ai/core";
 import { ChevronDown, Lock } from "lucide-react";
-import { type ReactNode, useMemo } from "react";
+import type { ReactNode } from "react";
 import { useTranslation } from "react-i18next";
 import { useCapabilities } from "../hooks/use-capabilities";
 import { useChatModelPicker } from "../hooks/use-chat-model-picker";
-import { clampPickerToCeiling, hiddenModelCount } from "../lib/ceiling-match";
+import { usePickerCeiling } from "../hooks/use-picker-ceiling";
 import { modelSelectorDecision } from "../lib/model-selector-lock";
-import { catalogRunsAs } from "../lib/providers";
 import { ModelTriggerGlyph } from "./chat-model-selector-trigger";
 
 interface ChatModelSelectorProps {
@@ -41,9 +40,10 @@ interface ChatModelSelectorProps {
    * single-player and managers/owners always see it; a multiplayer Teams member
    * also sees it (Change 3 reversed E7's hide-for-members), while a member on a
    * pre-Teams multiplayer host stays hidden. Omit outside an agent scope and the
-   * picker always shows.
+   * picker always shows. The id is where a ceiling-emptied picker sends its
+   * manager: this agent's Models settings.
    */
-  agent?: Pick<Agent, "access"> | null;
+  agent?: Pick<Agent, "id" | "access"> | null;
   /**
    * The agent's effective allowed-models ceiling (Teams E8): the option list is
    * clamped to it. `null`/`undefined` = no ceiling (every model). When it holds
@@ -88,27 +88,10 @@ export function ChatModelSelector({
     onOpenChange,
   });
 
-  // Clamp the pickable set to the agent's allowed-models ceiling (Teams E8),
-  // by the gateway's rule. `picker.models` is only built while the popover is
-  // open, so this is an empty-in/empty-out no-op when the picker is closed.
-  const { models, providers } = useMemo(
-    () =>
-      clampPickerToCeiling(
-        picker.models,
-        picker.providers,
-        allowedModels,
-        catalogRunsAs,
-      ),
-    [picker.models, picker.providers, allowedModels],
-  );
-
-  // How many models the ceiling turns off, surfaced in a quiet picker footer so
-  // the clamp above is honest rather than silent. Counted over the full picker
-  // universe, not the clamped list.
-  const hidden = useMemo(
-    () => hiddenModelCount(picker.models, allowedModels ?? null, catalogRunsAs),
-    [picker.models, allowedModels],
-  );
+  // The allowed-models ceiling (Teams E8): the clamped list, the count of
+  // models it turns off, and the empty state when it turns off every one.
+  const { models, providers, hidden, labels, onEmptyStateAction } =
+    usePickerCeiling(picker, allowedModels, agent);
 
   // A plain member on a pre-Teams multiplayer host never sees the agent's model:
   // the picker renders nothing. The hooks above still run so the rules-of-hooks
@@ -171,8 +154,9 @@ export function ChatModelSelector({
               catalogState={picker.catalogState}
               onSelect={picker.onSelect}
               onConnectMore={picker.onConnectMore}
+              onEmptyStateAction={onEmptyStateAction}
               renderProviderIcon={picker.renderProviderIcon}
-              labels={picker.labels}
+              labels={labels}
               footer={
                 pickerFooter || hidden > 0 ? (
                   <>

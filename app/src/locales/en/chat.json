@@ -239,6 +239,16 @@
           "hint": "The team's AI Employees answer using your own AI account. Connect yours to get started."
         }
       },
+      "ceilingEmpty": {
+        "title": "None of your AI models are turned on for this AI Employee",
+        "hint": {
+          "connect": "It only uses models from an AI you haven't connected yet.",
+          "choose": "Choose which models it can use in its settings.",
+          "ask": "Ask whoever manages this AI Employee to turn one on.",
+          "unreachable": "This AI Employee has them turned off."
+        },
+        "action": "Choose models"
+      },
       "account": {
         "personal": "your account",
         "team": "team account"

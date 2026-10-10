@@ -1,12 +1,12 @@
 "use client";
 
 import { ChevronLeft } from "lucide-react";
-import type * as React from "react";
 import { useEffect, useMemo, useRef } from "react";
 import { cn } from "../../utils";
 import { Command, CommandEmpty, CommandInput, CommandList } from "../command";
 import {
   connectedProviderIds,
+  emptyStateAction,
   modelsForProvider,
   providerListEmpty,
   providerListLoading,
@@ -43,13 +43,15 @@ export function ModelPicker({
   catalogState = "ready",
   onSelect,
   onConnectMore,
+  onEmptyStateAction,
   renderProviderIcon,
   labels: labelsProp,
   footer,
   className,
 }: ModelPickerProps) {
   const labels = { ...DEFAULT_MODEL_PICKER_LABELS, ...labelsProp };
-  const { nav, setQuery, enterProvider, back } = useModelPicker();
+  const { nav, setQuery, enterProvider, back, handleKeyDown } =
+    useModelPicker();
 
   const connected = useMemo(
     () => selectConnectedProviders(providers),
@@ -107,33 +109,6 @@ export function ModelPicker({
     (inputRef.current ?? rootRef.current)?.focus();
   }, [commandKey, withSearch]);
 
-  // Escape/Backspace back out of level 2 before Radix closes the popover. An
-  // active query is peeled off first (Escape clears the search), then a second
-  // Escape (or Backspace on an empty query) steps back to the provider list.
-  const handleKeyDown = (e: React.KeyboardEvent) => {
-    if (e.key === "Escape") {
-      if (nav.query !== "") {
-        e.preventDefault();
-        e.stopPropagation();
-        setQuery("");
-      } else if (nav.view.level === "models") {
-        e.preventDefault();
-        e.stopPropagation();
-        back();
-      }
-      return;
-    }
-    if (
-      e.key === "Backspace" &&
-      nav.query === "" &&
-      nav.view.level === "models"
-    ) {
-      e.preventDefault();
-      e.stopPropagation();
-      back();
-    }
-  };
-
   return (
     <Command
       key={commandKey}
@@ -178,7 +153,7 @@ export function ModelPicker({
             labels={labels}
             renderProviderIcon={renderProviderIcon}
             onEnter={enterProvider}
-            onConnect={onConnectMore}
+            onConnect={emptyStateAction(onEmptyStateAction, onConnectMore)}
           />
         ) : (
           <ModelRows

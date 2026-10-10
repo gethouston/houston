@@ -75,3 +75,16 @@ export function modelsForProvider(
   if (!connectedIds.has(providerId)) return [];
   return models.filter((m) => m.providerId === providerId);
 }
+
+/**
+ * The empty state's action: an explicit override wins (`null` = no action),
+ * otherwise the connect affordance. Lets a consumer whose list is empty for a
+ * reason other than "nothing is connected" withhold or retarget the button.
+ */
+export function emptyStateAction(
+  override: (() => void) | null | undefined,
+  onConnectMore: (() => void) | undefined,
+): (() => void) | undefined {
+  if (override === undefined) return onConnectMore;
+  return override ?? undefined;
+}

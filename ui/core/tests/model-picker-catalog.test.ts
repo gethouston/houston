@@ -3,6 +3,7 @@ import { describe, it } from "node:test";
 import {
   connectedProviderIds,
   connectedProviders,
+  emptyStateAction,
   modelsForProvider,
   providerListEmpty,
   providerListLoading,
@@ -139,5 +140,23 @@ describe("the explained empty state (HOU-979)", () => {
         false,
       );
     }
+  });
+});
+
+describe("emptyStateAction", () => {
+  const connect = () => {};
+  const retarget = () => {};
+
+  it("falls back to the connect affordance when the consumer says nothing", () => {
+    assert.equal(emptyStateAction(undefined, connect), connect);
+    assert.equal(emptyStateAction(undefined, undefined), undefined);
+  });
+
+  it("lets an explicit action win over connecting another AI", () => {
+    assert.equal(emptyStateAction(retarget, connect), retarget);
+  });
+
+  it("renders no action at all for an explicit null, even with connect", () => {
+    assert.equal(emptyStateAction(null, connect), undefined);
   });
 });

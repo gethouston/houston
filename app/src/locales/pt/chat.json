@@ -239,6 +239,16 @@
           "hint": "Os funcionários de IA da equipe respondem usando sua própria conta de IA. Conecte a sua para começar."
         }
       },
+      "ceilingEmpty": {
+        "title": "Nenhum dos seus modelos de IA está ativado para este funcionário de IA",
+        "hint": {
+          "connect": "Ele só usa modelos de uma IA que você ainda não conectou.",
+          "choose": "Escolha quais modelos ele pode usar nas configurações dele.",
+          "ask": "Peça a quem gerencia este funcionário de IA para ativar um.",
+          "unreachable": "Este funcionário de IA está com eles desativados."
+        },
+        "action": "Escolher modelos"
+      },
       "account": {
         "personal": "sua conta",
         "team": "conta da equipe"
