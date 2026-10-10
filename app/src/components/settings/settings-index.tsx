@@ -21,6 +21,7 @@ import { AppearanceSection } from "./sections/appearance";
 import { DangerSection } from "./sections/danger";
 import { DeleteAccountSection } from "./sections/delete-account";
 import { LanguageSection } from "./sections/language";
+import { MorningBriefingSection } from "./sections/morning-briefing";
 import { NotificationsSection } from "./sections/notifications";
 import { SettingsCard, SettingsRow } from "./settings-row";
 
@@ -34,7 +35,7 @@ interface SettingsIndexProps {
  * own app and preferences.
  *
  * The page holds ONE general group (plan, channels, appearance, language,
- * notifications, and the API-key, shortcut, bug-report and migration rows), plus
+ * notifications, the morning briefing, and the API-key, shortcut, bug-report and migration rows), plus
  * Danger. Admin is its own screen; an AI Employee's Skills live in that
  * employee's settings. The person themselves (who is signed in, Sign out,
  * their Profile and About me) is the account menu's, not a row here.
@@ -96,6 +97,7 @@ export function SettingsIndex({
           <AppearanceSection />
           <LanguageSection />
           <NotificationsSection />
+          {capabilities?.heartbeat && <MorningBriefingSection />}
           {settingsSectionAvailable("apiKeys", capabilities) && (
             <SettingsRow
               icon={KeyRound}

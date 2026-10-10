@@ -24,6 +24,7 @@ export async function startLocalHost(
     watcher,
     scheduler,
     usageSampler,
+    heartbeatDaemon,
     assistantWiring,
     launcher,
   } = state;
@@ -75,6 +76,7 @@ export async function startLocalHost(
     watcher.start();
     syncDaemon?.start();
     scheduler.start();
+    heartbeatDaemon?.start();
     usageSampler?.start();
   }
   console.log(formatIntegrationsModeLog(opts.integrations));

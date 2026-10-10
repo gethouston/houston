@@ -14,6 +14,7 @@ export * from "./channels-refusals";
 export * from "./compute-refusal";
 export * from "./delegation";
 export * from "./first-day-refusal";
+export * from "./heartbeat";
 export * from "./interactions";
 export * from "./local-model-bridge";
 export * from "./onboarding";

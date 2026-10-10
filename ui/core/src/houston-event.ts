@@ -70,6 +70,9 @@ export type HoustonEvent =
       type: "EventProcessed";
       data: { event_id: string; status: string };
     }
+  // The AI Manager's morning briefing started (a ping) / its settings changed.
+  | { type: "HeartbeatDelivered"; data: { agent_path: string } }
+  | { type: "HeartbeatChanged"; data: { workspace_id: string } }
   | {
       type: "HeartbeatFired";
       data: { prompt: string; project_id: string | null };

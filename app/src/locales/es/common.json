@@ -70,6 +70,10 @@
     "blockedBrowser": "Las notificaciones están bloqueadas. Actívalas en la configuración de tu navegador.",
     "openSettings": "Abrir configuración del sistema",
     "openSettingsFailed": "No se pudo abrir la configuración del sistema. Inténtalo de nuevo.",
-    "requestFailed": "No se pudieron activar las notificaciones. Inténtalo de nuevo."
+    "requestFailed": "No se pudieron activar las notificaciones. Inténtalo de nuevo.",
+    "morningBriefing": {
+      "title": "Tu resumen de la mañana está listo",
+      "body": "Mira qué necesita tu atención hoy."
+    }
   }
 }

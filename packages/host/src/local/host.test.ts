@@ -278,6 +278,8 @@ test("capabilities report the local profile", async () => {
       ...LOCAL_CAPABILITIES,
       integrations: ["custom"],
       customIntegrationOAuth: true,
+      // The open host runs the AI Manager's morning briefing.
+      heartbeat: true,
     });
     expect(caps.profile).toBe("local");
     expect(caps.codeExecution).toBe("local-bash");
@@ -302,6 +304,9 @@ test("capabilities can report the managed cloud pod profile", async () => {
       // A pod cannot receive a browser redirect — off until the gateway
       // serves the callback (PRODUCT-1172).
       customIntegrationOAuth: false,
+      // This boot is not gateway-fronted (self-host shape), so it serves the
+      // morning briefing; a fronted pod does not (pinned below).
+      heartbeat: true,
     });
     // Pods run the agent's bash in the single-tenant container (HOU-669).
     expect(caps.codeExecution).toBe("local-bash");
@@ -525,6 +530,26 @@ test("a gateway-fronted pod refuses assistant discovery — the gateway owns it"
     expect(res.status).toBe(501);
     expect((await res.json()) as { code: string }).toMatchObject({
       code: "assistant_gateway_only",
+    });
+  } finally {
+    host.stop();
+  }
+});
+
+test("a gateway-fronted pod neither advertises nor serves the morning briefing", async () => {
+  const { host, base } = await setup({ gatewayFronted: true });
+  try {
+    const caps = (await (
+      await fetch(`${base}/v1/capabilities`)
+    ).json()) as Capabilities;
+    expect(caps.heartbeat).toBeUndefined();
+    const res = await fetch(`${base}/v1/heartbeat/run`, {
+      method: "POST",
+      headers: auth,
+    });
+    expect(res.status).toBe(501);
+    expect((await res.json()) as { code: string }).toMatchObject({
+      code: "heartbeat_gateway_only",
     });
   } finally {
     host.stop();

@@ -13,6 +13,7 @@ import { heldOutOfCatchUpSweep } from "../lib/space-cache";
 import { useAgentStore } from "../stores/agents";
 import { useUIStore } from "../stores/ui";
 import { useWorkspaceStore } from "../stores/workspaces";
+import { notifyMorningBriefing } from "./heartbeat-notification";
 import { sidebarLayoutRefetchDeferred } from "./sidebar-layout-writes";
 
 /**
@@ -54,6 +55,9 @@ export function useAgentInvalidation() {
           ? (p as { data: { agent_path?: string } }).data?.agent_path
           : "",
       );
+
+      // Not a cache change: the morning briefing turn started, so ping.
+      if (p.type === "HeartbeatDelivered") notifyMorningBriefing();
 
       // Pure decision (which caches this event touches) is derived in
       // `planInvalidation`; the hook only EXECUTES the plan against the real

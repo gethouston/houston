@@ -37,6 +37,7 @@ import "../custom-integrations-user";
 import "../integrations";
 import "../setup-runtime";
 import "../assistant";
+import "../heartbeat";
 import "../trigger-events";
 import "../routine-fires";
 import "../agent-color";

@@ -99,6 +99,10 @@ export function planInvalidation(
         plan.invalidate.push(queryKeys.sidebarLayout(open));
       }
       break;
+    // One briefing document per person, whatever space is open.
+    case "HeartbeatChanged":
+      plan.invalidate.push(queryKeys.heartbeat());
+      break;
     // SessionStatus triggers activity invalidation (agent finished → status).
     case "SessionStatus":
       if (ev.data.status === "completed" || ev.data.status === "error") {

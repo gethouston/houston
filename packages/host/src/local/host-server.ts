@@ -11,6 +11,7 @@ import { createModelCallForwarder } from "../telemetry/model-call-report";
 import { FsVfs } from "../vfs";
 import { managedBridgeCapability } from "./bridge-capability";
 import type { createHostBase } from "./host-base";
+import type { createHostHeartbeat } from "./host-heartbeat";
 import type { createHostIntegrations } from "./host-integrations";
 import { LOCAL_USER, severityLog } from "./host-log";
 import type { LocalHostOptions } from "./host-options";
@@ -22,6 +23,7 @@ export function createHostServer(
   base: ReturnType<typeof createHostBase>,
   runtime: ReturnType<typeof createHostRuntime>,
   integration: ReturnType<typeof createHostIntegrations>,
+  { heartbeatRunner }: ReturnType<typeof createHostHeartbeat>,
 ) {
   const {
     store,
@@ -80,6 +82,7 @@ export function createHostServer(
     integrations: registry.ids(),
     // On exactly when this host serves a browser-reachable OAuth callback.
     customIntegrationOAuth: customIntegrations.oauthSupported,
+    ...(heartbeatRunner ? { heartbeat: true } : {}),
     // `triggers` is never advertised here: this host has no trigger backend. On
     // managed cloud the Go edge advertises the capability; a pod/self-host/desktop
     // stays byte-identical to the nominal profile (absent = off, protocol #core).
@@ -141,6 +144,7 @@ export function createHostServer(
     ensureSyntheticAgentDir: (agentId) => {
       liveAgentDir(agentId);
     },
+    heartbeat: heartbeatRunner,
     // Where this host performs Houston operations, and which of them it cannot
     // perform at all — both from the one boot-time resolution (host-base.ts),
     // so the dispatcher and the coordinator's runtime can never disagree.

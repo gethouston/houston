@@ -70,6 +70,26 @@
     "openSettings": "Abrir configuración del sistema",
     "toggleFailed": "No se pudo guardar tu preferencia de notificaciones."
   },
+  "morningBriefing": {
+    "title": "Resumen de la mañana",
+    "description": "Cada mañana Houston revisa a tu equipo y te cuenta qué necesita tu atención.",
+    "time": "Enviarlo a las",
+    "timeLabel": "Hora del resumen",
+    "quiet": "Nada necesita tu atención ahora mismo.",
+    "busy": {
+      "title": "Houston está ocupado ahora",
+      "description": "Está respondiendo otra cosa. Inténtalo de nuevo en un momento."
+    },
+    "failed": {
+      "title": "Houston no pudo escribir tu resumen",
+      "description": "Revisa que tengas una cuenta de IA conectada y vuelve a intentarlo."
+    },
+    "runNow": {
+      "title": "¿Lo quieres ahora?",
+      "description": "Houston revisa a tu equipo en este momento.",
+      "action": "Enviar resumen ahora"
+    }
+  },
   "dangerZone": {
     "title": "Zona de peligro",
     "description": "Elimina este espacio de trabajo y todos sus empleados de IA de forma permanente.",
@@ -287,6 +307,10 @@
     "deleteWorkspace": {
       "title": "No se pudo eliminar \"{{name}}\"",
       "description": "El espacio de trabajo sigue ahí. Inténtalo de nuevo en un momento."
+    },
+    "morningBriefing": {
+      "title": "No se pudo guardar el ajuste del resumen",
+      "description": "Volvió a como estaba. Inténtalo de nuevo en un momento."
     }
   }
 }

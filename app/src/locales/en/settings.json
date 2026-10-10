@@ -70,6 +70,26 @@
     "openSettings": "Open System Settings",
     "toggleFailed": "Could not save your notification preference."
   },
+  "morningBriefing": {
+    "title": "Morning briefing",
+    "description": "Every morning Houston checks on your team and tells you what needs your attention.",
+    "time": "Send it at",
+    "timeLabel": "Briefing time",
+    "quiet": "Nothing needs your attention right now.",
+    "busy": {
+      "title": "Houston is busy right now",
+      "description": "It's answering something else. Try again in a moment."
+    },
+    "failed": {
+      "title": "Houston couldn't write your briefing",
+      "description": "Check that an AI account is connected, then try again."
+    },
+    "runNow": {
+      "title": "Want it now?",
+      "description": "Houston checks on your team right away.",
+      "action": "Brief me now"
+    }
+  },
   "dangerZone": {
     "title": "Danger zone",
     "description": "Permanently delete this workspace and all its AI Employees.",
@@ -287,6 +307,10 @@
     "deleteWorkspace": {
       "title": "Couldn't delete \"{{name}}\"",
       "description": "The workspace is still there. Try again in a moment."
+    },
+    "morningBriefing": {
+      "title": "Couldn't save your briefing setting",
+      "description": "It's back to what it was. Try again in a moment."
     }
   }
 }

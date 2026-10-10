@@ -139,4 +139,11 @@ export interface Capabilities {
    * host (desktop, self-host) never sets it.
    */
   conversationPrewarm?: boolean;
+  /**
+   * This deployment serves the AI Manager's daily morning briefing
+   * (`/v1/heartbeat`): its settings, its daemon and "brief me now". Set by the
+   * open host (desktop, self-host); absent = not served here, and the app
+   * hides the settings row.
+   */
+  heartbeat?: boolean;
 }

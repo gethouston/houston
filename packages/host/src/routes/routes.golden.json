@@ -781,6 +781,38 @@
     ],
     "forwarded": []
   },
+  "GET /v1/heartbeat": {
+    "status": 200,
+    "contentType": "application/json; charset=utf-8",
+    "errorCode": null,
+    "bodyKeys": [
+      "enabled",
+      "last",
+      "time"
+    ],
+    "forwarded": []
+  },
+  "PUT /v1/heartbeat": {
+    "status": 200,
+    "contentType": "application/json; charset=utf-8",
+    "errorCode": null,
+    "bodyKeys": [
+      "enabled",
+      "last",
+      "time"
+    ],
+    "forwarded": []
+  },
+  "POST /v1/heartbeat/run": {
+    "status": 501,
+    "contentType": "application/json; charset=utf-8",
+    "errorCode": "no briefing runner on this host",
+    "bodyKeys": [
+      "code",
+      "error"
+    ],
+    "forwarded": []
+  },
   "GET /v1/agents/:agentId/delegation": {
     "status": 200,
     "contentType": "application/json; charset=utf-8",
@@ -8074,6 +8106,236 @@
     "forwarded": []
   },
   "GET /v1/assistant/": {
+    "status": 404,
+    "contentType": "application/json; charset=utf-8",
+    "errorCode": "not found",
+    "bodyKeys": [
+      "error"
+    ],
+    "forwarded": []
+  },
+  "POST /v1/heartbeat": {
+    "status": 405,
+    "contentType": "application/json; charset=utf-8",
+    "errorCode": "method not allowed",
+    "bodyKeys": [
+      "code",
+      "error"
+    ],
+    "forwarded": []
+  },
+  "POST /v1/heartbeat [anon]": {
+    "status": 401,
+    "contentType": "application/json; charset=utf-8",
+    "errorCode": "unauthorized",
+    "bodyKeys": [
+      "error"
+    ],
+    "forwarded": []
+  },
+  "POST /v1/heartbeat [other]": {
+    "status": 405,
+    "contentType": "application/json; charset=utf-8",
+    "errorCode": "method not allowed",
+    "bodyKeys": [
+      "code",
+      "error"
+    ],
+    "forwarded": []
+  },
+  "PATCH /v1/heartbeat": {
+    "status": 405,
+    "contentType": "application/json; charset=utf-8",
+    "errorCode": "method not allowed",
+    "bodyKeys": [
+      "code",
+      "error"
+    ],
+    "forwarded": []
+  },
+  "PATCH /v1/heartbeat [anon]": {
+    "status": 401,
+    "contentType": "application/json; charset=utf-8",
+    "errorCode": "unauthorized",
+    "bodyKeys": [
+      "error"
+    ],
+    "forwarded": []
+  },
+  "PATCH /v1/heartbeat [other]": {
+    "status": 405,
+    "contentType": "application/json; charset=utf-8",
+    "errorCode": "method not allowed",
+    "bodyKeys": [
+      "code",
+      "error"
+    ],
+    "forwarded": []
+  },
+  "DELETE /v1/heartbeat": {
+    "status": 405,
+    "contentType": "application/json; charset=utf-8",
+    "errorCode": "method not allowed",
+    "bodyKeys": [
+      "code",
+      "error"
+    ],
+    "forwarded": []
+  },
+  "DELETE /v1/heartbeat [anon]": {
+    "status": 401,
+    "contentType": "application/json; charset=utf-8",
+    "errorCode": "unauthorized",
+    "bodyKeys": [
+      "error"
+    ],
+    "forwarded": []
+  },
+  "DELETE /v1/heartbeat [other]": {
+    "status": 405,
+    "contentType": "application/json; charset=utf-8",
+    "errorCode": "method not allowed",
+    "bodyKeys": [
+      "code",
+      "error"
+    ],
+    "forwarded": []
+  },
+  "GET /v1/heartbeat/": {
+    "status": 404,
+    "contentType": "application/json; charset=utf-8",
+    "errorCode": "not found",
+    "bodyKeys": [
+      "error"
+    ],
+    "forwarded": []
+  },
+  "PUT /v1/heartbeat/": {
+    "status": 404,
+    "contentType": "application/json; charset=utf-8",
+    "errorCode": "not found",
+    "bodyKeys": [
+      "error"
+    ],
+    "forwarded": []
+  },
+  "GET /v1/heartbeat/run": {
+    "status": 405,
+    "contentType": "application/json; charset=utf-8",
+    "errorCode": "method not allowed",
+    "bodyKeys": [
+      "code",
+      "error"
+    ],
+    "forwarded": []
+  },
+  "GET /v1/heartbeat/run [anon]": {
+    "status": 401,
+    "contentType": "application/json; charset=utf-8",
+    "errorCode": "unauthorized",
+    "bodyKeys": [
+      "error"
+    ],
+    "forwarded": []
+  },
+  "GET /v1/heartbeat/run [other]": {
+    "status": 405,
+    "contentType": "application/json; charset=utf-8",
+    "errorCode": "method not allowed",
+    "bodyKeys": [
+      "code",
+      "error"
+    ],
+    "forwarded": []
+  },
+  "PUT /v1/heartbeat/run": {
+    "status": 405,
+    "contentType": "application/json; charset=utf-8",
+    "errorCode": "method not allowed",
+    "bodyKeys": [
+      "code",
+      "error"
+    ],
+    "forwarded": []
+  },
+  "PUT /v1/heartbeat/run [anon]": {
+    "status": 401,
+    "contentType": "application/json; charset=utf-8",
+    "errorCode": "unauthorized",
+    "bodyKeys": [
+      "error"
+    ],
+    "forwarded": []
+  },
+  "PUT /v1/heartbeat/run [other]": {
+    "status": 405,
+    "contentType": "application/json; charset=utf-8",
+    "errorCode": "method not allowed",
+    "bodyKeys": [
+      "code",
+      "error"
+    ],
+    "forwarded": []
+  },
+  "PATCH /v1/heartbeat/run": {
+    "status": 405,
+    "contentType": "application/json; charset=utf-8",
+    "errorCode": "method not allowed",
+    "bodyKeys": [
+      "code",
+      "error"
+    ],
+    "forwarded": []
+  },
+  "PATCH /v1/heartbeat/run [anon]": {
+    "status": 401,
+    "contentType": "application/json; charset=utf-8",
+    "errorCode": "unauthorized",
+    "bodyKeys": [
+      "error"
+    ],
+    "forwarded": []
+  },
+  "PATCH /v1/heartbeat/run [other]": {
+    "status": 405,
+    "contentType": "application/json; charset=utf-8",
+    "errorCode": "method not allowed",
+    "bodyKeys": [
+      "code",
+      "error"
+    ],
+    "forwarded": []
+  },
+  "DELETE /v1/heartbeat/run": {
+    "status": 405,
+    "contentType": "application/json; charset=utf-8",
+    "errorCode": "method not allowed",
+    "bodyKeys": [
+      "code",
+      "error"
+    ],
+    "forwarded": []
+  },
+  "DELETE /v1/heartbeat/run [anon]": {
+    "status": 401,
+    "contentType": "application/json; charset=utf-8",
+    "errorCode": "unauthorized",
+    "bodyKeys": [
+      "error"
+    ],
+    "forwarded": []
+  },
+  "DELETE /v1/heartbeat/run [other]": {
+    "status": 405,
+    "contentType": "application/json; charset=utf-8",
+    "errorCode": "method not allowed",
+    "bodyKeys": [
+      "code",
+      "error"
+    ],
+    "forwarded": []
+  },
+  "POST /v1/heartbeat/run/": {
     "status": 404,
     "contentType": "application/json; charset=utf-8",
     "errorCode": "not found",
@@ -19168,6 +19430,65 @@
     "status": 501,
     "contentType": "application/json; charset=utf-8",
     "errorCode": "this host cannot hold an assistant: no agent tree is configured",
+    "bodyKeys": [
+      "code",
+      "error"
+    ],
+    "forwarded": []
+  },
+  "GET /v1/heartbeat [anon]": {
+    "status": 401,
+    "contentType": "application/json; charset=utf-8",
+    "errorCode": "unauthorized",
+    "bodyKeys": [
+      "error"
+    ],
+    "forwarded": []
+  },
+  "GET /v1/heartbeat [other]": {
+    "status": 200,
+    "contentType": "application/json; charset=utf-8",
+    "errorCode": null,
+    "bodyKeys": [
+      "enabled",
+      "last",
+      "time"
+    ],
+    "forwarded": []
+  },
+  "PUT /v1/heartbeat [anon]": {
+    "status": 401,
+    "contentType": "application/json; charset=utf-8",
+    "errorCode": "unauthorized",
+    "bodyKeys": [
+      "error"
+    ],
+    "forwarded": []
+  },
+  "PUT /v1/heartbeat [other]": {
+    "status": 200,
+    "contentType": "application/json; charset=utf-8",
+    "errorCode": null,
+    "bodyKeys": [
+      "enabled",
+      "last",
+      "time"
+    ],
+    "forwarded": []
+  },
+  "POST /v1/heartbeat/run [anon]": {
+    "status": 401,
+    "contentType": "application/json; charset=utf-8",
+    "errorCode": "unauthorized",
+    "bodyKeys": [
+      "error"
+    ],
+    "forwarded": []
+  },
+  "POST /v1/heartbeat/run [other]": {
+    "status": 501,
+    "contentType": "application/json; charset=utf-8",
+    "errorCode": "no briefing runner on this host",
     "bodyKeys": [
       "code",
       "error"
