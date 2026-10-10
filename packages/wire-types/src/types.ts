@@ -227,6 +227,12 @@ export interface Capabilities {
    * host (desktop, self-host) never sets it.
    */
   conversationPrewarm?: boolean;
+  /**
+   * The AI Manager's daily morning briefing (`/v1/heartbeat`) is served here.
+   * Set by the open host (desktop, self-host); absent on the hosted gateway
+   * until it serves one, so the settings row stays hidden there.
+   */
+  heartbeat?: boolean;
 }
 
 // ---------- Org / roles (multiplayer) ----------

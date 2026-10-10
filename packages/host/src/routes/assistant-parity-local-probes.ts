@@ -41,6 +41,8 @@ export const LOCAL_PROBES: readonly Probe[] = [
   probe("setPreference", { key: "locale", value: "en" }),
   probe("listAgents"),
   probe("preferences.setLocale", { ...WORKSPACE, locale: "en" }),
+  probe("getHeartbeat"),
+  probe("setHeartbeat", { patch: { time: "08:00" } }),
   probe("listInstalledConfigs"),
   probe("updateAgentColor", { agentId: PROBE_AGENT, color: "teal" }),
   probe("getAgentDelegation", AGENT),

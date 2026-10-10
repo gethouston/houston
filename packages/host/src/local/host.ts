@@ -6,6 +6,7 @@ import {
 } from "../store-sync/predecessor-drain";
 import { createHostBase } from "./host-base";
 import { createHostDaemons } from "./host-daemons";
+import { createHostHeartbeat } from "./host-heartbeat";
 import { createHostIntegrations } from "./host-integrations";
 import { severityLog } from "./host-log";
 import type { LocalHostOptions } from "./host-options";
@@ -36,9 +37,17 @@ export function buildLocalHost(opts: LocalHostOptions): LocalHost {
   const base = createHostBase(opts);
   const runtime = createHostRuntime(opts, base);
   const integration = createHostIntegrations(opts, base.events);
-  const serving = createHostServer(opts, base, runtime, integration);
+  const heartbeat = createHostHeartbeat(opts, base, runtime);
+  const serving = createHostServer(opts, base, runtime, integration, heartbeat);
   const daemons = createHostDaemons(opts, base, runtime);
-  const state = { ...base, ...runtime, ...integration, ...serving, ...daemons };
+  const state = {
+    ...base,
+    ...runtime,
+    ...integration,
+    ...heartbeat,
+    ...serving,
+    ...daemons,
+  };
   const {
     server,
     scheduler,
@@ -46,6 +55,7 @@ export function buildLocalHost(opts: LocalHostOptions): LocalHost {
     standingFrameCapture,
     frameForwarder,
     usageSampler,
+    heartbeatDaemon,
     launcher,
     sharedMirror,
     syncDaemon,
@@ -56,6 +66,7 @@ export function buildLocalHost(opts: LocalHostOptions): LocalHost {
     start: () => startLocalHost(opts, state),
     standDown: async (drainMs) => {
       scheduler.stop();
+      heartbeatDaemon?.stop();
       await launcher.shutdownAllAndWait(drainMs);
     },
     stop(stopOpts) {
@@ -77,6 +88,7 @@ export function buildLocalHost(opts: LocalHostOptions): LocalHost {
           });
         }
         scheduler.stop();
+        heartbeatDaemon?.stop();
         watcher.stop();
         // Drain the last accrued stretch before the runtimes go down; the
         // sampler swallows report failures, so this never blocks a shutdown.

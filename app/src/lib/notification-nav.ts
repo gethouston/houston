@@ -24,6 +24,17 @@ export interface NotificationNav {
   sessionKey: string;
 }
 
+/** A click that opens the AI Manager's own chat (the morning briefing). It
+ *  has no board card, so it is not an agent + session key. */
+export interface AssistantNotificationNav {
+  assistant: true;
+}
+
+/** Everything a notification click can open. */
+export type NotificationClickTarget =
+  | NotificationNav
+  | AssistantNotificationNav;
+
 export interface NotificationTarget {
   /** Agent name for the notification title (the agent that finished). */
   agentName: string;

@@ -63,6 +63,15 @@ export {
   delegationWithMode,
   otherAddressableAgents,
 } from "./modules/delegation";
+// The AI Manager's daily morning briefing: settings, last run, "brief me now".
+export {
+  classifyHeartbeatFailure,
+  HeartbeatCommand,
+  type HeartbeatCommandType,
+  type HeartbeatFailure,
+  HeartbeatHttpError,
+  type HeartbeatModule,
+} from "./modules/heartbeat";
 export * from "./modules/plan/announcement-model";
 export * from "./modules/plan/billing-model";
 export * from "./modules/plan/schedule-floor";

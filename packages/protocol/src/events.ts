@@ -34,6 +34,11 @@ export type HoustonEvent =
   | { type: "Toast"; level: "info" | "error"; message: string }
   | { type: "CompletionToast"; agentPath: string; title: string; body: string }
   | { type: "AuthRequired"; provider: string }
-  | { type: "CustomIntegrationsChanged" };
+  | { type: "CustomIntegrationsChanged" }
+  /** The morning briefing turn was accepted on the person's AI Manager
+   *  (`agentPath` is the manager's own agent); the app notifies on it. */
+  | { type: "HeartbeatDelivered"; agentPath: string; date: string }
+  /** The briefing settings or its last-run record changed. */
+  | { type: "HeartbeatChanged"; workspaceId: string };
 
 export type HoustonEventType = HoustonEvent["type"];

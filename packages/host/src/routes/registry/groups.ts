@@ -49,6 +49,8 @@ export const GROUP_PHASES = {
   integrations: "user",
   "setup-runtime": "user",
   assistant: "user",
+  // The AI Manager's morning briefing: settings, last run, "brief me now".
+  heartbeat: "user",
   // Control-plane delivery into a managed pod, ahead of the per-agent
   // dispatch because the agent's own runtime has no trigger or cron route.
   "trigger-events": "user",

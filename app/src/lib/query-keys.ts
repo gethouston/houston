@@ -58,6 +58,9 @@ export const queryKeys = {
    * (`lib/assistant-address-cache.ts`).
    */
   assistant: (spaceId: string | null) => ["assistant", spaceId] as const,
+  /** The AI Manager's morning-briefing settings + last run (one per person),
+   *  refreshed on the host's `HeartbeatChanged` event. */
+  heartbeat: () => ["heartbeat"] as const,
 
   /**
    * Durable onboarding flags — USER-scoped and space-INVARIANT (engine prefs on

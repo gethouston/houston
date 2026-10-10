@@ -467,6 +467,9 @@ test("the documented profile asymmetries are exactly the intended ones", async (
       ...LOCAL_CAPABILITIES,
       integrations: ["custom"],
       customIntegrationOAuth: true,
+      // DEPLOYMENT-derived too: the open host runs the AI Manager's morning
+      // briefing; a gateway-fronted pod leaves it to the gateway.
+      heartbeat: true,
     });
     expect(cc).toEqual(CLOUD_CAPABILITIES);
     // The per-turn gateway alone titles a mission from the send; a served open
