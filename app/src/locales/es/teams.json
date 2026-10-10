@@ -602,7 +602,6 @@
       "native": "Compartir en una app",
       "cardKicker": "Nuestro organigrama",
       "cardCounts": "{{people}}, {{agents}}",
-      "brand": "Houston",
       "site": "gethouston.ai",
       "post": "Este es el equipo de {{company}}: {{people}} y {{agents}}, trabajando codo a codo.\n\nCada empleado de IA en nuestro organigrama tiene un puesto, alguien que lo dirige y trabajo real que mostrar. Todo funciona en Houston.\n\nArma tu propio equipo en gethouston.ai\n\n#IA #FuturoDelTrabajo",
       "postPersonal": "Te presento a mi equipo en Houston: yo y {{agents}}, cada uno con su propio trabajo.\n\nArma tu propio equipo en gethouston.ai\n\n#IA #FuturoDelTrabajo",

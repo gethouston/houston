@@ -602,7 +602,6 @@
       "native": "Share to an app",
       "cardKicker": "Our org chart",
       "cardCounts": "{{people}}, {{agents}}",
-      "brand": "Houston",
       "site": "gethouston.ai",
       "post": "This is the team at {{company}}: {{people}} and {{agents}}, working side by side.\n\nEvery AI Employee on our org chart has a job, a manager and real work to show for it. We run it all on Houston.\n\nBuild your own team at gethouston.ai\n\n#AI #FutureOfWork",
       "postPersonal": "Meet my team on Houston: me and {{agents}}, each with a job of its own.\n\nBuild your own team at gethouston.ai\n\n#AI #FutureOfWork",

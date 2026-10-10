@@ -1,15 +1,11 @@
 import { initialsFor } from "@houston-ai/board";
 import {
   ART,
-  agentFill,
-  circle,
-  companyFill,
-  FONT,
-  fitText,
-  paintBackdrop,
-  personFill,
-  ring,
-  shadedDisc,
+  agentAccent,
+  paintCard,
+  paintPaper,
+  roundRect,
+  track,
 } from "./org-chart-share-card-art";
 import {
   paintFooter,
@@ -18,10 +14,15 @@ import {
 } from "./org-chart-share-card-frame";
 import {
   CARD,
-  type CardDisc,
+  type CardBox,
   type CardLayout,
-  LABEL,
+  lineBudget,
+  NAME_LINES,
+  NODE,
+  stackedHeight,
 } from "./org-chart-share-card-geometry";
+import { accent, centred, face } from "./org-chart-share-card-marks";
+import { FONT, fitText, wrapLines } from "./org-chart-share-card-text";
 
 export type { ShareCardText };
 
@@ -29,127 +30,141 @@ export type { ShareCardText };
 export interface ShareCardAssets {
   /** Person photos by userId; a person missing here wears initials. */
   photos: ReadonlyMap<string, CanvasImageSource>;
-  /** The white Houston helmet, or `null` when it did not load. */
-  helmet: CanvasImageSource | null;
+  /** The dark Houston mark for the footer, or `null` when it did not load. */
+  mark: CanvasImageSource | null;
 }
 
-function centredText(
+/** The root: its tile (or face) and name, centred together in the card. */
+function paintRoot(
   ctx: CanvasRenderingContext2D,
-  text: string,
-  x: number,
-  y: number,
-  size: number,
-  weight: number,
-  fill: string,
-  max: number,
+  box: CardBox,
+  assets: ShareCardAssets,
 ): void {
-  ctx.font = `${weight} ${size}px ${FONT}`;
-  ctx.fillStyle = fill;
-  ctx.textAlign = "center";
-  ctx.fillText(fitText(ctx, text, max), x, y);
-}
-
-function initials(
-  ctx: CanvasRenderingContext2D,
-  label: string,
-  disc: CardDisc,
-): void {
-  const size = Math.round(disc.r * 0.72);
-  ctx.font = `600 ${size}px ${FONT}`;
+  const s = NODE.root;
+  const label = box.label ?? "";
+  ctx.font = `650 ${s.name}px ${FONT}`;
+  track(ctx, -0.4);
+  const name = fitText(ctx, label, box.w - 40 - s.tile - 16);
+  const nameW = ctx.measureText(name).width;
+  track(ctx, 0);
+  const x = box.x + (box.w - (s.tile + 16 + nameW)) / 2;
+  const cy = box.y + box.h / 2;
+  if (box.node.kind === "person")
+    face(
+      ctx,
+      x + s.tile / 2,
+      cy,
+      s.tile,
+      label,
+      assets.photos.get(box.node.person.userId),
+    );
+  else {
+    roundRect(ctx, x, cy - s.tile / 2, s.tile, s.tile, 12);
+    ctx.fillStyle = ART.tile;
+    ctx.fill();
+    ctx.textBaseline = "middle";
+    centred(
+      ctx,
+      initialsFor(label),
+      x + s.tile / 2,
+      cy + 1,
+      18,
+      600,
+      ART.tileInk,
+      s.tile,
+    );
+    ctx.textBaseline = "alphabetic";
+  }
+  ctx.font = `650 ${s.name}px ${FONT}`;
+  track(ctx, -0.4);
   ctx.fillStyle = ART.ink;
-  ctx.textAlign = "center";
+  ctx.textAlign = "left";
   ctx.textBaseline = "middle";
-  ctx.fillText(initialsFor(label), disc.x, disc.y + 1);
+  ctx.fillText(name, x + s.tile + 16, cy + 1);
   ctx.textBaseline = "alphabetic";
+  track(ctx, 0);
 }
 
-function helmetIn(
+/**
+ * A stacked card: its mark, then the name (two lines when it needs them)
+ * and the muted role, the whole block centred in the card.
+ */
+function paintStacked(
   ctx: CanvasRenderingContext2D,
-  helmet: CanvasImageSource,
-  disc: CardDisc,
-): void {
-  // The glyph's viewBox is 412 x 449: its height fills 62% of the disc.
-  const h = disc.r * 2 * 0.62;
-  const w = h * (412.248 / 448.898);
-  ctx.globalAlpha = 0.94;
-  ctx.drawImage(helmet, disc.x - w / 2, disc.y - h / 2, w, h);
-  ctx.globalAlpha = 1;
-}
-
-function paintDisc(
-  ctx: CanvasRenderingContext2D,
-  disc: CardDisc,
+  box: CardBox,
   text: ShareCardText,
   assets: ShareCardAssets,
 ): void {
-  const { node, x, y, r } = disc;
-  switch (node.kind) {
-    case "company":
-      shadedDisc(ctx, x, y, r, companyFill(ctx, x, y, r));
-      initials(ctx, node.name, disc);
-      return;
-    case "agent":
-      shadedDisc(ctx, x, y, r, agentFill(node.agent.color));
-      if (assets.helmet) helmetIn(ctx, assets.helmet, disc);
-      return;
-    case "more":
-      circle(ctx, x, y, r);
-      ctx.fillStyle = ART.chip;
-      ctx.fill();
-      ring(ctx, x, y, r);
-      centredText(
-        ctx,
-        text.more(node.count),
-        x,
-        y + 7,
-        20,
-        600,
-        ART.ink,
-        r * 2,
-      );
-      return;
-    case "person": {
-      const photo = assets.photos.get(node.person.userId);
-      if (!photo) {
-        shadedDisc(ctx, x, y, r, personFill(node.person.userId));
-        initials(ctx, node.person.name, disc);
-        return;
-      }
-      ctx.save();
-      circle(ctx, x, y, r);
-      ctx.clip();
-      ctx.drawImage(photo, x - r, y - r, r * 2, r * 2);
-      ctx.restore();
-      ring(ctx, x, y, r);
-    }
+  const s = box.shape === "column" ? NODE.column : NODE.leaf;
+  const { node } = box;
+  const cx = box.x + box.w / 2;
+  const inner = box.w - 20;
+  ctx.font = `600 ${s.name}px ${FONT}`;
+  const shape = box.shape === "column" ? "column" : "leaf";
+  const lines = box.label ? wrapLines(ctx, box.label, inner, NAME_LINES) : [];
+  ctx.font = `400 ${s.role}px ${FONT}`;
+  const roleLines = lineBudget(shape, lines.length);
+  const roles =
+    box.sublabel && roleLines > 0
+      ? wrapLines(ctx, box.sublabel, inner, roleLines)
+      : [];
+  let y =
+    box.y + (box.h - stackedHeight(shape, lines.length, roles.length)) / 2;
+  const markY = y + s.extent / 2;
+  if (node.kind === "person")
+    face(
+      ctx,
+      cx,
+      markY,
+      s.mark,
+      node.person.name,
+      assets.photos.get(node.person.userId),
+    );
+  else if (node.kind === "agent")
+    accent(ctx, cx, markY, s.dot, s.halo, agentAccent(node.agent.color));
+  else if (node.kind === "more") {
+    ctx.textBaseline = "middle";
+    centred(ctx, text.more(node.count), cx, markY, 30, 650, ART.ink, inner);
+    ctx.textBaseline = "alphabetic";
   }
+  y += s.extent + s.gap;
+  ctx.textBaseline = "middle";
+  track(ctx, -0.2);
+  for (const line of lines) {
+    centred(ctx, line, cx, y + s.nameLine / 2, s.name, 600, ART.ink, inner);
+    y += s.nameLine;
+  }
+  track(ctx, 0);
+  for (const line of roles) {
+    centred(ctx, line, cx, y + s.roleLine / 2, s.role, 400, ART.muted, inner);
+    y += s.roleLine;
+  }
+  ctx.textBaseline = "alphabetic";
 }
 
-function paintLabels(ctx: CanvasRenderingContext2D, disc: CardDisc): void {
-  if (!disc.label) return;
-  const top = disc.y + disc.r;
-  const m = LABEL[disc.labelSize];
-  centredText(
-    ctx,
-    disc.label,
-    disc.x,
-    top + m.name,
-    m.nameSize,
-    600,
-    ART.ink,
-    disc.labelWidth,
-  );
-  if (disc.sublabel)
-    centredText(
+function paintBox(
+  ctx: CanvasRenderingContext2D,
+  box: CardBox,
+  text: ShareCardText,
+  assets: ShareCardAssets,
+): void {
+  paintCard(ctx, box, box.node.kind === "more");
+  if (box.shape === "root") paintRoot(ctx, box, assets);
+  else if (box.shape === "moreLeaf") {
+    if (box.node.kind !== "more") return;
+    ctx.textBaseline = "middle";
+    centred(
       ctx,
-      disc.sublabel,
-      disc.x,
-      top + m.role,
-      m.roleSize,
-      400,
+      text.more(box.node.count),
+      box.x + box.w / 2,
+      box.y + box.h / 2,
+      NODE.moreLeaf.name,
+      600,
       ART.muted,
-      disc.labelWidth,
+      box.w - 20,
     );
+    ctx.textBaseline = "alphabetic";
+  } else paintStacked(ctx, box, text, assets);
 }
 
 /** Paint the whole card onto a CARD-sized context. */
@@ -159,21 +174,15 @@ export function paintShareCard(
   text: ShareCardText,
   assets: ShareCardAssets,
 ): void {
-  paintBackdrop(ctx, CARD.width, CARD.height);
+  paintPaper(ctx, CARD.width, CARD.height);
   paintHeader(ctx, text);
-  ctx.strokeStyle = ART.line;
-  ctx.lineWidth = 2;
-  ctx.lineCap = "round";
-  for (const line of layout.lines) {
-    if (line.y2 <= line.y1 && line.x1 === line.x2) continue;
-    ctx.beginPath();
-    ctx.moveTo(line.x1, line.y1);
-    ctx.lineTo(line.x2, line.y2);
-    ctx.stroke();
+  if (layout.path) {
+    ctx.strokeStyle = ART.line;
+    ctx.lineWidth = 2;
+    ctx.lineCap = "round";
+    ctx.lineJoin = "round";
+    ctx.stroke(new Path2D(layout.path));
   }
-  for (const disc of layout.discs) {
-    paintDisc(ctx, disc, text, assets);
-    paintLabels(ctx, disc);
-  }
-  paintFooter(ctx, text, assets.helmet);
+  for (const box of layout.boxes) paintBox(ctx, box, text, assets);
+  paintFooter(ctx, text, assets.mark);
 }

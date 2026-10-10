@@ -36,6 +36,7 @@ describe("generated TypeScript tokens", () => {
 
   it("exposes numeric motion durations for JS animation", () => {
     expect(durationMs.fast).toBe(200);
+    expect(durationMs.press).toBe(160);
     expect(easing.standard).toEqual([0.25, 0.1, 0.25, 1]);
   });
 

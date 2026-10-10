@@ -37,6 +37,7 @@ const render = (
   agents: Agent[],
   personal = false,
   caps: OrgTreeCaps = SCREEN_TREE_CAPS,
+  phone = false,
 ) =>
   renderToStaticMarkup(
     createElement(OrgChartTreeView, {
@@ -44,6 +45,7 @@ const render = (
       onOpenBoard: () => {},
       onOpenPerson: () => {},
       onShare: () => {},
+      phone,
     }),
   );
 
@@ -80,6 +82,35 @@ describe("org chart tree rendering", () => {
     match(html, />Owner</);
     match(html, />Manager</);
     match(html, />Member</);
+  });
+
+  it("gives every card a node id the connectors measure, on both layouts", () => {
+    for (const phone of [false, true]) {
+      const html = render(
+        [agent("a", { assignments: [{ userId: "tom", access: "user" }] })],
+        false,
+        SCREEN_TREE_CAPS,
+        phone,
+      );
+      for (const id of ["root", "p:julian", "p:sara", "p:tom", "a:a"])
+        match(html, new RegExp(`data-tree-node="${id}"`));
+      // Every card joins the one-time reveal.
+      strictEqual(count(html, /data-reveal=""/), 5);
+      match(html, /<svg[^>]*aria-hidden="true"/);
+    }
+  });
+
+  it("presses in on tap, animating transform alone", () => {
+    const html = render([agent("a")]);
+    match(html, /active:scale-\[0\.97\]/);
+    match(html, /class="[^"]*transition-transform[^"]*active:scale-\[0\.97\]/);
+    // Timing only inline: a transition-property there would shadow `scale`.
+    match(
+      html,
+      /style="transition-duration:160ms;transition-timing-function:cubic-bezier/,
+    );
+    strictEqual(count(html, /transition-property/), 0);
+    strictEqual(count(html, /transition-all/), 0);
   });
 
   it("offers Share as a visible pill", () => {

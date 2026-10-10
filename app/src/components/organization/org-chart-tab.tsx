@@ -83,6 +83,7 @@ export default function OrgChartTab({ ctx }: OrgTabProps) {
       )}
       <OrgChartTreeView
         tree={chart.trees.screen}
+        phone={isMobile}
         onOpenBoard={openAgentBoard}
         onOpenPerson={requestPerson}
         onShare={() => {

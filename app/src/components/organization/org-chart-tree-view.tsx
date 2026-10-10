@@ -1,47 +1,49 @@
 import { Button } from "@houston-ai/core";
 import { Share2 } from "lucide-react";
+import { useMemo } from "react";
 import { useTranslation } from "react-i18next";
 import { CAPTION } from "./org-chart-caption";
+import { PRESS_CLASS, PRESS_STYLE } from "./org-chart-motion";
 import type { OrgTree } from "./org-chart-tree";
-import {
-  BRANCH_ITEM,
-  BRANCH_LIST,
-  LEAF_ITEM,
-  LEAF_LIST,
-} from "./org-chart-tree-lines";
-import {
-  TreeAgentNode,
-  TreeCompanyNode,
-  TreeMoreNode,
-  TreePersonNode,
-} from "./org-chart-tree-nodes";
+import { OrgChartTreeFrame } from "./org-chart-tree-connectors";
+import { type TreeHandlers, useTreeParts } from "./org-chart-tree-levels";
+import { type PathOptions, treeEdges } from "./org-chart-tree-paths";
+import { useCentreOnce } from "./use-centre-once";
 
-interface TreeViewProps {
+/**
+ * Lines meet a card's avatar on the phone: the card's `px-3` plus half its
+ * `size-8` avatar. Corners round at 8, like the cards they join.
+ */
+const PATHS: PathOptions = { radius: 8, spineInset: 28 };
+
+interface TreeViewProps extends TreeHandlers {
   tree: OrgTree;
-  onOpenBoard: (agentId: string) => void;
-  onOpenPerson: (userId: string) => void;
+  /** The phone's outline instead of the desktop's top-down chart. */
+  phone: boolean;
   onShare: () => void;
 }
 
 /**
  * The org chart drawn as one: the space at the top, its people under it,
- * each person's AI Employees under them, joined by thin lines. Desktop
- * spreads the people across (scrolling sideways when wide); the phone reads
- * it as an indented outline. The Share pill opens the share image.
+ * each person's AI Employees under them, joined by lines measured from where
+ * the cards landed. Desktop reads top-down and scrolls sideways when wide
+ * (centred when it fits); the phone reads it as an indented outline. The
+ * cards fade up once when the chart first mounts.
  */
-export function OrgChartTreeView(props: TreeViewProps) {
+export function OrgChartTreeView({
+  tree,
+  phone,
+  onShare,
+  ...handlers
+}: TreeViewProps) {
   const { t } = useTranslation("teams");
-  const { tree } = props;
-  const roleOf = (role: "owner" | "admin" | "user") =>
-    t(`people.roles.${role}`);
-  const agents = t("orgChart.agentCount", { count: tree.counts.agents });
-  const counts =
-    tree.root.kind === "person"
-      ? agents
-      : t("orgChart.share.cardCounts", {
-          people: t("orgChart.peopleCount", { count: tree.counts.people }),
-          agents,
-        });
+  const { root, columns } = useTreeParts(tree, handlers);
+  // A chart wider than the screen opens on its root, not its left edge.
+  const scroller = useCentreOnce<HTMLDivElement>();
+  const edges = useMemo(
+    () => treeEdges(tree, phone ? "phone" : "desktop"),
+    [tree, phone],
+  );
 
   return (
     <section
@@ -53,111 +55,63 @@ export function OrgChartTreeView(props: TreeViewProps) {
         <h3 className={CAPTION}>{t("orgChart.tree.title")}</h3>
         <Button
           variant="outline"
-          className="rounded-full"
-          onClick={props.onShare}
+          className={`rounded-full ${PRESS_CLASS}`}
+          style={PRESS_STYLE}
+          onClick={onShare}
         >
           <Share2 className="size-4" />
           {t("orgChart.share.open")}
         </Button>
       </div>
-      <div className="md:overflow-x-auto md:pb-2">
-        <div className="min-w-0 md:w-max md:min-w-full">
-          {tree.root.kind === "person" ? (
-            <TreePersonNode
-              person={tree.root.person}
-              size="root"
-              sub={counts}
-              onOpen={props.onOpenPerson}
-            />
-          ) : (
-            <TreeCompanyNode name={tree.root.name} sub={counts} />
-          )}
-          <Branches {...props} roleOf={roleOf} />
-        </div>
-      </div>
-    </section>
-  );
-}
-
-function Branches({
-  tree,
-  onOpenBoard,
-  onOpenPerson,
-  roleOf,
-}: TreeViewProps & { roleOf: (role: "owner" | "admin" | "user") => string }) {
-  const { t } = useTranslation("teams");
-  const empty =
-    tree.branches.length === 0 &&
-    tree.rootAgents.length === 0 &&
-    tree.morePeople === 0 &&
-    tree.moreRootAgents === 0;
-  if (empty) return null;
-  return (
-    <ul className={BRANCH_LIST}>
-      {tree.branches.map((branch) => (
-        <li key={branch.person.userId} className={BRANCH_ITEM}>
-          <TreePersonNode
-            person={branch.person}
-            size="branch"
-            sub={roleOf(branch.person.role)}
-            onOpen={onOpenPerson}
-          />
-          {(branch.agents.length > 0 || branch.moreAgents > 0) && (
-            <ul className={LEAF_LIST}>
-              {branch.agents.map((agent) => (
-                <li key={agent.id} className={LEAF_ITEM}>
-                  <TreeAgentNode
-                    agent={agent}
-                    size="leaf"
-                    onOpen={onOpenBoard}
-                  />
+      {phone ? (
+        <OrgChartTreeFrame edges={edges} options={PATHS}>
+          {root}
+          {columns.length > 0 && (
+            <ul className="flex flex-col gap-3 pt-3 pl-10">
+              {columns.map((column) => (
+                <li key={column.key} className="flex flex-col gap-3">
+                  {column.head}
+                  {column.stack.length > 0 && (
+                    <ul className="flex flex-col gap-3 pl-10">
+                      {column.stack.map((item) => (
+                        <li key={item.key}>{item.node}</li>
+                      ))}
+                    </ul>
+                  )}
                 </li>
               ))}
-              {branch.moreAgents > 0 && (
-                <li className={LEAF_ITEM}>
-                  <TreeMoreNode
-                    count={branch.moreAgents}
-                    label={t("orgChart.tree.moreAgents", {
-                      count: branch.moreAgents,
-                    })}
-                    size="leaf"
-                  />
-                </li>
-              )}
             </ul>
           )}
-        </li>
-      ))}
-      {tree.morePeople > 0 && (
-        <li className={BRANCH_ITEM}>
-          <TreeMoreNode
-            count={tree.morePeople}
-            label={t("orgChart.tree.morePeople", { count: tree.morePeople })}
-            sub={
-              tree.morePeopleAgents > 0
-                ? t("orgChart.agentCount", { count: tree.morePeopleAgents })
-                : undefined
-            }
-            size="branch"
-          />
-        </li>
+        </OrgChartTreeFrame>
+      ) : (
+        <div ref={scroller} className="-mx-2 overflow-x-auto px-2 pt-1 pb-3">
+          <OrgChartTreeFrame
+            edges={edges}
+            options={PATHS}
+            className="mx-auto w-max min-w-full"
+          >
+            <div className="flex flex-col items-center">
+              <div className="w-56">{root}</div>
+              {columns.length > 0 && (
+                <ul className="mt-12 flex items-start gap-4">
+                  {columns.map((column) => (
+                    <li key={column.key} className="flex w-56 flex-col gap-6">
+                      {column.head}
+                      {column.stack.length > 0 && (
+                        <ul className="flex flex-col gap-4">
+                          {column.stack.map((item) => (
+                            <li key={item.key}>{item.node}</li>
+                          ))}
+                        </ul>
+                      )}
+                    </li>
+                  ))}
+                </ul>
+              )}
+            </div>
+          </OrgChartTreeFrame>
+        </div>
       )}
-      {tree.rootAgents.map((agent) => (
-        <li key={agent.id} className={BRANCH_ITEM}>
-          <TreeAgentNode agent={agent} size="branch" onOpen={onOpenBoard} />
-        </li>
-      ))}
-      {tree.moreRootAgents > 0 && (
-        <li className={BRANCH_ITEM}>
-          <TreeMoreNode
-            count={tree.moreRootAgents}
-            label={t("orgChart.tree.moreAgents", {
-              count: tree.moreRootAgents,
-            })}
-            size="branch"
-          />
-        </li>
-      )}
-    </ul>
+    </section>
   );
 }

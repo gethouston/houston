@@ -42,7 +42,6 @@ export function useShareCardImage(tree: OrgTree, open: boolean) {
               people: t("orgChart.peopleCount", { count: tree.counts.people }),
               agents,
             }),
-      brand: t("orgChart.share.brand"),
       site: t("orgChart.share.site"),
       more: (count) => t("orgChart.more", { count }),
     };

@@ -1588,12 +1588,18 @@ components:
       then users, by name), and each AI Employee under its home person: its
       first admin manager by name, else its one user, else the first owner
       (also where an AI Employee the caller cannot see the people of goes).
-      Faces open People on that person and AI Employees open their board,
-      joined by thin lines. Desktop spreads the people across as a comb that
-      scrolls sideways; the phone reads it as an indented outline. Past the
+      Every node is a compact card (avatar, name, muted role); people open
+      People on that person and AI Employees open their board, both pressing
+      in on tap. Rounded elbow lines are measured from where the cards land.
+      Desktop reads top-down with the space centred over its people and
+      scrolls sideways when wide, opening on the root; the phone reads it as
+      an indented outline. The cards fade up once when the chart mounts,
+      without the rise under reduced motion. Past the
       caps a "+N" says how many people or AI Employees are left out. A
       personal space draws its person over every AI Employee. The Share pill
-      opens a dialog with a square PNG of the chart drawn on a canvas, an
+      opens a dialog with a square PNG of the chart drawn on a canvas (light
+      paper, white cards, each AI Employee's colour as a dot) that crossfades
+      in over its skeleton, an
       editable post with the counts and the space's name, Share on LinkedIn
       (copies the post and opens LinkedIn's composer, with a line saying to
       attach the downloaded image), Download image, Copy image where the

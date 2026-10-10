@@ -261,17 +261,32 @@ test("the org chart draws its people and AI Employees, and shares an image with 
     await expect(
       tree.getByRole("button", { name: `Open ${name}'s board` }),
     ).toBeVisible();
-  // The people row is as wide as its columns, so the line across them ends
-  // at the last person instead of running on to the edge of the screen.
-  const overshoot = await tree
-    .getByRole("list")
-    .first()
-    .evaluate((row) => {
-      const items = [...row.children].filter((el) => el.tagName === "LI");
-      const last = items.at(-1)?.getBoundingClientRect();
-      return last ? row.getBoundingClientRect().right - last.right : 1;
-    });
-  expect(Math.abs(overshoot)).toBeLessThan(1);
+  // The lines are drawn from the cards themselves: they exist, and the one
+  // across the people ends at the outermost people, never past them.
+  const reach = await tree.evaluate((section) => {
+    const svg = section.querySelector("svg[data-reveal-lines]");
+    const d = svg?.querySelector("path")?.getAttribute("d") ?? "";
+    const origin = svg?.getBoundingClientRect();
+    const xs = [...d.matchAll(/(-?[\d.]+) (-?[\d.]+)/g)].map((m) =>
+      Number(m[1]),
+    );
+    const people = [...section.querySelectorAll("[data-tree-node^='p:']")].map(
+      (node) => {
+        const r = node.getBoundingClientRect();
+        return r.left + r.width / 2 - (origin?.left ?? 0);
+      },
+    );
+    return {
+      segments: d.split("M").length - 1,
+      overshoot: Math.max(...xs) - Math.max(...people),
+      undershoot: Math.min(...people) - Math.min(...xs),
+    };
+  });
+  // root to 3 people, plus each person's AI Employee.
+  expect(reach.segments).toBe(6);
+  expect(reach.overshoot).toBeLessThan(1);
+  expect(reach.undershoot).toBeLessThan(1);
+
   // The ledger is still there under the chart.
   await expect(line(page, "Scout")).toBeVisible();
 

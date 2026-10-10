@@ -1,50 +1,46 @@
 import type { ChartPerson } from "./org-chart-people.ts";
 import {
   CARD,
-  type CardDisc,
+  type CardBox,
   type CardLayout,
-  type CardLine,
   type CardNode,
-  LABEL,
+  NODE,
 } from "./org-chart-share-card-geometry.ts";
-import type { OrgTree, OrgTreeAgent } from "./org-chart-tree.ts";
+import type { OrgTree } from "./org-chart-tree.ts";
+import {
+  type Box,
+  connectorPath,
+  NODE_ID,
+  treeEdges,
+} from "./org-chart-tree-paths.ts";
 
 /**
- * Where everything sits on the share image. Pure and DOM-free: the drawing
- * module only paints what this places.
+ * Where everything sits on the share image. Pure and DOM-free: the painter
+ * only draws what this places, and the connectors come from the same path
+ * module the on-screen chart uses.
  *
  * The card is square (1200 x 1200): a chart three levels deep, with each
  * person's AI Employees stacked under them, needs height more than width,
- * and a square image takes the most room LinkedIn's feed gives a post.
- * Under each person up to `SHARE_CARD_CAPS.agentsPerPerson` AI Employees
- * stack, then one "+N" disc for the rest.
+ * and a square image takes the most room LinkedIn's feed gives a post. The
+ * root card sits centred under the header, the first row spreads across
+ * as equal columns, and each person's AI Employees stack under them, then
+ * one "+N" for the rest.
  */
 
 const TREE = {
-  rootY: 340,
-  busY: 420,
-  levelY: 480,
-  maxColumn: 260,
+  rootY: 284,
+  rowY: 410,
+  /** Space between stacked cards, which the connector spans. */
+  gap: 24,
+  maxColumn: 236,
+  columnGap: 14,
   margin: 56,
-  /** Space between a label block and the next disc: gap, line, gap. */
-  link: 30,
-  /** Where a connector stops short of a label or a disc. */
-  gap: 8,
+  radius: 12,
+  /** The lowest a card may reach, clear of the footer. */
+  floor: 1080,
 } as const;
 
-const R = { root: 44, person: 40, levelAgent: 36, agent: 26, more: 22 };
-
-type Column =
-  | {
-      kind: "person";
-      person: ChartPerson;
-      agents: OrgTreeAgent[];
-      more: number;
-    }
-  | { kind: "agent"; agent: OrgTreeAgent }
-  | { kind: "more"; count: number; label: string; sublabel?: string };
-
-/** The words the layout writes under discs, all authored `t()` copy. */
+/** The words the layout writes on cards, all authored `t()` copy. */
 export interface CardWords {
   role: (person: ChartPerson) => string;
   /** "4 people". */
@@ -53,141 +49,126 @@ export interface CardWords {
   agents: (count: number) => string;
 }
 
+interface Column {
+  head: Omit<CardBox, "x" | "y" | "w" | "h" | "shape">;
+  stack: Omit<CardBox, "x" | "y" | "w" | "h" | "shape">[];
+}
+
 function columnsOf(tree: OrgTree, words: CardWords): Column[] {
-  const columns: Column[] = tree.branches.map((branch) => ({
-    kind: "person",
-    person: branch.person,
-    agents: branch.agents,
-    more: branch.moreAgents,
-  }));
+  type Entry = Column["head"];
+  const agentEntry = (agent: {
+    id: string;
+    name: string;
+    role?: string;
+  }): Entry => ({
+    id: NODE_ID.agent(agent.id),
+    node: { kind: "agent", agent } as CardNode,
+    label: agent.name,
+    sublabel: agent.role,
+  });
+  const more = (id: string, count: number): Entry => ({
+    id,
+    node: { kind: "more", count } as CardNode,
+  });
+  const columns: Column[] = tree.branches.map((branch) => {
+    const stack = branch.agents.map(agentEntry);
+    if (branch.moreAgents > 0)
+      stack.push(
+        more(NODE_ID.moreAgents(branch.person.userId), branch.moreAgents),
+      );
+    return {
+      head: {
+        id: NODE_ID.person(branch.person.userId),
+        node: { kind: "person", person: branch.person },
+        label: branch.person.name,
+        sublabel: words.role(branch.person),
+      },
+      stack,
+    };
+  });
   // The people the cap left out, with the AI Employees they bring, so the
   // card's totals still add up.
   if (tree.morePeople > 0)
     columns.push({
-      kind: "more",
-      count: tree.morePeople,
-      label: words.people(tree.morePeople),
-      sublabel:
-        tree.morePeopleAgents > 0
-          ? words.agents(tree.morePeopleAgents)
-          : undefined,
+      head: {
+        ...more(NODE_ID.morePeople, tree.morePeople),
+        label: words.people(tree.morePeople),
+        sublabel:
+          tree.morePeopleAgents > 0
+            ? words.agents(tree.morePeopleAgents)
+            : undefined,
+      },
+      stack: [],
     });
-  for (const agent of tree.rootAgents) columns.push({ kind: "agent", agent });
+  for (const agent of tree.rootAgents)
+    columns.push({ head: agentEntry(agent), stack: [] });
   if (tree.moreRootAgents > 0)
     columns.push({
-      kind: "more",
-      count: tree.moreRootAgents,
-      label: words.agents(tree.moreRootAgents),
+      head: {
+        ...more(NODE_ID.moreRoot, tree.moreRootAgents),
+        label: words.agents(tree.moreRootAgents),
+      },
+      stack: [],
     });
   return columns;
 }
 
 export function shareCardLayout(tree: OrgTree, words: CardWords): CardLayout {
-  const discs: CardDisc[] = [];
-  const lines: CardLine[] = [];
   const cx = CARD.width / 2;
   const rootNode: CardNode =
     tree.root.kind === "person"
       ? { kind: "person", person: tree.root.person }
       : { kind: "company", name: tree.root.name };
-  discs.push({
-    node: rootNode,
-    x: cx,
-    y: TREE.rootY,
-    r: R.root,
-    labelWidth: 0,
-    labelSize: "big",
-  });
+  const rootW = NODE.root.w;
+  const boxes: CardBox[] = [
+    {
+      id: NODE_ID.root,
+      node: rootNode,
+      shape: "root",
+      label:
+        tree.root.kind === "person" ? tree.root.person.name : tree.root.name,
+      x: cx - rootW / 2,
+      y: TREE.rootY,
+      w: rootW,
+      h: NODE.root.h,
+    },
+  ];
 
   const columns = columnsOf(tree, words);
-  if (columns.length === 0) return { discs, lines };
-  const usable = CARD.width - TREE.margin * 2;
-  const width = Math.min(TREE.maxColumn, usable / columns.length);
-  const left = cx - (width * columns.length) / 2;
-  const xs = columns.map((_, index) => left + width * (index + 0.5));
-
-  lines.push({ x1: cx, y1: TREE.rootY + R.root, x2: cx, y2: TREE.busY });
-  lines.push({
-    x1: xs[0],
-    y1: TREE.busY,
-    x2: xs[xs.length - 1],
-    y2: TREE.busY,
-  });
+  const n = columns.length;
+  const usable = CARD.width - TREE.margin * 2 - TREE.columnGap * (n - 1);
+  const w = Math.min(TREE.maxColumn, usable / Math.max(n, 1));
+  const left = cx - (w * n + TREE.columnGap * (n - 1)) / 2;
 
   columns.forEach((column, index) => {
-    const x = xs[index];
-    const r =
-      column.kind === "person"
-        ? R.person
-        : column.kind === "agent"
-          ? R.levelAgent
-          : R.more;
-    lines.push({ x1: x, y1: TREE.busY, x2: x, y2: TREE.levelY - r });
-    const labelWidth = width - 16;
-    if (column.kind === "more") {
-      discs.push({
-        node: { kind: "more", count: column.count },
-        label: column.label,
-        sublabel: column.sublabel,
-        x,
-        y: TREE.levelY,
-        r,
-        labelWidth,
-        labelSize: "big",
-      });
-      return;
-    }
-    if (column.kind === "agent") {
-      const { agent } = column;
-      discs.push({
-        node: column,
-        x,
-        y: TREE.levelY,
-        r,
-        label: agent.name,
-        sublabel: agent.role,
-        labelWidth,
-        labelSize: "big",
-      });
-      return;
-    }
-    discs.push({
-      node: { kind: "person", person: column.person },
+    const x = left + index * (w + TREE.columnGap);
+    boxes.push({
+      ...column.head,
+      shape: "column",
       x,
-      y: TREE.levelY,
-      r,
-      label: column.person.name,
-      sublabel: words.role(column.person),
-      labelWidth,
-      labelSize: "big",
+      y: TREE.rowY,
+      w,
+      h: NODE.column.h,
     });
-    let above = TREE.levelY + r + LABEL.big.depth;
-    const stack: CardNode[] = column.agents.map((agent) => ({
-      kind: "agent",
-      agent,
-    }));
-    if (column.more > 0) stack.push({ kind: "more", count: column.more });
-    for (const node of stack) {
-      const nodeR = node.kind === "more" ? R.more : R.agent;
-      const y = above + TREE.link + nodeR;
-      lines.push({
-        x1: x,
-        y1: above + TREE.gap,
-        x2: x,
-        y2: y - nodeR - TREE.gap,
-      });
-      discs.push({
-        node,
-        x,
-        y,
-        r: nodeR,
-        label: node.kind === "agent" ? node.agent.name : undefined,
-        sublabel: node.kind === "agent" ? node.agent.role : undefined,
-        labelWidth,
-        labelSize: "small",
-      });
-      above = y + nodeR + LABEL.small.depth;
+    let y = TREE.rowY + NODE.column.h + TREE.gap;
+    for (const entry of column.stack) {
+      const shape = entry.node.kind === "more" ? "moreLeaf" : "leaf";
+      const h = NODE[shape].h;
+      boxes.push({ ...entry, shape, x, y, w, h });
+      y += h + TREE.gap;
     }
   });
-  return { discs, lines };
+
+  // A small chart sits centred in the room between header and footer
+  // rather than hanging under the header with the bottom half empty.
+  const bottom = Math.max(...boxes.map((box) => box.y + box.h));
+  const shift = Math.max(0, (TREE.floor - bottom) / 2);
+  for (const box of boxes) box.y += shift;
+
+  const byId = new Map<string, Box>(boxes.map((box) => [box.id, box]));
+  const path = connectorPath(treeEdges(tree, "desktop"), byId, {
+    radius: TREE.radius,
+    spineInset: 0,
+  });
+  return { boxes, path };
 }

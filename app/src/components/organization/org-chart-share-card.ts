@@ -1,4 +1,4 @@
-import helmetUrl from "../../assets/houston-icon-white.svg";
+import markUrl from "../../assets/houston-black.svg";
 import type { ChartPerson } from "./org-chart-people";
 import { CARD } from "./org-chart-share-card-geometry";
 import {
@@ -73,8 +73,8 @@ function peopleOn(tree: OrgTree): ChartPerson[] {
 
 async function loadAssets(tree: OrgTree): Promise<ShareCardAssets> {
   const withPhotos = peopleOn(tree).filter((p) => p.imageUrl);
-  const [helmet, ...photos] = await Promise.all([
-    loadImage(helmetUrl, false),
+  const [mark, ...photos] = await Promise.all([
+    loadImage(markUrl, false),
     ...withPhotos.map((p) => loadImage(p.imageUrl ?? "", true)),
   ]);
   const clean = new Map<string, CanvasImageSource>();
@@ -82,7 +82,7 @@ async function loadAssets(tree: OrgTree): Promise<ShareCardAssets> {
     const photo = photos[index];
     if (photo && drawsClean(photo)) clean.set(person.userId, photo);
   });
-  return { photos: clean, helmet };
+  return { photos: clean, mark };
 }
 
 export class ShareCardError extends Error {

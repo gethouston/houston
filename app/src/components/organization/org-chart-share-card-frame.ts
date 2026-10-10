@@ -1,8 +1,9 @@
-import { ART, FONT, fitFontSize, fitText } from "./org-chart-share-card-art";
+import { ART, track } from "./org-chart-share-card-art";
 import { CARD, CARD_TEXT } from "./org-chart-share-card-geometry";
+import { FONT, fitFontSize, fitText } from "./org-chart-share-card-text";
 
 /*
- * The share image's header (kicker, name, counts) and its Houston footer.
+ * The share image's header (kicker, name, counts) and its quiet footer.
  */
 
 /** The words on the image, all authored `t()` copy. */
@@ -10,7 +11,6 @@ export interface ShareCardText {
   kicker: string;
   title: string;
   counts: string;
-  brand: string;
   site: string;
   more: (count: number) => string;
 }
@@ -21,35 +21,36 @@ export function paintHeader(
 ) {
   const max = CARD.width - CARD.pad * 2;
   ctx.textAlign = "left";
-  ctx.font = `500 26px ${FONT}`;
-  ctx.fillStyle = ART.muted;
+  ctx.font = `500 24px ${FONT}`;
+  ctx.fillStyle = ART.faint;
   ctx.fillText(fitText(ctx, text.kicker, max), CARD.pad, CARD_TEXT.kickerY);
-  const size = fitFontSize(ctx, text.title, max, 700, 76, 48);
+  // A confident title: heavy, tight-tracked, shrunk to fit before it is cut.
+  track(ctx, -2.5);
+  const size = fitFontSize(ctx, text.title, max, 700, 84, 52);
   ctx.font = `700 ${size}px ${FONT}`;
   ctx.fillStyle = ART.ink;
   ctx.fillText(fitText(ctx, text.title, max), CARD.pad, CARD_TEXT.titleY);
+  track(ctx, 0);
   ctx.font = `400 30px ${FONT}`;
   ctx.fillStyle = ART.muted;
   ctx.fillText(fitText(ctx, text.counts, max), CARD.pad, CARD_TEXT.countsY);
 }
 
+/** The Houston mark and the site, small, bottom left. */
 export function paintFooter(
   ctx: CanvasRenderingContext2D,
   text: ShareCardText,
-  helmet: CanvasImageSource | null,
+  mark: CanvasImageSource | null,
 ) {
   const y = CARD_TEXT.footerY;
   let x = CARD.pad;
-  if (helmet) {
-    ctx.drawImage(helmet, x, y - 30, 34, 37);
-    x += 46;
+  if (mark) {
+    // The mark's viewBox is 412 x 449: 28px tall.
+    ctx.drawImage(mark, x, y - 24, 25.7, 28);
+    x += 38;
   }
   ctx.textAlign = "left";
-  ctx.font = `700 28px ${FONT}`;
-  ctx.fillStyle = ART.ink;
-  ctx.fillText(text.brand, x, y);
-  ctx.textAlign = "right";
-  ctx.font = `500 24px ${FONT}`;
-  ctx.fillStyle = ART.faint;
-  ctx.fillText(text.site, CARD.width - CARD.pad, y);
+  ctx.font = `500 22px ${FONT}`;
+  ctx.fillStyle = ART.muted;
+  ctx.fillText(text.site, x, y);
 }
