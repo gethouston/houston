@@ -3,6 +3,19 @@
 Every `version` bump in `inventory.yaml` needs a matching entry here (enforced by
 `pnpm check:parity`). Newest first. Use `## vN` headings.
 
+## v129 - 2026-10-10
+
+The org chart looks like one. Between the hero and the ledger, Admin > Org
+chart draws the space at the top, its people under it as faces, and each AI
+Employee under the person it belongs to, joined by thin lines: its first
+admin manager, else its one user, else the first owner (every owner manages
+every AI Employee, so management alone would hang them all on the owner).
+Desktop spreads the people across and scrolls sideways when wide; the phone
+reads it as an indented outline. A Share pill opens a square image of the
+chart with a ready post for LinkedIn: Share on LinkedIn copies the post and
+opens the composer, Download image and Copy image hand over the picture,
+and phones get the native share sheet.
+
 ## v128 - 2026-10-09
 
 The first day offer knows when no AI is connected. A new hire's first day

@@ -576,7 +576,39 @@
     "retry": "Intentar de nuevo",
     "loading": "Cargando tu organigrama...",
     "empty": "Todavía no hay empleados de IA",
-    "emptyBody": "Contrata tu primer empleado de IA y aparecerá aquí, con las personas que lo gestionan y lo usan."
+    "emptyBody": "Contrata tu primer empleado de IA y aparecerá aquí, con las personas que lo gestionan y lo usan.",
+    "tree": {
+      "title": "Quién trabaja aquí",
+      "label": "Organigrama",
+      "moreAgents_one": "{{count}} empleado de IA más",
+      "moreAgents_other": "{{count}} empleados de IA más",
+      "morePeople_one": "{{count}} persona más",
+      "morePeople_other": "{{count}} personas más"
+    },
+    "share": {
+      "open": "Compartir",
+      "title": "Comparte tu organigrama",
+      "description": "Muestra a todo tu equipo, personas y empleados de IA juntos, en LinkedIn o donde quieras.",
+      "previewAlt": "Tu organigrama como imagen",
+      "drawing": "Dibujando tu organigrama...",
+      "failed": "No se pudo dibujar la imagen.",
+      "postLabel": "Tu publicación",
+      "linkedInHint": "LinkedIn se abre con tu publicación lista y el texto también queda copiado. LinkedIn no puede adjuntar una imagen desde un enlace, así que descarga la imagen y agrégala a tu publicación.",
+      "linkedIn": "Compartir en LinkedIn",
+      "download": "Descargar imagen",
+      "downloaded": "Descargada",
+      "copyImage": "Copiar imagen",
+      "copied": "Copiada",
+      "native": "Compartir en una app",
+      "cardKicker": "Nuestro organigrama",
+      "cardCounts": "{{people}}, {{agents}}",
+      "brand": "Houston",
+      "site": "gethouston.ai",
+      "post": "Este es el equipo de {{company}}: {{people}} y {{agents}}, trabajando codo a codo.\n\nCada empleado de IA en nuestro organigrama tiene un puesto, alguien que lo dirige y trabajo real que mostrar. Todo funciona en Houston.\n\nArma tu propio equipo en gethouston.ai\n\n#IA #FuturoDelTrabajo",
+      "postPersonal": "Te presento a mi equipo en Houston: yo y {{agents}}, cada uno con su propio trabajo.\n\nArma tu propio equipo en gethouston.ai\n\n#IA #FuturoDelTrabajo",
+      "linkedInBlocked": "Tu navegador no dejó abrir LinkedIn.",
+      "openLinkedIn": "Abrir LinkedIn"
+    }
   },
   "phoneEmployee": {
     "emptyGroup": {

@@ -89,7 +89,11 @@ export type AnalyticsProperty =
   | "span"
   | "org_slug"
   | "duration_ms"
-  | "outcome";
+  | "outcome"
+  // Org chart sharing: how the image left, and the chart's people count
+  // (its AI Employees ride `agent_count`).
+  | "share_channel"
+  | "people_count";
 
 export const ALLOWED_PROPS = new Set<AnalyticsProperty>([
   "provider",
@@ -138,4 +142,6 @@ export const ALLOWED_PROPS = new Set<AnalyticsProperty>([
   "org_slug",
   "duration_ms",
   "outcome",
+  "share_channel",
+  "people_count",
 ]);

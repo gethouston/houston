@@ -36,7 +36,7 @@
 #   a11y     roles / labels / focus expectations the surface must honor
 #   since    inventory version this component first appeared in
 
-version: 128
+version: 129
 
 components:
   - id: agent-delegation-settings
@@ -1541,17 +1541,23 @@ components:
   - id: org-chart
     title: Org chart
     purpose: >-
-      The space's month of work and its AI Employees ranked by the hours they
-      worked, with the people who manage and use each one, in Admin.
+      The space's month of work, the space drawn as an org chart of its
+      people and their AI Employees with a Share image, and its AI Employees
+      ranked by the hours they worked, with the people who manage and use
+      each one, in Admin.
     anatomy: [hero-band, space-name, summary-sentence, hero-figure,
-      supporting-stats, area-chart, ledger-caption, relation-key,
+      supporting-stats, area-chart, tree-caption, share-pill, tree-root,
+      tree-person, tree-agent, tree-connector, tree-overflow, share-dialog,
+      share-preview, share-post, share-actions, ledger-caption, relation-key,
       featured-line, column-captions, ledger-line, hours-bar, face-group,
       relation-dot, retry-line]
     states: [loading, empty, ready, hours-loading, hours-hidden,
       hours-unavailable, messages-loading, messages-hidden,
       messages-unavailable, messages-not-counted, people-hidden,
-      shared-with-everyone, lit]
-    variants: [ledger, dense, phone, personal, scoped]
+      shared-with-everyone, lit, tree-capped, share-drawing, share-ready,
+      share-failed]
+    variants: [ledger, dense, phone, personal, scoped, tree-comb,
+      tree-outline]
     behavior: >-
       The hero names the team space (or, in a personal space, its person)
       with one sentence of who is here and what they did in the last 30 days,
@@ -1577,7 +1583,22 @@ components:
       no messages total unless every line's messages are counted, and a line
       whose messages the gateway does not count for them says "Not counted".
       A personal space draws no people columns. The phone stacks each line in
-      two rows.
+      two rows. Between the hero and the ledger the space is drawn as an org
+      chart: the space at the top, its people under it (owners, then admins,
+      then users, by name), and each AI Employee under its home person: its
+      first admin manager by name, else its one user, else the first owner
+      (also where an AI Employee the caller cannot see the people of goes).
+      Faces open People on that person and AI Employees open their board,
+      joined by thin lines. Desktop spreads the people across as a comb that
+      scrolls sideways; the phone reads it as an indented outline. Past the
+      caps a "+N" says how many people or AI Employees are left out. A
+      personal space draws its person over every AI Employee. The Share pill
+      opens a dialog with a square PNG of the chart drawn on a canvas, an
+      editable post with the counts and the space's name, Share on LinkedIn
+      (copies the post and opens LinkedIn's composer, with a line saying to
+      attach the downloaded image), Download image, Copy image where the
+      clipboard takes images, and the native share sheet where it takes
+      files. A photo that cannot be drawn becomes initials.
     a11y: >-
       The space name is a level-2 heading; the ledger is a labelled region
       of ordered lists; every line is a button named for opening that AI

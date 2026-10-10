@@ -13,7 +13,7 @@
 
 surface: web
 enforced: true
-inventoryVersion: 128
+inventoryVersion: 129
 
 components:
   manager-avatar:
@@ -281,7 +281,7 @@ components:
     ref: "app/src/components/team-view/agent-view.tsx selects one AI Employee's mission board, routines, files and settings; agent-chrome.tsx renders the desktop and phone section tabs"
   org-chart:
     status: implemented
-    ref: "app/src/components/organization/org-chart-tab.tsx over use-org-chart-data.ts, org-chart-view-model.ts, org-chart-scope.ts, org-chart-model.ts, org-chart-people.ts and org-chart-format.ts; org-chart-hero.tsx (with org-chart-area-chart.tsx) over org-chart-ledger.tsx, desktop org-chart-line.tsx with org-chart-line-people.tsx, phone org-chart-phone-line.tsx, faces org-chart-faces.tsx opening People on that person (use-person-focus.ts)"
+    ref: "app/src/components/organization/org-chart-tab.tsx over use-org-chart-data.ts, org-chart-view-model.ts, org-chart-scope.ts, org-chart-model.ts, org-chart-people.ts and org-chart-format.ts; org-chart-hero.tsx (with org-chart-area-chart.tsx) over org-chart-ledger.tsx, desktop org-chart-line.tsx with org-chart-line-people.tsx, phone org-chart-phone-line.tsx, faces org-chart-faces.tsx opening People on that person (use-person-focus.ts); the tree org-chart-tree.ts drawn by org-chart-tree-view.tsx (org-chart-tree-nodes.tsx, org-chart-tree-lines.ts) and shared through org-chart-share-dialog.tsx over org-chart-share-model.ts, use-share-card-image.ts (org-chart-share-image-state.ts, org-chart-share-card.ts, -layout, -geometry, -paint, -frame, -art) and use-org-chart-share-actions.ts (org-chart-share-run.ts), trees kept stable by use-stable-by-content.ts and the post by use-seed-on-open.ts"
   mobile-nav-bar:
     status: implemented
     ref: "app/src/components/shell/mobile-nav-bar.tsx binding @houston-ai/core FloatingNavBar (items + NeedsYouChip badge over the agent activity rollup), rules in app/src/lib/mobile-tabs.ts with the tap side in app/src/lib/open-mobile-tab.ts (nav-stack reset mode); the new-task control runs lib/new-mission.ts startNewMission over lib/new-mission-scope.ts and carries the guided setup's newMission tour anchor (onboarding/in-app-mobile-targets.ts)"
