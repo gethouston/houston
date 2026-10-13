@@ -10,7 +10,7 @@ import {
   type ObjectStore,
   StoreConflictError,
 } from "@houston/runtime-client/object-sync";
-import { afterEach, beforeEach, expect, test } from "vitest";
+import { afterEach, beforeEach, expect, test, vi } from "vitest";
 import type { TurnServerDeps } from "./server-types";
 import { finishTurnDurability } from "./turn-durability";
 import type { TurnFilesystem } from "./turn-filesystem";
@@ -32,10 +32,16 @@ const START = Date.parse("2026-10-08T20:47:00.000Z");
 let root: string;
 let objects: Map<string, { body: string; generation: number }>;
 beforeEach(async () => {
+  // The run happens at START, before RESET: a snooze never holds past a reset
+  // that has already gone by, so a wall clock past RESET rewrites `until`.
+  vi.useFakeTimers({ now: START, toFake: ["Date"] });
   root = await mkdtemp(join(tmpdir(), "routine-snooze-"));
   objects = new Map();
 });
-afterEach(async () => rm(root, { recursive: true, force: true }));
+afterEach(async () => {
+  vi.useRealTimers();
+  await rm(root, { recursive: true, force: true });
+});
 
 const store: ObjectStore = {
   list: async () => [...objects.keys()],
