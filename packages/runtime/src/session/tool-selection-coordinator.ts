@@ -19,18 +19,15 @@ import { SUGGEST_REUSABLE_TOOL_NAME } from "./tools/suggest-reusable";
  * The personal assistant's whole tool surface. Everything here either operates
  * Houston, records the turn's interaction lifecycle, or hands work to an agent.
  *
- * `read` + `write` are the ONE file pair it keeps: memory consolidation needs
- * exactly them (a full memory is answered with "read that file, merge it, write
- * the trimmed list back", routes/learning-write.ts), and `read` also opens the
- * attachments people send it. The workspace guard holds both to that memory
- * document plus a read-only uploads folder (coordinator-policy.ts). No
- * `edit`/`ls`/`grep`/`find` — none of them is on that path. No `bash`,
+ * `read` is the ONE file tool it keeps: the workspace guard lets it open its
+ * memory document and a read-only uploads folder (coordinator-policy.ts). No
+ * `write`: memory changes only through save_learning, which archives what a
+ * consolidation replaces. No `edit`/`ls`/`grep`/`find` either. No `bash`,
  * `run_code`, integration execution or skill tools: those DO work, and work belongs on an
  * agent's board where the user can see it.
  */
 export const COORDINATOR_TOOL_NAMES: readonly string[] = [
   "read",
-  "write",
   ASK_USER_TOOL_NAME,
   REQUEST_CONNECTION_TOOL_NAME,
   REQUEST_CREDENTIAL_TOOL_NAME,

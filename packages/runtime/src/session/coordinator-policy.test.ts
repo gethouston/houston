@@ -5,7 +5,7 @@ import { learningsDocPath } from "./learnings-context";
 
 /**
  * The coordinator produces no work, so it needs no working files: one document
- * (its memory) to read and write, and the attachments people send it to read. What this pins is the gap between that and an
+ * (its memory) to read, never write (save_learning is its only writer), and the attachments people send it to read. What this pins is the gap between that and an
  * ordinary agent, whose workspace containment must stay exactly as it was.
  */
 
@@ -13,7 +13,7 @@ const workspaceDir = "/data/ws/.assistant";
 const sharedSkillsDir = "/data/ws/.shared/skills";
 
 const coordinatorWall = {
-  allowedFiles: [learningsDocPath(workspaceDir)],
+  readableFiles: [learningsDocPath(workspaceDir)],
   readableDirs: [join(workspaceDir, "uploads")],
 };
 

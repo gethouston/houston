@@ -94,3 +94,13 @@ export class AttachmentReadOnlyError extends ProtectedWriteDeniedError {
     this.name = "AttachmentReadOnlyError";
   }
 }
+
+/** The coordinator's memory changes only through `save_learning`. */
+export class MemoryWriteDeniedError extends ProtectedWriteDeniedError {
+  constructor() {
+    super(
+      "Your memory cannot be edited directly. Save or merge memories with save_learning, passing the ids of the memories a new one replaces in `replaces`.",
+    );
+    this.name = "MemoryWriteDeniedError";
+  }
+}

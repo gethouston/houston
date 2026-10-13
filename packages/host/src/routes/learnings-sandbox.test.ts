@@ -101,6 +101,7 @@ async function save(
     noLiveTurn?: boolean;
     mode?: "plan" | "execute" | "auto";
     token?: string;
+    replaces?: unknown;
   } = {},
 ) {
   const headers: Record<string, string> = {
@@ -137,7 +138,12 @@ async function save(
     "POST",
     "/sandbox/learnings/save",
     new URL("http://host/sandbox/learnings/save"),
-    fakeReq({ text }, headers),
+    fakeReq(
+      opts.replaces === undefined
+        ? { text }
+        : { text, replaces: opts.replaces },
+      headers,
+    ),
     res,
   );
   return { handled, ...captured };
@@ -179,6 +185,22 @@ test("an empty text is rejected", async () => {
   const r = await save("   ");
   expect(r.status).toBe(400);
   expect(await onDisk()).toEqual([]);
+});
+
+test("a malformed replaces is rejected; a valid one archives the old memory", async () => {
+  const bad = await save("Lives in Porto", { replaces: "aaaaaaaa" });
+  expect(bad.status).toBe(400);
+  expect(await onDisk()).toEqual([]);
+
+  const first = await save("Lives in Lisbon");
+  expect(first.status).toBe(201);
+  const [old] = await onDisk();
+  const ok = await save("Lives in Porto", { replaces: [old?.id] });
+  expect(ok.status).toBe(201);
+  const [archived, current] = await onDisk();
+  expect(archived).toMatchObject({ id: old?.id, replaced_by: current?.id });
+  expect(archived?.archived_at).toEqual(expect.any(String));
+  expect(current?.text).toBe("Lives in Porto");
 });
 
 test("gateway-fronted: stamps the person AND the mission", async () => {

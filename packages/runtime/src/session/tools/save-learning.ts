@@ -21,7 +21,8 @@ import {
  * (2) A learning has PROVENANCE the agent cannot know or be trusted to write:
  * WHO taught it and WHICH mission it came from. Both are derived server-side —
  * the person from the gateway-minted acting-as header, the mission from the
- * turn's conversation id — so the tool takes only the learning's text.
+ * turn's conversation id — so the tool takes only the learning's text, plus
+ * the ids of any memories it supersedes (archived by the host, never deleted).
  *
  * Same trust posture as the other host-proxying tools: it holds no secret and
  * carries only the per-sandbox HMAC token; the host resolves the sandbox to its
@@ -38,6 +39,13 @@ const SaveLearningParams = Type.Object({
     description:
       "The learning itself, in one or two plain sentences, written so it still makes sense months later without this conversation's context.",
   }),
+  replaces: Type.Optional(
+    Type.Array(Type.String(), {
+      maxItems: 50,
+      description:
+        "Ids of the memories this one replaces: the bracketed codes from your memory list, or from this tool's full-memory answer. They are archived, not deleted. Omit it for a brand new memory.",
+    }),
+  ),
 });
 type SaveLearningParams = Static<typeof SaveLearningParams>;
 
@@ -60,7 +68,7 @@ export function makeSaveLearningTool(opts: SaveLearningToolOptions) {
     name: SAVE_LEARNING_TOOL_NAME,
     label: "Remember this",
     description:
-      "Save one learning to the user's memory so it survives into future sessions. NEVER write .houston/learnings/learnings.json with file tools to ADD a memory - this tool is the ONLY safe way to save, because it merges with the user's existing memory instead of overwriting it, and it records who taught the learning and which mission it came from. The single exception is consolidation: when this tool answers that memory is full, rewrite that file with the merged, trimmed list exactly as it asks, then save again. Pass only the learning's text. On success, confirm in plain words - never mention files, JSON, or paths.",
+      "Save one learning to the user's memory so it survives into future sessions. NEVER write .houston/learnings/learnings.json with file tools, for any reason - this tool is the ONLY safe way to change memory, because it merges with the user's existing memory instead of overwriting it, and it records who taught the learning and which mission it came from. When this tool answers that memory is full, or when a new fact supersedes an old one (the user moved, changed a preference), save one memory that says what is true now and pass the ids of the memories it replaces in `replaces`; they are archived, not deleted. On success, confirm in plain words - never mention files, JSON, paths, or memory ids.",
     promptSnippet: "Save a learning to memory",
     parameters: SaveLearningParams,
     executionMode: "sequential",
@@ -89,7 +97,10 @@ export function makeSaveLearningTool(opts: SaveLearningToolOptions) {
             ? { [CONVERSATION_ID_HEADER]: conversationId }
             : {}),
         },
-        body: JSON.stringify({ text: params.text }),
+        body: JSON.stringify({
+          text: params.text,
+          ...(params.replaces?.length ? { replaces: params.replaces } : {}),
+        }),
         signal,
       });
       // The host's error bodies are already agent-actionable (empty text,

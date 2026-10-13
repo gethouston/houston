@@ -8,7 +8,10 @@ import {
   editLearning,
   newLearning,
 } from "../../lib/learning-optimistic";
-import type { LearningSourceRow } from "../../lib/learning-provenance";
+import {
+  type LearningSourceRow,
+  memoryRows,
+} from "../../lib/learning-provenance";
 import { optimisticWrite } from "../../lib/optimistic-write";
 import { isMultiplayer } from "../../lib/org-roles";
 import { queryKeys } from "../../lib/query-keys";
@@ -26,14 +29,9 @@ export function useLearnings(agentPath: string | undefined) {
   // carrying the provenance fields through: the Memory rows show who taught a
   // learning and which mission it came from, and dropping them here (as this
   // adapter used to) makes that invisible no matter what the file says.
-  const entries: LearningSourceRow[] = (q.data ?? []).map((l, index) => ({
-    index,
-    text: l.text,
-    id: l.id,
-    ...(l.taught_by ? { taughtBy: l.taught_by } : {}),
-    ...(l.mission_id ? { missionId: l.mission_id } : {}),
-    ...(l.mission_title ? { missionTitle: l.mission_title } : {}),
-  }));
+  // Archived memories (superseded by a consolidation) stay in the file for the
+  // agent's recall but are history, not memory: the list shows active ones.
+  const entries: LearningSourceRow[] = memoryRows(q.data ?? []);
   return { data: { entries }, isLoading: q.isLoading };
 }
 

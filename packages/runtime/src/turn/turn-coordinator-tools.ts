@@ -24,6 +24,12 @@ import type { TurnSessionRequest } from "./turn-session";
  * the turn, not the process, says whether it is the coordinator.
  */
 
+/** The turn's own data directory and hydrated agent workspace. */
+export interface TurnToolDirs {
+  dataDir: string;
+  workspaceDir: string;
+}
+
 /** The family's catalog and transport, or undefined when this turn is not
  *  the coordinator, has no facade, or the build carries no readable catalog. */
 export function turnAssistantOptions(
@@ -35,19 +41,19 @@ export function turnAssistantOptions(
 }
 
 /**
- * `dataDir` is the turn's own: houston_recall searches the transcript this
- * turn hydrated, not the process's (empty) store. The connection card and the
+ * `dirs` are the turn's own: houston_recall searches the transcript and the
+ * memories this turn hydrated, not the process's (empty) stores. The connection card and the
  * key-entry tool are here rather than behind the `integrations` scope: Houston
  * never runs an integration, so the gateway does not grant it one.
  */
 export function buildTurnCoordinatorTools(
   turn: TurnSessionRequest,
-  dataDir: string,
+  dirs: TurnToolDirs,
   loadArchive?: ArchiveLoader,
 ): PiBackendDeps["customTools"] {
   const assistant = turnAssistantOptions(turn);
   if (!assistant) return [];
-  const conversations = join(dataDir, "conversations");
+  const conversations = join(dirs.dataDir, "conversations");
   // houston_recall searches the whole transcript: the archive segments the
   // hot set left remote land first (turn-archive-fetch.ts).
   const readHistory = async (id: string) => {
@@ -55,7 +61,10 @@ export function buildTurnCoordinatorTools(
     return getHistoryAt(conversations, id);
   };
   return [
-    ...makeAssistantTools(assistant, readHistory),
+    ...makeAssistantTools(assistant, {
+      readHistory,
+      workspaceDir: dirs.workspaceDir,
+    }),
     ...makeMissionTools({
       call: assistant.call,
       personalAssistant: true,

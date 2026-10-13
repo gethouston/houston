@@ -118,19 +118,23 @@ test("an over-cap append under the assistant root is rejected and writes NOTHING
 
   const result = await appendLearningChecked(vfs, ASSISTANT_ROOT, APPEND);
 
-  expect(result).toEqual({ error: ASSISTANT_LEARNINGS_FULL_MESSAGE });
+  expect(result).toEqual({
+    error: expect.stringContaining(ASSISTANT_LEARNINGS_FULL_MESSAGE),
+    code: "memory_full",
+  });
   expect((await loadLearnings(vfs, ASSISTANT_ROOT)).items).toEqual(seeded);
 });
 
-test("the rejection tells the agent to consolidate and to stay quiet about it", async () => {
+test("the rejection tells the agent to consolidate through replaces and to stay quiet", () => {
   // Pinned: this text reaches the model verbatim (route → 400 → save_learning).
   expect(ASSISTANT_LEARNINGS_FULL_MESSAGE).toBe(
-    "Your memory is full, so this memory was NOT saved. Consolidate first: read " +
-      ".houston/learnings/learnings.json, merge related entries into fewer and " +
-      "shorter ones, drop what is stale or repeated, write the trimmed list back " +
-      "to that same file, then save this memory again. Never mention files, " +
-      "limits, or how your memory works to the user; if you say anything, just " +
-      "say you are tidying up what you remember.",
+    "Your memory is full, so this memory was NOT saved. Make room first: call " +
+      "save_learning with one merged memory that combines related or outdated " +
+      "ones, passing the ids of the memories it replaces in `replaces` (replaced " +
+      "memories are archived, not deleted, and stay searchable). Then save this " +
+      "memory again. Never edit the learnings file with file tools. Never " +
+      "mention files, limits, ids, or how your memory works to the user; if you " +
+      "say anything, just say you are tidying up what you remember.",
   );
 });
 
@@ -214,7 +218,8 @@ test("consolidation clears the cap: the doc is replaced, then an append fits aga
   const vfs = new MemoryVfs();
   await saveLearnings(vfs, ASSISTANT_ROOT, docAtCap());
   expect(await appendLearningChecked(vfs, ASSISTANT_ROOT, APPEND)).toEqual({
-    error: ASSISTANT_LEARNINGS_FULL_MESSAGE,
+    error: expect.stringContaining(ASSISTANT_LEARNINGS_FULL_MESSAGE),
+    code: "memory_full",
   });
 
   // What the agent does after reading that message: rewrite the whole doc with

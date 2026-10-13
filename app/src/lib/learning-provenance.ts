@@ -1,3 +1,5 @@
+import { isArchivedLearning } from "@houston/protocol";
+import type { Learning } from "../data/learnings";
 import type { UserProfile } from "../hooks/queries/use-user-profiles";
 
 /**
@@ -34,6 +36,20 @@ export interface LearningSourceRow extends LearningProvenanceSource {
   index: number;
   text: string;
   id: string;
+}
+
+/** The Memory list's rows: active learnings only, provenance carried through. */
+export function memoryRows(list: readonly Learning[]): LearningSourceRow[] {
+  return list
+    .filter((l) => !isArchivedLearning(l))
+    .map((l, index) => ({
+      index,
+      text: l.text,
+      id: l.id,
+      ...(l.taught_by ? { taughtBy: l.taught_by } : {}),
+      ...(l.mission_id ? { missionId: l.mission_id } : {}),
+      ...(l.mission_title ? { missionTitle: l.mission_title } : {}),
+    }));
 }
 
 /** What the provenance line renders. */

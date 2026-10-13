@@ -4,6 +4,7 @@ import type { UserProfile } from "../src/hooks/queries/use-user-profiles.ts";
 import {
   collectTaughtByIds,
   type LearningProvenanceSource,
+  memoryRows,
   resolveLearningProvenance,
 } from "../src/lib/learning-provenance.ts";
 
@@ -121,5 +122,28 @@ describe("collectTaughtByIds", () => {
 
   it("is empty for a set with no provenance", () => {
     deepStrictEqual(collectTaughtByIds([{}, {}]), []);
+  });
+});
+
+describe("memoryRows", () => {
+  it("hides archived memories and keeps active rows' provenance", () => {
+    const rows = memoryRows([
+      {
+        id: "old",
+        text: "Lives in Lisbon",
+        created_at: "2026-01-01T00:00:00.000Z",
+        archived_at: "2026-02-01T00:00:00.000Z",
+        replaced_by: "new",
+      },
+      {
+        id: "new",
+        text: "Lives in Porto",
+        created_at: "2026-02-01T00:00:00.000Z",
+        mission_id: "m1",
+      },
+    ]);
+    deepStrictEqual(rows, [
+      { index: 0, text: "Lives in Porto", id: "new", missionId: "m1" },
+    ]);
   });
 });

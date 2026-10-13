@@ -1,4 +1,4 @@
-import { mkdtempSync } from "node:fs";
+import { mkdirSync, mkdtempSync, writeFileSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { expect, test } from "vitest";
@@ -38,6 +38,7 @@ function turn(
 }
 
 const dataDir = () => mkdtempSync(join(tmpdir(), "coordinator-turn-"));
+const dirs = () => ({ dataDir: dataDir(), workspaceDir: dataDir() });
 const names = (tools: { name: string }[]) => tools.map((tool) => tool.name);
 
 test("a coordinator turn's allowlist is the coordinator surface", () => {
@@ -86,7 +87,7 @@ test("a coordinator turn with no facade keeps the clamp and gets no family", () 
   for (const name of selected) expect(COORDINATOR_TOOL_NAMES).toContain(name);
   expect(selected).not.toContain("houston_call");
   expect(selected).not.toContain("bash");
-  expect(buildTurnCommonTools(bare, null, dataDir())).not.toContainEqual(
+  expect(buildTurnCommonTools(bare, null, dirs())).not.toContainEqual(
     expect.objectContaining({ name: "houston_call" }),
   );
 });
@@ -94,8 +95,8 @@ test("a coordinator turn with no facade keeps the clamp and gets no family", () 
 test("every coordinator tool the allowlist names is registered", () => {
   const coordinator = turn();
   const selected = buildTurnToolSelection(coordinator, "local").toolNames;
-  const registered = names(buildTurnCommonTools(coordinator, null, dataDir()));
-  for (const name of selected.filter((n) => n !== "read" && n !== "write")) {
+  const registered = names(buildTurnCommonTools(coordinator, null, dirs()));
+  for (const name of selected.filter((n) => n !== "read")) {
     expect(registered).toContain(name);
   }
 });
@@ -106,7 +107,7 @@ test("houston_call and the mission tools ride THIS turn's facade", async () => {
     paths.push(path);
     return Response.json({ items: [] });
   };
-  const tools = buildTurnCommonTools(turn({}, call), null, dataDir());
+  const tools = buildTurnCommonTools(turn({}, call), null, dirs());
   const houstonCall = tools.find((tool) => tool.name === "houston_call");
   const list = tools.find((tool) => tool.name === "list_missions");
   await runWithConversationId("assistant", async () => {
@@ -136,9 +137,10 @@ test("houston_recall searches this turn's own transcript", async () => {
     "assistant",
     "my dentist is Dr. Okafor",
   );
-  const recall = buildTurnCommonTools(turn(), null, dir).find(
-    (tool) => tool.name === "houston_recall",
-  );
+  const recall = buildTurnCommonTools(turn(), null, {
+    dataDir: dir,
+    workspaceDir: dataDir(),
+  }).find((tool) => tool.name === "houston_recall");
   const result = await runWithConversationId("assistant", () =>
     recall?.execute(
       "r1",
@@ -154,6 +156,34 @@ test("houston_recall searches this turn's own transcript", async () => {
   expect(text).toContain("Okafor");
 });
 
+test("houston_recall searches this turn's own memories, not the process's", async () => {
+  const workspaceDir = dataDir();
+  mkdirSync(join(workspaceDir, ".houston", "learnings"), { recursive: true });
+  writeFileSync(
+    join(workspaceDir, ".houston", "learnings", "learnings.json"),
+    JSON.stringify([
+      { id: "m1", text: "Dentist is Dr. Okafor", created_at: "2026-01-01" },
+    ]),
+  );
+  const recall = buildTurnCommonTools(turn(), null, {
+    dataDir: dataDir(),
+    workspaceDir,
+  }).find((tool) => tool.name === "houston_recall");
+  const result = await runWithConversationId("assistant", () =>
+    recall?.execute(
+      "r1",
+      { query: "okafor" },
+      undefined,
+      undefined,
+      undefined as never,
+    ),
+  );
+  const text = result?.content
+    .map((part) => (part.type === "text" ? part.text : ""))
+    .join("");
+  expect(text).toContain("[current memory] Dentist is Dr. Okafor");
+});
+
 test("a provider pin is left for the host to judge, not the empty process store", async () => {
   const bodies: unknown[] = [];
   const call: SandboxFetch = async (path, init) => {
@@ -161,7 +191,7 @@ test("a provider pin is left for the host to judge, not the empty process store"
       bodies.push(JSON.parse(String(init?.body)));
     return Response.json({ id: "m1" });
   };
-  const tools = buildTurnCommonTools(turn({}, call), null, dataDir());
+  const tools = buildTurnCommonTools(turn({}, call), null, dirs());
   const start = tools.find((tool) => tool.name === "start_mission");
   await runWithConversationId("assistant", () =>
     start?.execute(
@@ -189,7 +219,7 @@ test("a provider the worker never heard of locally can still be pinned", async (
       bodies.push(JSON.parse(String(init?.body)));
     return Response.json({ id: "m1" });
   };
-  const start = buildTurnCommonTools(turn({}, call), null, dataDir()).find(
+  const start = buildTurnCommonTools(turn({}, call), null, dirs()).find(
     (tool) => tool.name === "start_mission",
   );
   await runWithConversationId("assistant", () =>
@@ -206,7 +236,7 @@ test("a provider the worker never heard of locally can still be pinned", async (
 
 test("Houston's request cards do not wait for any grant scope", () => {
   const registered = names(
-    buildTurnCommonTools(turn({ grant: { scopes: [] } }), null, dataDir()),
+    buildTurnCommonTools(turn({ grant: { scopes: [] } }), null, dirs()),
   );
   expect(registered).toContain("request_provider_connection");
   expect(registered).toContain("request_hands_on");

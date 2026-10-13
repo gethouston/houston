@@ -1,7 +1,7 @@
 import { mkdirSync, mkdtempSync, writeFileSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
-import { afterEach, expect, test } from "vitest";
+import { afterEach, expect, test, vi } from "vitest";
 import type { HarnessSession } from "../backends/types";
 
 /**
@@ -178,4 +178,22 @@ test("an unreachable host never fails the compaction", async () => {
   await expect(
     compactWithFactHarvest(session, ASSISTANT_CONVERSATION_ID),
   ).resolves.toBeUndefined();
+});
+
+test("a full memory refusal is REPORTED with its code, and still never throws", async () => {
+  const error = vi.spyOn(console, "error").mockImplementation(() => {});
+  mockFetch(
+    () =>
+      new Response(JSON.stringify({ error: "full", code: "memory_full" }), {
+        status: 400,
+      }),
+  );
+  const { session } = fakeSession(summaryWith("Runs a bakery in Porto."));
+  await expect(
+    compactWithFactHarvest(session, ASSISTANT_CONVERSATION_ID),
+  ).resolves.toBeUndefined();
+  expect(error).toHaveBeenCalledWith(
+    expect.stringContaining("400 memory_full"),
+  );
+  error.mockRestore();
 });

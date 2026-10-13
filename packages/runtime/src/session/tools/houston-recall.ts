@@ -1,12 +1,20 @@
 import type { AgentToolResult } from "@earendil-works/pi-coding-agent";
 import { defineTool } from "@earendil-works/pi-coding-agent";
 import { type Static, Type } from "typebox";
+import { config } from "../../config";
 import { getHistory } from "../../store/conversations";
 import { currentConversationId } from "../conversation-context";
+import {
+  excerptAround,
+  MAX_TOTAL_CHARS,
+  searchMemories,
+  timestampOf,
+} from "./houston-recall-search";
 import { type SessionToolErrorDetails, toolErrorResult } from "./tool-error";
 
 /**
- * `houston_recall` — the personal assistant searching its OWN conversation.
+ * `houston_recall` — the personal assistant searching its OWN conversation,
+ * and its saved memories (archived ones included, houston-recall-search.ts).
  *
  * The assistant runs ONE long-lived chat that autocompacts, so what the user
  * said weeks ago has left the model's context while it is still on disk in the
@@ -21,18 +29,6 @@ export const HOUSTON_RECALL_TOOL_NAME = "houston_recall";
 const DEFAULT_LIMIT = 10;
 const MAX_LIMIT = 50;
 
-/** Characters of surrounding text kept on EACH side of a match. */
-const CONTEXT_CHARS = 300;
-
-/**
- * Per-hit and whole-result caps, mirroring read_mission's magnitudes. The
- * per-hit cap is not implied by CONTEXT_CHARS: an excerpt also contains the
- * matched text itself, and the MODEL chooses the query, so a pathologically
- * long one is bounded here rather than passed through.
- */
-const MAX_HIT_CHARS = 1_500;
-const MAX_TOTAL_CHARS = 24_000;
-
 /**
  * What one `houston_recall` call did. `no_conversation` is the tool running
  * outside a turn (nothing to search); the searched variant carries the counts
@@ -46,6 +42,9 @@ export type HoustonRecallDetails =
       matched: number;
       returned: number;
       totalMessages: number;
+      /** Saved memories that matched and were shown; present only when any did. */
+      memoriesMatched?: number;
+      memoriesReturned?: number;
     }
   | SessionToolErrorDetails;
 
@@ -62,31 +61,6 @@ const RecallParams = Type.Object({
 });
 type RecallParams = Static<typeof RecallParams>;
 
-/**
- * A stored message's time as ISO. Messages written before the store stamped
- * `ts` carry none, and "Invalid Date" would read to the model as a real answer.
- */
-function timestampOf(ts: number | undefined): string {
-  if (typeof ts !== "number" || !Number.isFinite(ts) || ts <= 0) {
-    return "time unknown";
-  }
-  return new Date(ts).toISOString();
-}
-
-/** The matched text plus its surroundings, ellipsised where it was cut. */
-function excerptAround(content: string, at: number, matchLength: number) {
-  const start = Math.max(0, at - CONTEXT_CHARS);
-  const end = Math.min(content.length, at + matchLength + CONTEXT_CHARS);
-  const body = content.slice(start, end).trim();
-  const clipped =
-    body.length > MAX_HIT_CHARS
-      ? `${body.slice(0, MAX_HIT_CHARS)} [...]`
-      : body;
-  const head = start > 0 ? "[...] " : "";
-  const tail = end < content.length ? " [...]" : "";
-  return `${head}${clipped}${tail}`;
-}
-
 function textResult(
   text: string,
   details: HoustonRecallDetails,
@@ -100,18 +74,24 @@ export type HistoryReader = (
 ) => ReturnType<typeof getHistory> | Promise<ReturnType<typeof getHistory>>;
 
 /**
- * `readHistory` defaults to this runtime's own transcript store. A pooled turn
- * passes its own: its transcript lives in the turn's data directory, not in
- * the process's.
+ * Where `houston_recall` reads from. Both default to this runtime's own
+ * stores; a pooled turn passes its own, since its transcript lives in the
+ * turn's data directory and its memories in the turn's hydrated workspace.
  */
-export function makeHoustonRecallTool(
-  readHistory: HistoryReader = (id) => getHistory(id),
-) {
+export interface RecallSources {
+  readHistory?: HistoryReader;
+  workspaceDir?: string;
+}
+
+export function makeHoustonRecallTool(sources: RecallSources = {}) {
+  const readHistory: HistoryReader =
+    sources.readHistory ?? ((id) => getHistory(id));
+  const workspaceDir = sources.workspaceDir ?? config.workspaceDir;
   return defineTool({
     name: HOUSTON_RECALL_TOOL_NAME,
     label: "Search our earlier conversation",
     description:
-      "Search everything the user has told you and everything you replied, back to the very start of this conversation - far beyond the recent part you can still see. Use it whenever they refer to something from before (a name, a preference, a decision, 'the thing I mentioned') instead of asking them to repeat it or guessing. Returns the matching moments newest first, each with who said it, when, and the words around it.",
+      "Search everything the user has told you and everything you replied, back to the very start of this conversation - far beyond the recent part you can still see - plus everything you have saved to memory, including older memories you since replaced. Use it whenever they refer to something from before (a name, a preference, a decision, 'the thing I mentioned') instead of asking them to repeat it or guessing. Returns matching memories first, then the matching moments newest first, each with who said it, when, and the words around it.",
     promptSnippet: "Search our earlier conversation",
     parameters: RecallParams,
     executionMode: "sequential",
@@ -134,22 +114,23 @@ export function makeHoustonRecallTool(
           { outcome: "no_conversation" },
         );
       }
-      // ONE full read: the store is parse-cache-backed, so re-reading per term
-      // would re-walk the whole transcript for nothing.
-      const history = await readHistory(conversationId);
-      const messages = history?.messages ?? [];
-      const totalMessages = history?.totalMessages ?? 0;
       const needle = query.toLowerCase();
       const limit = Math.min(
         Math.max(Math.floor(params.limit ?? DEFAULT_LIMIT), 1),
         MAX_LIMIT,
       );
+      const memories = searchMemories(workspaceDir, needle, limit);
+      // ONE full read: the store is parse-cache-backed, so re-reading per term
+      // would re-walk the whole transcript for nothing.
+      const history = await readHistory(conversationId);
+      const messages = history?.messages ?? [];
+      const totalMessages = history?.totalMessages ?? 0;
 
       // Newest-first fill so the total cap drops the OLDEST hits — what the user
       // said most recently is what they are most likely referring to.
       const hits: string[] = [];
       let matched = 0;
-      let budget = MAX_TOTAL_CHARS;
+      let budget = MAX_TOTAL_CHARS - memories.spent;
       let trimmed = false;
       for (let i = messages.length - 1; i >= 0; i--) {
         const message = messages[i];
@@ -167,23 +148,43 @@ export function makeHoustonRecallTool(
         hits.push(line);
       }
 
+      const memoryCounts = memories.matched
+        ? {
+            memoriesMatched: memories.matched,
+            memoriesReturned: memories.lines.length,
+          }
+        : {};
+      const memorySection = memories.matched
+        ? `${memories.matched} saved ${memories.matched === 1 ? "memory matches" : "memories match"} "${query}", showing ${memories.lines.length} newest first:\n${memories.lines.join("\n")}\n\n`
+        : "";
       if (matched === 0) {
         return textResult(
-          `Nothing in your conversation with the user matches "${query}" (searched all ${totalMessages} messages). Try a different word - a name, a place, or how they would have phrased it themselves.`,
-          { outcome: "searched", query, matched, returned: 0, totalMessages },
+          `${memorySection}Nothing in your conversation with the user matches "${query}" (searched all ${totalMessages} messages).${memories.matched ? "" : " Try a different word - a name, a place, or how they would have phrased it themselves."}`,
+          {
+            outcome: "searched",
+            query,
+            matched,
+            returned: 0,
+            totalMessages,
+            ...memoryCounts,
+          },
         );
       }
       const header = `${matched} match${matched === 1 ? "" : "es"} for "${query}" in your conversation with the user (${totalMessages} messages), showing ${hits.length} newest first.`;
       const note = trimmed
         ? "\n\n[... older matches omitted to stay within bounds - search a narrower word to reach them]"
         : "";
-      return textResult(`${header}\n\n${hits.join("\n\n")}${note}`, {
-        outcome: "searched",
-        query,
-        matched,
-        returned: hits.length,
-        totalMessages,
-      });
+      return textResult(
+        `${memorySection}${header}\n\n${hits.join("\n\n")}${note}`,
+        {
+          outcome: "searched",
+          query,
+          matched,
+          returned: hits.length,
+          totalMessages,
+          ...memoryCounts,
+        },
+      );
     },
   });
 }

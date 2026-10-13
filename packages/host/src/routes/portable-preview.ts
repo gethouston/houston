@@ -1,5 +1,10 @@
 import type { IncomingMessage, ServerResponse } from "node:http";
-import { loadLearnings, loadRoutines, loadSkills } from "@houston/domain";
+import {
+  activeLearnings,
+  loadLearnings,
+  loadRoutines,
+  loadSkills,
+} from "@houston/domain";
 import type { Agent, Workspace } from "../domain/types";
 import type { WorkspacePaths } from "../paths";
 import { CloudPaths } from "../paths";
@@ -45,7 +50,10 @@ export async function handlePortablePreview(
   const md = await deps.vfs.readText(`${root}/CLAUDE.md`);
   const { items: skills } = await loadSkills(deps.vfs, root);
   const { items: routines } = await loadRoutines(deps.vfs, root);
-  const { items: learnings } = await loadLearnings(deps.vfs, root);
+  // Archived memories are superseded history, never offered for export/copy.
+  const learnings = activeLearnings(
+    (await loadLearnings(deps.vfs, root)).items,
+  );
 
   json(res, 200, {
     claudeMd:

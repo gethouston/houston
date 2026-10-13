@@ -27,6 +27,15 @@
       "mission_title": {
         "description": "The mission's title at save time, denormalized so a renamed or deleted mission still reads. The live title (looked up by mission_id) wins when it resolves.",
         "type": "string"
+      },
+      "archived_at": {
+        "description": "When this learning was archived: a newer learning replaced it during consolidation. Archived learnings are kept, never deleted, but are not shown or injected.",
+        "type": "string",
+        "format": "date-time"
+      },
+      "replaced_by": {
+        "description": "The id of the learning that replaced this archived one.",
+        "type": "string"
       }
     },
     "additionalProperties": false

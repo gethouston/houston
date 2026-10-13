@@ -2,6 +2,7 @@ import { isAbsolute, join, relative, resolve, sep } from "node:path";
 import { isCredential } from "./fs-guard-containment";
 import {
   AttachmentReadOnlyError,
+  MemoryWriteDeniedError,
   PathDeniedError,
   PathEscapeError,
   PathNotAllowedError,
@@ -24,6 +25,8 @@ import {
 export interface Narrowing {
   /** The exact documents the tools may read AND write. */
   files: RootBoundary[];
+  /** Exact documents the tools may only READ (the coordinator's memory). */
+  readOnlyFiles: RootBoundary[];
   /**
    * Readable folders as paths RELATIVE to the workspace root. Kept relative and
    * joined onto the canonical root at check time: an upload folder is created
@@ -39,8 +42,9 @@ export function narrowingFor(
   workspace: RootBoundary,
   allowedFiles: string[] = [],
   readableDirs: string[] = [],
+  readableFiles: string[] = [],
 ): Narrowing | null {
-  if (!allowedFiles.length) {
+  if (!allowedFiles.length && !readableFiles.length) {
     // A wall that is not narrowed already lets every workspace path be read,
     // so a readable folder there is a policy that does not mean what it says.
     if (readableDirs.length)
@@ -48,14 +52,17 @@ export function narrowingFor(
     return null;
   }
   return {
-    files: allowedFiles.map((file) => ({
-      canonical: realNearest(resolve(file)),
-      lexical: resolve(file),
-    })),
+    files: allowedFiles.map(fileBoundary),
+    readOnlyFiles: readableFiles.map(fileBoundary),
     readable: readableDirs.map((dir) => relativeInside(workspace, dir)),
     readableShown: readableDirs.map((dir) => resolve(dir)),
   };
 }
+
+const fileBoundary = (file: string): RootBoundary => ({
+  canonical: realNearest(resolve(file)),
+  lexical: resolve(file),
+});
 
 /** `dir` as a path below the workspace root; anything else is a policy bug. */
 function relativeInside(workspace: RootBoundary, dir: string): string {
@@ -100,7 +107,7 @@ export function assertNarrowed(
   return assertAllowedFile(raw, abs, real, root, narrowing);
 }
 
-/** Every write into a readable folder is refused, whoever asks. */
+/** Every write into a readable folder or read-only document is refused. */
 export function assertNotReadOnly(
   proven: string,
   root: string,
@@ -108,7 +115,18 @@ export function assertNotReadOnly(
 ): void {
   if (narrowing?.readable.some((rel) => contains(proven, join(root, rel))))
     throw new AttachmentReadOnlyError();
+  // Re-resolved now, not only at construction: a link or folder created since
+  // must not let a write land on the read-only document under another name.
+  if (
+    narrowing?.readOnlyFiles.some(
+      (file) => isFile(proven, file) || proven === realNearest(file.lexical),
+    )
+  )
+    throw new MemoryWriteDeniedError();
 }
+
+const isFile = (path: string, file: RootBoundary): boolean =>
+  path === file.lexical || path === file.canonical;
 
 /**
  * The exact-file rule: require the path to BE one of the allowed documents —
@@ -125,17 +143,14 @@ function assertAllowedFile(
   root: string,
   narrowing: Narrowing,
 ): string {
-  const allowed = narrowing.files.some(
-    (file) =>
-      abs === file.lexical ||
-      abs === file.canonical ||
-      real === file.canonical ||
-      real === file.lexical,
+  const listed = [...narrowing.files, ...narrowing.readOnlyFiles];
+  const allowed = listed.some(
+    (file) => isFile(abs, file) || isFile(real, file),
   );
   if (!allowed)
     throw new PathNotAllowedError(
       raw,
-      narrowing.files.map((file) => file.lexical),
+      listed.map((file) => file.lexical),
       narrowing.readableShown,
     );
   // `root` is the guard's CANONICAL workspace root, so the real path is the one

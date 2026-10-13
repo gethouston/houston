@@ -1,5 +1,6 @@
 import { expect, test } from "vitest";
-import { mergeKeyedArrays } from "./keyed-merge";
+import { archivedLearning, mergeKeyedArrays } from "./keyed-merge";
+import { mergeDocumentBodies } from "./sync-back-doc-merge";
 
 const r = (id: string, fields: Record<string, unknown> = {}) => ({
   id,
@@ -80,4 +81,63 @@ test("without a base or a later remote stamp the local copy wins, as before", ()
     { slug: "r", name: "Remote" },
     { slug: "s", name: "Local" },
   ]);
+});
+
+test("a memory archived locally stays archived while both sides' new memories survive", () => {
+  // Learnings carry no updated_at: consolidation archives in place, so the
+  // three-way base is what tells the local archive edit from a stale copy.
+  const l = (id: string, fields: Record<string, unknown> = {}) => ({
+    id,
+    text: `memory ${id}`,
+    created_at: "2026-09-01T00:00:00.000Z",
+    ...fields,
+  });
+  const archivedA = l("A", { archived_at: LATER, replaced_by: "D" });
+  const base = [l("A")];
+  const local = [archivedA, l("D")];
+  const remote = [l("A"), l("E")];
+
+  expect(mergeKeyedArrays(remote, local, "id", base)).toEqual([
+    l("E"),
+    archivedA,
+    l("D"),
+  ]);
+});
+
+const mem = (id: string, fields: Record<string, unknown> = {}) => ({
+  id,
+  text: `memory ${id}`,
+  created_at: "2026-09-01T00:00:00.000Z",
+  ...fields,
+});
+const archived = mem("A", { archived_at: LATER, replaced_by: "B" });
+
+test("without a base, a stale active copy never resurrects an archived memory", () => {
+  // The standing pod's sync: local still holds A active, remote archived it.
+  expect(
+    mergeKeyedArrays([archived], [mem("A")], "id", undefined, archivedLearning),
+  ).toEqual([archived]);
+  // Either direction.
+  expect(
+    mergeKeyedArrays([mem("A")], [archived], "id", undefined, archivedLearning),
+  ).toEqual([archived]);
+});
+
+test("when both sides changed a memory, the archived side wins over a text edit", () => {
+  const base = [mem("A")];
+  const local = [mem("A", { text: "edited" })];
+  expect(
+    mergeKeyedArrays([archived], local, "id", base, archivedLearning),
+  ).toEqual([archived]);
+});
+
+test("archived wins only in the learnings document", () => {
+  const body = (items: unknown[]) => `${JSON.stringify(items, null, 2)}\n`;
+  const merge = (path: string) =>
+    JSON.parse(
+      mergeDocumentBodies(path, body([mem("A")]), body([archived])) ?? "[]",
+    );
+  expect(merge(".houston/learnings/learnings.json")).toEqual([archived]);
+  // Routines keep the old rule: no stamps and no base, the local copy wins.
+  expect(merge(".houston/routines/routines.json")).toEqual([mem("A")]);
 });

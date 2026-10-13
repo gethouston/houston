@@ -16,10 +16,11 @@ import {
   PathNotAllowedError,
   WorkspaceGuard,
 } from "./fs-guard";
+import { MemoryWriteDeniedError } from "./fs-guard-errors";
 
 /**
  * The coordinator's read-only attachments folder (H-044). Its wall is one
- * writable document (its memory); what people send it — a photo in the
+ * read-only document (its memory, written only by save_learning); what people send it — a photo in the
  * composer, a PDF over Slack — lands in `uploads/`, and it must be able to READ
  * that or it cannot help with it. Everything the narrowed wall refuses must stay
  * refused, every write into the folder must be refused, and no link or `..`
@@ -183,11 +184,13 @@ test("credential material in the folder stays denied", () => {
   expect(() => guard.clamp("uploads/photo.png")).toThrow();
 });
 
-test("memory stays the one document it reads and writes", () => {
+test("memory is readable but never writable: save_learning is its one writer", () => {
   const { memory, guard } = coordinator();
   expect(guard.clamp(".houston/learnings/learnings.json")).toBe(memory);
-  expect(guard.clampWrite(".houston/learnings/learnings.json")).toBe(memory);
-  expect(guard.assertWritable(memory)).toBe(memory);
+  expect(() => guard.clampWrite(".houston/learnings/learnings.json")).toThrow(
+    MemoryWriteDeniedError,
+  );
+  expect(() => guard.assertWritable(memory)).toThrow(MemoryWriteDeniedError);
 });
 
 test("the rest of the workspace stays refused, and the refusal names both", () => {

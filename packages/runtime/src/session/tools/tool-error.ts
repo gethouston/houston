@@ -2,6 +2,8 @@ import type { AgentToolResult } from "@earendil-works/pi-coding-agent";
 import {
   type AgentDelegationRefusalCode,
   isAgentDelegationRefusalCode,
+  isLearningRefusalCode,
+  type LearningRefusalCode,
 } from "@houston/protocol";
 
 /**
@@ -56,7 +58,9 @@ export type SessionToolErrorCode =
   | "invalid_model"
   | "agent_unreachable"
   | "agent_refused"
-  | AgentDelegationRefusalCode;
+  | AgentDelegationRefusalCode
+  /** A refused memory save; its message lists the agent's active memories. */
+  | LearningRefusalCode;
 
 export interface SessionToolError {
   code: SessionToolErrorCode;
@@ -130,6 +134,7 @@ function isActionableCode(code: unknown): code is SessionToolErrorCode {
     code === "invalid_provider" ||
     code === "agent_unreachable" ||
     code === "agent_refused" ||
-    isAgentDelegationRefusalCode(code)
+    isAgentDelegationRefusalCode(code) ||
+    isLearningRefusalCode(code)
   );
 }

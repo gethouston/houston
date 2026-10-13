@@ -33,13 +33,29 @@ function stamp(entry: Entry): number {
 const newer = (local: Entry, remote: Entry): Entry =>
   stamp(remote) > stamp(local) ? remote : local;
 
+/**
+ * A state no writer ever undoes, so the side holding it wins regardless of
+ * stamps or base. Learnings carry no `updated_at`, and an archived memory is
+ * never un-archived (consolidation is one-way), so a stale active copy must
+ * not resurrect it.
+ */
+export type StickyState = (entry: Entry) => boolean;
+
+/** A learning consolidation archived (`Learning.archived_at`). */
+export const archivedLearning: StickyState = (entry) =>
+  typeof entry.archived_at === "string";
+
 /** One key's entry after the merge; undefined = it is gone. */
 function resolve(
   base: Entry | undefined,
   local: Entry | undefined,
   remote: Entry | undefined,
+  sticky?: StickyState,
 ): Entry | undefined {
   if (local && remote) {
+    // By design, a concurrent text edit of a memory being archived loses.
+    if (sticky && sticky(local) !== sticky(remote))
+      return sticky(local) ? local : remote;
     if (!base) return newer(local, remote);
     if (isDeepStrictEqual(local, base)) return remote;
     if (isDeepStrictEqual(remote, base)) return local;
@@ -66,6 +82,9 @@ function resolve(
  * author of a difference is unknowable: both sides' entries survive, and an
  * entry both hold resolves by `updated_at`, else to the local copy.
  *
+ * `sticky` names a one-way state (an archived learning) whose holder wins
+ * any conflict, base or not.
+ *
  * Remote entries the writer lacks come first, then the writer's own in its
  * order: the order every merged write has kept. Entries without a key are
  * kept from both sides.
@@ -75,6 +94,7 @@ export function mergeKeyedArrays(
   local: readonly unknown[],
   field: string,
   base?: readonly unknown[],
+  sticky?: StickyState,
 ): unknown[] {
   const baseEntries = base ? byKey(base, field) : new Map<string, Entry>();
   const localEntries = byKey(local, field);
@@ -88,6 +108,7 @@ export function mergeKeyedArrays(
       baseEntries.get(key),
       localEntries.get(key),
       remoteEntries.get(key),
+      sticky,
     );
     if (entry) merged.push(entry);
   };

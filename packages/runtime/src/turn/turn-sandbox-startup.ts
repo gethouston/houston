@@ -65,5 +65,6 @@ export function createTurnSandbox(input: {
     ...(input.deps.fetchImpl ? { fetchImpl: input.deps.fetchImpl } : {}),
     ...(codeVm ? { codeVm } : {}),
     ...(coordinator ? { coordinator } : {}),
+    ...(turn.coordinator ? { assistant: true } : {}),
   });
 }

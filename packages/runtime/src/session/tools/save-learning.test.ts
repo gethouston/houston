@@ -71,6 +71,16 @@ test("POSTs only the text to the merge-safe route with the sandbox token", async
   expect((out.details as { id: string }).id).toBe("l1");
 });
 
+test("forwards the ids it replaces only when there are some", async () => {
+  const calls = mockFetch(OK);
+  await run({ text: "Lives in Porto", replaces: ["aaaaaaaa"] });
+  await run({ text: "Has a cat", replaces: [] });
+  expect(calls.map((call) => call.body)).toEqual([
+    { text: "Lives in Porto", replaces: ["aaaaaaaa"] },
+    { text: "Has a cat" },
+  ]);
+});
+
 test("outside a turn it forwards no identity or conversation headers", async () => {
   const calls = mockFetch(OK);
   await run({ text: "solo" });

@@ -200,6 +200,45 @@ test("a shared learning carries its text, never its provenance", () => {
   ]);
 });
 
+test("archived memories never travel, on either leg", () => {
+  const archived: Learning = {
+    id: "l0",
+    text: "Lives in Lisbon",
+    created_at: NOW,
+    archived_at: NOW,
+    replaced_by: "l1",
+  };
+  const current: Learning = {
+    id: "l1",
+    text: "Lives in Porto",
+    created_at: NOW,
+  };
+  const packed = unpackAgent(
+    packAgent({ ...content(), learnings: [archived, current] }, meta, NOW),
+  );
+  expect(packed.learnings).toEqual([current]);
+  // Only archived memories selected: no learnings file at all.
+  const none = unpackAgent(
+    packAgent({ ...content(), learnings: [archived] }, meta, NOW),
+  );
+  expect(none.learnings).toEqual([]);
+
+  // A hand-built pack carrying one is still stripped on import.
+  const { zipSync, strToU8 } = require("fflate");
+  const bytes = zipSync({
+    "manifest.json": strToU8(
+      JSON.stringify({
+        agentName: "X",
+        houstonVersion: "1",
+        createdAt: NOW,
+        formatVersion: 1,
+      }),
+    ),
+    "learnings.json": strToU8(JSON.stringify([archived, current])),
+  });
+  expect(unpackAgent(bytes).learnings).toEqual([current]);
+});
+
 test("a pack that DOES carry provenance still imports, stripped", () => {
   const { zipSync, strToU8 } = require("fflate");
   const bytes = zipSync({

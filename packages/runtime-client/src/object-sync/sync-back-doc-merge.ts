@@ -1,5 +1,5 @@
 import { ACTIVITY_DOC, mergeActivityArrays } from "./activity-merge";
-import { mergeKeyedArrays } from "./keyed-merge";
+import { archivedLearning, mergeKeyedArrays } from "./keyed-merge";
 import {
   mergeRoutineRunArrays,
   ROUTINE_RUNS_DOC,
@@ -146,6 +146,7 @@ export function mergeDocumentBodies(
       local,
       field,
       arrayBase(parseBase(baseBody)),
+      isPath(relativePath, LEARNINGS_DOC) ? archivedLearning : undefined,
     );
     return `${JSON.stringify(merged, null, 2)}\n`;
   }

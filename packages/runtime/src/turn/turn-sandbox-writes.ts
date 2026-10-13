@@ -4,6 +4,7 @@ import {
   loadActivities,
   missionConversationKey,
 } from "@houston/domain";
+import { parseLearningSaveBody } from "@houston/host/src/routes/learning-save-body";
 import { appendLearningChecked } from "@houston/host/src/routes/learning-write";
 import {
   DELEGATED_ROUTINE_REFUSAL,
@@ -28,6 +29,8 @@ export interface TurnWriteRoutesDeps {
   actingAs?: { userId: string; name?: string };
   /** The acting person's plan limits; a routine save is held to its floor. */
   limits?: TurnLimits;
+  /** Houston's own (coordinator) turn: its memory is held to the size cap. */
+  assistant?: boolean;
 }
 
 const json = (status: number, body: unknown): Response =>
@@ -107,6 +110,8 @@ async function saveLearning(
   deps: TurnWriteRoutesDeps,
   body: Record<string, unknown>,
 ): Promise<Response> {
+  const parsed = parseLearningSaveBody(body);
+  if ("error" in parsed) return json(400, { error: parsed.error });
   const id = randomUUID();
   const nowIso = new Date().toISOString();
   const result = await mutateTurnDocument({
@@ -116,7 +121,7 @@ async function saveLearning(
     apply: () =>
       appendLearningChecked(deps.filesystem.vfs, deps.filesystem.workspaceRel, {
         id,
-        text: typeof body.text === "string" ? body.text : "",
+        text: parsed.text,
         nowIso,
         ...(deps.actingAs
           ? {
@@ -127,11 +132,12 @@ async function saveLearning(
             }
           : {}),
         conversationId: deps.conversationId,
+        ...(parsed.replaces ? { replaces: parsed.replaces } : {}),
+        ...(deps.assistant ? { assistant: true } : {}),
       }),
   });
-  return "error" in result
-    ? json(400, { error: result.error })
-    : json(201, result.learning);
+  // A refusal's code rides along, as on the host route.
+  return "error" in result ? json(400, result) : json(201, result.learning);
 }
 
 /** Handle a routine or learning route, or return null when unmatched. */

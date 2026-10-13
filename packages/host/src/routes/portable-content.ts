@@ -1,4 +1,5 @@
 import {
+  activeLearnings,
   loadLearnings,
   loadRoutines,
   loadSkillDetail,
@@ -35,7 +36,9 @@ export async function gatherPortableContent(
   }
   if (sel.learningIds?.length) {
     const { items } = await loadLearnings(vfs, root);
-    content.learnings = items.filter((l) => sel.learningIds.includes(l.id));
+    content.learnings = activeLearnings(items).filter((l) =>
+      sel.learningIds.includes(l.id),
+    );
   }
   return content;
 }

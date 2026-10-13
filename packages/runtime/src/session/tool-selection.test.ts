@@ -210,7 +210,6 @@ describe("assistant family gating", () => {
     const on = buildToolSelection({ ...base, assistant: true });
     expect(on.toolNames).toEqual([
       "read",
-      "write",
       "ask_user",
       SUGGEST_REUSABLE_TOOL_NAME,
       SUGGEST_ACTIONS_TOOL_NAME,
@@ -483,7 +482,6 @@ describe("the personal assistant's tool set", () => {
   test("is exactly the coordinator surface", () => {
     expect(coordinator().toolNames).toEqual([
       "read",
-      "write",
       "ask_user",
       SUGGEST_REUSABLE_TOOL_NAME,
       SUGGEST_ACTIONS_TOOL_NAME,

@@ -25,6 +25,10 @@ export interface Learning {
   mission_id?: string;
   /** The mission's title at save time, the fallback when the live one is gone. */
   mission_title?: string;
+  /** Set when consolidation archived this memory; kept on disk, never shown. */
+  archived_at?: string;
+  /** The learning that replaced this archived one. */
+  replaced_by?: string;
 }
 
 const NAME = "learnings";

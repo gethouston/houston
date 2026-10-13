@@ -158,7 +158,7 @@ test("the assistant's memory lands after the context sections and before the ove
   );
   const memoryAt = prompt.indexOf("# What you remember about this user");
   expect(memoryAt).toBeGreaterThan(-1);
-  expect(prompt).toContain("- Julian prefers short replies.");
+  expect(prompt).toContain("] Julian prefers short replies.");
   expect(memoryAt).toBeGreaterThan(prompt.indexOf("# Workspace Context"));
   // Skills stay last before the overlay, and the overlay stays last of all.
   expect(prompt.indexOf("<available_skills>")).toBeGreaterThan(memoryAt);

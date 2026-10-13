@@ -316,7 +316,7 @@ test("makeAgentLoader injects the assistant's memory, with the mode overlay LAST
   const prompt = await asCoordinator(() => promptFor(cwd, "plan"));
   const memoryAt = prompt.indexOf("# What you remember about this user");
   expect(memoryAt).toBeGreaterThan(-1);
-  expect(prompt).toContain("- Julian prefers short replies.");
+  expect(prompt).toContain("] Julian prefers short replies.");
   // Ordering: workspace/user context → memory → mode overlay.
   expect(memoryAt).toBeGreaterThan(prompt.indexOf("# Workspace Context"));
   expect(prompt.indexOf("You are in Plan mode.")).toBeGreaterThan(memoryAt);

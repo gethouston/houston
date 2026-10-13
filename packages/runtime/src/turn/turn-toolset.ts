@@ -17,6 +17,7 @@ import { makeSuggestReusableTool } from "../session/tools/suggest-reusable";
 import type { ArchiveLoader } from "./turn-archive-fetch";
 import {
   buildTurnCoordinatorTools,
+  type TurnToolDirs,
   turnAssistantOptions,
 } from "./turn-coordinator-tools";
 import type { TurnSessionRequest } from "./turn-session";
@@ -118,7 +119,7 @@ export function buildTurnHostTools(
 export function buildTurnCommonTools(
   turn: TurnSessionRequest,
   codeSandbox: PiBackendDeps["customTools"][number] | null,
-  dataDir: string,
+  dirs: TurnToolDirs,
   loadArchive?: ArchiveLoader,
 ): PiBackendDeps["customTools"] {
   return [
@@ -128,6 +129,6 @@ export function buildTurnCommonTools(
     makeSuggestActionsTool(),
     ...(codeSandbox ? [codeSandbox] : []),
     ...buildTurnHostTools(turn),
-    ...buildTurnCoordinatorTools(turn, dataDir, loadArchive),
+    ...buildTurnCoordinatorTools(turn, dirs, loadArchive),
   ];
 }

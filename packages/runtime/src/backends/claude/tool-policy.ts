@@ -59,20 +59,21 @@ const PLAN_FILE_TOOLS = ["Read", "Glob", "Grep"] as const;
 
 /**
  * The personal assistant's file tools (SDK names). It coordinates and never
- * produces work, so it keeps only the pair memory consolidation needs — read
- * the memory file, write the trimmed list back; Read also opens attachments,
- * which the permission gate never lets it write — mirroring the pi-side
- * COORDINATOR_TOOL_NAMES clamp. Everything else (Edit/Glob/Grep/Bash) is denied.
+ * produces work, so it keeps only Read (its memory file and the attachments
+ * people send it). It writes no file at all: memory changes only through
+ * save_learning (coordinator-policy.ts). Mirrors the pi-side
+ * COORDINATOR_TOOL_NAMES clamp. Everything else (Edit/Write/Glob/Grep/Bash) is
+ * denied.
  */
-const COORDINATOR_FILE_TOOLS = ["Read", "Write"] as const;
-const COORDINATOR_DENIED = ["Edit", "Glob", "Grep", "Bash"] as const;
+const COORDINATOR_FILE_TOOLS = ["Read"] as const;
+const COORDINATOR_DENIED = ["Edit", "Write", "Glob", "Grep", "Bash"] as const;
 
 export interface ToolPolicyInput {
   /** True when code execution is local — the only mode that grants Bash. */
   localBash: boolean;
   /**
    * True when this runtime is the user's personal assistant — the coordinator.
-   * Clamps the built-ins to Read + Write (memory consolidation) and denies the
+   * Clamps the built-ins to Read and denies the
    * rest, whatever the deployment's code-execution setting says.
    */
   personalAssistant?: boolean;
@@ -101,9 +102,11 @@ export function buildToolPolicy(input: ToolPolicyInput): ToolPolicy {
   // permissionMode "default" and enforces plan via this allowlist + the overlay.
   if (input.mode === "plan") {
     return {
-      tools: input.personalAssistant ? ["Read"] : [...PLAN_FILE_TOOLS],
+      tools: input.personalAssistant
+        ? [...COORDINATOR_FILE_TOOLS]
+        : [...PLAN_FILE_TOOLS],
       disallowedTools: input.personalAssistant
-        ? [...PI_LACKS, ...COORDINATOR_DENIED, "Write"]
+        ? [...PI_LACKS, ...COORDINATOR_DENIED]
         : [...PI_LACKS, "Edit", "Write", "Bash"],
     };
   }

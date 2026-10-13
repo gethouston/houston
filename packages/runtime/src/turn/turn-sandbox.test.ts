@@ -1,7 +1,12 @@
 import { mkdtemp, writeFile } from "node:fs/promises";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
-import { loadRoutines, saveActivities } from "@houston/domain";
+import {
+  loadLearnings,
+  loadRoutines,
+  saveActivities,
+  saveLearnings,
+} from "@houston/domain";
 import { FsVfs } from "@houston/host/src/vfs";
 import type { TurnLimits } from "@houston/protocol";
 import type { ObjectStore } from "@houston/runtime-client/object-sync";
@@ -129,6 +134,37 @@ test("a pooled turn with no plan limits keeps any cadence", async () => {
     schedule: "*/5 * * * *",
   });
   expect(response.status).toBe(201);
+  await sandbox.dispose();
+});
+
+test("a pooled learning save archives what it replaces and refuses a bad body", async () => {
+  const sandbox = await fixture(fetch, ["agent-writes"]);
+  const { vfs, workspaceRel } = sandbox.filesystem;
+  await saveLearnings(vfs, workspaceRel, [
+    { id: "aaaaaaaa-1", text: "Lives in Lisbon", created_at: "2026-01-01" },
+  ]);
+  for (const replaces of ["aaaaaaaa", [""], [3]]) {
+    const refused = await post(sandbox.call, "/sandbox/learnings/save", {
+      text: "Lives in Porto",
+      replaces,
+    });
+    expect(refused.status).toBe(400);
+    expect(await refused.json()).toEqual({
+      error: expect.stringContaining("'replaces' must be an array"),
+    });
+  }
+  const saved = await post(sandbox.call, "/sandbox/learnings/save", {
+    text: "Lives in Porto",
+    replaces: ["aaaaaaaa"],
+  });
+  expect(saved.status).toBe(201);
+  const { id } = (await saved.json()) as { id: string };
+  const { items } = await loadLearnings(vfs, workspaceRel);
+  expect(items[0]).toMatchObject({
+    archived_at: expect.any(String),
+    replaced_by: id,
+  });
+  expect(items[1]).toMatchObject({ id, text: "Lives in Porto" });
   await sandbox.dispose();
 });
 

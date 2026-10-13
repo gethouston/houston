@@ -49,11 +49,10 @@ const PROTECTED_WRITES = [
  * the org original there by design. Callers rewrite the tool's path param to the clamped result, so a
  * normalization divergence from pi cannot escape an allowed root.
  *
- * Containment is not the only shape a wall takes. A runtime whose whole job is
- * ONE document — the coordinator, which keeps no work of its own and only ever
- * consolidates its memory — gets `allowedFiles` instead: an exact list of the
- * documents its tools may touch, plus `readableDirs` it may only read (the
- * attachments people send it), with every other path refused
+ * Containment is not the only shape a wall takes. A runtime that keeps no work
+ * of its own (the coordinator) gets exact files instead: `allowedFiles` it may
+ * touch, `readableFiles` (its memory) and `readableDirs` (the attachments
+ * people send it) it may only read, with every other path refused
  * (fs-guard-narrow.ts). Narrowing to what a role actually needs is what keeps a
  * prompt injection there from rewriting a shared skill every agent runs, or the
  * runtime's own session records.
@@ -96,6 +95,8 @@ export interface WorkspaceGuardOptions {
    * location. Only meaningful alongside `allowedFiles`.
    */
   readableDirs?: string[];
+  /** Exact files admitted like `allowedFiles`, for READING only. */
+  readableFiles?: string[];
 }
 
 export class WorkspaceGuard {
@@ -131,6 +132,7 @@ export class WorkspaceGuard {
       this.workspaceBoundary,
       options?.allowedFiles,
       options?.readableDirs,
+      options?.readableFiles,
     );
   }
 

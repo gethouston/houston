@@ -82,6 +82,8 @@ async function harvestDurableFacts(
   // Already-known facts are dropped here rather than at the host: a summarizer
   // re-states the same standing preference at every compaction, and the append
   // route is idempotent on ID only, so nothing else would stop the duplicates.
+  // ARCHIVED memories count as known too: a fact consolidation superseded and
+  // the summarizer restates from older chat must not come back as active.
   const known = new Set(
     loadAgentLearnings(workspaceDir).map((item) => normalizeFact(item.text)),
   );
@@ -111,13 +113,31 @@ async function saveFact(
     });
     if (res.ok) return;
     const detail = await res.text().catch(() => "");
-    console.warn(
-      `[durable-facts] host refused a compacted fact (${res.status}): ${detail.slice(0, 200)}`,
+    const code = refusalCode(detail);
+    // A full memory drops every fact the summarizer finds until the agent
+    // consolidates, so it is reported (console.error reaches Sentry through
+    // the runtime's capture feed), never just logged.
+    const log = code === "memory_full" ? console.error : console.warn;
+    log(
+      `[durable-facts] host refused a compacted fact (${res.status}${code ? ` ${code}` : ""}): ${detail.slice(0, 200)}`,
     );
   } catch (err) {
     console.warn(
       "[durable-facts] saving a compacted fact failed:",
       err instanceof Error ? err.message : String(err),
     );
+  }
+}
+
+/** The refusal's `code`, when the host's body names one. */
+function refusalCode(detail: string): string | undefined {
+  try {
+    const parsed: unknown = JSON.parse(detail);
+    if (typeof parsed !== "object" || parsed === null) return undefined;
+    const { code } = parsed as { code?: unknown };
+    return typeof code === "string" ? code : undefined;
+  } catch {
+    // Not JSON: the raw detail is already in the log line.
+    return undefined;
   }
 }

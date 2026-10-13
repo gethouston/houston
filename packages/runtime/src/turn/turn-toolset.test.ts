@@ -128,11 +128,10 @@ test("a coordinator turn registers the coordinator credential tool", () => {
     ...base({ scopes: ["agent-writes"] }),
     role: "coordinator",
   };
-  const registered = buildTurnCommonTools(
-    turn,
-    null,
-    mkdtempSync(join(tmpdir(), "toolset-")),
-  ).map((tool) => tool.name);
+  const registered = buildTurnCommonTools(turn, null, {
+    dataDir: mkdtempSync(join(tmpdir(), "toolset-")),
+    workspaceDir: mkdtempSync(join(tmpdir(), "toolset-ws-")),
+  }).map((tool) => tool.name);
   for (const name of credentialTools({
     personalAssistant: true,
     assistant: { catalog, call },

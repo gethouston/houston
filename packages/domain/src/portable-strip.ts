@@ -1,4 +1,8 @@
-import type { Learning, Routine } from "@houston/protocol";
+import {
+  isArchivedLearning,
+  type Learning,
+  type Routine,
+} from "@houston/protocol";
 
 /**
  * A learning without its provenance. Provenance is ORG-LOCAL: `taught_by` names
@@ -15,6 +19,16 @@ export const stripLearningProvenance = ({
   mission_title: _missionTitle,
   ...learning
 }: Learning): Learning => learning;
+
+/**
+ * The learnings that may leave this agent: active ones, provenance stripped.
+ * An archived memory is history consolidation kept for this agent's own
+ * recall; it is superseded, so it never travels in an export or a copy.
+ */
+export const shareableLearnings = (items: readonly Learning[]): Learning[] =>
+  items
+    .filter((learning) => !isArchivedLearning(learning))
+    .map(stripLearningProvenance);
 
 /** A routine without its machine- and account-local keys (see packAgent). */
 export const stripLocalRoutineKeys = ({

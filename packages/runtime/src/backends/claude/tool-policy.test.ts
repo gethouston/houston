@@ -310,16 +310,17 @@ test("an unknown tool with no path targets is allowed", async () => {
   );
 });
 
-test("the personal assistant gets only the built-ins memory consolidation needs", () => {
-  // The coordinator never produces work, so the SDK built-ins are clamped to
-  // the pair the "your memory is full" instruction names: read that file, write
-  // the trimmed list back. Everything else is denied, bash included, whatever
+test("the personal assistant gets Read alone", () => {
+  // The coordinator never produces work and its memory changes only through
+  // save_learning, so the SDK built-ins are clamped to Read (its memory and
+  // attachments). Everything else is denied, Write and bash included, whatever
   // the deployment's code-execution setting says.
   const policy = buildToolPolicy({ localBash: true, personalAssistant: true });
-  expect(policy.tools).toEqual(["Read", "Write"]);
+  expect(policy.tools).toEqual(["Read"]);
   for (const denied of [
     "Bash",
     "Edit",
+    "Write",
     "Glob",
     "Grep",
     "WebFetch",
@@ -327,7 +328,7 @@ test("the personal assistant gets only the built-ins memory consolidation needs"
   ])
     expect(policy.disallowedTools).toContain(denied);
 
-  // Plan mode narrows it further: reading only.
+  // Plan mode keeps the same reading-only surface.
   const plan = buildToolPolicy({
     localBash: true,
     personalAssistant: true,

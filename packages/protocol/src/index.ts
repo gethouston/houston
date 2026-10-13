@@ -17,6 +17,7 @@ export {
   HANDS_ON_SURFACES,
   isHandsOnSurface,
 } from "./domain/interaction-types";
+export * from "./domain/learning";
 export * from "./domain/mission-starter";
 export * from "./domain/portable";
 export * from "./domain/routine";

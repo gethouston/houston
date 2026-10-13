@@ -136,19 +136,23 @@ test("the coordinator is refused a Write into the shared skills mirror", async (
   );
 });
 
-test("the coordinator keeps exactly its memory document, nothing else", async () => {
+test("the coordinator may only READ its memory document, nothing else", async () => {
   const workspaceDir = tempRoot();
   const gate = await gateFor("coordinator", workspaceDir, tempRoot());
+  const memory = learningsDocPath(workspaceDir);
 
-  expect(
-    (
-      await decide(gate, "Write", {
-        file_path: learningsDocPath(workspaceDir),
-      })
-    ).behavior,
-  ).toBe("allow");
-  // Its own workspace is not a licence: consolidating memory is the only file
-  // work it has, so every other in-workspace path is refused too.
+  // save_learning is the only writer: a file rewrite would race its doc lock
+  // and could drop memories instead of archiving them.
+  expect((await decide(gate, "Read", { file_path: memory })).behavior).toBe(
+    "allow",
+  );
+  for (const tool of ["Write", "Edit"]) {
+    expect((await decide(gate, tool, { file_path: memory })).behavior).toBe(
+      "deny",
+    );
+  }
+  // Its own workspace is not a licence either: every other in-workspace path
+  // is refused too.
   expect(
     (await decide(gate, "Write", { file_path: join(workspaceDir, "notes.md") }))
       .behavior,

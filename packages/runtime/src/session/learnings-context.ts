@@ -1,6 +1,12 @@
 import { readFileSync } from "node:fs";
 import { join } from "node:path";
 import {
+  ASSISTANT_LEARNINGS_MAX_BYTES,
+  activeLearnings,
+  learningListLines,
+  learningsDocBytes,
+} from "@houston/domain";
+import {
   type AssistantRuntimeRole,
   readAssistantRole,
 } from "@houston/domain/assistant-role";
@@ -46,14 +52,38 @@ const TRAILER =
   "that part and keep following the rest of what you were set up to do. Use " +
   "them so you never ask again for something the user already told you. This " +
   "list is fixed for the whole of this chat: whatever you remember from here " +
-  "on shows up in it from the next chat onwards.";
+  "on shows up in it from the next chat onwards. The bracketed code before " +
+  "each note is that memory's id, for save_learning's `replaces` only: " +
+  "never show it to the user.";
+
+/** Share of the cap at which the agent is asked to consolidate on its own. */
+const NEARLY_FULL_RATIO = 0.8;
+
+const NEARLY_FULL =
+  "Your memory is nearly full. The next time you save something, fold " +
+  "related or outdated memories into it: one save_learning call whose text " +
+  "combines them, with their ids in `replaces`.";
+
+/**
+ * Memory written before the cap was enforced everywhere can already be over
+ * it, and then no new memory saves at all until it shrinks.
+ */
+const OVER_LIMIT =
+  "Your memory is over its limit, so new memories cannot be saved until it " +
+  "is consolidated. Before anything else in this chat, fold related or " +
+  "outdated memories together: call save_learning with one merged memory " +
+  "and the ids it replaces in `replaces`, as many times as it takes to fit. " +
+  "Do this without telling the user.";
 
 /** Absolute path of an agent's learnings doc: <cwd>/.houston/learnings/learnings.json */
 export function learningsDocPath(cwd: string): string {
   return join(cwd, ".houston", "learnings", "learnings.json");
 }
 
-/** The agent's saved learnings; [] when the file is absent, unreadable, or malformed. */
+/**
+ * The agent's saved learnings, archived ones included; [] when the file is
+ * absent, unreadable, or malformed.
+ */
 export function loadAgentLearnings(cwd: string): Learning[] {
   let parsed: unknown;
   try {
@@ -78,13 +108,24 @@ export function buildLearningsSection(
   role: AssistantRuntimeRole | null = readAssistantRole(),
 ): string | null {
   if (role !== "coordinator") return null;
-  const bullets = loadAgentLearnings(cwd)
-    .map((learning) => learning.text.trim())
-    .filter((text) => text.length > 0);
+  const active = activeLearnings(loadAgentLearnings(cwd));
+  const bullets = learningListLines(active);
   if (!bullets.length) return null;
-  return [HEADING, "", ...bullets.map((text) => `- ${text}`), "", TRAILER].join(
-    "\n",
-  );
+  const bytes = learningsDocBytes(active);
+  const nudge =
+    bytes > ASSISTANT_LEARNINGS_MAX_BYTES
+      ? OVER_LIMIT
+      : bytes >= ASSISTANT_LEARNINGS_MAX_BYTES * NEARLY_FULL_RATIO
+        ? NEARLY_FULL
+        : null;
+  return [
+    HEADING,
+    "",
+    ...bullets,
+    "",
+    TRAILER,
+    ...(nudge ? ["", nudge] : []),
+  ].join("\n");
 }
 
 /** The same shape `normalizeLearnings` keeps: an object with string id + text. */

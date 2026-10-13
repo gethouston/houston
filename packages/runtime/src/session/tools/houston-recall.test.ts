@@ -1,4 +1,4 @@
-import { mkdtempSync } from "node:fs";
+import { mkdirSync, mkdtempSync, writeFileSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import type { ExtensionToolContext } from "@earendil-works/pi-coding-agent";
@@ -240,4 +240,53 @@ test("still reaches what a /clear put out of the model's context", async () => {
   const out = await run({ query: "accountant" }, id);
 
   expect(textOf(out)).toContain("Marta Ferreira");
+});
+
+// Last on purpose: it seeds the shared workspace's memory doc.
+test("searches saved memories, archived ones included, before the transcript", async () => {
+  const learningsDir = join(config.workspaceDir, ".houston", "learnings");
+  mkdirSync(learningsDir, { recursive: true });
+  writeFileSync(
+    join(learningsDir, "learnings.json"),
+    JSON.stringify([
+      {
+        id: "old",
+        text: "Lives in Lisbon near Porto road",
+        created_at: "2026-01-01T00:00:00.000Z",
+        archived_at: "2026-02-01T00:00:00.000Z",
+        replaced_by: "new",
+      },
+      {
+        id: "new",
+        text: "Moved to Porto in February",
+        created_at: "2026-02-01T00:00:00.000Z",
+      },
+      { id: "x", text: "Unrelated", created_at: "2026-02-01T00:00:00.000Z" },
+    ]),
+  );
+  const id = seed([msg("user", "I just moved to Porto")]);
+  const out = await run({ query: "porto" }, id);
+  const text = textOf(out);
+  expect(detailsOf(out)).toEqual({
+    outcome: "searched",
+    query: "porto",
+    matched: 1,
+    returned: 1,
+    totalMessages: 1,
+    memoriesMatched: 2,
+    memoriesReturned: 2,
+  });
+  expect(text).toContain("- [current memory] Moved to Porto in February");
+  expect(text).toContain(
+    '- [archived 2026-02-01T00:00:00.000Z, replaced by: "Moved to Porto in February"] Lives in Lisbon near Porto road',
+  );
+  // Memories first (newest first), then the conversation.
+  expect(text.indexOf("Moved to Porto")).toBeLessThan(text.indexOf("Lisbon"));
+  expect(text.indexOf("Lisbon")).toBeLessThan(text.indexOf("I just moved"));
+
+  const memoryOnly = await run({ query: "lisbon" }, id);
+  expect(textOf(memoryOnly)).toContain("Lives in Lisbon");
+  expect(textOf(memoryOnly)).toContain(
+    'Nothing in your conversation with the user matches "lisbon"',
+  );
 });

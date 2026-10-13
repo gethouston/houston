@@ -10,7 +10,9 @@ import type { WorkspaceGuardOptions } from "./tools/fs-guard";
  * The coordinator is the user's personal assistant: it operates Houston through
  * the assistant tool family and hands every piece of real work to one of the
  * user's agents. It produces nothing itself, so it needs exactly ONE document —
- * its memory, which it rewrites when consolidating (routes/learning-write.ts).
+ * its memory, and only to READ: `save_learning` is the one writer, archiving
+ * what a consolidation replaces under the host's doc lock
+ * (routes/learning-write.ts), so a file write could only lose memories.
  * Everything else an ordinary agent may touch is reach it has no use for and
  * that a prompt injection would: the workspace-shared skills mirror (a skill
  * edited there runs inside every one of the user's agents), the workspace
@@ -49,7 +51,7 @@ export function fileToolGuardOptions(
 ): WorkspaceGuardOptions {
   if (input.role === "coordinator") {
     return {
-      allowedFiles: [learningsDocPath(input.workspaceDir)],
+      readableFiles: [learningsDocPath(input.workspaceDir)],
       readableDirs: [join(input.workspaceDir, UPLOADS_DIR)],
     };
   }

@@ -3,11 +3,16 @@ import type { IncomingMessage, ServerResponse } from "node:http";
 import type { HoustonEvent } from "@houston/protocol";
 import { actingAuthorFromHeader } from "../auth/acting";
 import type { EventHub } from "../events/hub";
+import {
+  assistantRuntimeRole,
+  COORDINATOR_ROLE,
+} from "../launcher/assistant-role";
 import type { WorkspacePaths } from "../paths";
 import type { CredentialVault, WorkspaceStore } from "../ports";
 import type { Vfs } from "../vfs";
 import { DEFAULT_PATHS } from "./agent-authz";
 import { bearer, header, json, readJson } from "./http";
+import { parseLearningSaveBody } from "./learning-save-body";
 import { appendLearningChecked } from "./learning-write";
 import { authorizeTurnWrite } from "./plan-gate";
 import { defineRoute } from "./registry";
@@ -124,10 +129,9 @@ export async function handleSandboxLearnings(
   }
   const turn = authorized.turn;
 
-  const body = await readJson(req);
-  const text = typeof body.text === "string" ? body.text.trim() : "";
-  if (!text) {
-    json(res, 400, { error: "missing 'text'" });
+  const parsed = parseLearningSaveBody(await readJson(req));
+  if ("error" in parsed) {
+    json(res, 400, { error: parsed.error });
     return true;
   }
 
@@ -145,13 +149,17 @@ export async function handleSandboxLearnings(
     : null;
   const result = await appendLearningChecked(vfs, root, {
     id: randomUUID(),
-    text,
+    text: parsed.text,
     nowIso: new Date().toISOString(),
     ...(taughtBy ? { taughtBy } : {}),
     conversationId: turn.conversationId,
+    ...(parsed.replaces ? { replaces: parsed.replaces } : {}),
+    assistant: assistantRuntimeRole({ agentId: agent.id }) === COORDINATOR_ROLE,
   });
   if ("error" in result) {
-    json(res, 400, { error: result.error });
+    // The code (when present) tells the runtime to relay the full text: a
+    // refused consolidation carries the memory list the agent needs.
+    json(res, 400, result);
     return true;
   }
   // React on the SAME channel a UI or file-watcher write does; scope to the

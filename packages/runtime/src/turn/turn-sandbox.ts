@@ -42,6 +42,8 @@ export interface TurnSandboxDeps {
   codeVm?: TurnCodeVm;
   /** Present on Houston's own turn: its operation and mission routes. */
   coordinator?: TurnCoordinatorSession;
+  /** Houston's own turn, whether or not its routes started: caps its memory. */
+  assistant?: boolean;
 }
 
 /** Mutation-derived views published after the turn's object sync lands. */

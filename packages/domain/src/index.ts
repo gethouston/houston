@@ -15,6 +15,7 @@ export * from "./first-day-prompt";
 export * from "./job-description";
 export * from "./job-role";
 export * from "./layout";
+export * from "./learning-memory";
 export * from "./legacy-setup-directive";
 export * from "./mentions";
 export * from "./portable";

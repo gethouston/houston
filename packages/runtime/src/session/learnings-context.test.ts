@@ -1,6 +1,7 @@
 import { mkdirSync, mkdtempSync, writeFileSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { dirname, join } from "node:path";
+import { ASSISTANT_LEARNINGS_MAX_BYTES } from "@houston/domain";
 import { ASSISTANT_AGENT_NAME } from "@houston/host/src/routes/assistant";
 import { expect, test } from "vitest";
 import {
@@ -55,8 +56,8 @@ test("the section renders one bullet per learning for the coordinator", () => {
   const out = buildLearningsSection(cwd, "coordinator");
   expect(out).not.toBeNull();
   expect(out).toContain("# What you remember about this user");
-  expect(out).toContain("- Julian prefers short replies.");
-  expect(out).toContain("- Invoices go out on the 1st.");
+  expect(out).toContain("- [l0] Julian prefers short replies.");
+  expect(out).toContain("- [l1] Invoices go out on the 1st.");
 });
 
 test("the coordinator gets its memory wherever it runs, agent name and all", () => {
@@ -66,7 +67,7 @@ test("the coordinator gets its memory wherever it runs, agent name and all", () 
   seed(cwd, ["Julian prefers short replies."]);
 
   expect(buildLearningsSection(cwd, "coordinator")).toContain(
-    "- Julian prefers short replies.",
+    "- [l0] Julian prefers short replies.",
   );
 });
 
@@ -159,4 +160,61 @@ test("loadAgentLearnings returns [] for a missing doc and for a non-array doc", 
   const cwd = agentDir(ASSISTANT_AGENT_NAME);
   writeLearnings(cwd, JSON.stringify({ items: [] }));
   expect(loadAgentLearnings(cwd)).toEqual([]);
+});
+
+test("archived memories are left out; bullets carry short ids the agent must not show", () => {
+  const cwd = agentDir(ASSISTANT_AGENT_NAME);
+  writeLearnings(
+    cwd,
+    JSON.stringify([
+      {
+        id: "0a1b2c3d-old",
+        text: "Lives in Lisbon",
+        created_at: "2026-01-01T00:00:00.000Z",
+        archived_at: "2026-02-01T00:00:00.000Z",
+        replaced_by: "9f8e7d6c-new",
+      },
+      {
+        id: "9f8e7d6c-new",
+        text: "Lives in Porto",
+        created_at: "2026-02-01T00:00:00.000Z",
+      },
+    ]),
+  );
+
+  const out = buildLearningsSection(cwd, "coordinator") ?? "";
+  expect(out).toContain("- [9f8e7d6c] Lives in Porto");
+  expect(out).not.toContain("Lisbon");
+  expect(out).toMatch(/bracketed code .* save_learning's `replaces`/);
+  expect(out).toMatch(/never show it to the user/);
+  expect(out).not.toContain("nearly full");
+});
+
+test("only archived memories yield no section", () => {
+  const cwd = agentDir(ASSISTANT_AGENT_NAME);
+  writeLearnings(
+    cwd,
+    JSON.stringify([
+      { id: "a", text: "Gone", created_at: "", archived_at: "2026-02-01" },
+    ]),
+  );
+  expect(buildLearningsSection(cwd, "coordinator")).toBeNull();
+});
+
+test("a memory at 80% of the cap nudges the agent to consolidate", () => {
+  const cwd = agentDir(ASSISTANT_AGENT_NAME);
+  const big = "x".repeat(Math.ceil(ASSISTANT_LEARNINGS_MAX_BYTES * 0.8));
+  seed(cwd, [big]);
+  expect(buildLearningsSection(cwd, "coordinator")).toContain(
+    "Your memory is nearly full",
+  );
+});
+
+test("a memory OVER the cap demands consolidation before anything else", () => {
+  const cwd = agentDir(ASSISTANT_AGENT_NAME);
+  seed(cwd, ["x".repeat(ASSISTANT_LEARNINGS_MAX_BYTES)]);
+  const out = buildLearningsSection(cwd, "coordinator") ?? "";
+  expect(out).toContain("Your memory is over its limit");
+  expect(out).toContain("Before anything else in this chat");
+  expect(out).not.toContain("nearly full");
 });

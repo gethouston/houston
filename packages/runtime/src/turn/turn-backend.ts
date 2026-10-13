@@ -94,7 +94,7 @@ export function createTurnBackend(
   const commonTools = buildTurnCommonTools(
     deps.turn,
     deps.codeSandbox,
-    dataDir,
+    { dataDir, workspaceDir },
     loadArchive,
   );
   if (provider === "anthropic") {

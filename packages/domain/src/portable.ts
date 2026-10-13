@@ -6,10 +6,7 @@ import {
   type Routine,
 } from "@houston/protocol";
 import { strFromU8, strToU8, unzipSync, zipSync } from "fflate";
-import {
-  stripLearningProvenance,
-  stripLocalRoutineKeys,
-} from "./portable-strip";
+import { shareableLearnings, stripLocalRoutineKeys } from "./portable-strip";
 import { normalizeRoutines } from "./routines";
 
 /**
@@ -79,9 +76,9 @@ export function packAgent(
     const shareable = content.routines.map(stripLocalRoutineKeys);
     files[ROUTINES] = strToU8(JSON.stringify(shareable, null, 2));
   }
-  if (content.learnings.length) {
-    const shareable = content.learnings.map(stripLearningProvenance);
-    files[LEARNINGS] = strToU8(JSON.stringify(shareable, null, 2));
+  const learnings = shareableLearnings(content.learnings);
+  if (learnings.length) {
+    files[LEARNINGS] = strToU8(JSON.stringify(learnings, null, 2));
   }
   return zipSync(files);
 }
@@ -140,9 +137,11 @@ export function unpackAgent(bytes: Uint8Array): PortablePackage {
       parseArray<Routine>(routinesRaw),
       ROUTINES,
     ).items.map(stripLocalRoutineKeys),
-    learnings: parseArray<Learning>(learningsRaw)
-      .filter((l) => isRecord(l) && typeof l.id === "string")
-      .map(stripLearningProvenance),
+    learnings: shareableLearnings(
+      parseArray<Learning>(learningsRaw).filter(
+        (l) => isRecord(l) && typeof l.id === "string",
+      ),
+    ),
   };
 }
 
