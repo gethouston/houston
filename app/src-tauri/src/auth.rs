@@ -394,8 +394,8 @@ pub fn emit_deep_link(handle: &AppHandle, url: &str) {
 
 /// True iff a real OS deep link is the OAuth-callback shape the identity layer
 /// consumes (`houston://auth-callback?...`) — the Apple bridge's return path.
-/// This, [`is_plan_settings_deep_link`] and [`is_channels_settings_deep_link`]
-/// are the only links forwarded;
+/// This, [`is_plan_settings_deep_link`], [`is_channels_settings_deep_link`]
+/// and [`is_linkedin_settings_deep_link`] are the only links forwarded;
 /// everything else (`houston://open`, unknown paths) stays a focus affordance
 /// only, so an arbitrary link can never inject noise onto the deep-link channel.
 pub fn is_auth_callback_deep_link(url: &str) -> bool {
@@ -414,6 +414,13 @@ pub fn is_plan_settings_deep_link(url: &str) -> bool {
 /// is reachable from outside the app.
 pub fn is_channels_settings_deep_link(url: &str) -> bool {
     has_link_prefix(url, "houston://settings/channels")
+}
+
+/// True iff a real OS deep link carries a LinkedIn connect's return
+/// (`houston://settings/linkedin`), the one-time completion ticket the webview
+/// redeems.
+pub fn is_linkedin_settings_deep_link(url: &str) -> bool {
+    has_link_prefix(url, "houston://settings/linkedin")
 }
 
 /// `url` is exactly `prefix`, optionally followed by a query or a path.
@@ -473,6 +480,10 @@ mod tests {
             "houston://settings/channelsx?slack=t"
         ));
         assert!(!is_channels_settings_deep_link("houston://settings/plan"));
+        assert!(is_linkedin_settings_deep_link(
+            "houston://settings/linkedin?linkedin=Tk7"
+        ));
+        assert!(!is_linkedin_settings_deep_link("houston://settings/linkedinx"));
         assert!(!is_channels_settings_deep_link(
             "https://app.gethouston.ai/settings/channels?slack=t"
         ));

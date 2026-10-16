@@ -1,11 +1,14 @@
 import { ok, strictEqual } from "node:assert";
 import { before, describe, it } from "node:test";
-import type { OrgMember } from "@houston/engine-adapter";
+import type { Agent, OrgMember } from "@houston/engine-adapter";
 import i18next from "i18next";
 import {
   isShareCancel,
   linkedInShareUrl,
   SHARE_CARD_CAPS,
+  SHARE_TEAM_COLUMNS,
+  shareAltText,
+  shareCardCaps,
   shareFileName,
   sharePostText,
   shareTitle,
@@ -49,30 +52,35 @@ const tree = (personal: boolean, name = "Acme & Co") =>
   );
 
 describe("sharePostText", () => {
+  const en = () => i18n.getFixedT("en", "teams");
+
   it("says it is the company's AI Employees, in Houston, ending on gethouston.ai", () => {
     strictEqual(
-      sharePostText(i18n.getFixedT("en", "teams"), tree(false)),
+      sharePostText(en(), tree(false)),
       "This is my organization. These are all the AI Employees at Acme & Co, working in Houston.\n\ngethouston.ai",
     );
   });
 
   it("speaks of the person's own AI Employees in a personal space", () => {
-    const text = sharePostText(i18n.getFixedT("en", "teams"), tree(true));
     strictEqual(
-      text,
+      sharePostText(en(), tree(true)),
       "These are all my AI Employees, working in Houston.\n\ngethouston.ai",
     );
   });
 
-  it("ships every language with no em dash, no hashtag, and the link last", () => {
+  it("ships every language with no em dash, no hashtag, no link, and the site last", () => {
     for (const lng of ["en", "es", "pt"]) {
       for (const subject of [tree(false), tree(true)]) {
-        const text = sharePostText(i18n.getFixedT(lng, "teams"), subject);
+        const t = i18n.getFixedT(lng, "teams");
+        const text = sharePostText(t, subject);
         ok(!text.includes("—"), `${lng}: ${text}`);
         ok(!text.includes("{{"), `${lng}: ${text}`);
         ok(!text.includes("#"), `${lng}: ${text}`);
+        ok(!text.includes("http"), `${lng}: ${text}`);
         ok(text.includes("Houston"), `${lng}: ${text}`);
         ok(text.endsWith("gethouston.ai"), `${lng}: ${text}`);
+        const alt = shareAltText(t, subject);
+        ok(alt.includes(shareTitle(subject)) && !alt.includes("{{"), alt);
       }
       ok(
         sharePostText(i18n.getFixedT(lng, "teams"), tree(false)).includes(
@@ -81,6 +89,65 @@ describe("sharePostText", () => {
         lng,
       );
     }
+  });
+});
+
+describe("shareCardCaps", () => {
+  const roster = (n: number): OrgMember[] => [
+    { userId: "o", role: "owner", displayName: "Olga Owner" },
+    ...Array.from({ length: n - 1 }, (_, i) => ({
+      userId: `u${i}`,
+      role: "user" as const,
+      displayName: `User ${i}`,
+    })),
+  ];
+  const agentOf = (id: string, userId: string): Agent => ({
+    id,
+    name: `Agent ${id}`,
+    folderPath: id,
+    configId: "c",
+    createdAt: "2026-01-01",
+    access: "manager",
+    assignments: [{ userId, access: "user" }],
+  });
+  const team = (members: OrgMember[], agents: Agent[] = []) =>
+    buildOrgTree(
+      { agents, members, name: "Acme", personal: false },
+      shareCardCaps(members.length),
+    );
+
+  it("keeps four people whole", () => {
+    const four = team(roster(4));
+    strictEqual(four.branches.length, 4);
+    strictEqual(four.morePeople, 0);
+  });
+
+  it("shows three and a +N from five people on, counting everyone", () => {
+    for (const n of [5, 6, 12]) {
+      const capped = team(roster(n));
+      strictEqual(capped.branches.length, SHARE_TEAM_COLUMNS - 1, `${n}`);
+      strictEqual(capped.morePeople, n - 3, `${n}`);
+      strictEqual(capped.counts.people, n);
+      strictEqual(capped.branches[0].person.userId, "o");
+    }
+  });
+
+  it("never cuts someone with AI Employees for someone without", () => {
+    // Owner, two people with none (first by name), then two with some: the
+    // three that show are the owner and the two with AI Employees.
+    const members: OrgMember[] = [
+      { userId: "o", role: "owner", displayName: "Olga" },
+      { userId: "a", role: "user", displayName: "Ann" },
+      { userId: "b", role: "user", displayName: "Bob" },
+      { userId: "c", role: "user", displayName: "Cy" },
+      { userId: "d", role: "user", displayName: "Dee" },
+    ];
+    const capped = team(members, [agentOf("x", "c"), agentOf("y", "d")]);
+    strictEqual(
+      capped.branches.map((branch) => branch.person.userId).join(","),
+      "o,c,d",
+    );
+    strictEqual(capped.morePeople, 2);
   });
 });
 

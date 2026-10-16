@@ -1,4 +1,5 @@
 import { resetIntegrationGateForIdentityChange } from "../components/integrations/integrations-gate-state";
+import { useLinkedInPosts } from "../components/organization/linkedin-post-store";
 import { useAgentProvisioningStore } from "../stores/agent-provisioning";
 import { useAgentStore } from "../stores/agents";
 import { useDraftStore } from "../stores/drafts";
@@ -29,7 +30,8 @@ import { queryClient } from "./query-client";
  *     write renders nothing and the app freezes on the sign-in screen until
  *     relaunch (PRODUCT-1235) — see `identity-cache-reset.ts`.
  *  2. The zustand stores. They live outside React and survive the sign-out
- *     unmount, so their agents / workspaces / view state would carry over.
+ *     unmount, so their agents / workspaces / view state would carry over
+ *     (a LinkedIn post still out, too: its late answer is dropped).
  *  3. The personal plan's session memory: an outstanding Plus checkout (its
  *     poll, its window focus, its "You're on Plus") and the presence clock.
  *  4. The active-space pin (`x-houston-org`). A stale team slug from the
@@ -46,6 +48,7 @@ export function resetForIdentityChange(): void {
   useDraftStore.getState().reset();
   useInteractionDraftStore.getState().reset();
   useAgentProvisioningStore.getState().reset();
+  useLinkedInPosts.getState().reset();
   sliceCoverage.reset();
   setActiveOrg(null);
 }

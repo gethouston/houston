@@ -3,10 +3,11 @@ import { useTranslation } from "react-i18next";
 import { logAndReportError } from "../../lib/error-report";
 import { renderShareCard } from "./org-chart-share-card";
 import type { ShareCardText } from "./org-chart-share-card-paint";
+import type { CardWords } from "./org-chart-share-columns";
 import { shareFileName, shareTitle } from "./org-chart-share-model";
 import type { OrgTree } from "./org-chart-tree";
 
-type Translate = ReturnType<typeof useTranslation<"teams">>["t"];
+export type Translate = ReturnType<typeof useTranslation<"teams">>["t"];
 
 /** One drawing of the share PNG. `ready` and `url` are set once it lands. */
 export interface ShareImageDraw {
@@ -25,11 +26,11 @@ export type SharePreview =
   | { status: "failed" }
   | { status: "ready"; url: string };
 
-function draw(tree: OrgTree, t: Translate): ShareImageDraw {
-  const title = shareTitle(tree);
+/** The words on the share image and the link card, all authored copy. */
+export function shareCardText(tree: OrgTree, t: Translate): ShareCardText {
   const agents = t("orgChart.agentCount", { count: tree.counts.agents });
-  const text: ShareCardText = {
-    title,
+  return {
+    title: shareTitle(tree),
     counts:
       tree.root.kind === "person"
         ? agents
@@ -40,12 +41,22 @@ function draw(tree: OrgTree, t: Translate): ShareImageDraw {
     site: t("orgChart.share.site"),
     more: (count) => t("orgChart.more", { count }),
   };
+}
+
+/** The words the layout writes on its "+N" cards. */
+export function shareCardWords(t: Translate): CardWords {
+  return {
+    morePeople: (count) => t("orgChart.tree.morePeople", { count }),
+    moreAgents: (count) => t("orgChart.tree.moreAgents", { count }),
+  };
+}
+
+function draw(tree: OrgTree, t: Translate): ShareImageDraw {
+  const text = shareCardText(tree, t);
   const entry: ShareImageDraw = {
-    png: renderShareCard(tree, text, {
-      morePeople: (count) => t("orgChart.tree.morePeople", { count }),
-      moreAgents: (count) => t("orgChart.tree.moreAgents", { count }),
-    }).then(
-      (blob) => new File([blob], shareFileName(title), { type: "image/png" }),
+    png: renderShareCard(tree, text, shareCardWords(t)).then(
+      (blob) =>
+        new File([blob], shareFileName(text.title), { type: "image/png" }),
     ),
     ready: null,
     url: null,
@@ -118,5 +129,7 @@ export function useShareCardImage(tree: OrgTree) {
       : held.url
         ? { status: "ready", url: held.url }
         : { status: "drawing" };
-  return { current, preview, retry: start };
+  /** The drawn PNG, once the preview shows it. */
+  const file = preview.status === "ready" ? (held?.ready ?? null) : null;
+  return { current, preview, file, retry: start };
 }

@@ -115,6 +115,25 @@ describe("handing over a settings link", () => {
     deepStrictEqual(claims, []);
   });
 
+  it("keeps the boot landing for a remount until a mount applies it", async () => {
+    const handed = createHandedLinks(memoryLedger(), () => {});
+    let acks = 0;
+    const boot = {
+      landing: channelsWith(ticket),
+      link: null,
+      applied: () => acks++,
+    };
+    // The shell remounts before sign-in: the held offer dies unapplied.
+    const first = mount(handed, false);
+    await first.gate.offer(boot);
+    strictEqual(acks, 0);
+    const second = mount(handed);
+    await second.gate.offer(boot);
+    deepStrictEqual(first.applied, []);
+    deepStrictEqual(second.applied, [channelsWith(ticket)]);
+    strictEqual(acks, 1);
+  });
+
   it("opens Channels every time the bare failure-page link is clicked", async () => {
     const handed = createHandedLinks(memoryLedger(), () => {});
     const bare = "houston://settings/channels";

@@ -1,3 +1,4 @@
+import { refusesAuthReplay } from "@houston/sdk/auth-replay";
 import { retryAfterMsOf } from "@houston/wire-types";
 import { appVersionHeader } from "../app-version";
 import { HoustonEngineError } from "../client/errors";
@@ -6,6 +7,7 @@ import { wakingStuckTracker } from "../waking-stuck-tracker";
 import {
   inControlPlaneMode,
   settleGatewayResponse,
+  settleWithoutReplay,
   signedOutResponse,
 } from "./bearer-recovery";
 import { transientRetryFetch } from "./transient-retry";
@@ -86,6 +88,10 @@ export function liveToken(fallback: string): string {
  * back is not trusted blindly: on a wake burst it can be the slept-out token
  * re-read from storage, so its response settles through the same recovery as
  * any other attempt (PRODUCT-1737).
+ *
+ * A request marked by `@houston/sdk/auth-replay` never goes out under another
+ * person: with no bearer it is refused without waiting for a refresh, and its
+ * 401 is replayed once only when the refreshed bearer names the same person.
  */
 export function gatewayAuthFetch(
   fallbackToken: string,
@@ -128,12 +134,20 @@ export function gatewayAuthFetch(
     // A caller-supplied bearer source (the store seam's session token)
     // outranks the engine-global live token — same live-read discipline.
     const bearer = getToken?.() ?? liveToken(fallbackToken);
+    const settle = (res: Response, sent: string) =>
+      refusesAuthReplay(init)
+        ? settleWithoutReplay(res, sent, send)
+        : settleGatewayResponse(res, sent, send);
     if (!bearer && inControlPlaneMode()) {
+      // A request that must not replay must not wait for a refresh either:
+      // another account can sign in during the wait and the body would go out
+      // under their bearer.
+      if (refusesAuthReplay(init)) return signedOutResponse();
       const fresh = await refreshLiveToken();
       if (!fresh) return signedOutResponse();
-      return settleGatewayResponse(await send(fresh), fresh, send);
+      return settle(await send(fresh), fresh);
     }
-    return settleGatewayResponse(await send(bearer), bearer, send);
+    return settle(await send(bearer), bearer);
   };
 }
 

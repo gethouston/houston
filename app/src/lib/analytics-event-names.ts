@@ -188,9 +188,9 @@ export type AnalyticsEventName =
   | "org_invite_accepted"
   | "org_invite_declined"
   // Admin > Org chart's Share: the dialog opened, then each way the image
-  // left (`share_channel`: linkedin with the image copied |
-  // linkedin_download with it saved | linkedin_text_only with no image |
-  // native share sheet | download | copy_image). Counts only
+  // left (`share_channel`: linkedin_post posted by Houston | linkedin with
+  // the image copied | linkedin_download with it saved | linkedin_text_only
+  // with no image | native share sheet | download | copy_image). Counts only
   // (`agent_count`, `people_count`), never a name.
   | "org_chart_share_opened"
   | "org_chart_shared"

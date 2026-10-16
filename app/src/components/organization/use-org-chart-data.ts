@@ -9,7 +9,7 @@ import {
   messagesCounted,
   orgChartScope,
 } from "./org-chart-scope";
-import { SHARE_CARD_CAPS } from "./org-chart-share-model";
+import { shareCardCaps } from "./org-chart-share-model";
 import { buildOrgTree, SCREEN_TREE_CAPS } from "./org-chart-tree";
 import {
   buildLedger,
@@ -71,7 +71,7 @@ export function useOrgChartData(ctx: OrgViewContext) {
     };
     return {
       screen: buildOrgTree(input, SCREEN_TREE_CAPS),
-      share: buildOrgTree(input, SHARE_CARD_CAPS),
+      share: buildOrgTree(input, shareCardCaps(input.members.length)),
     };
   }, [agents, members, ctx.org.name, ctx.isPersonal]);
   const screenTree = useStableByContent(trees.screen);

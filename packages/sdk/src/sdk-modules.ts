@@ -20,6 +20,7 @@ import { createDelegationModule } from "./modules/delegation";
 import { createFilesModule } from "./modules/files";
 import { createHeartbeatModule } from "./modules/heartbeat";
 import { createIntegrationsModule } from "./modules/integrations";
+import { createLinkedInModule } from "./modules/linkedin";
 import { createMigrationModule } from "./modules/migration";
 import { createMissionsSearchModule } from "./modules/missions-search";
 import { createOrgModule } from "./modules/org";
@@ -75,6 +76,8 @@ export interface SdkModules {
   readonly push: ReturnType<typeof createPushModule>;
   /** Channels facade (the messaging accounts the personal assistant answers in). */
   readonly channels: ReturnType<typeof createChannelsModule>;
+  /** LinkedIn facade (posting a picture to the person's own feed). */
+  readonly linkedin: ReturnType<typeof createLinkedInModule>;
   /** Heartbeat facade (the AI Manager's daily morning briefing). */
   readonly heartbeat: ReturnType<typeof createHeartbeatModule>;
   /** Routines facade (an agent's scheduled work, its runs, its webhook key). */
@@ -111,6 +114,7 @@ export const moduleFactories = {
   createFilesModule,
   createHeartbeatModule,
   createIntegrationsModule,
+  createLinkedInModule,
   createMigrationModule,
   createMissionsSearchModule,
   createOrgModule,

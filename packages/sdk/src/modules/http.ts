@@ -105,7 +105,7 @@ const COMPUTE_RETRY_DEFAULT_MS = 2_000;
 const COMPUTE_RETRY_MIN_MS = 500;
 
 /**
- * Issue one JSON request against `scope.baseUrl + path` and return the raw
+ * Issue one JSON (or multipart) request against `scope.baseUrl + path` and return the raw
  * `Response` on any 2xx; a non-2xx always throws (never a soft result). A
  * write's typed compute refusal is sent again, the same request, within
  * {@link COMPUTE_RETRY_BUDGET_MS}: the gateway answers it only when nothing
@@ -117,10 +117,15 @@ export async function httpRequest(
   init?: RequestInit,
 ): Promise<Response> {
   let paused = 0;
+  // A multipart body sets its own Content-Type, boundary included.
+  const multipart =
+    typeof FormData !== "undefined" && init?.body instanceof FormData;
   for (;;) {
     const res = await scope.ports.fetch(`${scope.baseUrl}${path}`, {
       ...init,
-      headers: { "Content-Type": "application/json", ...init?.headers },
+      headers: multipart
+        ? init?.headers
+        : { "Content-Type": "application/json", ...init?.headers },
     });
     if (res.ok) return res;
     if (res.status === 401) scope.onUnauthorized();

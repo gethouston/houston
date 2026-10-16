@@ -104,13 +104,18 @@ A person's message can grant one `createAgent` call with the constrained name, c
 | `renameMission` | PATCH | unconfirmed: Retitles a card on the person's own board; what the mission did is untouched, and the title is changed back the same way. | visible | agentId: resolved:agents; id: resolved:activities; title: free text |
 | `updateActivity` | PATCH | confirmed: host approval required | its updates parameter also carries the lineage the runtime owns - session keys, routine run ids, and the pending interaction that authors an approval card - so a dispatched edit could rewrite far more than the mission's own words; a status move belongs to the coordinator's update_mission_status tool. | agentId: resolved:agents; id: resolved:activities; updates: free text |
 | `addOrgMember` | POST | confirmed: host approval required | visible | email: free text; role: enum |
+| `completeLinkedIn` | POST | unconfirmed: withheld from dispatch | redeems a one-time bearer ticket that only the browser returning from LinkedIn holds, and passing one through a chat turn is how it leaks. | ticket: free text |
 | `computeUsage` | GET | unconfirmed: read-only HTTP GET | visible | days: free text |
+| `connectLinkedIn` | POST | unconfirmed: withheld from dispatch | answers an authorization URL only the person's own browser may open, and whoever approves it in LinkedIn is whose account Houston would post as. | returnTo: free text |
 | `deleteOrgInvite` | DELETE | confirmed: host approval required | visible | inviteId: resolved:invites |
+| `disconnectLinkedIn` | DELETE | unconfirmed: withheld from dispatch | the gateway serves the LinkedIn routes to the person's own sign-in only; the AI Manager's credential is outside their scope. | none |
+| `getLinkedInConnection` | GET | unconfirmed: read-only HTTP GET | the gateway serves the LinkedIn routes to the person's own sign-in only; the AI Manager's credential is outside their scope. | none |
 | `getOrg` | GET | unconfirmed: read-only HTTP GET | visible | none |
 | `getOrgPeople` | GET | unconfirmed: read-only HTTP GET | visible | none |
 | `getOrgProfiles` | unroutable | unconfirmed: withheld from dispatch | UI plumbing; resolves member ids to the names and photos the app's avatars render. | ids: free text |
 | `orgAudit` | GET | unconfirmed: read-only HTTP GET | visible | before: free text; limit: free text |
 | `orgUsage` | GET | unconfirmed: read-only HTTP GET | visible | days: free text |
+| `postLinkedInImage` | POST | unconfirmed: withheld from dispatch | the share dialog draws the picture on the person's device and the person must press Post on words they can see and edit; the assistant has no picture to send. | upload: free text |
 | `removeOrgMember` | DELETE | confirmed: host approval required | visible | userId: resolved:members |
 | `setOrgMemberRole` | PATCH | confirmed: host approval required | visible | userId: resolved:members; role: enum |
 | `captureCredential` | unroutable | unconfirmed: withheld from dispatch | credential plumbing; the device-code connect flow calls it as its own last step. | agentId: resolved:agents; provider: free text |

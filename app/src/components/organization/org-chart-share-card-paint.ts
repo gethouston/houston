@@ -13,8 +13,8 @@ import {
   type ShareCardText,
 } from "./org-chart-share-card-frame";
 import {
-  CARD,
   type CardBox,
+  type CardFrame,
   type CardLayout,
   NAME_LINES,
   NODE,
@@ -67,7 +67,7 @@ function paintRoot(
       initialsFor(label),
       x + s.tile / 2,
       cy + 1,
-      18,
+      Math.round(s.tile * 0.42),
       600,
       ART.tileInk,
       s.tile,
@@ -85,43 +85,39 @@ function paintRoot(
 }
 
 /**
- * A stacked card: its mark, then the name (two lines when it needs them),
- * the whole block centred in the card. A "+N" that has words is the words
- * alone.
+ * A stacked card: its mark, then the name (two lines when it needs them and
+ * there is no role), then an AI Employee's role on one line, the whole block
+ * centred in the card. A "+N" that has words is the words alone.
  */
 function paintStacked(
   ctx: CanvasRenderingContext2D,
   box: CardBox,
   assets: ShareCardAssets,
 ): void {
-  const s = box.shape === "column" ? NODE.column : NODE.leaf;
+  const shape = box.shape === "column" ? "column" : "leaf";
+  const s = NODE[shape];
   const { node } = box;
   const cx = box.x + box.w / 2;
   const inner = box.w - 20;
+  const role = box.sublabel?.trim() ?? "";
   ctx.font = `600 ${s.name}px ${FONT}`;
-  const shape = box.shape === "column" ? "column" : "leaf";
-  const lines = box.label ? wrapLines(ctx, box.label, inner, NAME_LINES) : [];
+  const lines = box.label
+    ? wrapLines(ctx, box.label, inner, role ? 1 : NAME_LINES)
+    : [];
   // A "+N" with words ("+4 people") says it once, centred, with no mark.
   if (node.kind === "more" && lines.length > 0) {
     let line = box.y + (box.h - lines.length * s.nameLine) / 2;
     ctx.textBaseline = "middle";
     for (const text of lines) {
-      centred(
-        ctx,
-        text,
-        cx,
-        line + s.nameLine / 2,
-        s.name,
-        600,
-        ART.muted,
-        inner,
-      );
+      const y = line + s.nameLine / 2;
+      centred(ctx, text, cx, y, s.name, 600, ART.muted, inner);
       line += s.nameLine;
     }
     ctx.textBaseline = "alphabetic";
     return;
   }
-  let y = box.y + (box.h - stackedHeight(shape, lines.length)) / 2;
+  const roleLines = role ? 1 : 0;
+  let y = box.y + (box.h - stackedHeight(shape, lines.length, roleLines)) / 2;
   const markY = y + s.mark / 2;
   if (node.kind === "person")
     face(
@@ -142,6 +138,8 @@ function paintStacked(
     y += s.nameLine;
   }
   track(ctx, 0);
+  if (role)
+    centred(ctx, role, cx, y + s.roleLine / 2, s.role, 400, ART.muted, inner);
   ctx.textBaseline = "alphabetic";
 }
 
@@ -170,15 +168,16 @@ function paintBox(
   } else paintStacked(ctx, box, assets);
 }
 
-/** Paint the whole card onto a CARD-sized context. */
+/** Paint the whole card onto a context the size of `frame`. */
 export function paintShareCard(
   ctx: CanvasRenderingContext2D,
   layout: CardLayout,
   text: ShareCardText,
   assets: ShareCardAssets,
+  frame: CardFrame,
 ): void {
-  paintPaper(ctx, CARD.width, CARD.height);
-  paintHeader(ctx, text);
+  paintPaper(ctx, frame.width, frame.height);
+  paintHeader(ctx, text, frame);
   const { zoom } = layout;
   ctx.save();
   ctx.setTransform(zoom.scale, 0, 0, zoom.scale, zoom.x, zoom.y);
@@ -191,5 +190,5 @@ export function paintShareCard(
   }
   for (const box of layout.boxes) paintBox(ctx, box, text, assets);
   ctx.restore();
-  paintFooter(ctx, text, assets.mark);
+  paintFooter(ctx, text, assets.mark, frame);
 }

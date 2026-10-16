@@ -2,13 +2,14 @@ import { deepStrictEqual, ok, strictEqual } from "node:assert";
 import { describe, it } from "node:test";
 import type { Agent, OrgMember } from "@houston/engine-adapter";
 import {
-  CARD,
-  CARD_TEXT,
+  PORTRAIT_FRAME as CARD,
   type CardBox,
+  NODE,
   onCard,
+  SHARE_MIN_TYPE,
 } from "../src/components/organization/org-chart-share-card-geometry.ts";
 import { shareCardLayout } from "../src/components/organization/org-chart-share-layout.ts";
-import { SHARE_CARD_CAPS } from "../src/components/organization/org-chart-share-model.ts";
+import { shareCardCaps } from "../src/components/organization/org-chart-share-model.ts";
 import { buildOrgTree } from "../src/components/organization/org-chart-tree.ts";
 import type { Box } from "../src/components/organization/org-chart-tree-paths.ts";
 
@@ -31,7 +32,10 @@ const roster = (n: number): OrgMember[] => [
 ];
 const layout = (agents: Agent[], members: OrgMember[], personal = false) =>
   shareCardLayout(
-    buildOrgTree({ agents, members, name: "Acme", personal }, SHARE_CARD_CAPS),
+    buildOrgTree(
+      { agents, members, name: "Acme", personal },
+      shareCardCaps(members.length),
+    ),
     {
       morePeople: (n) => `+${n} people`,
       moreAgents: (n) => `+${n} AI Employees`,
@@ -83,21 +87,46 @@ function crossesCard(path: string, boxes: Box[]): boolean {
   return false;
 }
 
-const big = () =>
-  layout(
-    Array.from({ length: 30 }, (_, i) => agent(`a${i}`, `u${i % 9}`)),
-    roster(10),
+const many = (n: number, holders: number, offset = 0) =>
+  Array.from({ length: n }, (_, i) =>
+    agent(`a${i}`, holders ? `u${(i % holders) + offset}` : undefined),
   );
+/** Nine people holding 40 AI Employees, the owner first with none. */
+const big = () => layout(many(40, 9), roster(10));
+
+/** Whether every card sits inside the frame, between header and footer. */
+function insideRoom({ boxes, zoom }: ReturnType<typeof layout>, name: string) {
+  for (const box of boxes.map((b) => ({ ...b, ...onCard(zoom, b) }))) {
+    ok(box.x >= 0 && box.x + box.w <= CARD.width + 1e-9, `${name} x ${box.id}`);
+    ok(box.y >= CARD.room.top - 1e-9, `${name} top ${box.id}`);
+    ok(box.y + box.h <= CARD.room.bottom + 1e-9, `${name} bottom ${box.id}`);
+  }
+}
 
 describe("shareCardLayout", () => {
-  it("keeps every card inside the card, between the header and the footer, without overlaps", () => {
-    const { boxes, zoom } = big();
-    for (const box of boxes.map((b) => ({ ...b, ...onCard(zoom, b) }))) {
-      ok(box.x >= 0 && box.x + box.w <= CARD.width, `x ${box.id}`);
-      ok(box.y > CARD_TEXT.countsY + 20, `top ${box.id}`);
-      ok(box.y + box.h < CARD_TEXT.footerY - 40, `bottom ${box.id}`);
+  it("fits every chart at the minimum type: names 30px, roles 22px", () => {
+    const charts = {
+      "1 person, 1 AI Employee": layout([agent("a")], roster(1), true),
+      "1 person in a team": layout([agent("a", "owner")], roster(1)),
+      "6 people": layout(many(12, 5), roster(6)),
+      "6 people, none with AI Employees": layout([], roster(6)),
+      "9 people, 40 AI Employees": big(),
+      "a personal space of 40": layout(many(40, 0), roster(1), true),
+    };
+    for (const [name, chart] of Object.entries(charts)) {
+      const { scale } = chart.zoom;
+      ok(scale >= 1 - 1e-9, `${name}: zoom ${scale}`);
+      for (const shape of ["column", "leaf"] as const) {
+        ok(NODE[shape].name * scale >= SHARE_MIN_TYPE.name - 1e-9, name);
+        ok(NODE[shape].role * scale >= SHARE_MIN_TYPE.role - 1e-9, name);
+      }
+      insideRoom(chart, name);
+      noOverlaps(chart.boxes);
     }
-    noOverlaps(boxes);
+    strictEqual(SHARE_MIN_TYPE.name, 30);
+    strictEqual(SHARE_MIN_TYPE.role, 22);
+    strictEqual(CARD.width, 1200);
+    strictEqual(CARD.height, 1500);
   });
 
   it("only draws lines between cards, never past the outermost ones", () => {
@@ -110,52 +139,46 @@ describe("shareCardLayout", () => {
       ok(y >= boxes[0].y + boxes[0].h - 0.5, `y ${y}`);
       ok(y < Math.max(...boxes.map((b) => b.y + b.h)) + 0.5, `y ${y}`);
     }
+    ok(!crossesCard(path, boxes));
   });
 
-  it("draws six people and a +N, each with three AI Employees and a +N", () => {
+  it("shows a crowd as three people and a +N, four AI Employees each and a +N", () => {
     const { boxes } = big();
-    strictEqual(boxes.filter((b) => b.node.kind === "person").length, 6);
-    // The owner is always on the card, and the people left out are counted:
-    // 9 users hold 30 agents, 5 are shown, 4 are left out.
+    const people = boxes.filter((b) => b.node.kind === "person");
+    strictEqual(people.length, 3);
+    // The owner is always on the card, and the people left out are counted.
     ok(
-      boxes.some(
+      people.some(
         (b) => b.node.kind === "person" && b.node.person.userId === "owner",
       ),
     );
-    const peopleMore = boxes.find((b) => b.id === "more:people");
-    strictEqual(peopleMore?.label, "+4 people");
+    strictEqual(boxes.find((b) => b.id === "more:people")?.label, "+7 people");
+    strictEqual(boxes.filter((b) => b.shape === "column").length, 4);
     const u0 = boxes.find((b) => b.id === "p:u0");
     const column = boxes.filter((b) => b.x === u0?.x);
-    // User 00 holds four: three shown, then the "+1".
+    // User 0 holds five: four shown, then the "+1".
     deepStrictEqual(
       column.map((b) => b.shape),
-      ["column", "leaf", "leaf", "leaf", "moreLeaf"],
+      ["column", "leaf", "leaf", "leaf", "leaf", "moreLeaf"],
     );
   });
 
-  it("grows a small team to fill the card, and leaves a full one at its size", () => {
+  it("shows four people whole, with no +N", () => {
+    const { boxes } = layout(many(8, 3), roster(4));
+    strictEqual(boxes.filter((b) => b.node.kind === "person").length, 4);
+    ok(!boxes.some((b) => b.id === "more:people"));
+  });
+
+  it("grows a small team to fill the frame, centred under the header", () => {
     const small = layout([agent("a", "owner"), agent("b", "owner")], roster(1));
     ok(small.zoom.scale > 1.5, `small ${small.zoom.scale}`);
     const [root] = small.boxes.map((b) => onCard(small.zoom, b));
     strictEqual(root.x + root.w / 2, CARD.width / 2);
-    // A full row already spans the card: it is never shrunk below 1. Six
-    // people with one AI Employee each, then "+2 people".
-    const wide = layout(
-      Array.from({ length: 8 }, (_, i) => agent(`a${i}`, `u${i - 1}`)),
-      roster(9),
-    );
-    const row = wide.boxes.filter((b) => b.shape === "column");
-    strictEqual(row.length, 7);
-    strictEqual(new Set(row.map((b) => b.y)).size, 1);
-    noOverlaps(wide.boxes);
-    ok(Math.abs(wide.zoom.scale - 1) < 1e-9, `wide ${wide.zoom.scale}`);
-    const large = big();
-    ok(large.zoom.scale <= 1 + 1e-9, `big ${large.zoom.scale}`);
   });
 
   it("centres a lone branch under the root with a straight line", () => {
     const { boxes, path } = layout([agent("a")], roster(1));
-    const centre = CARD.width / 2;
+    const centre = 600;
     for (const box of boxes) strictEqual(box.x + box.w / 2, centre);
     ok(
       pathPoints(path).every(([x]) => x === centre),
@@ -163,9 +186,8 @@ describe("shareCardLayout", () => {
     );
   });
 
-  it("lays a personal space out as its person over a row of AI Employees", () => {
-    const agents = Array.from({ length: 8 }, (_, i) => agent(`a${i}`));
-    const { boxes } = layout(agents, roster(1), true);
+  it("lays a personal space out as its person over its AI Employees", () => {
+    const { boxes } = layout(many(8, 0), roster(1), true);
     strictEqual(boxes[0].node.kind, "person");
     strictEqual(boxes[0].shape, "root");
     strictEqual(boxes.filter((b) => b.node.kind === "agent").length, 6);
@@ -176,32 +198,27 @@ describe("shareCardLayout", () => {
     ok(boxes.slice(1).every((b) => b.shape === "column"));
   });
 
-  it("labels every card with its name alone, never a role", () => {
+  it("names every card, and gives an AI Employee its role underneath", () => {
     const { boxes } = layout(
-      [{ ...agent("a"), role: "Inbox keeper" }],
+      [{ ...agent("a", "owner"), role: "Inbox keeper" }],
       roster(1),
     );
     const person = boxes.find((b) => b.node.kind === "person");
     const ai = boxes.find((b) => b.node.kind === "agent");
     strictEqual(person?.label, "Owner");
+    strictEqual(person?.sublabel, undefined);
     strictEqual(ai?.label, "Agent a");
-    for (const box of boxes) ok(!("sublabel" in box), box.id);
+    strictEqual(ai?.sublabel, "Inbox keeper");
     strictEqual(boxes[0].label, "Acme");
   });
 
   it("wraps five to seven AI Employees onto two lines, the second in the first's gaps", () => {
     const rows = (agents: number) => {
-      const { boxes, path, zoom } = layout(
-        Array.from({ length: agents }, (_, i) => agent(`a${i}`)),
-        roster(1),
-        true,
-      );
-      const cards = boxes.slice(1);
+      const chart = layout(many(agents, 0), roster(1), true);
+      const cards = chart.boxes.slice(1);
       const tops = [...new Set(cards.map((b) => b.y))].sort((a, b) => a - b);
       return {
-        boxes,
-        path,
-        zoom,
+        ...chart,
         first: cards.filter((b) => b.y === tops[0]),
         second: cards.filter((b) => b.y === tops[1]),
       };
@@ -213,17 +230,15 @@ describe("shareCardLayout", () => {
       [6, 4, 2],
       [8, 4, 3],
     ]) {
-      const { boxes, path, zoom, first, second } = rows(agents);
+      const { boxes, path, first, second } = rows(agents);
       strictEqual(first.length, across, `${agents} first`);
       strictEqual(second.length, below, `${agents} second`);
       noOverlaps(boxes);
       ok(!crossesCard(path, boxes), `${agents} line through a card`);
-      ok(zoom.scale > 1 - 1e-9, `${agents} never shrinks ${zoom.scale}`);
-      const centre = CARD.width / 2;
       const mid = (b: Box) => b.x + b.w / 2;
       // Symmetric about the root, and every second-line card's line drops
       // through a gap: clear of every card above it.
-      const offsets = second.map((b) => mid(b) - centre);
+      const offsets = second.map((b) => mid(b) - 600);
       for (const offset of offsets)
         ok(
           offsets.some((o) => Math.abs(o + offset) < 1e-9),
@@ -236,18 +251,5 @@ describe("shareCardLayout", () => {
             `${agents} ${b.id} under ${above.id}`,
           );
     }
-  });
-
-  it("wraps a team whose people have no AI Employees yet the same way", () => {
-    const { boxes, path } = layout([], roster(6));
-    const people = boxes.filter((b) => b.node.kind === "person");
-    strictEqual(people.length, 6);
-    deepStrictEqual(
-      [...new Set(people.map((b) => b.y))].map(
-        (y) => people.filter((b) => b.y === y).length,
-      ),
-      [4, 2],
-    );
-    ok(!crossesCard(path, boxes));
   });
 });

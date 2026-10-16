@@ -10,6 +10,7 @@
  *    config, are pre-seeded via `VITE_NEW_ENGINE_URL` / `VITE_NEW_ENGINE_TOKEN`,
  *    or are entered at runtime on the Connect screen.
  */
+import { captureBootLanding } from "@houston/app/lib/settings-landing";
 import { applyBootTheme } from "@houston/app/lib/theme-boot";
 import { createRoot } from "react-dom/client";
 import { applyHostModeGlobals } from "./boot-globals";
@@ -28,6 +29,17 @@ import {
 window.__HOUSTON_DEPLOY_ENV__ = bootDeployEnvironment(
   window.__HOUSTON_DEPLOY_ENV__,
   window.location.hostname,
+);
+
+// A settings landing (`?settings=linkedin&linkedin=<ticket>`, Slack's
+// `?settings=channels&slack=<ticket>`) leaves the address bar NOW, before the
+// app graph loads: its analytics bootstrap captures `session_started` with
+// PostHog's `$current_url`, and Sentry records every URL change, so a one-time
+// ticket still in the URL then would reach both. The landing waits in memory
+// until the signed-in shell takes it (`use-settings-landing.ts`). A leaf
+// module with no app-graph imports, like the theme boot below.
+captureBootLanding(window.location.href, (url) =>
+  window.history.replaceState(window.history.state, "", url),
 );
 
 // Theme BEFORE the first paint, on the same contract as the desktop entry

@@ -21,6 +21,8 @@ const PER_AGENT_POLICY = "manager-set per-agent policy is a Teams surface";
 const API_KEYS = "personal API keys authenticate against the hosted public API";
 const CHANNELS =
   "the gateway holds the Slack app's credentials and receives its events, so a messaging connection exists only there";
+const LINKEDIN =
+  "the gateway holds the LinkedIn app's credentials and the person's LinkedIn token, so posting exists only there";
 
 const PERSONAL_PLAN =
   "the personal plan (usage limit, Plus) is metered and billed by the hosted gateway";
@@ -129,6 +131,13 @@ export const CLOUD_ONLY_PROBES: readonly CloudOnlyProbe[] = [
   cloudOnly("disconnectChannel", CHANNELS, {
     connectionId: "no-such-connection",
   }),
+
+  // Posting the org chart to the person's LinkedIn.
+  cloudOnly("getLinkedInConnection", LINKEDIN),
+  cloudOnly("connectLinkedIn", LINKEDIN),
+  cloudOnly("completeLinkedIn", LINKEDIN, { ticket: "no-such-ticket" }),
+  cloudOnly("disconnectLinkedIn", LINKEDIN),
+  cloudOnly("postLinkedInImage", LINKEDIN),
 
   // The person behind the account, as the identity provider knows them.
   cloudOnly(

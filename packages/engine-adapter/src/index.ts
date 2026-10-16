@@ -15,6 +15,10 @@ export type {
   BrowserLiveConnectionState,
   BrowserLiveConnectOptions,
   BrowserLiveHandlers,
+  LinkedInCompletion,
+  LinkedInConnectAnswer,
+  LinkedInPostInput,
+  LinkedInPostResult,
 } from "@houston/sdk";
 export * from "@houston/wire-types";
 export type { HoustonClientOptions } from "./client";

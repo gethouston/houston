@@ -1,54 +1,48 @@
 import { isTauri } from "@tauri-apps/api/core";
-import { useCallback, useEffect, useReducer, useRef } from "react";
+import { useCallback, useEffect, useReducer, useRef, useState } from "react";
 import { useTranslation } from "react-i18next";
 import { analytics } from "../../lib/analytics";
 import { logAndReportError } from "../../lib/error-report";
-import { saveBlob } from "../../lib/save-blob";
-import { browserShareDeps } from "./org-chart-share-browser";
-import { type ShareChannel, sharePostText } from "./org-chart-share-model";
+import { openExternalUrl } from "../../lib/open-external-url";
 import {
-  isExpectedClipboardRefusal,
-  type ShareOutcome,
-  type ShareRunDeps,
-  shareLanding,
-  shareOrgChart,
-  usesShareSheet,
-} from "./org-chart-share-run";
+  canCopyImage,
+  copyImageToClipboard,
+  downloadShareImage,
+  pasteDeps,
+} from "./org-chart-share-browser";
+import { createLinkedInGate } from "./org-chart-share-gate";
+import { shareAltText, sharePostText } from "./org-chart-share-model";
+import { shareByPaste } from "./org-chart-share-paste";
+import { type ShareLanding, shareViaSheet } from "./org-chart-share-run";
 import {
   INITIAL_SHARE_DIALOG,
   replacesShownImage,
   shareDialogReducer,
 } from "./org-chart-share-state";
+import { shareStep } from "./org-chart-share-step";
+import { shareCounts, trackShare as track } from "./org-chart-share-track";
 import type { OrgTree } from "./org-chart-tree";
-import { createSingleFlight } from "./single-flight";
+import { useLinkedInPost } from "./use-linkedin-post";
 import { useShareCardImage } from "./use-share-card-image";
+import { useShareRoute } from "./use-share-route";
 
 /** How long Copy image reads "Copied". */
 const COPIED_MS = 2000;
 
-/** Counts only: no names ride a share event. */
-function counts(tree: OrgTree) {
-  return { agent_count: tree.counts.agents, people_count: tree.counts.people };
-}
-function track(channel: ShareChannel, tree: OrgTree) {
-  analytics.track("org_chart_shared", {
-    share_channel: channel,
-    ...counts(tree),
-  });
-}
-
 /**
  * The share dialog's state and actions over the image drawn ahead
- * (`useShareCardImage`). Share on LinkedIn keeps the clipboard write and
- * the open inside the click and is single-flight (a double click would
- * open LinkedIn twice); the phone's share sheet is left ungated, since a
- * sheet that never settles would kill the button and a second tap is
- * already quiet. Unexpected failures report and show nothing.
+ * (`useShareCardImage`): the editable post, the one primary button
+ * (`shareStep`: share sheet, copy and paste, or Connect then Post to
+ * LinkedIn through `useLinkedInPost`), Download image and Copy image. The
+ * share sheet and copy and paste do their work inside the click (a browser
+ * grants the clipboard and LinkedIn's tab only there); copy and paste is
+ * gated, since a double click would open LinkedIn twice. Unexpected failures
+ * report and show nothing.
  */
-export function useOrgChartShare(tree: OrgTree, phone: boolean) {
+export function useOrgChartShare(tree: OrgTree) {
   const { t } = useTranslation("teams");
-  const { current, preview, retry } = useShareCardImage(tree);
-  const flight = useRef(createSingleFlight());
+  const { preview, file, retry, current } = useShareCardImage(tree);
+  const [gate] = useState(() => createLinkedInGate(() => performance.now()));
   const [state, dispatch] = useReducer(
     shareDialogReducer,
     INITIAL_SHARE_DIALOG,
@@ -68,10 +62,9 @@ export function useOrgChartShare(tree: OrgTree, phone: boolean) {
       clearTimer();
     };
   }, [clearTimer]);
-  // A redrawn image is a different picture: what was said about the old one
-  // no longer holds. Only replacing a picture that was on screen resets: the
-  // first image arriving must not wipe the line of a share started while it
-  // was still drawing.
+
+  // Only replacing a picture that was on screen resets: the first image
+  // arriving must not wipe the line of a share started while it drew.
   const drawnUrl = preview.status === "ready" ? preview.url : null;
   const shownUrl = useRef<string | null>(null);
   useEffect(() => {
@@ -82,80 +75,67 @@ export function useOrgChartShare(tree: OrgTree, phone: boolean) {
     dispatch({ type: "redrawn", url: drawnUrl });
   }, [drawnUrl, clearTimer]);
 
+  const route = useShareRoute(file);
+  const linkedIn = useLinkedInPost({
+    enabled: state.open && route.kind === "post",
+    state,
+    dispatch,
+    session,
+    onPosted: () => track("linkedin_post", tree),
+  });
+  const step = shareStep({
+    route: route.kind,
+    connection: linkedIn.connection,
+    connecting: linkedIn.connectPhase,
+    posting: linkedIn.posting,
+    postUrl: state.postUrl,
+  });
+  const text = state.text ?? sharePostText(t, tree);
+
   const setOpen = (next: boolean) => {
     if (next) {
-      analytics.track("org_chart_share_opened", counts(tree));
+      analytics.track("org_chart_share_opened", shareCounts(tree));
       clearTimer();
     }
     dispatch({ type: next ? "open" : "close" });
   };
 
-  /** Lands a share started in `started`: tracked always, said only there. */
-  const land = (outcome: ShareOutcome, started: number) => {
-    const landing = shareLanding(outcome, isTauri());
+  /** Lands a click made in `started`: tracked always, said only there. */
+  const land = (landing: ShareLanding, started: number) => {
     if (landing.channel) track(landing.channel, tree);
-    if (!live.current) return;
-    dispatch({
-      type: "landed",
-      session: started,
-      line: {
-        line: landing.line,
-        blocked: landing.blocked,
-        url: outcome.kind === "linkedin" ? outcome.url : null,
-      },
-    });
+    if (live.current)
+      dispatch({ type: "landed", session: started, line: landing.line });
   };
 
-  // Nothing is awaited before the run starts: the clipboard write and the
-  // open must stay inside the click. A synchronous throw (a name
-  // encodeURIComponent refuses) reports like any other failure.
-  const run = (deps: ShareRunDeps, started: number): Promise<void> => {
+  // Nothing is awaited before the share starts: the clipboard write and the
+  // open must stay inside the click.
+  const share = () => {
+    const started = session.current;
     const fail = (error: unknown) =>
       logAndReportError("org_chart_share", error);
     try {
-      return shareOrgChart(deps)
-        .then((outcome) => land(outcome, started))
-        .catch(fail);
+      if (route.kind === "sheet") {
+        if (file)
+          void shareViaSheet(route.sheet, file, text, logAndReportError)
+            .then((landing) => land(landing, started))
+            .catch(fail);
+        return;
+      }
+      gate(() =>
+        shareByPaste(pasteDeps(text, current().png, isTauri()))
+          .then((landing) => land(landing, started))
+          .catch(fail),
+      );
     } catch (error) {
       fail(error);
-      return Promise.resolve();
     }
   };
-
-  const linkedIn = () => {
-    try {
-      const deps = browserShareDeps(sharePostText(t, tree), current(), phone);
-      const started = session.current;
-      if (usesShareSheet(deps)) void run(deps, started);
-      else flight.current(() => run(deps, started));
-    } catch (error) {
-      logAndReportError("org_chart_share", error);
-    }
-  };
-
-  const download = async () => {
-    const drawing = current();
-    try {
-      const file = await drawing.png;
-      const saved = await saveBlob(file.name, file);
-      if (saved.kind === "saved") track("download", tree);
-    } catch (error) {
-      // A failed drawing already reported; the preview offers Try again.
-      if (!drawing.failed) logAndReportError("org_chart_share_save", error);
-    }
-  };
-
-  const canCopy =
-    typeof navigator !== "undefined" &&
-    typeof navigator.clipboard?.write === "function" &&
-    typeof globalThis.ClipboardItem === "function";
 
   // The write takes the image as a promise and starts in the click's tick.
   const copyImage = () => {
-    const { png } = current();
-    navigator.clipboard
-      .write([new ClipboardItem({ "image/png": png })])
-      .then(() => {
+    copyImageToClipboard(current().png)
+      .then((copied) => {
+        if (!copied) return;
         track("copy_image", tree);
         if (!live.current) return;
         dispatch({ type: "copied" });
@@ -165,30 +145,41 @@ export function useOrgChartShare(tree: OrgTree, phone: boolean) {
           COPIED_MS,
         );
       })
-      .catch(async (error: unknown) => {
-        const drawn = await png.then(
-          () => true,
-          () => false,
-        );
-        if (drawn && !isExpectedClipboardRefusal(error))
-          logAndReportError("org_chart_share_copy_image", error);
-      });
+      .catch((error: unknown) =>
+        logAndReportError("org_chart_share_copy_image", error),
+      );
   };
 
-  const followBlocked = () => {
-    if (state.line?.blocked) track(state.line.blocked, tree);
-  };
-
+  const line = state.line;
   return {
     open: state.open,
     setOpen,
     preview,
     retry: () => void retry(),
-    line: state.line,
-    followBlocked,
-    linkedIn,
-    download: () => void download(),
-    canCopy,
+    ready: file !== null,
+    text,
+    setText: (next: string) => dispatch({ type: "edited", text: next }),
+    step,
+    line,
+    share,
+    connect: linkedIn.connect,
+    post: () => {
+      if (file) void linkedIn.post(file, text, shareAltText(t, tree));
+    },
+    postHeld: linkedIn.held,
+    dismissUnconfirmed: linkedIn.dismissUnconfirmed,
+    viewPost: (url: string) =>
+      void openExternalUrl(url, { command: "linkedin_view_post" }),
+    disconnect: linkedIn.disconnect,
+    disconnecting: linkedIn.disconnecting,
+    followBlocked: () => {
+      if (line?.kind === "blocked" && line.channel) track(line.channel, tree);
+    },
+    download: () =>
+      void downloadShareImage(current()).then((saved) => {
+        if (saved) track("download", tree);
+      }),
+    canCopy: canCopyImage(),
     copied: state.copied,
     copyImage,
   };

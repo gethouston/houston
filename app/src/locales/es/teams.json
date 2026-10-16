@@ -591,7 +591,26 @@
       "previewAlt": "Tu organigrama como imagen",
       "drawing": "Dibujando tu organigrama...",
       "failed": "No se pudo dibujar la imagen.",
+      "postLabel": "Tu publicación",
+      "tooLong_one": "Esta publicación supera el límite de LinkedIn por {{count}} carácter. Los símbolos como # y @ cuentan como dos.",
+      "tooLong_other": "Esta publicación supera el límite de LinkedIn por {{count}} caracteres. Los símbolos como # y @ cuentan como dos.",
       "linkedIn": "Compartir en LinkedIn",
+      "connect": "Conectar LinkedIn",
+      "connectWaiting": "Termina en la ventana de LinkedIn y luego vuelve aquí.",
+      "connectRestart": "Empezar de nuevo",
+      "postButton": "Publicar en LinkedIn",
+      "posting": "Publicando...",
+      "postingAs": "Publicas como {{name}}",
+      "disconnect": "Desconectar",
+      "viewPost": "Ver publicación",
+      "posted": "Publicado en LinkedIn.",
+      "reconnect": "LinkedIn cerró tu sesión. Vuelve a conectar LinkedIn para publicar.",
+      "rateLimited": "Publicaste mucho en la última hora. Inténtalo más tarde.",
+      "rateLimitedIn_one": "Publicaste mucho en la última hora. Inténtalo de nuevo en {{count}} minuto.",
+      "rateLimitedIn_other": "Publicaste mucho en la última hora. Inténtalo de nuevo en {{count}} minutos.",
+      "postFailed": "LinkedIn no aceptó la publicación. Inténtalo de nuevo en un momento.",
+      "unconfirmed": "No pudimos confirmar la publicación. Revisa LinkedIn antes de publicar otra vez.",
+      "unconfirmedDismiss": "Ya revisé",
       "download": "Descargar imagen",
       "copyImage": "Copiar imagen",
       "copiedImage": "Copiada",
@@ -602,7 +621,21 @@
       "cardCounts": "{{people}}, {{agents}}",
       "site": "gethouston.ai",
       "post": "Esta es mi organización. Estos son todos los empleados de IA de {{company}}, trabajando en Houston.\n\ngethouston.ai",
-      "postPersonal": "Estos son todos mis empleados de IA, trabajando en Houston.\n\ngethouston.ai"
+      "postPersonal": "Estos son todos mis empleados de IA, trabajando en Houston.\n\ngethouston.ai",
+      "altText": "Organigrama de {{name}}: sus personas y los empleados de IA que trabajan con ellas.",
+      "completion": {
+        "connectedTitle": "LinkedIn está conectado",
+        "connectedBody": "Vuelve a tu publicación para compartirla. Si esto se abrió en una pestaña nueva, puedes cerrarla.",
+        "unredeemableTitle": "LinkedIn no se conectó",
+        "unredeemableBody": "Ese enlace venció o ya se usó. Vuelve a conectar LinkedIn desde la ventana para compartir."
+      },
+      "returnPage": {
+        "returnHeading": "Vuelve a Houston",
+        "returnBody": "Houston está terminando de conectar tu LinkedIn. Puedes cerrar esta pestaña.",
+        "staleHeading": "Este enlace de LinkedIn venció",
+        "staleBody": "Viene de un intento anterior de conectar LinkedIn. Vuelve a conectarlo desde Houston.",
+        "openHouston": "Abrir Houston"
+      }
     }
   },
   "phoneEmployee": {

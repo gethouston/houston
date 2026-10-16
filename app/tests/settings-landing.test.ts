@@ -1,13 +1,15 @@
 import { deepStrictEqual, strictEqual } from "node:assert";
 import { afterEach, describe, it } from "node:test";
 import {
+  ackBootLanding,
   applySettingsLanding,
   captureSettingsLanding,
+  peekBootLanding,
   type SettingsLanding,
   type SlackCompletion,
   settingsLanding,
   settingsLandingFromDeepLink,
-  withoutSlackTicket,
+  withoutLanding,
 } from "../src/lib/settings-landing.ts";
 import { useUIStore } from "../src/stores/ui.ts";
 
@@ -55,17 +57,14 @@ describe("public channels landing", () => {
         slack: { kind: "invalid" },
       });
   });
-  it("strips the ticket from the URL and leaves the rest of it alone", () => {
+  it("strips the landing from the URL and leaves the rest of it alone", () => {
     strictEqual(
-      withoutSlackTicket(
-        `https://app.test/home?settings=channels&slack=${ticket}#panel`,
+      withoutLanding(
+        `https://app.test/home?settings=channels&slack=${ticket}&x=1#panel`,
       ),
-      "/home?settings=channels#panel",
+      "/home?x=1#panel",
     );
-    strictEqual(
-      withoutSlackTicket("https://app.test/?settings=channels"),
-      "/?settings=channels",
-    );
+    strictEqual(withoutLanding("https://app.test/?settings=channels"), "/");
   });
 });
 
@@ -87,7 +86,7 @@ describe("capturing a callback", () => {
       section: "channels",
       slack: { kind: "ticket", ticket },
     });
-    deepStrictEqual(cleaned, ["/home?settings=channels#panel"]);
+    deepStrictEqual(cleaned, ["/home#panel"]);
   });
   it("strips anything shaped like a ticket, redeemable or not", () => {
     const { landing, cleaned } = capture(
@@ -98,11 +97,30 @@ describe("capturing a callback", () => {
       section: "channels",
       slack: { kind: "invalid" },
     });
-    deepStrictEqual(cleaned, ["/?settings=channels"]);
+    deepStrictEqual(cleaned, ["/"]);
   });
-  it("leaves a URL carrying no ticket exactly as it is", () => {
-    deepStrictEqual(capture("https://app.test/?settings=channels").cleaned, []);
+  it("consumes a bare landing too, and leaves any other URL as it is", () => {
+    deepStrictEqual(capture("https://app.test/?settings=channels").cleaned, [
+      "/",
+    ]);
+    deepStrictEqual(capture("https://app.test/?settings=plan").cleaned, []);
     deepStrictEqual(capture("https://app.test/agents").cleaned, []);
+  });
+  it("holds the boot capture across remounts until it is handled", () => {
+    const cleaned: string[] = [];
+    const clean = (url: string) => cleaned.push(url);
+    const href = `https://app.test/?settings=linkedin&linkedin=${ticket}`;
+    const landing = {
+      kind: "linkedin",
+      completion: { kind: "ticket", ticket },
+    };
+    deepStrictEqual(peekBootLanding(href, clean), landing);
+    // A shell remount before sign-in reads the same landing from memory,
+    // and the URL is never cleaned twice.
+    deepStrictEqual(peekBootLanding("https://app.test/", clean), landing);
+    ackBootLanding();
+    deepStrictEqual(peekBootLanding(href, clean), { kind: "absent" });
+    deepStrictEqual(cleaned, ["/"]);
   });
 });
 
@@ -119,6 +137,7 @@ describe("applying a channels landing", () => {
           calls.push("hand");
           handed.push(completion);
         },
+        linkedIn: () => calls.push("linkedIn"),
       },
     };
   };

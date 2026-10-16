@@ -1,7 +1,7 @@
 import {
-  CARD,
   type CardBox,
   type CardNode,
+  CHART_WIDTH,
 } from "./org-chart-share-card-geometry.ts";
 import type { OrgTree, OrgTreeAgent } from "./org-chart-tree.ts";
 import { NODE_ID } from "./org-chart-tree-paths.ts";
@@ -12,7 +12,7 @@ import { NODE_ID } from "./org-chart-tree-paths.ts";
  */
 
 export const COLUMNS = {
-  maxWidth: 236,
+  maxWidth: 260,
   gap: 14,
   margin: 56,
   /** Between the cards of a wrapped row, wide enough for a line to drop through. */
@@ -41,6 +41,7 @@ export function columnsOf(tree: OrgTree, words: CardWords): Column[] {
     id: NODE_ID.agent(agent.id),
     node: { kind: "agent", agent },
     label: agent.name,
+    sublabel: agent.role,
   });
   const more = (id: string, count: number): Entry => ({
     id,
@@ -93,9 +94,9 @@ export interface Slot {
 
 /** `count` cards of the widest width that fits, `gap` apart, centred. */
 function row(count: number, gap: number) {
-  const usable = CARD.width - COLUMNS.margin * 2 - gap * (count - 1);
+  const usable = CHART_WIDTH - COLUMNS.margin * 2 - gap * (count - 1);
   const w = Math.min(COLUMNS.maxWidth, usable / Math.max(count, 1));
-  const left = CARD.width / 2 - (w * count + gap * (count - 1)) / 2;
+  const left = CHART_WIDTH / 2 - (w * count + gap * (count - 1)) / 2;
   return { w, left, step: w + gap };
 }
 
@@ -104,8 +105,9 @@ function row(count: number, gap: number) {
  * stacked under them (a personal space's AI Employees, or a team whose
  * people have none yet) wrap onto two lines, the second set in the first's
  * gaps so its lines drop between two cards: seven across would leave each
- * name a few letters wide. Seven is the most `SHARE_CARD_CAPS` lets through;
- * eight would put a slot on a card, so anything wider stays one row.
+ * name a few letters wide. Seven is the most `SHARE_CARD_CAPS` lets through
+ * (a personal space's six AI Employees and its "+N"); eight would put a slot
+ * on a card, so anything wider stays one row.
  */
 export function columnSlots(columns: readonly Column[]): Slot[] {
   const n = columns.length;

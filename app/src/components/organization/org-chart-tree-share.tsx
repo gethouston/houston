@@ -16,7 +16,7 @@ export function OrgChartTreeShare({
   /** The same chart under the share image's caps. */
   shareTree: OrgTree;
 }) {
-  const share = useOrgChartShare(shareTree, props.phone);
+  const share = useOrgChartShare(shareTree);
   return (
     <>
       <OrgChartTreeView {...props} onShare={() => share.setOpen(true)} />

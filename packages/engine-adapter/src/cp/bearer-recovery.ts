@@ -1,4 +1,5 @@
 import { SIGNED_OUT_ERROR } from "../client/errors";
+import { jwtSub } from "../conversation-cache-identity";
 import { hasSessionRefresher } from "../session-refresh";
 import {
   inControlPlaneMode,
@@ -87,6 +88,37 @@ export function settleGatewayResponse(
     return Promise.resolve(res);
   }
   return recoverFromUnauthorized(res, bearer, send);
+}
+
+/**
+ * Settle a response whose request must never go out under another person
+ * (`@houston/sdk/auth-replay`): a 401 is replayed once only when the refreshed
+ * bearer names the same person as the one the gateway refused (a stale token
+ * after sleep heals); any other answer, or a refresh for someone else, stands.
+ */
+export async function settleWithoutReplay(
+  res: Response,
+  bearer: string,
+  send: (bearer: string) => Promise<Response>,
+): Promise<Response> {
+  if (res.status !== 401) {
+    noteBearerAccepted(bearer);
+    return res;
+  }
+  noteBearerRejected(bearer);
+  const person = jwtSub(bearer);
+  const fresh = person ? await refreshUsableBearer() : null;
+  if (
+    !fresh ||
+    fresh === bearer ||
+    wasBearerRejected(fresh) ||
+    jwtSub(fresh) !== person
+  )
+    return res;
+  const replay = await send(fresh);
+  if (replay.status === 401) noteBearerRejected(fresh);
+  else noteBearerAccepted(fresh);
+  return replay;
 }
 
 /**

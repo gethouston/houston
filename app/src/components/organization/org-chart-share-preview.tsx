@@ -14,7 +14,7 @@ const CROSSFADE: CSSProperties = {
 
 /**
  * The share image as it will be posted, the dialog's hero. The skeleton and
- * the image share one square frame, so the PNG arriving is a soft crossfade
+ * the image share one 4:5 frame, so the PNG arriving is a soft crossfade
  * (the image sharpening out of a 2px blur as the skeleton fades) instead of
  * a hard swap. A failed draw says so in one line with Try again.
  */
@@ -33,7 +33,7 @@ export function OrgChartSharePreview({
 
   if (preview.status === "failed")
     return (
-      <div className="flex aspect-square w-full flex-col items-center justify-center gap-3 rounded-xl bg-chip-subtle p-6 text-center">
+      <div className="flex aspect-[4/5] w-full flex-col items-center justify-center gap-3 rounded-xl bg-chip-subtle p-6 text-center">
         <p className="text-sm text-ink-muted">{t("orgChart.share.failed")}</p>
         <Button
           variant="outline"
@@ -46,7 +46,7 @@ export function OrgChartSharePreview({
       </div>
     );
   return (
-    <div className="relative aspect-square w-full overflow-hidden rounded-xl shadow-card ht-hairline">
+    <div className="relative aspect-[4/5] w-full overflow-hidden rounded-xl shadow-card ht-hairline">
       <Skeleton
         role={shown ? undefined : "img"}
         aria-label={shown ? undefined : t("orgChart.share.drawing")}

@@ -95,19 +95,23 @@ export interface ChannelsLoopbackCopy {
 }
 
 /** Bind a `127.0.0.1` listener for the gateway's return from a desktop Slack
- * connect, so the browser lands back in Houston with no "Open Houston?"
- * prompt. It answers only a `/channels/slack` redirect carrying
+ * (or, with `provider: "linkedin"`, LinkedIn) connect, so the browser lands
+ * back in Houston with no "Open Houston?" prompt. It answers only the
+ * provider's redirect (`/channels/slack`, `/linkedin`) carrying
  * `expectedState` and one ticket, emits
- * `houston://settings/channels?slack=<ticket>` on the deep-link channel,
+ * `houston://settings/channels?slack=<ticket>` (or
+ * `houston://settings/linkedin?linkedin=<ticket>`) on the deep-link channel,
  * focuses the app, and frees itself after twelve minutes. Its registry is
  * apart from sign-in's, so neither cancels the other. Desktop only. */
 export function osStartChannelsLoopback(
   expectedState: string,
   copy: ChannelsLoopbackCopy,
+  provider: "slack" | "linkedin" = "slack",
 ): Promise<ChannelsLoopbackStart> {
   return invokeNative<ChannelsLoopbackStart>("start_channels_loopback", {
     expected_state: expectedState,
     copy,
+    provider,
   });
 }
 

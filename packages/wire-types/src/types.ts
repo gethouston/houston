@@ -237,6 +237,12 @@ export interface Capabilities {
    * until it serves one, so the settings row stays hidden there.
    */
   heartbeat?: boolean;
+  /**
+   * The person can post an image to their own LinkedIn from here
+   * (`/v1/linkedin/*`). Present only where the hosted gateway holds a LinkedIn
+   * app key; absent everywhere else, where sharing falls back to copy and paste.
+   */
+  linkedinShare?: boolean;
 }
 
 // ---------- Org / roles (multiplayer) ----------

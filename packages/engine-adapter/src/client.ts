@@ -45,6 +45,7 @@ import { DelegationMixin } from "./client/delegation-mixin";
 import { FirstDayMixin } from "./client/first-day-mixin";
 import { HeartbeatMixin } from "./client/heartbeat-mixin";
 import { IntegrationsMixin } from "./client/integrations-mixin";
+import { LinkedInMixin } from "./client/linkedin-mixin";
 import { MeProfileMixin } from "./client/me-profile-mixin";
 import type { BaseCtor } from "./client/mixin";
 import { OrgsMixin } from "./client/orgs-mixin";
@@ -80,6 +81,7 @@ export const MIXINS = [
   PlanMixin,
   PushMixin,
   ChannelsMixin,
+  LinkedInMixin,
   HeartbeatMixin,
   SpacesMixin,
   OrgsMixin,

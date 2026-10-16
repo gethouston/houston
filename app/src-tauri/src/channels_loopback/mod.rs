@@ -1,5 +1,5 @@
 //! Loopback listener for the gateway's return from a desktop-started Slack
-//! connect.
+//! or LinkedIn connect (`routes.rs`).
 //!
 //! The `houston://settings/channels` deep link makes the browser ask "Open
 //! Houston?" before it follows. A plain `http://127.0.0.1` redirect does not,
@@ -17,53 +17,17 @@
 
 mod copy;
 mod registry;
+mod routes;
 
-use std::time::Duration;
-
-use tauri::{AppHandle, Manager, State};
+use tauri::{AppHandle, State};
 use tokio::net::TcpListener;
 use tokio::sync::oneshot;
 
-use crate::oauth_loopback::callback::LoopbackRoute;
 use crate::oauth_loopback::listener::{spawn_listener, BoundSockets, ListenerTask};
 use crate::oauth_loopback::state::ActiveListener;
 use copy::{slack_pages, SlackReturnCopy};
 pub use registry::ChannelsLoopbackState;
-
-/// The path the gateway redirects to. The sign-in path is never served here.
-pub const SLACK_PATH: &str = "/channels/slack";
-
-/// Past the gateway's ten-minute Slack flow, with room for the callback's token
-/// exchange: the listener binds before the connect request starts that flow.
-/// The listener lives in this process, so an app restart while the person is
-/// on Slack's page drops it. Accepted: the gateway's own failure page still
-/// links `houston://settings/channels`, where connecting again starts over.
-const SLACK_TIMEOUT: Duration = Duration::from_secs(12 * 60);
-
-static SLACK: LoopbackRoute = LoopbackRoute {
-    tag: "channels-loopback",
-    path: SLACK_PATH,
-    timeout: SLACK_TIMEOUT,
-    deep_link: channels_deep_link,
-    release: |app, id| app.state::<ChannelsLoopbackState>().take(id).map(drop),
-};
-
-/// The event payload for an accepted return: the very link the gateway's
-/// deep-link page opens, so the settings landing and its link gate handle both
-/// paths the same way. The ticket goes through verbatim; the webview parses it.
-/// A redirect without exactly one non-empty `slack` value is not one the
-/// gateway sends, so it gets the stale page rather than a bare link.
-pub fn channels_deep_link(query: &str) -> Option<String> {
-    let mut tickets = query
-        .split('&')
-        .filter_map(|pair| pair.strip_prefix("slack="));
-    match (tickets.next(), tickets.next()) {
-        (Some(ticket), None) if !ticket.is_empty() => {
-            Some(format!("houston://settings/channels?slack={ticket}"))
-        }
-        _ => None,
-    }
-}
+use routes::ReturnProvider;
 
 /// The nonce shape the gateway accepts (`^[A-Za-z0-9_-]{16,128}$`). Checked
 /// here too, so an empty `state` can never make `state=` an accepted redirect.
@@ -88,26 +52,29 @@ pub struct ChannelsLoopbackStart {
 async fn bind_ephemeral() -> Result<BoundSockets, String> {
     let v4 = TcpListener::bind(("127.0.0.1", 0))
         .await
-        .map_err(|e| format!("could not bind a Slack return listener: {e}"))?;
+        .map_err(|e| format!("could not bind a connect return listener: {e}"))?;
     let port = v4
         .local_addr()
-        .map_err(|e| format!("could not read the Slack return port: {e}"))?
+        .map_err(|e| format!("could not read the connect return port: {e}"))?
         .port();
     Ok(BoundSockets { v4, v6: None, port })
 }
 
 /// Bind a listener that waits up to twelve minutes for the gateway's redirect
-/// carrying `expected_state`, then emits the Channels link and focuses the app.
-/// `copy` is the two pages' text in the person's language.
+/// carrying `expected_state`, then emits the settings link and focuses the
+/// app. `provider` names the return (Slack's when absent); `copy` is the two
+/// pages' text in the person's language.
 #[tauri::command(rename_all = "snake_case")]
 pub async fn start_channels_loopback(
     app: AppHandle,
     state: State<'_, ChannelsLoopbackState>,
     expected_state: String,
     copy: SlackReturnCopy,
+    provider: Option<ReturnProvider>,
 ) -> Result<ChannelsLoopbackStart, String> {
+    let route = provider.unwrap_or_default().route();
     if !is_valid_state(&expected_state) {
-        return Err("The Slack return state must be a 16-128 character nonce.".into());
+        return Err("The return state must be a 16-128 character nonce.".into());
     }
     let sockets = bind_ephemeral().await?;
     let port = sockets.port;
@@ -121,10 +88,13 @@ pub async fn start_channels_loopback(
         cancel: cancel_tx,
         freed: freed_rx,
     })?;
-    tracing::info!("[channels-loopback] attempt {attempt_id} listening on 127.0.0.1:{port}");
+    tracing::info!(
+        "[{}] attempt {attempt_id} listening on 127.0.0.1:{port}",
+        route.tag
+    );
     spawn_listener(ListenerTask {
         app,
-        route: &SLACK,
+        route,
         pages: slack_pages(&copy),
         sockets,
         attempt_id,

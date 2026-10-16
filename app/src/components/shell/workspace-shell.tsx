@@ -2,6 +2,7 @@ import { cn, type Toast, ToastContainer, useIsMobile } from "@houston-ai/core";
 import { useState } from "react";
 import { useAssistantLanding } from "../../hooks/use-assistant-landing";
 import { useKeyboardShortcuts } from "../../hooks/use-keyboard-shortcuts";
+import { useLinkedInCompletion } from "../../hooks/use-linkedin-completion";
 import { useSettingsLanding } from "../../hooks/use-settings-landing";
 import { useSurfaceGates } from "../../hooks/use-surface-gates";
 import { phoneChromeHidden } from "../../lib/mobile-tabs";
@@ -51,6 +52,7 @@ export function WorkspaceShell({
 }: WorkspaceShellProps) {
   // Personal plan prompts and presence stay mounted across app views.
   useSettingsLanding();
+  useLinkedInCompletion();
   useAssistantLanding();
   const missionPanelOpen = useUIStore((s) => s.missionPanelOpen);
   const viewMode = useUIStore((s) => s.viewMode);

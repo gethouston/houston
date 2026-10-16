@@ -4,8 +4,9 @@ import { reportError } from "../lib/error-report";
 import { listenDeepLink } from "../lib/identity/deep-link-listen";
 import { osCurrentDeepLinks } from "../lib/os-bridge";
 import {
+  ackBootLanding,
   applySettingsLanding,
-  captureSettingsLanding,
+  peekBootLanding,
   type SettingsLanding,
   settingsLandingFromDeepLink,
 } from "../lib/settings-landing";
@@ -42,6 +43,8 @@ function applyLanding(
     open: (section) => land(section, capabilities),
     hand: (completion) =>
       useUIStore.getState().setPendingSlackCompletion(completion),
+    linkedIn: (completion) =>
+      useUIStore.getState().setPendingLinkedInCompletion(completion),
   });
 }
 
@@ -71,9 +74,10 @@ const handedLinks = createHandedLinks(
 );
 
 /**
- * Apply a public link once the app can act on it. The ticket is captured and
- * stripped from the URL on mount, before the wait for sign-in and workspace
- * loading — it lives in memory from then on, never in the address bar. A
+ * Apply a public link once the app can act on it. The web entry captured the
+ * landing and stripped it from the URL at boot, before analytics started
+ * (`captureBootLanding`); this reads it from memory on mount, then waits
+ * for sign-in and workspace loading. A
  * section also waits for the deployment's capabilities, so a Billing link where
  * the plan is not served lands on the Settings index, never a blank screen.
  * The OS deep link is re-read on every mount, which rescues one that arrived
@@ -105,10 +109,12 @@ export function useSettingsLanding() {
     // already on screen, passing its state through, so the stack's index
     // survives and no entry is pushed or dropped.
     void gate.offer({
-      landing: captureSettingsLanding(window.location.href, (url) =>
+      landing: peekBootLanding(window.location.href, (url) =>
         window.history.replaceState(window.history.state, "", url),
       ),
       link: null,
+      // Held until applied, so a remount before sign-in still has it.
+      applied: ackBootLanding,
     });
     pendingPath.current = settingsSectionFromPath(window.location.pathname);
     void osCurrentDeepLinks()

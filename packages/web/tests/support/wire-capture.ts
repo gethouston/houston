@@ -15,6 +15,10 @@ export interface Call {
   url: string;
   method: string;
   body: string | null;
+  /** A multipart body, which `body` (bytes as text) cannot hold. */
+  form: FormData | null;
+  /** The abort signal the request was issued with, if any. */
+  signal: AbortSignal | null;
   headers: Headers;
 }
 
@@ -62,7 +66,7 @@ export interface WireCapture {
   /** Answer the requests in order, one queued response each. */
   stubResponses(...responses: Response[]): void;
   /** Answer from the recorded call itself (route on its path or method). */
-  stubRouted(respond: (call: Call) => Response): void;
+  stubRouted(respond: (call: Call) => Response | Promise<Response>): void;
 }
 
 /** Create the harness. Call it at a spec's top level, before anything stubs. */
@@ -75,13 +79,17 @@ export function createWireCapture(): WireCapture {
       url: String(input),
       method: (init?.method ?? "GET").toUpperCase(),
       body: typeof init?.body === "string" ? init.body : null,
+      form: init?.body instanceof FormData ? init.body : null,
+      signal: init?.signal ?? null,
       headers: new Headers(init?.headers),
     };
     calls.push(call);
     return call;
   };
 
-  const stubRouted = (respond: (call: Call) => Response): void => {
+  const stubRouted = (
+    respond: (call: Call) => Response | Promise<Response>,
+  ): void => {
     globalThis.fetch = vi.fn(async (input: unknown, init?: RequestInit) =>
       respond(record(input, init)),
     ) as unknown as typeof fetch;

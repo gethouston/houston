@@ -36,7 +36,7 @@
 #   a11y     roles / labels / focus expectations the surface must honor
 #   since    inventory version this component first appeared in
 
-version: 135
+version: 136
 
 components:
   - id: agent-delegation-settings
@@ -1610,7 +1610,8 @@ components:
       its AI Employees ranked by the hours they worked, with the people who
       manage and use each one, in Admin.
     anatomy: [share-pill, tree-root, tree-person, tree-agent, tree-connector,
-      tree-overflow, share-dialog, share-preview, share-actions, share-line,
+      tree-overflow, share-dialog, share-preview, share-text, share-actions,
+      share-account, share-line,
       hero-band, space-name, summary-sentence,
       hero-figure, supporting-stats, area-chart, ledger-caption, relation-key,
       featured-line, column-captions, ledger-line, hours-bar, face-group,
@@ -1619,7 +1620,9 @@ components:
       hours-unavailable, messages-loading, messages-hidden,
       messages-unavailable, messages-not-counted, people-hidden,
       shared-with-everyone, lit, tree-capped, share-drawing, share-ready,
-      share-failed, share-copied, share-saved, share-blocked]
+      share-failed, share-copied, share-saved, share-blocked,
+      share-connect, share-connect-waiting, share-post, share-posting,
+      share-posted, share-reconnect, share-rate-limited, share-post-failed]
     variants: [ledger, dense, phone, personal, scoped, tree-comb,
       tree-outline]
     behavior: >-
@@ -1663,22 +1666,41 @@ components:
       says how many people or AI Employees are left out, once: "+4 people" on
       screen and across the image's first row, and a bare "+3" under a
       person in the image, where the card is too narrow for the words. A personal space
-      draws its person over every AI Employee. The Share pill opens a small dialog: its title, a large preview
-      of a square PNG of the chart (light paper, white cards, each AI
-      Employee's colour as a dot, the space's name and counts over it, no
-      roles), drawn while the chart is on screen so it is usually ready,
+      draws its person over every AI Employee. The Share pill opens a dialog:
+      its title, a large preview of a 4:5 portrait PNG of the chart (1200 x
+      1500, light paper, white cards, each AI Employee's colour as a helmet
+      with its role under its name, the space's name and counts over it; at
+      most four people across with four AI Employees each, or six of a
+      personal space's, then "+N", so no name is drawn under 30px or role
+      under 22px), drawn while the chart is on screen so it is usually ready,
       with a quiet skeleton while it draws and one line with Try again if it
-      fails; Share on LinkedIn; then Download image and Copy image (where
-      the clipboard takes images; it reads "Copied" for two seconds). On a
-      phone whose share sheet takes files, Share on LinkedIn hands the
-      sheet the image and the post. Everywhere else it opens LinkedIn's
-      composer with the post written (in the app's language, ending on
-      gethouston.ai) while the image goes on the clipboard, and one line
-      under the buttons says "Image copied. Paste it into your LinkedIn
-      post."; where the clipboard refuses, the image is saved and the line
-      says to add it. A blocked tab gets a link to LinkedIn on that line.
-      The dialog stays open, so the line is there when the person comes
-      back. A photo that cannot be drawn becomes
+      fails; the post's words in an editable field (in the app's language,
+      ending on gethouston.ai, no link); one primary button; then Download
+      image and Copy image (where the clipboard takes images; it reads
+      "Copied" for two seconds). Desktop sets the picture beside the words;
+      the phone stacks them. On a phone or iPad whose share sheet takes
+      files, the button is Share on LinkedIn and hands the sheet the image
+      and the words. Where the deployment can post to LinkedIn, the button
+      is Connect LinkedIn until the person's LinkedIn is connected (it opens
+      LinkedIn's page and waits, busy, saying to finish there with Start
+      over beside it; LinkedIn sends the browser back to Houston, which
+      connects it and says so in a toast, telling a tab that opened for it
+      that it can be closed), then Post to LinkedIn with
+      "Posting as <name>" and Disconnect under it; words too long for
+      LinkedIn say by how much under it; it reads Posting... while the post
+      goes up, even after the dialog is closed and opened again, then View
+      post, with "Posted to LinkedIn." on the line. A connection LinkedIn
+      dropped brings Connect back with a line saying to connect again; too
+      many posts (with the wait in minutes when known), or LinkedIn failing,
+      says so on the line. The iOS and Android apps never connect: they
+      keep the share sheet, or copy and paste. Everywhere else Share on
+      LinkedIn opens
+      LinkedIn's composer with the words while the image goes on the
+      clipboard, and the line says "Image copied. Paste it into your
+      LinkedIn post."; where the clipboard refuses, the image is saved and
+      the line says to add it. A blocked tab gets a link to LinkedIn on that
+      line. The dialog stays open, so the line is there when the person
+      comes back. A photo that cannot be drawn becomes
       initials.
     a11y: >-
       The space name is a level-2 heading; the ledger is a labelled region

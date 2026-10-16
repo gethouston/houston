@@ -591,7 +591,26 @@
       "previewAlt": "Your org chart as an image",
       "drawing": "Drawing your org chart...",
       "failed": "The image could not be drawn.",
+      "postLabel": "Your post",
+      "tooLong_one": "This post is {{count}} character over LinkedIn's limit. Symbols like # and @ count as two.",
+      "tooLong_other": "This post is {{count}} characters over LinkedIn's limit. Symbols like # and @ count as two.",
       "linkedIn": "Share on LinkedIn",
+      "connect": "Connect LinkedIn",
+      "connectWaiting": "Finish in the LinkedIn window, then come back here.",
+      "connectRestart": "Start over",
+      "postButton": "Post to LinkedIn",
+      "posting": "Posting...",
+      "postingAs": "Posting as {{name}}",
+      "disconnect": "Disconnect",
+      "viewPost": "View post",
+      "posted": "Posted to LinkedIn.",
+      "reconnect": "LinkedIn signed you out. Connect LinkedIn again to post.",
+      "rateLimited": "You have posted a lot in the last hour. Try again later.",
+      "rateLimitedIn_one": "You have posted a lot in the last hour. Try again in {{count}} minute.",
+      "rateLimitedIn_other": "You have posted a lot in the last hour. Try again in {{count}} minutes.",
+      "postFailed": "LinkedIn did not take the post. Try again in a moment.",
+      "unconfirmed": "We couldn't confirm the post. Check LinkedIn before posting again.",
+      "unconfirmedDismiss": "I checked",
       "download": "Download image",
       "copyImage": "Copy image",
       "copiedImage": "Copied",
@@ -602,7 +621,21 @@
       "cardCounts": "{{people}}, {{agents}}",
       "site": "gethouston.ai",
       "post": "This is my organization. These are all the AI Employees at {{company}}, working in Houston.\n\ngethouston.ai",
-      "postPersonal": "These are all my AI Employees, working in Houston.\n\ngethouston.ai"
+      "postPersonal": "These are all my AI Employees, working in Houston.\n\ngethouston.ai",
+      "altText": "Org chart of {{name}}: its people and the AI Employees who work with them.",
+      "completion": {
+        "connectedTitle": "LinkedIn is connected",
+        "connectedBody": "Go back to your post to share it. If this opened in a new tab, you can close it.",
+        "unredeemableTitle": "LinkedIn did not connect",
+        "unredeemableBody": "That link has expired or was already used. Connect LinkedIn again from the share dialog."
+      },
+      "returnPage": {
+        "returnHeading": "Return to Houston",
+        "returnBody": "Houston is finishing your LinkedIn connection. You can close this tab.",
+        "staleHeading": "This LinkedIn link has expired",
+        "staleBody": "It came from an earlier attempt to connect LinkedIn. Connect again from Houston.",
+        "openHouston": "Open Houston"
+      }
     }
   },
   "phoneEmployee": {

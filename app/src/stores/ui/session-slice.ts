@@ -42,6 +42,10 @@ export interface SessionFields {
    * redeems it once and clears it. Ephemeral, never persisted and never logged:
    * a reload must not retry a ticket, and the ticket is a bearer secret. */
   pendingSlackCompletion: SlackCompletion | null;
+  /** The one-time LinkedIn completion a connect's return landed with
+   * (`?settings=linkedin&linkedin=…` or its deep link), redeemed once by
+   * `useLinkedInCompletion`. Ephemeral and never logged, like Slack's. */
+  pendingLinkedInCompletion: SlackCompletion | null;
 }
 
 export interface SessionActions {
@@ -55,6 +59,7 @@ export interface SessionActions {
   setCustomIntegrationsAgentId: (agentId: string | null) => void;
   setActiveLessonId: (lessonId: string | null) => void;
   setPendingSlackCompletion: (completion: SlackCompletion | null) => void;
+  setPendingLinkedInCompletion: (completion: SlackCompletion | null) => void;
 }
 
 export const sessionInitialState = {
@@ -66,6 +71,7 @@ export const sessionInitialState = {
   customIntegrationsAgentId: null,
   activeLessonId: null,
   pendingSlackCompletion: null,
+  pendingLinkedInCompletion: null,
 } satisfies SessionFields;
 
 export const createSessionActions: UISliceCreator<SessionActions> = (set) => ({
@@ -81,4 +87,6 @@ export const createSessionActions: UISliceCreator<SessionActions> = (set) => ({
   setActiveLessonId: (activeLessonId) => set({ activeLessonId }),
   setPendingSlackCompletion: (pendingSlackCompletion) =>
     set({ pendingSlackCompletion }),
+  setPendingLinkedInCompletion: (pendingLinkedInCompletion) =>
+    set({ pendingLinkedInCompletion }),
 });

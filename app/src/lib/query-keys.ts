@@ -106,6 +106,8 @@ export const queryKeys = {
    * previous one's. Connect, complete and disconnect self-invalidate it.
    */
   channels: (spaceId?: string) => ["channels", spaceId] as const,
+  /** The person's own LinkedIn connection: theirs, not a space's. */
+  linkedInConnection: () => ["linkedin-connection"] as const,
 
   /**
    * Per-workspace sidebar arrangement (sort mode + named groups + drag order).

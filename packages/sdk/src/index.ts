@@ -51,6 +51,7 @@ export { CommandRegistry, isCommandEnvelope } from "./commands";
 export * from "./contracts-account";
 export * from "./contracts-agent";
 export * from "./contracts-conversation";
+export * from "./contracts-linkedin";
 export * from "./contracts-preferences";
 export {
   AGENT_FAN_OUT_LIMIT,

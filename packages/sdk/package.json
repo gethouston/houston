@@ -63,6 +63,14 @@
       "types": "./src/modules/channels/watch.ts",
       "import": "./src/modules/channels/watch.ts"
     },
+    "./linkedin/policy": {
+      "types": "./src/modules/linkedin/policy.ts",
+      "import": "./src/modules/linkedin/policy.ts"
+    },
+    "./linkedin/connect-flow": {
+      "types": "./src/modules/linkedin/connect-flow.ts",
+      "import": "./src/modules/linkedin/connect-flow.ts"
+    },
     "./routines/routine-gone": {
       "types": "./src/modules/routines/routine-gone.ts",
       "import": "./src/modules/routines/routine-gone.ts"
@@ -74,6 +82,10 @@
     "./files/upload-interrupted": {
       "types": "./src/modules/files/upload-interrupted.ts",
       "import": "./src/modules/files/upload-interrupted.ts"
+    },
+    "./auth-replay": {
+      "types": "./src/auth-replay.ts",
+      "import": "./src/auth-replay.ts"
     },
     "./transport-failure": {
       "types": "./src/transport-failure.ts",

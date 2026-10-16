@@ -7,42 +7,103 @@ import type { Box } from "./org-chart-tree-paths.ts";
  * painter. Pure and DOM-free.
  */
 
-export const CARD = { width: 1200, height: 1200, pad: 88 } as const;
-
-/** Baselines of the header lines over the chart, and of the footer. */
-export const CARD_TEXT = {
-  titleY: 160,
-  countsY: 210,
-  footerY: 1128,
-} as const;
+/**
+ * A frame the chart is drawn in: its size, its header (the name, then the
+ * counts) and footer (the mark and the site), and the band the chart is
+ * zoomed into between them. The chart itself is laid out once, in a
+ * 1200-unit-wide space, and zoomed to fill the frame's room.
+ */
+export interface CardFrame {
+  width: number;
+  height: number;
+  /** The margin the header and the footer sit in. */
+  pad: number;
+  /** Baselines of the name, the counts and the footer. */
+  titleY: number;
+  countsY: number;
+  footerY: number;
+  /** The name shrinks from `title` to `titleMin` px before it is cut. */
+  type: {
+    title: number;
+    titleMin: number;
+    tracking: number;
+    counts: number;
+    site: number;
+    /** The Houston mark's height. */
+    mark: number;
+  };
+  /** The band the chart is zoomed into, clear of the header and footer. */
+  room: { top: number; bottom: number };
+  /** How far a small team grows to fill the room. */
+  maxZoom: number;
+}
 
 /**
- * The node shapes. `root` is a wide card with a tile and the name; `column`
- * (the first row: people, a personal space's AI Employees, "+N") stacks a
- * 56px mark (a face, or an AI Employee's helmet avatar) over the name;
- * `leaf` (an AI Employee under its person) stacks a smaller helmet avatar
- * over the name. Every stacked card centres what it holds, and a name takes
- * at most {@link NAME_LINES} lines, so the worst case still fits inside the
- * card. The type sizes stay legible when LinkedIn shows the image around
- * 550px wide (0.46x): a 24px name lands near 11px.
+ * The share image: 4:5 portrait, 1200 x 1500, the tallest picture LinkedIn's
+ * feed shows whole. A chart three levels deep, each person's AI Employees
+ * stacked under them, needs height more than width.
+ */
+export const PORTRAIT_FRAME: CardFrame = {
+  width: 1200,
+  height: 1500,
+  pad: 88,
+  titleY: 170,
+  countsY: 222,
+  footerY: 1428,
+  type: {
+    title: 84,
+    titleMin: 52,
+    tracking: -2.5,
+    counts: 30,
+    site: 22,
+    mark: 28,
+  },
+  room: { top: 292, bottom: 1352 },
+  maxZoom: 1.8,
+};
+
+/**
+ * The smallest a name and a role are ever drawn on the 1200-wide image, so
+ * both still read when LinkedIn shows it about 550px wide. A chart that would
+ * need smaller type shows fewer cards and a "+N" instead (`SHARE_CARD_CAPS`).
+ */
+export const SHARE_MIN_TYPE = { name: 30, role: 22 } as const;
+
+/** The width the chart is laid out in, before a frame zooms it. */
+export const CHART_WIDTH = 1200;
+
+/**
+ * The node shapes, at the minimum type (`SHARE_MIN_TYPE`), so the layout's
+ * zoom never goes below 1. `root` is a wide card with a tile and the name;
+ * `column` (the first row: people, a personal space's AI Employees, "+N")
+ * stacks a 64px mark (a face, or an AI Employee's helmet avatar) over the
+ * name; `leaf` (an AI Employee under its person) stacks a smaller helmet over
+ * the name. An AI Employee with a role says it under its name, on one line,
+ * and its name keeps one line; without one, a name takes up to
+ * {@link NAME_LINES}. Every stacked card centres what it holds, so the worst
+ * case still fits inside the card.
  */
 export const NODE = {
-  root: { h: 80, w: 420, tile: 44, name: 28 },
+  root: { h: 96, w: 460, tile: 52, name: 32 },
   column: {
-    h: 140,
-    mark: 56,
+    h: 160,
+    mark: 64,
     gap: 12,
-    name: 24,
-    nameLine: 28,
+    name: SHARE_MIN_TYPE.name,
+    nameLine: 36,
+    role: SHARE_MIN_TYPE.role,
+    roleLine: 28,
   },
   leaf: {
-    h: 96,
-    mark: 30,
+    h: 124,
+    mark: 36,
     gap: 8,
-    name: 21,
-    nameLine: 25,
+    name: SHARE_MIN_TYPE.name,
+    nameLine: 36,
+    role: SHARE_MIN_TYPE.role,
+    roleLine: 28,
   },
-  moreLeaf: { h: 48, name: 21 },
+  moreLeaf: { h: 56, name: SHARE_MIN_TYPE.name },
 } as const;
 
 /** The least room left between a stacked card's content and its edges. */
@@ -50,13 +111,18 @@ export const CARD_PADDING = 4;
 
 export type StackedShape = "column" | "leaf";
 
-/** A name may take two lines. */
+/** A name with no role under it may take two lines. */
 export const NAME_LINES = 2;
 
 /** How tall a stacked card's content is, mark included. */
-export function stackedHeight(shape: StackedShape, nameLines: number): number {
+export function stackedHeight(
+  shape: StackedShape,
+  nameLines: number,
+  roleLines = 0,
+): number {
   const s = NODE[shape];
-  return s.mark + (nameLines > 0 ? s.gap + nameLines * s.nameLine : 0);
+  const text = nameLines * s.nameLine + roleLines * s.roleLine;
+  return s.mark + (text > 0 ? s.gap + text : 0);
 }
 
 export type CardNode =
@@ -73,6 +139,8 @@ export interface CardBox extends Box {
   shape: CardShape;
   /** The name, wrapped and cut to the card's width when painted. */
   label?: string;
+  /** An AI Employee's role, one line under its name. */
+  sublabel?: string;
 }
 
 /** Card point = chart point x scale + (x, y). */

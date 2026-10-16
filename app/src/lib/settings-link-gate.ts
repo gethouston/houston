@@ -1,4 +1,4 @@
-import type { SettingsLanding } from "./settings-landing.ts";
+import { carriesTicket, type SettingsLanding } from "./settings-landing.ts";
 
 /**
  * The OS keeps answering the cold-start read with the link that launched the
@@ -85,7 +85,12 @@ async function sha256Hex(value: string): Promise<string> {
  * `houston://settings/plan` does. The web callback's ticket was stripped from the address bar as it
  * was read, so it can never come back and carries none.
  */
-export type LandingOffer = { landing: SettingsLanding; link: string | null };
+export type LandingOffer = {
+  landing: SettingsLanding;
+  link: string | null;
+  /** Told once the landing was applied (the boot landing's acknowledgement). */
+  applied?: () => void;
+};
 
 export interface LandingGatePorts {
   isReady: () => boolean;
@@ -108,14 +113,16 @@ export interface LandingGate {
  */
 export function createLandingGate(ports: LandingGatePorts): LandingGate {
   let held: LandingOffer | null = null;
-  const deliver = async ({ landing, link }: LandingOffer) => {
+  const deliver = async ({ landing, link, applied }: LandingOffer) => {
     try {
       // Only a link carrying a completion is spent by applying it. A bare
       // `houston://settings/channels` (the gateway's failure page) must open
       // Channels every time it is clicked.
-      const spends =
-        link !== null && landing.kind === "settings" && landing.slack !== null;
-      if (!spends || (await ports.handed.claim(link))) ports.apply(landing);
+      const spends = link !== null && carriesTicket(landing);
+      if (!spends || (await ports.handed.claim(link))) {
+        ports.apply(landing);
+        applied?.();
+      }
     } catch (error) {
       ports.report(error);
     }
