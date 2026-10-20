@@ -103,6 +103,12 @@ test("every logo exists, once", () => {
   }
 });
 
+test("every booking CTA points at the calendar, not an email or a phone", () => {
+  assert.match(enterprise.contact.booking, /^https:\/\/calendly\.com\//);
+  assert.equal(enterprise.contact.email, undefined);
+  assert.equal(enterprise.contact.phones, undefined);
+});
+
 test("marks and faces resolve through the landing's sources", () => {
   for (const id of enterprise.contact.people) {
     assert.ok(landing.people[id]?.img, id);

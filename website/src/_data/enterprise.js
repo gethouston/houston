@@ -11,11 +11,8 @@ export default {
   path: "enterprise/",
 
   contact: {
-    email: "felipe@gethouston.ai",
-    phones: [
-      { label: "+57 310 303 7593", tel: "+573103037593" },
-      { label: "+1 510 407 4932", tel: "+15104074932" },
-    ],
+    // Every "Book a discovery call" on the page opens this, in a new tab.
+    booking: "https://calendly.com/gethouston/30min",
     people: ["felipe", "julian"],
   },
 

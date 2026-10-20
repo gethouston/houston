@@ -1,10 +1,9 @@
 {%- set e = t.enterprise -%}
-{%- set mailto = "mailto:" + enterprise.contact.email + "?subject=" + (e.contact.mailSubject | urlencode) -%}
 {# The closing scene. No box: a full-width section in the page's tone flow
    (enterprise-flow.css), so the page turns dark as you reach it and runs
    straight into the black footer as one ending. The people you will talk
    to, one big line, one line under it, ONE action (the same "Book a discovery call"
-   the process slider ends on), then the direct lines, quietly. #}
+   the process slider ends on). #}
 <section id="contact" class="section ent-section ent-contact" data-tone="dark">
   <div class="ent-contact-faces reveal" role="group" aria-label="{{ e.contact.peopleLabel }}">
 {%- for id in enterprise.contact.people %}{% set p = landing.people[id] %}
@@ -13,11 +12,5 @@
   </div>
   <h2 class="ent-contact-title reveal">{{ e.contact.title }}</h2>
   <p class="ent-contact-lead reveal reveal-d1">{{ e.contact.lead }}</p>
-  <a class="ent-contact-cta reveal reveal-d1" href="{{ mailto }}">{{ e.contact.cta }}<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="m9 18 6-6-6-6"/></svg></a>
-  <p class="ent-contact-lines reveal reveal-d2" aria-label="{{ e.contact.linesLabel }}">
-    <a href="{{ mailto }}">{{ enterprise.contact.email }}</a>
-{%- for phone in enterprise.contact.phones %}
-    <span aria-hidden="true">·</span><a href="tel:{{ phone.tel }}">{{ phone.label }}</a>
-{%- endfor %}
-  </p>
+  <a class="ent-contact-cta reveal reveal-d1" href="{{ enterprise.contact.booking }}" target="_blank" rel="noopener">{{ e.contact.cta }}<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="m9 18 6-6-6-6"/></svg></a>
 </section>

@@ -1,7 +1,6 @@
 {%- set e = t.enterprise -%}
 {%- set s = e.solution -%}
 {%- set count = s.phases.length + 1 -%}
-{%- set mailto = "mailto:" + enterprise.contact.email + "?subject=" + (e.contact.mailSubject | urlencode) -%}
 {%- macro chevronRight() %}<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="m9 18 6-6-6-6"/></svg>{% endmacro -%}
 {#- One slide: a big title, then a smaller line under it with air between,
     the two levels of the proof band. The first slide is the section title,
@@ -11,7 +10,7 @@
       <div class="ent-slide{% if index == 0 %} is-on{% endif %}" role="group" aria-roledescription="slide" aria-label="{{ index + 1 }} / {{ count }}" data-slide="{{ index }}">
         <{{ tag }} class="ent-slide-head">{{ head }}</{{ tag }}>
         <p class="ent-slide-rest">{{ rest }}</p>
-        <a class="ent-slide-cta" href="{{ cta.href }}">{{ cta.label }}{{ chevronRight() }}</a>
+        <a class="ent-slide-cta" href="{{ cta.href }}" target="_blank" rel="noopener">{{ cta.label }}{{ chevronRight() }}</a>
       </div>
 {%- endmacro -%}
 {# How we solve it: the whole story as ONE slide at a time, centered in the
@@ -28,9 +27,9 @@
     <button class="ent-arrow ent-arrow-prev" type="button" data-prev aria-label="{{ s.prev }}" disabled><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="m15 18-6-6 6-6"/></svg></button>
 
     <div class="ent-slides">
-{{ slide(0, count, s.title, s.lead, "h2", { href: mailto, label: s.bookCall }) }}
+{{ slide(0, count, s.title, s.lead, "h2", { href: enterprise.contact.booking, label: s.bookCall }) }}
 {%- for phase in s.phases %}
-{{ slide(loop.index, count, phase.head, phase.rest, "p", { href: mailto, label: s.bookCall }) }}
+{{ slide(loop.index, count, phase.head, phase.rest, "p", { href: enterprise.contact.booking, label: s.bookCall }) }}
 {%- endfor %}
     </div>
 

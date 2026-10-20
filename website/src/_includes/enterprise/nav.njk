@@ -28,7 +28,7 @@
         {%- endfor %}
       </div>
     </div>
-    <a class="lnav-cta" href="#contact">{{ e.nav.cta }}</a>
+    <a class="lnav-cta" href="{{ enterprise.contact.booking }}" target="_blank" rel="noopener">{{ e.nav.cta }}</a>
     <button class="lnav-burger" id="lnav-burger" aria-label="{{ t.nav.menu }}" aria-controls="lnav-drop" aria-expanded="false">
       <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" id="lnav-burger-icon" aria-hidden="true"><path d="M4 6h16M4 12h16M4 18h16"/></svg>
     </button>
@@ -41,5 +41,5 @@
   {%- for code in locales.order %}
   <a class="lnav-drop-lang{% if code == locale.code %} is-active{% endif %}" href="{{ locales[code].dir }}{{ enterprise.path }}" data-lang-choice="{{ code }}"{% if code == locale.code %} aria-current="true"{% endif %}>{{ locales[code].label }}</a>
   {%- endfor %}
-  <a class="lnav-drop-cta" href="#contact">{{ e.nav.cta }}</a>
+  <a class="lnav-drop-cta" href="{{ enterprise.contact.booking }}" target="_blank" rel="noopener">{{ e.nav.cta }}</a>
 </div>

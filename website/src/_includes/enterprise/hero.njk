@@ -19,7 +19,7 @@
       <h1 class="ent-h1">{% for line in e.hero.h1Lines %}<span>{{ line }}</span>{% if not loop.last %} {% endif %}{% endfor %}</h1>
       <p class="ent-sub">{{ e.hero.sub }}</p>
       <div class="hero-cta">
-        <a class="btn btn-white" href="#contact">{{ e.hero.ctaDemo }}{{ arrow() }}</a>
+        <a class="btn btn-white" href="{{ enterprise.contact.booking }}" target="_blank" rel="noopener">{{ e.hero.ctaDemo }}{{ arrow() }}</a>
         <a class="btn btn-ghost" href="#solution">{{ e.hero.ctaHow }}</a>
       </div>
     </div>
