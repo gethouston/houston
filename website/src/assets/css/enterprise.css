@@ -213,7 +213,7 @@
   }
 }
 
-/* ── Contact: the closing scene ─────────────────────────────────────────── */
+/* ── Contact: the closing scene ───────────────────────────────────────── */
 /* Full width, no box, generous air (the proof band's measure), and in the
    page's tone flow, so on the way down it turns dark and meets the black
    footer as one ending. Both dresses below: light by default, .is-dark when
@@ -285,33 +285,6 @@
 .ent-contact-cta:active {
   transform: scale(0.96);
 }
-/* The direct lines: one quiet row in the body voice. */
-.ent-contact-lines {
-  display: flex;
-  flex-wrap: wrap;
-  justify-content: center;
-  align-items: center;
-  gap: 4px 14px;
-  margin-top: 28px;
-  font-size: 14.5px;
-  color: var(--ink-subtle);
-}
-.ent-contact-lines a {
-  padding: 6px 0;
-  transition: color var(--dur-fast) var(--ease-standard);
-}
-.ent-contact-lines a:hover {
-  color: var(--ink-strong);
-}
-/* Phones: the row wraps, so the dots would dangle; the gap separates. */
-@media (max-width: 640px) {
-  .ent-contact-lines {
-    gap: 2px 20px;
-  }
-  .ent-contact-lines span {
-    display: none;
-  }
-}
 .is-dark .ent-contact-faces .face {
   box-shadow: 0 0 0 3px var(--band-black);
 }
@@ -327,12 +300,6 @@
 }
 .is-dark .ent-contact-cta:hover {
   background: #ececec;
-}
-.is-dark .ent-contact-lines {
-  color: var(--on-ink-faint);
-}
-.is-dark .ent-contact-lines a:hover {
-  color: #fff;
 }
 @media (prefers-reduced-motion: reduce) {
   .ent-contact-cta {

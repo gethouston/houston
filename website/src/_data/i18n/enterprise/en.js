@@ -124,8 +124,6 @@ export default {
     title: "Let's build this together.",
     lead: "Book a discovery call with our team. We look at your operation with you and tell you where AI pays off first.",
     cta: "Book a discovery call",
-    mailSubject: "Houston discovery call",
     peopleLabel: "The team you will talk to",
-    linesLabel: "Write or call us",
   },
 };

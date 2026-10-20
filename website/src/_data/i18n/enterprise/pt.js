@@ -122,8 +122,6 @@ export default {
     title: "Vamos construir isso juntos.",
     lead: "Agende uma conversa de descoberta com nosso time. Olhamos sua operação com você e dizemos onde a IA rende primeiro.",
     cta: "Agende uma conversa de descoberta",
-    mailSubject: "Conversa de descoberta com a Houston",
     peopleLabel: "O time com quem você vai falar",
-    linesLabel: "Escreva ou ligue para nós",
   },
 };

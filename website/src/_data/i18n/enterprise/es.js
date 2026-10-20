@@ -122,8 +122,6 @@ export default {
     title: "Construyamos esto juntos.",
     lead: "Agenda una llamada de descubrimiento con nuestro equipo. Revisamos tu operación contigo y te decimos dónde la IA rinde primero.",
     cta: "Agenda una llamada de descubrimiento",
-    mailSubject: "Llamada de descubrimiento con Houston",
     peopleLabel: "El equipo con el que vas a hablar",
-    linesLabel: "Escríbenos o llámanos",
   },
 };
