@@ -42,6 +42,8 @@
 #   APPLE_API_ISSUER                   — App Store Connect API issuer ID
 #   APPLE_API_KEY                      — App Store Connect API key ID
 #   APPLE_API_KEY_CONTENT              — Base64-encoded .p8 key file
+#     (the APPLE_API_* key is shared with mobile-release.yml's iOS upload and
+#     must keep the Admin role; see packages/mobile/store/release.md)
 #   POSTHOG_KEY                        — PostHog project API key (client-side, public-safe)
 #   POSTHOG_HOST                       — PostHog ingest host (e.g. https://us.i.posthog.com)
 #   FIREBASE_API_KEY                   — Firebase web API key (client-side, public by design)

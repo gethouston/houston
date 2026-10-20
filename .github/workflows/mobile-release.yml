@@ -20,7 +20,10 @@ env:
 jobs:
   ios:
     if: ${{ github.repository == 'gethouston/houston' && (github.event_name == 'workflow_dispatch' && github.ref == 'refs/heads/main' || github.event_name == 'release' && startsWith(github.event.release.tag_name, 'cloud-v')) }}
-    # Store credentials live only in this environment (store/release.md).
+    # The App Store Connect key is the repository-level APPLE_API_* key the
+    # macOS release notarizes with, and it must keep the Admin role that
+    # automatic signing needs. Every other store credential lives only in
+    # this environment (store/release.md).
     environment: mobile-release
     runs-on: macos-26
     timeout-minutes: 90
@@ -40,13 +43,13 @@ jobs:
           HOUSTON_MOBILE_UPDATE_PUBKEY: ${{ secrets.HOUSTON_MOBILE_UPDATE_PUBKEY != '' }}
           HOUSTON_MOBILE_STORE_URL_IOS: ${{ vars.HOUSTON_MOBILE_STORE_URL_IOS != '' }}
           HOUSTON_MOBILE_STORE_URL_ANDROID: ${{ vars.HOUSTON_MOBILE_STORE_URL_ANDROID != '' }}
-          ASC_KEY_P8_B64: ${{ secrets.ASC_KEY_P8_B64 != '' }}
-          ASC_KEY_ID: ${{ secrets.ASC_KEY_ID != '' }}
-          ASC_ISSUER_ID: ${{ secrets.ASC_ISSUER_ID != '' }}
+          APPLE_API_KEY_CONTENT: ${{ secrets.APPLE_API_KEY_CONTENT != '' }}
+          APPLE_API_KEY: ${{ secrets.APPLE_API_KEY != '' }}
+          APPLE_API_ISSUER: ${{ secrets.APPLE_API_ISSUER != '' }}
           APPLE_TEAM_ID: ${{ vars.APPLE_TEAM_ID != '' }}
         run: |
           missing=()
-          for key in HOUSTON_MOBILE_STORE_URL_IOS VITE_CONTROL_PLANE_URL FIREBASE_API_KEY FIREBASE_AUTH_DOMAIN FIREBASE_PROJECT_ID FIREBASE_APPLE_SERVICE_ID POSTHOG_KEY POSTHOG_HOST SENTRY_DSN HOUSTON_MOBILE_UPDATE_PUBKEY ASC_KEY_P8_B64 ASC_KEY_ID ASC_ISSUER_ID APPLE_TEAM_ID; do
+          for key in HOUSTON_MOBILE_STORE_URL_IOS VITE_CONTROL_PLANE_URL FIREBASE_API_KEY FIREBASE_AUTH_DOMAIN FIREBASE_PROJECT_ID FIREBASE_APPLE_SERVICE_ID POSTHOG_KEY POSTHOG_HOST SENTRY_DSN HOUSTON_MOBILE_UPDATE_PUBKEY APPLE_API_KEY_CONTENT APPLE_API_KEY APPLE_API_ISSUER APPLE_TEAM_ID; do
             if [[ "${!key}" != true ]]; then
               if [[ "$key" == VITE_CONTROL_PLANE_URL ]]; then missing+=(HOSTED_ENGINE_URL); else missing+=("$key"); fi
             fi
@@ -111,19 +114,19 @@ jobs:
         if: steps.gate.outputs.ready == 'true'
         shell: bash
         env:
-          ASC_KEY_P8_B64: ${{ secrets.ASC_KEY_P8_B64 }}
-          ASC_KEY_ID: ${{ secrets.ASC_KEY_ID }}
-          ASC_ISSUER_ID: ${{ secrets.ASC_ISSUER_ID }}
+          APPLE_API_KEY_CONTENT: ${{ secrets.APPLE_API_KEY_CONTENT }}
+          APPLE_API_KEY: ${{ secrets.APPLE_API_KEY }}
+          APPLE_API_ISSUER: ${{ secrets.APPLE_API_ISSUER }}
           APPLE_TEAM_ID: ${{ vars.APPLE_TEAM_ID }}
         run: |
           set -euo pipefail
-          echo "$ASC_KEY_P8_B64" | base64 -D > "$RUNNER_TEMP/AuthKey_${ASC_KEY_ID}.p8"
-          chmod 600 "$RUNNER_TEMP/AuthKey_${ASC_KEY_ID}.p8"
+          echo "$APPLE_API_KEY_CONTENT" | base64 -D > "$RUNNER_TEMP/AuthKey_${APPLE_API_KEY}.p8"
+          chmod 600 "$RUNNER_TEMP/AuthKey_${APPLE_API_KEY}.p8"
           cat > "$RUNNER_TEMP/ExportOptions.plist" <<PLIST
           <?xml version="1.0" encoding="UTF-8"?>
           <plist version="1.0"><dict><key>method</key><string>app-store-connect</string><key>destination</key><string>upload</string><key>signingStyle</key><string>automatic</string><key>teamID</key><string>${APPLE_TEAM_ID}</string></dict></plist>
           PLIST
-          auth=(-authenticationKeyPath "$RUNNER_TEMP/AuthKey_${ASC_KEY_ID}.p8" -authenticationKeyID "$ASC_KEY_ID" -authenticationKeyIssuerID "$ASC_ISSUER_ID" -allowProvisioningUpdates)
+          auth=(-authenticationKeyPath "$RUNNER_TEMP/AuthKey_${APPLE_API_KEY}.p8" -authenticationKeyID "$APPLE_API_KEY" -authenticationKeyIssuerID "$APPLE_API_ISSUER" -allowProvisioningUpdates)
           xcodebuild -project packages/mobile/ios/App/App.xcodeproj -scheme App -configuration Release -destination 'generic/platform=iOS' -archivePath "$RUNNER_TEMP/Houston.xcarchive" DEVELOPMENT_TEAM="$APPLE_TEAM_ID" CURRENT_PROJECT_VERSION="$NATIVE_BUILD" MARKETING_VERSION="$MARKETING_VERSION" "${auth[@]}" archive
           xcodebuild -exportArchive -archivePath "$RUNNER_TEMP/Houston.xcarchive" -exportPath "$RUNNER_TEMP/export" -exportOptionsPlist "$RUNNER_TEMP/ExportOptions.plist" "${auth[@]}"
 

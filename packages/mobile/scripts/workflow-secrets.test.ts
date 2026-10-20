@@ -20,7 +20,7 @@ test("OTA publication checks the current channel sequence before overwriting", (
   expect(yaml).toContain('"$HOUSTON_MOBILE_UPDATE_SEQUENCE" -gt "$current"');
 });
 
-test("signing and store credentials come from protected environments, dispatched only from main", () => {
+test("store jobs run in protected environments, dispatched only from main", () => {
   const updates = readFileSync(
     "../../.github/workflows/mobile-updates.yml",
     "utf8",
