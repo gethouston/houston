@@ -134,6 +134,7 @@
         "free": "Gratis",
         "subscription": "Tu suscripción",
         "locks": "Se bloquea el {{date}}",
+        "paid": "De pago",
         "needs_plan": "Necesita un plan"
       },
       "change": "Puedes cambiarlo en Configuración.",

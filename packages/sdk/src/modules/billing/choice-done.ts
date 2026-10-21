@@ -5,9 +5,17 @@ import { canChangeChoice, choosesPaidOrg, pickerRows } from "./choice-model";
 /**
  * What an owned org becomes at the cutover. `free`: the pick. `subscription`:
  * the payer's subscription pays for it. `locks`: the cutover scheduled its
- * lock, on the org's `lockAt`. `needs_plan`: everything else.
+ * lock, on the org's `lockAt`. `paid`: after the cutover, an org with no lock
+ * that is neither of the two pays on its own subscription (a team
+ * subscriber's org, a sponsored company org). `needs_plan`: before the
+ * cutover, everything else.
  */
-export type ChoiceOrgStatus = "free" | "subscription" | "locks" | "needs_plan";
+export type ChoiceOrgStatus =
+  | "free"
+  | "subscription"
+  | "locks"
+  | "paid"
+  | "needs_plan";
 
 export interface ChoiceDoneOrg {
   org: BillingChoiceOrg;
@@ -42,12 +50,13 @@ export function choiceDone(saved: BillingChoice): ChoiceDone | null {
   const paid = choosesPaidOrg(saved)
     ? (saved.orgs.find((org) => org.slug === saved.paidOrgSlug) ?? null)
     : null;
+  const applied = saved.state === "applied";
   const status = (org: BillingChoiceOrg): ChoiceOrgStatus => {
     if (org.slug === free.slug) return "free";
     if (org.slug === paid?.slug) return "subscription";
-    return org.lockAt ? "locks" : "needs_plan";
+    if (org.lockAt) return "locks";
+    return applied ? "paid" : "needs_plan";
   };
-  const applied = saved.state === "applied";
   return {
     free,
     paid,
@@ -114,4 +123,18 @@ export function choicePickerEntry(
   if (!choice) return "none";
   if (canChangeChoice(choice, now)) return "row";
   return frame.open ? "frame" : "none";
+}
+
+/**
+ * Whether a save settles the post-cutover notice for good, so the surface
+ * stores the dismissal (`dismissChoiceNotice`) and no device asks again: any
+ * pick stored after the cutover applied one, a confirmation or a change, from
+ * whichever screen made it. A save before the cutover settles nothing.
+ */
+export function saveSettlesNotice(outcome: BillingChoiceSave): boolean {
+  return (
+    outcome.kind === "saved" &&
+    outcome.choice.state === "applied" &&
+    !outcome.choice.noticeDismissed
+  );
 }

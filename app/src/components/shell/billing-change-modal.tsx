@@ -64,10 +64,9 @@ export function BillingChangeModal({
   };
   const confirmed = (outcome: BillingChoiceSave) => {
     const answer = finishConfirming(frame, outcome);
-    if (!answer.dismiss) return;
+    if (!answer.closed) return;
     setClosed(true);
     setFrame(answer.frame);
-    dismiss.mutate();
   };
   const notice = shown.notice;
   const intro = () => {

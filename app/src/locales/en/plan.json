@@ -134,6 +134,7 @@
         "free": "Free",
         "subscription": "Your subscription",
         "locks": "Locks {{date}}",
+        "paid": "Paid",
         "needs_plan": "Needs a plan"
       },
       "change": "You can change this in Settings.",

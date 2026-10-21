@@ -1,7 +1,7 @@
 import { describe, expect, it } from "vitest";
 import type { BillingChoiceSave } from "./choice";
-import { choiceDone } from "./choice-done";
-import { choice, INNOVA, LA_FILA, PERSONAL } from "./choice-fixtures";
+import { choiceDone, saveSettlesNotice } from "./choice-done";
+import { choice, INNOVA, LA_FILA, org, PERSONAL } from "./choice-fixtures";
 import { type ChoiceModalContext, choiceModal } from "./choice-modal";
 import {
   CLOSED_CHOICE_FRAME,
@@ -164,22 +164,22 @@ describe("the confirm frame", () => {
     expect(startPicking(intro).phase).toEqual({ step: "picking" });
   });
 
-  it("closes on a stored confirmation and settles the notice", () => {
+  it("closes for the session on a stored confirmation", () => {
     const confirmed: BillingChoiceSave = {
       kind: "saved",
       choice: provisional,
     };
     expect(finishConfirming(intro, confirmed)).toEqual({
       frame: { ...intro, open: false, hold: "none" },
-      dismiss: true,
+      closed: true,
     });
   });
 
-  it("keeps the frame on a refusal, settling nothing", () => {
+  it("keeps the frame on a refusal", () => {
     const refused: BillingChoiceSave = { kind: "choice_closed" };
     expect(finishConfirming(intro, refused)).toEqual({
       frame: intro,
-      dismiss: false,
+      closed: false,
     });
   });
 
@@ -188,7 +188,7 @@ describe("the confirm frame", () => {
       CLOSED_CHOICE_FRAME,
       choiceModal(picked, modalAt()),
     );
-    expect(finishConfirming(note, saved).dismiss).toBe(false);
+    expect(finishConfirming(note, saved).closed).toBe(false);
   });
 
   it("holds the picker when a stored change turns the notice into applied", () => {
@@ -215,15 +215,45 @@ describe("the confirm frame", () => {
       finishConfirming(held, { kind: "saved", choice: confirmed }),
     ).toEqual({
       frame: { ...held, open: false, hold: "none" },
-      dismiss: true,
+      closed: true,
     });
   });
 
-  it("settles the notice when the success step of a change closes", () => {
+  it("stores no second dismissal when a change's success step closes: the save settled it", () => {
     const done = finishPicking(startPicking(intro), saved);
-    expect(closeDismisses(done)).toBe(true);
+    expect(closeDismisses(done)).toBe(false);
     expect(closeDismisses(intro)).toBe(false);
-    expect(closeDismisses(closeChoiceFrame(done))).toBe(true);
+    const note = nextChoiceModalFrame(
+      CLOSED_CHOICE_FRAME,
+      choiceModal(picked, modalAt()),
+    );
+    expect(closeDismisses(note)).toBe(true);
+    expect(closeDismisses(closeChoiceFrame(note))).toBe(true);
+  });
+});
+
+describe("saveSettlesNotice", () => {
+  it("settles the notice on any pick stored after the cutover, a confirmation or a change", () => {
+    expect(saveSettlesNotice({ kind: "saved", choice: provisional })).toBe(
+      true,
+    );
+    expect(saveSettlesNotice({ kind: "saved", choice: picked })).toBe(true);
+  });
+
+  it("settles nothing before the cutover, once dismissed, or on a refusal", () => {
+    expect(
+      saveSettlesNotice({
+        kind: "saved",
+        choice: choice({ freeOrgSlug: LA_FILA.slug }),
+      }),
+    ).toBe(false);
+    expect(
+      saveSettlesNotice({
+        kind: "saved",
+        choice: { ...picked, noticeDismissed: true },
+      }),
+    ).toBe(false);
+    expect(saveSettlesNotice({ kind: "choice_closed" })).toBe(false);
   });
 });
 
@@ -240,6 +270,22 @@ describe("choiceDone after the cutover", () => {
         { org: INNOVA, status: "subscription" },
         { org: locked(PERSONAL), status: "locks" },
       ],
+    });
+  });
+
+  it("reads an unlocked org that is neither the free nor the subscription's as paying on its own", () => {
+    const team = org({ slug: "4444444444444444", name: "Acme" });
+    const withTeam = choice({
+      ...provisional,
+      orgs: [...provisional.orgs, team],
+    });
+    expect(choiceDone(withTeam)?.orgs).toContainEqual({
+      org: team,
+      status: "paid",
+    });
+    expect(choiceDone({ ...withTeam, state: "pending" })?.orgs).toContainEqual({
+      org: team,
+      status: "needs_plan",
     });
   });
 });

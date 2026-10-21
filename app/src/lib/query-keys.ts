@@ -153,6 +153,8 @@ export const queryKeys = {
   /** C8 billing: the active org's billing summary (`GET /v1/org/billing`),
    *  keyed by that org, so no org's billing is ever read under another's. */
   billing: (orgSlug: string) => ["billing", orgSlug] as const,
+  /** Every org's billing summary, for a change that moves several orgs. */
+  billingAll: () => ["billing"] as const,
   /** A free org's routines (`GET /v1/me/routines`), keyed by the org. */
   planRoutines: (orgSlug: string) => ["plan-routines", orgSlug] as const,
   billingChoice: () => ["billing-choice"] as const,

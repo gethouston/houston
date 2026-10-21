@@ -131,33 +131,31 @@ function picks(notice: AnnouncedChoice): boolean {
 }
 
 /**
- * The frame after Confirm on a `confirm` intro answers, and whether the
- * notice is now settled for good (`dismiss`: store the dismissal, so no device
- * asks again). A stored pick closes the frame; a refusal keeps it, which shows
- * the refusal's own copy.
+ * The frame after Confirm on a `confirm` intro answers, and whether the modal
+ * is now closed for the session (`closed`). A stored pick closes the frame; a
+ * refusal keeps it, which shows the refusal's own copy. The save itself
+ * settles the notice on the server ({@link saveSettlesNotice}).
  */
 export function finishConfirming(
   frame: ChoiceModalFrame,
   outcome: BillingChoiceSave,
-): { frame: ChoiceModalFrame; dismiss: boolean } {
+): { frame: ChoiceModalFrame; closed: boolean } {
   if (
     outcome.kind !== "saved" ||
     !frame.open ||
     frame.shown?.notice.kind !== "confirm"
   )
-    return { frame, dismiss: false };
-  return { frame: closeChoiceFrame(frame), dismiss: true };
+    return { frame, closed: false };
+  return { frame: closeChoiceFrame(frame), closed: true };
 }
 
 /**
- * Whether closing the frame stores the dismissal on the server: a read-only
- * notice (`everywhere`), or a `confirm` notice the person settled by saving a
- * new pick, so its success step is the last they see of it.
+ * Whether closing the frame stores the dismissal on the server: only a
+ * read-only notice (`everywhere`). A stored pick after the cutover settled its
+ * own notice when it saved ({@link saveSettlesNotice}).
  */
 export function closeDismisses(frame: ChoiceModalFrame): boolean {
-  if (!frame.shown) return false;
-  if (frame.shown.close === "everywhere") return true;
-  return frame.shown.notice.kind === "confirm" && frame.phase.step === "done";
+  return frame.shown?.close === "everywhere";
 }
 
 /**

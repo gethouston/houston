@@ -17,6 +17,10 @@ const STATUS = {
     className: "bg-chip-solid text-ink",
   },
   locks: { label: "choice.done.status.locks", className: QUIET },
+  paid: {
+    label: "choice.done.status.paid",
+    className: "bg-chip-solid text-ink",
+  },
   needs_plan: { label: "choice.done.status.needs_plan", className: QUIET },
 } as const satisfies Record<
   ChoiceOrgStatus,
