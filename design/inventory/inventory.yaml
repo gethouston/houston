@@ -36,7 +36,7 @@
 #   a11y     roles / labels / focus expectations the surface must honor
 #   since    inventory version this component first appeared in
 
-version: 138
+version: 139
 
 components:
   - id: agent-delegation-settings
@@ -2474,7 +2474,7 @@ components:
     title: Pricing change modal
     purpose: Tell a cloud user, when the app opens, that teams are out of beta and plans move to organizations, and let an owner choose which org stays free.
     anatomy: [date-chip, title, thanks-line, points, point-icon-tile, primary-pill, maybe-later-action, close-button, picker-step, success-step]
-    states: [hidden, pick, pick-payer, single-org, member, waiting-behind-plan-dialog, done]
+    states: [hidden, pick, pick-payer, single-org, member, confirm, confirm-payer, applied-note, waiting-behind-plan-dialog, done]
     variants: [phone-full-height-sheet, desktop-dialog]
     behavior: >-
       SDK choiceModal decides from the account's billing choice. It opens on
@@ -2490,8 +2490,18 @@ components:
       of someone else's org reads there is nothing to do; each sees it once,
       and Got it or the X stores the dismissal so no device shows it again.
       The points rise in turn and a new step clears a short blur; reduced
-      motion makes both a plain fade. A stored pick, the cutover or
-      an applied change shows nothing. It never stacks on a plan dialog and
+      motion makes both a plain fade. A stored pick before the cutover shows
+      nothing. After the cutover, an owner of several orgs whose orgs the
+      cutover chose for them (provisional) sees "We kept {free org} free"
+      (a payer: "and moved your subscription to {paid org}"), the date the
+      change window closes, and every owned org with members, 30-day
+      activity and its status (Free, Your subscription, Locks {date}), with
+      Confirm (stores the applied pick and hides it everywhere) and Change
+      (the picker in the same frame); Maybe later hides it for the session
+      and it returns until the window closes. An owner who picked before the
+      cutover sees one note that the pick is in place, with the same org
+      list, and Got it hides it everywhere. Neither shows to the owner of a
+      single org. It never stacks on a plan dialog and
       waits until that one is gone. The date is the server's cutoverAt in the
       reader's language; the intro names no price (the payer step does). Cloud only. It wears the launch announcement's dark
       briefing frame: centered on desktop, full height on phones with the
@@ -2503,7 +2513,7 @@ components:
     title: Free organization picker
     purpose: Let an owner choose which org stays free and, for a payer, which org the subscription pays for.
     anatomy: [step-progress, title, org-radio-rows, org-avatar, most-active-tag, member-and-activity-meta, check-circle, seat-price-meta, disabled-free-row, grace-note, primary-pill, back-action, close-button, success-check, success-title, success-date-line, org-status-summary, settings-hint, done-pill]
-    states: [free-step, paid-step, saving, refused, done]
+    states: [free-step, paid-step, saving, refused, done, applied-done]
     variants: [desktop-dialog, phone-full-height-sheet]
     behavior: >-
       SDK pickerRows lists owned orgs busiest first (30-day messages, then
@@ -2523,11 +2533,54 @@ components:
       (SDK finishPicking / choicePickerSaved; a refusal never does): a check
       that pops and draws in, "{free org} stays free", how the orgs look from
       the cutover, then one row per owned org with its status from SDK
-      choiceDone (Free, Your subscription or Needs a plan), that it can
-      change in Settings, and a Done pill. Done, the X,
+      choiceDone (Free, Your subscription, Locks {date} or Needs a plan),
+      that it can change in Settings, and a Done pill. After the cutover the
+      success step reads as now and says until when the pick can change,
+      and the Settings row stays open through the change window; a save
+      after it comes back as choice_closed with its own copy. Done, the X,
       Escape and a click outside close it; the stored pick then keeps the
       modal from showing again. It opens as the pricing-change modal's second
       step, and the Settings plan screen keeps a row that opens it on its own,
       in the same briefing frame, while the pick is open.
     a11y: Each step is a radio group of full-row labelled radios with a visible focus ring; the frame is a titled dialog with a labelled close button. A new step takes focus on its checked radio, else its title, and the button keeps the org's whole name as its accessible name.
     since: 137
+
+  - id: org-status-banner
+    title: Organization status strip
+    purpose: Tell everyone in an org that it is locked, past due or about to lock, and give the billing owner the way out.
+    anatomy: [status-icon, lead-sentence, read-and-move-out-line, ask-owner-line, waiting-line, primary-action, secondary-action, more-menu, claim-free-confirmation]
+    states: [hidden, scheduled-lock, past-due, locked, checkout-outstanding]
+    variants: [billing-owner, other-owner-or-admin, member, store-app, phone, desktop]
+    behavior: >-
+      A strip at the top of the workspace for every cloud org, the Personal
+      row included, read off the org's billing (SDK orgStanding) and the
+      actions SDK orgRecovery allows. A scheduled lock names the date; past
+      due names the lock date unless the payment is fixed; locked says nobody
+      can send or change anything and that everyone can still read and move
+      agents out. The billing owner gets Unlock (checkout) for an unpaid lock
+      or Fix payment (the Stripe portal) for a live subscription, Change pick
+      while the change window is open, Use as free org behind a confirmation
+      naming the org that locks instead, and Delete org; at most two buttons
+      show and the rest sit in an always-visible More menu. Everyone else
+      reads "Ask the owner who pays for it" with no button. While a checkout
+      is open the pay buttons wait, and the strip clears only once the org is
+      working again. The store apps show the plan is managed on the web.
+      An old gateway's degraded org with no billing reads as locked.
+    a11y: A status region with the reason as text beside its icon and color; every action is a visible labelled button, the More menu included; the swap confirmation is a titled dialog.
+    since: 139
+
+  - id: org-locked-composer
+    title: Locked organization composer
+    purpose: Take the composer's place on a locked org and say why sending is off.
+    anatomy: [lock-icon, title, reason, primary-action]
+    states: [owner-unlock, owner-fix-payment, ask-owner, store-app]
+    variants: [phone, desktop]
+    behavior: >-
+      Replaces the composer of every chat in a locked org, the AI Manager
+      included, with the same reason the strip gives and the billing owner's
+      way out. The same lock turns off creating employees and tasks, file
+      uploads and edits, instructions and company context, employee settings
+      and routines, and invites, each with the reason beside it, and keeps
+      reading, downloading, removing people and moving agents out open.
+    a11y: The reason is text, the action a visible labelled button.
+    since: 139

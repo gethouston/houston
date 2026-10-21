@@ -3,6 +3,26 @@
 Every `version` bump in `inventory.yaml` needs a matching entry here (enforced by
 `pnpm check:parity`). Newest first. Use `## vN` headings.
 
+## v139 - 2026-10-21
+
+After the cutover, an owner of several organizations whose organizations
+the cutover chose for them sees the pricing-change modal once more: "We
+kept Personal free and moved your subscription to Acme", the day the
+change window closes, and every organization they own with members, recent
+activity and what it is now (Free, Your subscription, Locks November 6).
+Confirm keeps it and hides it on every device; Change opens the picker in
+the same frame, whose success step now reads as today. An owner who picked
+before the cutover gets one note that the pick is in place. A new status
+strip (`org-status-banner`) tops every organization that is locked, past
+due or about to lock: the billing owner gets Unlock or Fix payment, Change
+pick while the window is open, Use as free org with a confirmation naming
+the organization that locks instead, and Delete org; everyone else is told
+to ask the owner. On a locked organization the composer becomes a locked
+card (`org-locked-composer`), and creating employees or tasks, editing
+files, instructions and settings, and inviting people turn off with the
+same reason, while reading, downloading, removing people and moving agents
+out stay open.
+
 ## v138 - 2026-10-21
 
 Billing moves from the person to the organization. Every cloud

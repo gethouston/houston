@@ -13,7 +13,7 @@
 
 surface: web
 enforced: true
-inventoryVersion: 138
+inventoryVersion: 139
 
 components:
   manager-avatar:
@@ -365,5 +365,13 @@ components:
     notes: Renders in app and is not extracted as a reusable ui component.
   free-org-picker:
     status: partial
-    ref: "app/src/components/shell/free-org-picker.tsx + free-org-picker-steps.tsx + free-org-picker-rows.tsx + free-org-picker-done.tsx + org-avatar.tsx over SDK pickerRows, payerTotals and choiceDone; opened by billing-change-modal.tsx and by settings/sections/free-org-choice-row.tsx"
+    ref: "app/src/components/shell/free-org-picker.tsx + free-org-picker-steps.tsx + free-org-picker-rows.tsx + free-org-picker-list.tsx + free-org-picker-done.tsx + org-avatar.tsx over SDK pickerRows, payerTotals and choiceDone; opened by billing-change-modal.tsx (confirm view in billing-change-confirm.tsx) and by settings/sections/free-org-choice-row.tsx"
+    notes: Renders in app and is not extracted as a reusable ui component.
+  org-status-banner:
+    status: partial
+    ref: "app/src/components/shell/team-status-banner.tsx + team-status-buttons.tsx + team-status-claim-dialog.tsx over lib/team-status-model.ts and SDK orgStanding / orgRecovery"
+    notes: Renders in app and is not extracted as a reusable ui component.
+  org-locked-composer:
+    status: partial
+    ref: "app/src/components/shell/org-locked-card.tsx via plan-composer-state.tsx; write gating through hooks/use-org-write-lock.ts and shell/org-locked-fieldset.tsx"
     notes: Renders in app and is not extracted as a reusable ui component.
