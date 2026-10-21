@@ -14,6 +14,7 @@
 import type {
   FreeOrg,
   MessageLimitScope,
+  OrgBilling,
   PlanRoutine,
   PlanRoutineKey,
   PlanSummary,
@@ -47,6 +48,11 @@ export interface PlanSeed {
    * the personal org holds it while it is free.
    */
   freeOrg?: FreeOrg | null;
+  /**
+   * The personal org's billing, armed whole (a scheduled lock, past due, a
+   * lock). Absent, it is projected from `summary`.
+   */
+  personalBilling?: OrgBilling | null;
 }
 
 /** The checkout refusals a spec can arm (`already_plus` follows the summary). */
@@ -63,7 +69,10 @@ export type PlanCallRoute =
   | "resume"
   | "presence"
   | "announcement"
-  | "send";
+  | "send"
+  | "org_checkout"
+  | "org_portal"
+  | "org_free";
 
 export interface PlanCall {
   route: PlanCallRoute;
@@ -99,6 +108,7 @@ export function armPlan(seed: PlanSeed | null): Required<PlanSeed> | null {
           messageLimit: seed.messageLimit ?? null,
           checkoutRefusal: seed.checkoutRefusal ?? null,
           freeOrg: seed.freeOrg ?? null,
+          personalBilling: structuredClone(seed.personalBilling ?? null),
         }
       : null,
     calls: [],

@@ -22,10 +22,12 @@ const WEEK_MS = 7 * 24 * 3_600_000;
 /**
  * The armed summary as the gateway serves it on the personal org after the
  * move to org billing: Free is a free org with the person's pool and routine
- * rules, Plus a paid one. Computed per read, so a spec that re-arms or a
+ * rules, Plus a paid one, unless a spec armed the org's billing whole.
+ * Computed per read, so a spec that re-arms or a
  * route that mutates the summary is seen on the next `GET /v1/orgs`.
  */
 export function planOrgBilling(seed: Required<PlanSeed>): OrgBilling {
+  if (seed.personalBilling) return seed.personalBilling;
   const { summary } = seed;
   const free = summary.plan === "free";
   const routines = summary.routines;

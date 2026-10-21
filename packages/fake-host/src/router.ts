@@ -35,6 +35,10 @@ import {
 import { handleUserRoutes } from "./routes-integrations";
 import { handleMeRoutes } from "./routes-me";
 import {
+  handleOrgBillingRoutes,
+  lockedWriteRefusal,
+} from "./routes-org-billing";
+import {
   handlePlanCallsControl,
   handlePlanControl,
   handlePlanRoutes,
@@ -47,6 +51,8 @@ import { handleTeamsRoutes } from "./routes-teams";
 import { sseResponse } from "./sse";
 import type { FakeCapabilities, TeamsSettings } from "./state";
 import * as state from "./state";
+
+const ORG_ROLES = ["owner", "admin", "user"] as const;
 
 async function parseBody(
   req: Request,
@@ -308,7 +314,7 @@ export async function handle(req: Request): Promise<Response> {
   // Arm the team-space rows `GET /v1/workspaces` bridges in (C8 Spaces): each
   // `{ slug, name }` becomes an `{ id:"org:<slug>", kind:"org" }` switcher row,
   // served alongside the always-present personal seed row, with its org
-  // `billing` when the row carries one. A `slug` must be
+  // `billing`, `role` and `memberCount` when the row carries them. A `slug` must be
   // exactly 16 lowercase hex chars (the id grammar `space-id.ts` enforces).
   // Pair with `/__test__/capabilities` `{ spaces:true }`. Reset (or `{teams:[]}`)
   // restores the personal-only list.
@@ -316,16 +322,21 @@ export async function handle(req: Request): Promise<Response> {
     const body = await parseBody(req);
     const teams = Array.isArray(body?.teams) ? body.teams : [];
     const rows = teams.flatMap((t) => {
-      const row = t as { slug?: unknown; name?: unknown; billing?: unknown };
+      const row = t as Record<string, unknown>;
       if (typeof row.slug !== "string" || !/^[a-f0-9]{16}$/.test(row.slug)) {
         return [];
       }
       const billing = parseOrgBilling(row.billing);
+      const role = ORG_ROLES.find((r) => r === row.role);
       return [
         {
           id: `org:${row.slug}`,
           name: typeof row.name === "string" ? row.name : row.slug,
           ...(billing ? { billing } : {}),
+          ...(role ? { role } : {}),
+          ...(typeof row.memberCount === "number"
+            ? { memberCount: row.memberCount }
+            : {}),
         },
       ];
     });
@@ -446,6 +457,9 @@ export async function handle(req: Request): Promise<Response> {
   const spacesRoute = handleSpacesRoutes(method, segs, body);
   if (spacesRoute) return spacesRoute;
 
+  const orgBillingRoute = handleOrgBillingRoutes(method, segs, req);
+  if (orgBillingRoute) return orgBillingRoute;
+
   // --- C19 personal plan (per person, across spaces) ---
   const planRoute = handlePlanRoutes(method, segs, body);
   if (planRoute) return planRoute;
@@ -458,6 +472,8 @@ export async function handle(req: Request): Promise<Response> {
 
   // --- everything under /agents/* ---
   if (segs[0] === "agents") {
+    const locked = lockedWriteRefusal(method, segs, req);
+    if (locked) return locked;
     // Armed cold-start hold: per-agent READS stall like they do behind the
     // cloud gateway while a pod wakes. The agent LIST (`GET /agents`) stays
     // instant — in the real deployment it is a gateway answer, not a pod one.

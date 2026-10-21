@@ -44,7 +44,7 @@ const WRITE_SUBS: ReadonlySet<string> = new Set([
   "folder",
 ]);
 
-function isWrite(method: string, sub: string | undefined): boolean {
+export function isFilesWrite(method: string, sub: string | undefined): boolean {
   return sub === undefined ? method === "DELETE" : WRITE_SUBS.has(sub);
 }
 
@@ -61,7 +61,8 @@ export function handleWorkspaceFiles(
   // Every write primitive on an unwritable volume refuses (the case probe the
   // real host runs first among them), while every read still answers — the
   // asymmetry the Files tab's copy describes.
-  if (isWrite(method, sub) && state.isWorkspaceReadOnly(id)) return readOnly();
+  if (isFilesWrite(method, sub) && state.isWorkspaceReadOnly(id))
+    return readOnly();
 
   if (sub === undefined) {
     if (method === "GET") return json(state.listWorkspaceFiles(id));

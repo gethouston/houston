@@ -76,6 +76,7 @@ function orgWire(row: FakeTeamWorkspace): OrgSummaryWire {
 function personalOrgWire(): OrgSummaryWire[] {
   const seed = planSeed();
   if (!seed) return [];
+  const billing = planOrgBilling(seed);
   return [
     {
       id: `org-${PERSONAL_ORG_SLUG}`,
@@ -84,8 +85,8 @@ function personalOrgWire(): OrgSummaryWire[] {
       kind: "personal",
       role: "owner",
       memberCount: 1,
-      degraded: false,
-      billing: planOrgBilling(seed),
+      degraded: billing.status === "locked",
+      billing,
     },
   ];
 }
