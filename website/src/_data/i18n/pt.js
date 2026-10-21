@@ -526,7 +526,7 @@ export default {
           {
             q: "Posso ser dono de mais de uma organização?",
             aHtml:
-              "Pode. Uma das organizações das quais você é dono pode ser grátis, e todas as outras ficam no plano Time desde o início. Se você passar a grátis para o plano Time ou apagá-la, pode criar outra grátis.",
+              "Pode. Uma das organizações das quais você é dono pode ser grátis, e todas as outras ficam no plano Time desde o início. Se você mudar a organização grátis para o plano Time ou apagá-la, pode criar outra grátis.",
           },
           {
             q: "O que acontece quando a cota semanal acaba?",

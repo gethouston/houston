@@ -54,13 +54,19 @@ test("the team plan is 15 per seat per month and nothing else", () => {
 });
 
 test("the landing page includes every pricing partial", async () => {
-  const source = await readFile(`${includes}/landing.njk`, "utf8");
+  const source = (await readFile(`${includes}/landing.njk`, "utf8")).replace(
+    /\{#[\s\S]*?#\}/g,
+    "",
+  );
   for (const file of [
     "landing/pricing.njk",
     "landing/faq.njk",
     "landing/json-ld.njk",
   ]) {
-    assert.ok(source.includes(`{% include "${file}" %}`), file);
+    const include = new RegExp(
+      `\\{%-?\\s*include\\s+"${escapeRegExp(file)}"\\s*-?%\\}`,
+    );
+    assert.match(source, include, file);
   }
 });
 
@@ -132,7 +138,7 @@ for (const code of locales.order) {
     assert.equal(team.price, "15");
     assert.equal(team.priceSpecification.price, "15");
     assert.equal(team.priceSpecification.referenceQuantity.unitCode, "MON");
+    assert.ok(t.pricing.team.unit, "pricing.team.unit");
     assert.equal(team.priceSpecification.unitText, t.pricing.team.unit);
-    assert.ok(t.pricing.team.unit);
   });
 }
