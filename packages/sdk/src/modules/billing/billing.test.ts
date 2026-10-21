@@ -4,6 +4,8 @@ import { HoustonSdk } from "../../sdk";
 import { memoryKv } from "../../test-ports";
 import { BillingCommand, BillingHttpError } from "./index";
 
+const ORG = "00000000000000aa";
+
 const BASE = "http://127.0.0.1:4317";
 
 interface Recorded {
@@ -59,7 +61,7 @@ const ok = (body: unknown) => makeSdk(() => json(body));
 const NOT_ENTITLED = [404, 403, 503];
 
 describe("the billing requests", () => {
-  it("reads the active team's summary off GET /v1/org/billing", async () => {
+  it("reads the active org's summary off GET /v1/org/billing", async () => {
     const { sdk, calls } = ok(SUMMARY);
     expect(await sdk.billing.getBilling()).toEqual(SUMMARY);
     expect(calls).toEqual([
@@ -67,16 +69,16 @@ describe("the billing requests", () => {
     ]);
   });
 
-  it("starts a checkout with the interval as the whole body", async () => {
+  it("starts a monthly checkout with no interval in the body", async () => {
     const { sdk, calls } = ok({ url: "https://checkout.stripe.test/c/1" });
-    expect(await sdk.billing.createCheckout("annual")).toEqual({
+    expect(await sdk.billing.createCheckout()).toEqual({
       url: "https://checkout.stripe.test/c/1",
     });
     expect(calls).toEqual([
       {
         method: "POST",
         url: `${BASE}/v1/org/billing/checkout`,
-        body: JSON.stringify({ interval: "annual" }),
+        body: "{}",
       },
     ]);
   });
@@ -110,9 +112,9 @@ describe("what the module refuses to soften", () => {
     });
   }
 
-  it("a 403 not_owner on a checkout reaches the caller", async () => {
-    const { sdk } = makeSdk(() => json({ code: "not_owner" }, 403));
-    await expect(sdk.billing.createCheckout("monthly")).rejects.toBeInstanceOf(
+  it("a 403 not_billing_owner on a checkout reaches the caller", async () => {
+    const { sdk } = makeSdk(() => json({ code: "not_billing_owner" }, 403));
+    await expect(sdk.billing.createCheckout()).rejects.toBeInstanceOf(
       BillingHttpError,
     );
   });
@@ -127,27 +129,86 @@ describe("what the module refuses to soften", () => {
   });
 });
 
+describe("the free-slot swap", () => {
+  it("claims the active org with a bodyless POST", async () => {
+    const { sdk, calls } = makeSdk(() => new Response(null, { status: 204 }));
+    expect(await sdk.billing.claimFreeSlot()).toEqual({ kind: "claimed" });
+    expect(calls).toEqual([
+      { method: "POST", url: `${BASE}/v1/org/billing/free`, body: null },
+    ]);
+  });
+
+  it("answers the caller's own states as outcomes", async () => {
+    for (const [code, status] of [
+      ["has_subscription", 409],
+      ["not_billing_owner", 403],
+    ] as const) {
+      const { sdk } = makeSdk(() => json({ code, error: code }, status));
+      expect(await sdk.billing.claimFreeSlot()).toEqual({ kind: code });
+    }
+  });
+
+  it("throws a code on the wrong status, and every other failure", async () => {
+    for (const answer of [
+      json({ code: "has_subscription" }, 403),
+      json({ error: "boom" }, 500),
+    ]) {
+      const { sdk } = makeSdk(() => answer);
+      await expect(sdk.billing.claimFreeSlot()).rejects.toBeInstanceOf(
+        BillingHttpError,
+      );
+    }
+  });
+});
+
+describe("a free org's routines and presence", () => {
+  it("lists, keeps, resumes and reports on the active org's routes", async () => {
+    const { sdk, calls } = ok({ routines: [] });
+    await sdk.billing.listPlanRoutines();
+    await sdk.billing.keepRoutine({
+      orgSlug: ORG,
+      agentSlug: "writer",
+      routineId: "r1",
+    });
+    await sdk.billing.resumeRoutines();
+    await sdk.billing.reportPresence();
+    expect(calls).toEqual([
+      { method: "GET", url: `${BASE}/v1/me/routines`, body: null },
+      {
+        method: "PUT",
+        url: `${BASE}/v1/me/routines/keep`,
+        body: JSON.stringify({
+          orgSlug: ORG,
+          agentSlug: "writer",
+          routineId: "r1",
+        }),
+      },
+      { method: "POST", url: `${BASE}/v1/me/routines/resume`, body: null },
+      { method: "POST", url: `${BASE}/v1/me/presence`, body: null },
+    ]);
+  });
+
+  it("rejects an incomplete keep key before sending", async () => {
+    const { sdk, calls } = ok({});
+    const result = await sdk.dispatch({
+      id: "1",
+      type: BillingCommand.KeepRoutine,
+      payload: { routineId: "r1" },
+    });
+    expect(result.ok).toBe(false);
+    expect(calls).toHaveLength(0);
+  });
+});
+
 describe("the dispatch path", () => {
   it("dispatches a checkout through the same handler the facade uses", async () => {
     const { sdk, calls } = ok({ url: "https://checkout.stripe.test/c/1" });
     const result = await sdk.dispatch({
       id: "1",
       type: BillingCommand.CreateCheckout,
-      payload: { interval: "annual" },
     });
     expect(result.ok).toBe(true);
-    expect(calls[0].body).toBe(JSON.stringify({ interval: "annual" }));
-  });
-
-  it("refuses an interval Stripe does not bill on, without touching the wire", async () => {
-    const { sdk, calls } = ok({ url: "https://checkout.stripe.test/c/1" });
-    const result = await sdk.dispatch({
-      id: "2",
-      type: BillingCommand.CreateCheckout,
-      payload: { interval: "weekly" },
-    });
-    expect(result.ok).toBe(false);
-    expect(calls).toEqual([]);
+    expect(calls[0].body).toBe("{}");
   });
 
   it("reads the summary through dispatch with no payload at all", async () => {

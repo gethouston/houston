@@ -1,6 +1,27 @@
 import type { PlanSummary, PlusInvoice } from "@houston/wire-types";
 import { formatPlanAmount } from "./format";
 
+/**
+ * The per-person summary's usage, for the settings Plan screen alone; every
+ * other surface reads the active org's pool (`../billing/model`).
+ */
+export function planSummaryPercent(
+  plan: PlanSummary | undefined,
+): number | null {
+  if (plan?.plan !== "free" || !plan.usage) return null;
+  return Math.min(100, Math.max(0, Math.floor(plan.usage.percent)));
+}
+
+export function planUsageMode(
+  plan: PlanSummary | undefined,
+  now = Date.now(),
+): "none" | "preview" | "current" {
+  if (planSummaryPercent(plan) === null) return "none";
+  return plan?.limitsStartAt && Date.parse(plan.limitsStartAt) > now
+    ? "preview"
+    : "current";
+}
+
 export interface BillingCards {
   upgrade: boolean;
   usage: boolean;

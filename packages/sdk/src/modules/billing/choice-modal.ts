@@ -1,10 +1,10 @@
 import type { BillingChoice } from "@houston/wire-types";
-import type { planDialog } from "../plan/model";
 import {
   type ChoiceContext,
   type ChoiceNotice,
   choiceNotice,
 } from "./choice-model";
+import type { planDialog } from "./model";
 
 /** The notices the pricing-change modal announces. */
 export type AnnouncedChoice = Extract<

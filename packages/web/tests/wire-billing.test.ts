@@ -10,10 +10,10 @@ import {
 
 /**
  * The billing family rides `sdk.billing`. What this file pins is the WIRE: the
- * three gateway routes, their methods, their bodies, and the headers that carry
- * auth and the active space — the whole recorded request, because `/v1/org/
- * billing/checkout` and `/v1/org/billing/portal` differ by one segment and a
- * substring match would let one stand in for the other.
+ * gateway routes, their methods, their bodies, and the headers that carry auth
+ * and the org — the whole recorded request, because `/v1/org/billing/checkout`
+ * and `/v1/org/billing/portal` differ by one segment and a substring match
+ * would let one stand in for the other.
  *
  * Each case drives the composed `HoustonClient` (what the app holds), not the
  * SDK. The one degradation this family has stays in the mixin, so the statuses
@@ -71,7 +71,7 @@ function soleCall(): Call {
 }
 
 describe("the delegated billing requests", () => {
-  test("getBilling GETs /v1/org/billing", async () => {
+  test("getBilling GETs /v1/org/billing for the active org", async () => {
     stubFetch(() => json(200, SUMMARY));
     expect(await client().getBilling()).toEqual(SUMMARY);
     const call = soleCall();
@@ -80,13 +80,13 @@ describe("the delegated billing requests", () => {
     expect(call.body).toBeNull();
   });
 
-  test("createCheckout POSTs the interval as the whole body", async () => {
+  test("createCheckout POSTs a monthly checkout with no interval", async () => {
     stubFetch(() => json(200, CHECKOUT));
-    expect(await client().createCheckout("annual")).toEqual(CHECKOUT);
+    expect(await client().createCheckout()).toEqual(CHECKOUT);
     const call = soleCall();
     expect(call.method).toBe("POST");
     expect(call.url).toBe(`${BASE}/v1/org/billing/checkout`);
-    expect(call.body).toBe(JSON.stringify({ interval: "annual" }));
+    expect(call.body).toBe("{}");
   });
 
   test("createPortal POSTs the portal route with no body", async () => {
@@ -100,10 +100,22 @@ describe("the delegated billing requests", () => {
     expect(call.body).toBeNull();
   });
 
-  test("the monthly interval reaches the wire as the caller spelled it", async () => {
-    stubFetch(() => json(200, CHECKOUT));
-    await client().createCheckout("monthly");
-    expect(soleCall().body).toBe(JSON.stringify({ interval: "monthly" }));
+  test("claimFreeSlot POSTs the swap for the active org", async () => {
+    stubFetch(() => new Response(null, { status: 204 }));
+    expect(await client().claimFreeSlot()).toEqual({ kind: "claimed" });
+    const call = soleCall();
+    expect(call.method).toBe("POST");
+    expect(call.url).toBe(`${BASE}/v1/org/billing/free`);
+    expect(call.body).toBeNull();
+  });
+
+  test("a swap refused for the caller's own state is an outcome", async () => {
+    stubFetch(() =>
+      json(409, { error: "live subscription", code: "has_subscription" }),
+    );
+    expect(await client().claimFreeSlot()).toEqual({
+      kind: "has_subscription",
+    });
   });
 });
 
@@ -127,19 +139,19 @@ describe("what the mixin softens, and what it must not", () => {
     );
   });
 
-  test("checkout and portal never degrade — a 403 not_owner throws", async () => {
-    stubFetch(() => json(403, { error: "not_owner" }));
-    const c = client();
-    await expect(c.createCheckout("annual")).rejects.toBeInstanceOf(
-      HoustonEngineError,
+  test("checkout and portal never degrade — a 403 not_billing_owner throws", async () => {
+    stubFetch(() =>
+      json(403, { error: "not billing owner", code: "not_billing_owner" }),
     );
+    const c = client();
+    await expect(c.createCheckout()).rejects.toBeInstanceOf(HoustonEngineError);
     await expect(c.createPortal()).rejects.toBeInstanceOf(HoustonEngineError);
   });
 
   test("a rejection keeps the gateway's parsed body and status", async () => {
     stubFetch(() => json(402, { error: "card declined", code: "card_error" }));
     const err = await client()
-      .createCheckout("monthly")
+      .createCheckout()
       .catch((e: unknown) => e);
     expect(err).toBeInstanceOf(HoustonEngineError);
     expect((err as HoustonEngineError).status).toBe(402);

@@ -45,6 +45,7 @@ export function refusedResendItem(e: unknown): unknown {
         provider: "",
         resets_at: limit.resetsAt,
         message: limit.error,
+        ...(limit.scope ? { scope: limit.scope } : {}),
       },
       fails_pending: true,
     };

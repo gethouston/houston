@@ -7,7 +7,7 @@ import {
 } from "@houston-ai/layout";
 import { CircleAlert, Gauge, type LucideIcon } from "lucide-react";
 import { useTranslation } from "react-i18next";
-import { usePlan } from "../../hooks/queries/use-plan";
+import { useActiveOrgBilling } from "../../hooks/queries/use-billing";
 import type { NavMode } from "../../lib/nav-stack";
 import { canPurchaseInApp } from "../../lib/purchase-policy";
 import { useUIStore } from "../../stores/ui";
@@ -16,14 +16,12 @@ import { useUIStore } from "../../stores/ui";
  *  nothing else to draw, falls back to the usage gauge. */
 const GLYPH: Record<PlanUpgradeView["status"], LucideIcon | null> = {
   free: null,
-  preview: Gauge,
   nearLimit: Gauge,
   limit: CircleAlert,
 };
 
 const TONE: Record<PlanUpgradeView["status"], string> = {
   free: "text-ink-muted",
-  preview: "text-ink-muted",
   nearLimit: "text-warning-ink",
   limit: "text-danger-ink",
 };
@@ -42,10 +40,10 @@ const RAIL_PILL =
   "flex items-center rounded-full bg-sidebar-hover text-ink ht-hairline transition-[background-color,transform] duration-200 hover:bg-sidebar-active focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-focus active:scale-[0.96]";
 
 /**
- * The Free plan's way to Plus, on every screen: where the person stands
- * (`planUpgradeView`: Free, the 80% warning, the reached limit, or a launch
- * preview) beside an Upgrade chip that opens personal Billing. Plus and
- * deployments without personal plans draw nothing.
+ * A free org's way to a paid plan, on every screen: where its weekly pool
+ * stands (`planUpgradeView`: Free, the 80% warning, or the reached limit)
+ * beside an Upgrade chip that opens Billing. A paid or legacy org and
+ * deployments without org billing draw nothing.
  *
  * The rail draws a one-line pill between the update notice and the connect
  * rows, the icon rail the glyph alone with the same name as a tooltip. The
@@ -66,10 +64,10 @@ export function PlanUpgradeRow({
   nav?: NavMode;
 }) {
   const { t } = useTranslation("plan");
-  const { data: plan } = usePlan();
+  const { billing } = useActiveOrgBilling();
   const openSettings = useUIStore((s) => s.openSettings);
   const setMobileMoreOpen = useUIStore((s) => s.setMobileMoreOpen);
-  const view = planUpgradeView(plan);
+  const view = planUpgradeView(billing);
   const purchasable = canPurchaseInApp();
   if (!view || (!purchasable && view.status === "free")) return null;
 

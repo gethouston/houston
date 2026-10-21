@@ -10,6 +10,7 @@
 import { buildProviderCatalog } from "@houston/host/src/providers/pi-catalog";
 import type { ChatMessage, PendingInteraction } from "@houston/protocol";
 import type { ProviderUsage } from "@houston/runtime-client";
+import { parseOrgBilling } from "@houston/wire-types";
 import {
   armHoldAfterFirstDelta,
   setNextInteraction,
@@ -306,7 +307,8 @@ export async function handle(req: Request): Promise<Response> {
   }
   // Arm the team-space rows `GET /v1/workspaces` bridges in (C8 Spaces): each
   // `{ slug, name }` becomes an `{ id:"org:<slug>", kind:"org" }` switcher row,
-  // served alongside the always-present personal seed row. A `slug` must be
+  // served alongside the always-present personal seed row, with its org
+  // `billing` when the row carries one. A `slug` must be
   // exactly 16 lowercase hex chars (the id grammar `space-id.ts` enforces).
   // Pair with `/__test__/capabilities` `{ spaces:true }`. Reset (or `{teams:[]}`)
   // restores the personal-only list.
@@ -314,14 +316,16 @@ export async function handle(req: Request): Promise<Response> {
     const body = await parseBody(req);
     const teams = Array.isArray(body?.teams) ? body.teams : [];
     const rows = teams.flatMap((t) => {
-      const row = t as { slug?: unknown; name?: unknown };
+      const row = t as { slug?: unknown; name?: unknown; billing?: unknown };
       if (typeof row.slug !== "string" || !/^[a-f0-9]{16}$/.test(row.slug)) {
         return [];
       }
+      const billing = parseOrgBilling(row.billing);
       return [
         {
           id: `org:${row.slug}`,
           name: typeof row.name === "string" ? row.name : row.slug,
+          ...(billing ? { billing } : {}),
         },
       ];
     });

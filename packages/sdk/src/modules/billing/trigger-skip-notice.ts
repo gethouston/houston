@@ -1,5 +1,5 @@
 import type {
-  PlanSummary,
+  OrgBilling,
   TriggerPlanSkipped,
   TriggerStatusItem,
 } from "@houston/wire-types";
@@ -19,10 +19,9 @@ export type {
  * - The routine limit splits the same way: while routines are paused the
  *   plan's own dialog answers Resume before it lets anyone choose a routine
  *   to keep, so resuming comes first.
- * - `creator_plan`: the gateway judges a fire against the routine CREATOR's
- *   plan, so a viewer who did not create it can only be told whose plan it
- *   was; their own plan, chooser and billing describe something else. A
- *   routine naming no creator is the viewer's (`viewerIsRoutineCreator`).
+ * - `creator_plan`: the read-only notice for a viewer who did not create the
+ *   routine; only its creator is offered the remedies. A routine naming no
+ *   creator is the viewer's (`viewerIsRoutineCreator`).
  */
 export type TriggerPlanSkipReason =
   | "min_interval"
@@ -33,8 +32,8 @@ export type TriggerPlanSkipReason =
   | "creator_plan";
 
 /**
- * What the person can do about it. `upgrade` opens personal Billing,
- * `keep_routine` opens the Free "choose a routine to keep" chooser, `resume`
+ * What the person can do about it. `upgrade` opens Billing, `keep_routine`
+ * opens the free org's "choose a routine to keep" chooser, `resume`
  * resumes routines paused while away (`resumeRoutines`). Listed in the order
  * a surface offers them, primary first.
  */
@@ -52,7 +51,7 @@ export type TriggerPlanSkipNotice =
   | (NoticeBase & { reason: "min_interval"; minIntervalMinutes: number })
   | (NoticeBase & { reason: Exclude<TriggerPlanSkipReason, "min_interval"> });
 
-/** Who is looking at which routine: the gateway's routine key plus creator. */
+/** Who is looking at which routine: the routine's creator and agent. */
 export interface TriggerPlanSkipViewer {
   /** The routine's `created_by`; absent when the routine names no creator. */
   createdBy: string | undefined;
@@ -60,31 +59,28 @@ export interface TriggerPlanSkipViewer {
   viewerId: string | null | undefined;
   /** The agent's slug (a hosted agent's client-side id). */
   agentSlug: string;
-  /** The space's org slug, when the caller knows it (team spaces do). */
-  orgSlug?: string | null;
 }
 
-/** The Free minimum interval when the plan summary does not state one. */
+/** A free org's minimum interval when its billing does not state one. */
 const DEFAULT_MIN_INTERVAL_MINUTES = 15;
 
 /**
- * The notice for a routine whose trigger runs the Free plan refused, or null
- * when there is nothing to say. Webhook and app events the plan refuses are
- * dropped before they become runs, so without this the person sees a routine
- * that silently ignored them.
+ * The notice for a routine whose trigger runs the active free org refused, or
+ * null when there is nothing to say. Webhook and app events the org's rules
+ * refuse are dropped before they become runs, so without this the person sees
+ * a routine that silently ignored them.
  *
- * The refusal was decided on the CREATOR's plan. A viewer who is not the
- * creator gets the read-only `creator_plan` notice whatever the viewer's own
- * plan is. The creator (the viewer, too, for a routine naming no creator, as
- * an Agent Store install or an import leaves it: the same rule the routine's
- * connection badge uses) sees it only while on Free: on Plus (or before the
- * plan has loaded, or without personal plans) the old refusals describe
- * nothing they can act on, and the routine they now keep says nothing about
- * the routine limit.
+ * A viewer who is not the creator gets the read-only `creator_plan` notice.
+ * The creator (the viewer,
+ * too, for a routine naming no creator, as an Agent Store install or an
+ * import leaves it: the same rule the routine's connection badge uses) sees
+ * it only while the org is free: on a paid org (or before its billing has
+ * loaded, or on a legacy org) the old refusals describe nothing they can act
+ * on, and the routine the org now keeps says nothing about the routine limit.
  */
 export function triggerPlanSkipNotice(
   item: TriggerStatusItem | undefined,
-  plan: PlanSummary | undefined,
+  billing: OrgBilling | null | undefined,
   viewer: TriggerPlanSkipViewer,
 ): TriggerPlanSkipNotice | null {
   const skipped = item?.plan_skipped;
@@ -95,20 +91,21 @@ export function triggerPlanSkipNotice(
   if (viewer.createdBy && !viewer.viewerId) return null;
   if (!viewerIsRoutineCreator(viewer.createdBy, viewer.viewerId))
     return { ...base, reason: "creator_plan", actions: [] };
-  if (plan?.plan !== "free") return null;
+  if (billing?.tier !== "free") return null;
 
-  const paused = plan.routines?.paused === true;
+  const routines = billing.routines;
+  const paused = routines?.paused === true;
   switch (skipped.code) {
     case "plan_min_interval":
       return {
         ...base,
         reason: "min_interval",
         minIntervalMinutes:
-          plan.routines?.minIntervalMinutes ?? DEFAULT_MIN_INTERVAL_MINUTES,
+          routines?.minIntervalMinutes ?? DEFAULT_MIN_INTERVAL_MINUTES,
         actions: ["upgrade"],
       };
     case "plan_routine_limit":
-      if (isKept(plan, item.routine_id, viewer)) return null;
+      if (isKept(routines, item.routine_id, viewer.agentSlug)) return null;
       return paused
         ? {
             ...base,
@@ -137,21 +134,15 @@ function knownCode(skipped: TriggerPlanSkipped): boolean {
 }
 
 /**
- * Whether this routine is the one Free keeps, by the gateway's whole key. A
- * stale kept key naming the same routine id under another agent or space must
- * not hide a notice the gateway is still refusing for; the org is compared
- * whenever the caller knows it.
+ * Whether this routine is the one the free org keeps. The kept key names the
+ * agent too, so a stale key naming the same routine id under another agent
+ * never hides a notice the gateway is still refusing for.
  */
 function isKept(
-  plan: PlanSummary,
+  routines: OrgBilling["routines"],
   routineId: string,
-  viewer: TriggerPlanSkipViewer,
+  agentSlug: string,
 ): boolean {
-  const kept = plan.routines?.kept;
-  if (!kept) return false;
-  return (
-    kept.routineId === routineId &&
-    kept.agentSlug === viewer.agentSlug &&
-    (!viewer.orgSlug || kept.orgSlug === viewer.orgSlug)
-  );
+  const kept = routines?.kept;
+  return kept?.routineId === routineId && kept.agentSlug === agentSlug;
 }

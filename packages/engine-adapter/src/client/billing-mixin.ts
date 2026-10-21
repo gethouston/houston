@@ -1,13 +1,19 @@
-import type { BillingChoiceSave } from "@houston/sdk";
-import type { BillingChoice, BillingChoicePick } from "@houston/wire-types";
+import type { BillingChoiceSave, ClaimFreeSlotResult } from "@houston/sdk";
+import type {
+  BillingChoice,
+  BillingChoicePick,
+  PlanRoutine,
+  PlanRoutineKey,
+} from "@houston/wire-types";
 import type * as controlPlane from "../control-plane";
 import { HoustonEngineError } from "./errors";
 import type { BaseCtor } from "./mixin";
 import { viaSdk } from "./sdk-error";
 
 /**
- * Subscription state and the Stripe hand-offs (C8) — the gateway's
- * `/v1/org/billing*` family, delegated to `sdk.billing`.
+ * An org's subscription, the Stripe hand-offs, the free-slot swap, and a free
+ * org's routines and presence — the gateway's `/v1/org/billing*`,
+ * `/v1/me/routines*` and `/v1/me/presence`, delegated to `sdk.billing`.
  *
  * The SDK throws on every non-2xx, so the one degradation this family has
  * (a not-entitled read) is applied HERE, on the status: the SDK is
@@ -44,18 +50,44 @@ export function BillingMixin<TBase extends BaseCtor>(Base: TBase) {
         throw err;
       }
     }
-    async createCheckout(
-      interval: "monthly" | "annual",
-    ): Promise<controlPlane.BillingCheckout> {
+    async createCheckout(): Promise<controlPlane.BillingCheckout> {
       if (!this.ctx.cp) throw new Error("Billing needs the hosted gateway.");
       return viaSdk("/v1/org/billing/checkout", () =>
-        this.ctx.sdk.billing.createCheckout(interval),
+        this.ctx.sdk.billing.createCheckout(),
       );
     }
     async createPortal(): Promise<controlPlane.BillingCheckout> {
       if (!this.ctx.cp) throw new Error("Billing needs the hosted gateway.");
       return viaSdk("/v1/org/billing/portal", () =>
         this.ctx.sdk.billing.createPortal(),
+      );
+    }
+    async claimFreeSlot(): Promise<ClaimFreeSlotResult> {
+      if (!this.ctx.cp) throw new Error("Billing needs the hosted gateway.");
+      return viaSdk("/v1/org/billing/free", () =>
+        this.ctx.sdk.billing.claimFreeSlot(),
+      );
+    }
+    // A free org's routine rules and presence ride the active org's header;
+    // a host without them answers like any other gateway route.
+    listPlanRoutines(): Promise<{ routines: PlanRoutine[] }> {
+      return viaSdk("/v1/me/routines", () =>
+        this.ctx.sdk.billing.listPlanRoutines(),
+      );
+    }
+    keepRoutine(key: PlanRoutineKey): Promise<void> {
+      return viaSdk("/v1/me/routines/keep", () =>
+        this.ctx.sdk.billing.keepRoutine(key),
+      );
+    }
+    resumeRoutines(): Promise<void> {
+      return viaSdk("/v1/me/routines/resume", () =>
+        this.ctx.sdk.billing.resumeRoutines(),
+      );
+    }
+    reportPresence(): Promise<void> {
+      return viaSdk("/v1/me/presence", () =>
+        this.ctx.sdk.billing.reportPresence(),
       );
     }
     // The free-org pick is account-wide and cloud-only: off-cloud there is

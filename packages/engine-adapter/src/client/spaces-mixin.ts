@@ -1,3 +1,4 @@
+import type { CreateOrgOutcome, OrgPlan } from "@houston/wire-types";
 import type * as controlPlane from "../control-plane";
 import { HoustonEngineError } from "./errors";
 import type { BaseCtor } from "./mixin";
@@ -20,20 +21,25 @@ export function SpacesMixin<TBase extends BaseCtor>(Base: TBase) {
     // an empty result (the switcher shows only the personal workspace), while the
     // mutating calls throw — a create/move must reach the gateway.
     async listOrgs(): Promise<controlPlane.OrgsList> {
-      if (!this.ctx.cp) return { orgs: [], invites: [] };
+      if (!this.ctx.cp) return { orgs: [], invites: [], freeOrg: null };
       try {
         return await viaSdk("/v1/orgs", () => this.ctx.sdk.spaces.listOrgs());
       } catch (err) {
         if (err instanceof HoustonEngineError && err.status === 404) {
-          return { orgs: [], invites: [] };
+          return { orgs: [], invites: [], freeOrg: null };
         }
         throw err;
       }
     }
-    async createOrg(name: string): Promise<controlPlane.OrgSummary> {
+    // A taken free slot and a paid org awaiting checkout are outcomes, so
+    // only a real failure reaches `call()`'s report.
+    async createOrg(input: {
+      name: string;
+      plan?: OrgPlan;
+    }): Promise<CreateOrgOutcome> {
       if (!this.ctx.cp)
         throw new Error("Creating a team needs the hosted gateway.");
-      return viaSdk("/v1/orgs", () => this.ctx.sdk.spaces.createOrg(name));
+      return viaSdk("/v1/orgs", () => this.ctx.sdk.spaces.createOrg(input));
     }
     // The invitee's own accept/decline (C8). Off-cloud there is no invite to
     // act on, so both throw rather than degrade: a user who clicked Accept must

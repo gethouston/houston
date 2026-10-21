@@ -4,7 +4,7 @@ import {
   type TriggerPlanSkipNotice,
   triggerPlanSkipNotice,
 } from "@houston/sdk";
-import type { PlanSummary, TriggerPlanSkipCode } from "@houston/wire-types";
+import type { OrgBilling, TriggerPlanSkipCode } from "@houston/wire-types";
 import en from "../src/locales/en/plan.json" with { type: "json" };
 import es from "../src/locales/es/plan.json" with { type: "json" };
 import pt from "../src/locales/pt/plan.json" with { type: "json" };
@@ -21,16 +21,20 @@ let render: (
   language?: Language,
 ) => Promise<string>;
 
-const free: PlanSummary = {
-  plan: "free",
-  announcement: false,
-  plus: {
-    status: "none",
-    manageable: false,
-    price: { amount: 1500, currency: "usd", interval: "month" },
-  },
+const free: OrgBilling = {
+  tier: "free",
+  status: "active",
+  lockAt: null,
+  lockReason: null,
+  freeSlot: true,
+  isBillingOwner: true,
+  seats: 1,
+  seatPriceCents: 1500,
+  seatGraceEndsAt: null,
+  usage: null,
   routines: {
     paused: false,
+    kept: null,
     maxActive: 1,
     minIntervalMinutes: 15,
     needsChoice: false,
@@ -47,7 +51,7 @@ const creator: TriggerPlanSkipViewer = {
 function noticeFor(
   code: TriggerPlanSkipCode,
   count: number,
-  plan: PlanSummary = free,
+  plan: OrgBilling = free,
   viewer: TriggerPlanSkipViewer = creator,
 ): TriggerPlanSkipNotice {
   const notice = triggerPlanSkipNotice(
@@ -153,7 +157,7 @@ describe("RoutinePlanSkipNoticeView", () => {
       noticeFor(
         "plan_routine_limit",
         4,
-        { ...free, plan: "plus" },
+        { ...free, tier: "paid", usage: null, routines: null },
         {
           ...creator,
           viewerId: "u2",
@@ -218,7 +222,7 @@ describe("RoutinePlanSkipNoticeView inside a store app", () => {
       noticeFor(
         "plan_routine_limit",
         4,
-        { ...free, plan: "plus" },
+        { ...free, tier: "paid", usage: null, routines: null },
         { ...creator, viewerId: "u2" },
       ),
     );

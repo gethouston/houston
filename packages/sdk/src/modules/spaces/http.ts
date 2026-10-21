@@ -14,6 +14,7 @@
  * lapsed session token becomes a visible `tokenExpired` signal.
  */
 
+import { readOrgSummary, readOrgsList } from "@houston/wire-types";
 import { type HttpScope, httpRequest } from "../http";
 import type {
   AgentMoveStart,
@@ -25,37 +26,17 @@ import type {
 /**
  * Lists the spaces the user belongs to and any invitations waiting for them.
  *
- * The caller's spaces + pending invites. Throws on every failure, 404 included:
- * a gateway that predates spaces answers 404, and it is the SURFACE that turns
- * that into an empty result (the web switcher then shows only the personal
- * workspace, byte-identical to a pre-C8 deployment).
+ * The caller's spaces + pending invites, each space with its billing (tier,
+ * the weekly message pool, routine state, any lock) and whether the caller
+ * still has a free organization to create. Throws on every failure, 404
+ * included: a gateway that predates spaces answers 404, and it is the SURFACE
+ * that turns that into an empty result (the web switcher then shows only the
+ * personal workspace, byte-identical to a pre-C8 deployment).
  * @assistant group:spaces
  */
 export async function listOrgs(scope: HttpScope): Promise<OrgsList> {
   const res = await httpRequest(scope, "/v1/orgs");
-  return (await res.json()) as OrgsList;
-}
-
-/**
- * Creates a shared space the user can invite teammates into.
- *
- * Create a team space. NOT idempotent — on a lost response DON'T blind-retry;
- * reconcile via `listOrgs` and reuse the persisted slug (C8). Never degrades: a
- * failure throws so the UI surfaces the real reason.
- *
- * @param name What to call the new space, in the user's own words.
- * @assistant group:spaces
- * @assistant confirm: money. A space carries its own subscription, so a repeat leaves a second billable space standing.
- */
-export async function createOrg(
-  scope: HttpScope,
-  name: string,
-): Promise<OrgSummary> {
-  const res = await httpRequest(scope, "/v1/orgs", {
-    method: "POST",
-    body: JSON.stringify({ name }),
-  });
-  return (await res.json()) as OrgSummary;
+  return readOrgsList(await res.json());
 }
 
 /**
@@ -104,7 +85,7 @@ export async function acceptOrgInvite(
     `/v1/org-invites/${encodeURIComponent(inviteId)}/accept`,
     { method: "POST" },
   );
-  return ((await res.json()) as { org: OrgSummary }).org;
+  return readOrgSummary(((await res.json()) as { org: unknown }).org);
 }
 
 /**

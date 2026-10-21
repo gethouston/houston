@@ -1,8 +1,9 @@
 /**
  * The account's contract: who the caller is (session, profile, API keys), the
- * space they work in (org roster, spaces, teams, workspaces, the subscription
- * behind a team), and the appearance of the device they are working on
- * (which does not follow them). Their preferences: contracts-preferences.ts.
+ * space they work in (org roster, spaces, teams, workspaces), and the
+ * appearance of the device they are working on (which does not follow them).
+ * Their preferences: contracts-preferences.ts. What an org pays and may use:
+ * contracts-billing.ts.
  *
  * Re-exported wholesale by the package barrel; import from `@houston/sdk`.
  */
@@ -61,19 +62,6 @@ export {
   type ThemePreference,
 } from "./modules/appearance/model";
 export { InvalidThemeError } from "./modules/appearance/validate";
-// ===== Billing module contract =========================================
-// `BillingSummary` is the spaces module's — a space carries the same value on
-// `OrgSummary.billing` — so it is exported once, under Spaces.
-export {
-  BILLING_INTERVALS,
-  type BillingCheckout,
-  type BillingChoiceSave,
-  BillingCommand,
-  type BillingCommandType,
-  BillingHttpError,
-  type BillingModule,
-  billingChoiceRefusal,
-} from "./modules/billing";
 // ===== Channels module contract ========================================
 export {
   CHANNEL_PROVIDER_IDS,
@@ -111,35 +99,6 @@ export {
   type UserProfile,
   type UserProfilesResult,
 } from "./modules/org";
-export { PlanCommand, PlanHttpError, type PlanModule } from "./modules/plan";
-export {
-  PLUS_CHECKOUT_WINDOW_MS,
-  type PlusCheckoutPorts,
-  type PlusCheckoutState,
-  PlusCheckoutTracker,
-  plusCheckoutOutstanding,
-} from "./modules/plan/checkout-tracker";
-export {
-  formatLaunchDate,
-  formatLaunchMonthDay,
-  formatLocalDate,
-  formatLocalDateTime,
-  formatPlanAmount,
-  LAUNCH_TIME_ZONE,
-  stripeCurrencyDecimals,
-} from "./modules/plan/format";
-export {
-  planComposerMode,
-  planDialog,
-  planLaunchRefreshDelay,
-  planUsageMode,
-  presenceDue,
-  usagePercent,
-} from "./modules/plan/model";
-export {
-  type PlusCheckoutRefusal,
-  plusCheckoutRefusal,
-} from "./modules/plan/refusals";
 // ===== Session module contract =========================================
 // `createAuthFetch` + `SESSION_TOKEN_KEY` are host-facing: the host composes the
 // auth-fetch into `ports.fetch` before constructing the SDK (see the module).
@@ -158,7 +117,11 @@ export {
   type AgentMoveStart,
   type AgentMoveStatus,
   type BillingSummary,
+  type CreateOrgOutcome,
+  type FreeOrg,
+  type OrgBilling,
   type OrgInviteSummary,
+  type OrgPlan,
   type OrgSummary,
   type OrgsList,
   SpacesCommand,
@@ -166,7 +129,11 @@ export {
   SpacesHttpError,
   type SpacesModule,
 } from "./modules/spaces";
-export { activeSpaceOrgSlug } from "./modules/spaces/active-space";
+export {
+  activeOrgBilling,
+  activeSpaceOrgSlug,
+} from "./modules/spaces/active-space";
+export { freeOrgTakenSlug } from "./modules/spaces/create-refusals";
 export * from "./modules/spaces/move-refusals";
 // ===== Teams module contract ===========================================
 // `AgentAccess`/`AgentAssignment` are the agents module's; a team assignment

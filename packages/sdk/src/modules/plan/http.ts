@@ -1,7 +1,5 @@
 import type {
   PlanCheckout,
-  PlanRoutine,
-  PlanRoutineKey,
   PlanSummary,
   PlusInvoice,
 } from "@houston/wire-types";
@@ -55,49 +53,4 @@ export async function listPlusInvoices(
   return (await (await httpRequest(scope, "/v1/me/plus/invoices")).json()) as {
     invoices: PlusInvoice[];
   };
-}
-
-/** List the person's enabled routines across all spaces.
- * @assistant group:routines
- */
-export async function listPlanRoutines(
-  scope: HttpScope,
-): Promise<{ routines: PlanRoutine[] }> {
-  return (await (await httpRequest(scope, "/v1/me/routines")).json()) as {
-    routines: PlanRoutine[];
-  };
-}
-
-/** Choose the one Free routine that keeps firing.
- * @assistant group:routines
- * @assistant confirm: Other Free routines stay saved but stop firing.
- */
-export async function keepRoutine(
-  scope: HttpScope,
-  key: PlanRoutineKey,
-): Promise<PlanSummary> {
-  return (await (
-    await httpRequest(scope, "/v1/me/routines/keep", {
-      method: "PUT",
-      body: JSON.stringify(key),
-    })
-  ).json()) as PlanSummary;
-}
-
-/** Resume routines paused while away.
- * @assistant group:routines
- * @assistant confirm: Paused routines can start firing again.
- */
-export async function resumeRoutines(scope: HttpScope): Promise<PlanSummary> {
-  return (await (
-    await httpRequest(scope, "/v1/me/routines/resume", { method: "POST" })
-  ).json()) as PlanSummary;
-}
-
-/** Report that the person's app is in the foreground.
- * @assistant group:system hidden: presence means the person opened the app; an assistant reporting it would keep their routines from pausing.
- * @assistant unconfirmed: A foreground heartbeat only updates activity time.
- */
-export async function reportPresence(scope: HttpScope): Promise<void> {
-  await httpRequest(scope, "/v1/me/presence", { method: "POST" });
 }

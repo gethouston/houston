@@ -66,12 +66,12 @@ export default function BillingTab({ ctx }: OrgTabProps) {
         <div className="flex flex-col gap-3">
           <p className="text-sm text-ink-muted">{t("billing.pickPlan")}</p>
           <div className="flex flex-wrap gap-3">
-            <AsyncButton onClick={() => checkout.mutateAsync("monthly")}>
+            <AsyncButton onClick={() => checkout.mutateAsync()}>
               {t("billing.checkoutMonthly")}
             </AsyncButton>
             <AsyncButton
               variant="secondary"
-              onClick={() => checkout.mutateAsync("annual")}
+              onClick={() => checkout.mutateAsync()}
             >
               {t("billing.checkoutAnnual")}
             </AsyncButton>

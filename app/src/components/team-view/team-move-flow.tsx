@@ -5,6 +5,7 @@ import {
   DialogTitle,
 } from "@houston-ai/core";
 import { useTranslation } from "react-i18next";
+import { createdOrg } from "../../hooks/queries/use-orgs";
 import { useTeamMoveFlow } from "../../hooks/use-team-move-flow";
 import {
   canRetryTeamMove,
@@ -52,7 +53,15 @@ export function TeamMoveFlow({
       : null;
   const create = async (name: string) => {
     try {
-      const team = await flow.createOrg.mutateAsync(name);
+      const team = createdOrg(await flow.createOrg.mutateAsync(name));
+      if (!team) {
+        setState({
+          step: "pick",
+          creating: false,
+          createError: t("moveTeam.pick.failed"),
+        });
+        return;
+      }
       setState(flow.confirmTeamMove({ slug: team.slug, name: team.name }));
     } catch {
       const refreshed = await flow.orgs.refetch();

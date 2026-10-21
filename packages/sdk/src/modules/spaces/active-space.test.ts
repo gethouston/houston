@@ -1,5 +1,9 @@
 import { describe, expect, it } from "vitest";
-import { activeSpaceOrgSlug } from "./active-space";
+import {
+  freeOrgBilling,
+  paidOrgBilling,
+} from "../billing/org-billing-fixtures";
+import { activeOrgBilling, activeSpaceOrgSlug } from "./active-space";
 import type { OrgSummary, OrgsList } from "./types";
 
 function org(slug: string, kind: OrgSummary["kind"]): OrgSummary {
@@ -11,12 +15,14 @@ function org(slug: string, kind: OrgSummary["kind"]): OrgSummary {
     role: "owner",
     memberCount: 1,
     degraded: false,
+    billing: kind === "personal" ? freeOrgBilling() : paidOrgBilling(),
   };
 }
 
 const MEMBERSHIPS: OrgsList = {
   orgs: [org("aaaaaaaaaaaaaaaa", "team"), org("383369a239383fee", "personal")],
   invites: [],
+  freeOrg: null,
 };
 
 describe("activeSpaceOrgSlug", () => {
@@ -38,7 +44,27 @@ describe("activeSpaceOrgSlug", () => {
     const teamsOnly: OrgsList = {
       orgs: [org("aaaaaaaaaaaaaaaa", "team")],
       invites: [],
+      freeOrg: null,
     };
     expect(activeSpaceOrgSlug(null, teamsOnly)).toBeNull();
+  });
+});
+
+describe("activeOrgBilling", () => {
+  it("reads the pinned team's billing, else the personal org's", () => {
+    expect(activeOrgBilling("aaaaaaaaaaaaaaaa", MEMBERSHIPS)).toEqual(
+      paidOrgBilling(),
+    );
+    expect(activeOrgBilling(null, MEMBERSHIPS)).toEqual(freeOrgBilling());
+  });
+
+  it("is undefined while unread and null for an unknown or legacy org", () => {
+    expect(activeOrgBilling(null, undefined)).toBeUndefined();
+    expect(activeOrgBilling("bbbbbbbbbbbbbbbb", MEMBERSHIPS)).toBeNull();
+    const legacy: OrgsList = {
+      ...MEMBERSHIPS,
+      orgs: [{ ...org("aaaaaaaaaaaaaaaa", "team"), billing: null }],
+    };
+    expect(activeOrgBilling("aaaaaaaaaaaaaaaa", legacy)).toBeNull();
   });
 });

@@ -53,3 +53,28 @@ test("portable exportPreview sends x-houston-org for the active team space", asy
   await exportPreview(cfg, "agent-1");
   expect(cap.headerFor()).toBe(ORG);
 });
+
+function teamClient(): HoustonClient {
+  const client = new HoustonClient({
+    baseUrl: BASE,
+    token: "t",
+    controlPlane: true,
+  });
+  client.setActiveOrg(ORG);
+  return client;
+}
+
+test("a free org's routines and presence carry x-houston-org", async () => {
+  const cap = captureFetch();
+  const client = teamClient();
+  await client.listPlanRoutines();
+  expect(cap.headerFor()).toBe(ORG);
+  await client.reportPresence();
+  expect(cap.headerFor()).toBe(ORG);
+});
+
+test("the per-person plan stays account-wide, with no x-houston-org", async () => {
+  const cap = captureFetch();
+  await teamClient().getPlan();
+  expect(cap.headerFor()).toBeNull();
+});

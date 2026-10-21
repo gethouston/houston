@@ -49,15 +49,39 @@ const cases = [
     { url: "https://stripe.test/portal" },
   ],
   ["listPlusInvoices", "GET", "/v1/me/plus/invoices", null, { invoices: [] }],
-  ["listPlanRoutines", "GET", "/v1/me/routines", null, { routines: [] }],
-  ["keepRoutine", "PUT", "/v1/me/routines/keep", JSON.stringify(key), summary],
-  ["resumeRoutines", "POST", "/v1/me/routines/resume", null, summary],
-  ["reportPresence", "POST", "/v1/me/presence", null, null],
 ] as const;
 
 describe("personal plan wire", () => {
   for (const [method, verb, path, body, response] of cases) {
-    test(`${method} uses ${verb} ${path} with the exact body`, async () => {
+    test(`${method} uses ${verb} ${path} with the exact body and no org`, async () => {
+      stubFetch(() =>
+        response === null
+          ? new Response(null, { status: 204 })
+          : json(200, response),
+      );
+      const result = await client()[method]();
+      expect(result).toEqual(response === null ? undefined : response);
+      expect(calls).toHaveLength(1);
+      const [call] = calls;
+      expect(call).toMatchObject({ method: verb, url: `${BASE}${path}`, body });
+      expect(call.headers.get("Authorization")).toBe("Bearer t");
+      expect(call.headers.get("Content-Type")).toBe("application/json");
+      expect(call.headers.get("x-houston-org")).toBeNull();
+    });
+  }
+});
+
+/** A free org's routines and presence: the same routes, now org-scoped. */
+const orgCases = [
+  ["listPlanRoutines", "GET", "/v1/me/routines", null, { routines: [] }],
+  ["keepRoutine", "PUT", "/v1/me/routines/keep", JSON.stringify(key), null],
+  ["resumeRoutines", "POST", "/v1/me/routines/resume", null, null],
+  ["reportPresence", "POST", "/v1/me/presence", null, null],
+] as const;
+
+describe("a free org's routine wire", () => {
+  for (const [method, verb, path, body, response] of orgCases) {
+    test(`${method} uses ${verb} ${path} for the active org`, async () => {
       stubFetch(() =>
         response === null
           ? new Response(null, { status: 204 })
@@ -73,8 +97,7 @@ describe("personal plan wire", () => {
       const [call] = calls;
       expect(call).toMatchObject({ method: verb, url: `${BASE}${path}`, body });
       expect(call.headers.get("Authorization")).toBe("Bearer t");
-      expect(call.headers.get("Content-Type")).toBe("application/json");
-      expect(call.headers.get("x-houston-org")).toBeNull();
+      expect(call.headers.get("x-houston-org")).toBe(ORG);
     });
   }
 });

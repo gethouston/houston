@@ -12,6 +12,8 @@
  */
 
 import type {
+  FreeOrg,
+  MessageLimitScope,
   PlanRoutine,
   PlanRoutineKey,
   PlanSummary,
@@ -26,6 +28,8 @@ export const FAKE_PORTAL_URL = "https://billing.houston.invalid/p/session/e2e";
 export interface PlanMessageLimit {
   limit: number;
   resetsAt: string;
+  /** Whose allowance ran out; a legacy refusal carries none. */
+  scope?: MessageLimitScope;
 }
 
 /** What `/__test__/plan` takes. Only `summary` is required. */
@@ -38,6 +42,11 @@ export interface PlanSeed {
   messageLimit?: PlanMessageLimit | null;
   /** A C19 refusal every Plus checkout answers instead of a session. */
   checkoutRefusal?: PlanCheckoutRefusal | null;
+  /**
+   * The free slot `GET /v1/orgs` reports and `POST /v1/orgs` honors. Absent,
+   * the personal org holds it while it is free.
+   */
+  freeOrg?: FreeOrg | null;
 }
 
 /** The checkout refusals a spec can arm (`already_plus` follows the summary). */
@@ -89,6 +98,7 @@ export function armPlan(seed: PlanSeed | null): Required<PlanSeed> | null {
           portalUrl: seed.portalUrl ?? FAKE_PORTAL_URL,
           messageLimit: seed.messageLimit ?? null,
           checkoutRefusal: seed.checkoutRefusal ?? null,
+          freeOrg: seed.freeOrg ?? null,
         }
       : null,
     calls: [],

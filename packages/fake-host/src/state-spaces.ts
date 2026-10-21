@@ -9,12 +9,12 @@
  * the org list at once, exactly as it does behind the real gateway, with no
  * second fixture to keep in sync.
  *
- * No PERSONAL `OrgSummary` is synthesized. The gateway lists one, but the fake
- * host's personal space is the seed WORKSPACE (`SEED_WORKSPACE_ID`), not an org
- * record with a slug — inventing one would put an id in `/v1/orgs` that
- * `/v1/workspaces` contradicts. Every client surface reading this list filters
- * to `kind:"team"` (the team picker) or matches the ACTIVE team's slug (the
- * degraded banner), so the omission is unobservable.
+ * A PERSONAL `OrgSummary` is listed only while the plan is armed
+ * (`PERSONAL_ORG_SLUG`, carrying the armed summary as org billing): the fake
+ * host's personal space is the seed WORKSPACE, not an org record, and the
+ * billing is the one thing a client reads off the personal org. Every other
+ * client surface filters this list to `kind:"team"` (the team picker) or
+ * matches the ACTIVE team's slug (the degraded banner).
  *
  * The `FakeSpaceInvite` / `SpaceInviteRejection` shapes live in
  * `state-store.ts` with the rest of the wire fixtures; this module is their
@@ -22,27 +22,27 @@
  */
 
 import type {
+  CreateOrgOutcome,
+  FreeOrg,
+  OrgPlan,
+  OrgSummary,
+} from "@houston/wire-types";
+import {
+  PERSONAL_ORG_SLUG,
+  planFreeOrg,
+  planOrgBilling,
+  unpaidOrgBilling,
+} from "./state-org-billing";
+import { FAKE_CHECKOUT_URL, planSeed } from "./state-plan";
+import type {
   FakeSpaceInvite,
   FakeTeamWorkspace,
   OrgRole,
 } from "./state-store";
 import { state } from "./state-store";
 
-/**
- * One membership as `GET /v1/orgs` serves it. Mirrors the
- * `OrgSummary` wire shape structurally (that type lives in
- * `@houston/engine-adapter`, which this package does not depend on) minus the
- * optional billing detail, which C8 omits from summaries.
- */
-export interface OrgSummaryWire {
-  id: string;
-  slug: string;
-  name: string;
-  kind: "personal" | "team";
-  role: OrgRole;
-  memberCount: number;
-  degraded: boolean;
-}
+/** One membership as `GET /v1/orgs` serves it. */
+export type OrgSummaryWire = OrgSummary;
 
 /** One invite as `GET /v1/orgs` serves it in `invites`. */
 export interface OrgInviteSummaryWire {
@@ -66,13 +66,38 @@ function orgWire(row: FakeTeamWorkspace): OrgSummaryWire {
     kind: "team",
     role: row.role ?? state.capabilities.role ?? "owner",
     memberCount: row.memberCount ?? 1,
-    degraded: false,
+    degraded: row.billing?.status === "locked",
+    billing: row.billing ?? null,
   };
 }
 
-/** Every team the caller belongs to (`GET /v1/orgs` → `orgs`). */
+/** The personal org, listed while the plan is armed (see the header). */
+function personalOrgWire(): OrgSummaryWire[] {
+  const seed = planSeed();
+  if (!seed) return [];
+  return [
+    {
+      id: `org-${PERSONAL_ORG_SLUG}`,
+      slug: PERSONAL_ORG_SLUG,
+      name: "Personal",
+      kind: "personal",
+      role: "owner",
+      memberCount: 1,
+      degraded: false,
+      billing: planOrgBilling(seed),
+    },
+  ];
+}
+
+/** Every org the caller belongs to (`GET /v1/orgs` → `orgs`). */
 export function listSpaceOrgs(): OrgSummaryWire[] {
-  return state.teamWorkspaces.map(orgWire);
+  return [...personalOrgWire(), ...state.teamWorkspaces.map(orgWire)];
+}
+
+/** The caller's free slot, known only while the plan is armed. */
+export function spaceFreeOrg(): FreeOrg | null {
+  const seed = planSeed();
+  return seed ? planFreeOrg(seed) : null;
 }
 
 /**
@@ -140,14 +165,25 @@ export function mintTeamSlug(): string {
   return (++state.teamSeq).toString(16).padStart(16, "0");
 }
 
-/** Mint a team with the caller as owner (`POST /v1/orgs`). */
-export function createTeamSpace(name: string): OrgSummaryWire {
+/**
+ * Mint an org with the caller as owner (`POST /v1/orgs`). A free create while
+ * the armed slot is taken creates nothing; a paid create is locked until its
+ * checkout completes, and answers that checkout beside the org.
+ */
+export function createTeamSpace(name: string, plan: OrgPlan): CreateOrgOutcome {
+  const slot = spaceFreeOrg();
+  if (plan === "free" && slot && !slot.available && slot.orgSlug)
+    return { kind: "free_org_taken", freeOrgSlug: slot.orgSlug };
   const row: FakeTeamWorkspace = {
     id: `org:${mintTeamSlug()}`,
     name,
     role: "owner",
     memberCount: 1,
+    ...(plan === "paid" ? { billing: unpaidOrgBilling() } : {}),
   };
   state.teamWorkspaces = [...state.teamWorkspaces, row];
-  return orgWire(row);
+  const org = orgWire(row);
+  return plan === "paid"
+    ? { kind: "checkout", org, checkoutUrl: FAKE_CHECKOUT_URL }
+    : { kind: "created", org };
 }

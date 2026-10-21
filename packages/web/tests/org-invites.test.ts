@@ -57,6 +57,7 @@ const ORG = {
   role: "user",
   memberCount: 4,
   degraded: false,
+  billing: null,
 };
 
 test("acceptOrgInvite POSTs /v1/org-invites/:id/accept and unwraps {org}", async () => {

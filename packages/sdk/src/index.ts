@@ -50,6 +50,7 @@ export { CommandRegistry, isCommandEnvelope } from "./commands";
 // them, and a host uses `new HoustonSdk(...)`.
 export * from "./contracts-account";
 export * from "./contracts-agent";
+export * from "./contracts-billing";
 export * from "./contracts-conversation";
 export * from "./contracts-linkedin";
 export * from "./contracts-preferences";
@@ -65,6 +66,9 @@ export * from "./modules/billing/choice-modal";
 export * from "./modules/billing/choice-modal-frame";
 export * from "./modules/billing/choice-model";
 export * from "./modules/billing/choice-picker";
+export * from "./modules/billing/schedule-floor";
+export * from "./modules/billing/trigger-skip-notice";
+export * from "./modules/billing/upgrade-model";
 export {
   DelegationCommand,
   type DelegationCommandType,
@@ -86,9 +90,6 @@ export {
 } from "./modules/heartbeat";
 export * from "./modules/plan/announcement-model";
 export * from "./modules/plan/billing-model";
-export * from "./modules/plan/schedule-floor";
-export * from "./modules/plan/trigger-skip-notice";
-export * from "./modules/plan/upgrade-model";
 export { PushCommand, PushHttpError, type PushModule } from "./modules/push";
 // The rules around a skill still being built in chat: what counts as one,
 // which is picked back up, which are listed, and discarding one.

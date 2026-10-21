@@ -65,14 +65,20 @@ export interface PlusInvoice {
   pdfUrl?: string;
 }
 
+/** Whose allowance ran out: a free org's shared pool, or one paid seat's. */
+export const MESSAGE_LIMIT_SCOPES = ["org", "seat"] as const;
+export type MessageLimitScope = (typeof MESSAGE_LIMIT_SCOPES)[number];
+
 export interface MessageLimitRefusal {
   error: string;
   code: "message_limit";
   limit: number;
   resetsAt: string;
+  /** Absent from a legacy (per-person) refusal and from an unknown scope. */
+  scope?: MessageLimitScope;
 }
 
-/** Parse only the exact C19 refusal; other 429s keep their existing handling. */
+/** Parse only the exact refusal; other 429s keep their existing handling. */
 export function parseMessageLimitRefusal(
   body: unknown,
 ): MessageLimitRefusal | null {
@@ -87,11 +93,13 @@ export function parseMessageLimitRefusal(
     !Number.isFinite(Date.parse(value.resetsAt))
   )
     return null;
+  const scope = MESSAGE_LIMIT_SCOPES.find((known) => known === value.scope);
   return {
     error: value.error,
     code: "message_limit",
     limit: value.limit,
     resetsAt: value.resetsAt,
+    ...(scope ? { scope } : {}),
   };
 }
 

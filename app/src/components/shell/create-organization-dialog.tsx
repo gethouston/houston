@@ -1,7 +1,7 @@
 import { FormDialog, Input } from "@houston-ai/core";
 import { useEffect, useState } from "react";
 import { useTranslation } from "react-i18next";
-import { useCreateTeam } from "../../hooks/queries/use-orgs";
+import { createdOrg, useCreateTeam } from "../../hooks/queries/use-orgs";
 import { stayOpen } from "../../lib/dialog-stay-open";
 import { openHome } from "../../lib/home-nav";
 import { openAdmin } from "../../lib/open-admin";
@@ -59,9 +59,12 @@ export function CreateOrganizationDialog({ open, onOpenChange }: Props) {
     // files nothing a second time. `POST /v1/orgs` is not idempotent, so the
     // hook reconciles via `GET /v1/orgs` before a retry. (Not a swallow: the
     // handler re-rejects.)
-    const org = await createOrganization
+    const outcome = await createOrganization
       .mutateAsync(validation.name)
       .catch(() => stayOpen());
+    // The free slot is taken: nothing was created and nothing broke.
+    const org = createdOrg(outcome);
+    if (!org) return stayOpen();
     // `useCreateTeam`'s own onSuccess already awaited `loadWorkspaces()`, so
     // the store is fresh — reloading again here would double the
     // `GET /v1/workspaces` fetch. Just read the reloaded store.

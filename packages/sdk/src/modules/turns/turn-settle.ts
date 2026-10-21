@@ -136,6 +136,7 @@ export function finishPlanLimit(
     provider: "",
     resets_at: refusal.resetsAt,
     message: refusal.error,
+    ...(refusal.scope ? { scope: refusal.scope } : {}),
   });
 }
 

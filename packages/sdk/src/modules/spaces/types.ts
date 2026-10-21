@@ -9,8 +9,6 @@
  * publishes nothing (the SDK's preferences shape).
  */
 
-import type { OrgRole } from "@houston/protocol";
-
 /** The write vocabulary — the same handlers back the facade and `dispatch`. */
 export const SpacesCommand = {
   List: "spaces/list",
@@ -26,60 +24,21 @@ export type SpacesCommandType =
   (typeof SpacesCommand)[keyof typeof SpacesCommand];
 
 /**
- * Billing status of a team space, attached to an {@link OrgSummary} only for
- * teams and only for owner/admin callers. The DERIVED effective `status` (never
- * a stored column) drives every UI billing state, and `seats` is the live member
- * count at read time. The gateway is the source of truth.
+ * The space wire shapes are the protocol's own (`@houston/wire-types`), so the
+ * shape a space carries and the shape every surface reads can never drift
+ * apart. `BillingSummary` is the C8 team summary `GET /v1/org/billing` still
+ * answers; an org's billing state rides `OrgSummary.billing`.
  */
-export interface BillingSummary {
-  plan: "team" | "enterprise";
-  status: "free" | "trialing" | "active" | "past_due" | "expired";
-  /** ISO-8601; present once the trial clock exists. */
-  trialEndsAt?: string;
-  seats: number;
-  /** Present once subscribed. */
-  interval?: "monthly" | "annual";
-}
-
-/**
- * One space the caller belongs to. `role` is the caller's role IN THIS space
- * and `degraded` is `true` when writes would `403 needs_upgrade` (every member
- * sees it; it carries no billing detail).
- *
- * The `slug` is what pins the active space: a team's switcher workspace id is
- * `"org:" + slug`, and that slug rides `x-houston-org` / `?org=`.
- */
-export interface OrgSummary {
-  id: string;
-  slug: string;
-  name: string;
-  kind: "personal" | "team";
-  role: OrgRole;
-  memberCount: number;
-  degraded: boolean;
-  billing?: BillingSummary;
-}
-
-/**
- * A pending invite addressed to the caller's email, from `GET /v1/orgs`
- * (`invites`). Accepted via `POST /v1/org-invites/:id/accept`, declined via
- * `DELETE /v1/org-invites/:id`.
- */
-export interface OrgInviteSummary {
-  id: string;
-  orgName: string;
-  role: OrgRole;
-  invitedBy?: string;
-}
-
-/**
- * Answer of `GET /v1/orgs`: every membership plus every pending invite
- * addressed to the caller.
- */
-export interface OrgsList {
-  orgs: OrgSummary[];
-  invites: OrgInviteSummary[];
-}
+export type {
+  BillingSummary,
+  CreateOrgOutcome,
+  FreeOrg,
+  OrgBilling,
+  OrgInviteSummary,
+  OrgPlan,
+  OrgSummary,
+  OrgsList,
+} from "@houston/wire-types";
 
 /**
  * Answer of `POST /v1/agents/:slug/move`: the id to poll for move progress. The

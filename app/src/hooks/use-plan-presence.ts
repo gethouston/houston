@@ -4,19 +4,24 @@ import { markPlanPresence, planPresenceDue } from "../lib/plan-session";
 import { tauriOrg } from "../lib/tauri";
 
 /**
- * Tell the gateway the person is here (at most once per presence window)
- * whenever the app becomes visible or focused, on a deployment with plans.
+ * Tell the gateway the person is here in the active org (at most once per
+ * presence window per org) whenever the app becomes visible or focused, on a
+ * deployment with plans. The request rides the active org's header, so it
+ * waits until that org is known.
  */
-export function usePlanPresence(enabled: boolean): void {
+export function usePlanPresence(
+  enabled: boolean,
+  orgSlug: string | null,
+): void {
   useEffect(() => {
-    if (!enabled) return;
+    if (!enabled || !orgSlug) return;
     const report = () => {
       if (
         document.visibilityState !== "visible" ||
-        !planPresenceDue(Date.now())
+        !planPresenceDue(orgSlug, Date.now())
       )
         return;
-      markPlanPresence(Date.now());
+      markPlanPresence(orgSlug, Date.now());
       void tauriOrg
         .reportPresence()
         .catch((error: unknown) => logAndReportError("report_presence", error));
@@ -28,5 +33,5 @@ export function usePlanPresence(enabled: boolean): void {
       document.removeEventListener("visibilitychange", report);
       window.removeEventListener("focus", report);
     };
-  }, [enabled]);
+  }, [enabled, orgSlug]);
 }

@@ -9,8 +9,7 @@ import {
 
 /**
  * The spaces family rides `sdk.spaces`. What this file pins is the WIRE: the
- * seven gateway routes, their
- * methods, their bodies, the headers that carry auth and the active space, and
+ * seven gateway routes, their methods, their bodies, the headers that carry auth and the active space, and
  * the percent-encoding of every id spliced into a path.
  *
  * Each case drives the composed `HoustonClient` (what the app holds), not the
@@ -51,6 +50,7 @@ const ORG = {
   role: "owner",
   memberCount: 4,
   degraded: false,
+  billing: null,
 };
 
 /** A cloud client with a team space active, so `x-houston-org` is live. */
@@ -76,21 +76,57 @@ function soleCall(): Call {
 
 describe("the delegated spaces requests", () => {
   test("listOrgs GETs /v1/orgs", async () => {
-    stubFetch(() => json(200, { orgs: [ORG], invites: [] }));
-    expect(await client().listOrgs()).toEqual({ orgs: [ORG], invites: [] });
+    const freeOrg = { available: false, orgSlug: ORG_SLUG };
+    stubFetch(() => json(200, { orgs: [ORG], invites: [], freeOrg }));
+    expect(await client().listOrgs()).toEqual({
+      orgs: [ORG],
+      invites: [],
+      freeOrg,
+    });
     const call = soleCall();
     expect(call.method).toBe("GET");
     expect(call.url).toBe(`${BASE}/v1/orgs`);
     expect(call.body).toBeNull();
   });
 
-  test("createOrg POSTs /v1/orgs with the name as the whole body", async () => {
+  test("createOrg POSTs /v1/orgs with the name and a free plan", async () => {
     stubFetch(() => json(201, ORG));
-    expect(await client().createOrg("Acme")).toEqual(ORG);
+    expect(await client().createOrg({ name: "Acme" })).toEqual({
+      kind: "created",
+      org: ORG,
+    });
     const call = soleCall();
     expect(call.method).toBe("POST");
     expect(call.url).toBe(`${BASE}/v1/orgs`);
-    expect(call.body).toBe(JSON.stringify({ name: "Acme" }));
+    expect(call.body).toBe(JSON.stringify({ name: "Acme", plan: "free" }));
+  });
+
+  test("createOrg answers a taken free slot as an outcome, not a failure", async () => {
+    stubFetch(() =>
+      json(409, {
+        error: "you already have a free organization",
+        code: "free_org_taken",
+        freeOrgSlug: "0000000000000bbb",
+      }),
+    );
+    expect(await client().createOrg({ name: "Acme" })).toEqual({
+      kind: "free_org_taken",
+      freeOrgSlug: "0000000000000bbb",
+    });
+  });
+
+  test("a paid createOrg answers the org with its checkout", async () => {
+    stubFetch(() =>
+      json(201, { ...ORG, checkoutUrl: "https://checkout.stripe.test/c/9" }),
+    );
+    expect(await client().createOrg({ name: "Acme", plan: "paid" })).toEqual({
+      kind: "checkout",
+      org: ORG,
+      checkoutUrl: "https://checkout.stripe.test/c/9",
+    });
+    expect(soleCall().body).toBe(
+      JSON.stringify({ name: "Acme", plan: "paid" }),
+    );
   });
 
   test("deleteWorkspace DELETEs /v1/orgs/:slug", async () => {
@@ -165,7 +201,11 @@ describe("every id spliced into a path is percent-encoded", () => {
 describe("what the mixin softens, and what it must not", () => {
   test("a 404 on listOrgs is a gateway that predates spaces", async () => {
     stubFetch(() => json(404, { error: "not found" }));
-    expect(await client().listOrgs()).toEqual({ orgs: [], invites: [] });
+    expect(await client().listOrgs()).toEqual({
+      orgs: [],
+      invites: [],
+      freeOrg: null,
+    });
   });
 
   test("any other listOrgs failure reaches the caller", async () => {
@@ -178,7 +218,7 @@ describe("what the mixin softens, and what it must not", () => {
   test("createOrg, accept and decline never degrade", async () => {
     stubFetch(() => json(404, { error: "invite not found" }));
     const c = client();
-    await expect(c.createOrg("Acme")).rejects.toBeInstanceOf(
+    await expect(c.createOrg({ name: "Acme" })).rejects.toBeInstanceOf(
       HoustonEngineError,
     );
     await expect(c.acceptOrgInvite("inv-1")).rejects.toBeInstanceOf(

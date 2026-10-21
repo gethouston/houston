@@ -3,8 +3,8 @@ import {
   billingCards,
   formatLaunchDate,
   formatLocalDateTime,
+  planSummaryPercent,
   planUsageMode,
-  usagePercent,
 } from "@houston/sdk";
 import { Button, Card, Progress } from "@houston-ai/core";
 import { useTranslation } from "react-i18next";
@@ -13,7 +13,7 @@ import { useUIStore } from "../../../stores/ui";
 
 export function UsageCard({ plan }: { plan: PlanSummary }) {
   const { t, i18n } = useTranslation("plan");
-  const percent = usagePercent(plan) ?? 0;
+  const percent = planSummaryPercent(plan) ?? 0;
   const preview = planUsageMode(plan) === "preview";
   const starts =
     plan.limitsStartAt && formatLaunchDate(plan.limitsStartAt, i18n.language);

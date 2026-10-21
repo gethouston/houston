@@ -5,7 +5,8 @@
  * of the active-space pin:
  *
  *   - `GET  /v1/orgs`                      → `{orgs, invites}`
- *   - `POST /v1/orgs {name}`               → `OrgSummary` (201, caller = owner)
+ *   - `POST /v1/orgs {name, plan}`         → `OrgSummary` (201, caller = owner;
+ *     409 `free_org_taken`; a paid create adds `checkoutUrl`)
  *   - `POST /v1/org-invites/:id/accept`    → `{org}` (201, the invitee joins)
  *   - `DELETE /v1/org-invites/:id`         → 204 (the invitee declines)
  *
@@ -20,6 +21,7 @@
  */
 
 import { json, noContent } from "./http";
+import { createOrg } from "./routes-org-create";
 import * as state from "./state";
 import type {
   FakeSpaceInvite,
@@ -147,20 +149,14 @@ export function handleSpacesRoutes(
   // shape the render gate has to survive.
   if (segs[0] === "v1" && segs[1] === "orgs" && segs.length === 2) {
     if (method === "GET") {
+      const freeOrg = state.spaceFreeOrg();
       return json({
         orgs: state.listSpaceOrgs(),
         invites: state.listSpaceInviteWires(),
+        ...(freeOrg ? { freeOrg } : {}),
       });
     }
-    // POST /v1/orgs — mint a team with the caller as owner.
-    if (method === "POST") {
-      const name = typeof body?.name === "string" ? body.name.trim() : "";
-      if (!name) return json({ error: "name is required" }, 400);
-      // The gateway's own ceiling (`maxTeamNameLen`), mirrored so the create
-      // dialog's long-name rejection is reachable here too.
-      if (name.length > 200) return json({ error: "name too long" }, 400);
-      return json(state.createTeamSpace(name), 201);
-    }
+    if (method === "POST") return createOrg(body);
     return json({ error: "not found" }, 404);
   }
 

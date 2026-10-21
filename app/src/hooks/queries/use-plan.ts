@@ -1,5 +1,4 @@
 import type { PlanRoutineKey } from "@houston/engine-adapter";
-import { planLaunchRefreshDelay } from "@houston/sdk";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { useState } from "react";
 import { reportError } from "../../lib/error-report";
@@ -8,7 +7,13 @@ import { queryKeys } from "../../lib/query-keys";
 import { refetchIfRoutineGone } from "../../lib/routine-gone-surface";
 import { tauriOrg, tauriSystem } from "../../lib/tauri";
 import { useCapabilities } from "../use-capabilities";
+import { useActiveOrgBilling } from "./use-billing";
 
+/**
+ * The per-person plan (`GET /v1/me/plan`): the Plan screen, the Plus offer and
+ * the launch announcement. Usage and routine rules are the active org's
+ * (`useActiveOrgBilling`).
+ */
 export function usePlan() {
   const { capabilities } = useCapabilities();
   return useQuery({
@@ -16,8 +21,6 @@ export function usePlan() {
     queryFn: tauriOrg.getPlan,
     enabled: capabilities?.plan === true,
     refetchOnWindowFocus: true,
-    refetchInterval: (query) =>
-      planLaunchRefreshDelay(query.state.data, Date.now()),
     staleTime: 30_000,
   });
 }
@@ -43,12 +46,13 @@ export function useDismissPlanAnnouncement() {
   });
 }
 
+/** The active free org's routines, for the "choose a routine to keep" chooser. */
 export function usePlanRoutines(enabled: boolean) {
-  const { capabilities } = useCapabilities();
+  const { orgSlug } = useActiveOrgBilling();
   return useQuery({
-    queryKey: queryKeys.planRoutines(),
+    queryKey: queryKeys.planRoutines(orgSlug ?? ""),
     queryFn: tauriOrg.listPlanRoutines,
-    enabled: enabled && capabilities?.plan === true,
+    enabled: enabled && orgSlug !== null,
   });
 }
 
@@ -86,31 +90,41 @@ export function usePlusPortal() {
   return { ...portal, fallbackUrl };
 }
 
+/**
+ * Refetch what a routine choice changes: the org's billing and its routines,
+ * and the plan the Plan screen still reads.
+ */
+function invalidateOrgRoutines(
+  client: ReturnType<typeof useQueryClient>,
+  orgSlug: string | null,
+) {
+  return Promise.all([
+    client.invalidateQueries({ queryKey: queryKeys.orgs() }),
+    client.invalidateQueries({ queryKey: queryKeys.plan() }),
+    client.invalidateQueries({
+      queryKey: queryKeys.planRoutines(orgSlug ?? ""),
+    }),
+  ]);
+}
+
 export function useKeepRoutine() {
   const client = useQueryClient();
+  const { orgSlug } = useActiveOrgBilling();
   return useMutation({
     mutationFn: (key: PlanRoutineKey) => tauriOrg.keepRoutine(key),
-    onSuccess: async (plan) => {
-      client.setQueryData(queryKeys.plan(), plan);
-      await Promise.all([
-        client.invalidateQueries({ queryKey: queryKeys.plan() }),
-        client.invalidateQueries({ queryKey: queryKeys.planRoutines() }),
-      ]);
-    },
+    onSuccess: () => invalidateOrgRoutines(client, orgSlug),
     // The gateway's `routine_not_found`: the routine was deleted since the
     // list loaded, so refresh it (the toast is the quiet surface's).
     onError: (err) =>
-      refetchIfRoutineGone(client, queryKeys.planRoutines(), err),
+      refetchIfRoutineGone(client, queryKeys.planRoutines(orgSlug ?? ""), err),
   });
 }
 
 export function useResumeRoutines() {
   const client = useQueryClient();
+  const { orgSlug } = useActiveOrgBilling();
   return useMutation({
     mutationFn: tauriOrg.resumeRoutines,
-    onSuccess: async (plan) => {
-      client.setQueryData(queryKeys.plan(), plan);
-      await client.invalidateQueries({ queryKey: queryKeys.plan() });
-    },
+    onSuccess: () => invalidateOrgRoutines(client, orgSlug),
   });
 }

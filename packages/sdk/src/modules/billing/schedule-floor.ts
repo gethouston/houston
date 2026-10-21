@@ -1,23 +1,22 @@
 import { scheduleFloorAllows } from "@houston/domain";
-import type { PlanSummary } from "@houston/wire-types";
+import type { OrgBilling } from "@houston/wire-types";
 
-/** Free's routine floor when the summary omits it. */
+/** A free org's routine floor when its billing omits it. */
 const DEFAULT_FREE_MIN_INTERVAL_MINUTES = 15;
 
 /**
  * The minimum minutes between fires a schedule editor may offer, or undefined
- * for no limit: the VIEWER's own plan, on any routine. Every save re-stamps the
- * routine's `created_by` to whoever saved it, and the gateway judges fires
- * against that person's plan, so a Free person's save is held to Free's floor
- * whoever created the routine, and a Plus person's save to none. (The skip
- * notice still reads the stored creator, `triggerPlanSkipNotice`: it explains
- * runs already judged.)
+ * for no limit: the ACTIVE ORG's tier, on any routine in it. The gateway
+ * judges every fire against the org the routine lives in, so a free org holds
+ * every save to its floor whoever makes it, and a paid org to none.
  */
 export function routineScheduleFloor(
-  plan: PlanSummary | undefined,
+  billing: OrgBilling | null | undefined,
 ): number | undefined {
-  if (plan?.plan !== "free") return undefined;
-  return plan.routines?.minIntervalMinutes ?? DEFAULT_FREE_MIN_INTERVAL_MINUTES;
+  if (billing?.tier !== "free") return undefined;
+  return (
+    billing.routines?.minIntervalMinutes ?? DEFAULT_FREE_MIN_INTERVAL_MINUTES
+  );
 }
 
 /**

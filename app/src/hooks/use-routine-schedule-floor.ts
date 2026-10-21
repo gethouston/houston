@@ -4,20 +4,20 @@ import {
   scheduleFloorRule,
 } from "@houston/sdk";
 import { useMemo } from "react";
-import { usePlan } from "./queries/use-plan";
+import { useActiveOrgBilling } from "./queries/use-billing";
 
 /**
- * The schedule floor for any save this person makes (SDK
- * `routineScheduleFloor`: their own plan decides, since every save re-stamps
- * the routine's creator to them), bound to the SDK's one rule
+ * The schedule floor for any save in the active org (SDK
+ * `routineScheduleFloor`: the org's tier decides, since the gateway judges
+ * every fire against the org the routine lives in), bound to the SDK's one rule
  * (`scheduleFloorRule`). Every schedule editor mount AND its save backstop
  * read it from here: the editor offers only what `allows` accepts and the
  * backstop asks the same `allows`, so the two always agree. Memoized on the
- * minutes, so the editor's scan of the counts it offers runs once per plan.
+ * minutes, so the editor's scan of the counts it offers runs once per org.
  */
 export function useRoutineScheduleFloor(): RoutineScheduleFloor | undefined {
-  const { data: plan } = usePlan();
-  const minutes = routineScheduleFloor(plan);
+  const { billing } = useActiveOrgBilling();
+  const minutes = routineScheduleFloor(billing);
   return useMemo(
     () => (minutes === undefined ? undefined : scheduleFloorRule(minutes)),
     [minutes],

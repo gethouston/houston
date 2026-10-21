@@ -22,9 +22,10 @@ Calling an operation returns the host's raw response. Where the adapter function
 
 ## billing
 
-- `createCheckout`: Starts the checkout that subscribes the team workspace to a paid plan. **Confirmation required.**
+- `claimFreeSlot`: Makes the active organization the free one, in place of the organization that is free today. **Confirmation required.**
+- `createCheckout`: Starts the checkout that puts the organization on a paid plan. **Confirmation required.**
 - `createPlusCheckout`: Start a Plus subscription checkout. **Confirmation required.**
-- `getBilling`: Shows the plan, trial, and payment status of the team workspace.
+- `getBilling`: Shows the plan and payment status of the organization.
 - `getChoice`: Shows which organization stays free when plans move to organizations, and which one a subscription pays for.
 - `listPlusInvoices`: List the person's recent Plus invoices.
 - `setChoice`: Chooses which organization stays free, and for a Plus subscriber which organization the subscription pays for. **Confirmation required.**
@@ -108,11 +109,11 @@ Calling an operation returns the host's raw response. Where the adapter function
 - `cancelRoutineRun`: Stops a routine run that is currently under way. **Confirmation required.**
 - `createRoutine`: Creates a routine so an agent repeats work on a schedule. **Confirmation required.**
 - `deleteRoutine`: Deletes a routine so it stops running on its schedule. The route answers 404 with code `routine_not_found` when no routine has that id. **Confirmation required.**
-- `keepRoutine`: Choose the one Free routine that keeps firing. **Confirmation required.**
-- `listPlanRoutines`: List the person's enabled routines across all spaces.
+- `keepRoutine`: Choose the one routine a free organization keeps firing. **Confirmation required.**
+- `listPlanRoutines`: List the active organization's enabled routines.
 - `listRoutineRuns`: Lists the times an agent's routines have run, including any run in progress.
 - `listRoutines`: Lists an agent's routines.
-- `resumeRoutines`: Resume routines paused while away. **Confirmation required.**
+- `resumeRoutines`: Resume the active organization's routines paused while nobody was around. **Confirmation required.**
 - `runRoutineNow`: Runs a routine right now instead of waiting for its next scheduled time. **Confirmation required.**
 - `updateRoutine`: Updates a routine's schedule or instructions. **Confirmation required.**
 

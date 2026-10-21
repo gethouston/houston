@@ -41,6 +41,8 @@ export type ProviderError =
       provider: string;
       resets_at: string;
       message: string;
+      /** Whose allowance ran out: a free org's pool or one paid seat's. */
+      scope?: "org" | "seat";
       credential?: ProviderErrorCredential;
     }
   | {

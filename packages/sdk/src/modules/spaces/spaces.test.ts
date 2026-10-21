@@ -2,6 +2,7 @@ import { describe, expect, it, vi } from "vitest";
 import type { SdkConfig, SdkPorts } from "../../ports";
 import { HoustonSdk } from "../../sdk";
 import { memoryKv } from "../../test-ports";
+import { freeOrgBilling } from "../billing/org-billing-fixtures";
 import { SpacesCommand, SpacesHttpError } from "./index";
 
 const BASE = "http://127.0.0.1:4317";
@@ -20,7 +21,9 @@ const ORG = {
   role: "owner" as const,
   memberCount: 4,
   degraded: false,
+  billing: null,
 };
+const BILLED = { ...ORG, billing: freeOrgBilling() };
 
 /**
  * A spaces SDK over a mock `fetch` that records the whole wire. `reactivity` is
@@ -62,23 +65,101 @@ const ok = (body: unknown) => makeSdk(() => json(body));
 
 describe("the spaces requests", () => {
   it("reads the caller's spaces and invites off GET /v1/orgs", async () => {
-    const { sdk, calls } = ok({ orgs: [ORG], invites: [] });
-    expect(await sdk.spaces.listOrgs()).toEqual({ orgs: [ORG], invites: [] });
+    const { sdk, calls } = ok({
+      orgs: [BILLED],
+      invites: [],
+      freeOrg: { available: false, orgSlug: ORG.slug },
+    });
+    expect(await sdk.spaces.listOrgs()).toEqual({
+      orgs: [BILLED],
+      invites: [],
+      freeOrg: { available: false, orgSlug: ORG.slug },
+    });
     expect(calls).toEqual([
       { method: "GET", url: `${BASE}/v1/orgs`, body: null },
     ]);
   });
 
-  it("creates a space with the name in the body", async () => {
-    const { sdk, calls } = ok(ORG);
-    expect(await sdk.spaces.createOrg("Acme")).toEqual(ORG);
+  it("reads a legacy org, an older team summary and no free slot as null", async () => {
+    const legacy = { ...ORG, slug: "1111111111111111" };
+    const { billing: _none, ...noBilling } = legacy;
+    const olderTeam = {
+      ...ORG,
+      billing: { plan: "team", status: "trialing", seats: 3 },
+    };
+    const { sdk } = ok({ orgs: [noBilling, olderTeam], invites: [] });
+    expect(await sdk.spaces.listOrgs()).toEqual({
+      orgs: [legacy, ORG],
+      invites: [],
+      freeOrg: null,
+    });
+  });
+
+  it("creates a free org unless told paid", async () => {
+    const { sdk, calls } = ok(BILLED);
+    expect(await sdk.spaces.createOrg({ name: "Acme" })).toEqual({
+      kind: "created",
+      org: BILLED,
+    });
     expect(calls).toEqual([
       {
         method: "POST",
         url: `${BASE}/v1/orgs`,
-        body: JSON.stringify({ name: "Acme" }),
+        body: JSON.stringify({ name: "Acme", plan: "free" }),
       },
     ]);
+  });
+
+  it("answers a taken free slot as an outcome, naming the org that holds it", async () => {
+    const { sdk } = makeSdk(() =>
+      json(
+        {
+          code: "free_org_taken",
+          error: "free org taken",
+          freeOrgSlug: "fedcba9876543210",
+        },
+        409,
+      ),
+    );
+    expect(await sdk.spaces.createOrg({ name: "Acme" })).toEqual({
+      kind: "free_org_taken",
+      freeOrgSlug: "fedcba9876543210",
+    });
+  });
+
+  it("answers a paid create with the locked org and its checkout", async () => {
+    const locked = {
+      ...ORG,
+      degraded: true,
+      billing: freeOrgBilling({
+        status: "locked",
+        lockAt: "2026-10-23T00:00:00Z",
+        lockReason: "unpaid",
+        freeSlot: false,
+      }),
+    };
+    const { sdk, calls } = ok({
+      ...locked,
+      checkoutUrl: "https://checkout.stripe.test/c/9",
+    });
+    expect(await sdk.spaces.createOrg({ name: "Acme", plan: "paid" })).toEqual({
+      kind: "checkout",
+      org: locked,
+      checkoutUrl: "https://checkout.stripe.test/c/9",
+    });
+    expect(calls[0].body).toBe(JSON.stringify({ name: "Acme", plan: "paid" }));
+  });
+
+  it("still throws a 409 that is not the free slot", async () => {
+    for (const body of [
+      { code: "free_org_taken" },
+      { code: "name_taken", freeOrgSlug: "fedcba9876543210" },
+    ]) {
+      const { sdk } = makeSdk(() => json(body, 409));
+      await expect(
+        sdk.spaces.createOrg({ name: "Acme" }),
+      ).rejects.toBeInstanceOf(SpacesHttpError);
+    }
   });
 
   it("deletes a space by slug, percent-encoded into the path", async () => {
@@ -90,8 +171,8 @@ describe("the spaces requests", () => {
   });
 
   it("unwraps the {org} envelope an accept answers with", async () => {
-    const { sdk, calls } = ok({ org: ORG });
-    expect(await sdk.spaces.acceptOrgInvite("inv/1 2")).toEqual(ORG);
+    const { sdk, calls } = ok({ org: BILLED });
+    expect(await sdk.spaces.acceptOrgInvite("inv/1 2")).toEqual(BILLED);
     expect(calls).toEqual([
       {
         method: "POST",
@@ -177,7 +258,13 @@ describe("the dispatch path", () => {
       payload: { name: "Acme" },
     });
     expect(result.ok).toBe(true);
-    expect(calls[0].body).toBe(JSON.stringify({ name: "Acme" }));
+    expect(calls[0].body).toBe(JSON.stringify({ name: "Acme", plan: "free" }));
+    await sdk.dispatch({
+      id: "1b",
+      type: SpacesCommand.Create,
+      payload: { name: "Acme", plan: "paid" },
+    });
+    expect(calls[1].body).toBe(JSON.stringify({ name: "Acme", plan: "paid" }));
   });
 
   it("rejects a move with no agent named, without touching the wire", async () => {

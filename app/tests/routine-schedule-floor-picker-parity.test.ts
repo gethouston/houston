@@ -1,6 +1,6 @@
 import { deepStrictEqual, ok } from "node:assert";
 import { describe, it } from "node:test";
-import type { PlanSummary } from "@houston/engine-adapter";
+import type { OrgBilling } from "@houston/engine-adapter";
 import {
   routineScheduleFloor,
   scheduleFloorAllows,
@@ -22,28 +22,32 @@ import type { SchedulePreset } from "../../ui/routines/src/types.ts";
 
 /**
  * SDK regression: the schedule picker offers exactly what the save backstop
- * and the host's gate accept under a Free saver's floor. The picker lives in
+ * and the host's gate accept under a free org's floor. The picker lives in
  * `ui/routines` and only asks the rule it is handed; the app hands it the
  * SDK's (`scheduleFloorRule`), the same `scheduleFloorAllows` the host's
  * routine-write gate runs, so the agreement is pinned here.
  */
 
-const free = {
-  plan: "free",
-  announcement: false,
-  plus: {
-    status: "none",
-    manageable: false,
-    price: { amount: 1500, currency: "usd", interval: "month" },
-  },
+const free: OrgBilling = {
+  tier: "free",
+  status: "active",
+  lockAt: null,
+  lockReason: null,
+  freeSlot: true,
+  isBillingOwner: true,
+  seats: 1,
+  seatPriceCents: 1500,
+  seatGraceEndsAt: null,
+  usage: null,
   routines: {
     paused: false,
+    kept: null,
     maxActive: 1,
     minIntervalMinutes: 15,
     needsChoice: false,
     limitedCount: 0,
   },
-} satisfies PlanSummary;
+};
 const minutes = routineScheduleFloor(free);
 const rule = scheduleFloorRule(minutes ?? 0);
 const OPTIONS: ScheduleOptions = {
@@ -59,7 +63,7 @@ const PRESETS: SchedulePreset[] = [
   "monthly",
 ];
 
-describe("picker and save backstop agree for a Free saver", () => {
+describe("picker and save backstop agree in a free org", () => {
   it("has the Free floor", () => {
     ok(minutes === 15);
   });

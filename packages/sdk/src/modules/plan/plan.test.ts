@@ -3,10 +3,11 @@ import { describe, expect, it, vi } from "vitest";
 import type { SdkConfig, SdkPorts } from "../../ports";
 import { HoustonSdk } from "../../sdk";
 import { memoryKv } from "../../test-ports";
+import { presenceDue } from "../billing/model";
 import { messageLimitRefusal } from "../turns/turn-errors";
+import { planAnnouncementDue } from "./announcement-model";
+import { planSummaryPercent } from "./billing-model";
 import { PlanCommand } from "./index";
-import { planDialog, presenceDue, usagePercent } from "./model";
-import { routineScheduleFloor, scheduleFloorAllows } from "./schedule-floor";
 
 const summary = {
   plan: "free" as const,
@@ -110,34 +111,20 @@ describe("plan commands", () => {
       "https://gw.example/v1/me/plan",
     ]);
   });
-  it("rejects an incomplete keep key before sending", async () => {
-    const { client, calls } = sdk();
-    expect(
-      (
-        await client.dispatch({
-          id: "1",
-          type: PlanCommand.KeepRoutine,
-          payload: { routineId: "r1" },
-        })
-      ).ok,
-    ).toBe(false);
-    expect(calls).toHaveLength(0);
-  });
 });
 
 describe("personal plan decisions", () => {
-  it("shows only a clamped percentage and gates dialogs", () => {
-    expect(usagePercent(summary)).toBe(85);
-    expect(planDialog(summary, false)).toBe("resume");
-    expect(planDialog(summary, true)).toBe("keep");
-    expect(planDialog({ ...summary, plan: "plus" }, false)).toBeNull();
+  it("shows only a clamped percentage and the announcement to Free", () => {
+    expect(planSummaryPercent(summary)).toBe(85);
+    expect(planAnnouncementDue({ ...summary, announcement: true })).toBe(true);
+    expect(planAnnouncementDue(summary)).toBe(false);
+    expect(
+      planAnnouncementDue({ ...summary, plan: "plus", announcement: true }),
+    ).toBe(false);
   });
-  it("throttles presence and refuses short Free intervals", () => {
+  it("throttles presence", () => {
     expect(presenceDue(100, 600_099)).toBe(false);
     expect(presenceDue(100, 600_100)).toBe(true);
-    const floor = routineScheduleFloor(summary);
-    expect(scheduleFloorAllows("*/5 * * * *", floor)).toBe(false);
-    expect(scheduleFloorAllows("*/15 * * * *", floor)).toBe(true);
   });
 });
 

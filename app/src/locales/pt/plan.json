@@ -73,7 +73,6 @@
   "starts": "Começa em {{date}}",
   "previewUsage": "{{percent}}% do uso semanal que começa em {{date}}",
   "previewNote": "Esta é uma prévia. Seu limite de uso semanal ainda não começou.",
-  "previewHint": "Você está em {{percent}}% do uso semanal que começa em {{date}}.",
   "offerHint": "Seu primeiro mês de Plus custa {{amount}} como agradecimento por testar a beta.",
   "seePlans": "Ver planos",
   "maybeLater": "Talvez depois",
@@ -112,7 +111,6 @@
     "free": "Plano grátis",
     "nearLimit": "{{percent}}% usado",
     "limit": "Limite atingido",
-    "preview": "Prévia: {{percent}}% usado",
     "upgrade": "Assinar Plus",
     "label": "Assine o Plus. {{status}}"
   },

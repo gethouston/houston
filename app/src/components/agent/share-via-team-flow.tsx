@@ -12,7 +12,7 @@ import {
   useMoveAgent,
   useOrgs,
 } from "../../hooks/queries";
-import { useCreateTeam } from "../../hooks/queries/use-orgs";
+import { createdOrg, useCreateTeam } from "../../hooks/queries/use-orgs";
 import {
   claimMove,
   clearPendingMove,
@@ -176,7 +176,11 @@ export function ShareViaTeamFlow({
 
   const handleCreate = async (name: string) => {
     try {
-      const created = await createTeam.mutateAsync(name);
+      const created = createdOrg(await createTeam.mutateAsync(name));
+      if (!created) {
+        setState((s) => createFailed(s, t("shareViaTeam.pick.failed")));
+        return;
+      }
       setState(pickTeam({ slug: created.slug, name: created.name }));
     } catch {
       // POST /v1/orgs is NOT idempotent: a lost response may still have created

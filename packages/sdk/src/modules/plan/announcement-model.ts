@@ -2,6 +2,11 @@ import type { PlanSummary } from "@houston/wire-types";
 import { planOffer, planPriceAmounts } from "./billing-model";
 import { formatLaunchMonthDay, formatPlanAmount } from "./format";
 
+/** The per-person launch announcement is due: a Free person who has not dismissed it. */
+export function planAnnouncementDue(plan: PlanSummary | undefined): boolean {
+  return plan?.plan === "free" && plan.announcement;
+}
+
 export function planAnnouncementView(plan: PlanSummary, locale?: string) {
   const offer = planOffer(plan, locale);
   return {

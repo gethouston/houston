@@ -82,9 +82,11 @@ export function ProviderErrorCard({
       queryKey: queryKeys.providerStatuses(),
     });
   }, [error.kind, queryClient]);
+  // The pool lives on the org's billing; the Plan screen still reads the plan.
   useEffect(() => {
-    if (error.kind === "plan_message_limit")
-      void queryClient.invalidateQueries({ queryKey: queryKeys.plan() });
+    if (error.kind !== "plan_message_limit") return;
+    void queryClient.invalidateQueries({ queryKey: queryKeys.orgs() });
+    void queryClient.invalidateQueries({ queryKey: queryKeys.plan() });
   }, [error.kind, queryClient]);
   // Cancellation has no UI surface; feed-to-messages should drop it
   // before we get here, but guard defensively in case it ever sneaks

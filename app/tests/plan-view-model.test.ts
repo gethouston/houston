@@ -1,18 +1,20 @@
 import assert from "node:assert/strict";
 import { readFileSync } from "node:fs";
 import { test } from "node:test";
-import type { PlanSummary } from "@houston/engine-adapter";
+import type { OrgBilling, PlanSummary } from "@houston/engine-adapter";
 import {
   billingCards,
   createPlanAnnouncementActions,
   formatPlanAmount,
   invoiceStatusKey,
+  planAnnouncementDue,
   planAnnouncementView,
   planComposerMode,
   planDialog,
   planLaunchRefreshDelay,
   planOffer,
   planPriceAmounts,
+  planSummaryPercent,
   planUsageMode,
   usagePercent,
 } from "@houston/sdk";
@@ -42,13 +44,69 @@ const free: PlanSummary = {
 const BEFORE_LAUNCH = Date.parse("2026-09-25T00:00:00Z");
 const AFTER_LAUNCH = Date.parse("2026-10-02T00:00:00Z");
 
+/** The active free org at its pool's limit, with routines paused and over. */
+const freeOrg: OrgBilling = {
+  tier: "free",
+  status: "active",
+  lockAt: null,
+  lockReason: null,
+  freeSlot: true,
+  isBillingOwner: true,
+  seats: 1,
+  seatPriceCents: 1500,
+  seatGraceEndsAt: null,
+  usage: {
+    scope: "org",
+    used: 40,
+    limit: 40,
+    resetsAt: "2026-10-01T00:00:00Z",
+  },
+  routines: {
+    paused: true,
+    kept: null,
+    needsChoice: true,
+    limitedCount: 1,
+    maxActive: 1,
+    minIntervalMinutes: 15,
+  },
+};
+const paidOrg: OrgBilling = {
+  ...freeOrg,
+  tier: "paid",
+  usage: null,
+  routines: null,
+};
+const dialogs = (
+  billing: OrgBilling,
+  resumeDismissed: boolean,
+  keepDismissed = false,
+  announcement = false,
+) =>
+  planDialog(billing, {
+    resumeDismissed,
+    keepDismissed,
+    keepRequested: false,
+    announcement,
+  });
+
 test("usage is shown only as a bounded percentage", () => {
-  assert.equal(usagePercent(free), 100);
+  assert.equal(usagePercent(freeOrg), 100);
   assert.equal(
-    usagePercent({ ...free, usage: { percent: 150, used: 60, limit: 40 } }),
+    usagePercent({
+      ...freeOrg,
+      usage: {
+        ...freeOrg.usage,
+        scope: "org",
+        used: 60,
+        limit: 40,
+        resetsAt: "2026-10-01T00:00:00Z",
+      },
+    }),
     100,
   );
-  assert.equal(usagePercent({ ...free, plan: "plus" }), null);
+  assert.equal(usagePercent(paidOrg), null);
+  assert.equal(planSummaryPercent(free), 100);
+  assert.equal(planSummaryPercent({ ...free, plan: "plus" }), null);
 });
 
 test("announcement view routes the offer to checkout and the plain plan to Billing", () => {
@@ -126,14 +184,15 @@ test("announcement copy never promises unlimited use or refers to messages", () 
 });
 
 test("resume wins over keep until dismissed for this session", () => {
-  assert.equal(planDialog(free, false), "resume");
-  assert.equal(planDialog(free, true), "keep");
+  assert.equal(dialogs(freeOrg, false), "resume");
+  assert.equal(dialogs(freeOrg, true), "keep");
   assert.equal(
-    planDialog(
+    dialogs(
       {
-        ...free,
+        ...freeOrg,
         routines: {
           paused: false,
+          kept: null,
           maxActive: 1,
           minIntervalMinutes: 15,
           needsChoice: false,
@@ -218,26 +277,31 @@ test("launch prices and offer amounts use the summary without changing the real 
   assert.equal(planOffer({ ...launch, plan: "plus" }, "en-US"), null);
 });
 
-test("preview hints remain hints at 100 percent and announcement waits for routine dialogs", () => {
+test("the Plan screen previews usage before the launch; the announcement waits for routine dialogs", () => {
   const preview: PlanSummary = {
     ...free,
     announcement: true,
     limitsStartAt: "2026-10-01T00:00:00Z",
   };
   assert.equal(planUsageMode(preview, BEFORE_LAUNCH), "preview");
-  assert.equal(planComposerMode(preview, BEFORE_LAUNCH), "previewHint");
   assert.equal(planUsageMode(preview, AFTER_LAUNCH), "current");
-  assert.equal(planComposerMode(preview, AFTER_LAUNCH), "limit");
-  assert.equal(planDialog(preview, false), "resume");
-  assert.equal(planDialog(preview, true), "keep");
-  assert.equal(planDialog(preview, true, true), "announcement");
+  const due = planAnnouncementDue(preview);
+  assert.equal(due, true);
+  assert.equal(dialogs(freeOrg, false, false, due), "resume");
+  assert.equal(dialogs(freeOrg, true, false, due), "keep");
+  assert.equal(dialogs(freeOrg, true, true, due), "announcement");
   assert.equal(
-    planDialog({ ...preview, announcement: false }, true, true),
+    dialogs(
+      freeOrg,
+      true,
+      true,
+      planAnnouncementDue({ ...preview, announcement: false }),
+    ),
     null,
   );
-  assert.equal(planDialog({ ...preview, plan: "plus" }, true, true), null);
+  assert.equal(planAnnouncementDue({ ...preview, plan: "plus" }), false);
   assert.equal(planUsageMode(free), "current");
-  assert.equal(planComposerMode(free), "limit");
+  assert.equal(planComposerMode(freeOrg), "limit");
 });
 
 test("the beta tester gift reaches card, popup, and hint while the summary carries it", () => {
@@ -247,10 +311,22 @@ test("the beta tester gift reaches card, popup, and hint while the summary carri
     announcement: true,
     plus: { ...free.plus, offer: { amount: 1000, currency: "USD" } },
   };
+  const nearLimit: OrgBilling = {
+    ...freeOrg,
+    usage: {
+      scope: "org",
+      used: 36,
+      limit: 40,
+      resetsAt: "2026-10-01T00:00:00Z",
+    },
+  };
   assert.equal(planOffer(gifted, "en-US")?.amount, "$10");
-  assert.equal(planComposerMode(gifted), "hint");
-  assert.equal(planLaunchRefreshDelay(gifted, AFTER_LAUNCH), false);
-  assert.equal(planDialog(gifted, true, true), "announcement");
+  assert.equal(planComposerMode(nearLimit), "hint");
+  assert.equal(planLaunchRefreshDelay(paidOrg, AFTER_LAUNCH), false);
+  assert.equal(
+    dialogs(paidOrg, true, true, planAnnouncementDue(gifted)),
+    "announcement",
+  );
   const ineligible: PlanSummary = {
     ...gifted,
     usage: free.usage,
@@ -258,8 +334,11 @@ test("the beta tester gift reaches card, popup, and hint while the summary carri
     announcement: false,
   };
   assert.equal(planOffer(ineligible, "en-US"), null);
-  assert.equal(planComposerMode(ineligible), "limit");
-  assert.equal(planDialog(ineligible, true, true), null);
+  assert.equal(planComposerMode(freeOrg), "limit");
+  assert.equal(
+    dialogs(paidOrg, true, true, planAnnouncementDue(ineligible)),
+    null,
+  );
 });
 
 test("offer copy carries no deadline or launch dates", () => {

@@ -1,4 +1,8 @@
-import { planDialog, planDialogBlocks } from "@houston/sdk";
+import {
+  planAnnouncementDue,
+  planDialog,
+  planDialogBlocks,
+} from "@houston/sdk";
 import {
   Button,
   Dialog,
@@ -11,6 +15,7 @@ import {
 import { cronSummary } from "@houston-ai/routines";
 import { useState } from "react";
 import { useTranslation } from "react-i18next";
+import { useActiveOrgBilling } from "../../hooks/queries/use-billing";
 import {
   useKeepRoutine,
   usePlan,
@@ -36,13 +41,19 @@ export function PlanLifecycle() {
   const { capabilities } = useCapabilities();
   const planQuery = usePlan();
   const plan = planQuery.data;
+  const org = useActiveOrgBilling();
   const [resumeDismissed, setResumeDismissed] = useState(false);
   const [announcementClosed, setAnnouncementClosed] = useState(false);
   const [keepDismissed, setKeepDismissed] = useState(false);
   const keepRequested = useUIStore((s) => s.planKeepDialogOpen);
   const setKeepRequested = useUIStore((s) => s.setPlanKeepDialogOpen);
   const dialog = storeSafePlanDialog(
-    planDialog(plan, resumeDismissed, keepDismissed, keepRequested),
+    planDialog(org.billing, {
+      resumeDismissed,
+      keepDismissed,
+      keepRequested,
+      announcement: planAnnouncementDue(plan),
+    }),
   );
   const routines = usePlanRoutines(dialog === "keep" || keepRequested);
   const resume = useResumeRoutines();
@@ -57,7 +68,7 @@ export function PlanLifecycle() {
     setKeepRequested(false);
   };
 
-  usePlanPresence(capabilities?.plan === true);
+  usePlanPresence(capabilities?.plan === true, org.orgSlug);
 
   return (
     <>
@@ -178,7 +189,7 @@ export function PlanLifecycle() {
       )}
       <BillingChangeModal
         otherDialogOpen={planDialogBlocks(dialog, {
-          planLoading: planQuery.isLoading,
+          planLoading: planQuery.isLoading || org.isLoading,
           announcementClosed,
         })}
       />

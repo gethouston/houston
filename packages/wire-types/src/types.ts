@@ -14,6 +14,7 @@ import type {
   SkillWorkflow,
 } from "@houston/protocol";
 import type { Agent } from "./agents";
+import type { FreeOrg, OrgBilling } from "./org-billing";
 
 export type {
   AgentArrival,
@@ -481,10 +482,10 @@ export interface ApiKeyCreated extends ApiKey {
 /**
  * One space (org) the caller belongs to (C8 §Wire surface — spaces), from
  * `GET /v1/orgs` and `POST /v1/orgs`. `kind` is derived server-side from
- * `personal_of` — `personal` is the free-forever personal space, `team` is a
- * paid-per-seat team. `role` is the caller's role IN THIS space. `degraded` is
- * `true` when writes would `403 needs_upgrade` (visible to every member, carries
- * no billing detail). `billing` is present for teams, owner/admin only.
+ * `personal_of`. `role` is the caller's role IN THIS space. `degraded` is
+ * `true` when writes would `403 needs_upgrade` (visible to every member).
+ * `billing` is the org's billing state, readable by every member; `null` for a
+ * legacy org and for an older gateway's team summary (`readOrgSummary`).
  *
  * The space's `slug` is what pins the active space: a team's switcher workspace
  * id is `"org:" + slug` (C8 §Workspaces bridge), and that slug rides
@@ -498,7 +499,7 @@ export interface OrgSummary {
   role: OrgRole;
   memberCount: number;
   degraded: boolean;
-  billing?: BillingSummary;
+  billing: OrgBilling | null;
 }
 
 /**
@@ -521,6 +522,8 @@ export interface OrgInviteSummary {
 export interface OrgsList {
   orgs: OrgSummary[];
   invites: OrgInviteSummary[];
+  /** The caller's free slot; null from a gateway without org billing. */
+  freeOrg: FreeOrg | null;
 }
 
 /**

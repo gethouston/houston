@@ -106,7 +106,8 @@ export function gatewayAuthFetch(
       if (bearer) headers.set("Authorization", `Bearer ${bearer}`);
       // Active-space header (C8), re-read per attempt so a mid-flight space
       // switch is honored on the next retry/refresh — same live discipline as
-      // the bearer. Absent → the gateway resolves the personal org.
+      // the bearer. Absent → the gateway resolves the personal org. The
+      // account-wide routes never carry one.
       const path = new URL(
         typeof input === "string"
           ? input
@@ -118,9 +119,7 @@ export function gatewayAuthFetch(
       const accountScoped =
         path.startsWith("/v1/me/plan") ||
         path.startsWith("/v1/me/plus/") ||
-        path.startsWith("/v1/me/routines") ||
-        path.startsWith("/v1/me/billing-choice") ||
-        path === "/v1/me/presence";
+        path.startsWith("/v1/me/billing-choice");
       const org = accountScoped ? null : getOrg?.();
       if (org) headers.set("x-houston-org", org);
       // Build identity: `<semver>+<channel>` on every gateway request, for

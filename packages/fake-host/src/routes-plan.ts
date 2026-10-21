@@ -123,6 +123,7 @@ export function planMessageRefusal(): Response | undefined {
       code: "message_limit",
       limit: limit.limit,
       resetsAt: limit.resetsAt,
+      ...(limit.scope ? { scope: limit.scope } : {}),
     }),
     {
       status: 429,

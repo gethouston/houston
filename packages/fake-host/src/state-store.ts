@@ -24,6 +24,7 @@ import type {
   IntegrationConnection,
   TokenUsage,
 } from "@houston/runtime-client";
+import type { OrgBilling } from "@houston/wire-types";
 import { SEED_AGENT_ID, SEED_AGENT_NAME, SEED_WORKSPACE_ID } from "./config";
 import { resetBillingChoice } from "./state-billing-choice";
 import { resetPlan } from "./state-plan";
@@ -194,6 +195,8 @@ export interface FakeTeamWorkspace {
   role?: OrgRole;
   /** People in the team; defaults to 1 (the caller alone). */
   memberCount?: number;
+  /** The team's org billing; absent = a legacy team (`billing: null`). */
+  billing?: OrgBilling | null;
 }
 
 /**
