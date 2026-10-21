@@ -1,8 +1,8 @@
 import type { BillingChoice } from "@houston/engine-adapter";
-import type { ShownChoiceModal } from "@houston/sdk";
 import { DialogDescription, DialogTitle } from "@houston-ai/core";
 import { Calendar } from "lucide-react";
 import { useTranslation } from "react-i18next";
+import type { IntroNotice } from "./billing-change-copy";
 import { useNoticePoints } from "./billing-change-copy";
 import { PlanBriefingCta, PlanBriefingQuietButton } from "./plan-briefing-cta";
 
@@ -12,25 +12,24 @@ import { PlanBriefingCta, PlanBriefingQuietButton } from "./plan-briefing-cta";
  * everyone else reads it and closes it.
  */
 export function BillingChangeIntro({
-  shown,
+  notice,
   choice,
   onPick,
   onClose,
 }: {
-  shown: ShownChoiceModal;
+  notice: IntroNotice;
   choice: BillingChoice;
   onPick: () => void;
   onClose: () => void;
 }) {
   const { t } = useTranslation("plan");
-  const points = useNoticePoints(shown.notice, choice);
-  const pick = shown.notice.kind === "pick";
+  const points = useNoticePoints(notice, choice);
+  const pick = notice.kind === "pick";
   return (
     <>
       <p className="ht-hairline mb-5 inline-flex items-center gap-1.5 self-start rounded-full bg-chip py-1 pl-2 pr-2.5 text-xs font-medium leading-5 text-ink">
         <Calendar aria-hidden className="size-3.5 text-ink-muted" />
-        {"date" in shown.notice &&
-          t("choice.notice.from", { date: shown.notice.date })}
+        {t("choice.notice.from", { date: notice.date })}
       </p>
       <DialogTitle
         tabIndex={-1}

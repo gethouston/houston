@@ -34,6 +34,14 @@ export function FreeOrgChoiceRow({
   const entry = choicePickerEntry(choice, now, frame);
   if (!choice || entry === "none") return null;
   const free = choice.orgs.find((org) => org.slug === choice.freeOrgSlug);
+  // After the cutover the row changes the pick it applied, inside the window.
+  const applied =
+    choice.state === "applied" && free && choice.changeableUntil
+      ? {
+          name: orgName(free),
+          date: formatCutoverDay(choice.changeableUntil, i18n.language),
+        }
+      : null;
   // The picker keeps its slot whether or not the row shows, so it never remounts.
   return (
     <>
@@ -42,17 +50,24 @@ export function FreeOrgChoiceRow({
           <div className="flex flex-col gap-4 md:flex-row md:items-center md:justify-between">
             <div className="space-y-1">
               <h2 className="text-lg font-medium">
-                {t("choice.settings.title")}
+                {applied
+                  ? t("choice.settings.appliedTitle")
+                  : t("choice.settings.title")}
               </h2>
               <p className="text-sm text-ink-muted">
-                {free
-                  ? t("choice.settings.picked", {
-                      name: orgName(free),
-                      day: formatCutoverDay(choice.cutoverAt, i18n.language),
-                    })
-                  : t("choice.settings.pending", {
-                      date: formatCutoverDate(choice.cutoverAt, i18n.language),
-                    })}
+                {applied
+                  ? t("choice.settings.applied", applied)
+                  : free
+                    ? t("choice.settings.picked", {
+                        name: orgName(free),
+                        day: formatCutoverDay(choice.cutoverAt, i18n.language),
+                      })
+                    : t("choice.settings.pending", {
+                        date: formatCutoverDate(
+                          choice.cutoverAt,
+                          i18n.language,
+                        ),
+                      })}
               </p>
             </div>
             <Button

@@ -10,6 +10,19 @@ export function useOrgName(): (org: BillingChoiceOrg) => string {
   return (org) => (org.personal ? t("choice.picker.personal") : org.name);
 }
 
+/** An org's members and its last 30 days of messages, as the picker lists them. */
+export function useOrgMeta(): (org: BillingChoiceOrg) => string {
+  const { t } = useTranslation("plan");
+  return (org) =>
+    t("choice.picker.meta", {
+      first: t("choice.picker.members", { count: org.memberCount }),
+      second:
+        org.messages30d > 0
+          ? t("choice.picker.messages", { count: org.messages30d })
+          : t("choice.picker.noMessages"),
+    });
+}
+
 export interface OrgRadioProps {
   group: string;
   /** The org's slug. */

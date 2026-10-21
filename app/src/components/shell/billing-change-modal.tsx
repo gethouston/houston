@@ -1,8 +1,12 @@
 import { layout } from "@houston/design-tokens";
+import type { BillingChoiceSave } from "@houston/engine-adapter";
 import {
   CLOSED_CHOICE_FRAME,
+  choiceDone,
   choiceModal,
   closeChoiceFrame,
+  closeDismisses,
+  finishConfirming,
   finishPicking,
   nextChoiceModalFrame,
   startPicking,
@@ -14,6 +18,7 @@ import {
   useDismissBillingChoice,
 } from "../../hooks/queries/use-billing-choice";
 import { useChoiceNow } from "../../hooks/use-choice-now";
+import { BillingChangeConfirm } from "./billing-change-confirm";
 import { BillingChangeIntro } from "./billing-change-intro";
 import { PickerBody } from "./free-org-picker";
 import { DoneStep } from "./free-org-picker-done";
@@ -26,7 +31,9 @@ import { BriefingStep } from "./plan-briefing-swap";
  * replaces the intro lives in the SDK ({@link choiceModal},
  * {@link nextChoiceModalFrame}); this holds the session's close and the frame,
  * and renders. An owner who has to pick moves from the intro to the picker,
- * then to the success step, in the same frame.
+ * then to the success step, in the same frame. After the cutover an owner
+ * the cutover picked for confirms its pick or changes it the same way, and an
+ * owner who picked reads that the pick applied.
  */
 export function BillingChangeModal({
   otherDialogOpen,
@@ -53,7 +60,50 @@ export function BillingChangeModal({
   const close = () => {
     setClosed(true);
     setFrame(closeChoiceFrame);
-    if (shown.close === "everywhere") dismiss.mutate();
+    if (closeDismisses(frame)) dismiss.mutate();
+  };
+  const confirmed = (outcome: BillingChoiceSave) => {
+    const answer = finishConfirming(frame, outcome);
+    if (!answer.dismiss) return;
+    setClosed(true);
+    setFrame(answer.frame);
+    dismiss.mutate();
+  };
+  const notice = shown.notice;
+  const intro = () => {
+    switch (notice.kind) {
+      case "confirm":
+        return (
+          <BillingChangeConfirm
+            choice={choice}
+            until={notice.until}
+            onAnswer={confirmed}
+            onChange={() => setFrame(startPicking)}
+          />
+        );
+      case "applied": {
+        const done = choiceDone(choice);
+        return (
+          done && (
+            <DoneStep
+              done={done}
+              until={notice.until}
+              closeLabel={t("choice.notice.gotIt")}
+              onClose={close}
+            />
+          )
+        );
+      }
+      default:
+        return (
+          <BillingChangeIntro
+            notice={notice}
+            choice={choice}
+            onPick={() => setFrame(startPicking)}
+            onClose={close}
+          />
+        );
+    }
   };
   return (
     <PlanBriefingFrame
@@ -79,12 +129,7 @@ export function BillingChangeModal({
             }
           />
         ) : (
-          <BillingChangeIntro
-            shown={shown}
-            choice={choice}
-            onPick={() => setFrame(startPicking)}
-            onClose={close}
-          />
+          intro()
         )}
       </BriefingStep>
     </PlanBriefingFrame>

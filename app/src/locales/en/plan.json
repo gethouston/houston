@@ -139,6 +139,20 @@
       "change": "You can change this in Settings.",
       "close": "Done"
     },
+    "applied": {
+      "title": "{{name}} is your free organization now",
+      "paid": "Your subscription now pays for {{name}}.",
+      "now": "Here's how your organizations look now.",
+      "until": "You can change this in Settings until {{date}}.",
+      "locks": "A locked organization keeps its agents and files, read-only, until it has a plan.",
+      "confirm": {
+        "title": "We kept {{free}} free",
+        "titlePaid": "We kept {{free}} free and moved your subscription to {{paid}}",
+        "sub": "We went by where you're most active. You can change this until {{date}}.",
+        "confirm": "Confirm",
+        "change": "Change"
+      }
+    },
     "refused": {
       "not_owner": {
         "title": "You don't own that organization",
@@ -162,7 +176,9 @@
       "pending": "Plans move to organizations on {{date}}. Pick the one that stays free.",
       "picked": "{{name}} stays free from {{day}}.",
       "choose": "Choose",
-      "change": "Change"
+      "change": "Change",
+      "appliedTitle": "Change your free organization",
+      "applied": "{{name}} is your free organization. You can change it until {{date}}."
     }
   },
   "askOwnerHint": "Ask the owner to upgrade.",

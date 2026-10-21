@@ -139,6 +139,20 @@
       "change": "Puedes cambiarlo en Configuración.",
       "close": "Listo"
     },
+    "applied": {
+      "title": "{{name}} ahora es tu organización gratis",
+      "paid": "Tu suscripción ahora paga por {{name}}.",
+      "now": "Así quedan tus organizaciones ahora.",
+      "until": "Puedes cambiarlo en Configuración hasta el {{date}}.",
+      "locks": "Una organización bloqueada conserva sus agentes y archivos, solo para lectura, hasta que tenga un plan.",
+      "confirm": {
+        "title": "Dejamos {{free}} gratis",
+        "titlePaid": "Dejamos {{free}} gratis y movimos tu suscripción a {{paid}}",
+        "sub": "Nos guiamos por dónde tienes más actividad. Puedes cambiarlo hasta el {{date}}.",
+        "confirm": "Confirmar",
+        "change": "Cambiar"
+      }
+    },
     "refused": {
       "not_owner": {
         "title": "Esa organización no es tuya",
@@ -162,7 +176,9 @@
       "pending": "Los planes pasan a las organizaciones el {{date}}. Elige la que sigue gratis.",
       "picked": "{{name}} sigue gratis desde el {{day}}.",
       "choose": "Elegir",
-      "change": "Cambiar"
+      "change": "Cambiar",
+      "appliedTitle": "Cambia tu organización gratis",
+      "applied": "{{name}} es tu organización gratis. Puedes cambiarla hasta el {{date}}."
     }
   },
   "askOwnerHint": "Pídele al propietario que mejore el plan.",

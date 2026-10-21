@@ -11,6 +11,12 @@ import {
 import { useTranslation } from "react-i18next";
 import { useOrgName } from "./free-org-picker-rows";
 
+/** The notices the modal's intro announces, before the cutover. */
+export type IntroNotice = Extract<
+  AnnouncedChoice,
+  { kind: "pick" | "single_org" | "member" }
+>;
+
 export interface NoticePoint {
   icon: LucideIcon;
   title: string;
@@ -22,7 +28,7 @@ export interface NoticePoint {
  * a price: the payer step of the picker carries it.
  */
 export function useNoticePoints(
-  notice: AnnouncedChoice,
+  notice: IntroNotice,
   choice: BillingChoice,
 ): NoticePoint[] {
   const { t } = useTranslation("plan");
@@ -76,7 +82,5 @@ export function useNoticePoints(
           body: t("choice.notice.member.body"),
         },
       ];
-    default:
-      return [];
   }
 }

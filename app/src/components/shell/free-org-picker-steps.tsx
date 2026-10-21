@@ -2,7 +2,12 @@ import type { BillingChoice } from "@houston/engine-adapter";
 import { payerTotals, pickerRows } from "@houston/sdk";
 import { type ReactNode, useId } from "react";
 import { Trans, useTranslation } from "react-i18next";
-import { OrgRadio, PickerProgress, useOrgName } from "./free-org-picker-rows";
+import {
+  OrgRadio,
+  PickerProgress,
+  useOrgMeta,
+  useOrgName,
+} from "./free-org-picker-rows";
 import { PlanBriefingCta, PlanBriefingQuietButton } from "./plan-briefing-cta";
 
 interface StepProps {
@@ -49,6 +54,7 @@ export function FreeStep(props: StepProps & { payer: boolean }) {
   const { t } = useTranslation("plan");
   const titleId = useId();
   const orgName = useOrgName();
+  const orgMeta = useOrgMeta();
   const rows = pickerRows(props.choice);
   const picked = rows.find((row) => row.org.slug === props.selected)?.org;
   const label = !picked ? (
@@ -76,13 +82,7 @@ export function FreeStep(props: StepProps & { payer: boolean }) {
             checked={org.slug === props.selected}
             onSelect={props.onSelect}
             tag={mostActive ? t("choice.picker.mostActive") : undefined}
-            meta={t("choice.picker.meta", {
-              first: t("choice.picker.members", { count: org.memberCount }),
-              second:
-                org.messages30d > 0
-                  ? t("choice.picker.messages", { count: org.messages30d })
-                  : t("choice.picker.noMessages"),
-            })}
+            meta={orgMeta(org)}
           />
         ))}
       </div>
