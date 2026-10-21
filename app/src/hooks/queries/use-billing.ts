@@ -1,10 +1,11 @@
 import type { BillingSummary, OrgsList } from "@houston/engine-adapter";
 import {
+  activeOrg,
   activeOrgBilling,
   activeSpaceOrgSlug,
   planLaunchRefreshDelay,
 } from "@houston/sdk";
-import { useMutation, useQuery } from "@tanstack/react-query";
+import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { useState } from "react";
 import { canReadTeamBillingSummary } from "../../lib/billing-gates";
 import { reportError } from "../../lib/error-report";
@@ -73,6 +74,10 @@ export function useActiveOrgBilling() {
     billing: enabled ? activeOrgBilling(team, orgs.data) : null,
     upgradeOffer:
       enabled && activeOrgBilling(team, orgs.data)?.isBillingOwner === true,
+    /** The active membership (name, role, `degraded`); null when unknown. */
+    org: enabled ? (activeOrg(team, orgs.data) ?? null) : null,
+    /** The memberships list itself, for naming another org (the free slot). */
+    orgs: enabled ? orgs.data : undefined,
     isLoading: orgs.isLoading,
   };
 }
@@ -128,4 +133,19 @@ export function usePortal() {
     },
   });
   return { ...portal, fallbackUrl };
+}
+
+/**
+ * Make the active org the free one (billing owner only). The org that held
+ * the slot locks in the same step, so both rows come back from the next orgs
+ * read. `has_subscription` and `not_billing_owner` resolve as outcomes; any
+ * other failure surfaces via `call()`.
+ */
+export function useClaimFreeSlot() {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: () => tauriOrg.claimFreeSlot(),
+    onSettled: () =>
+      queryClient.invalidateQueries({ queryKey: queryKeys.orgs() }),
+  });
 }

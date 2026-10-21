@@ -1,97 +1,110 @@
-import { Button } from "@houston-ai/core";
-import { AlertTriangle, Clock } from "lucide-react";
+import { formatLocalDate } from "@houston/sdk";
+import { cn } from "@houston-ai/core";
+import { Clock, CreditCard, Lock } from "lucide-react";
 import { useTranslation } from "react-i18next";
-import { useBilling } from "../../hooks/queries/use-billing.ts";
-import { useOrgs } from "../../hooks/queries/use-spaces.ts";
-import { useCapabilities } from "../../hooks/use-capabilities.ts";
-import { openAdmin } from "../../lib/open-admin.ts";
-import { hasSpaces, orgRole } from "../../lib/org-roles.ts";
-import { canPurchaseInApp } from "../../lib/purchase-policy.ts";
-import { isTeamWorkspace, orgSlugFromWorkspaceId } from "../../lib/space-id.ts";
-import { teamStatusView } from "../../lib/team-status-model.ts";
-import { useWorkspaceStore } from "../../stores/workspaces.ts";
+import { useTeamStatus } from "../../hooks/use-team-status";
+import { useTeamStatusActions } from "../../hooks/use-team-status-actions";
+import { canPurchaseInApp } from "../../lib/purchase-policy";
+import type { TeamStatusView } from "../../lib/team-status-model";
+import { PlanWebNote } from "./plan-web-note";
+import { TeamStatusButtons } from "./team-status-buttons";
+import { TeamStatusClaimDialog } from "./team-status-claim-dialog";
+
+type Shown = Exclude<TeamStatusView, { kind: "none" }>;
+
+/** The first sentence: the state, worded by why the org locks. */
+function leadKey(view: Shown, hasDate: boolean) {
+  if (view.kind === "scheduled")
+    return view.lockReason === "canceled"
+      ? "status.scheduledCanceled"
+      : "status.scheduled";
+  if (view.kind === "past_due")
+    return hasDate ? "status.pastDue" : "status.pastDueNoDate";
+  if (view.lockReason === "canceled") return "status.lockedCanceled";
+  if (view.lockReason === "payment_failed") return "status.lockedPayment";
+  return "status.locked";
+}
+
+const ASK_OWNER = {
+  scheduled: "status.askOwner.scheduled",
+  past_due: "status.askOwner.pastDue",
+  locked: "status.askOwner.locked",
+} as const;
 
 /**
- * The C8 team-status strip, rendered once at the top of the workspace content
- * for the ACTIVE space. It shows nothing off a Spaces host, in a personal space,
- * or on a healthy team; in a team space it shows either the owner/admin trial
- * countdown pill or the expired-team degrade banner (everyone).
+ * The org-status strip at the top of the workspace, for the ACTIVE org (the
+ * Personal row included): a lock scheduled, a payment that failed, or a lock.
+ * It says what the state means, what the reader can still do, and offers the
+ * way out the SDK allows them (`orgRecovery`): the billing owner pays,
+ * swaps the free slot, changes the pick or deletes; everyone else is told to
+ * ask the owner. The store apps never sell, so there the owner reads the
+ * managed-on-the-web note instead of a pay button.
  *
- * Data comes from two reads that the space switch drops+refetches on entry (no
- * push on expiry, C8): `useBilling` (owner/admin billing detail) and `useOrgs`
- * (`OrgSummary.degraded`, the member-visible signal that carries no billing
- * detail). The decision itself is the pure {@link teamStatusView}. The trial
- * pill and the owner Upgrade action deep-link into the Admin screen, on the
- * Billing section. The store apps never sell (`canPurchaseInApp`): there the
- * owner reads that the plan is managed on the web, with no Upgrade action, and
- * a member reads the limit without being sent to ask for an upgrade.
+ * Locked is the danger tone; a scheduled lock and a failed payment, which
+ * still work, are calmer. On the phone the strip runs full width with its
+ * actions on their own row; on the desktop it is one line.
  */
 export function TeamStatusBanner() {
-  const { t } = useTranslation("teams");
-  const { capabilities } = useCapabilities();
-  const current = useWorkspaceStore((s) => s.current);
+  const { t, i18n } = useTranslation("teams");
+  const { view, org, orgs, checkout } = useTeamStatus(canPurchaseInApp());
+  const actions = useTeamStatusActions(org?.slug ?? null, checkout);
+  if (view.kind === "none" || !org) return null;
 
-  const spaces = hasSpaces(capabilities);
-  const isTeam = current ? isTeamWorkspace(current.id) : false;
-  const activeSlug = current ? orgSlugFromWorkspaceId(current.id) : null;
-
-  const { data: billing } = useBilling();
-  // `degraded` is the member-visible signal; owner/admin drive off billing, so
-  // only fetch the list when it can actually matter (a team space, Spaces host).
-  const { data: orgs } = useOrgs(spaces && isTeam);
-  const degraded =
-    orgs?.orgs.find((o) => o.slug === activeSlug)?.degraded ?? false;
-
-  const view = teamStatusView({
-    hasSpaces: spaces,
-    isTeamSpace: isTeam,
-    role: orgRole(capabilities),
-    billing,
-    degraded,
-    now: new Date(),
-  });
-
-  if (view.kind === "none") return null;
-
-  const openBilling = () => openAdmin({ section: "billing" });
-
-  if (view.kind === "trial") {
-    return (
-      <div className="shrink-0 px-4 pt-3">
-        <button
-          type="button"
-          onClick={openBilling}
-          className="inline-flex items-center gap-1.5 rounded-full border border-line bg-chip-subtle/50 px-3 py-1 text-xs font-medium text-ink transition-colors hover:bg-chip-subtle focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-focus"
-        >
-          <Clock className="size-3.5" />
-          {view.daysLeft !== null
-            ? t("billing.trialPill", { count: view.daysLeft })
-            : t("billing.status.trialing")}
-        </button>
-      </div>
+  const locked = view.kind === "locked";
+  const date = view.lockAt ? formatLocalDate(view.lockAt, i18n.language) : null;
+  const sentences = [t(leadKey(view, date !== null), { org: org.name, date })];
+  if (locked)
+    sentences.push(
+      t(view.moveOut ? "status.lockedMoveOut" : "status.lockedRead"),
     );
-  }
-
-  const purchasable = canPurchaseInApp();
-  const upgradable = view.isOwner && purchasable;
-  const message = purchasable
-    ? t(view.isOwner ? "degrade.owner" : "degrade.member")
-    : t(view.isOwner ? "native.degradeOwner" : "native.degradeMember");
+  if (view.tail === "ask_owner") sentences.push(t(ASK_OWNER[view.kind]));
+  if (view.waiting) sentences.push(t("status.waiting"));
+  const Icon = locked ? Lock : view.kind === "past_due" ? CreditCard : Clock;
 
   return (
     <div
       role="status"
-      className="flex shrink-0 items-center justify-between gap-3 border-b border-danger/30 bg-danger/10 px-4 py-2 text-sm"
-    >
-      <span className="flex items-center gap-2 text-ink">
-        <AlertTriangle className="size-4 shrink-0 text-danger" />
-        {message}
-      </span>
-      {upgradable && (
-        <Button size="sm" className="shrink-0" onClick={openBilling}>
-          {t("degrade.upgrade")}
-        </Button>
+      data-testid="team-status-banner"
+      data-state={view.kind}
+      className={cn(
+        "flex shrink-0 flex-col gap-2.5 border-b px-4 py-3 text-sm md:flex-row md:items-center md:justify-between md:gap-4 md:py-2",
+        locked ? "border-danger/30 bg-danger/10" : "border-line bg-chip-subtle",
       )}
+    >
+      <div className="flex min-w-0 items-start gap-2 md:items-center">
+        <Icon
+          aria-hidden
+          className={cn(
+            "mt-0.5 size-4 shrink-0 md:mt-0",
+            locked ? "text-danger-ink" : "text-warning-ink",
+          )}
+        />
+        <div className="min-w-0 space-y-0.5">
+          <p className="text-pretty text-ink">{sentences.join(" ")}</p>
+          {view.tail === "web_note" && <PlanWebNote variant="manage" />}
+          {actions.fallbackUrl && (
+            <a
+              href={actions.fallbackUrl}
+              target="_blank"
+              rel="noreferrer"
+              className="text-link underline-offset-4 hover:underline"
+            >
+              {t("status.openPaymentPage")}
+            </a>
+          )}
+        </div>
+      </div>
+      <TeamStatusButtons
+        view={view}
+        onAction={actions.run}
+        paying={actions.paying}
+      />
+      <TeamStatusClaimDialog
+        open={actions.claimOpen}
+        onOpenChange={actions.setClaimOpen}
+        org={org}
+        orgs={orgs}
+      />
     </div>
   );
 }

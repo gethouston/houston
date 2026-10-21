@@ -443,8 +443,6 @@
     "seats_other": "{{count}} seats",
     "manage": "Manage billing",
     "askOwner": "Only the owner who pays for this organization can change its plan. Ask them if you need more.",
-    "trialPill_one": "{{count}} day left in trial",
-    "trialPill_other": "{{count}} days left in trial",
     "loading": "Loading billing",
     "planFree": "Free plan",
     "planPaid": "Paid plan",
@@ -469,11 +467,8 @@
     "freeSummary_other": "{{count}} members share one weekly allowance"
   },
   "degrade": {
-    "owner": "Your team's trial ended. Upgrade to keep everyone working.",
-    "member": "Your team's trial ended. Ask your team's owner to upgrade.",
-    "upgrade": "Upgrade",
-    "writeBlockedTitle": "Upgrade needed",
-    "writeBlockedBody": "Your team's trial ended. Ask your team's owner to upgrade to make changes."
+    "writeBlockedTitle": "This organization is locked",
+    "writeBlockedBody": "Nobody can make changes here until it is unlocked. Ask the owner who pays for it to unlock it."
   },
   "personalSpace": {
     "inviteBlockedTitle": "This is your personal space",
@@ -494,8 +489,8 @@
     "joinedBody": "Switch to it any time from the space menu at the top of the sidebar.",
     "joinedBodyUnconfirmed": "We could not refresh your spaces just now. Open the space menu again in a moment to find it.",
     "errors": {
-      "needsUpgradeTitle": "This team needs an upgrade",
-      "needsUpgradeBody": "Its trial ended, so it cannot add people right now. Ask the person who invited you to upgrade, then accept again.",
+      "needsUpgradeTitle": "This organization is locked",
+      "needsUpgradeBody": "It is locked, so it can't add people right now. Ask the person who invited you to unlock it, then accept again.",
       "alreadyMemberTitle": "You are already in this team",
       "alreadyMemberBody": "Nothing to do. Find it in the space menu at the top of the sidebar.",
       "goneTitle": "This invitation is no longer available",
@@ -687,12 +682,10 @@
   },
   "native": {
     "askOwner": "Only the owner who pays for this organization can change its plan.",
-    "degradeOwner": "Your team's trial ended. Manage your plan on the web.",
-    "degradeMember": "Your team's trial ended. Your team's plan doesn't include changes right now.",
-    "writeBlockedTitle": "Not included in your team's plan",
-    "writeBlockedBody": "Your team's trial ended, so your team's plan doesn't include this change right now.",
+    "writeBlockedTitle": "This organization is locked",
+    "writeBlockedBody": "Nobody can make changes here right now. You can still read everything.",
     "inviteNeedsUpgradeTitle": "This team can't add people right now",
-    "inviteNeedsUpgradeBody": "Its trial ended, so its plan doesn't include new people right now.",
+    "inviteNeedsUpgradeBody": "It is locked, so it can't add people right now.",
     "moveNeedsUpgrade": "This team's plan doesn't include moving AI Employees into it right now.",
     "freeTakenInline": "You already have a free organization, so this one can't be created here.",
     "freeTakenTitle": "You already have a free organization",
@@ -730,6 +723,61 @@
     "agentModels": {
       "title": "Couldn't update the allowed models",
       "description": "The models are back to how they were. Try again in a moment."
+    }
+  },
+  "status": {
+    "scheduled": "{{org}} locks on {{date}}. After that, nobody can send messages there.",
+    "scheduledCanceled": "The plan for {{org}} ends on {{date}}. After that, it locks and nobody can send messages there.",
+    "pastDue": "A payment for {{org}} didn't go through. It locks on {{date}} unless the payment is fixed.",
+    "pastDueNoDate": "A payment for {{org}} didn't go through. It locks unless the payment is fixed.",
+    "locked": "{{org}} is locked, so nobody can send messages or make changes.",
+    "lockedCanceled": "The plan for {{org}} ended, so it is locked and nobody can send messages or make changes.",
+    "lockedPayment": "A payment for {{org}} didn't go through, so it is locked and nobody can send messages or make changes.",
+    "lockedMoveOut": "You can still read everything and move AI Employees out.",
+    "lockedRead": "You can still read everything.",
+    "askOwner": {
+      "scheduled": "Ask the owner who pays for it to keep it working.",
+      "pastDue": "Ask the owner who pays for it to fix the payment.",
+      "locked": "Ask the owner who pays for it to unlock it."
+    },
+    "waiting": "Waiting for your payment. This updates by itself once it goes through.",
+    "openPaymentPage": "Open the payment page",
+    "actions": {
+      "upgrade": "Upgrade",
+      "unlock": "Unlock",
+      "fixPayment": "Fix payment",
+      "manageBilling": "Manage billing",
+      "changePick": "Change pick",
+      "claimFree": "Use as free org",
+      "delete": "Delete org",
+      "more": "More"
+    },
+    "claim": {
+      "title": "Use {{org}} as your free organization?",
+      "bodySwap": "{{org}} unlocks and becomes free. {{other}} locks instead until someone pays for it.",
+      "bodyFree": "{{org}} unlocks and becomes your free organization.",
+      "cancel": "Cancel",
+      "pending": "Switching",
+      "done": "{{org}} is now your free organization.",
+      "refused": {
+        "has_subscription": {
+          "title": "This organization still has a plan",
+          "body": "Its subscription is still active, so it can't be the free one. Fix the payment instead."
+        },
+        "not_billing_owner": {
+          "title": "Only the owner who pays can do this",
+          "body": "Ask the owner who pays for this organization to make it the free one."
+        }
+      }
+    },
+    "lockedCard": {
+      "title": "This organization is locked"
+    },
+    "writeLocked": {
+      "unlock": "{{org}} is locked. Unlock it to send messages and make changes.",
+      "fixPayment": "{{org}} is locked. Fix the payment to send messages and make changes.",
+      "askOwner": "{{org}} is locked. Ask the owner who pays for it to unlock it.",
+      "store": "{{org}} is locked, so messages and changes are off for now."
     }
   }
 }

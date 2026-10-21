@@ -443,8 +443,6 @@
     "seats_other": "{{count}} assentos",
     "manage": "Gerenciar cobrança",
     "askOwner": "Somente o proprietário que paga por esta organização pode mudar o plano. Peça a essa pessoa se precisar de mais.",
-    "trialPill_one": "Resta {{count}} dia de teste",
-    "trialPill_other": "Restam {{count}} dias de teste",
     "loading": "Carregando a cobrança",
     "planFree": "Plano grátis",
     "planPaid": "Plano pago",
@@ -469,11 +467,8 @@
     "freeSummary_other": "{{count}} membros compartilham um uso semanal"
   },
   "degrade": {
-    "owner": "O teste da sua equipe terminou. Faça o upgrade para todos continuarem trabalhando.",
-    "member": "O teste da sua equipe terminou. Peça ao proprietário para fazer o upgrade.",
-    "upgrade": "Fazer upgrade",
-    "writeBlockedTitle": "Upgrade necessário",
-    "writeBlockedBody": "O teste da sua equipe terminou. Peça ao proprietário para fazer o upgrade para fazer alterações."
+    "writeBlockedTitle": "Esta organização está bloqueada",
+    "writeBlockedBody": "Ninguém pode fazer alterações aqui até ela ser desbloqueada. Peça ao dono que paga por ela para desbloqueá-la."
   },
   "personalSpace": {
     "inviteBlockedTitle": "Este é o seu espaço pessoal",
@@ -494,8 +489,8 @@
     "joinedBody": "Mude para esse espaço quando quiser pelo menu de espaços, no topo da barra lateral.",
     "joinedBodyUnconfirmed": "Não foi possível atualizar seus espaços agora. Abra o menu de espaços daqui a pouco para encontrar a equipe.",
     "errors": {
-      "needsUpgradeTitle": "Esta equipe precisa de um upgrade",
-      "needsUpgradeBody": "O teste dela terminou, então ela não pode receber pessoas agora. Peça para quem convidou você fazer o upgrade e aceite de novo.",
+      "needsUpgradeTitle": "Esta organização está bloqueada",
+      "needsUpgradeBody": "Ela está bloqueada, então não pode adicionar pessoas por enquanto. Peça a quem convidou você para desbloqueá-la e aceite de novo.",
       "alreadyMemberTitle": "Você já está nesta equipe",
       "alreadyMemberBody": "Não há nada a fazer. Encontre a equipe no menu de espaços, no topo da barra lateral.",
       "goneTitle": "Este convite não está mais disponível",
@@ -687,12 +682,10 @@
   },
   "native": {
     "askOwner": "Somente o proprietário que paga por esta organização pode mudar o plano.",
-    "degradeOwner": "O teste da sua equipe terminou. Gerencie seu plano na web.",
-    "degradeMember": "O teste da sua equipe terminou. O plano da sua equipe não inclui alterações no momento.",
-    "writeBlockedTitle": "Não incluído no plano da sua equipe",
-    "writeBlockedBody": "O teste da sua equipe terminou, então o plano da sua equipe não inclui esta alteração no momento.",
+    "writeBlockedTitle": "Esta organização está bloqueada",
+    "writeBlockedBody": "Ninguém pode fazer alterações aqui por enquanto. Você ainda pode ler tudo.",
     "inviteNeedsUpgradeTitle": "Esta equipe não pode adicionar pessoas no momento",
-    "inviteNeedsUpgradeBody": "O teste dela terminou, então o plano dela não inclui novas pessoas no momento.",
+    "inviteNeedsUpgradeBody": "Ela está bloqueada, então não pode adicionar pessoas por enquanto.",
     "moveNeedsUpgrade": "O plano desta equipe não inclui mover Funcionários de IA para ela no momento.",
     "freeTakenInline": "Você já tem uma organização grátis, então esta não pode ser criada aqui.",
     "freeTakenTitle": "Você já tem uma organização grátis",
@@ -730,6 +723,61 @@
     "agentModels": {
       "title": "Não foi possível atualizar os modelos permitidos",
       "description": "Os modelos voltaram a ser como eram. Tente de novo em instantes."
+    }
+  },
+  "status": {
+    "scheduled": "{{org}} será bloqueada em {{date}}. Depois disso, ninguém poderá enviar mensagens lá.",
+    "scheduledCanceled": "O plano de {{org}} termina em {{date}}. Depois disso, ela será bloqueada e ninguém poderá enviar mensagens lá.",
+    "pastDue": "Um pagamento de {{org}} não foi aprovado. Ela será bloqueada em {{date}} se o pagamento não for resolvido.",
+    "pastDueNoDate": "Um pagamento de {{org}} não foi aprovado. Ela será bloqueada se o pagamento não for resolvido.",
+    "locked": "{{org}} está bloqueada, então ninguém pode enviar mensagens nem fazer alterações.",
+    "lockedCanceled": "O plano de {{org}} terminou, então ela está bloqueada e ninguém pode enviar mensagens nem fazer alterações.",
+    "lockedPayment": "Um pagamento de {{org}} não foi aprovado, então ela está bloqueada e ninguém pode enviar mensagens nem fazer alterações.",
+    "lockedMoveOut": "Você ainda pode ler tudo e tirar seus Funcionários de IA de lá.",
+    "lockedRead": "Você ainda pode ler tudo.",
+    "askOwner": {
+      "scheduled": "Peça ao dono que paga por ela para mantê-la ativa.",
+      "pastDue": "Peça ao dono que paga por ela para resolver o pagamento.",
+      "locked": "Peça ao dono que paga por ela para desbloqueá-la."
+    },
+    "waiting": "Aguardando seu pagamento. Isto se atualiza sozinho quando ele for aprovado.",
+    "openPaymentPage": "Abrir a página de pagamento",
+    "actions": {
+      "upgrade": "Fazer upgrade",
+      "unlock": "Desbloquear",
+      "fixPayment": "Resolver pagamento",
+      "manageBilling": "Gerenciar pagamentos",
+      "changePick": "Mudar escolha",
+      "claimFree": "Usar como gratuita",
+      "delete": "Excluir organização",
+      "more": "Mais"
+    },
+    "claim": {
+      "title": "Usar {{org}} como sua organização gratuita?",
+      "bodySwap": "{{org}} é desbloqueada e passa a ser gratuita. {{other}} fica bloqueada no lugar dela até alguém pagar por ela.",
+      "bodyFree": "{{org}} é desbloqueada e passa a ser sua organização gratuita.",
+      "cancel": "Cancelar",
+      "pending": "Trocando",
+      "done": "{{org}} agora é sua organização gratuita.",
+      "refused": {
+        "has_subscription": {
+          "title": "Esta organização ainda tem um plano",
+          "body": "A assinatura dela continua ativa, então ela não pode ser a gratuita. Resolva o pagamento."
+        },
+        "not_billing_owner": {
+          "title": "Só o dono que paga pode fazer isso",
+          "body": "Peça ao dono que paga por esta organização para torná-la a gratuita."
+        }
+      }
+    },
+    "lockedCard": {
+      "title": "Esta organização está bloqueada"
+    },
+    "writeLocked": {
+      "unlock": "{{org}} está bloqueada. Desbloqueie para enviar mensagens e fazer alterações.",
+      "fixPayment": "{{org}} está bloqueada. Resolva o pagamento para enviar mensagens e fazer alterações.",
+      "askOwner": "{{org}} está bloqueada. Peça ao dono que paga por ela para desbloqueá-la.",
+      "store": "{{org}} está bloqueada, então mensagens e alterações estão pausadas por enquanto."
     }
   }
 }

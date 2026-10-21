@@ -2,22 +2,27 @@ import { planComposerMode, usagePercent } from "@houston/sdk";
 import { Button } from "@houston-ai/core";
 import { useTranslation } from "react-i18next";
 import { useActiveOrgBilling } from "../../hooks/queries/use-billing";
+import { useOrgWriteLock } from "../../hooks/use-org-write-lock";
 import { openAdmin } from "../../lib/open-admin";
 import { canPurchaseInApp } from "../../lib/purchase-policy";
+import { OrgLockedCard } from "./org-locked-card";
 import { PlanWebNote } from "./plan-web-note";
 import { PlanMessageLimitCard } from "./provider-error-cards/plan-limit";
 
 /**
  * The composer's plan line, from the active org's pool: the usage hint from
- * 80% and the limit card at 100%. The hint ends on what the reader can do:
+ * 80% and the limit card at 100%. A locked org replaces the composer with
+ * its locked card, whatever the pool says, since every send is refused. The hint ends on what the reader can do:
  * the billing owner's Upgrade (the managed-on-the-web line in the store
  * apps), or asking the owner for everyone else (nothing in the store apps).
  */
 export function usePlanComposerState() {
   const { t } = useTranslation("plan");
   const { billing } = useActiveOrgBilling();
+  const { locked } = useOrgWriteLock();
   const percent = usagePercent(billing);
   const mode = planComposerMode(billing);
+  if (locked) return { hint: null, limit: <OrgLockedCard /> };
   if (mode === "none" || percent === null) return { hint: null, limit: null };
   if (mode === "limit")
     return {

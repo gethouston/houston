@@ -34,6 +34,10 @@ const GATED_BY: Record<string, string> = {
     "components/shell/create-organization-dialog.tsx",
   "hooks/queries/use-billing.ts": "hooks/queries/use-billing.ts",
   "hooks/queries/use-org-checkout.ts": "hooks/queries/use-org-checkout.ts",
+  // The org-status strip and the locked composer card hand the policy's
+  // answer in; the view drops every pay button without it.
+  "hooks/use-team-status.ts": "components/shell/team-status-banner.tsx",
+  "hooks/use-team-status-actions.ts": "components/shell/team-status-banner.tsx",
 };
 
 /** Upsell copy and Upgrade buttons that sell without opening Stripe. */
@@ -41,6 +45,7 @@ const UPSELL_SURFACES = [
   "components/agent/routine-plan-skip-notice-view.tsx",
   "components/shell/plan-composer-state.tsx",
   "components/shell/plan-keep-footer.tsx",
+  "components/shell/org-locked-card.tsx",
   "components/shell/plan-upgrade-row.tsx",
   "components/shell/provider-error-cards/plan-limit.tsx",
   "components/shell/team-status-banner.tsx",
@@ -128,7 +133,7 @@ describe("a paid create's checkout", () => {
 
 /** Copy that sends someone to ask for an upgrade (owner-directed). */
 const OWNER_UPGRADE_COPY =
-  /degrade\.(owner|member|writeBlocked)|billing\.askOwner|askOwner(Hint|Label)|sidebar\.askOwner|limitBodyMember|freeTakenInline|inviteInbox\.errors\.\$\{|shareViaTeam\.moveFailed\.\$\{/;
+  /degrade\.(owner|member|writeBlocked)|status\.(askOwner|writeLocked)|billing\.askOwner|askOwner(Hint|Label)|sidebar\.askOwner|limitBodyMember|freeTakenInline|inviteInbox\.errors\.\$\{|shareViaTeam\.moveFailed\.\$\{/;
 
 /** Each place that shows it, all with a store-app variant. */
 const OWNER_UPGRADE_SURFACES = [
@@ -141,6 +146,7 @@ const OWNER_UPGRADE_SURFACES = [
   "components/shell/team-status-banner.tsx",
   "components/team-view/team-move-flow.tsx",
   "hooks/queries/use-invites.ts",
+  "hooks/use-org-write-lock.ts",
   "lib/tauri.ts",
 ];
 

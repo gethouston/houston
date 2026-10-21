@@ -1,132 +1,289 @@
-import { strictEqual } from "node:assert";
+import { deepStrictEqual, strictEqual } from "node:assert";
 import { describe, it } from "node:test";
-import type { BillingSummary, OrgRole } from "@houston/engine-adapter";
+import type {
+  BillingChoice,
+  OrgBilling,
+  OrgRole,
+} from "@houston/engine-adapter";
 import {
-  daysLeftUntil,
   isNeedsUpgradeError,
   isPersonalSpaceError,
+  type TeamStatusInput,
   type TeamStatusView,
   teamStatusView,
 } from "../src/lib/team-status-model.ts";
 
-const NOW = new Date("2026-07-08T12:00:00Z");
+const NOW = Date.parse("2026-10-25T00:00:00Z");
+const PAST = "2026-10-24T00:00:00Z";
+const FUTURE = "2026-11-06T00:00:00Z";
 
-function billing(patch: Partial<BillingSummary>): BillingSummary {
-  return { plan: "team", status: "trialing", seats: 3, ...patch };
+function billing(patch: Partial<OrgBilling>): OrgBilling {
+  return {
+    tier: "free",
+    status: "active",
+    lockAt: null,
+    lockReason: null,
+    freeSlot: true,
+    isBillingOwner: false,
+    seats: 3,
+    seatPriceCents: 1500,
+    seatGraceEndsAt: null,
+    usage: { scope: "org", used: 10, limit: 40, resetsAt: FUTURE },
+    routines: null,
+    ...patch,
+  };
 }
 
+/** The cutover's change window, still open. */
+const OPEN_PICK = {
+  state: "applied",
+  changeableUntil: FUTURE,
+} as BillingChoice;
+
+const STATES: Record<string, OrgBilling> = {
+  free: billing({}),
+  "pool full": billing({
+    usage: { scope: "org", used: 40, limit: 40, resetsAt: FUTURE },
+  }),
+  paid: billing({ tier: "paid", freeSlot: false, usage: null }),
+  "past due": billing({
+    tier: "paid",
+    status: "past_due",
+    freeSlot: false,
+    usage: null,
+    lockAt: FUTURE,
+    lockReason: "payment_failed",
+  }),
+  "scheduled lock": billing({
+    freeSlot: false,
+    lockAt: FUTURE,
+    lockReason: "migration",
+  }),
+  locked: billing({
+    status: "locked",
+    freeSlot: false,
+    lockAt: PAST,
+    lockReason: "unpaid",
+  }),
+  "locked, paid": billing({
+    tier: "paid",
+    status: "locked",
+    freeSlot: false,
+    usage: null,
+    lockAt: PAST,
+    lockReason: "payment_failed",
+  }),
+};
+
+/** Who reads the org: the owner who pays, and everyone who does not. */
+const READERS: Record<string, { role: OrgRole; payer: boolean }> = {
+  "billing owner": { role: "owner", payer: true },
+  "another owner": { role: "owner", payer: false },
+  admin: { role: "admin", payer: false },
+  member: { role: "user", payer: false },
+};
+
 function view(
-  patch: Partial<Parameters<typeof teamStatusView>[0]>,
+  state: string,
+  reader: string,
+  patch: Partial<TeamStatusInput> = {},
 ): TeamStatusView {
+  const { role, payer } = READERS[reader];
   return teamStatusView({
-    hasSpaces: true,
-    isTeamSpace: true,
-    role: "owner",
-    billing: billing({}),
-    degraded: false,
+    billing: { ...STATES[state], isBillingOwner: payer },
+    degraded: STATES[state].status === "locked",
+    role,
+    choice: OPEN_PICK,
+    purchasable: true,
+    checkoutOutstanding: false,
+    canDelete: true,
     now: NOW,
     ...patch,
   });
 }
 
-describe("daysLeftUntil", () => {
-  it("rounds partial days UP (a trial with hours left is 1 day)", () => {
-    strictEqual(
-      daysLeftUntil("2026-07-09T06:00:00Z", NOW), // 18h ahead
-      1,
+/** The strip a reader sees, minus the dates the state already pins. */
+function strip(v: TeamStatusView) {
+  if (v.kind === "none") return "none";
+  const { kind, payer, moveOut, tail, buttons, more, waiting } = v;
+  return { kind, payer, moveOut, tail, buttons, more, waiting };
+}
+
+const ASK = (kind: string, moveOut: boolean) => ({
+  kind,
+  payer: false,
+  moveOut,
+  tail: "ask_owner",
+  buttons: [],
+  more: [],
+  waiting: false,
+});
+
+const NON_PAYERS = (kind: string) => ({
+  "another owner": ASK(kind, true),
+  admin: ASK(kind, true),
+  member: ASK(kind, false),
+});
+
+const EXPECTED: Record<string, Record<string, unknown>> = {
+  free: {},
+  "pool full": {},
+  paid: {},
+  "past due": {
+    "billing owner": {
+      kind: "past_due",
+      payer: true,
+      moveOut: true,
+      tail: null,
+      buttons: ["portal", "change_pick"],
+      more: [],
+      waiting: false,
+    },
+    ...NON_PAYERS("past_due"),
+  },
+  "scheduled lock": {
+    "billing owner": {
+      kind: "scheduled",
+      payer: true,
+      moveOut: true,
+      tail: null,
+      buttons: ["checkout", "change_pick"],
+      more: ["claim_free", "delete"],
+      waiting: false,
+    },
+    ...NON_PAYERS("scheduled"),
+  },
+  locked: {
+    "billing owner": {
+      kind: "locked",
+      payer: true,
+      moveOut: true,
+      tail: null,
+      buttons: ["checkout", "change_pick"],
+      more: ["claim_free", "delete"],
+      waiting: false,
+    },
+    ...NON_PAYERS("locked"),
+  },
+  "locked, paid": {
+    "billing owner": {
+      kind: "locked",
+      payer: true,
+      moveOut: true,
+      tail: null,
+      buttons: ["portal", "change_pick"],
+      more: [],
+      waiting: false,
+    },
+    ...NON_PAYERS("locked"),
+  },
+};
+
+describe("teamStatusView: every state for every reader", () => {
+  for (const state of Object.keys(STATES))
+    for (const reader of Object.keys(READERS))
+      it(`${state}, ${reader}`, () => {
+        deepStrictEqual(
+          strip(view(state, reader)),
+          EXPECTED[state][reader] ?? "none",
+        );
+      });
+});
+
+describe("teamStatusView: what the surface leaves out", () => {
+  it("drops the pay buttons in the store apps and shows the web note to the payer", () => {
+    deepStrictEqual(
+      strip(view("locked", "billing owner", { purchasable: false })),
+      {
+        kind: "locked",
+        payer: true,
+        moveOut: true,
+        tail: "web_note",
+        buttons: ["change_pick", "claim_free"],
+        more: ["delete"],
+        waiting: false,
+      },
+    );
+    deepStrictEqual(
+      strip(view("past due", "billing owner", { purchasable: false })),
+      {
+        kind: "past_due",
+        payer: true,
+        moveOut: true,
+        tail: "web_note",
+        buttons: ["change_pick"],
+        more: [],
+        waiting: false,
+      },
     );
   });
 
-  it("counts whole days ahead", () => {
-    strictEqual(daysLeftUntil("2026-07-15T12:00:00Z", NOW), 7);
-  });
-
-  it("clamps to 0 once elapsed", () => {
-    strictEqual(daysLeftUntil("2026-07-08T11:59:59Z", NOW), 0);
-    strictEqual(daysLeftUntil("2026-07-01T12:00:00Z", NOW), 0);
-  });
-
-  it("is timezone-independent (absolute instants)", () => {
-    // Same instant expressed with an offset resolves to the same day count.
-    strictEqual(
-      daysLeftUntil("2026-07-09T06:00:00Z", NOW),
-      daysLeftUntil("2026-07-09T08:00:00+02:00", NOW),
-    );
-  });
-
-  it("returns 0 for an unparseable date", () => {
-    strictEqual(daysLeftUntil("not-a-date", NOW), 0);
-  });
-});
-
-describe("teamStatusView — gating", () => {
-  it("renders nothing off a Spaces host", () => {
-    strictEqual(view({ hasSpaces: false }).kind, "none");
-  });
-
-  it("renders nothing in a personal (non-team) space", () => {
-    strictEqual(view({ isTeamSpace: false }).kind, "none");
-  });
-
-  it("renders nothing with no role (single-player)", () => {
-    strictEqual(view({ role: null }).kind, "none");
-  });
-});
-
-describe("teamStatusView — owner/admin (billing-driven)", () => {
-  it("shows the trial pill with days left when trialing", () => {
-    const v = view({
-      billing: billing({
-        status: "trialing",
-        trialEndsAt: "2026-07-11T12:00:00Z",
-      }),
+  it("never sends a store-app reader to ask for an upgrade", () => {
+    deepStrictEqual(strip(view("locked", "member", { purchasable: false })), {
+      ...ASK("locked", false),
+      tail: null,
     });
-    strictEqual(v.kind, "trial");
-    if (v.kind === "trial") strictEqual(v.daysLeft, 3);
   });
 
-  it("shows a clock-less trial (no count) when trialing without a trial clock", () => {
-    const v = view({ billing: billing({ status: "trialing" }) });
-    strictEqual(v.kind, "trial");
-    if (v.kind === "trial") strictEqual(v.daysLeft, null);
+  it("waits on an outstanding checkout, only where a pay button shows", () => {
+    strictEqual(
+      (
+        view("locked", "billing owner", { checkoutOutstanding: true }) as {
+          waiting: boolean;
+        }
+      ).waiting,
+      true,
+    );
+    strictEqual(
+      (
+        view("locked", "member", { checkoutOutstanding: true }) as {
+          waiting: boolean;
+        }
+      ).waiting,
+      false,
+    );
   });
 
-  it("shows the owner degrade banner when expired", () => {
-    const v = view({ role: "owner", billing: billing({ status: "expired" }) });
-    strictEqual(v.kind, "degraded");
-    if (v.kind === "degraded") strictEqual(v.isOwner, true);
+  it("keeps a paid tier that is still past due on its strip after a checkout", () => {
+    strictEqual(
+      view("past due", "billing owner", { checkoutOutstanding: true }).kind,
+      "past_due",
+    );
   });
 
-  it("shows the admin degrade banner (ask-owner copy) when expired", () => {
-    const v = view({ role: "admin", billing: billing({ status: "expired" }) });
-    strictEqual(v.kind, "degraded");
-    if (v.kind === "degraded") strictEqual(v.isOwner, false);
+  it("drops Change pick once the change window closed, and Delete where no delete flow exists", () => {
+    deepStrictEqual(
+      strip(
+        view("locked", "billing owner", { choice: null, canDelete: false }),
+      ),
+      {
+        kind: "locked",
+        payer: true,
+        moveOut: true,
+        tail: null,
+        buttons: ["checkout", "claim_free"],
+        more: [],
+        waiting: false,
+      },
+    );
   });
 
-  it("renders nothing for a healthy team (free/active/past_due)", () => {
-    for (const status of ["free", "active", "past_due"] as const) {
-      strictEqual(view({ billing: billing({ status }) }).kind, "none");
-    }
+  it("reads an older gateway's degraded team as locked, asking the owner", () => {
+    deepStrictEqual(
+      strip(view("free", "billing owner", { billing: null, degraded: true })),
+      ASK("locked", false),
+    );
+    strictEqual(view("free", "member", { billing: null }).kind, "none");
   });
 
-  it("renders nothing while billing is still loading", () => {
-    strictEqual(view({ billing: undefined }).kind, "none");
-    strictEqual(view({ billing: null }).kind, "none");
-  });
-});
-
-describe("teamStatusView — member (degrade-flag-driven)", () => {
-  const asMember = (patch: Partial<Parameters<typeof teamStatusView>[0]>) =>
-    view({ role: "user" as OrgRole, billing: null, ...patch });
-
-  it("shows the ask-owner degrade banner when the team is degraded", () => {
-    const v = asMember({ degraded: true });
-    strictEqual(v.kind, "degraded");
-    if (v.kind === "degraded") strictEqual(v.isOwner, false);
+  it("shows nothing until the role is known", () => {
+    strictEqual(view("locked", "billing owner", { role: null }).kind, "none");
   });
 
-  it("renders nothing for a member on a healthy team", () => {
-    strictEqual(asMember({ degraded: false }).kind, "none");
+  it("carries the lock date and reason for the copy", () => {
+    const v = view("past due", "admin");
+    strictEqual(v.kind === "past_due" && v.lockAt, FUTURE);
+    strictEqual(v.kind === "past_due" && v.lockReason, "payment_failed");
   });
 });
 

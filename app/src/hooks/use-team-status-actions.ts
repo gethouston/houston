@@ -1,0 +1,47 @@
+import { useState } from "react";
+import type { TeamStatusAction } from "../lib/team-status-model.ts";
+import { useUIStore } from "../stores/ui.ts";
+import { usePortal } from "./queries/use-billing.ts";
+import type { useOrgCheckout } from "./queries/use-org-checkout.ts";
+
+/**
+ * What each strip button does. Paying opens Stripe (checkout for an org with
+ * no subscription, the portal for one whose payment failed), Change pick
+ * opens Settings > Billing where the free-org row lives, Delete opens
+ * Settings where the Danger zone deletes the org, and Use as free org asks
+ * first, so it only opens its confirmation.
+ */
+export function useTeamStatusActions(
+  orgSlug: string | null,
+  checkout: ReturnType<typeof useOrgCheckout>,
+) {
+  const portal = usePortal();
+  const openSettings = useUIStore((s) => s.openSettings);
+  const [claimOpen, setClaimOpen] = useState(false);
+  const run = (action: TeamStatusAction) => {
+    switch (action) {
+      case "checkout":
+        if (orgSlug) checkout.start(orgSlug);
+        return;
+      case "portal":
+        portal.mutate();
+        return;
+      case "change_pick":
+        openSettings("plan");
+        return;
+      case "claim_free":
+        setClaimOpen(true);
+        return;
+      case "delete":
+        openSettings(null);
+        return;
+    }
+  };
+  return {
+    run,
+    claimOpen,
+    setClaimOpen,
+    paying: portal.isPending,
+    fallbackUrl: checkout.fallbackUrl ?? portal.fallbackUrl,
+  };
+}

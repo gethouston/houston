@@ -1978,6 +1978,9 @@ export const tauriOrg = {
     call("create_checkout", () => getEngine().createCheckout()),
   /** C8 billing: open the Stripe customer portal (owner only); returns `{url}`. */
   createPortal: () => call("create_portal", () => getEngine().createPortal()),
+  /** Make the active org the free one; the refusals come back as outcomes. */
+  claimFreeSlot: () =>
+    call("claim_free_slot", () => getEngine().claimFreeSlot()),
   /** The account-wide free-org pick; null off cloud or before the change. */
   getBillingChoice: () =>
     call("get_billing_choice", () => getEngine().getBillingChoice()),

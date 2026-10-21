@@ -1,109 +1,117 @@
-import type { BillingSummary, OrgRole } from "@houston/engine-adapter";
+import type {
+  BillingChoice,
+  LockReason,
+  OrgBilling,
+  OrgRecoveryAction,
+  OrgRole,
+} from "@houston/engine-adapter";
+import { orgRecovery, orgStanding } from "@houston/sdk";
 import { shareErrorCode } from "./share-error.ts";
 
 /**
- * Pure, DOM-free logic behind the C8 team-status surfaces (the trial countdown
- * pill + the degrade banner) and the `needs_upgrade` write-block toast. Kept out
- * of the `.tsx` so the days-left math and the visibility decision unit-test
- * under bare Node.
- *
- * Contract (C8 §Client UX): countdown/billing affordances are owner/admin-only;
- * members NEVER see billing data — on an expired team they see the degrade
- * banner with "ask your owner" copy, driven by `OrgSummary.degraded` (which
- * carries no billing detail). Nothing renders off a Spaces host or off a team
- * space (single-player / personal). Expiry is a DERIVED read with no push, so
- * the caller re-reads billing/orgs on entering a team space.
+ * Pure, DOM-free logic behind the shell's org-status strip and the
+ * `needs_upgrade` write-block toast. What an org's state allows comes from the
+ * SDK (`orgStanding`, `orgRecovery`); this only decides how the strip shows
+ * it on this surface: which buttons fit, what the store apps leave out, and
+ * what a checkout in flight disables.
  */
 
-/**
- * Whole days remaining until an ISO trial end, rounded UP (a trial with 30 min
- * left still reads "1 day left", never "0"), clamped at 0 once elapsed. Both
- * sides are absolute instants, so the subtraction is timezone-independent —
- * UTC-safe by construction. An unparseable date yields 0 (the trial pill then
- * shows no misleading count; the status still comes from the derived `status`).
- */
-export function daysLeftUntil(trialEndsAt: string, now: Date): number {
-  const end = Date.parse(trialEndsAt);
-  if (Number.isNaN(end)) return 0;
-  const ms = end - now.getTime();
-  if (ms <= 0) return 0;
-  return Math.ceil(ms / 86_400_000);
-}
+/** The recovery actions the strip draws as buttons. */
+export type TeamStatusAction = Exclude<
+  OrgRecoveryAction,
+  "move_out" | "ask_owner"
+>;
 
-/** Inputs for {@link teamStatusView} — the shell resolves these from caps, the
- *  active workspace, and the billing/orgs reads. */
+/** What the strip says after the state: ask the owner, or the store note. */
+export type TeamStatusTail = "ask_owner" | "web_note" | null;
+
 export interface TeamStatusInput {
-  /** `caps.spaces` — the whole C8 Spaces surface feature-detect. */
-  hasSpaces: boolean;
-  /** The active workspace is a team (`org:*` id), not personal. */
-  isTeamSpace: boolean;
-  /** The caller's role in the ACTIVE space, or null off-multiplayer. */
-  role: OrgRole | null;
-  /** The active team's billing summary (owner/admin only); null/undefined for a
-   *  member, while loading, or when the host serves no billing detail. */
-  billing: BillingSummary | null | undefined;
-  /** `OrgSummary.degraded` for the active space — the member-visible expired
-   *  signal that carries no billing detail. */
+  /** The active org's billing; `null` for a legacy org, `undefined` unread. */
+  billing: OrgBilling | null | undefined;
+  /** `OrgSummary.degraded`: a gateway without org billing flags a lock here. */
   degraded: boolean;
-  now: Date;
+  /** The caller's role in the active org, or null while unknown. */
+  role: OrgRole | null;
+  choice: BillingChoice | null;
+  /** `canPurchaseInApp()`: false in the store apps, which never sell. */
+  purchasable: boolean;
+  /** A checkout this app opened is still waiting to be paid. */
+  checkoutOutstanding: boolean;
+  /** The delete flow exists here (the Danger zone of a team the caller owns). */
+  canDelete: boolean;
+  now: number;
 }
 
-/**
- * What the team-status surface should render:
- * - `none`   — nothing (off-spaces, personal space, healthy team, or loading);
- * - `trial`  — the owner/admin trial pill; `daysLeft` is the countdown, or `null`
- *   for a trialing team whose trial clock (`trialEndsAt`) isn't written yet — the
- *   pill then shows a clock-less "Free trial" label instead of a misleading "0
- *   days left" (mirrors `trialDaysLeft`'s null path so the pill and the Billing
- *   tab agree);
- * - `degraded` — the expired-team banner for everyone; `isOwner` picks the copy
- *   (owner gets an Upgrade action; admins + members get "ask your owner", since
- *   only the owner can check out — C8 admin degrade asymmetry).
- */
 export type TeamStatusView =
   | { kind: "none" }
-  | { kind: "trial"; daysLeft: number | null }
-  | { kind: "degraded"; isOwner: boolean };
+  | {
+      kind: "scheduled" | "past_due" | "locked";
+      lockAt: string | null;
+      lockReason: LockReason | null;
+      /** The caller pays for this org. */
+      payer: boolean;
+      /** The caller can move AI Employees out (owners and admins). */
+      moveOut: boolean;
+      tail: TeamStatusTail;
+      /** Up to two buttons, the rest behind More. */
+      buttons: TeamStatusAction[];
+      more: TeamStatusAction[];
+      /** A checkout is outstanding: the pay buttons are disabled. */
+      waiting: boolean;
+    };
 
 const NONE: TeamStatusView = { kind: "none" };
+const MAX_BUTTONS = 2;
+const PAY: ReadonlySet<OrgRecoveryAction> = new Set(["checkout", "portal"]);
 
-/**
- * Decide the team-status surface. Owner/admin drive off the DERIVED billing
- * `status` (they hold billing detail); members have no billing and drive off the
- * `degraded` flag alone. Only `trialing` and `expired` surface anything —
- * `free`/`active`/`past_due` render nothing (a solo/paid/grace team is healthy
- * to the user).
- */
+function drawn(
+  action: OrgRecoveryAction,
+  input: TeamStatusInput,
+): action is TeamStatusAction {
+  if (action === "move_out" || action === "ask_owner") return false;
+  if (PAY.has(action)) return input.purchasable;
+  if (action === "delete") return input.canDelete;
+  return true;
+}
+
+/** Decide the strip for the active org. */
 export function teamStatusView(input: TeamStatusInput): TeamStatusView {
-  const { hasSpaces, isTeamSpace, role, billing, degraded, now } = input;
-  if (!hasSpaces || !isTeamSpace || role === null) return NONE;
-
-  const billingVisible = role === "owner" || role === "admin";
-  if (billingVisible) {
-    if (!billing) return NONE;
-    if (billing.status === "trialing") {
-      const daysLeft = billing.trialEndsAt
-        ? daysLeftUntil(billing.trialEndsAt, now)
-        : null;
-      return { kind: "trial", daysLeft };
-    }
-    if (billing.status === "expired") {
-      return { kind: "degraded", isOwner: role === "owner" };
-    }
-    return NONE;
-  }
-
-  // Plain member: no billing data — the degrade flag is the only signal.
-  return degraded ? { kind: "degraded", isOwner: false } : NONE;
+  const { billing, role } = input;
+  if (role === null) return NONE;
+  const kind = orgStanding(billing, input.degraded);
+  if (kind === "ok") return NONE;
+  const offered = orgRecovery(billing, role, input.choice, input.now);
+  const actions = offered.filter((a) => drawn(a, input));
+  const payer = billing?.isBillingOwner === true;
+  // An older gateway's degraded team carries no billing, so no one there is
+  // known to pay: everyone reads "ask the owner".
+  const askOwner = offered.includes("ask_owner") || !billing;
+  const tail: TeamStatusTail = !input.purchasable
+    ? payer
+      ? "web_note"
+      : null
+    : askOwner
+      ? "ask_owner"
+      : null;
+  return {
+    kind,
+    lockAt: billing?.lockAt ?? null,
+    lockReason: billing?.lockReason ?? null,
+    payer,
+    moveOut: offered.includes("move_out"),
+    tail,
+    buttons: actions.slice(0, MAX_BUTTONS),
+    more: actions.slice(MAX_BUTTONS),
+    waiting: input.checkoutOutstanding && actions.some((a) => PAY.has(a)),
+  };
 }
 
 /**
- * True for a gateway `needs_upgrade` rejection (403) — an EXPECTED business
- * state (the team's trial expired and a non-owner attempted a write), NOT a
- * Houston bug. The write-surfacing layer routes it to a plain informational
- * toast instead of the red "report a bug" toast, matching how the share flow
- * treats its expected states (`isExpectedShareError`). Reuses the same
- * kind/code/body extractor.
+ * True for a gateway `needs_upgrade` rejection (403): a write on an org that is
+ * locked, an EXPECTED business state, not a Houston bug. The write-surfacing
+ * layer routes it to a plain informational toast instead of the red "report a
+ * bug" toast, matching how the share flow treats its expected states
+ * (`isExpectedShareError`). Reuses the same kind/code/body extractor.
  */
 export function isNeedsUpgradeError(err: unknown): boolean {
   return shareErrorCode(err) === "needs_upgrade";
