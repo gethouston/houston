@@ -17,7 +17,7 @@
 # contract.
 
 # ---------- Install stage ----------
-FROM node:22-bookworm-slim AS deps
+FROM node:22.23.4-bookworm-slim AS deps
 ENV PNPM_HOME=/pnpm \
     PATH=/pnpm:$PATH
 RUN corepack enable
@@ -51,7 +51,7 @@ RUN pnpm install --frozen-lockfile --prod --filter @houston/runtime...
 RUN rm -rf /app/node_modules/.pnpm/@anthropic-ai+claude-agent-sdk-*
 
 # ---------- Runtime stage ----------
-FROM node:22-bookworm-slim AS runtime
+FROM node:22.23.4-bookworm-slim AS runtime
 
 # Tools the agent commonly reaches for through its bash tool; ca-certificates is
 # for outbound HTTPS to model providers and object storage.

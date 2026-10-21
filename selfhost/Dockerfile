@@ -22,7 +22,7 @@
 #   docker build -t houston/self-host -f selfhost/Dockerfile .
 #   # or just `docker compose up -d --build` from selfhost/ (wires the proxy + volumes).
 
-FROM node:22-bookworm-slim AS bundle-builder
+FROM node:22.23.4-bookworm-slim AS bundle-builder
 ENV PNPM_HOME=/pnpm \
     PATH=/pnpm:$PATH
 RUN corepack enable
@@ -49,8 +49,9 @@ RUN pnpm install --frozen-lockfile \
 RUN node selfhost/bundle.mjs
 
 # The bookworm-slim variant ships bash + coreutils, which the agent's bash/file
-# tools rely on. Swap node:22 for a digest for a fully reproducible build.
-FROM node:22-bookworm-slim AS host-base
+# tools rely on. Base images pin an exact Node release: a floating tag lets a
+# cached build keep an unpatched runtime. Use a digest for a reproducible build.
+FROM node:22.23.4-bookworm-slim AS host-base
 ENV PNPM_HOME=/pnpm \
     PATH=/pnpm:$PATH
 RUN corepack enable
@@ -191,7 +192,7 @@ ENV BUILD_SHA=$BUILD_SHA
 # run_code promises (packages/code-sandbox/requirements.txt) is baked in here,
 # at Alpine's versions (close to, not exactly, the Cloud Run sandbox's pins). Built natively with the published sandbox helpers: no KVM, no
 # container runtime and no Zig needed on the build machine.
-FROM node:24-bookworm-slim AS gondolin-guest
+FROM node:24.22.1-bookworm-slim AS gondolin-guest
 
 ARG GONDOLIN_VERSION=0.13.0
 ARG SANDBOX_HELPERS_URL=https://github.com/earendil-works/gondolin/releases/download/sandbox-helpers--0.13.0/gondolin-sandbox-helpers-0.13.0-x86_64.tar.gz

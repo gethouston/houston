@@ -33,9 +33,9 @@ const enginePkg = JSON.parse(
   readFileSync(join(ENGINE, "package.json"), "utf8"),
 ) as { dependencies?: Record<string, string> };
 
-test("uses the Node Debian base image", () => {
-  expect(dockerfile).toMatch(/^FROM node:22-bookworm-slim AS deps/m);
-  expect(dockerfile).toMatch(/^FROM node:22-bookworm-slim AS runtime/m);
+test("uses the pinned Node Debian base image", () => {
+  expect(dockerfile).toMatch(/^FROM node:22\.23\.4-bookworm-slim AS deps/m);
+  expect(dockerfile).toMatch(/^FROM node:22\.23\.4-bookworm-slim AS runtime/m);
 });
 
 test("binds 0.0.0.0 on the engine port 4317", () => {

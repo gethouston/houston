@@ -11,7 +11,7 @@
 # the traced standalone server with no build toolchain.
 
 # ---- build stage ---------------------------------------------------------
-FROM node:22-bookworm-slim AS builder
+FROM node:22.23.4-bookworm-slim AS builder
 ENV PNPM_HOME=/pnpm \
     PATH=/pnpm:$PATH \
     NEXT_TELEMETRY_DISABLED=1
@@ -40,7 +40,7 @@ RUN pnpm install --frozen-lockfile
 RUN pnpm --filter houston-agentstore build
 
 # ---- runtime stage -------------------------------------------------------
-FROM node:22-bookworm-slim AS runner
+FROM node:22.23.4-bookworm-slim AS runner
 ENV NODE_ENV=production \
     NEXT_TELEMETRY_DISABLED=1 \
     PORT=3300 \

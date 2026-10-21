@@ -6,7 +6,7 @@
 #
 # Cloud Run injects PORT (8080). The container runs as the non-root node user;
 # each request executes in a fresh /tmp workdir that is wiped when it returns.
-FROM node:22-bookworm-slim
+FROM node:22.23.4-bookworm-slim
 ENV PNPM_HOME=/pnpm \
     PATH=/pnpm:$PATH
 RUN corepack enable
