@@ -26,14 +26,11 @@ import { usePlusCheckoutWatcher } from "../../hooks/queries/use-plus-checkout";
 import { useCapabilities } from "../../hooks/use-capabilities";
 import { usePlanPresence } from "../../hooks/use-plan-presence";
 import { useRoutineLabels } from "../../hooks/use-routine-labels";
-import {
-  canPurchaseInApp,
-  storeSafePlanDialog,
-} from "../../lib/purchase-policy";
+import { storeSafePlanDialog } from "../../lib/purchase-policy";
 import { useUIStore } from "../../stores/ui";
 import { BillingChangeModal } from "./billing-change-modal";
 import { PlanAnnouncementDialog } from "./plan-announcement-dialog";
-import { PlanWebNote } from "./plan-web-note";
+import { PlanKeepFooter } from "./plan-keep-footer";
 import { useOrgDismissal } from "./use-org-dismissal";
 import { createUserDismissal } from "./user-dismissal";
 
@@ -162,21 +159,14 @@ export function PlanLifecycle() {
               </div>
             ))}
           </div>
-          <DialogFooter>
-            {!org.plusOffer ? null : canPurchaseInApp() ? (
-              <Button
-                variant="outline"
-                onClick={() => {
-                  closeKeep();
-                  openSettings("plan");
-                }}
-              >
-                {t("upgrade")}
-              </Button>
-            ) : (
-              <PlanWebNote variant="manage" />
-            )}
-          </DialogFooter>
+          <PlanKeepFooter
+            plusOffer={org.plusOffer}
+            onClose={closeKeep}
+            onUpgrade={() => {
+              closeKeep();
+              openSettings("plan");
+            }}
+          />
         </DialogContent>
       </Dialog>
       {plan?.announcement && (

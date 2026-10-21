@@ -19,6 +19,8 @@ export type {
  * - The routine limit splits the same way: while routines are paused the
  *   plan's own dialog answers Resume before it lets anyone choose a routine
  *   to keep, so resuming comes first.
+ * - `org_locked`: the org is locked, so its routines wait for it to be paid
+ *   for; no routine write is offered, since a locked org refuses them.
  * - `creator_plan`: the read-only notice for a viewer who did not create the
  *   routine; only its creator is offered the remedies. A routine naming no
  *   creator is the viewer's (`viewerIsRoutineCreator`).
@@ -29,7 +31,8 @@ export type TriggerPlanSkipReason =
   | "routine_limit_paused"
   | "inactive_paused"
   | "inactive_resumed"
-  | "creator_plan";
+  | "creator_plan"
+  | "org_locked";
 
 /**
  * What the person can do about it. `upgrade` opens Billing (only where Plus
@@ -95,17 +98,22 @@ export function triggerPlanSkipNotice(
   if (!viewerIsRoutineCreator(viewer.createdBy, viewer.viewerId))
     return { ...base, reason: "creator_plan", actions: [] };
   if (billing?.tier !== "free") return null;
-  const notice = freeOrgNotice(skipped, item.routine_id, billing, viewer, base);
+  const notice =
+    billing.status === "locked"
+      ? {
+          ...base,
+          reason: "org_locked" as const,
+          actions: ["upgrade" as const],
+        }
+      : freeOrgNotice(skipped, item.routine_id, billing, viewer, base);
   if (!notice) return null;
-  // Upgrade buys Plus, which pays for this org only where it applies; a locked
-  // org refuses routine writes, so resume and keep go too.
-  const locked = billing.status === "locked";
-  return {
-    ...notice,
-    actions: notice.actions.filter((action) =>
-      action === "upgrade" ? viewer.plusOffer : !locked,
-    ),
-  };
+  // Upgrade buys Plus, which pays for this org only where it applies.
+  return viewer.plusOffer
+    ? notice
+    : {
+        ...notice,
+        actions: notice.actions.filter((action) => action !== "upgrade"),
+      };
 }
 
 function freeOrgNotice(

@@ -25,7 +25,7 @@
   "trigger": "Se ejecuta cuando ocurre el evento",
   "schedule": "Se ejecuta según su horario",
   "shortInterval": "En Gratis, elige un intervalo de al menos {{minutes}} minutos.",
-  "shortIntervalBody": "No se guardó nada. Elige un horario menos frecuente o mejora a Plus.",
+  "shortIntervalBody": "No se guardó nada. Elige un horario menos frecuente.",
   "openCheckout": "Abrir pago",
   "openPortal": "Abrir portal de facturación",
   "success": "Ya tienes Plus",
@@ -103,11 +103,14 @@
     "title_one": "Se omitió {{count}} ejecución de esta rutina en las últimas 24 horas",
     "title_other": "Se omitieron {{count}} ejecuciones de esta rutina en las últimas 24 horas",
     "minInterval": "Tu plan Gratis limita cuántas veces puede ejecutarse esta rutina. Pásate a Plus para que se ejecute siempre.",
+    "minIntervalNoOffer": "Tu plan Gratis limita cuántas veces puede ejecutarse esta rutina.",
     "routineLimit": "Gratis mantiene una rutina activa, y la que sigue activa es otra. Elige esta rutina para mantenerla activa, o pásate a Plus para ejecutarlas todas.",
+    "routineLimitNoOffer": "Gratis mantiene una rutina activa, y la que sigue activa es otra. Elige esta rutina para mantenerla activa.",
     "routineLimitPaused": "Gratis mantiene una rutina activa, y la que sigue activa es otra. Además, tus rutinas se pausaron mientras no estabas, así que reanúdalas primero.",
     "inactivePaused": "Tus rutinas se pausaron mientras no estabas. Reanúdalas para que esta rutina vuelva a ejecutarse.",
     "inactiveResumed": "Tus rutinas estuvieron en pausa mientras no estabas. Ya están activas otra vez.",
-    "creatorPlan": "Esta rutina usa el plan Gratis de quien la creó, que limita cuántas veces puede ejecutarse. Esa persona puede pasarse a Plus para que se ejecute siempre."
+    "creatorPlan": "Esta rutina usa el plan Gratis de quien la creó, que limita cuántas veces puede ejecutarse. Esa persona puede pasarse a Plus para que se ejecute siempre.",
+    "orgLocked": "Esta organización está bloqueada, así que sus rutinas están en pausa hasta que se pague."
   },
   "sidebar": {
     "free": "Plan gratis",
@@ -122,7 +125,6 @@
     "nav": "Tu plan personal y uso",
     "limitBody": "Tu uso se reinicia {{time}}. Administra tu plan en la web.",
     "limitBodyNoTime": "Tu uso se reinicia más adelante esta semana. Administra tu plan en la web.",
-    "shortIntervalBody": "No se guardó nada. Elige un horario menos frecuente.",
     "triggerSkipped": {
       "minInterval": "Tu plan Gratis limita cuántas veces puede ejecutarse esta rutina. Administra tu plan en la web.",
       "routineLimit": "Gratis mantiene una rutina activa, y la que sigue activa es otra. Elige esta rutina para mantenerla activa, o administra tu plan en la web.",

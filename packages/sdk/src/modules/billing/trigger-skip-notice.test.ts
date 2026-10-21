@@ -122,16 +122,21 @@ describe("triggerPlanSkipNotice for the routine's creator", () => {
       lockReason: "migration",
       routines: { ...FREE_ORG_ROUTINES, paused: true },
     });
-    for (const code of ["plan_routine_limit", "plan_inactive"] as const) {
-      expect(
-        triggerPlanSkipNotice(item(code), locked, creator)?.actions,
-      ).toEqual(["upgrade"]);
+    for (const code of [
+      "plan_min_interval",
+      "plan_routine_limit",
+      "plan_inactive",
+    ] as const) {
+      expect(triggerPlanSkipNotice(item(code), locked, creator)).toMatchObject({
+        reason: "org_locked",
+        actions: ["upgrade"],
+      });
       expect(
         triggerPlanSkipNotice(item(code), locked, {
           ...creator,
           plusOffer: false,
-        })?.actions,
-      ).toEqual([]);
+        }),
+      ).toMatchObject({ reason: "org_locked", actions: [] });
     }
   });
 

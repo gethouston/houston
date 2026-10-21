@@ -54,7 +54,6 @@ const UPSELL_SURFACES = [
   "components/shell/plan-upgrade-row.tsx",
   "components/shell/provider-error-cards/plan-limit.tsx",
   "components/shell/team-status-banner.tsx",
-  "lib/plan-floor-toast.ts",
   "components/auth/referral-panel.tsx",
 ];
 

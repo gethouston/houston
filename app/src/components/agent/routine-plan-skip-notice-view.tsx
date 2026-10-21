@@ -5,7 +5,9 @@
  * dialog draw the same thing and a test can render it without a query.
  *
  * The store apps never sell (`canPurchaseInApp`): there Upgrade is dropped
- * and the copy that pointed to Plus says the plan is managed on the web.
+ * and the copy that pointed to Plus says the plan is managed on the web. Where
+ * Plus would not pay for the org (the SDK left no Upgrade), the copy names no
+ * Plus at all.
  */
 
 import type {
@@ -42,6 +44,7 @@ export function RoutinePlanSkipNoticeView({
 }: Props) {
   const { t } = useTranslation("plan");
   const purchasable = canPurchaseInApp();
+  const offersPlus = notice.actions.includes("upgrade");
   const actions = purchasable
     ? notice.actions
     : notice.actions.filter((action) => action !== "upgrade");
@@ -51,13 +54,17 @@ export function RoutinePlanSkipNoticeView({
   const body = (): string => {
     switch (notice.reason) {
       case "min_interval":
+        if (!offersPlus) return t("triggerSkipped.minIntervalNoOffer");
         return purchasable
           ? t("triggerSkipped.minInterval")
           : t("native.triggerSkipped.minInterval");
       case "routine_limit":
+        if (!offersPlus) return t("triggerSkipped.routineLimitNoOffer");
         return purchasable
           ? t("triggerSkipped.routineLimit")
           : t("native.triggerSkipped.routineLimit");
+      case "org_locked":
+        return t("triggerSkipped.orgLocked");
       case "routine_limit_paused":
         return t("triggerSkipped.routineLimitPaused");
       case "inactive_paused":

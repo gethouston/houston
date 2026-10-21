@@ -115,6 +115,31 @@ describe("RoutinePlanSkipNoticeView", () => {
     ok(!html.includes(en.resume), html);
   });
 
+  it("names no Plus where it would not pay for the org", async () => {
+    const team = { ...creator, plusOffer: false };
+    for (const code of ["plan_min_interval", "plan_routine_limit"] as const) {
+      const html = await render(noticeFor(code, 2, free, team));
+      ok(!html.includes("Plus"), html);
+    }
+    const limit = await render(noticeFor("plan_routine_limit", 2, free, team));
+    ok(limit.includes(en.chooseRoutine), limit);
+    ok(!limit.includes(en.upgrade), limit);
+  });
+
+  it("says a locked org's routines wait for it to be paid for", async () => {
+    const locked: OrgBilling = {
+      ...free,
+      status: "locked",
+      lockAt: "2026-10-01T00:00:00Z",
+      lockReason: "migration",
+    };
+    const html = await render(
+      noticeFor("plan_inactive", 2, locked, { ...creator, plusOffer: false }),
+    );
+    ok(html.includes(en.triggerSkipped.orgLocked), html);
+    ok(!html.includes(en.resume), html);
+  });
+
   it("uses the singular for one event", async () => {
     const html = await render(noticeFor("plan_min_interval", 1));
     ok(html.includes("1 run of this routine was skipped"), html);
