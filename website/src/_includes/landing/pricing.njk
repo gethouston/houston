@@ -12,7 +12,7 @@
   <div class="pricing-grid reveal reveal-d1">
     <div class="price-col">
       <div class="price-name">{{ t.pricing.free.name }}</div>
-      <div class="price-amt"><span class="amount">{{ pricing.currency }}0</span></div>
+      <div class="price-amt"><span class="amount">{{ pricing.currency[locale.code] }}0</span></div>
       <div class="price-note">{{ t.pricing.free.note }}</div>
       <ul class="price-list">
 {%- for item in t.pricing.free.items %}
@@ -25,7 +25,7 @@
     <div class="price-col featured">
       <span class="price-chip">{{ t.pricing.team.chip }}</span>
       <div class="price-name">{{ t.pricing.team.name }}</div>
-      <div class="price-amt"><span class="amount">{{ pricing.currency }}{{ pricing.teamMonthly }}</span><span class="per">{{ t.pricing.team.per }}</span></div>
+      <div class="price-amt"><span class="amount">{{ pricing.currency[locale.code] }}{{ pricing.teamMonthly }}</span><span class="per">{{ t.pricing.team.per }}</span></div>
       <div class="price-note">{{ t.pricing.team.note }}</div>
       <ul class="price-list">
 {%- for item in t.pricing.team.items %}

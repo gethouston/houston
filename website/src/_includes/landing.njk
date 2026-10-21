@@ -32,9 +32,7 @@
 {%- endfor %}
 <link rel="alternate" hreflang="x-default" href="https://gethouston.ai/">
 
-<script type="application/ld+json">
-{ "@context":"https://schema.org","@type":"SoftwareApplication","name":"Houston","applicationCategory":"BusinessApplication","operatingSystem":"macOS, Windows","offers":[{"@type":"Offer","name":"Free","price":"0","priceCurrency":"{{ pricing.currencyCode }}"},{"@type":"Offer","name":"Team","price":"{{ pricing.teamMonthly }}","priceCurrency":"{{ pricing.currencyCode }}","priceSpecification":{"@type":"UnitPriceSpecification","price":"{{ pricing.teamMonthly }}","priceCurrency":"{{ pricing.currencyCode }}","unitText":"per seat per month","referenceQuantity":{"@type":"QuantitativeValue","value":1,"unitCode":"MON"}}}],"downloadUrl":"https://github.com/gethouston/houston/releases","softwareVersion":"beta","description":"{{ t.meta.jsonLdDescription }}" }
-</script>
+{% include "landing/json-ld.njk" %}
 {% endblock %}
 {% block headScripts %}
 <script>

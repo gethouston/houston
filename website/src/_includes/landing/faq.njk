@@ -19,7 +19,7 @@
 {%- for item in group.items %}
         <details class="faq-item">
           <summary>{{ item.q }}{{ chevron() }}</summary>
-          <div class="faq-answer"><p>{{ item.aHtml | replace("{price}", pricing.currency + pricing.teamMonthly) | safe }}</p></div>
+          <div class="faq-answer"><p>{{ item.aHtml | replace("{price}", pricing.currency[locale.code] + pricing.teamMonthly) | safe }}</p></div>
         </details>
 {%- endfor %}
       </div>

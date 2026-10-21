@@ -24,13 +24,13 @@ export default {
   meta: {
     title: "Houston: agentes de IA que sí hacen el trabajo",
     description:
-      "Houston es el espacio de trabajo compartido donde las personas y los agentes de IA trabajan juntos. Agentes compartidos, un solo tablero de misiones y roles para todo tu equipo. Gratis para empezar por tu cuenta.",
+      "Houston es el espacio de trabajo compartido donde las personas y los agentes de IA trabajan juntos. Agentes compartidos, un solo tablero de misiones y roles para todo tu equipo. Gratis para empezar con todo tu equipo.",
     ogTitle: "Houston: agentes de IA que sí hacen el trabajo",
     ogDescription:
-      "Houston es el espacio de trabajo compartido donde las personas y los agentes de IA trabajan juntos. Agentes compartidos, un solo tablero de misiones y roles para todo tu equipo. Gratis para empezar por tu cuenta.",
+      "Houston es el espacio de trabajo compartido donde las personas y los agentes de IA trabajan juntos. Agentes compartidos, un solo tablero de misiones y roles para todo tu equipo. Gratis para empezar con todo tu equipo.",
     twTitle: "Houston: agentes de IA que sí hacen el trabajo",
     twDescription:
-      "Houston es el espacio de trabajo compartido donde las personas y los agentes de IA trabajan juntos. Agentes compartidos, un solo tablero de misiones y roles para todo tu equipo. Gratis para empezar por tu cuenta.",
+      "Houston es el espacio de trabajo compartido donde las personas y los agentes de IA trabajan juntos. Agentes compartidos, un solo tablero de misiones y roles para todo tu equipo. Gratis para empezar con todo tu equipo.",
     jsonLdDescription:
       "App de escritorio gratuita que pone agentes de IA a hacer trabajo real por ti, con la suscripción de ChatGPT o Claude que ya tienes y más de 1.500 integraciones.",
     ogImageAlt: "Houston: agentes de IA que sí hacen el trabajo.",
@@ -381,7 +381,7 @@ export default {
     lead: "Empieza gratis con todo tu equipo. Pásate a Equipo para uso ilimitado.",
     free: {
       name: "Gratis",
-      note: "una organización por cuenta",
+      note: "una organización gratis por cuenta",
       items: [
         "Invita a todo tu equipo",
         "Un cupo semanal de mensajes, compartido por todos",
@@ -455,7 +455,7 @@ export default {
           {
             q: "¿Qué es una organización?",
             aHtml:
-              "Es donde trabaja tu equipo: sus personas, agentes y misiones. Puedes tener una organización gratis a la vez e invitar a quien quieras, y cambias entre organizaciones con un clic.",
+              "Es donde trabaja tu equipo: sus personas, agentes y misiones. Puedes ser dueño de una organización gratis a la vez e invitar a quien quieras, y cambias entre organizaciones con un clic.",
           },
           {
             q: "¿Puedo ponerle límites a un agente compartido?",
@@ -515,7 +515,7 @@ export default {
           {
             q: "¿Qué es gratis?",
             aHtml:
-              "Una organización por cuenta, sin tarjeta. Invita a quien quieras. Todos comparten un cupo semanal de mensajes, y el plan Equipo quita el límite.",
+              "Una organización gratis por cuenta, sin tarjeta. Invita a quien quieras. Todos comparten un cupo semanal de mensajes, y el plan Equipo quita el límite.",
           },
           {
             q: "¿Quién paga por un equipo?",
@@ -530,12 +530,12 @@ export default {
           {
             q: "¿Puedo tener más de una organización?",
             aHtml:
-              "Sí. Una de las organizaciones que tienes puede ser gratis, y todas las demás van con el plan Equipo desde el inicio. Si mejoras o borras la gratis, puedes crear otra gratis.",
+              "Sí. Una de las organizaciones de las que eres dueño puede ser gratis, y todas las demás van con el plan Equipo desde el inicio. Si pasas la gratis al plan Equipo o la borras, puedes crear otra gratis.",
           },
           {
             q: "¿Qué pasa cuando se acaba el cupo semanal?",
             aHtml:
-              "No se borra nada, y nada de lo que ya está corriendo se corta. Los mensajes nuevos esperan al reinicio semanal, o el dueño se pasa al plan Equipo para tener uso ilimitado.",
+              "No se borra nada, y nada de lo que ya está corriendo se corta. Puedes volver a enviar mensajes después del reinicio semanal, o el dueño se pasa al plan Equipo para tener uso ilimitado.",
           },
           {
             q: "¿Los miembros descargan o pagan?",
@@ -560,7 +560,7 @@ export default {
           {
             q: "¿Cómo entro?",
             aHtml:
-              "Houston es gratis mientras estamos en beta. Toca descargar, cuéntanos quién eres y el instalador arranca de inmediato.",
+              "Toca descargar, cuéntanos quién eres y el instalador arranca de inmediato.",
           },
         ],
       },
@@ -569,7 +569,7 @@ export default {
 
   footer: {
     blurb:
-      "El espacio de trabajo donde las personas y los agentes de IA trabajan juntos. Gratis para probar, y para todo el equipo cuando estés listo.",
+      "El espacio de trabajo donde las personas y los agentes de IA trabajan juntos. Gratis para empezar, y para todo el equipo cuando estés listo.",
     download: "Descargar",
     mac: "macOS",
     windows: "Windows",

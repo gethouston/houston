@@ -22,13 +22,13 @@ export default {
   meta: {
     title: "Houston: AI agents that actually do the work",
     description:
-      "Houston is the shared workspace where people and AI agents work together. Shared agents, one mission board, roles for your whole team. Free to start on your own.",
+      "Houston is the shared workspace where people and AI agents work together. Shared agents, one mission board, roles for your whole team. Free to start with your whole team.",
     ogTitle: "Houston: AI agents that actually do the work",
     ogDescription:
-      "Houston is the shared workspace where people and AI agents work together. Shared agents, one mission board, roles for your whole team. Free to start on your own.",
+      "Houston is the shared workspace where people and AI agents work together. Shared agents, one mission board, roles for your whole team. Free to start with your whole team.",
     twTitle: "Houston: AI agents that actually do the work",
     twDescription:
-      "Houston is the shared workspace where people and AI agents work together. Shared agents, one mission board, roles for your whole team. Free to start on your own.",
+      "Houston is the shared workspace where people and AI agents work together. Shared agents, one mission board, roles for your whole team. Free to start with your whole team.",
     jsonLdDescription:
       "Free desktop app that runs AI agents which do real work for you, on your existing ChatGPT or Claude subscription, with over 1,500 integrations.",
     ogImageAlt: "Houston: AI agents that actually do the work.",
@@ -367,7 +367,7 @@ export default {
     lead: "Start free with your whole team. Upgrade for unlimited usage.",
     free: {
       name: "Free",
-      note: "one organization per account",
+      note: "one free organization per account",
       items: [
         "Invite your whole team",
         "One weekly message allowance, shared by everyone",
@@ -497,7 +497,7 @@ export default {
           {
             q: "What is free?",
             aHtml:
-              "One organization per account, with no credit card. Invite anyone you like. Everyone in it shares one weekly message allowance, and Team takes the limit off.",
+              "One free organization per account, with no credit card. Invite anyone you like. Everyone in it shares one weekly message allowance, and Team takes the limit off.",
           },
           {
             q: "Who pays for a team?",
@@ -517,7 +517,7 @@ export default {
           {
             q: "What happens when the weekly allowance runs out?",
             aHtml:
-              "Nothing is deleted, and nothing already running gets cut off. New messages wait for the weekly reset, or the owner upgrades to Team for unlimited usage.",
+              "Nothing is deleted, and nothing already running gets cut off. You can send again after the weekly reset, or the owner upgrades to Team for unlimited usage.",
           },
           {
             q: "Do members download or pay?",
@@ -542,7 +542,7 @@ export default {
           {
             q: "How do I get in?",
             aHtml:
-              "Houston is free while we're in beta. Hit download, tell us who you are, and the installer starts right away.",
+              "Hit download, tell us who you are, and the installer starts right away.",
           },
         ],
       },
@@ -551,7 +551,7 @@ export default {
 
   footer: {
     blurb:
-      "The workspace where people and AI agents work together. Free to try, for the whole team when you are ready.",
+      "The workspace where people and AI agents work together. Free to start, for the whole team when you are ready.",
     download: "Download",
     mac: "macOS",
     windows: "Windows",

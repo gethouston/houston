@@ -23,13 +23,13 @@ export default {
   meta: {
     title: "Houston: agentes de IA que fazem o trabalho de verdade",
     description:
-      "O Houston é o espaço de trabalho compartilhado onde pessoas e agentes de IA trabalham juntos. Agentes compartilhados, um único quadro de missões e papéis para o time inteiro. Grátis para começar por conta própria.",
+      "O Houston é o espaço de trabalho compartilhado onde pessoas e agentes de IA trabalham juntos. Agentes compartilhados, um único quadro de missões e papéis para o time inteiro. Grátis para começar com o time inteiro.",
     ogTitle: "Houston: agentes de IA que fazem o trabalho de verdade",
     ogDescription:
-      "O Houston é o espaço de trabalho compartilhado onde pessoas e agentes de IA trabalham juntos. Agentes compartilhados, um único quadro de missões e papéis para o time inteiro. Grátis para começar por conta própria.",
+      "O Houston é o espaço de trabalho compartilhado onde pessoas e agentes de IA trabalham juntos. Agentes compartilhados, um único quadro de missões e papéis para o time inteiro. Grátis para começar com o time inteiro.",
     twTitle: "Houston: agentes de IA que fazem o trabalho de verdade",
     twDescription:
-      "O Houston é o espaço de trabalho compartilhado onde pessoas e agentes de IA trabalham juntos. Agentes compartilhados, um único quadro de missões e papéis para o time inteiro. Grátis para começar por conta própria.",
+      "O Houston é o espaço de trabalho compartilhado onde pessoas e agentes de IA trabalham juntos. Agentes compartilhados, um único quadro de missões e papéis para o time inteiro. Grátis para começar com o time inteiro.",
     jsonLdDescription:
       "App de computador gratuito que coloca agentes de IA para fazer trabalho de verdade por você, com a assinatura de ChatGPT ou Claude que você já tem e mais de 1.500 integrações.",
     ogImageAlt: "Houston: agentes de IA que fazem o trabalho de verdade.",
@@ -380,7 +380,7 @@ export default {
     lead: "Comece grátis com o time inteiro. Assine o Time para uso ilimitado.",
     free: {
       name: "Grátis",
-      note: "uma organização por conta",
+      note: "uma organização grátis por conta",
       items: [
         "Convide o time inteiro",
         "Uma cota semanal de mensagens, compartilhada por todos",
@@ -450,7 +450,7 @@ export default {
           {
             q: "O que é uma organização?",
             aHtml:
-              "É onde o seu time trabalha: as pessoas, os agentes e as missões. Você pode ter uma organização grátis por vez e convidar quem quiser, e troca entre organizações em um clique.",
+              "É onde o seu time trabalha: as pessoas, os agentes e as missões. Você pode ser dono de uma organização grátis por vez e convidar quem quiser, e troca entre organizações em um clique.",
           },
           {
             q: "Dá para colocar limites em um agente compartilhado?",
@@ -510,7 +510,7 @@ export default {
           {
             q: "O que é grátis?",
             aHtml:
-              "Uma organização por conta, sem cartão. Convide quem você quiser. Todo mundo divide uma cota semanal de mensagens, e o plano Time tira o limite.",
+              "Uma organização grátis por conta, sem cartão. Convide quem você quiser. Todo mundo divide uma cota semanal de mensagens, e o plano Time tira o limite.",
           },
           {
             q: "Quem paga por um time?",
@@ -525,12 +525,12 @@ export default {
           {
             q: "Posso ter mais de uma organização?",
             aHtml:
-              "Pode. Uma das organizações que você tem pode ser grátis, e todas as outras ficam no plano Time desde o início. Assine ou apague a grátis e você pode criar outra grátis.",
+              "Pode. Uma das organizações das quais você é dono pode ser grátis, e todas as outras ficam no plano Time desde o início. Assine ou apague a grátis e você pode criar outra grátis.",
           },
           {
             q: "O que acontece quando a cota semanal acaba?",
             aHtml:
-              "Nada é apagado, e nada que já está rodando é interrompido. As mensagens novas esperam o reinício semanal, ou o dono assina o plano Time para ter uso ilimitado.",
+              "Nada é apagado, e nada que já está rodando é interrompido. Dá para enviar de novo depois do reinício semanal, ou o dono assina o plano Time para ter uso ilimitado.",
           },
           {
             q: "Os membros baixam ou pagam?",
@@ -555,7 +555,7 @@ export default {
           {
             q: "Como eu entro?",
             aHtml:
-              "O Houston é grátis enquanto estamos em beta. Toque em baixar, conte quem você é e o instalador começa na hora.",
+              "Toque em baixar, conte quem você é e o instalador começa na hora.",
           },
         ],
       },
@@ -564,7 +564,7 @@ export default {
 
   footer: {
     blurb:
-      "O espaço de trabalho onde pessoas e agentes de IA trabalham juntos. Grátis para testar, e para o time inteiro quando você quiser.",
+      "O espaço de trabalho onde pessoas e agentes de IA trabalham juntos. Grátis para começar, e para o time inteiro quando você quiser.",
     download: "Baixar",
     mac: "macOS",
     windows: "Windows",

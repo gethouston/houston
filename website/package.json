@@ -16,5 +16,8 @@
     "marked": "^18.0.2",
     "qrcode": "^1.5.4",
     "satori": "^0.29.0"
+  },
+  "devDependencies": {
+    "nunjucks": "^3.2.4"
   }
 }
