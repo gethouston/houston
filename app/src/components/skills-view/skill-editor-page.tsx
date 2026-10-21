@@ -1,8 +1,9 @@
-import { AsyncButton, Button } from "@houston-ai/core";
 import { useState } from "react";
 import { useTranslation } from "react-i18next";
+import { useOrgWriteLock } from "../../hooks/use-org-write-lock";
 import { logAndReportError } from "../../lib/error-report";
 import type { Agent } from "../../lib/types";
+import { OrgLockedNote } from "../shell/org-locked-fieldset";
 import { SkillBodyEditor } from "./skill-body-editor";
 import { SkillEditorConfirms } from "./skill-editor-confirms";
 import { SkillEditorHeader } from "./skill-editor-header";
@@ -15,6 +16,7 @@ import type {
   SharedDialogActions,
   SkillEditorActions,
 } from "./skill-editor-props";
+import { SkillEditorSaveRow } from "./skill-editor-save-row";
 import { SkillOverrideNotice } from "./skill-override-notice";
 import { SkillsSurfaceFrame } from "./skills-surface-frame";
 import { useScopedSkillActs } from "./use-scoped-skill-acts";
@@ -53,7 +55,8 @@ export interface SkillEditorPageProps extends SkillEditorActions {
  * Its danger action is this employee's alone: on a workspace skill, "stop
  * loading it here" (a reversible manifest write); on a copy, deleting this
  * employee's copy. The acts that reach every employee (share, enable for all,
- * delete for all) sit in the header menu and run on the workspace row.
+ * delete for all) sit in the header menu and run on the workspace row. A
+ * locked org keeps the skill open to read and turns every write off.
  */
 export function SkillEditorPage({
   row,
@@ -68,6 +71,7 @@ export function SkillEditorPage({
   onOpenChat,
 }: SkillEditorPageProps) {
   const { t } = useTranslation(["skills", "common"]);
+  const { locked } = useOrgWriteLock();
   const editor = useSkillEditor({
     row,
     agent,
@@ -107,21 +111,23 @@ export function SkillEditorPage({
         <SkillEditorHeader
           row={row}
           rename={editor.rename}
-          onRename={editor.detail ? editor.setRename : undefined}
+          onRename={editor.detail && !locked ? editor.setRename : undefined}
           view={resolved}
           onViewChange={onViewChange}
           onBack={() => guard(onBack)}
           onOpenChat={onOpenChat}
           workspaceItems={
-            <WorkspaceSkillMenuItems
-              slug={row.slug}
-              agent={agent}
-              workspaceAgents={workspaceAgents}
-              onDeleteEverywhere={onDeleteEverywhere}
-              onBack={onBack}
-              guard={guard}
-              onRequestDelete={setDeleteForEveryone}
-            />
+            !locked && (
+              <WorkspaceSkillMenuItems
+                slug={row.slug}
+                agent={agent}
+                workspaceAgents={workspaceAgents}
+                onDeleteEverywhere={onDeleteEverywhere}
+                onBack={onBack}
+                guard={guard}
+                onRequestDelete={setDeleteForEveryone}
+              />
+            )
           }
           onDelete={scoped.disableHere ?? editor.flow.openConfirmDelete}
           deleteLabel={
@@ -129,41 +135,25 @@ export function SkillEditorPage({
               ? t("skills:global.manage.disableForAgent")
               : undefined
           }
-          deleteDisabled={scoped.pending}
+          deleteDisabled={scoped.pending || locked}
         />
       }
     >
+      <OrgLockedNote />
       {scoped.notice !== null && (
         <SkillOverrideNotice
           kind={scoped.notice}
           onUseWorkspaceVersion={scoped.useWorkspaceVersion}
-          disabled={scoped.pending}
+          disabled={scoped.pending || locked}
         />
       )}
       <SkillBodyEditor
         view={resolved}
         onViewChange={onViewChange}
         editor={editor}
+        readOnly={locked}
       />
-      <div className="flex flex-wrap items-center justify-end gap-2">
-        <Button
-          type="button"
-          variant="ghost"
-          className="rounded-full"
-          disabled={!editor.dirty}
-          onClick={editor.discard}
-        >
-          {t("skills:editor.discard")}
-        </Button>
-        <AsyncButton
-          type="button"
-          className="rounded-full"
-          disabled={!editor.savable}
-          onClick={editor.save}
-        >
-          {t("skills:detail.saveChanges")}
-        </AsyncButton>
-      </div>
+      <SkillEditorSaveRow editor={editor} locked={locked} />
       <SkillEditorConfirms
         row={row}
         agent={agent}

@@ -12,6 +12,7 @@ import { useChannelActions } from "../../../hooks/queries/use-channels";
 import { useSlackCompletion } from "../../../hooks/use-slack-completion";
 import { slackHandoff } from "../../../lib/channel-handoff";
 import { useWorkspaceStore } from "../../../stores/workspaces";
+import { OrgLockedNote } from "../../shell/org-locked-fieldset";
 import { ChannelDisconnectDialog } from "./channel-disconnect-dialog";
 import {
   type ChannelProviderCard,
@@ -147,6 +148,7 @@ function ChannelsBody({ spaceName }: { spaceName: string }) {
   return (
     <section className="space-y-6">
       <ChannelsHeader spaceName={spaceName} titleRef={title} />
+      <OrgLockedNote />
       <SlackCompletionStatus
         completing={complete.isPending}
         landed={landed}

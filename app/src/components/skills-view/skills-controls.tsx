@@ -20,6 +20,7 @@ export function SkillsControls({
   onCreateWithChat,
   onAddExisting,
   variant,
+  locked = false,
 }: {
   query: string;
   onQueryChange: (query: string) => void;
@@ -30,6 +31,8 @@ export function SkillsControls({
    *  again. */
   onAddExisting?: () => void;
   variant: "strip" | "row";
+  /** The org is locked: nothing new lands on the employee. */
+  locked?: boolean;
 }) {
   const { t } = useTranslation("skills");
   const inStrip = variant === "strip";
@@ -53,6 +56,7 @@ export function SkillsControls({
         <Button
           type="button"
           className={buttonClass}
+          disabled={locked}
           onClick={onCreateWithChat}
         >
           <Plus className="size-4" />
@@ -60,7 +64,7 @@ export function SkillsControls({
         </Button>
       ) : (
         <DropdownMenu>
-          <DropdownMenuTrigger asChild>
+          <DropdownMenuTrigger asChild disabled={locked}>
             <Button type="button" className={buttonClass}>
               <Plus className="size-4" />
               {label}

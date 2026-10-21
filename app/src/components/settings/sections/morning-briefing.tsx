@@ -24,13 +24,15 @@ import {
 } from "../../../lib/heartbeat-times";
 import { useUIStore } from "../../../stores/ui";
 import { ASSISTANT_VIEW_ID } from "../../assistant/id";
+import { OrgLockedFieldset } from "../../shell/org-locked-fieldset";
 import { SettingsCard, SettingsControlRow } from "../settings-row";
 
 /**
  * The AI Manager's morning briefing screen: on/off, the time it arrives, and
  * "brief me now". Opened from its Settings row only where the deployment serves
  * it (`capabilities.heartbeat`). The copy promises Slack or WhatsApp delivery
- * only under the same gate the Channels row uses.
+ * only under the same gate the Channels row uses. The gateway refuses its
+ * writes while the active org is locked, so they turn off with the reason.
  */
 export function MorningBriefingSection() {
   const { t, i18n } = useTranslation("settings");
@@ -80,48 +82,53 @@ export function MorningBriefingSection() {
           ? t("morningBriefing.descriptionWithChannels")
           : t("morningBriefing.description")}
       </p>
-      <SettingsCard>
-        <SettingsControlRow icon={Sunrise} title={t("morningBriefing.enabled")}>
-          <Switch
-            checked={state?.enabled ?? true}
-            disabled={!state}
-            onCheckedChange={(enabled) => setHeartbeat.mutate({ enabled })}
-            aria-label={t("morningBriefing.enabled")}
-          />
-        </SettingsControlRow>
-        {state?.enabled && (
-          <SettingsControlRow icon={Clock} title={t("morningBriefing.time")}>
-            <Select
-              value={state.time}
-              onValueChange={(time) => setHeartbeat.mutate({ time })}
-            >
-              <SelectTrigger
-                aria-label={t("morningBriefing.timeLabel")}
-                className="w-32 rounded-lg"
-              >
-                <SelectValue />
-              </SelectTrigger>
-              <SelectContent>
-                {heartbeatTimeOptions(state.time).map((time) => (
-                  <SelectItem key={time} value={time}>
-                    {formatHeartbeatTime(time, i18n.language)}
-                  </SelectItem>
-                ))}
-              </SelectContent>
-            </Select>
+      <OrgLockedFieldset>
+        <SettingsCard>
+          <SettingsControlRow
+            icon={Sunrise}
+            title={t("morningBriefing.enabled")}
+          >
+            <Switch
+              checked={state?.enabled ?? true}
+              disabled={!state}
+              onCheckedChange={(enabled) => setHeartbeat.mutate({ enabled })}
+              aria-label={t("morningBriefing.enabled")}
+            />
           </SettingsControlRow>
-        )}
-        <SettingsControlRow
-          icon={Zap}
-          title={t("morningBriefing.runNow.title")}
-          description={t("morningBriefing.runNow.description")}
-          stack
-        >
-          <AsyncButton variant="outline" size="sm" onClick={handleRunNow}>
-            {t("morningBriefing.runNow.action")}
-          </AsyncButton>
-        </SettingsControlRow>
-      </SettingsCard>
+          {state?.enabled && (
+            <SettingsControlRow icon={Clock} title={t("morningBriefing.time")}>
+              <Select
+                value={state.time}
+                onValueChange={(time) => setHeartbeat.mutate({ time })}
+              >
+                <SelectTrigger
+                  aria-label={t("morningBriefing.timeLabel")}
+                  className="w-32 rounded-lg"
+                >
+                  <SelectValue />
+                </SelectTrigger>
+                <SelectContent>
+                  {heartbeatTimeOptions(state.time).map((time) => (
+                    <SelectItem key={time} value={time}>
+                      {formatHeartbeatTime(time, i18n.language)}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            </SettingsControlRow>
+          )}
+          <SettingsControlRow
+            icon={Zap}
+            title={t("morningBriefing.runNow.title")}
+            description={t("morningBriefing.runNow.description")}
+            stack
+          >
+            <AsyncButton variant="outline" size="sm" onClick={handleRunNow}>
+              {t("morningBriefing.runNow.action")}
+            </AsyncButton>
+          </SettingsControlRow>
+        </SettingsCard>
+      </OrgLockedFieldset>
     </section>
   );
 }

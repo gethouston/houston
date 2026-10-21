@@ -7,6 +7,7 @@ import { Plus } from "lucide-react";
 import type { ReactNode, Ref } from "react";
 import { useEffect, useId, useState } from "react";
 import { useTranslation } from "react-i18next";
+import { useOrgWriteLock } from "../../../hooks/use-org-write-lock";
 import { ConnectionStatusBadge } from "../../integrations/connection-status-badge";
 import { SettingsCard } from "../settings-row";
 import { ChannelAccountList } from "./channel-account-list";
@@ -18,7 +19,8 @@ import { CHANNEL_PROVIDER_DISPLAY } from "./channel-provider-display";
  * accounts it holds, and the way to connect one more. `children` is the
  * provider's own connect flow (Slack's hand-off, WhatsApp's code), shown only
  * while the provider can connect. The heading takes focus when a disconnect
- * removes the row whose button opened the confirmation.
+ * removes the row whose button opened the confirmation. A locked org
+ * connects nothing new but still disconnects.
  */
 export function ChannelProviderPanel({
   provider,
@@ -43,6 +45,7 @@ export function ChannelProviderPanel({
   children?: ReactNode;
 }) {
   const { t } = useTranslation("settings");
+  const { locked } = useOrgWriteLock();
   const display = CHANNEL_PROVIDER_DISPLAY[provider];
   const headingId = useId();
   const connections = state.kind === "empty" ? [] : state.connections;
@@ -82,7 +85,7 @@ export function ChannelProviderPanel({
             seenIds={seenIds}
             busy={busy}
             addLabel={
-              state.kind === "connected"
+              state.kind === "connected" && !locked
                 ? (actionLabel ?? t(display.addAnother))
                 : undefined
             }
@@ -91,7 +94,7 @@ export function ChannelProviderPanel({
           />
         )}
         {state.kind === "empty" && (
-          <Button disabled={busy} onClick={onConnect}>
+          <Button disabled={busy || locked} onClick={onConnect}>
             <Plus className="size-4" />
             {actionLabel ?? t(display.connect)}
           </Button>
@@ -101,7 +104,9 @@ export function ChannelProviderPanel({
             {t(display.notConfigured)}
           </p>
         ) : (
-          children
+          <fieldset disabled={locked} className="m-0 min-w-0 border-0 p-0">
+            {children}
+          </fieldset>
         )}
       </section>
     </SettingsCard>

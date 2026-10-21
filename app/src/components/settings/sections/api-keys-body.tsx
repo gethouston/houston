@@ -18,13 +18,19 @@ import {
   useApiKeys,
   useRevokeApiKey,
 } from "../../../hooks/queries/use-api-keys";
+import { useOrgWriteLock } from "../../../hooks/use-org-write-lock";
 import { lastUsedState } from "../../../lib/api-keys-model";
 import { formatRelativeTime } from "../../organization/org-time";
+import { OrgLockedNote } from "../../shell/org-locked-fieldset";
 import { ApiKeyCreateDialog } from "./api-key-create-dialog";
 
-/** The list + create/revoke surface of Settings > API keys. */
+/**
+ * The list + create/revoke surface of Settings > API keys. A locked org
+ * mints no key (the gateway refuses it) but still revokes one.
+ */
 export function ApiKeysBody() {
   const { t, i18n } = useTranslation("settings");
+  const { locked } = useOrgWriteLock();
   const { data: keys, isLoading, isError, refetch } = useApiKeys();
   const revoke = useRevokeApiKey();
   const [createOpen, setCreateOpen] = useState(false);
@@ -34,6 +40,7 @@ export function ApiKeysBody() {
 
   return (
     <div className="space-y-4">
+      <OrgLockedNote />
       {isLoading ? (
         <div className="space-y-2">
           {[0, 1].map((i) => (
@@ -72,6 +79,7 @@ export function ApiKeysBody() {
           <Button
             variant="outline"
             size="sm"
+            disabled={locked}
             onClick={() => setCreateOpen(true)}
           >
             <Plus className="size-4" />
@@ -90,7 +98,7 @@ export function ApiKeysBody() {
             </EmptyDescription>
           </EmptyHeader>
           <EmptyContent>
-            <Button onClick={() => setCreateOpen(true)}>
+            <Button disabled={locked} onClick={() => setCreateOpen(true)}>
               <Plus className="size-4" />
               {t("apiKeys.createButton")}
             </Button>

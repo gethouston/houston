@@ -24,14 +24,17 @@ const EDITOR_SIZE = "min-h-[50dvh] md:min-h-[60dvh]";
 function MarkdownEditor({
   content,
   onChange,
+  readOnly,
 }: {
   content: string;
   onChange: (content: string) => void;
+  readOnly: boolean;
 }) {
   const { t } = useTranslation("skills");
   return (
     <Textarea
       value={content}
+      readOnly={readOnly}
       onChange={(e) => onChange(e.target.value)}
       aria-label={t("detail.instructionsLabel")}
       placeholder={t("detail.instructionsPlaceholder")}
@@ -59,10 +62,13 @@ export function SkillBodyEditor({
   view,
   onViewChange,
   editor,
+  readOnly = false,
 }: {
   view: SkillEditorView;
   onViewChange: (view: SkillEditorView) => void;
   editor: SkillEditorState;
+  /** Readable, not editable: the org is locked. */
+  readOnly?: boolean;
 }) {
   const { t } = useTranslation("skills");
   const { draft, detail, error } = editor;
@@ -119,7 +125,11 @@ export function SkillBodyEditor({
           </button>
         </p>
       )}
-      <MarkdownEditor content={draft.text} onChange={editor.setText} />
+      <MarkdownEditor
+        content={draft.text}
+        onChange={editor.setText}
+        readOnly={readOnly}
+      />
     </div>
   );
 }

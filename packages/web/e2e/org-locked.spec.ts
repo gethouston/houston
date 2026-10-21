@@ -13,6 +13,7 @@ import {
 } from "./support/org-lock";
 import { openedUrls, PORTAL_URL, planCalls, stubOpener } from "./support/plan";
 import { openAdminSection } from "./support/settings-nav";
+import { openAgentSkills, seedAgentSkills } from "./support/skills-nav";
 import { openTeamSection } from "./support/team-nav";
 
 /**
@@ -103,6 +104,39 @@ test("locked, the owner who pays: the strip, writes off with the reason, reads o
   );
   await expect(page.locator("#org-add-email")).toBeDisabled();
   await expect(page.getByRole("button", { name: /^Remove bo/ })).toBeEnabled();
+});
+
+test("locked: a skill opens and reads, and nothing adds, saves or deletes one", async ({
+  page,
+  request,
+}) => {
+  await seedAgentSkills(request);
+  await armOrgLock(page, { team: LOCKED });
+  await page.goto("/");
+
+  await openAgentSkills(page);
+  await expect(screen(page).getByTestId("org-locked-note")).toHaveText(
+    OWNER_REASON,
+  );
+  await expect(
+    screen(page).getByRole("button", { name: "Create skill" }),
+  ).toBeDisabled();
+
+  await screen(page)
+    .getByRole("button", { name: /^Invoice triage\b/ })
+    .click();
+  const editor = page.getByTestId("skill-editor");
+  await expect(editor.getByTestId("org-locked-note")).toHaveText(OWNER_REASON);
+  await editor.getByRole("tab", { name: "Text" }).click();
+  const markdown = editor.getByLabel("Instructions for the AI Employee");
+  await expect(markdown).toHaveValue(/Invoice triage/);
+  await expect(markdown).toHaveAttribute("readonly", "");
+  await expect(
+    editor.getByRole("button", { name: "Save changes" }),
+  ).toBeDisabled();
+  await editor.getByRole("button", { name: "More actions" }).click();
+  for (const item of await page.getByRole("menuitem").all())
+    await expect(item).toBeDisabled();
 });
 
 test("Use as free org names the org that locks instead, then the strip clears", async ({

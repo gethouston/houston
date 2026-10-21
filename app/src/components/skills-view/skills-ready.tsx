@@ -1,6 +1,8 @@
 import { CatalogShell } from "@houston-ai/core";
 import type { ReactNode } from "react";
 import { useTranslation } from "react-i18next";
+import { useOrgWriteLock } from "../../hooks/use-org-write-lock";
+import { OrgLockedNote } from "../shell/org-locked-fieldset";
 import { PageHeaderTools } from "../shell/page-header/page-header-tools";
 import { SkillsControls } from "./skills-controls";
 import { skillsListShowsRows } from "./skills-list-model";
@@ -29,6 +31,8 @@ export function SkillsReady({
   installedCount: number;
 }) {
   const { t } = useTranslation("skills");
+  // A locked org still opens and reads every skill; it only adds none.
+  const { locked } = useOrgWriteLock();
 
   return (
     <>
@@ -40,9 +44,11 @@ export function SkillsReady({
             onCreateWithChat={onCreateWithChat}
             onAddExisting={onAddExisting}
             variant={inStrip ? "strip" : "row"}
+            locked={locked}
           />
         )}
       </PageHeaderTools>
+      <OrgLockedNote />
       {drafts}
       {/* The empty states stand alone: the shell's heading and count title the
           rows, and there are none to name. */}
