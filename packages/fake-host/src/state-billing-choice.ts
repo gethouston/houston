@@ -17,7 +17,11 @@ export interface BillingChoiceCall {
   body?: unknown;
 }
 
-export type BillingPickRefusal = "not_owner" | "not_payer" | "same_org";
+export type BillingPickRefusal =
+  | "not_owner"
+  | "not_payer"
+  | "same_org"
+  | "choice_closed";
 
 /** What a spec arms beyond the choice itself. */
 export interface BillingChoiceArming {
@@ -33,6 +37,11 @@ export interface BillingChoiceArming {
   afterRefusal?: BillingChoice | null;
   /** Every dismissal answers 500 and stores nothing. */
   failDismiss?: boolean;
+  /**
+   * The gateway's clock, which decides whether an applied pick may still
+   * change. Unset: the real time.
+   */
+  now?: string | null;
 }
 
 let armed: BillingChoice | null = null;
@@ -85,6 +94,11 @@ export function refuseBillingPick(
     if (arming.afterRefusal) armed = structuredClone(arming.afterRefusal);
     return forced;
   }
+  if (
+    choice.state === "applied" &&
+    gatewayNow() >= Date.parse(choice.changeableUntil ?? choice.cutoverAt)
+  )
+    return "choice_closed";
   const paid = pick.paidOrgSlug;
   if (paid !== undefined && paid === pick.freeOrgSlug) return "same_org";
   if (paid !== undefined && choice.payer !== "plus" && choice.payer !== "comp")
@@ -94,12 +108,32 @@ export function refuseBillingPick(
   return paid === undefined || owned(paid) ? null : "not_owner";
 }
 
+function gatewayNow(): number {
+  return arming.now ? Date.parse(arming.now) : Date.now();
+}
+
+/**
+ * Store the pick. Before the cutover it is only recorded. After it, the
+ * gateway applies it at once, as C4 answers inside the change window: the
+ * free and paid orgs unlock, every other owned org locks when the window
+ * ends, and the pick is no longer the cutover's guess. Repeating the applied
+ * pick changes nothing.
+ */
 export function storeBillingPick(
   choice: BillingChoice,
   pick: BillingChoicePick,
 ): BillingChoice {
+  const paid = pick.paidOrgSlug ?? null;
+  if (choice.state === "applied") {
+    if (choice.freeOrgSlug === pick.freeOrgSlug && choice.paidOrgSlug === paid)
+      return choice;
+    const kept = new Set([pick.freeOrgSlug, paid]);
+    for (const org of choice.orgs)
+      org.lockAt = kept.has(org.slug) ? null : choice.changeableUntil;
+    choice.provisional = false;
+  }
   choice.freeOrgSlug = pick.freeOrgSlug;
-  choice.paidOrgSlug = pick.paidOrgSlug ?? null;
+  choice.paidOrgSlug = paid;
   return choice;
 }
 

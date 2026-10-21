@@ -8,7 +8,12 @@ import type { BillingChoice, BillingChoicePick } from "@houston/wire-types";
 import { json, noContent } from "./http";
 import * as state from "./state-billing-choice";
 
-const STATUS = { not_owner: 409, not_payer: 409, same_org: 400 } as const;
+const STATUS = {
+  not_owner: 409,
+  not_payer: 409,
+  same_org: 400,
+  choice_closed: 409,
+} as const;
 const PICK_KEYS = new Set(["freeOrgSlug", "paidOrgSlug"]);
 
 /** The pick, validated the way the gateway does, or null for `invalid_request`. */
@@ -63,7 +68,7 @@ export function handleBillingChoiceRoutes(
 
 /**
  * `POST /__test__/billing-choice`: `{ choice, refuse?, afterRefusal?,
- * failDismiss? }` arms it ({@link state.BillingChoiceArming}),
+ * failDismiss?, now? }` arms it ({@link state.BillingChoiceArming}),
  * `{ choice: null }` disarms.
  */
 export function handleBillingChoiceControl(
@@ -79,6 +84,7 @@ export function handleBillingChoiceControl(
     refuse,
     afterRefusal: choiceOf(body?.afterRefusal),
     failDismiss: body?.failDismiss === true,
+    now: typeof body?.now === "string" ? body.now : null,
   });
   return json({ choice: state.billingChoice() });
 }
