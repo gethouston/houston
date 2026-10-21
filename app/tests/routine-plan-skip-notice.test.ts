@@ -115,12 +115,13 @@ describe("RoutinePlanSkipNoticeView", () => {
     ok(!html.includes(en.resume), html);
   });
 
-  it("names no Plus where it would not pay for the org", async () => {
+  it("offers no upgrade to a reader who does not pay for the org", async () => {
     const team = { ...creator, plusOffer: false };
-    for (const code of ["plan_min_interval", "plan_routine_limit"] as const) {
-      const html = await render(noticeFor(code, 2, free, team));
-      ok(!html.includes("Plus"), html);
-    }
+    const interval = await render(
+      noticeFor("plan_min_interval", 2, free, team),
+    );
+    ok(interval.includes(en.triggerSkipped.minIntervalNoOffer), interval);
+    ok(!interval.includes(en.upgrade), interval);
     const limit = await render(noticeFor("plan_routine_limit", 2, free, team));
     ok(limit.includes(en.chooseRoutine), limit);
     ok(!limit.includes(en.upgrade), limit);

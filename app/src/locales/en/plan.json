@@ -36,7 +36,7 @@
     "title_one": "{{count}} run of this routine was skipped in the last 24 hours",
     "title_other": "{{count}} runs of this routine were skipped in the last 24 hours",
     "minInterval": "Your organization's Free plan limits how often this routine can run. Upgrade so it runs every time.",
-    "minIntervalNoOffer": "Your Free plan limits how often this routine can run.",
+    "minIntervalNoOffer": "Your organization's Free plan limits how often this routine can run.",
     "routineLimit": "Free keeps one routine running, and the one that stays active is a different one. Choose this routine to keep it running instead, or upgrade to run them all.",
     "routineLimitNoOffer": "Free keeps one routine running, and the one that stays active is a different one. Choose this routine to keep it running instead.",
     "routineLimitPaused": "Free keeps one routine running, and the one that stays active is a different one. Your routines also paused while you were away, so resume them first.",
@@ -65,7 +65,6 @@
       "creatorPlan": "This routine runs on its creator's Free plan, which limits how often it can run."
     },
     "purchaseLinkTitle": "This link isn't available in the app",
-    "shortIntervalBody": "Nothing was saved. Pick a slower schedule.",
     "limitBodyMember": "Your organization's free usage resets {{time}}.",
     "limitBodyMemberNoTime": "Your organization's free usage resets later this week."
   },

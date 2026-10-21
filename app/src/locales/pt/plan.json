@@ -36,7 +36,7 @@
     "title_one": "{{count}} execução desta rotina foi ignorada nas últimas 24 horas",
     "title_other": "{{count}} execuções desta rotina foram ignoradas nas últimas 24 horas",
     "minInterval": "O plano Grátis da sua organização limita quantas vezes esta rotina pode rodar. Faça upgrade para que ela rode sempre.",
-    "minIntervalNoOffer": "Seu plano Grátis limita quantas vezes esta rotina pode rodar.",
+    "minIntervalNoOffer": "O plano Grátis da sua organização limita quantas vezes esta rotina pode rodar.",
     "routineLimit": "O plano Grátis mantém uma rotina ativa, e a que continua ativa é outra. Escolha esta rotina para mantê-la ativa, ou faça upgrade para rodar todas.",
     "routineLimitNoOffer": "O plano Grátis mantém uma rotina ativa, e a que continua ativa é outra. Escolha esta rotina para mantê-la ativa.",
     "routineLimitPaused": "O plano Grátis mantém uma rotina ativa, e a que continua ativa é outra. Suas rotinas também foram pausadas enquanto você estava fora, então retome-as primeiro.",
@@ -65,7 +65,6 @@
       "creatorPlan": "Esta rotina usa o plano Grátis de quem a criou, que limita quantas vezes ela pode rodar."
     },
     "purchaseLinkTitle": "Este link não está disponível no app",
-    "shortIntervalBody": "Nada foi salvo. Escolha uma frequência menor.",
     "limitBodyMember": "O uso grátis da sua organização é renovado {{time}}.",
     "limitBodyMemberNoTime": "O uso grátis da sua organização é renovado ainda nesta semana."
   },

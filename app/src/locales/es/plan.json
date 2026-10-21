@@ -36,7 +36,7 @@
     "title_one": "Se omitió {{count}} ejecución de esta rutina en las últimas 24 horas",
     "title_other": "Se omitieron {{count}} ejecuciones de esta rutina en las últimas 24 horas",
     "minInterval": "El plan Gratis de tu organización limita cuántas veces puede ejecutarse esta rutina. Mejora el plan para que se ejecute siempre.",
-    "minIntervalNoOffer": "Tu plan Gratis limita cuántas veces puede ejecutarse esta rutina.",
+    "minIntervalNoOffer": "El plan Gratis de tu organización limita cuántas veces puede ejecutarse esta rutina.",
     "routineLimit": "Gratis mantiene una rutina activa, y la que sigue activa es otra. Elige esta rutina para mantenerla activa, o mejora el plan para ejecutarlas todas.",
     "routineLimitNoOffer": "Gratis mantiene una rutina activa, y la que sigue activa es otra. Elige esta rutina para mantenerla activa.",
     "routineLimitPaused": "Gratis mantiene una rutina activa, y la que sigue activa es otra. Además, tus rutinas se pausaron mientras no estabas, así que reanúdalas primero.",
@@ -65,7 +65,6 @@
       "creatorPlan": "Esta rutina usa el plan Gratis de quien la creó, que limita cuántas veces puede ejecutarse."
     },
     "purchaseLinkTitle": "Este enlace no está disponible en la app",
-    "shortIntervalBody": "No se guardó nada. Elige un horario menos frecuente.",
     "limitBodyMember": "El uso gratis de tu organización se reinicia {{time}}.",
     "limitBodyMemberNoTime": "El uso gratis de tu organización se reinicia más adelante esta semana."
   },
