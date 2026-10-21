@@ -6,9 +6,9 @@
 // - Las claves que terminan en `Html` pueden traer marcado y se renderizan con
 //   `| safe`. Todo lo demás es texto plano y la plantilla lo escapa.
 // - Nada de rayas largas. Usa una coma, dos puntos o un punto seguido.
-// - `{price}` y `{days}` son los únicos marcadores. Las plantillas los
-//   sustituyen desde _data/pricing.js, así ningún precio queda escrito a mano
-//   dentro de una traducción.
+// - `{price}` es el único marcador. Las plantillas lo sustituyen desde
+//   _data/pricing.js, así ningún precio queda escrito a mano dentro de una
+//   traducción.
 // - La estructura (tonos de avatar, elencos de caras, rutas de logos, insignias)
 //   vive en _data/landing.js. Los arreglos de aquí calzan por índice con los de
 //   allá.
@@ -378,12 +378,13 @@ export default {
 
   pricing: {
     title: "¿Listo para multiplicar por 10 a tu equipo de un día para otro?",
-    lead: "Empieza gratis, por tu cuenta. Pasa al plan de equipo cuando todos quieran entrar.",
+    lead: "Empieza gratis con todo tu equipo. Pásate a Equipo para uso ilimitado.",
     free: {
       name: "Gratis",
-      note: "para ti",
+      note: "una organización por cuenta",
       items: [
-        "Tu espacio de trabajo personal, gratis y con margen de sobra para explorar",
+        "Invita a todo tu equipo",
+        "Un cupo semanal de mensajes, compartido por todos",
         "Las más de 1.500 integraciones",
         "Funciona con tu suscripción de IA",
       ],
@@ -393,15 +394,14 @@ export default {
       chip: "El más popular",
       name: "Equipo",
       per: "/persona/mes",
-      note: "facturado al año · {price} facturado al mes",
+      note: "facturado cada mes al dueño",
       items: [
         "Todo lo del plan Gratis",
-        "Compañeros ilimitados",
-        "Uso ilimitado, agentes a toda hora",
-        "Agentes compartidos y espacios de equipo",
-        "Roles y límites",
+        "Uso ilimitado para cada persona",
+        "Rutinas ilimitadas, agentes a toda hora",
+        "Pagas por cada miembro, con prorrateo",
       ],
-      cta: "Empezar prueba gratis",
+      cta: "Pásate a Equipo",
     },
     enterprise: {
       name: "Empresarial",
@@ -453,9 +453,9 @@ export default {
               "Tú decides, agente por agente. Cada persona solo ve y usa los agentes que le compartes, así el resto del espacio de trabajo queda privado.",
           },
           {
-            q: "¿Qué es un espacio?",
+            q: "¿Qué es una organización?",
             aHtml:
-              "Cada persona tiene un espacio personal que es solo suyo. Al lado están los espacios de equipo para el trabajo compartido, y cambias entre ellos con un clic.",
+              "Es donde trabaja tu equipo: sus personas, agentes y misiones. Puedes tener una organización gratis a la vez e invitar a quien quieras, y cambias entre organizaciones con un clic.",
           },
           {
             q: "¿Puedo ponerle límites a un agente compartido?",
@@ -470,7 +470,7 @@ export default {
           {
             q: "¿Escritorio o web?",
             aHtml:
-              "Los dos. Llegas a los mismos espacios, agentes y misiones desde la app de escritorio o desde la web.",
+              "Los dos. Llegas a las mismas organizaciones, agentes y misiones desde la app de escritorio o desde la web.",
           },
         ],
       },
@@ -515,27 +515,27 @@ export default {
           {
             q: "¿Qué es gratis?",
             aHtml:
-              "Houston es gratis para una persona, sin tarjeta y con margen de sobra para explorar. Alcanza para poner agentes a hacer trabajo real y sentir el valor. Cuando quieras sumar a tu equipo, o necesites uso ilimitado, pasas al plan Equipo.",
+              "Una organización por cuenta, sin tarjeta. Invita a quien quieras. Todos comparten un cupo semanal de mensajes, y el plan Equipo quita el límite.",
           },
           {
             q: "¿Quién paga por un equipo?",
             aHtml:
-              "El dueño. Todas las personas que invitas van dentro del plan del dueño, así que los miembros nunca ponen una tarjeta propia.",
+              "El dueño, a {price} por persona al mes. Cada persona de la organización ocupa un lugar en el plan del dueño, así que los miembros nunca ponen una tarjeta propia.",
           },
           {
             q: "¿Qué cuenta como una persona?",
             aHtml:
-              "Un miembro que acepta tu invitación. Las invitaciones pendientes no se cobran, y el cobro se prorratea cuando alguien entra o sale.",
+              "Cada miembro de una organización con plan Equipo, incluido el dueño. Las invitaciones pendientes no se cobran, y el cobro se prorratea cuando alguien entra o sale.",
           },
           {
-            q: "¿Cómo funciona la prueba gratis?",
+            q: "¿Puedo tener más de una organización?",
             aHtml:
-              "Un espacio de equipo tiene {days} días de prueba gratis, sin tarjeta. Empieza cuando tu segunda persona acepta.",
+              "Sí. Una de las organizaciones que tienes puede ser gratis, y todas las demás van con el plan Equipo desde el inicio. Si mejoras o borras la gratis, puedes crear otra gratis.",
           },
           {
-            q: "¿Qué pasa cuando termina la prueba?",
+            q: "¿Qué pasa cuando se acaba el cupo semanal?",
             aHtml:
-              "No se borra nada. El espacio vuelve al plan gratis: todos conservan el acceso y el uso queda limitado. Cada agente y cada misión se quedan donde están. Agrega una tarjeta cuando quieras.",
+              "No se borra nada, y nada de lo que ya está corriendo se corta. Los mensajes nuevos esperan al reinicio semanal, o el dueño se pasa al plan Equipo para tener uso ilimitado.",
           },
           {
             q: "¿Los miembros descargan o pagan?",

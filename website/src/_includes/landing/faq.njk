@@ -1,6 +1,6 @@
 {# Four groups, first one open. The counts are the group lengths, so a group
    can never claim a number it does not have. Answers are `Html` keys, and the
-   trial length arrives through the {days} placeholder rather than being
+   seat price arrives through the {price} placeholder rather than being
    written into a translation.
 
    The one chevron below is used by both the group and the item summaries. #}
@@ -19,7 +19,7 @@
 {%- for item in group.items %}
         <details class="faq-item">
           <summary>{{ item.q }}{{ chevron() }}</summary>
-          <div class="faq-answer"><p>{{ item.aHtml | replace("{days}", pricing.trialDays) | safe }}</p></div>
+          <div class="faq-answer"><p>{{ item.aHtml | replace("{price}", pricing.currency + pricing.teamMonthly) | safe }}</p></div>
         </details>
 {%- endfor %}
       </div>

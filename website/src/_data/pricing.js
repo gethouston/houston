@@ -1,17 +1,14 @@
-// Single source of truth for Houston Spaces pricing.
+// Single source of truth for Houston pricing.
 //
-// These prices are PLACEHOLDERS for the Spaces launch. Change them here and
-// both the English (/pricing/) and Spanish (/pricing/es/) pages update, since
-// every price on those pages is rendered from this module. Do not hardcode a
-// price anywhere else.
+// Every price on the landing pricing section, its FAQ and its JSON-LD renders
+// from this module, in all three locales. Do not hardcode a price anywhere
+// else: translations take it through the `{price}` placeholder.
 export default function () {
   return {
     currency: "$",
-    // Team plan, per seat, per month, billed monthly.
-    teamMonthly: 20,
-    // Team plan, per seat, per month, when billed annually (the cheaper rate).
-    teamAnnual: 15,
-    // Length of the invite-triggered free trial, in days.
-    trialDays: 14,
+    // ISO 4217 code for structured data, which cannot use the symbol.
+    currencyCode: "USD",
+    // Team plan, per seat, per month. Monthly billing is the only option.
+    teamMonthly: 15,
   };
 }

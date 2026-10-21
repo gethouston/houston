@@ -7,11 +7,8 @@
     <p class="sec-lead">{{ t.pricing.lead }}</p>
   </div>
 
-  {# Annual price leads (the convention people expect); the monthly price is
-     the small line. The Team card inverts to ink, the one loud object on the
-     band. All prices render from _data/pricing.js, never hardcoded, and the
-     Team note takes its monthly figure through the {price} placeholder so no
-     translation ever carries a number. #}
+  {# The Team card inverts to ink, the one loud object on the band. Every price
+     renders from _data/pricing.js, so no translation ever carries a number. #}
   <div class="pricing-grid reveal reveal-d1">
     <div class="price-col">
       <div class="price-name">{{ t.pricing.free.name }}</div>
@@ -28,8 +25,8 @@
     <div class="price-col featured">
       <span class="price-chip">{{ t.pricing.team.chip }}</span>
       <div class="price-name">{{ t.pricing.team.name }}</div>
-      <div class="price-amt"><span class="amount">{{ pricing.currency }}{{ pricing.teamAnnual }}</span><span class="per">{{ t.pricing.team.per }}</span></div>
-      <div class="price-note">{{ t.pricing.team.note | replace("{price}", pricing.currency + pricing.teamMonthly) }}</div>
+      <div class="price-amt"><span class="amount">{{ pricing.currency }}{{ pricing.teamMonthly }}</span><span class="per">{{ t.pricing.team.per }}</span></div>
+      <div class="price-note">{{ t.pricing.team.note }}</div>
       <ul class="price-list">
 {%- for item in t.pricing.team.items %}
         <li>{{ item }}</li>

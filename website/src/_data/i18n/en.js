@@ -6,8 +6,8 @@
 // - Keys ending in `Html` may contain markup and are rendered with `| safe`.
 //   Everything else is plain text and must be escaped by the template.
 // - No em dashes anywhere. Use a comma, a colon, or a sentence break.
-// - `{price}` and `{days}` are the only placeholders. Templates substitute them
-//   from _data/pricing.js, so a price never gets hardcoded into a translation.
+// - `{price}` is the only placeholder. Templates substitute it from
+//   _data/pricing.js, so a price never gets hardcoded into a translation.
 // - Structure (avatar tones, face rosters, logo paths, badges) lives in
 //   _data/landing.js. Arrays here zip by index with the arrays there.
 // - The `js` subtree is serialized into the page as window.HOUSTON_I18N by
@@ -364,12 +364,13 @@ export default {
 
   pricing: {
     title: "Ready to 10x your team overnight?",
-    lead: "Start free, on your own. Upgrade when the team wants in.",
+    lead: "Start free with your whole team. Upgrade for unlimited usage.",
     free: {
       name: "Free",
-      note: "for yourself",
+      note: "one organization per account",
       items: [
-        "Your personal workspace, free with a generous tier to explore",
+        "Invite your whole team",
+        "One weekly message allowance, shared by everyone",
         "All 1,500+ integrations",
         "Works with your AI subscription",
       ],
@@ -379,15 +380,14 @@ export default {
       chip: "Most popular",
       name: "Team",
       per: "/seat/mo",
-      note: "billed annually · {price} billed monthly",
+      note: "billed monthly to the owner",
       items: [
         "Everything in Free",
-        "Unlimited teammates",
-        "Unlimited usage, agents around the clock",
-        "Shared agents and team spaces",
-        "Roles and guardrails",
+        "Unlimited usage for every seat",
+        "Unlimited routines, agents around the clock",
+        "Seats follow your members, prorated",
       ],
-      cta: "Start free trial",
+      cta: "Upgrade",
     },
     enterprise: {
       name: "Enterprise",
@@ -435,9 +435,9 @@ export default {
               "You choose, per agent. People only see and use the agents shared with them, so the rest of the workspace stays private.",
           },
           {
-            q: "What is a space?",
+            q: "What is an organization?",
             aHtml:
-              "Everyone gets a personal space that is just for them. Team spaces sit beside it for shared work, and you switch between them in a click.",
+              "It is where your team works: its people, agents, and missions. You can own one free organization at a time and invite anyone to it, and you switch between organizations in a click.",
           },
           {
             q: "Can I set guardrails on a shared agent?",
@@ -452,7 +452,7 @@ export default {
           {
             q: "Desktop or web?",
             aHtml:
-              "Both. Reach the same spaces, agents, and missions from the desktop app or the web.",
+              "Both. Reach the same organizations, agents, and missions from the desktop app or the web.",
           },
         ],
       },
@@ -497,27 +497,27 @@ export default {
           {
             q: "What is free?",
             aHtml:
-              "Houston is free for one person, with no credit card and a generous tier to explore. Enough to put agents on real work and feel the value. When you want teammates in, or you need unlimited usage, you upgrade to Team.",
+              "One organization per account, with no credit card. Invite anyone you like. Everyone in it shares one weekly message allowance, and Team takes the limit off.",
           },
           {
             q: "Who pays for a team?",
             aHtml:
-              "The owner. Everyone you invite rides on the owner's plan, so members never enter a card of their own.",
+              "The owner, at {price} per seat per month. Everyone in the organization takes a seat on the owner's plan, so members never enter a card of their own.",
           },
           {
             q: "What counts as a seat?",
             aHtml:
-              "One member who accepts your invite. Pending invites are free, and seats are prorated when people join or leave.",
+              "Every member of a Team organization, the owner included. Pending invites are free, and seats are prorated when people join or leave.",
           },
           {
-            q: "How does the free trial work?",
+            q: "Can I own more than one organization?",
             aHtml:
-              "A team space gets a {days}-day free trial with no card. It starts when your second member accepts.",
+              "Yes. One of the organizations you own can be free, and every other one is on Team from the start. Upgrade or delete your free one and you can start a new free one.",
           },
           {
-            q: "What happens when the trial ends?",
+            q: "What happens when the weekly allowance runs out?",
             aHtml:
-              "Nothing is deleted. The space drops to the free plan: everyone keeps access and usage gets limited. Every agent and mission stays put. Add a card whenever you are ready.",
+              "Nothing is deleted, and nothing already running gets cut off. New messages wait for the weekly reset, or the owner upgrades to Team for unlimited usage.",
           },
           {
             q: "Do members download or pay?",
