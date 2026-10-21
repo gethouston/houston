@@ -4,6 +4,7 @@ import type {
   OrgRecoveryAction,
   OrgRole,
 } from "@houston/wire-types";
+import { canChangeChoice } from "./choice-model";
 
 /** An org that is locked, past due, or has a lock scheduled. */
 export function orgRecovering(billing: OrgBilling | null | undefined): boolean {
@@ -42,10 +43,12 @@ export function orgStanding(
   return billing.lockAt !== null ? "scheduled" : "ok";
 }
 
-/** Whether the owner may still change the pick the cutover applied. */
+/**
+ * Whether the owner may still change the pick the cutover applied: only an
+ * owner with a pick to make ({@link canChangeChoice}), inside the window.
+ */
 function changeWindowOpen(choice: BillingChoice | null, now: number): boolean {
-  if (choice?.state !== "applied" || !choice.changeableUntil) return false;
-  return Date.parse(choice.changeableUntil) > now;
+  return choice?.state === "applied" && canChangeChoice(choice, now);
 }
 
 /**
