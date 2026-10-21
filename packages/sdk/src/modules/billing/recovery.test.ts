@@ -1,7 +1,7 @@
 import type { BillingChoice, LockReason, OrgRole } from "@houston/wire-types";
 import { describe, expect, it } from "vitest";
 import { freeOrgBilling, paidOrgBilling } from "./org-billing-fixtures";
-import { orgRecovering, orgRecovery } from "./recovery";
+import { orgRecovering, orgRecovery, orgStanding } from "./recovery";
 
 const NOW = Date.parse("2026-10-25T00:00:00Z");
 const PAST = "2026-10-24T00:00:00Z";
@@ -127,5 +127,23 @@ describe("orgRecovery for everyone who does not pay", () => {
           orgRecovery(lockingPaid(reason, false), role, open, NOW),
         ).toEqual(actions);
       }
+  });
+});
+
+describe("orgStanding", () => {
+  it("names the state a recovering org is in", () => {
+    expect(orgStanding(freeOrgBilling())).toBe("ok");
+    expect(orgStanding(paidOrgBilling())).toBe("ok");
+    expect(orgStanding(freeOrgBilling({ lockAt: FUTURE }))).toBe("scheduled");
+    expect(orgStanding(lockingPaid("canceled"))).toBe("scheduled");
+    expect(orgStanding(lockingPaid("payment_failed"))).toBe("past_due");
+    expect(orgStanding(lockedFree("unpaid"))).toBe("locked");
+  });
+
+  it("reads an older gateway's degraded team as locked, and nothing else", () => {
+    expect(orgStanding(null, true)).toBe("locked");
+    expect(orgStanding(null)).toBe("ok");
+    expect(orgStanding(undefined, false)).toBe("ok");
+    expect(orgStanding(freeOrgBilling(), true)).toBe("ok");
   });
 });

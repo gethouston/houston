@@ -130,6 +130,7 @@ export {
   type SpacesModule,
 } from "./modules/spaces";
 export {
+  activeOrg,
   activeOrgBilling,
   activeSpaceOrgSlug,
 } from "./modules/spaces/active-space";

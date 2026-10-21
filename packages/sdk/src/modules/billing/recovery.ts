@@ -23,6 +23,25 @@ export function orgLocked(billing: OrgBilling | null | undefined): boolean {
   return billing?.status === "locked";
 }
 
+/**
+ * Where an org stands, for a surface that names its state: working, a lock
+ * scheduled (`lockAt` ahead, still active), a payment that failed (still
+ * working until `lockAt`), or locked. A gateway that predates org billing
+ * sends no billing and flags a locked team `degraded` only, so that reads as
+ * locked too.
+ */
+export type OrgStanding = "ok" | "scheduled" | "past_due" | "locked";
+
+export function orgStanding(
+  billing: OrgBilling | null | undefined,
+  degraded = false,
+): OrgStanding {
+  if (!billing) return degraded ? "locked" : "ok";
+  if (billing.status === "locked") return "locked";
+  if (billing.status === "past_due") return "past_due";
+  return billing.lockAt !== null ? "scheduled" : "ok";
+}
+
 /** Whether the owner may still change the pick the cutover applied. */
 function changeWindowOpen(choice: BillingChoice | null, now: number): boolean {
   if (choice?.state !== "applied" || !choice.changeableUntil) return false;

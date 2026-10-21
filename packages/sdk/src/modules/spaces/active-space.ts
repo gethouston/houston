@@ -1,4 +1,4 @@
-import type { OrgBilling, OrgsList } from "./types";
+import type { OrgBilling, OrgSummary, OrgsList } from "./types";
 
 /**
  * The org slug the hosted gateway resolves the active space to: the key its
@@ -20,6 +20,20 @@ export function activeSpaceOrgSlug(
 }
 
 /**
+ * The active org's membership: its name, the caller's role in it, its
+ * billing. `null` when the org is unknown; `undefined` while the list is
+ * unread.
+ */
+export function activeOrg(
+  pinnedTeamSlug: string | null,
+  orgs: OrgsList | undefined,
+): OrgSummary | null | undefined {
+  if (!orgs) return undefined;
+  const slug = activeSpaceOrgSlug(pinnedTeamSlug, orgs);
+  return orgs.orgs.find((o) => o.slug === slug) ?? null;
+}
+
+/**
  * The active org's billing, the one org-plan contract every surface reads
  * (usage, routine state, locks, whether the caller pays), from the
  * memberships list every member can read. `null` when the org is unknown or
@@ -29,7 +43,6 @@ export function activeOrgBilling(
   pinnedTeamSlug: string | null,
   orgs: OrgsList | undefined,
 ): OrgBilling | null | undefined {
-  if (!orgs) return undefined;
-  const slug = activeSpaceOrgSlug(pinnedTeamSlug, orgs);
-  return orgs.orgs.find((o) => o.slug === slug)?.billing ?? null;
+  const org = activeOrg(pinnedTeamSlug, orgs);
+  return org === undefined ? undefined : (org?.billing ?? null);
 }

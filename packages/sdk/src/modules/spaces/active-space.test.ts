@@ -3,7 +3,11 @@ import {
   freeOrgBilling,
   paidOrgBilling,
 } from "../billing/org-billing-fixtures";
-import { activeOrgBilling, activeSpaceOrgSlug } from "./active-space";
+import {
+  activeOrg,
+  activeOrgBilling,
+  activeSpaceOrgSlug,
+} from "./active-space";
 import type { OrgSummary, OrgsList } from "./types";
 
 function org(slug: string, kind: OrgSummary["kind"]): OrgSummary {
@@ -66,5 +70,17 @@ describe("activeOrgBilling", () => {
       orgs: [{ ...org("aaaaaaaaaaaaaaaa", "team"), billing: null }],
     };
     expect(activeOrgBilling("aaaaaaaaaaaaaaaa", legacy)).toBeNull();
+  });
+});
+
+describe("activeOrg", () => {
+  it("reads the pinned team's membership, else the personal one", () => {
+    expect(activeOrg("aaaaaaaaaaaaaaaa", MEMBERSHIPS)?.kind).toBe("team");
+    expect(activeOrg(null, MEMBERSHIPS)?.slug).toBe("383369a239383fee");
+  });
+
+  it("is undefined while unread and null for an unknown org", () => {
+    expect(activeOrg(null, undefined)).toBeUndefined();
+    expect(activeOrg("bbbbbbbbbbbbbbbb", MEMBERSHIPS)).toBeNull();
   });
 });
