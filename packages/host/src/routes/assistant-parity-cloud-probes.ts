@@ -62,10 +62,9 @@ export const CLOUD_ONLY_PROBES: readonly CloudOnlyProbe[] = [
 
   // Money, which only a hosted subscription has.
   cloudOnly("getBilling", "billing is a hosted-subscription concern"),
-  cloudOnly("createCheckout", "billing is a hosted-subscription concern", {
-    interval: "monthly",
-  }),
+  cloudOnly("createCheckout", "billing is a hosted-subscription concern"),
   cloudOnly("createPortal", "billing is a hosted-subscription concern"),
+  cloudOnly("claimFreeSlot", "billing is a hosted-subscription concern"),
   cloudOnly("getChoice", "billing is a hosted-subscription concern"),
   cloudOnly("setChoice", "billing is a hosted-subscription concern", {
     pick: { freeOrgSlug: "no-such-space" },
