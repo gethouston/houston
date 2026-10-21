@@ -138,14 +138,18 @@ export function usePortal() {
 /**
  * Make the active org the free one (billing owner only). The org that held
  * the slot locks in the same step, so both rows come back from the next orgs
- * read. `has_subscription` and `not_billing_owner` resolve as outcomes; any
- * other failure surfaces via `call()`.
+ * read, and the pick the gateway stored with them from the next choice read.
+ * `has_subscription` and `not_billing_owner` resolve as outcomes; any other
+ * failure surfaces via `call()`.
  */
 export function useClaimFreeSlot() {
   const queryClient = useQueryClient();
   return useMutation({
     mutationFn: () => tauriOrg.claimFreeSlot(),
     onSettled: () =>
-      queryClient.invalidateQueries({ queryKey: queryKeys.orgs() }),
+      Promise.all([
+        queryClient.invalidateQueries({ queryKey: queryKeys.orgs() }),
+        queryClient.invalidateQueries({ queryKey: queryKeys.billingChoice() }),
+      ]),
   });
 }

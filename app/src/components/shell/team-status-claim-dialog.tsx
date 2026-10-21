@@ -1,4 +1,5 @@
 import type { OrgSummary, OrgsList } from "@houston/engine-adapter";
+import type { ClaimFreeSlotResult } from "@houston/sdk";
 import { ConfirmDialog } from "@houston-ai/core";
 import { useTranslation } from "react-i18next";
 import { useClaimFreeSlot } from "../../hooks/queries/use-billing";
@@ -31,7 +32,13 @@ export function TeamStatusClaimDialog({
       : undefined;
 
   const confirm = async () => {
-    const result = await claim.mutateAsync();
+    let result: ClaimFreeSlotResult;
+    try {
+      result = await claim.mutateAsync();
+    } catch {
+      // Already surfaced and reported by the engine call.
+      return;
+    }
     if (result.kind === "claimed") {
       addToast({
         title: t("status.claim.done", { org: org.name }),
