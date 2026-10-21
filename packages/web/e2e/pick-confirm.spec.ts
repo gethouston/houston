@@ -52,9 +52,9 @@ test("a provisional payer sees what the cutover picked over a working shell, and
     "We went by where you're most active. You can change this until November 6.",
   );
   await expect(modal.getByRole("listitem")).toHaveText([
-    "ACAcme2 members · 520 messages in 30 daysYour subscription",
-    "PEPersonal1 member · 240 messages in 30 daysFree",
-    "LFLa Fila3 members · 96 messages in 30 daysLocks November 6",
+    "ACAcmeYour subscription2 members · 520 messages in 30 days",
+    "PEPersonalFree1 member · 240 messages in 30 days",
+    "LFLa FilaLocks November 63 members · 96 messages in 30 days",
   ]);
   await expect(modal).toContainText(
     "A locked organization keeps its agents and files, read-only, until it has a plan.",

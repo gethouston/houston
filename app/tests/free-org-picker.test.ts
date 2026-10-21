@@ -362,12 +362,15 @@ function introText(choice: BillingChoice) {
     otherDialogOpen: false,
   });
   if (!shown.open) return "closed";
+  const { notice } = shown;
+  if (notice.kind === "confirm" || notice.kind === "applied")
+    throw new Error(`not an intro notice: ${notice.kind}`);
   const page = doc(
     h(
       Dialog,
       { open: true },
       h(intro.BillingChangeIntro, {
-        shown,
+        notice,
         choice,
         onPick: noop,
         onClose: noop,
