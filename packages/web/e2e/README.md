@@ -70,6 +70,9 @@ e2e/
                     # preferences (the survey record) straight on the host
     palette.ts      # open the ⌘K command palette (the press retries: the
                     # shortcut listener is attached in an effect)
+    pick-confirm.ts # the free-org pick after the cutover applied it: the
+                    # applied fixtures, the armed gateway clock, the page
+                    # clock inside the change window, error-report capture
     plan.ts         # the C19 personal plan: fixtures, arming, the plan-call
                     # ledger, the stubbed Stripe opener, the fixed page clock
     run-locked.ts   # run a full Playwright suite under the machine lock — the
