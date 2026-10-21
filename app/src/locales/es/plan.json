@@ -133,6 +133,7 @@
       "status": {
         "free": "Gratis",
         "subscription": "Tu suscripción",
+        "locks": "Se bloquea el {{date}}",
         "needs_plan": "Necesita un plan"
       },
       "change": "Puedes cambiarlo en Configuración.",
@@ -150,6 +151,10 @@
       "same_org": {
         "title": "Elige dos organizaciones distintas",
         "body": "La organización gratis no puede ser también la que paga tu suscripción."
+      },
+      "choice_closed": {
+        "title": "El plazo para cambiar ya terminó",
+        "body": "Tus organizaciones se quedan como están. Aún puedes hacer que una organización sea la gratuita o pagarla desde su página de Facturación."
       }
     },
     "settings": {

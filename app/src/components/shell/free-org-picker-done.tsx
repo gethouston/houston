@@ -2,6 +2,7 @@ import {
   type ChoiceDone,
   type ChoiceOrgStatus,
   formatCutoverDate,
+  formatCutoverDay,
 } from "@houston/sdk";
 import { cn, DialogDescription, DialogTitle } from "@houston-ai/core";
 import { Check } from "lucide-react";
@@ -18,6 +19,11 @@ const STATUS = {
   subscription: {
     label: "choice.done.status.subscription",
     className: "bg-chip-solid text-ink",
+  },
+  locks: {
+    label: "choice.done.status.locks",
+    className:
+      "text-ink-muted outline outline-1 -outline-offset-1 outline-line",
   },
   needs_plan: {
     label: "choice.done.status.needs_plan",
@@ -79,7 +85,11 @@ export function DoneStep({
                 STATUS[status].className,
               )}
             >
-              {t(STATUS[status].label)}
+              {t(STATUS[status].label, {
+                date: org.lockAt
+                  ? formatCutoverDay(org.lockAt, i18n.language)
+                  : "",
+              })}
             </span>
           </li>
         ))}

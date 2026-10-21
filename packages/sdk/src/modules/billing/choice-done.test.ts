@@ -26,6 +26,9 @@ describe("choiceDone", () => {
   it("lists every owned org, busiest first: the free one, the rest need a plan", () => {
     expect(choiceDone(choice({ freeOrgSlug: INNOVA.slug }))).toEqual({
       free: INNOVA,
+      paid: null,
+      applied: false,
+      changeableUntil: null,
       cutoverAt: CUTOVER,
       orgs: [
         { org: LA_FILA, status: "needs_plan" },

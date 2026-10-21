@@ -39,7 +39,11 @@ export {
   plusCheckoutOrgSlug,
   plusOfferApplies,
 } from "./modules/billing/plus-org";
-export { orgRecovering, orgRecovery } from "./modules/billing/recovery";
+export {
+  orgLocked,
+  orgRecovering,
+  orgRecovery,
+} from "./modules/billing/recovery";
 // ===== Plan module contract ===========================================
 export { PlanCommand, PlanHttpError, type PlanModule } from "./modules/plan";
 export {

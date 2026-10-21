@@ -14,6 +14,15 @@ export function orgRecovering(billing: OrgBilling | null | undefined): boolean {
   );
 }
 
+/**
+ * An org whose writes the gateway refuses (403 `needs_upgrade`), owner
+ * included: sends, new agents, file and settings edits. Reading, moving
+ * agents out, removing members and paying stay open.
+ */
+export function orgLocked(billing: OrgBilling | null | undefined): boolean {
+  return billing?.status === "locked";
+}
+
 /** Whether the owner may still change the pick the cutover applied. */
 function changeWindowOpen(choice: BillingChoice | null, now: number): boolean {
   if (choice?.state !== "applied" || !choice.changeableUntil) return false;

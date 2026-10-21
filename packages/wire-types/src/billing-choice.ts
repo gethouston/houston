@@ -22,6 +22,8 @@ export const BILLING_CHOICE_REFUSALS = {
   not_owner: 409,
   not_payer: 409,
   same_org: 400,
+  /** After the cutover: the change window closed, so the applied pick stays. */
+  choice_closed: 409,
 } as const;
 export type BillingChoiceRefusal = keyof typeof BILLING_CHOICE_REFUSALS;
 

@@ -12,9 +12,9 @@ import {
   canChangeChoice,
   choiceNotice,
   formatCutoverDate,
-  payerTotals,
   pickerRows,
 } from "./choice-model";
+import { payerTotals } from "./choice-price";
 
 const at = (now: number) => ({ now, locale: "en" });
 

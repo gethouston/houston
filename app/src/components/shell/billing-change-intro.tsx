@@ -29,7 +29,8 @@ export function BillingChangeIntro({
     <>
       <p className="ht-hairline mb-5 inline-flex items-center gap-1.5 self-start rounded-full bg-chip py-1 pl-2 pr-2.5 text-xs font-medium leading-5 text-ink">
         <Calendar aria-hidden className="size-3.5 text-ink-muted" />
-        {t("choice.notice.from", { date: shown.notice.date })}
+        {"date" in shown.notice &&
+          t("choice.notice.from", { date: shown.notice.date })}
       </p>
       <DialogTitle
         tabIndex={-1}

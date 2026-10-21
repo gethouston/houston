@@ -8,7 +8,7 @@ import type {
 
 /**
  * Which step the modal's frame shows: the intro, the picker (only ever while
- * the notice is `pick`), or the success step after a stored pick.
+ * the notice is `pick` or `confirm`), or the success step after a stored pick.
  */
 export type ChoiceModalPhase =
   | { step: "intro" }
@@ -71,10 +71,19 @@ export function nextChoiceModalFrame(
         : { ...frame, hold: "until_answer" };
     return { ...frame, open: false, hold: "none" };
   }
-  const picking =
+  // A stored change can turn `confirm` into `applied` before the save's own
+  // answer lands; the picker waits for that answer as if the modal closed.
+  if (
     frame.open &&
     frame.phase.step === "picking" &&
-    modal.notice.kind === "pick";
+    frame.shown?.notice.kind === "confirm" &&
+    modal.notice.kind === "applied"
+  )
+    return frame.hold === "until_answer"
+      ? frame
+      : { ...frame, hold: "until_answer" };
+  const picking =
+    frame.open && frame.phase.step === "picking" && picks(modal.notice);
   const unchanged =
     frame.open &&
     frame.hold === "none" &&
@@ -107,10 +116,46 @@ export function startPicking(frame: ChoiceModalFrame): ChoiceModalFrame {
   if (
     !frame.open ||
     frame.phase.step !== "intro" ||
-    frame.shown?.notice.kind !== "pick"
+    !frame.shown ||
+    !picks(frame.shown.notice)
   )
     return frame;
   return { ...frame, phase: { step: "picking" } };
+}
+
+/** A notice whose intro leads on to the picker. */
+function picks(notice: AnnouncedChoice): boolean {
+  return notice.kind === "pick" || notice.kind === "confirm";
+}
+
+/**
+ * The frame after Confirm on a `confirm` intro answers, and whether the
+ * notice is now settled for good (`dismiss`: store the dismissal, so no device
+ * asks again). A stored pick closes the frame; a refusal keeps it, which shows
+ * the refusal's own copy.
+ */
+export function finishConfirming(
+  frame: ChoiceModalFrame,
+  outcome: BillingChoiceSave,
+): { frame: ChoiceModalFrame; dismiss: boolean } {
+  if (
+    outcome.kind !== "saved" ||
+    !frame.open ||
+    frame.shown?.notice.kind !== "confirm"
+  )
+    return { frame, dismiss: false };
+  return { frame: closeChoiceFrame(frame), dismiss: true };
+}
+
+/**
+ * Whether closing the frame stores the dismissal on the server: a read-only
+ * notice (`everywhere`), or a `confirm` notice the person settled by saving a
+ * new pick, so its success step is the last they see of it.
+ */
+export function closeDismisses(frame: ChoiceModalFrame): boolean {
+  if (!frame.shown) return false;
+  if (frame.shown.close === "everywhere") return true;
+  return frame.shown.notice.kind === "confirm" && frame.phase.step === "done";
 }
 
 /**

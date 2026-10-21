@@ -63,7 +63,9 @@ export async function getChoice(
  * Stores the pick until the change takes effect; it can be changed again
  * until then. Answers `not_owner` for an organization the person does not
  * own, `not_payer` when someone without a subscription names a paid
- * organization, and `same_org` when both are the same.
+ * organization, and `same_org` when both are the same. After the change takes
+ * effect it changes or confirms the applied pick for a while, then answers
+ * `choice_closed`.
  * @assistant group:billing
  * @assistant confirm: money. The organizations not picked will need a paid plan to keep sending messages.
  */

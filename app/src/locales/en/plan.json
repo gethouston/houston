@@ -133,6 +133,7 @@
       "status": {
         "free": "Free",
         "subscription": "Your subscription",
+        "locks": "Locks {{date}}",
         "needs_plan": "Needs a plan"
       },
       "change": "You can change this in Settings.",
@@ -150,6 +151,10 @@
       "same_org": {
         "title": "Pick two different organizations",
         "body": "The free organization can't also be the one your subscription pays for."
+      },
+      "choice_closed": {
+        "title": "The change window has closed",
+        "body": "Your organizations stay as they are now. You can still make an organization the free one or pay for it from its Billing page."
       }
     },
     "settings": {

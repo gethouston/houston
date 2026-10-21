@@ -1,9 +1,8 @@
-import type { BillingChoice, BillingChoiceOrg } from "@houston/wire-types";
-import { formatPlanAmount } from "../plan/format";
-
-/** One seat on any paid organization, before C3 sends the price per org. */
-export const ORG_SEAT_PRICE_CENTS = 1500;
-const CURRENCY = "usd";
+import type {
+  BillingChoice,
+  BillingChoiceOrg,
+  BillingChoicePick,
+} from "@houston/wire-types";
 
 /**
  * Where the person stands on the change. `pick`: an owner of several orgs who
@@ -12,8 +11,17 @@ const CURRENCY = "usd";
  * `picked`: a pick of an org they still own is stored, even if they own one
  * org now. `single_org`: the one org they own stays free (or, for a
  * subscriber, is what the subscription pays for). `member`: they own no org,
- * so each org's owner decides. `hidden`: applied, past the cutover, past the
- * change window with nothing picked, or a read-only notice that was dismissed.
+ * so each org's owner decides. `hidden`: past the cutover with nothing
+ * applied, past the change window with nothing picked, or a read-only notice
+ * that was dismissed.
+ *
+ * After the cutover applies a pick (`state` `applied`): `confirm` asks an
+ * owner of several orgs whose orgs the cutover chose for them (`provisional`)
+ * to confirm or change them, until `until` (the change window's last day).
+ * `applied`: an owner who picked before the cutover reads once that the pick
+ * is in place; `until` is the window's last day while it is open. Both stay
+ * until the notice is dismissed, which confirming or changing the pick also
+ * does, and neither shows to someone who owns a single org.
  *
  * Nothing here reads the active space: the notice is dismissed once for the
  * account, so the space it happens to show in must not decide what it says.
@@ -23,7 +31,9 @@ export type ChoiceNotice =
   | { kind: "pick"; date: string; payer: boolean }
   | { kind: "picked"; freeOrgSlug: string; paidOrgSlug: string | null }
   | { kind: "single_org"; date: string; orgSlug: string; payer: boolean }
-  | { kind: "member"; date: string };
+  | { kind: "member"; date: string }
+  | { kind: "confirm"; until: string }
+  | { kind: "applied"; until: string | null };
 
 export interface ChoiceContext {
   now: number;
@@ -57,13 +67,28 @@ export function formatCutoverDay(value: string, locale?: string): string {
   }).format(new Date(value));
 }
 
-/** True while the person may still pick, or change, their free org. */
+/**
+ * The instant the pick stops changing: the cutover (or a later stored
+ * deadline) before it, the end of the change window after it. Null once
+ * applied with no window.
+ */
+function changeDeadline(choice: BillingChoice): number | null {
+  if (choice.state === "pending")
+    return Date.parse(choice.changeableUntil ?? choice.cutoverAt);
+  return choice.changeableUntil ? Date.parse(choice.changeableUntil) : null;
+}
+
+/**
+ * True while the person may still pick, or change, their free org: an owner
+ * of several orgs, before the cutover or inside the change window after it.
+ */
 export function canChangeChoice(
   choice: BillingChoice | null | undefined,
   now: number,
 ): choice is BillingChoice {
-  if (choice?.state !== "pending" || !choice.needed) return false;
-  return now < Date.parse(choice.changeableUntil ?? choice.cutoverAt);
+  if (!choice?.needed) return false;
+  const deadline = changeDeadline(choice);
+  return deadline !== null && now < deadline;
 }
 
 /** A subscriber whose subscription moves to one org they choose. */
@@ -78,11 +103,8 @@ export function choiceNotice(
   choice: BillingChoice | null | undefined,
   context: ChoiceContext,
 ): ChoiceNotice {
-  if (
-    !choice ||
-    choice.state === "applied" ||
-    context.now >= Date.parse(choice.cutoverAt)
-  )
+  if (choice?.state === "applied") return appliedNotice(choice, context);
+  if (!choice || context.now >= Date.parse(choice.cutoverAt))
     return { kind: "hidden" };
   const date = formatCutoverDate(choice.cutoverAt, context.locale);
   const stored = choice.orgs.find((org) => org.slug === choice.freeOrgSlug);
@@ -106,6 +128,36 @@ export function choiceNotice(
     orgSlug: only.slug,
     payer: choice.payer === "plus" || choice.payer === "comp",
   };
+}
+
+/** The notice once the cutover applied a pick ({@link ChoiceNotice}). */
+function appliedNotice(
+  choice: BillingChoice,
+  context: ChoiceContext,
+): ChoiceNotice {
+  const kept = choice.orgs.some((org) => org.slug === choice.freeOrgSlug);
+  if (!choice.needed || choice.noticeDismissed || !kept)
+    return { kind: "hidden" };
+  const open = canChangeChoice(choice, context.now);
+  const until =
+    open && choice.changeableUntil
+      ? formatCutoverDay(choice.changeableUntil, context.locale)
+      : null;
+  if (!choice.provisional) return { kind: "applied", until };
+  return until ? { kind: "confirm", until } : { kind: "hidden" };
+}
+
+/**
+ * The pick that confirms what the cutover applied: the same free org, and
+ * the same paid org for a subscriber. Null when nothing was applied.
+ */
+export function appliedPick(choice: BillingChoice): BillingChoicePick | null {
+  if (!choice.orgs.some((org) => org.slug === choice.freeOrgSlug)) return null;
+  const free = choice.freeOrgSlug as string;
+  const paid = choosesPaidOrg(choice) ? choice.paidOrgSlug : null;
+  return paid
+    ? { freeOrgSlug: free, paidOrgSlug: paid }
+    : { freeOrgSlug: free };
 }
 
 export interface PickerRow {
@@ -133,36 +185,4 @@ export function pickerRows(choice: BillingChoice): PickerRow[] {
     org,
     mostActive: index === 0 && org.messages30d > 0,
   }));
-}
-
-export interface PayerTotals {
-  /** What the subscription costs today. */
-  today: string;
-  /** When extra seats start to bill; null for a one-member org. */
-  graceEndsOn: string | null;
-  /** The monthly total once every member is billed. */
-  monthly: string;
-  /** One seat, for the "$15 each" line. */
-  seat: string;
-}
-
-/** The price a payer sees for moving their subscription to `slug`. */
-export function payerTotals(
-  choice: BillingChoice,
-  slug: string,
-  locale?: string,
-): PayerTotals | null {
-  const org = choice.orgs.find((candidate) => candidate.slug === slug);
-  if (!org) return null;
-  const monthly =
-    org.monthlyTotalCents ??
-    ORG_SEAT_PRICE_CENTS * Math.max(1, org.memberCount);
-  return {
-    today: formatPlanAmount(ORG_SEAT_PRICE_CENTS, CURRENCY, locale),
-    graceEndsOn: org.seatGraceEndsOn
-      ? formatCutoverDay(org.seatGraceEndsOn, locale)
-      : null,
-    monthly: formatPlanAmount(monthly, CURRENCY, locale),
-    seat: formatPlanAmount(ORG_SEAT_PRICE_CENTS, CURRENCY, locale),
-  };
 }

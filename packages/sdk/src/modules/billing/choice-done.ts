@@ -4,9 +4,10 @@ import { canChangeChoice, choosesPaidOrg, pickerRows } from "./choice-model";
 
 /**
  * What an owned org becomes at the cutover. `free`: the pick. `subscription`:
- * the payer's subscription pays for it. `needs_plan`: everything else.
+ * the payer's subscription pays for it. `locks`: the cutover scheduled its
+ * lock, on the org's `lockAt`. `needs_plan`: everything else.
  */
-export type ChoiceOrgStatus = "free" | "subscription" | "needs_plan";
+export type ChoiceOrgStatus = "free" | "subscription" | "locks" | "needs_plan";
 
 export interface ChoiceDoneOrg {
   org: BillingChoiceOrg;
@@ -16,6 +17,14 @@ export interface ChoiceDoneOrg {
 /** What the picker's success step shows once a pick is stored. */
 export interface ChoiceDone {
   free: BillingChoiceOrg;
+  /** The org the payer's subscription pays for, else null. */
+  paid: BillingChoiceOrg | null;
+  /**
+   * The cutover already applied this pick: each org shows what it is now,
+   * and `changeableUntil` is when the pick stops changing.
+   */
+  applied: boolean;
+  changeableUntil: string | null;
   /**
    * The cutover instant. The surface formats it when it renders
    * ({@link formatCutoverDate}), so a language change reaches an open step.
@@ -30,13 +39,20 @@ export function choiceDone(saved: BillingChoice): ChoiceDone | null {
   const free = saved.orgs.find((org) => org.slug === saved.freeOrgSlug);
   if (!free) return null;
   // A paid org on the record means nothing without a subscription to move.
-  const paid = choosesPaidOrg(saved) ? saved.paidOrgSlug : null;
+  const paid = choosesPaidOrg(saved)
+    ? (saved.orgs.find((org) => org.slug === saved.paidOrgSlug) ?? null)
+    : null;
   const status = (org: BillingChoiceOrg): ChoiceOrgStatus => {
     if (org.slug === free.slug) return "free";
-    return org.slug === paid ? "subscription" : "needs_plan";
+    if (org.slug === paid?.slug) return "subscription";
+    return org.lockAt ? "locks" : "needs_plan";
   };
+  const applied = saved.state === "applied";
   return {
     free,
+    paid,
+    applied,
+    changeableUntil: applied ? saved.changeableUntil : null,
     cutoverAt: saved.cutoverAt,
     orgs: pickerRows(saved).map(({ org }) => ({ org, status: status(org) })),
   };

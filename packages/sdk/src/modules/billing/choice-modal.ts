@@ -9,7 +9,7 @@ import type { planDialog } from "./model";
 /** The notices the pricing-change modal announces. */
 export type AnnouncedChoice = Extract<
   ChoiceNotice,
-  { kind: "pick" | "single_org" | "member" }
+  { kind: "pick" | "single_org" | "member" | "confirm" | "applied" }
 >;
 
 export interface ChoiceModalContext extends ChoiceContext {
@@ -30,8 +30,8 @@ export interface ChoiceModalContext extends ChoiceContext {
 /**
  * Whether the pricing-change modal shows when the app opens, and what closing
  * it does. Closing always hides it for the session. `session`: an owner who
- * still has to pick sees it on every app open until they do, so that is all
- * closing does. `everywhere`: a read-only notice, shown once; closing also
+ * still has to pick, or to confirm what the cutover picked for them, sees it
+ * on every app open until they do, so that is all closing does. `everywhere`: a read-only notice, shown once; closing also
  * stores the dismissal on the server (`dismissChoiceNotice`) so no device
  * shows it again. A dismissal that fails leaves the server record unset, so
  * the notice shows on a later app open and closing it retries.
@@ -56,9 +56,11 @@ export function choiceModal(
   const notice = choiceNotice(choice, context);
   switch (notice.kind) {
     case "pick":
+    case "confirm":
       return { open: true, notice, close: "session" };
     case "single_org":
     case "member":
+    case "applied":
       return { open: true, notice, close: "everywhere" };
     default:
       return CLOSED;

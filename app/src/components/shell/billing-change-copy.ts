@@ -76,5 +76,7 @@ export function useNoticePoints(
           body: t("choice.notice.member.body"),
         },
       ];
+    default:
+      return [];
   }
 }
