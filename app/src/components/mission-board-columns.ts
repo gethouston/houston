@@ -31,17 +31,20 @@ export const MISSION_APPROVE_STATUSES = [...COLUMN_STATUSES.needs_you];
  *  be dealt with before it can be hidden. */
 export const MISSION_ARCHIVE_STATUSES = [...COLUMN_STATUSES.done];
 
+/** `onNewMission` null drops the Running column's "+": a locked org takes no task. */
 export function buildMissionBoardColumns(
   labels: MissionBoardColumnLabels,
-  onNewMission: () => void,
+  onNewMission: (() => void) | null,
 ): KanbanColumnConfig[] {
   return [
     {
       id: "running",
       label: labels.running,
       statuses: [...COLUMN_STATUSES.running],
-      onAdd: onNewMission,
-      addLabel: labels.newMission,
+      ...(onNewMission && {
+        onAdd: onNewMission,
+        addLabel: labels.newMission,
+      }),
     },
     {
       id: "needs_you",

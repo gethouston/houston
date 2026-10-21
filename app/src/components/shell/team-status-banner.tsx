@@ -1,4 +1,4 @@
-import { formatLocalDate } from "@houston/sdk";
+import { formatCutoverDay } from "@houston/sdk";
 import { cn } from "@houston-ai/core";
 import { Clock, CreditCard, Lock } from "lucide-react";
 import { useTranslation } from "react-i18next";
@@ -51,7 +51,9 @@ export function TeamStatusBanner() {
   if (view.kind === "none" || !org) return null;
 
   const locked = view.kind === "locked";
-  const date = view.lockAt ? formatLocalDate(view.lockAt, i18n.language) : null;
+  const date = view.lockAt
+    ? formatCutoverDay(view.lockAt, i18n.language)
+    : null;
   const sentences = [t(leadKey(view, date !== null), { org: org.name, date })];
   if (locked)
     sentences.push(

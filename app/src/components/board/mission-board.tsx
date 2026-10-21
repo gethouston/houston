@@ -1,6 +1,7 @@
 import { AIBoard } from "@houston-ai/board";
 import { useCallback, useMemo, useRef } from "react";
 import { useTranslation } from "react-i18next";
+import { useOrgWriteLock } from "../../hooks/use-org-write-lock";
 import { perfSpans } from "../../lib/perf-spans";
 import { useUIStore } from "../../stores/ui";
 import { FirstDayLead } from "../first-day/first-day-banner";
@@ -47,6 +48,7 @@ export function MissionBoard({ source }: { source: BoardSource }) {
   const missionPanelOpen = useUIStore((s) => s.missionPanelOpen);
 
   const wiring = useBoardChatWiring(source);
+  const { locked } = useOrgWriteLock();
 
   // Columns: base layout (single source of truth for status→section) plus the
   // Done "archive all" / Needs-you "select all" header actions when the source
@@ -60,9 +62,9 @@ export function MissionBoard({ source }: { source: BoardSource }) {
           done: t("dashboard:columns.done"),
           newMission: t("dashboard:empty.newMission"),
         },
-        source.openNewMission,
+        locked ? null : source.openNewMission,
       ),
-    [t, source.openNewMission],
+    [t, source.openNewMission, locked],
   );
   const closeOpenChat = useCallback(
     () => source.setSelectedId(null),

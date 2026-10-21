@@ -39,6 +39,7 @@ export function NewMissionButton({
   menuOpen,
   onMenuOpenChange,
   onPick,
+  disabled = false,
 }: {
   /** The board's agents — the menu's roster. */
   agents: Agent[];
@@ -46,6 +47,8 @@ export function NewMissionButton({
   menuOpen: boolean;
   onMenuOpenChange: (open: boolean) => void;
   onPick: (agent: Agent) => void;
+  /** A locked org takes no new task; the org's status strip says why. */
+  disabled?: boolean;
 }) {
   const { t } = useTranslation("dashboard");
   const label = t("empty.newMission");
@@ -63,6 +66,7 @@ export function NewMissionButton({
               size="sm"
               className="gap-1.5 rounded-full"
               aria-label={label}
+              disabled={disabled}
             >
               <SquarePen className="size-4" />
               {label}

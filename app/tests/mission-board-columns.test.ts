@@ -36,4 +36,18 @@ describe("mission board columns", () => {
     strictEqual(columns[1].onAdd, undefined);
     strictEqual(columns[2].onAdd, undefined);
   });
+
+  it("offers no new mission on a locked org", () => {
+    const columns = buildMissionBoardColumns(
+      {
+        running: "Running",
+        needsYou: "Needs you",
+        done: "Done",
+        newMission: "New task",
+      },
+      null,
+    );
+    strictEqual(columns[0].onAdd, undefined);
+    strictEqual(columns[0].addLabel, undefined);
+  });
 });

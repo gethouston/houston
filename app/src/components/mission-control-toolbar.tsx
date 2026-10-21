@@ -2,6 +2,7 @@ import type { KanbanItem } from "@houston-ai/board";
 import { CatalogSearchField } from "@houston-ai/core";
 import type { ReactNode } from "react";
 import { useTranslation } from "react-i18next";
+import { useOrgWriteLock } from "../hooks/use-org-write-lock";
 import type { Agent } from "../lib/types";
 import { MissionPersonFilter } from "./mission-person-filter";
 import { NewMissionButton } from "./new-mission-button";
@@ -69,6 +70,7 @@ export function MissionControlToolbar({
   collapsed,
 }: MissionControlToolbarProps) {
   const { t } = useTranslation("dashboard");
+  const { locked } = useOrgWriteLock();
   const strip = variant === "strip";
 
   const searchField = onSearchChange && (
@@ -98,7 +100,7 @@ export function MissionControlToolbar({
       )}
       {agentFilter}
       {modeToggle}
-      {newMission && <NewMissionButton {...newMission} />}
+      {newMission && <NewMissionButton {...newMission} disabled={locked} />}
     </>
   );
 

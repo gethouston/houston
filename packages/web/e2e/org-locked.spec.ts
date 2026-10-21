@@ -55,8 +55,12 @@ test("locked, the owner who pays: the strip, writes off with the reason, reads o
     banner.getByRole("button", { name: "Use as free org" }),
   ).toBeEnabled();
 
-  // No new AI Employee in a locked org.
+  // No new AI Employee and no new task in a locked org.
   await expect(page.getByTestId("rail-add-employee")).toHaveCount(0);
+  // Kept-alive boards each draw the button: every one is off.
+  const newTask = page.getByRole("button", { name: "New task" });
+  await expect(newTask.first()).toBeDisabled();
+  for (const button of await newTask.all()) await expect(button).toBeDisabled();
 
   // The conversation reads; its composer is the locked card.
   await missionCard(page, "Plan a trip to Tokyo").click();
@@ -171,13 +175,13 @@ test("past due: Fix payment opens the portal for the owner who pays, never a che
   const banner = statusBanner(page);
   await expect(banner).toHaveAttribute("data-state", "past_due");
   await expect(banner).toContainText(
-    "A payment for Acme didn't go through. It locks on Oct 19, 2026 unless the payment is fixed.",
+    "A payment for Acme didn't go through. It locks on October 19 unless the payment is fixed.",
   );
   await banner.getByRole("button", { name: "Fix payment" }).click();
   await expect.poll(() => openedUrls(page)).toEqual([PORTAL_URL]);
   const routes = (await planCalls()).map((call) => call.route);
-  expect(routes).toContain("org_portal");
-  expect(routes).not.toContain("org_checkout");
+  expect(routes).toContain("portal");
+  expect(routes).not.toContain("checkout");
   // Past due still works: the composer stays.
   await missionCard(page, "Plan a trip to Tokyo").click();
   await expect(page.getByTestId("org-locked-card")).toHaveCount(0);
