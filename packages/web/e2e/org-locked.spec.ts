@@ -3,7 +3,14 @@ import type { Page } from "@playwright/test";
 import { FOLLOW_UP_PLACEHOLDER } from "./support/composer";
 import { expect, test } from "./support/fixtures";
 import { missionCard, screen } from "./support/nav-common";
-import { armOrgLock, LOCKED, PAST_DUE, statusBanner } from "./support/org-lock";
+import {
+  armOrgLock,
+  LOCKED,
+  orgBilling,
+  PAST_DUE,
+  setTeamBilling,
+  statusBanner,
+} from "./support/org-lock";
 import { openedUrls, PORTAL_URL, planCalls, stubOpener } from "./support/plan";
 import { openAdminSection } from "./support/settings-nav";
 import { openTeamSection } from "./support/team-nav";
@@ -165,7 +172,7 @@ test("locked, a second owner who does not pay: ask the owner, no Unlock", async 
   );
 });
 
-test("past due: Fix payment opens the portal for the owner who pays, never a checkout", async ({
+test("past due: Fix payment opens the portal for the owner who pays, never a checkout, and clears once paid", async ({
   page,
 }) => {
   await stubOpener(page, false);
@@ -182,6 +189,14 @@ test("past due: Fix payment opens the portal for the owner who pays, never a che
   const routes = (await planCalls()).map((call) => call.route);
   expect(routes).toContain("portal");
   expect(routes).not.toContain("checkout");
+  await expect(
+    banner.getByRole("button", { name: "Fix payment" }),
+  ).toBeDisabled();
+  // The fixed payment's webhook lands late: the app's own poll clears the
+  // strip, with no focus or reload.
+  await setTeamBilling(orgBilling({ tier: "paid" }));
+  await page.clock.runFor(5_000);
+  await expect(banner).toHaveCount(0);
   // Past due still works: the composer stays.
   await missionCard(page, "Plan a trip to Tokyo").click();
   await expect(page.getByTestId("org-locked-card")).toHaveCount(0);

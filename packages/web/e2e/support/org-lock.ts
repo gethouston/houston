@@ -74,6 +74,16 @@ async function post(path: string, data: unknown): Promise<void> {
   expect(res.ok).toBe(true);
 }
 
+/** Set the team's billing on the gateway, as a webhook landing would. */
+export async function setTeamBilling(
+  billing: OrgBilling,
+  role: OrgRole = "owner",
+): Promise<void> {
+  await post("/__test__/workspaces", {
+    teams: [{ ...TEAM, billing, role, memberCount: 3 }],
+  });
+}
+
 /** Arm the orgs and pin the next boot to the team. Call before `goto`. */
 export async function armOrgLock(
   page: Page,
@@ -95,9 +105,7 @@ export async function armOrgLock(
       : {}),
     ...(arming.freeOrg ? { freeOrg: arming.freeOrg } : {}),
   });
-  await post("/__test__/workspaces", {
-    teams: [{ ...TEAM, billing: arming.team, role, memberCount: 3 }],
-  });
+  await setTeamBilling(arming.team, role);
   await page.addInitScript((id: string) => {
     localStorage.setItem("houston.pref.last_workspace_id", id);
   }, `org:${TEAM.slug}`);

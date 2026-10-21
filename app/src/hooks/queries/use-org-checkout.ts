@@ -22,6 +22,10 @@ function openCheckout(url: string) {
   return tauriSystem.openUrl(url, { command: "billing_checkout_open" });
 }
 
+function openPortal(url: string) {
+  return tauriSystem.openUrl(url, { command: "billing_portal_open" });
+}
+
 /**
  * A browser refuses `window.open` once the click's activation is spent, and
  * the session URL only arrives after a request, so a browser tab is claimed
@@ -35,8 +39,10 @@ function reserveCheckoutTab(): ReservedTab | null {
 /**
  * An org checkout's view. `start(orgSlug)` opens Stripe for the active org,
  * `resume(orgSlug, url, tab)` opens a session the gateway already made (a
- * paid create answers one) in a tab the caller reserved inside its click.
- * Both send nothing while a checkout is outstanding (`outstanding` disables
+ * paid create answers one) in a tab the caller reserved inside its click, and
+ * `recover(orgSlug)` opens the portal to fix a failed payment, watched the
+ * same way so a webhook that lands late still clears the lock unprompted.
+ * All three send nothing while a checkout is outstanding (`outstanding` disables
  * every trigger meanwhile) and resolve with the link to offer when no
  * browser opened, else null. `orgSlug` names the org the outstanding
  * checkout pays for, so a surface offers `fallbackUrl` only on that org's
@@ -56,13 +62,14 @@ export function useOrgCheckout() {
       create: () => Promise<{ url: string }>,
       tab: ReservedTab | null,
       madeUrl?: string,
+      open = openCheckout,
     ) =>
       runOrgCheckout(tracker, {
         orgSlug,
         create,
         tab,
         madeUrl,
-        open: openCheckout,
+        open,
         refresh: () =>
           queryClient.invalidateQueries({ queryKey: queryKeys.orgs() }),
         report: logAndReportError,
@@ -90,9 +97,23 @@ export function useOrgCheckout() {
     },
     [begin],
   );
+  const recover = useCallback(
+    (orgSlug: string) => {
+      if (refuseNativePurchase("billing_portal", reportError)) return;
+      void begin(
+        orgSlug,
+        () => tauriOrg.createPortal(),
+        reserveCheckoutTab(),
+        undefined,
+        openPortal,
+      );
+    },
+    [begin],
+  );
   return {
     start,
     resume,
+    recover,
     /** Claim the tab a later `resume` opens checkout in, inside the click. */
     reserveTab: reserveCheckoutTab,
     outstanding: billingCheckoutOutstanding(state),
