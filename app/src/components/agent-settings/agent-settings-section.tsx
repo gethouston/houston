@@ -5,7 +5,7 @@ import { AgentAdminIntegrations } from "../agent/agent-admin/agent-admin-integra
 import { AgentAdminKnowledge } from "../agent/agent-admin/agent-admin-knowledge";
 import { AgentAdminModel } from "../agent/agent-admin/agent-admin-model";
 import { AgentAdminSkills } from "../agent/agent-admin/agent-admin-skills";
-import { OrgLockedFieldset } from "../shell/org-locked-fieldset";
+import { OrgLockedFieldset, OrgLockedNote } from "../shell/org-locked-fieldset";
 import { PageHero } from "../shell/page-shell";
 import { AgentDelegationSection } from "./agent-delegation-section.tsx";
 import { AgentSettingsManage } from "./agent-settings-manage.tsx";
@@ -111,6 +111,7 @@ export function AgentSettingsSectionView({
       // Its own rows decide: moving the AI Employee out stays open.
       return (
         <div className="mx-auto w-full max-w-3xl px-6 pt-2 pb-12">
+          <OrgLockedNote />
           <AgentSettingsManage agent={agent} />
         </div>
       );
