@@ -178,6 +178,6 @@ describe("locked orgs on the fake gateway", () => {
     const { calls } = (await (
       await send("GET", "/__test__/plan-calls")
     ).json()) as { calls: unknown[] };
-    expect(calls).toEqual([{ route: "org_portal", body: { orgSlug: TEAM } }]);
+    expect(calls).toEqual([{ route: "portal", body: { orgSlug: TEAM } }]);
   });
 });

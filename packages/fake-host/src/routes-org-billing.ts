@@ -32,11 +32,11 @@ export function handleOrgBillingRoutes(
   const seed = state.planSeed();
   switch (segs[3]) {
     case "checkout":
-      state.recordPlanCall("org_checkout", { orgSlug: slug });
+      state.recordPlanCall("checkout", { orgSlug: slug });
       if (!owner) return notBillingOwner();
       return json({ url: seed?.checkoutUrl ?? state.FAKE_CHECKOUT_URL });
     case "portal":
-      state.recordPlanCall("org_portal", { orgSlug: slug });
+      state.recordPlanCall("portal", { orgSlug: slug });
       if (!owner) return notBillingOwner();
       return json({ url: seed?.portalUrl ?? state.FAKE_PORTAL_URL });
     case "free": {
