@@ -1,5 +1,5 @@
 import type { OrgsList } from "@houston/engine-adapter";
-import { activeSpaceOrgSlug, billingCheckoutOutstanding } from "@houston/sdk";
+import { billingCheckoutOutstanding, plusCheckoutOrgSlug } from "@houston/sdk";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { useCallback, useEffect, useSyncExternalStore } from "react";
 import { logAndReportError, reportError } from "../../lib/error-report";
@@ -42,7 +42,7 @@ export function usePlusCheckout() {
         queryFn: () => tauriOrg.listOrgs(),
       })
       .then((orgs) => {
-        const orgSlug = activeSpaceOrgSlug(null, orgs);
+        const orgSlug = plusCheckoutOrgSlug(orgs);
         if (!orgSlug) throw new Error("No personal org to check out for");
         return tracker.start(orgSlug, {
           create: tauriOrg.createPlusCheckout,
@@ -70,10 +70,12 @@ export function usePlusCheckout() {
 
 /**
  * Polls the orgs list while a checkout is open and brings the desktop window
- * forward once its org is paid up. Mounted once, by the shell's plan
- * lifecycle, so the watch outlives whichever dialog or card started it.
+ * forward (and refreshes the plan) once its org is paid up. Mounted once, by
+ * the shell's plan lifecycle, so the watch outlives whichever dialog or card
+ * started it.
  */
 export function usePlusCheckoutWatcher() {
+  const queryClient = useQueryClient();
   const polling = useCheckoutState().phase === "open";
   const orgs = useQuery<OrgsList>({
     queryKey: queryKeys.orgs(),
@@ -84,6 +86,8 @@ export function usePlusCheckoutWatcher() {
   });
   useEffect(() => {
     if (!tracker.observe(orgs.data)) return;
+    // The Plan screen still reads the per-person plan, which the poll skips.
+    void queryClient.invalidateQueries({ queryKey: queryKeys.plan() });
     void osFocusWindow().catch((error: unknown) =>
       reportError(
         "plus_checkout_focus",
@@ -91,5 +95,5 @@ export function usePlusCheckoutWatcher() {
         error,
       ),
     );
-  }, [orgs.data]);
+  }, [orgs.data, queryClient]);
 }

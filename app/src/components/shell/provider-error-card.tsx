@@ -22,6 +22,7 @@
 import type { ProviderError } from "@houston-ai/chat";
 import { useQueryClient } from "@tanstack/react-query";
 import { useEffect } from "react";
+import { useActiveOrgBilling } from "../../hooks/queries/use-billing";
 import { queryKeys } from "../../lib/query-keys";
 import { UnauthenticatedCard } from "./provider-error-cards/auth";
 import {
@@ -73,6 +74,7 @@ export function ProviderErrorCard({
   onApplyModel,
 }: ProviderErrorCardProps) {
   const queryClient = useQueryClient();
+  const { plusOffer } = useActiveOrgBilling();
   // Refresh the cached provider statuses when a status-changing card lands,
   // so the model picker and the AI Models page stop showing the provider as
   // connected while its inline card says otherwise.
@@ -95,7 +97,7 @@ export function ProviderErrorCard({
 
   switch (error.kind) {
     case "plan_message_limit":
-      return <PlanMessageLimitCard error={error} />;
+      return <PlanMessageLimitCard error={error} plusOffer={plusOffer} />;
     case "rate_limited":
       return (
         <RateLimitedCard

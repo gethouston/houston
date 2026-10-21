@@ -76,6 +76,23 @@ export function planFreeOrg(seed: Required<PlanSeed>): FreeOrg {
     : { available: true, orgSlug: null };
 }
 
+/** A free create's org while the slot was open: it now holds the slot. */
+export function freeOrgBilling(): OrgBilling {
+  return {
+    tier: "free",
+    status: "active",
+    lockAt: null,
+    lockReason: null,
+    freeSlot: true,
+    isBillingOwner: true,
+    seats: 1,
+    seatPriceCents: 1500,
+    seatGraceEndsAt: null,
+    usage: null,
+    routines: null,
+  };
+}
+
 /** A paid create's org: locked, unpaid, until its checkout completes. */
 export function unpaidOrgBilling(): OrgBilling {
   return {

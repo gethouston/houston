@@ -58,7 +58,7 @@ export function TeamMoveFlow({
         setState({
           step: "pick",
           creating: false,
-          createError: t("moveTeam.pick.failed"),
+          createError: t("moveTeam.pick.freeOrgTaken"),
         });
         return;
       }

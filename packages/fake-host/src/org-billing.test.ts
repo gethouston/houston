@@ -112,6 +112,31 @@ describe("org billing on the fake gateway", () => {
     });
   });
 
+  it("a free create while the slot is open takes it, so the next is refused", async () => {
+    await send("POST", "/__test__/plan", {
+      summary: { ...FREE, plan: "plus", usage: undefined },
+    });
+    expect((await orgs()).freeOrg).toEqual({ available: true, orgSlug: null });
+    const first = await send("POST", "/v1/orgs", {
+      name: "Acme",
+      plan: "free",
+    });
+    expect(first.status).toBe(201);
+    const created = (await first.json()) as { slug: string };
+    expect(created).toMatchObject({
+      billing: { tier: "free", freeSlot: true },
+    });
+    expect((await orgs()).freeOrg).toEqual({
+      available: false,
+      orgSlug: created.slug,
+    });
+    const second = await send("POST", "/v1/orgs", {
+      name: "Beta",
+      plan: "free",
+    });
+    expect(second.status).toBe(409);
+  });
+
   it("creates freely with no plan armed, as a gateway without org billing", async () => {
     const res = await send("POST", "/v1/orgs", { name: "Acme" });
     expect(res.status).toBe(201);

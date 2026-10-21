@@ -89,7 +89,7 @@ export function createSpacesModule(ctx: ModuleContext): SpacesModule {
 
   const module: SpacesModule = {
     listOrgs: () => listOrgs(scope),
-    createOrg: ({ name, plan }) => createOrg(scope, name, plan),
+    createOrg: ({ name, plan }) => createOrg(scope, name, plan ?? "free"),
     deleteOrg: (slug) => deleteOrg(scope, slug),
     acceptOrgInvite: (inviteId) => acceptOrgInvite(scope, inviteId),
     declineOrgInvite: (inviteId) => declineOrgInvite(scope, inviteId),

@@ -12,25 +12,27 @@ import { PlanMessageLimitCard } from "./provider-error-cards/plan-limit";
 
 /**
  * The composer's plan line, from the active org's pool: the usage hint from
- * 80% (with the way to Plus where Houston may sell, the managed-on-the-web
- * line in the store apps) and the limit card at 100%.
+ * 80% and the limit card at 100%. The way to Plus (or, in the store apps, the
+ * managed-on-the-web line) shows only where Plus would pay for this org.
  */
 export function usePlanComposerState() {
   const { t, i18n } = useTranslation("plan");
-  const { billing } = useActiveOrgBilling();
+  const { billing, plusOffer } = useActiveOrgBilling();
   const { data: plan } = usePlan();
   const checkout = usePlusCheckout();
   const openSettings = useUIStore((s) => s.openSettings);
   const percent = usagePercent(billing);
   const mode = planComposerMode(billing);
   const purchasable = canPurchaseInApp();
-  const offer = plan && purchasable ? planOffer(plan, i18n.language) : null;
+  const offer =
+    plan && purchasable && plusOffer ? planOffer(plan, i18n.language) : null;
   if (mode === "none" || percent === null) return { hint: null, limit: null };
   if (mode === "limit")
     return {
       hint: null,
       limit: (
         <PlanMessageLimitCard
+          plusOffer={plusOffer}
           error={{
             kind: "plan_message_limit",
             provider: "",
@@ -45,7 +47,7 @@ export function usePlanComposerState() {
       <div className="flex flex-wrap items-center gap-2 px-2 py-1 text-xs text-ink-muted md:gap-3">
         <span className="tabular-nums">{t("hint", { percent })}</span>
         {offer && <span>{t("offerHint", { amount: offer.amount })}</span>}
-        {purchasable ? (
+        {!plusOffer ? null : purchasable ? (
           <Button
             variant="link"
             className="h-auto p-0 text-xs font-normal text-link underline"

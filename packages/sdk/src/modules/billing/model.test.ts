@@ -73,6 +73,11 @@ describe("plan refresh timing", () => {
     expect(planLaunchRefreshDelay(skewed, NOW)).toBe(30_000);
   });
 
+  it("keeps polling a lock this clock sees as past until the gateway reports it", () => {
+    const early = paidOrgBilling({ lockAt: "2026-10-04T23:00:00Z" });
+    expect(planLaunchRefreshDelay(early, NOW)).toBe(30_000);
+  });
+
   it("does not poll a locked org or one with nothing scheduled", () => {
     expect(planLaunchRefreshDelay(paidOrgBilling(), NOW)).toBe(false);
     const locked = paidOrgBilling({
@@ -107,6 +112,20 @@ describe("the shell's plan dialog", () => {
         keepDismissed: true,
       }),
     ).toBeNull();
+  });
+
+  it("never asks a locked org for a routine write it would refuse", () => {
+    const locked = freeOrgBilling({
+      status: "locked",
+      lockAt: "2026-10-01T00:00:00Z",
+      lockReason: "migration",
+      routines: { ...FREE_ORG_ROUTINES, paused: true, needsChoice: true },
+    });
+    expect(planDialog(locked, closed)).toBeNull();
+    expect(planDialog(locked, { ...closed, keepRequested: true })).toBeNull();
+    expect(planDialog(locked, { ...closed, announcement: true })).toBe(
+      "announcement",
+    );
   });
 
   it("opens the chooser on request, but only for a free org", () => {

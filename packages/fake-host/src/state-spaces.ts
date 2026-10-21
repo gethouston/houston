@@ -28,6 +28,7 @@ import type {
   OrgSummary,
 } from "@houston/wire-types";
 import {
+  freeOrgBilling,
   PERSONAL_ORG_SLUG,
   planFreeOrg,
   planOrgBilling,
@@ -166,22 +167,31 @@ export function mintTeamSlug(): string {
 }
 
 /**
- * Mint an org with the caller as owner (`POST /v1/orgs`). A free create while
- * the armed slot is taken creates nothing; a paid create is locked until its
- * checkout completes, and answers that checkout beside the org.
+ * Mint an org with the caller as owner (`POST /v1/orgs`). While the plan is
+ * armed the free slot is honored: a free create while it is taken creates
+ * nothing, one while it is open takes it, and a paid create is locked until
+ * its checkout completes and answers that checkout beside the org. With no
+ * plan armed the org is legacy (`billing: null`), as on a gateway without
+ * org billing.
  */
 export function createTeamSpace(name: string, plan: OrgPlan): CreateOrgOutcome {
-  const slot = spaceFreeOrg();
+  const seed = planSeed();
+  const slot = seed ? planFreeOrg(seed) : null;
   if (plan === "free" && slot && !slot.available && slot.orgSlug)
     return { kind: "free_org_taken", freeOrgSlug: slot.orgSlug };
+  const slug = mintTeamSlug();
+  const billing =
+    plan === "paid" ? unpaidOrgBilling() : slot ? freeOrgBilling() : null;
   const row: FakeTeamWorkspace = {
-    id: `org:${mintTeamSlug()}`,
+    id: `org:${slug}`,
     name,
     role: "owner",
     memberCount: 1,
-    ...(plan === "paid" ? { billing: unpaidOrgBilling() } : {}),
+    ...(billing ? { billing } : {}),
   };
   state.teamWorkspaces = [...state.teamWorkspaces, row];
+  if (seed && plan === "free")
+    seed.freeOrg = { available: false, orgSlug: slug };
   const org = orgWire(row);
   return plan === "paid"
     ? { kind: "checkout", org, checkoutUrl: FAKE_CHECKOUT_URL }

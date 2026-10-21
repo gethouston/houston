@@ -3,6 +3,7 @@ import {
   activeOrgBilling,
   activeSpaceOrgSlug,
   planLaunchRefreshDelay,
+  plusOfferApplies,
 } from "@houston/sdk";
 import { useMutation, useQuery } from "@tanstack/react-query";
 import { canSeeBillingTab } from "../../lib/billing-gates";
@@ -47,6 +48,7 @@ import { useCapabilities } from "../use-capabilities";
  *
  * It refetches on focus, and at the next instant the org's billing changes on
  * its own (the pool's weekly reset, a scheduled lock), on the shared orgs key.
+ * `plusOffer` is whether buying Plus would pay for this org (`plusOfferApplies`).
  */
 export function useActiveOrgBilling() {
   const { capabilities } = useCapabilities();
@@ -68,6 +70,7 @@ export function useActiveOrgBilling() {
   return {
     orgSlug: enabled ? activeSpaceOrgSlug(team, orgs.data) : null,
     billing: enabled ? activeOrgBilling(team, orgs.data) : null,
+    plusOffer: enabled && plusOfferApplies(team, orgs.data),
     isLoading: orgs.isLoading,
   };
 }

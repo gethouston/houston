@@ -12,7 +12,7 @@ import type { OrgTabProps } from "./organization-view.tsx";
 
 /**
  * Organization > Billing (C8): the active team's seat subscription. Owner sees
- * the status, seat count, and either checkout buttons (monthly/annual) or a
+ * the status, seat count, and either the monthly checkout button or a
  * "Manage billing" portal button once subscribed; an admin sees the same info
  * read-only with an "ask the owner" note (C8 admin degrade asymmetry — only the
  * owner can check out). Inside a store app the owner reads that the plan is
@@ -68,12 +68,6 @@ export default function BillingTab({ ctx }: OrgTabProps) {
           <div className="flex flex-wrap gap-3">
             <AsyncButton onClick={() => checkout.mutateAsync()}>
               {t("billing.checkoutMonthly")}
-            </AsyncButton>
-            <AsyncButton
-              variant="secondary"
-              onClick={() => checkout.mutateAsync()}
-            >
-              {t("billing.checkoutAnnual")}
             </AsyncButton>
           </div>
         </div>

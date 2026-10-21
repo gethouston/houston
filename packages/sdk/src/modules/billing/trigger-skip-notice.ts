@@ -92,7 +92,23 @@ export function triggerPlanSkipNotice(
   if (!viewerIsRoutineCreator(viewer.createdBy, viewer.viewerId))
     return { ...base, reason: "creator_plan", actions: [] };
   if (billing?.tier !== "free") return null;
+  const notice = freeOrgNotice(skipped, item.routine_id, billing, viewer, base);
+  // A locked org refuses routine writes, so only the way to pay stays offered.
+  return notice && billing.status === "locked"
+    ? {
+        ...notice,
+        actions: notice.actions.filter((action) => action === "upgrade"),
+      }
+    : notice;
+}
 
+function freeOrgNotice(
+  skipped: TriggerPlanSkipped,
+  routineId: string,
+  billing: OrgBilling,
+  viewer: TriggerPlanSkipViewer,
+  base: Omit<NoticeBase, "actions">,
+): TriggerPlanSkipNotice | null {
   const routines = billing.routines;
   const paused = routines?.paused === true;
   switch (skipped.code) {
@@ -105,7 +121,7 @@ export function triggerPlanSkipNotice(
         actions: ["upgrade"],
       };
     case "plan_routine_limit":
-      if (isKept(routines, item.routine_id, viewer.agentSlug)) return null;
+      if (isKept(routines, routineId, viewer.agentSlug)) return null;
       return paused
         ? {
             ...base,

@@ -178,7 +178,7 @@ export function ShareViaTeamFlow({
     try {
       const created = createdOrg(await createTeam.mutateAsync(name));
       if (!created) {
-        setState((s) => createFailed(s, t("shareViaTeam.pick.failed")));
+        setState((s) => createFailed(s, t("shareViaTeam.pick.freeOrgTaken")));
         return;
       }
       setState(pickTeam({ slug: created.slug, name: created.name }));

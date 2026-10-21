@@ -21,7 +21,8 @@ export function usagePercent(billing: Billing): number | null {
 /**
  * The shell dialog to open: resume a free org's paused routines, choose the
  * one it keeps, or the per-person launch announcement (`announcement`, the
- * plan module's `planAnnouncementDue`) when no routine dialog is due.
+ * plan module's `planAnnouncementDue`) when no routine dialog is due. A locked
+ * org refuses both routine writes, so it is never asked either.
  */
 export function planDialog(
   billing: Billing,
@@ -32,10 +33,11 @@ export function planDialog(
     announcement: boolean;
   },
 ): "resume" | "keep" | "announcement" | null {
-  const routines = billing?.tier === "free" ? billing.routines : null;
+  const routineRules = billing?.tier === "free" && billing.status !== "locked";
+  const routines = routineRules ? billing.routines : null;
   if (routines?.paused && !state.resumeDismissed) return "resume";
   if (
-    billing?.tier === "free" &&
+    routineRules &&
     (state.keepRequested || (routines?.needsChoice && !state.keepDismissed))
   )
     return "keep";
@@ -59,17 +61,22 @@ const MIN_REFRESH_MS = 30_000;
 
 /**
  * Refetch at the next instant the org's billing changes on its own: the
- * weekly reset that unblocks the composer, and a scheduled lock. A lock
- * already past is the org's settled state, so it schedules nothing.
+ * weekly reset that unblocks the composer, and a scheduled lock. Once the
+ * gateway reports the org locked, the lock is settled and schedules nothing;
+ * before that, a lock this clock already sees as past keeps the floor's poll,
+ * since a clock running ahead may have asked before the lock took effect.
  */
 export function planLaunchRefreshDelay(
   billing: Billing,
   now: number,
 ): number | false {
-  const lockAt = billing?.lockAt ? Date.parse(billing.lockAt) : Number.NaN;
+  const lockAt =
+    billing?.lockAt && billing.status !== "locked"
+      ? Date.parse(billing.lockAt)
+      : Number.NaN;
   const dates = [
     billing?.usage ? Date.parse(billing.usage.resetsAt) : Number.NaN,
-    lockAt > now ? lockAt : Number.NaN,
+    lockAt,
   ].filter(Number.isFinite);
   if (dates.length === 0) return false;
   return Math.min(

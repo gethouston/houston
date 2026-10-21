@@ -42,8 +42,9 @@ const RAIL_PILL =
 /**
  * A free org's way to a paid plan, on every screen: where its weekly pool
  * stands (`planUpgradeView`: Free, the 80% warning, or the reached limit)
- * beside an Upgrade chip that opens Billing. A paid or legacy org and
- * deployments without org billing draw nothing.
+ * beside an Upgrade chip that opens Billing. It shows only where buying Plus
+ * would pay for this org (`plusOffer`); a paid or legacy org and deployments
+ * without org billing draw nothing.
  *
  * The rail draws a one-line pill between the update notice and the connect
  * rows, the icon rail the glyph alone with the same name as a tooltip. The
@@ -64,10 +65,10 @@ export function PlanUpgradeRow({
   nav?: NavMode;
 }) {
   const { t } = useTranslation("plan");
-  const { billing } = useActiveOrgBilling();
+  const { billing, plusOffer } = useActiveOrgBilling();
   const openSettings = useUIStore((s) => s.openSettings);
   const setMobileMoreOpen = useUIStore((s) => s.setMobileMoreOpen);
-  const view = planUpgradeView(billing);
+  const view = plusOffer ? planUpgradeView(billing) : null;
   const purchasable = canPurchaseInApp();
   if (!view || (!purchasable && view.status === "free")) return null;
 

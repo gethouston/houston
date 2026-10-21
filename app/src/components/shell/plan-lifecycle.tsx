@@ -34,6 +34,7 @@ import { useUIStore } from "../../stores/ui";
 import { BillingChangeModal } from "./billing-change-modal";
 import { PlanAnnouncementDialog } from "./plan-announcement-dialog";
 import { PlanWebNote } from "./plan-web-note";
+import { useOrgDismissal } from "./use-org-dismissal";
 import { createUserDismissal } from "./user-dismissal";
 
 export function PlanLifecycle() {
@@ -42,9 +43,9 @@ export function PlanLifecycle() {
   const planQuery = usePlan();
   const plan = planQuery.data;
   const org = useActiveOrgBilling();
-  const [resumeDismissed, setResumeDismissed] = useState(false);
+  const [resumeDismissed, setResumeDismissed] = useOrgDismissal(org.orgSlug);
   const [announcementClosed, setAnnouncementClosed] = useState(false);
-  const [keepDismissed, setKeepDismissed] = useState(false);
+  const [keepDismissed, dismissKeep] = useOrgDismissal(org.orgSlug);
   const keepRequested = useUIStore((s) => s.planKeepDialogOpen);
   const setKeepRequested = useUIStore((s) => s.setPlanKeepDialogOpen);
   const dialog = storeSafePlanDialog(
@@ -64,7 +65,7 @@ export function PlanLifecycle() {
   const [resumeDismissal] = useState(createUserDismissal);
   const [keepDismissal] = useState(createUserDismissal);
   const closeKeep = () => {
-    setKeepDismissed(true);
+    dismissKeep();
     setKeepRequested(false);
   };
 
@@ -74,9 +75,7 @@ export function PlanLifecycle() {
     <>
       <Dialog
         open={dialog === "resume"}
-        onOpenChange={resumeDismissal.onOpenChange(() =>
-          setResumeDismissed(true),
-        )}
+        onOpenChange={resumeDismissal.onOpenChange(() => setResumeDismissed())}
       >
         <DialogContent
           {...resumeDismissal.contentProps}
@@ -88,7 +87,7 @@ export function PlanLifecycle() {
             <DialogDescription>{t("resumeBody")}</DialogDescription>
           </DialogHeader>
           <DialogFooter className="flex-col gap-2 md:flex-row">
-            <Button variant="outline" onClick={() => setResumeDismissed(true)}>
+            <Button variant="outline" onClick={() => setResumeDismissed()}>
               {t("notNow")}
             </Button>
             <Button disabled={resume.isPending} onClick={() => resume.mutate()}>

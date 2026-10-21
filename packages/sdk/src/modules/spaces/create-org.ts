@@ -22,14 +22,15 @@ import type { CreateOrgOutcome, OrgPlan } from "./types";
  * slug. Every other failure throws so the UI surfaces the real reason.
  *
  * @param name What to call the new space, in the user's own words.
- * @param plan `paid` to create it on a paid plan; anything else is free.
+ * @param plan `free` unless the user asked for a paid organization; a paid
+ *   one starts a subscription.
  * @assistant group:spaces
  * @assistant confirm: money. A paid space starts a subscription, and a repeat leaves a second billable space standing.
  */
 export async function createOrg(
   scope: HttpScope,
   name: string,
-  plan: OrgPlan = "free",
+  plan: OrgPlan,
 ): Promise<CreateOrgOutcome> {
   try {
     const res = await httpRequest(scope, "/v1/orgs", {

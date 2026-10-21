@@ -114,6 +114,19 @@ describe("triggerPlanSkipNotice for the routine's creator", () => {
     ).toMatchObject({ reason: "inactive_resumed", actions: ["upgrade"] });
   });
 
+  it("offers only the way to pay in a locked org", () => {
+    const locked = freeOrgBilling({
+      status: "locked",
+      lockAt: "2026-10-01T00:00:00Z",
+      lockReason: "migration",
+      routines: { ...FREE_ORG_ROUTINES, paused: true },
+    });
+    for (const code of ["plan_routine_limit", "plan_inactive"] as const)
+      expect(
+        triggerPlanSkipNotice(item(code), locked, creator)?.actions,
+      ).toEqual(["upgrade"]);
+  });
+
   it("ignores a code it cannot explain", () => {
     const unknown = {
       routine_id: "r1",

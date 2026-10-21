@@ -180,7 +180,9 @@ describe("UpgradeCard", () => {
 
 describe("PlanMessageLimitCard", () => {
   const card = () =>
-    render(h(surfaces.PlanMessageLimitCard, { error: limitError }));
+    render(
+      h(surfaces.PlanMessageLimitCard, { error: limitError, plusOffer: true }),
+    );
 
   it("offers the upgrade off the store apps", () => {
     const html = card();
@@ -196,11 +198,22 @@ describe("PlanMessageLimitCard", () => {
     ok(html.includes(en.native.limitBodyNoTime), html);
     equal(html.includes(en.upgrade), false, html);
     equal(
-      markup(h(surfaces.PlanMessageLimitCard, { error: limitError })).includes(
-        "<button",
-      ),
+      markup(
+        h(surfaces.PlanMessageLimitCard, {
+          error: limitError,
+          plusOffer: true,
+        }),
+      ).includes("<button"),
       false,
     );
+  });
+
+  it("offers no upgrade where Plus would not pay for the org", () => {
+    const html = markup(
+      h(surfaces.PlanMessageLimitCard, { error: limitError, plusOffer: false }),
+    );
+    ok(text(html).includes(en.limitTitle));
+    ok(!html.includes("<button"));
   });
 });
 

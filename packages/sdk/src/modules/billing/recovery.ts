@@ -25,13 +25,13 @@ function changeWindowOpen(choice: BillingChoice | null, now: number): boolean {
  * surface offers them; empty for an org with nothing to recover from. Every
  * surface renders from this and decides nothing.
  *
- * Only the billing owner pays. With no live subscription (a free tier: an
- * unpaid, canceled or migration lock) the way out is `checkout`, or `claim_free`
- * to make this the free org instead, or `delete`. A paid tier still has its
- * subscription (past due, a failed payment, a cancel at period end), so the
- * way out is the Stripe `portal`. `change_pick` stays while the cutover's
- * change window is open. Owners and admins can `move_out` agents; everyone
- * who does not pay is told to `ask_owner`.
+ * Only the billing owner pays. A free tier, or a paid org locked for any reason
+ * but a failed payment, has no live subscription: the way out is `checkout`,
+ * or `claim_free` to make this the free org instead, or `delete`. A failed
+ * payment, a past due org and a cancel at period end still hold their Stripe
+ * subscription, so the way out is the `portal`. `change_pick` stays while the
+ * cutover's change window is open. Owners and admins can `move_out` agents;
+ * everyone who does not pay is told to `ask_owner`.
  */
 export function orgRecovery(
   billing: OrgBilling | null | undefined,
@@ -41,7 +41,9 @@ export function orgRecovery(
 ): OrgRecoveryAction[] {
   if (!billing || !orgRecovering(billing)) return [];
   const actions: OrgRecoveryAction[] = [];
-  const unpaid = billing.tier === "free";
+  const unpaid =
+    billing.tier === "free" ||
+    (billing.status === "locked" && billing.lockReason !== "payment_failed");
   if (billing.isBillingOwner) {
     actions.push(unpaid ? "checkout" : "portal");
     if (changeWindowOpen(choice, now)) actions.push("change_pick");

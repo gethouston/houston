@@ -54,13 +54,27 @@ describe("orgRecovery for the billing owner", () => {
         "portal",
         "move_out",
       ]);
-    const lapsed = paidOrgBilling({
+    const failed = paidOrgBilling({
       status: "locked",
       lockAt: PAST,
       lockReason: "payment_failed",
     });
-    expect(orgRecovery(lapsed, "owner", null, NOW)).toEqual([
+    expect(orgRecovery(failed, "owner", null, NOW)).toEqual([
       "portal",
+      "move_out",
+    ]);
+  });
+
+  it("pays, swaps or deletes a paid org whose subscription ended", () => {
+    const lapsed = paidOrgBilling({
+      status: "locked",
+      lockAt: PAST,
+      lockReason: "canceled",
+    });
+    expect(orgRecovery(lapsed, "owner", null, NOW)).toEqual([
+      "checkout",
+      "claim_free",
+      "delete",
       "move_out",
     ]);
   });

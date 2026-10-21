@@ -319,7 +319,8 @@
       "nameLabel": "Nome da equipe",
       "create": "Criar",
       "creating": "Criando…",
-      "failed": "Não conseguimos criar a equipe. Tente novamente."
+      "failed": "Não conseguimos criar a equipe. Tente novamente.",
+      "freeOrgTaken": "Você já tem uma equipe gratuita, então uma nova precisa de um plano pago. Escolha uma das suas equipes existentes."
     },
     "confirm": {
       "body": "{{agent}} será movido para {{team}}. Você e seus colegas vão encontrá-lo lá.",
@@ -385,7 +386,8 @@
       "nameLabel": "Nome do espaço",
       "create": "Criar",
       "creating": "Criando…",
-      "failed": "Não conseguimos criar o espaço. Tente novamente."
+      "failed": "Não conseguimos criar o espaço. Tente novamente.",
+      "freeOrgTaken": "Você já tem um espaço gratuito, então um novo precisa de um plano pago. Escolha um dos seus espaços existentes."
     },
     "confirm": {
       "body_one": "Mover {{team}} e seu {{count}} funcionário de IA para {{destination}}?",
@@ -433,7 +435,6 @@
     },
     "pickPlan": "Escolha um plano para incluir toda a sua equipe.",
     "checkoutMonthly": "Fazer upgrade, mensal",
-    "checkoutAnnual": "Fazer upgrade, anual",
     "manage": "Gerenciar cobrança",
     "askOwner": "Somente o proprietário pode alterar a cobrança. Peça a ele para fazer o upgrade da equipe.",
     "trialPill_one": "Resta {{count}} dia de teste",

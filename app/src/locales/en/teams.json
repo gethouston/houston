@@ -319,7 +319,8 @@
       "nameLabel": "Team name",
       "create": "Create",
       "creating": "Creating…",
-      "failed": "We couldn't create the team. Please try again."
+      "failed": "We couldn't create the team. Please try again.",
+      "freeOrgTaken": "You already have a free team, so a new one needs a paid plan. Pick one of your existing teams instead."
     },
     "confirm": {
       "body": "{{agent}} will move to {{team}}. You and your teammates will find it there.",
@@ -385,7 +386,8 @@
       "nameLabel": "Space name",
       "create": "Create",
       "creating": "Creating…",
-      "failed": "We couldn't create the space. Please try again."
+      "failed": "We couldn't create the space. Please try again.",
+      "freeOrgTaken": "You already have a free space, so a new one needs a paid plan. Pick one of your existing spaces instead."
     },
     "confirm": {
       "body_one": "Move {{team}} and its {{count}} AI Employee to {{destination}}?",
@@ -433,7 +435,6 @@
     },
     "pickPlan": "Choose a plan to add your whole team.",
     "checkoutMonthly": "Upgrade, monthly",
-    "checkoutAnnual": "Upgrade, yearly",
     "manage": "Manage billing",
     "askOwner": "Only the owner can change billing. Ask them to upgrade your team.",
     "trialPill_one": "{{count}} day left in trial",
