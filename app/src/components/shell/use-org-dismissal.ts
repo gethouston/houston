@@ -1,10 +1,13 @@
 import { useState } from "react";
 
 /**
- * A routine prompt's dismissal, held for the org it was dismissed in: each org
- * has its own routines, so switching to another org asks again.
+ * A routine prompt's dismissals, held per org: each org has its own routines,
+ * so an org the prompt was not dismissed in asks again.
  */
 export function useOrgDismissal(orgSlug: string | null) {
-  const [dismissedIn, setDismissedIn] = useState<string | null>();
-  return [dismissedIn === orgSlug, () => setDismissedIn(orgSlug)] as const;
+  const [dismissedIn, setDismissedIn] = useState<ReadonlySet<string | null>>(
+    () => new Set(),
+  );
+  const dismiss = () => setDismissedIn((orgs) => new Set(orgs).add(orgSlug));
+  return [dismissedIn.has(orgSlug), dismiss] as const;
 }

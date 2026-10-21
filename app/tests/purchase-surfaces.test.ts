@@ -213,6 +213,8 @@ describe("PlanMessageLimitCard", () => {
       h(surfaces.PlanMessageLimitCard, { error: limitError, plusOffer: false }),
     );
     ok(text(html).includes(en.limitTitle));
+    ok(text(html).includes(en.limitBodyResetOnlyNoTime));
+    ok(!text(html).includes("Plus"));
     ok(!html.includes("<button"));
   });
 });

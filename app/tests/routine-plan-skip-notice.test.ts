@@ -46,6 +46,7 @@ const creator: TriggerPlanSkipViewer = {
   createdBy: "u1",
   viewerId: "u1",
   agentSlug: "agent-a",
+  plusOffer: true,
 };
 
 function noticeFor(

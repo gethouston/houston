@@ -320,7 +320,7 @@
       "create": "Create",
       "creating": "Creating…",
       "failed": "We couldn't create the team. Please try again.",
-      "freeOrgTaken": "You already have a free team, so a new one needs a paid plan. Pick one of your existing teams instead."
+      "freeOrgTaken": "You already have a free team, so a new one needs a paid plan."
     },
     "confirm": {
       "body": "{{agent}} will move to {{team}}. You and your teammates will find it there.",
@@ -387,7 +387,7 @@
       "create": "Create",
       "creating": "Creating…",
       "failed": "We couldn't create the space. Please try again.",
-      "freeOrgTaken": "You already have a free space, so a new one needs a paid plan. Pick one of your existing spaces instead."
+      "freeOrgTaken": "You already have a free space, so a new one needs a paid plan."
     },
     "confirm": {
       "body_one": "Move {{team}} and its {{count}} AI Employee to {{destination}}?",

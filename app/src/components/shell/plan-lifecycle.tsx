@@ -163,7 +163,7 @@ export function PlanLifecycle() {
             ))}
           </div>
           <DialogFooter>
-            {canPurchaseInApp() ? (
+            {!org.plusOffer ? null : canPurchaseInApp() ? (
               <Button
                 variant="outline"
                 onClick={() => {

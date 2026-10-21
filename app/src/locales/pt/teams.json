@@ -320,7 +320,7 @@
       "create": "Criar",
       "creating": "Criando…",
       "failed": "Não conseguimos criar a equipe. Tente novamente.",
-      "freeOrgTaken": "Você já tem uma equipe gratuita, então uma nova precisa de um plano pago. Escolha uma das suas equipes existentes."
+      "freeOrgTaken": "Você já tem uma equipe gratuita, então uma nova precisa de um plano pago."
     },
     "confirm": {
       "body": "{{agent}} será movido para {{team}}. Você e seus colegas vão encontrá-lo lá.",
@@ -387,7 +387,7 @@
       "create": "Criar",
       "creating": "Criando…",
       "failed": "Não conseguimos criar o espaço. Tente novamente.",
-      "freeOrgTaken": "Você já tem um espaço gratuito, então um novo precisa de um plano pago. Escolha um dos seus espaços existentes."
+      "freeOrgTaken": "Você já tem um espaço gratuito, então um novo precisa de um plano pago."
     },
     "confirm": {
       "body_one": "Mover {{team}} e seu {{count}} funcionário de IA para {{destination}}?",

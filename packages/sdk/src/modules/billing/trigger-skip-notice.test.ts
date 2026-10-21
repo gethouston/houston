@@ -21,6 +21,7 @@ const creator: TriggerPlanSkipViewer = {
   createdBy: "u1",
   viewerId: "u1",
   agentSlug: "agent-a",
+  plusOffer: true,
 };
 const member: TriggerPlanSkipViewer = { ...creator, viewerId: "u2" };
 const item = (code: TriggerPlanSkipCode, count = 21): TriggerStatusItem => ({
@@ -121,10 +122,27 @@ describe("triggerPlanSkipNotice for the routine's creator", () => {
       lockReason: "migration",
       routines: { ...FREE_ORG_ROUTINES, paused: true },
     });
-    for (const code of ["plan_routine_limit", "plan_inactive"] as const)
+    for (const code of ["plan_routine_limit", "plan_inactive"] as const) {
       expect(
         triggerPlanSkipNotice(item(code), locked, creator)?.actions,
       ).toEqual(["upgrade"]);
+      expect(
+        triggerPlanSkipNotice(item(code), locked, {
+          ...creator,
+          plusOffer: false,
+        })?.actions,
+      ).toEqual([]);
+    }
+  });
+
+  it("never offers Plus where it would not pay for the org", () => {
+    const team = { ...creator, plusOffer: false };
+    expect(
+      triggerPlanSkipNotice(item("plan_routine_limit"), free, team)?.actions,
+    ).toEqual(["keep_routine"]);
+    expect(
+      triggerPlanSkipNotice(item("plan_min_interval"), free, team)?.actions,
+    ).toEqual([]);
   });
 
   it("ignores a code it cannot explain", () => {

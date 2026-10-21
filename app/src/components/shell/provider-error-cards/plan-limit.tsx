@@ -31,13 +31,17 @@ export function PlanMessageLimitCard({
   const time = Number.isFinite(Date.parse(error.resets_at))
     ? formatLocalDateTime(error.resets_at, i18n.language)
     : null;
-  const description = purchasable
+  const description = !plusOffer
     ? time
-      ? t("plan:limitBody", { time })
-      : t("plan:limitBodyNoTime")
-    : time
-      ? t("plan:native.limitBody", { time })
-      : t("plan:native.limitBodyNoTime");
+      ? t("plan:limitBodyResetOnly", { time })
+      : t("plan:limitBodyResetOnlyNoTime")
+    : purchasable
+      ? time
+        ? t("plan:limitBody", { time })
+        : t("plan:limitBodyNoTime")
+      : time
+        ? t("plan:native.limitBody", { time })
+        : t("plan:native.limitBodyNoTime");
   return (
     <div className="w-full px-1 py-2">
       <RowCard

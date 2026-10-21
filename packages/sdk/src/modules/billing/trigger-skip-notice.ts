@@ -32,10 +32,11 @@ export type TriggerPlanSkipReason =
   | "creator_plan";
 
 /**
- * What the person can do about it. `upgrade` opens Billing, `keep_routine`
- * opens the free org's "choose a routine to keep" chooser, `resume`
- * resumes routines paused while away (`resumeRoutines`). Listed in the order
- * a surface offers them, primary first.
+ * What the person can do about it. `upgrade` opens Billing (only where Plus
+ * pays for the org), `keep_routine` opens the free org's "choose a routine to
+ * keep" chooser, `resume` resumes routines paused while away
+ * (`resumeRoutines`). Listed in the order a surface offers them, primary
+ * first.
  */
 export type TriggerPlanSkipAction = "resume" | "keep_routine" | "upgrade";
 
@@ -59,6 +60,8 @@ export interface TriggerPlanSkipViewer {
   viewerId: string | null | undefined;
   /** The agent's slug (a hosted agent's client-side id). */
   agentSlug: string;
+  /** Buying Plus would pay for this org (`plusOfferApplies`). */
+  plusOffer: boolean;
 }
 
 /** A free org's minimum interval when its billing does not state one. */
@@ -93,13 +96,16 @@ export function triggerPlanSkipNotice(
     return { ...base, reason: "creator_plan", actions: [] };
   if (billing?.tier !== "free") return null;
   const notice = freeOrgNotice(skipped, item.routine_id, billing, viewer, base);
-  // A locked org refuses routine writes, so only the way to pay stays offered.
-  return notice && billing.status === "locked"
-    ? {
-        ...notice,
-        actions: notice.actions.filter((action) => action === "upgrade"),
-      }
-    : notice;
+  if (!notice) return null;
+  // Upgrade buys Plus, which pays for this org only where it applies; a locked
+  // org refuses routine writes, so resume and keep go too.
+  const locked = billing.status === "locked";
+  return {
+    ...notice,
+    actions: notice.actions.filter((action) =>
+      action === "upgrade" ? viewer.plusOffer : !locked,
+    ),
+  };
 }
 
 function freeOrgNotice(

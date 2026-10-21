@@ -31,7 +31,10 @@ describe("useOrgDismissal", () => {
     assert.equal(dismissed(), "true");
     await render("00000000000000bb");
     assert.equal(dismissed(), "false");
+    await act(() => dismiss());
     await render("00000000000000aa");
+    assert.equal(dismissed(), "true");
+    await render("00000000000000bb");
     assert.equal(dismissed(), "true");
   });
 });

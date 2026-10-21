@@ -49,7 +49,7 @@ export function RoutinePlanSkipNotice({
     ...agentTriggerStatusQueryOptions(agentId, routineIds),
     enabled: !!routine.trigger,
   });
-  const { billing } = useActiveOrgBilling();
+  const { billing, plusOffer } = useActiveOrgBilling();
   const { data: session } = useSession();
   const openSettings = useUIStore((s) => s.openSettings);
   const openKeepChooser = useUIStore((s) => s.setPlanKeepDialogOpen);
@@ -63,6 +63,7 @@ export function RoutinePlanSkipNotice({
       viewerId: session?.uid,
       // A hosted agent's client-side id IS its gateway slug.
       agentSlug: agentId,
+      plusOffer,
     },
   );
   if (!notice) return null;
