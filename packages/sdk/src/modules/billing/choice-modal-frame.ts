@@ -17,9 +17,10 @@ export type ChoiceModalPhase =
 
 /**
  * What keeps the frame's step past the modal. `none`: the frame follows the
- * modal. `until_answer`: the modal closed under an open picker, as the stored
- * pick's cache write does before or after the save's own answer lands; the
- * picker stays until {@link finishPicking} or a close settles it.
+ * modal. `until_answer`: the modal closed under an open picker, or a `confirm`
+ * notice turned `applied` under the frame, as the stored pick's cache write
+ * does before or after the save's own answer lands; the step stays until
+ * {@link finishPicking}, {@link finishConfirming} or a close settles it.
  * `behind_dialog`: a plan dialog hides the success step, which shows again
  * once that dialog is gone.
  */
@@ -71,11 +72,12 @@ export function nextChoiceModalFrame(
         : { ...frame, hold: "until_answer" };
     return { ...frame, open: false, hold: "none" };
   }
-  // A stored change can turn `confirm` into `applied` before the save's own
-  // answer lands; the picker waits for that answer as if the modal closed.
+  // A stored change or confirmation can turn `confirm` into `applied` before
+  // the save's own answer lands; the frame waits for that answer
+  // ({@link finishPicking}, {@link finishConfirming}) as if the modal closed,
+  // so the read-only note never flashes in its place.
   if (
     frame.open &&
-    frame.phase.step === "picking" &&
     frame.shown?.notice.kind === "confirm" &&
     modal.notice.kind === "applied"
   )

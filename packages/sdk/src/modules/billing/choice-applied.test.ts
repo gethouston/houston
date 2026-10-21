@@ -202,6 +202,23 @@ describe("the confirm frame", () => {
     expect(finishPicking(held, saved).phase).toMatchObject({ step: "done" });
   });
 
+  it("holds the confirm intro when its own confirmation turns the notice into applied", () => {
+    const confirmed = choice({ ...provisional, provisional: false });
+    const held = nextChoiceModalFrame(intro, choiceModal(confirmed, modalAt()));
+    expect(held).toMatchObject({
+      open: true,
+      phase: { step: "intro" },
+      hold: "until_answer",
+      shown: { notice: { kind: "confirm" } },
+    });
+    expect(
+      finishConfirming(held, { kind: "saved", choice: confirmed }),
+    ).toEqual({
+      frame: { ...held, open: false, hold: "none" },
+      dismiss: true,
+    });
+  });
+
   it("settles the notice when the success step of a change closes", () => {
     const done = finishPicking(startPicking(intro), saved);
     expect(closeDismisses(done)).toBe(true);
