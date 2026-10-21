@@ -42,6 +42,8 @@ const render = (code, file) =>
     enterprise,
   });
 
+const escapeRegExp = (text) => text.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
+
 test("the team plan is 15 per seat per month and nothing else", () => {
   const data = pricing();
   assert.equal(data.teamMonthly, 15);
@@ -49,6 +51,17 @@ test("the team plan is 15 per seat per month and nothing else", () => {
   assert.equal("teamAnnual" in data, false);
   assert.equal("trialDays" in data, false);
   for (const code of locales.order) assert.ok(data.currency[code], code);
+});
+
+test("the landing page includes every pricing partial", async () => {
+  const source = await readFile(`${includes}/landing.njk`, "utf8");
+  for (const file of [
+    "landing/pricing.njk",
+    "landing/faq.njk",
+    "landing/json-ld.njk",
+  ]) {
+    assert.ok(source.includes(`{% include "${file}" %}`), file);
+  }
 });
 
 test("no template reads a retired price field", async () => {
@@ -98,15 +111,15 @@ for (const code of locales.order) {
 
   test(`${code}: the pricing cards show the monthly seat price`, () => {
     const html = render(code, "landing/pricing.njk");
-    assert.ok(html.includes(`${currency}15</span>`), "team price");
-    assert.ok(html.includes(`${currency}0</span>`), "free price");
+    assert.ok(html.includes(`class="amount">${currency}15<`), "team price");
+    assert.ok(html.includes(`class="amount">${currency}0<`), "free price");
     assert.doesNotMatch(html, /\{(price|days)\}/);
     assert.ok(html.includes(t.pricing.team.cta));
   });
 
   test(`${code}: the FAQ renders the seat price`, () => {
     const html = render(code, "landing/faq.njk");
-    assert.ok(html.includes(`${currency}15 `), "seat price in an answer");
+    assert.match(html, new RegExp(`[\\s>]${escapeRegExp(currency)}15 `));
     assert.doesNotMatch(html, /\{(price|days)\}/);
   });
 
@@ -119,5 +132,7 @@ for (const code of locales.order) {
     assert.equal(team.price, "15");
     assert.equal(team.priceSpecification.price, "15");
     assert.equal(team.priceSpecification.referenceQuantity.unitCode, "MON");
+    assert.equal(team.priceSpecification.unitText, t.pricing.team.unit);
+    assert.ok(t.pricing.team.unit);
   });
 }

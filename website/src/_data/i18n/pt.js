@@ -23,13 +23,13 @@ export default {
   meta: {
     title: "Houston: agentes de IA que fazem o trabalho de verdade",
     description:
-      "O Houston é o espaço de trabalho compartilhado onde pessoas e agentes de IA trabalham juntos. Agentes compartilhados, um único quadro de missões e papéis para o time inteiro. Grátis para começar com o time inteiro.",
+      "O Houston é o espaço de trabalho compartilhado onde pessoas e agentes de IA trabalham juntos. Agentes compartilhados, um único quadro de missões e papéis para o time inteiro. Grátis para começar.",
     ogTitle: "Houston: agentes de IA que fazem o trabalho de verdade",
     ogDescription:
-      "O Houston é o espaço de trabalho compartilhado onde pessoas e agentes de IA trabalham juntos. Agentes compartilhados, um único quadro de missões e papéis para o time inteiro. Grátis para começar com o time inteiro.",
+      "O Houston é o espaço de trabalho compartilhado onde pessoas e agentes de IA trabalham juntos. Agentes compartilhados, um único quadro de missões e papéis para o time inteiro. Grátis para começar.",
     twTitle: "Houston: agentes de IA que fazem o trabalho de verdade",
     twDescription:
-      "O Houston é o espaço de trabalho compartilhado onde pessoas e agentes de IA trabalham juntos. Agentes compartilhados, um único quadro de missões e papéis para o time inteiro. Grátis para começar com o time inteiro.",
+      "O Houston é o espaço de trabalho compartilhado onde pessoas e agentes de IA trabalham juntos. Agentes compartilhados, um único quadro de missões e papéis para o time inteiro. Grátis para começar.",
     jsonLdDescription:
       "App de computador gratuito que coloca agentes de IA para fazer trabalho de verdade por você, com a assinatura de ChatGPT ou Claude que você já tem e mais de 1.500 integrações.",
     ogImageAlt: "Houston: agentes de IA que fazem o trabalho de verdade.",
@@ -393,6 +393,7 @@ export default {
       chip: "Mais popular",
       name: "Time",
       per: "/pessoa/mês",
+      unit: "por pessoa por mês",
       note: "cobrado todo mês do dono",
       items: [
         "Tudo do plano Grátis",
@@ -523,9 +524,9 @@ export default {
               "Cada membro de uma organização no plano Time, incluindo o dono. Convites pendentes não são cobrados, e a cobrança é proporcional quando alguém entra ou sai.",
           },
           {
-            q: "Posso ter mais de uma organização?",
+            q: "Posso ser dono de mais de uma organização?",
             aHtml:
-              "Pode. Uma das organizações das quais você é dono pode ser grátis, e todas as outras ficam no plano Time desde o início. Assine ou apague a grátis e você pode criar outra grátis.",
+              "Pode. Uma das organizações das quais você é dono pode ser grátis, e todas as outras ficam no plano Time desde o início. Se você passar a grátis para o plano Time ou apagá-la, pode criar outra grátis.",
           },
           {
             q: "O que acontece quando a cota semanal acaba?",
@@ -564,7 +565,7 @@ export default {
 
   footer: {
     blurb:
-      "O espaço de trabalho onde pessoas e agentes de IA trabalham juntos. Grátis para começar, e para o time inteiro quando você quiser.",
+      "O espaço de trabalho onde pessoas e agentes de IA trabalham juntos. Grátis para começar com o time inteiro.",
     download: "Baixar",
     mac: "macOS",
     windows: "Windows",

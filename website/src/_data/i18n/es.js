@@ -24,13 +24,13 @@ export default {
   meta: {
     title: "Houston: agentes de IA que sí hacen el trabajo",
     description:
-      "Houston es el espacio de trabajo compartido donde las personas y los agentes de IA trabajan juntos. Agentes compartidos, un solo tablero de misiones y roles para todo tu equipo. Gratis para empezar con todo tu equipo.",
+      "Houston es el espacio de trabajo compartido donde las personas y los agentes de IA trabajan juntos. Agentes compartidos, un solo tablero de misiones y roles para todo tu equipo. Gratis para empezar.",
     ogTitle: "Houston: agentes de IA que sí hacen el trabajo",
     ogDescription:
-      "Houston es el espacio de trabajo compartido donde las personas y los agentes de IA trabajan juntos. Agentes compartidos, un solo tablero de misiones y roles para todo tu equipo. Gratis para empezar con todo tu equipo.",
+      "Houston es el espacio de trabajo compartido donde las personas y los agentes de IA trabajan juntos. Agentes compartidos, un solo tablero de misiones y roles para todo tu equipo. Gratis para empezar.",
     twTitle: "Houston: agentes de IA que sí hacen el trabajo",
     twDescription:
-      "Houston es el espacio de trabajo compartido donde las personas y los agentes de IA trabajan juntos. Agentes compartidos, un solo tablero de misiones y roles para todo tu equipo. Gratis para empezar con todo tu equipo.",
+      "Houston es el espacio de trabajo compartido donde las personas y los agentes de IA trabajan juntos. Agentes compartidos, un solo tablero de misiones y roles para todo tu equipo. Gratis para empezar.",
     jsonLdDescription:
       "App de escritorio gratuita que pone agentes de IA a hacer trabajo real por ti, con la suscripción de ChatGPT o Claude que ya tienes y más de 1.500 integraciones.",
     ogImageAlt: "Houston: agentes de IA que sí hacen el trabajo.",
@@ -394,6 +394,7 @@ export default {
       chip: "El más popular",
       name: "Equipo",
       per: "/persona/mes",
+      unit: "por persona al mes",
       note: "facturado cada mes al dueño",
       items: [
         "Todo lo del plan Gratis",
@@ -528,7 +529,7 @@ export default {
               "Cada miembro de una organización con plan Equipo, incluido el dueño. Las invitaciones pendientes no se cobran, y el cobro se prorratea cuando alguien entra o sale.",
           },
           {
-            q: "¿Puedo tener más de una organización?",
+            q: "¿Puedo ser dueño de más de una organización?",
             aHtml:
               "Sí. Una de las organizaciones de las que eres dueño puede ser gratis, y todas las demás van con el plan Equipo desde el inicio. Si pasas la gratis al plan Equipo o la borras, puedes crear otra gratis.",
           },
@@ -569,7 +570,7 @@ export default {
 
   footer: {
     blurb:
-      "El espacio de trabajo donde las personas y los agentes de IA trabajan juntos. Gratis para empezar, y para todo el equipo cuando estés listo.",
+      "El espacio de trabajo donde las personas y los agentes de IA trabajan juntos. Gratis para empezar con todo tu equipo.",
     download: "Descargar",
     mac: "macOS",
     windows: "Windows",

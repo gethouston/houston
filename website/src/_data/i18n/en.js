@@ -22,13 +22,13 @@ export default {
   meta: {
     title: "Houston: AI agents that actually do the work",
     description:
-      "Houston is the shared workspace where people and AI agents work together. Shared agents, one mission board, roles for your whole team. Free to start with your whole team.",
+      "Houston is the shared workspace where people and AI agents work together. Shared agents, one mission board, roles for your whole team. Free to start.",
     ogTitle: "Houston: AI agents that actually do the work",
     ogDescription:
-      "Houston is the shared workspace where people and AI agents work together. Shared agents, one mission board, roles for your whole team. Free to start with your whole team.",
+      "Houston is the shared workspace where people and AI agents work together. Shared agents, one mission board, roles for your whole team. Free to start.",
     twTitle: "Houston: AI agents that actually do the work",
     twDescription:
-      "Houston is the shared workspace where people and AI agents work together. Shared agents, one mission board, roles for your whole team. Free to start with your whole team.",
+      "Houston is the shared workspace where people and AI agents work together. Shared agents, one mission board, roles for your whole team. Free to start.",
     jsonLdDescription:
       "Free desktop app that runs AI agents which do real work for you, on your existing ChatGPT or Claude subscription, with over 1,500 integrations.",
     ogImageAlt: "Houston: AI agents that actually do the work.",
@@ -380,6 +380,8 @@ export default {
       chip: "Most popular",
       name: "Team",
       per: "/seat/mo",
+      // Structured-data unit for the price, read by search engines.
+      unit: "per seat per month",
       note: "billed monthly to the owner",
       items: [
         "Everything in Free",
@@ -551,7 +553,7 @@ export default {
 
   footer: {
     blurb:
-      "The workspace where people and AI agents work together. Free to start, for the whole team when you are ready.",
+      "The workspace where people and AI agents work together. Free to start with your whole team.",
     download: "Download",
     mac: "macOS",
     windows: "Windows",
