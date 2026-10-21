@@ -11,6 +11,7 @@ import {
   resolveLearningProvenance,
 } from "../../../lib/learning-provenance";
 import type { AgentSectionProps } from "../../agent-settings/agent-settings-nav.ts";
+import { OrgLockedFieldset } from "../../shell/org-locked-fieldset";
 import { PageHero } from "../../shell/page-shell";
 import { LearningsContent } from "../learnings-content";
 
@@ -54,14 +55,16 @@ export function AgentAdminKnowledge({ agent }: AgentSectionProps) {
         title={t("teams:agentAdmin.rows.knowledge.title")}
         subtitle={t("agents:learnings.helper")}
       />
-      <LearningsContent
-        layout="section"
-        showHelper={false}
-        entries={rows}
-        onAdd={writes.add}
-        onRemove={writes.remove}
-        onUpdate={writes.update}
-      />
+      <OrgLockedFieldset>
+        <LearningsContent
+          layout="section"
+          showHelper={false}
+          entries={rows}
+          onAdd={writes.add}
+          onRemove={writes.remove}
+          onUpdate={writes.update}
+        />
+      </OrgLockedFieldset>
     </div>
   );
 }

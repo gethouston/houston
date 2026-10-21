@@ -1,7 +1,7 @@
 import { HoustonHelmet } from "@houston-ai/core";
 import { FolderPlus } from "lucide-react";
 import { useTranslation } from "react-i18next";
-import { useCanCreateAgents } from "../../hooks/use-can-create-agents";
+import { useCanAddAgentsHere } from "../../hooks/use-can-create-agents";
 import { useSidebarLayout } from "../../hooks/use-sidebar-layout";
 import type { TeamView } from "../../lib/teams-model";
 import { useUIStore } from "../../stores/ui";
@@ -35,7 +35,7 @@ export function AgentsHomeHeader({
   onSelect: (teamId: string | null) => void;
 }) {
   const { t } = useTranslation("shell");
-  const { canCreate } = useCanCreateAgents();
+  const canCreate = useCanAddAgentsHere();
   const workspaceId = useWorkspaceStore((store) => store.current?.id);
   const sidebar = useSidebarLayout(workspaceId);
 

@@ -1,5 +1,6 @@
 import { useTranslation } from "react-i18next";
 import { useSession } from "../../hooks/use-session";
+import { OrgLockedFieldset } from "../shell/org-locked-fieldset";
 import { CreateOrganizationInviteEmpty } from "./create-organization-invite-empty";
 import type { OrgTabProps } from "./organization-view";
 import { PeopleAddRow } from "./people-add-row";
@@ -29,7 +30,10 @@ export default function MembersTab({ ctx }: OrgTabProps) {
   return (
     <div className="flex flex-col gap-8 py-6">
       {canManage ? (
-        <PeopleAddRow />
+        // A locked org takes no one new; removing people stays open below.
+        <OrgLockedFieldset>
+          <PeopleAddRow />
+        </OrgLockedFieldset>
       ) : (
         <p className="text-sm text-ink-muted">{t("people.adminNotice")}</p>
       )}

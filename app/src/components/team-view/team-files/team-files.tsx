@@ -5,6 +5,7 @@ import {
 } from "@houston-ai/agent";
 import { useState } from "react";
 import { useTranslation } from "react-i18next";
+import { useOrgWriteLock } from "../../../hooks/use-org-write-lock";
 import type { Agent } from "../../../lib/types";
 import { useAgentFiles } from "../../agent/agent-files";
 import { PageHeaderTools } from "../../shell/page-header/page-header-tools";
@@ -20,6 +21,7 @@ export function TeamFiles({ agent }: { agent: Agent }) {
   }>({ key: "name", dir: "asc" });
   const [folderRequest, setFolderRequest] = useState(0);
   const files = useAgentFiles(agent);
+  const { locked } = useOrgWriteLock();
   const requestNewFolder = () => setFolderRequest((current) => current + 1);
   const onSort = (key: SortKey) =>
     setSort((current) => ({
@@ -32,7 +34,10 @@ export function TeamFiles({ agent }: { agent: Agent }) {
       <PageHeaderTools>
         {() => (
           <TeamFilesToolbar
-            actions={{ ...files.actions, newFolder: requestNewFolder }}
+            actions={{
+              ...files.actions,
+              newFolder: locked ? undefined : requestNewFolder,
+            }}
             query={query}
             onQueryChange={setQuery}
           />

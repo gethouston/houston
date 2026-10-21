@@ -2,6 +2,7 @@ import { parseJobDescription } from "@houston/sdk/job-description";
 import { Button, Spinner } from "@houston-ai/core";
 import { useTranslation } from "react-i18next";
 import { useInstructions, useSaveInstructions } from "../../../hooks/queries";
+import { useOrgWriteLock } from "../../../hooks/use-org-write-lock";
 import type { AgentSectionProps } from "../../agent-settings/agent-settings-nav.ts";
 import { ContextEditorBox } from "../../context/context-editor";
 import { withJobBody, withJobField } from "../../context/job-brief-model";
@@ -40,6 +41,8 @@ export function AgentAdminInstructions({ agent }: AgentSectionProps) {
     isFetching,
   } = useInstructions(path);
   const save = useSaveInstructions(path);
+  // The rows sit in the section's locked fieldset; the editor is no control.
+  const { locked } = useOrgWriteLock();
   const text = instructions ?? "";
   const { fields, body } = parseJobDescription(text);
   // A row pick paints at once; a refusal puts the old answer back and says so.
@@ -90,6 +93,7 @@ export function AgentAdminInstructions({ agent }: AgentSectionProps) {
                 accessible name too. */}
             <ContextEditorBox
               layout={{ rows: 12 }}
+              readOnly={locked}
               ariaLabel={t("instructions.specific")}
               content={body}
               onSave={async (next) => {

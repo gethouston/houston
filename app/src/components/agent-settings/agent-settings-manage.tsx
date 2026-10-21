@@ -8,15 +8,14 @@ import {
 } from "lucide-react";
 import { useState } from "react";
 import { useTranslation } from "react-i18next";
-import { useAgentActions } from "../../hooks/use-agent-actions";
 import { useCapabilities } from "../../hooks/use-capabilities";
+import { useOrgWriteLock } from "../../hooks/use-org-write-lock";
 import { usePersonalSpace } from "../../hooks/use-personal-space";
 import { useTeams } from "../../hooks/use-teams";
 import { apiKeysSupported } from "../../lib/api-keys-model";
 import { teamOfAgent } from "../../lib/teams-model";
 import type { Agent } from "../../lib/types";
 import { useAgentStore } from "../../stores/agents";
-import { useWorkspaceStore } from "../../stores/workspaces";
 import { AgentShareSurfaces } from "../agent/agent-share-surfaces";
 import { AgentCopyDialog } from "../agent-actions/agent-copy-action";
 import { AgentDeleteDialog } from "../agent-actions/agent-delete-action";
@@ -26,32 +25,22 @@ import {
   AgentMovePickerDialog,
   type MoveTarget,
 } from "../agent-actions/agent-move-action";
-import {
-  type AgentIdentityPatch,
-  useAgentIdentitySave,
-} from "../agent-actions/use-agent-identity-save";
 import { useCopyAgent } from "../agent-actions/use-copy-agent";
 import { SettingsCard, SettingsRow } from "../settings/settings-row";
-import { useSidebarLayout } from "../shell/../../hooks/use-sidebar-layout";
 import { useAgentSettingsNav } from "../team-view/agent-settings-nav-store";
 import { useMoveAgentTeam } from "../team-view/use-move-agent-team";
 import { AgentApiAccess } from "./agent-api-access";
+import { useAgentManageWrites } from "./use-agent-manage-writes";
 
 export function AgentSettingsManage({ agent }: { agent: Agent }) {
   const { t } = useTranslation(["shell", "teams", "agents", "settings"]);
   const personalSpace = usePersonalSpace();
   const teams = useTeams();
   const currentTeam = teamOfAgent(teams, agent.id);
-  const workspaceId = useWorkspaceStore((state) => state.current?.id);
   const agents = useAgentStore((state) => state.agents);
-  const sidebar = useSidebarLayout(workspaceId);
-  const actions = useAgentActions({
-    t,
-    workspaceId,
-    agentNamesById: agents,
-    remapAgentId: sidebar.remapAgentId,
-  });
-  const saveIdentity = useAgentIdentitySave(agent, t);
+  const writes = useAgentManageWrites(agent);
+  // A locked org refuses these writes; moving the AI Employee stays open.
+  const { locked } = useOrgWriteLock();
   const moveAgent = useMoveAgentTeam();
   const copyAgent = useCopyAgent();
   const [identityOpen, setIdentityOpen] = useState(false);
@@ -64,26 +53,6 @@ export function AgentSettingsManage({ agent }: { agent: Agent }) {
   const apiFor = useAgentSettingsNav((s) => s.apiAccessFor);
   const setApiFor = useAgentSettingsNav((s) => s.setApiAccessFor);
 
-  // Both writes are optimistic and reject only AFTER `useAgentActions` rolled
-  // the row back and told the person, so there is exactly one surface already.
-  // Awaiting them here is what stops that rejection from escaping the handler
-  // unhandled; the catch adds no second surface and hides nothing.
-  const saveIdentityHandled = async (patch: AgentIdentityPatch) => {
-    try {
-      await saveIdentity(patch);
-    } catch {
-      // Already rolled back and told by `useAgentActions`.
-    }
-  };
-  const deleteAgentHandled = async () => {
-    setDeleting(false);
-    try {
-      await actions.remove(agent.id);
-    } catch {
-      // Already rolled back and told by `useAgentActions`.
-    }
-  };
-
   if (apiAvailable && apiFor === agent.id)
     return <AgentApiAccess agent={agent} onBack={() => setApiFor(null)} />;
 
@@ -94,6 +63,7 @@ export function AgentSettingsManage({ agent }: { agent: Agent }) {
           icon={Palette}
           title={t("teams:agentSettings.manage.identity")}
           chevron={false}
+          disabled={locked}
           onClick={() => setIdentityOpen(true)}
         />
         {teams.length > 0 && (
@@ -117,6 +87,7 @@ export function AgentSettingsManage({ agent }: { agent: Agent }) {
           icon={Copy}
           title={t("agents:copyAgent.row", { name: agent.name })}
           description={t("agents:copyAgent.rowDescription")}
+          disabled={locked}
           onClick={() => setCopyOpen(true)}
         />
         {apiAvailable && (
@@ -135,6 +106,7 @@ export function AgentSettingsManage({ agent }: { agent: Agent }) {
           title={t("teams:agentSettings.manage.delete", { name: agent.name })}
           destructive
           chevron={false}
+          disabled={locked}
           onClick={() => setDeleting(true)}
         />
       </SettingsCard>
@@ -146,7 +118,7 @@ export function AgentSettingsManage({ agent }: { agent: Agent }) {
           .map((other) => other.name)}
         open={identityOpen}
         onOpenChange={setIdentityOpen}
-        onSave={saveIdentityHandled}
+        onSave={writes.saveIdentity}
       />
       {teams.length > 0 && (
         <AgentMovePickerDialog
@@ -193,7 +165,10 @@ export function AgentSettingsManage({ agent }: { agent: Agent }) {
       <AgentDeleteDialog
         open={deleting}
         onOpenChange={setDeleting}
-        onConfirm={deleteAgentHandled}
+        onConfirm={() => {
+          setDeleting(false);
+          return writes.remove();
+        }}
       />
     </>
   );

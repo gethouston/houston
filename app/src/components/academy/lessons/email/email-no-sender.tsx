@@ -1,6 +1,6 @@
 import { Button } from "@houston-ai/core";
 import { useTranslation } from "react-i18next";
-import { useCanCreateAgents } from "../../../../hooks/use-can-create-agents";
+import { useCanAddAgentsHere } from "../../../../hooks/use-can-create-agents";
 import { useUIStore } from "../../../../stores/ui";
 import { LessonPanelFrame } from "../lesson-panel-frame";
 
@@ -12,7 +12,7 @@ import { LessonPanelFrame } from "../lesson-panel-frame";
  */
 export function EmailNoSender() {
   const { t } = useTranslation("academy");
-  const { canCreate } = useCanCreateAgents();
+  const canCreate = useCanAddAgentsHere();
 
   return (
     <LessonPanelFrame

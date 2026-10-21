@@ -8,6 +8,7 @@ import {
 } from "../../../hooks/queries";
 import { useFilePreviewLoader } from "../../../hooks/use-file-preview-loader";
 import { useMoveWithConflict } from "../../../hooks/use-move-with-conflict";
+import { useOrgWriteLock } from "../../../hooks/use-org-write-lock";
 import { useRenameWithConflict } from "../../../hooks/use-rename-with-conflict";
 import { newEngineActive } from "../../../lib/engine";
 import { sharedBytesKey } from "../../../lib/file-bytes-cache";
@@ -50,7 +51,8 @@ export interface AgentFiles {
   /** Everything `FilesBrowser` needs. Spread it. */
   browserProps: FilesBrowserProps;
   actions: {
-    upload: () => void;
+    /** Absent while the org is locked: it refuses every write. */
+    upload?: () => void;
     uploadFolder?: () => void;
     reveal?: () => void;
     downloadAll?: () => void;
@@ -102,6 +104,10 @@ export function useAgentFiles(
     uploadFiles.mutate({ files: picked, targetDir }),
   );
   const { pickFiles, pickFolder, inputs } = useFilesUploadPickers(ingest);
+  // A locked org refuses every write; reading, opening and downloading stay.
+  const { locked } = useOrgWriteLock();
+  const writable = !locked;
+  const uploadFolder = writable && newEngineActive() ? pickFolder : undefined;
 
   const browserProps: FilesBrowserProps = {
     files: files ?? [],
@@ -121,25 +127,30 @@ export function useAgentFiles(
         : undefined,
     onDownload: canUseLocalFiles ? undefined : downloadFile,
     onDownloadFolder: canUseLocalFiles ? undefined : downloadFolder,
-    onDelete: deleteConfirm.requestDelete,
-    onDeleteMany: deleteConfirm.requestDeleteMany,
-    onRename: (file, newName) => requestRename(file.path, newName),
-    onCreateFolder: (name) => void writes.createFolder(name),
-    onFilesDropped: (dropped, targetFolder) =>
-      ingest(dropped, targetFolder ?? null),
+    onDelete: writable ? deleteConfirm.requestDelete : undefined,
+    onDeleteMany: writable ? deleteConfirm.requestDeleteMany : undefined,
+    onRename: writable
+      ? (file, newName) => requestRename(file.path, newName)
+      : undefined,
+    onCreateFolder: writable
+      ? (name) => void writes.createFolder(name)
+      : undefined,
+    onFilesDropped: writable
+      ? (dropped, targetFolder) => ingest(dropped, targetFolder ?? null)
+      : undefined,
     onDropError,
     // Drag-move needs the TS host's move route; the legacy engine has none.
-    onMove: newEngineActive() ? move.requestMove : undefined,
+    onMove: writable && newEngineActive() ? move.requestMove : undefined,
     labels: browserLabels,
     menuLabels,
-    onUpload: pickFiles,
+    onUpload: writable ? pickFiles : undefined,
     // Folder structure needs the TS host's relPath-aware import route;
     // the legacy engine's import flattens everything to the root.
-    onUploadFolder: newEngineActive() ? pickFolder : undefined,
+    onUploadFolder: uploadFolder,
   };
   const actions = {
-    upload: pickFiles,
-    uploadFolder: newEngineActive() ? pickFolder : undefined,
+    upload: writable ? pickFiles : undefined,
+    uploadFolder,
     reveal:
       canUseLocalFiles && osDir
         ? () => tauriFiles.revealAgent(osDir)

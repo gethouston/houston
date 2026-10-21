@@ -1,7 +1,7 @@
 import { useIsMobile } from "@houston-ai/core";
 import { type ReactNode, useState } from "react";
 import { useTranslation } from "react-i18next";
-import { useCanCreateAgents } from "../../hooks/use-can-create-agents";
+import { useCanAddAgentsHere } from "../../hooks/use-can-create-agents";
 import { useSidebarLayout } from "../../hooks/use-sidebar-layout";
 import { useWindowControlsInset } from "../../hooks/use-window-controls-inset";
 import { osIsTauri } from "../../lib/os-bridge";
@@ -33,7 +33,7 @@ export function Sidebar({ children }: { children: ReactNode }) {
   // Store-owned so every other door into the create sheet (the phone's AI
   // Employees list, a team's empty board) opens the one the shell mounts.
   const openCreateFlow = useUIStore((s) => s.openCreateFlow);
-  const { canCreate: canCreateAgents } = useCanCreateAgents();
+  const canCreateAgents = useCanAddAgentsHere();
   const collapsed = useUIStore((s) => s.sidebarCollapsed);
   const toggleCollapsed = useUIStore((s) => s.toggleSidebarCollapsed);
   const setSidebarCollapsed = useUIStore((s) => s.setSidebarCollapsed);

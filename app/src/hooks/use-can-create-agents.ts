@@ -1,5 +1,6 @@
 import { canCreateAgents } from "../lib/org-roles";
 import { useCapabilities } from "./use-capabilities";
+import { useOrgWriteLock } from "./use-org-write-lock";
 
 /**
  * Whether the current user may create agents. Single-player builds and
@@ -21,4 +22,16 @@ export function useCanCreateAgents(): {
 } {
   const { capabilities, isLoading, isError } = useCapabilities();
   return { canCreate: canCreateAgents(capabilities), isLoading, isError };
+}
+
+/**
+ * Whether the create-agent affordances show in the active org: the caller
+ * may create, and the org is not locked (the gateway refuses a new agent
+ * there, owner included). Boot routing keeps reading `useCanCreateAgents`,
+ * so a locked org never reroutes anyone into onboarding.
+ */
+export function useCanAddAgentsHere(): boolean {
+  const { canCreate } = useCanCreateAgents();
+  const { locked } = useOrgWriteLock();
+  return canCreate && !locked;
 }

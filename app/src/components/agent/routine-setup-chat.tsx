@@ -4,6 +4,7 @@ import { Loader2 } from "lucide-react";
 import { type ReactNode, useEffect } from "react";
 import { createPortal } from "react-dom";
 import { useTranslation } from "react-i18next";
+import { useOrgWriteLock } from "../../hooks/use-org-write-lock";
 import type { Agent } from "../../lib/types";
 import { useUIStore } from "../../stores/ui";
 import { useBoardLabels } from "../board/use-board-labels";
@@ -80,6 +81,7 @@ export function RoutineSetupChat({
   panelContainer,
 }: Props) {
   const { t } = useTranslation("routines");
+  const lock = useOrgWriteLock();
   const { composerLabels } = useBoardLabels();
 
   // Escape closes the panel. Radix menus/dialogs mark their own Escape handled
@@ -151,7 +153,10 @@ export function RoutineSetupChat({
           <ChatInput
             onSend={async (text) => onIntakeSend?.(text)}
             status={onIntakeSend ? "ready" : "submitted"}
-            placeholder={t("chat.intakePlaceholder")}
+            disabled={lock.locked}
+            placeholder={
+              lock.locked ? lock.reason : t("chat.intakePlaceholder")
+            }
             labels={composerLabels}
             onNotice={(message) =>
               useUIStore.getState().addToast({ title: message })

@@ -4,9 +4,11 @@ import {
   useRoutineWritesForAnyAgent,
   useUpdateActivityForAnyAgent,
 } from "../../../hooks/queries";
+import { useOrgWriteLock } from "../../../hooks/use-org-write-lock";
 import { useRoutineScheduleFloor } from "../../../hooks/use-routine-schedule-floor";
 import { analytics } from "../../../lib/analytics";
 import { genericErrorDescription } from "../../../lib/error-report";
+import { showExpectedStateToast } from "../../../lib/error-toast";
 import type { Agent } from "../../../lib/types";
 import { useUIStore } from "../../../stores/ui";
 
@@ -30,13 +32,22 @@ export interface TeamRoutineActions {
 export function useTeamRoutineActions(agent: Agent): TeamRoutineActions {
   const { t } = useTranslation("routines");
   const { t: planT } = useTranslation("plan");
+  const { t: teamsT } = useTranslation("teams");
   const floor = useRoutineScheduleFloor();
   const addToast = useUIStore((s) => s.addToast);
   const { update, remove, runNow, cancelRun } = useRoutineWritesForAnyAgent();
   const updateActivity = useUpdateActivityForAnyAgent();
   const agentPath = agent.folderPath;
+  const lock = useOrgWriteLock();
+  // A locked org refuses every routine write: say why up front instead of
+  // painting a change the host would only roll back.
+  const unlocked = (): boolean => {
+    if (!lock.locked) return true;
+    showExpectedStateToast(teamsT("status.lockedCard.title"), lock.reason);
+    return false;
+  };
   const save = (routineId: string, updates: RoutineUpdate) =>
-    update.mutate({ agentPath, routineId, updates });
+    unlocked() && update.mutate({ agentPath, routineId, updates });
 
   return {
     onToggle: (routineId, enabled) => save(routineId, { enabled }),
@@ -50,14 +61,17 @@ export function useTeamRoutineActions(agent: Agent): TeamRoutineActions {
       }
       save(routineId, { schedule: cron });
     },
-    onDeleteRoutine: (routineId) => remove({ agentPath, routineId }),
+    onDeleteRoutine: (routineId) =>
+      unlocked() && remove({ agentPath, routineId }),
     // Manual runs are the intentional analytics signal for usage.
     onRunNow: (routineId) => {
+      if (!unlocked()) return;
       analytics.track("routine_executed", { routine_id: routineId });
       runNow({ agentPath, routineId });
     },
     onStopRun: (routineId, runId) => cancelRun({ agentPath, routineId, runId }),
     onDiscardDraft: (activityId) => {
+      if (!unlocked()) return;
       void updateActivity
         .mutateAsync({ agentPath, activityId, update: { status: "archived" } })
         .catch((err: unknown) => {

@@ -1,4 +1,5 @@
 import { useTranslation } from "react-i18next";
+import { useOrgWriteLock } from "../../hooks/use-org-write-lock";
 import { ContextEditorBox } from "../context/context-editor";
 import { ContextSlotWaiting } from "../context/context-slot-waiting";
 import { useContextSlot } from "../context/context-slots";
@@ -12,6 +13,7 @@ export function CompanyContextEditor() {
   const { t } = useTranslation("teams");
   const { t: tContext } = useTranslation("context");
   const editor = useContextSlot("workspace");
+  const { locked } = useOrgWriteLock();
 
   if (editor.state !== "ready")
     return <ContextSlotWaiting state={editor.state} />;
@@ -19,6 +21,7 @@ export function CompanyContextEditor() {
   return (
     <ContextEditorBox
       layout="fill"
+      readOnly={locked}
       ariaLabel={t("org.companyContext.title")}
       content={editor.content}
       onSave={editor.onSave}

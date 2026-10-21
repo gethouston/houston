@@ -5,6 +5,7 @@ import { AgentAdminIntegrations } from "../agent/agent-admin/agent-admin-integra
 import { AgentAdminKnowledge } from "../agent/agent-admin/agent-admin-knowledge";
 import { AgentAdminModel } from "../agent/agent-admin/agent-admin-model";
 import { AgentAdminSkills } from "../agent/agent-admin/agent-admin-skills";
+import { OrgLockedFieldset } from "../shell/org-locked-fieldset";
 import { PageHero } from "../shell/page-shell";
 import { AgentDelegationSection } from "./agent-delegation-section.tsx";
 import { AgentSettingsManage } from "./agent-settings-manage.tsx";
@@ -19,11 +20,13 @@ import { AgentSettingsPeople } from "./agent-settings-people.tsx";
  * width of their own, so the mounting surface does. This gives them the SAME
  * column the one self-padded body (learnings) brings — `max-w-3xl px-6` on one
  * `pt-2` top rhythm — so nothing shifts as the rail switches sections. Every
- * section page-scrolls inside it.
+ * section page-scrolls inside it, and a locked org turns its controls off.
  */
 function AccessColumn({ children }: { children: ReactNode }) {
   return (
-    <div className="mx-auto w-full max-w-3xl px-6 pt-2 pb-12">{children}</div>
+    <div className="mx-auto w-full max-w-3xl px-6 pt-2 pb-12">
+      <OrgLockedFieldset>{children}</OrgLockedFieldset>
+    </div>
   );
 }
 
@@ -105,10 +108,11 @@ export function AgentSettingsSectionView({
         </AccessColumn>
       );
     case "manage":
+      // Its own rows decide: moving the AI Employee out stays open.
       return (
-        <AccessColumn>
+        <div className="mx-auto w-full max-w-3xl px-6 pt-2 pb-12">
           <AgentSettingsManage agent={agent} />
-        </AccessColumn>
+        </div>
       );
   }
 }

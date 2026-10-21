@@ -19,7 +19,8 @@ import { useTranslation } from "react-i18next";
 export interface TeamFileActions {
   upload?: () => void;
   uploadFolder?: () => void;
-  newFolder: () => void;
+  /** Absent, like the uploads, while the org is locked. */
+  newFolder?: () => void;
   /** Desktop: the employee's folder in the OS file manager. */
   reveal?: () => void;
   /** Browser builds: every file as one download. */
@@ -73,9 +74,11 @@ function ActionItems({ actions }: { actions: TeamFileActions }) {
           <FolderUp aria-hidden /> {t("files.uploadFolder")}
         </DropdownMenuItem>
       )}
-      <DropdownMenuItem onSelect={actions.newFolder}>
-        <FolderPlus aria-hidden /> {t("files.newFolder")}
-      </DropdownMenuItem>
+      {actions.newFolder && (
+        <DropdownMenuItem onSelect={actions.newFolder}>
+          <FolderPlus aria-hidden /> {t("files.newFolder")}
+        </DropdownMenuItem>
+      )}
     </>
   );
 }
@@ -99,24 +102,27 @@ export function TeamFilesToolbar({
         clearLabel={t("files.searchClear")}
       />
       <WholeTreeAction actions={actions} />
-      <DropdownMenu>
-        <DropdownMenuTrigger asChild>
-          <Button className="shrink-0 rounded-full">
-            {t("files.newMenu")} <ChevronDown aria-hidden className="size-4" />
-          </Button>
-        </DropdownMenuTrigger>
-        <DropdownMenuContent
-          align="end"
-          // New-folder mounts an autofocused inline input; the menu's default
-          // close behavior then RESTORES focus to this trigger a beat later,
-          // blurring the input, whose blur-cancel kills the creation before
-          // the user ever sees it. The menu's actions all move focus onward
-          // (an input, a file picker), so the trigger never reclaims it.
-          onCloseAutoFocus={(event) => event.preventDefault()}
-        >
-          <ActionItems actions={actions} />
-        </DropdownMenuContent>
-      </DropdownMenu>
+      {(actions.upload || actions.uploadFolder || actions.newFolder) && (
+        <DropdownMenu>
+          <DropdownMenuTrigger asChild>
+            <Button className="shrink-0 rounded-full">
+              {t("files.newMenu")}{" "}
+              <ChevronDown aria-hidden className="size-4" />
+            </Button>
+          </DropdownMenuTrigger>
+          <DropdownMenuContent
+            align="end"
+            // New-folder mounts an autofocused inline input; the menu's default
+            // close behavior then RESTORES focus to this trigger a beat later,
+            // blurring the input, whose blur-cancel kills the creation before
+            // the user ever sees it. The menu's actions all move focus onward
+            // (an input, a file picker), so the trigger never reclaims it.
+            onCloseAutoFocus={(event) => event.preventDefault()}
+          >
+            <ActionItems actions={actions} />
+          </DropdownMenuContent>
+        </DropdownMenu>
+      )}
     </div>
   );
 }
