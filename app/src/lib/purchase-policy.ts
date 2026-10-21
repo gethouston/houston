@@ -1,4 +1,3 @@
-import type { planDialog } from "@houston/sdk";
 import { osIsNativeMobile } from "./os-bridge/platform";
 
 /**
@@ -13,11 +12,7 @@ import { osIsNativeMobile } from "./os-bridge/platform";
  */
 
 /** The Stripe pages a hook can open, named as their failure reports are. */
-export type PurchaseCommand =
-  | "plus_checkout"
-  | "plus_portal"
-  | "billing_checkout"
-  | "billing_portal";
+export type PurchaseCommand = "billing_checkout" | "billing_portal";
 
 /** True where Houston may show prices and open checkout or the portal. */
 export function canPurchaseInApp(): boolean {
@@ -99,15 +94,4 @@ export function blocksPurchaseUrl(url: string): boolean {
   const base = typeof location === "undefined" ? undefined : location.href;
   const host = webHost(url, base);
   return host === undefined || (host !== null && PURCHASE_HOSTS.has(host));
-}
-
-type PlanDialog = ReturnType<typeof planDialog>;
-
-/**
- * The plan dialog this surface may open. The launch announcement is a sales
- * dialog (prices, a checkout button), so the store apps never open it; the
- * routine dialogs (resume, keep) are not purchases and always may.
- */
-export function storeSafePlanDialog(dialog: PlanDialog): PlanDialog {
-  return dialog === "announcement" && !canPurchaseInApp() ? null : dialog;
 }

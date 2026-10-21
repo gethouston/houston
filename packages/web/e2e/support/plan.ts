@@ -5,12 +5,13 @@ import type {
   PlusInvoice,
 } from "@houston/wire-types";
 import { expect, type Locator, type Page } from "@playwright/test";
-import { openSettings } from "./settings-nav";
+import { openAdminSection, openSettings } from "./settings-nav";
 import { screen } from "./team-nav";
 
 /**
- * The C19 personal plan, armed on the fake host (`/__test__/plan`), and the
- * Billing screen, the announcement and the Stripe opener it drives.
+ * The plan, armed on the fake host (`/__test__/plan`) and served as the
+ * Personal org's billing, and the Billing screens and the Stripe opener it
+ * drives.
  *
  * Every instant is FIXED and the page clock starts at `PLAN_NOW`
  * (`installPlanClock`), so every date on screen is a function of the fixture
@@ -155,9 +156,25 @@ export async function stubOpener(page: Page, blocked: boolean): Promise<void> {
   await page.addInitScript((refuse: boolean) => {
     const opened: string[] = [];
     (window as unknown as { __opened: string[] }).__opened = opened;
+    // A tab claimed empty inside a click (`reserveBrowserTab`) records the
+    // URL it is pointed at later, so both opens read the same.
+    const tab = {
+      opener: null,
+      closed: false,
+      close: () => {},
+      location: {
+        set href(url: string) {
+          opened.push(url);
+        },
+      },
+    };
     window.open = ((url?: string | URL) => {
-      opened.push(String(url ?? ""));
-      return refuse ? null : ({ opener: null } as unknown as Window);
+      if (refuse) {
+        opened.push(String(url ?? ""));
+        return null;
+      }
+      if (url) opened.push(String(url));
+      return tab as unknown as Window;
     }) as typeof window.open;
   }, blocked);
 }
@@ -173,14 +190,14 @@ export function billingRow(page: Page): Locator {
   return screen(page).getByRole("button", { name: /^Billing/ });
 }
 
-/** The Billing screen's body, once its plan has loaded. */
+/** Settings > Billing's body: the free-org pick and the way to org billing. */
 export function billingScreen(page: Page): Locator {
   return screen(page)
     .locator("section")
     .filter({ has: page.getByRole("heading", { name: "Billing", level: 1 }) });
 }
 
-/** Open Settings > Billing on the desktop rail and wait for the plan card. */
+/** Open Settings > Billing on the desktop rail and wait for its first card. */
 export async function openBilling(page: Page): Promise<Locator> {
   await openSettings(page);
   await billingRow(page).click();
@@ -191,7 +208,29 @@ export async function openBilling(page: Page): Promise<Locator> {
   return billing;
 }
 
-/** The launch announcement, by its title (before or after the launch). */
-export function announcementDialog(page: Page): Locator {
-  return page.getByRole("dialog").filter({ hasText: /officially launch/ });
+/** Admin > Billing's body: the org's plan card and, on a free org, its pool. */
+export function orgBilling(page: Page): Locator {
+  return screen(page).locator("[data-admin-section-body='billing']");
+}
+
+/**
+ * Arm the plan as the Personal org's billing on a cloud host: the plan seed
+ * plus `spaces`, which is what puts Billing in Admin.
+ */
+export async function armOrgPlan(arming: PlanArming): Promise<void> {
+  await armPlan(arming);
+  const res = await fetch(`${FAKE_HOST_URL}/__test__/capabilities`, {
+    method: "POST",
+    headers: { "content-type": "application/json" },
+    body: JSON.stringify({ spaces: true }),
+  });
+  expect(res.ok).toBe(true);
+}
+
+/** Open Admin > Billing and wait for the org's plan card. */
+export async function openOrgBilling(page: Page): Promise<Locator> {
+  await openAdminSection(page, "Billing");
+  const billing = orgBilling(page);
+  await expect(billing.getByTestId("billing-plan")).toBeVisible();
+  return billing;
 }

@@ -1,10 +1,10 @@
 import { expect, test } from "../support/fixtures";
 import { openMoreMenu } from "../support/mobile-nav";
 import {
-  armPlan,
-  billingScreen,
+  armOrgPlan,
   freePlan,
   installPlanClock,
+  orgBilling,
   planCallCount,
 } from "../support/plan";
 
@@ -17,7 +17,7 @@ for (const { percent, status } of [
     page,
   }) => {
     await installPlanClock(page);
-    await armPlan({
+    await armOrgPlan({
       summary: freePlan({ usage: { percent, used: percent, limit: 100 } }),
     });
     await page.goto("/");
@@ -27,7 +27,7 @@ for (const { percent, status } of [
     await expect(upgrade).toContainText("Upgrade");
     await upgrade.tap();
     await expect(menu).toBeHidden();
-    await expect(billingScreen(page)).toBeVisible();
+    await expect(orgBilling(page).getByTestId("billing-plan")).toBeVisible();
     expect(await planCallCount("checkout")).toBe(0);
     expect(
       await page.evaluate(

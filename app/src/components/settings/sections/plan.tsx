@@ -1,22 +1,20 @@
-import { Button, Skeleton } from "@houston-ai/core";
+import { Button, Card } from "@houston-ai/core";
 import { useRef } from "react";
 import { useTranslation } from "react-i18next";
-import { usePlan, usePlusPortal } from "../../../hooks/queries/use-plan";
-import { usePlusCheckout } from "../../../hooks/queries/use-plus-checkout";
+import { useSurfaceGates } from "../../../hooks/use-surface-gates";
+import { openAdmin } from "../../../lib/open-admin";
 import { useUIStore } from "../../../stores/ui";
-import { FallbackLink } from "../../shell/fallback-link";
-import { UsageCard } from "./billing-cards";
-import { BillingInvoices } from "./billing-invoices";
-import { UpgradeCard } from "./billing-upgrade-card";
 import { FreeOrgChoiceRow } from "./free-org-choice-row";
-import { CurrentPlanCard } from "./plan-current-card";
 
+/**
+ * Settings > Billing: the free-org pick while it is still open. What an org
+ * costs lives in that org's Admin > Billing, so this screen points there for
+ * whoever can see it (a link from the Stripe portal still lands here).
+ */
 export function PlanSection() {
   const { t } = useTranslation("plan");
-  const { data: plan, isLoading, isError, refetch } = usePlan();
-  const checkout = usePlusCheckout();
-  const portal = usePlusPortal();
   const openSettings = useUIStore((s) => s.openSettings);
+  const { showBilling } = useSurfaceGates();
   // Where a closed free-org picker returns focus once its row is gone.
   const heading = useRef<HTMLHeadingElement>(null);
   return (
@@ -41,66 +39,23 @@ export function PlanSection() {
         </p>
       </header>
       <FreeOrgChoiceRow fallbackFocus={heading} />
-      {isLoading ? (
-        <div className="space-y-5" role="status" aria-label={t("loading")}>
-          <Skeleton className="h-28 w-full rounded-xl" />
-          <Skeleton className="h-48 w-full rounded-xl" />
-          <Skeleton className="h-32 w-full rounded-xl" />
-        </div>
-      ) : isError ? (
-        <div className="space-y-3 py-6">
-          <p className="text-sm text-ink-muted">{t("error")}</p>
-          <Button variant="outline" onClick={() => void refetch()}>
-            {t("retry")}
-          </Button>
-        </div>
-      ) : plan ? (
-        <>
-          {checkout.succeeded && (
-            <p role="status" className="text-sm text-success-ink">
-              {t("success")}
-            </p>
-          )}
-          <CurrentPlanCard
-            plan={plan}
-            managing={portal.isPending}
-            onManage={() => portal.mutate()}
-            portalFallback={
-              portal.fallbackUrl && (
-                <FallbackLink
-                  className="mt-4 self-start text-sm"
-                  href={portal.fallbackUrl}
-                  command="plus_portal_open"
-                >
-                  {t("openPortal")}
-                </FallbackLink>
-              )
-            }
-          />
-          {plan.plan === "free" && (
-            <>
-              <UpgradeCard
-                plan={plan}
-                upgrading={checkout.outstanding}
-                onUpgrade={checkout.start}
-                checkoutFallback={
-                  checkout.fallbackUrl && (
-                    <FallbackLink
-                      className="self-start text-sm"
-                      href={checkout.fallbackUrl}
-                      command="plus_checkout_open"
-                    >
-                      {t("openCheckout")}
-                    </FallbackLink>
-                  )
-                }
-              />
-              <UsageCard plan={plan} />
-            </>
-          )}
-          <BillingInvoices />
-        </>
-      ) : null}
+      {showBilling && (
+        <Card className="gap-0 px-5 py-5 md:px-6">
+          <div className="flex flex-col gap-4 md:flex-row md:items-center md:justify-between">
+            <div className="space-y-1">
+              <h2 className="text-lg font-medium">{t("orgBilling.title")}</h2>
+              <p className="text-sm text-ink-muted">{t("orgBilling.body")}</p>
+            </div>
+            <Button
+              variant="outline"
+              className="self-start md:self-auto"
+              onClick={() => openAdmin({ section: "billing" })}
+            >
+              {t("orgBilling.open")}
+            </Button>
+          </div>
+        </Card>
+      )}
     </section>
   );
 }

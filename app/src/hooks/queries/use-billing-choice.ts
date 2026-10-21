@@ -3,6 +3,7 @@ import type {
   BillingChoicePick,
   BillingChoiceSave,
 } from "@houston/engine-adapter";
+import { canChangeChoice } from "@houston/sdk";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { useEffect, useState } from "react";
 import { useTranslation } from "react-i18next";
@@ -11,6 +12,7 @@ import { hasSpaces } from "../../lib/org-roles";
 import { queryKeys } from "../../lib/query-keys";
 import { tauriOrg } from "../../lib/tauri";
 import { useCapabilities } from "../use-capabilities";
+import { useChoiceNow } from "../use-choice-now";
 
 /**
  * True once the browser is idle after mount, so the announcement's one read
@@ -40,6 +42,13 @@ export function useBillingChoice() {
     staleTime: 10 * 60_000,
     refetchOnWindowFocus: false,
   });
+}
+
+/** Whether the free-org pick can still change: Settings > Billing's one row. */
+export function useFreeOrgChoiceOpen(): boolean {
+  const { data: choice } = useBillingChoice();
+  const now = useChoiceNow(choice);
+  return choice ? canChangeChoice(choice, now) : false;
 }
 
 type Cached = BillingChoice | null | undefined;

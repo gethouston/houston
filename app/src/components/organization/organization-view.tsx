@@ -2,11 +2,11 @@ import type { OrgInfo, OrgRole } from "@houston/engine-adapter";
 import { useCallback, useEffect, useMemo, useState } from "react";
 import { useTranslation } from "react-i18next";
 import { useOrg } from "../../hooks/queries";
+import { useActiveOrgBilling } from "../../hooks/queries/use-billing";
 import { useAdminScreenActive } from "../../hooks/use-admin-screen-active";
 import { useCapabilities } from "../../hooks/use-capabilities";
 import { useSurfaceGates } from "../../hooks/use-surface-gates";
 import { analytics } from "../../lib/analytics";
-import { canSeeBillingTab } from "../../lib/billing-gates";
 import { isPersonalSpace } from "../../lib/org-roles";
 import { isTeamWorkspace } from "../../lib/space-id";
 import { useWorkspaceStore } from "../../stores/workspaces";
@@ -62,7 +62,12 @@ export function OrganizationView() {
   // Admin is kept alive, so this view stays mounted behind whatever the
   // user opens next; the read belongs to the screen, not to the mount.
   const { capabilities } = useCapabilities();
-  const { ready: gatesReady, showOrganization } = useSurfaceGates();
+  const {
+    ready: gatesReady,
+    showOrganization,
+    showBilling,
+  } = useSurfaceGates();
+  const { isLoading: billingLoading } = useActiveOrgBilling();
   const { data: org, status: orgStatus } = useOrg(
     useAdminScreenActive() && gatesReady && showOrganization,
   );
@@ -76,12 +81,9 @@ export function OrganizationView() {
   const requestedTab = useOrgNav((s) => s.requestedTab);
   const clearRequestedTab = useOrgNav((s) => s.clearRequestedTab);
 
-  // Billing shows only for owner/admin on a team space (C8). Compute the visible
-  // set so a deep link never opens a dead section.
-  const showBilling = canSeeBillingTab(
-    capabilities,
-    current ? isTeamWorkspace(current.id) : false,
-  );
+  // Billing shows on every org that bills, to whoever pays and to owners and
+  // admins (`canSeeBillingTab`). Compute the visible set so a deep link never
+  // opens a dead section.
   const activeSpaceIsTeam = current ? isTeamWorkspace(current.id) : false;
   const personal = isPersonalSpace(capabilities, activeSpaceIsTeam);
   const visibleIds = useMemo(
@@ -118,10 +120,20 @@ export function OrganizationView() {
   // the first mount AND while already open, the same way agent settings consumes
   // its own one-shot pin.
   useEffect(() => {
+    // The Billing pin waits for the org's billing, which decides whether the
+    // section exists, so a deep link is never dropped while the list loads.
     if (requestedTab === null || bodyState === "pending") return;
+    if (requestedTab === "billing" && billingLoading) return;
     if (visibleIds.includes(requestedTab)) openSection(requestedTab);
     clearRequestedTab();
-  }, [requestedTab, bodyState, visibleIds, openSection, clearRequestedTab]);
+  }, [
+    requestedTab,
+    bodyState,
+    billingLoading,
+    visibleIds,
+    openSection,
+    clearRequestedTab,
+  ]);
 
   // If the visible set drops the active section (e.g. switching out of a team
   // space hides Billing), fall back to the landing section rather than a blank

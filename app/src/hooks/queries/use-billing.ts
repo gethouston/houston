@@ -3,10 +3,10 @@ import {
   activeOrgBilling,
   activeSpaceOrgSlug,
   planLaunchRefreshDelay,
-  plusOfferApplies,
 } from "@houston/sdk";
 import { useMutation, useQuery } from "@tanstack/react-query";
-import { canSeeBillingTab } from "../../lib/billing-gates";
+import { useState } from "react";
+import { canReadTeamBillingSummary } from "../../lib/billing-gates";
 import { reportError } from "../../lib/error-report";
 import { hasSpaces } from "../../lib/org-roles";
 import { refuseNativePurchase } from "../../lib/purchase-policy";
@@ -48,7 +48,8 @@ import { useCapabilities } from "../use-capabilities";
  *
  * It refetches on focus, and at the next instant the org's billing changes on
  * its own (the pool's weekly reset, a scheduled lock), on the shared orgs key.
- * `plusOffer` is whether buying Plus would pay for this org (`plusOfferApplies`).
+ * `upgradeOffer` is whether the reader pays for this org, so upgrading it is
+ * theirs to do.
  */
 export function useActiveOrgBilling() {
   const { capabilities } = useCapabilities();
@@ -70,7 +71,8 @@ export function useActiveOrgBilling() {
   return {
     orgSlug: enabled ? activeSpaceOrgSlug(team, orgs.data) : null,
     billing: enabled ? activeOrgBilling(team, orgs.data) : null,
-    plusOffer: enabled && plusOfferApplies(team, orgs.data),
+    upgradeOffer:
+      enabled && activeOrgBilling(team, orgs.data)?.isBillingOwner === true,
     isLoading: orgs.isLoading,
   };
 }
@@ -91,7 +93,8 @@ export function useBilling() {
   const current = useWorkspaceStore((s) => s.current);
   const orgSlug = current ? orgSlugFromWorkspaceId(current.id) : null;
   const onTeam = current ? isTeamWorkspace(current.id) : false;
-  const enabled = canSeeBillingTab(capabilities, onTeam) && orgSlug !== null;
+  const enabled =
+    canReadTeamBillingSummary(capabilities, onTeam) && orgSlug !== null;
   return useQuery<BillingSummary | null>({
     queryKey: queryKeys.billing(orgSlug ?? ""),
     queryFn: () => tauriOrg.getBilling(),
@@ -102,41 +105,27 @@ export function useBilling() {
 }
 
 /**
- * Start a monthly Stripe Checkout session for the active org (billing owner
- * only) and open the returned hosted URL in the OS browser (the app's
- * external-open convention, `tauriSystem.openUrl`). Checkout failures surface
- * via `call()`. The store apps never open it (`refuseNativePurchase`), so the
+ * Open the Stripe customer portal for the active org (billing owner only) in
+ * the OS browser: card, invoices, a failed payment, cancel. `fallbackUrl` is
+ * the link to offer when no browser opened. Portal failures surface via
+ * `call()`. The store apps never open it (`refuseNativePurchase`), so the
  * mutation settles empty.
  */
-export function useCheckout() {
-  return useMutation({
-    mutationFn: async () =>
-      refuseNativePurchase("billing_checkout", reportError)
-        ? null
-        : tauriOrg.createCheckout(),
-    onSuccess: (session) => {
-      if (!session) return;
-      void tauriSystem.openUrl(session.url, {
-        command: "billing_checkout_open",
-      });
-    },
-  });
-}
-
-/**
- * Open the Stripe customer portal for the active team (owner only) in the OS
- * browser — card, invoices, interval switch, cancel. Portal failures surface
- * via `call()`. The store apps never open it (`refuseNativePurchase`).
- */
 export function usePortal() {
-  return useMutation({
+  const [fallbackUrl, setFallbackUrl] = useState<string | null>(null);
+  const portal = useMutation({
     mutationFn: async () =>
       refuseNativePurchase("billing_portal", reportError)
         ? null
         : tauriOrg.createPortal(),
-    onSuccess: (session) => {
+    onMutate: () => setFallbackUrl(null),
+    onSuccess: async (session) => {
       if (!session) return;
-      void tauriSystem.openUrl(session.url, { command: "billing_portal_open" });
+      const opened = await tauriSystem.openUrl(session.url, {
+        command: "billing_portal_open",
+      });
+      setFallbackUrl(opened ? null : session.url);
     },
   });
+  return { ...portal, fallbackUrl };
 }

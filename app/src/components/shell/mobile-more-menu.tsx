@@ -36,7 +36,7 @@ import { useWorkspaceSwitcherFace } from "./workspace-switcher-face";
  * navigate with `nav: "reset"`: reaching a destination from the menu is a
  * tab-level move, not a level pushed onto the tree the user was in.
  *
- * Under the switcher: the personal plan entry, then the connect group (apps, then AI behind
+ * Under the switcher: the org's plan entry, then the connect group (apps, then AI behind
  * `showAiModels`), as at the rail's foot; then the account row opening the
  * person's menu, Admin behind the org gate, the Academy and Settings, which
  * the rail keeps inside its account menu and the card has the room to show

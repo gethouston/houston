@@ -307,7 +307,17 @@
     "tooLong": "Use um nome com menos de {{max}} caracteres.",
     "successTitle": "Organização \"{{name}}\" criada",
     "successBody": "Convide pessoas para trabalharem juntas.",
-    "successAction": "Convide sua equipe"
+    "successAction": "Convide sua equipe",
+    "paidTitle": "Crie {{name}} como organização paga",
+    "freeTaken": "Cada pessoa tem uma organização grátis, e a sua é {{freeOrg}}.",
+    "freeTakenUnknown": "Cada pessoa tem uma organização grátis, e você já tem a sua.",
+    "paidPrice": "{{name}} custa {{price}} por membro por mês. Você paga no navegador, e ela é desbloqueada quando o pagamento for confirmado.",
+    "paidPriceUnknown": "Você paga por {{name}} no navegador, e ela é desbloqueada quando o pagamento for confirmado.",
+    "paidSubmit": "Continuar para o pagamento",
+    "paidSuccessTitle": "Conclua o pagamento de \"{{name}}\"",
+    "paidSuccessBody": "O pagamento está aberto no navegador. A organização é desbloqueada quando o pagamento for confirmado.",
+    "freeTakenInline": "Você já tem uma organização grátis. Crie esta pelo menu de organizações como organização paga.",
+    "paidBlockedBody": "Seu navegador não abriu o pagamento. Abra-o para concluir, e a organização é desbloqueada quando for confirmado."
   },
   "shareViaTeam": {
     "sectionHelper": "Este funcionário de IA está no seu espaço pessoal. Mova-o para uma equipe para compartilhá-lo com seus colegas.",
@@ -321,8 +331,7 @@
       "nameLabel": "Nome da equipe",
       "create": "Criar",
       "creating": "Criando…",
-      "failed": "Não conseguimos criar a equipe. Tente novamente.",
-      "freeOrgTaken": "Você já tem uma equipe gratuita, então uma nova precisa de um plano pago."
+      "failed": "Não conseguimos criar a equipe. Tente novamente."
     },
     "confirm": {
       "body": "{{agent}} será movido para {{team}}. Você e seus colegas vão encontrá-lo lá.",
@@ -388,8 +397,7 @@
       "nameLabel": "Nome do espaço",
       "create": "Criar",
       "creating": "Criando…",
-      "failed": "Não conseguimos criar o espaço. Tente novamente.",
-      "freeOrgTaken": "Você já tem um espaço gratuito, então um novo precisa de um plano pago."
+      "failed": "Não conseguimos criar o espaço. Tente novamente."
     },
     "confirm": {
       "body_one": "Mover {{team}} e seu {{count}} funcionário de IA para {{destination}}?",
@@ -419,7 +427,7 @@
     "nameTaken": "{{team}} não conseguiu terminar de ser movido porque a nova equipe já tem um funcionário de IA com o mesmo nome de um dos que estão sendo movidos. Renomeie esse funcionário de IA primeiro e tente de novo."
   },
   "billing": {
-    "unavailable": "Não foi possível carregar a cobrança desta equipe.",
+    "unavailable": "Não foi possível carregar a cobrança desta organização.",
     "status": {
       "free": "Gratuito",
       "trialing": "Teste grátis",
@@ -427,20 +435,38 @@
       "trialingDays_other": "Teste grátis, restam {{count}} dias",
       "active": "Ativa",
       "past_due": "Pagamento pendente",
-      "expired": "Teste encerrado"
+      "expired": "Teste encerrado",
+      "paid": "Ativa",
+      "locked": "Bloqueada"
     },
     "seats_one": "{{count}} assento",
     "seats_other": "{{count}} assentos",
-    "interval": {
-      "monthly": "Cobrança mensal",
-      "annual": "Cobrança anual"
-    },
-    "pickPlan": "Escolha um plano para incluir toda a sua equipe.",
-    "checkoutMonthly": "Fazer upgrade, mensal",
     "manage": "Gerenciar cobrança",
-    "askOwner": "Somente o proprietário pode alterar a cobrança. Peça a ele para fazer o upgrade da equipe.",
+    "askOwner": "Somente o proprietário que paga por esta organização pode mudar o plano. Peça a essa pessoa se precisar de mais.",
     "trialPill_one": "Resta {{count}} dia de teste",
-    "trialPill_other": "Restam {{count}} dias de teste"
+    "trialPill_other": "Restam {{count}} dias de teste",
+    "loading": "Carregando a cobrança",
+    "planFree": "Plano grátis",
+    "planPaid": "Plano pago",
+    "seatsTotal_one": "{{count}} assento, {{total}} por mês",
+    "seatsTotal_other": "{{count}} assentos, {{total}} por mês",
+    "grace": "{{today}} por mês até {{date}}, depois {{total}} por mês",
+    "locksOn": "Será bloqueada em {{date}}",
+    "benefitUsage": "Cada pessoa tem seu próprio uso, sem limite semanal",
+    "benefitRoutines": "Rode todas as suas rotinas, com a frequência que precisar",
+    "benefitAway": "As rotinas continuam rodando enquanto você está fora",
+    "upgradePrice_one": "{{price}} por mês para {{count}} membro",
+    "upgradePrice_other": "{{price}} por membro por mês, {{total}} por mês para {{count}} membros",
+    "upgrade": "Fazer upgrade",
+    "openCheckout": "Abrir o pagamento",
+    "openPortal": "Abrir o portal de cobrança",
+    "success": "Pagamento recebido. Todos aqui podem continuar.",
+    "usageTitle": "Uso grátis desta semana",
+    "usageUsed": "{{percent}}% usado",
+    "usageShared": "Todos nesta organização compartilham. É renovado {{time}}.",
+    "usageSharedNoTime": "Todos nesta organização compartilham. É renovado ainda nesta semana.",
+    "freeSummary_one": "{{count}} membro, com um uso semanal",
+    "freeSummary_other": "{{count}} membros compartilham um uso semanal"
   },
   "degrade": {
     "owner": "O teste da sua equipe terminou. Faça o upgrade para todos continuarem trabalhando.",
@@ -660,14 +686,17 @@
     "settingsUnavailableBody": "Este Funcionário de IA não está mais neste espaço. Ele pode ter sido removido ou movido."
   },
   "native": {
-    "askOwner": "Só o proprietário pode alterar o plano da sua equipe.",
+    "askOwner": "Somente o proprietário que paga por esta organização pode mudar o plano.",
     "degradeOwner": "O teste da sua equipe terminou. Gerencie seu plano na web.",
     "degradeMember": "O teste da sua equipe terminou. O plano da sua equipe não inclui alterações no momento.",
     "writeBlockedTitle": "Não incluído no plano da sua equipe",
     "writeBlockedBody": "O teste da sua equipe terminou, então o plano da sua equipe não inclui esta alteração no momento.",
     "inviteNeedsUpgradeTitle": "Esta equipe não pode adicionar pessoas no momento",
     "inviteNeedsUpgradeBody": "O teste dela terminou, então o plano dela não inclui novas pessoas no momento.",
-    "moveNeedsUpgrade": "O plano desta equipe não inclui mover Funcionários de IA para ela no momento."
+    "moveNeedsUpgrade": "O plano desta equipe não inclui mover Funcionários de IA para ela no momento.",
+    "freeTakenInline": "Você já tem uma organização grátis, então esta não pode ser criada aqui.",
+    "freeTakenTitle": "Você já tem uma organização grátis",
+    "freeTakenBody": "Esta não pode ser criada aqui."
   },
   "writeFailed": {
     "removeMember": {

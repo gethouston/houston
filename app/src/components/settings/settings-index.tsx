@@ -10,11 +10,11 @@ import {
   Sunrise,
 } from "lucide-react";
 import { useTranslation } from "react-i18next";
+import { useFreeOrgChoiceOpen } from "../../hooks/queries/use-billing-choice";
 import { useChannels } from "../../hooks/queries/use-channels";
 import { useCapabilities } from "../../hooks/use-capabilities";
 import { genericErrorDescription } from "../../lib/error-report";
 import { osIsNativeMobile } from "../../lib/os-bridge/platform";
-import { canPurchaseInApp } from "../../lib/purchase-policy";
 import {
   type SettingsSectionId,
   settingsSectionAvailable,
@@ -53,6 +53,8 @@ export function SettingsIndex({
   const { t } = useTranslation("settings");
   const channels = useChannels();
   const { capabilities } = useCapabilities();
+  // Billing is per org now (Admin > Billing); Settings keeps only the pick.
+  const choiceOpen = useFreeOrgChoiceOpen();
   // A structural fork, not a layout tweak: a phone has no keyboard shortcuts.
   const surface = { touch: useIsMobile() || osIsNativeMobile() };
   const channelsAvailable =
@@ -83,13 +85,11 @@ export function SettingsIndex({
 
       <div className="space-y-8">
         <SettingsCard title={t("settings:index.groups.general")}>
-          {settingsSectionAvailable("plan", capabilities) && (
+          {settingsSectionAvailable("plan", capabilities) && choiceOpen && (
             <SettingsRow
               icon={CreditCard}
               title={t("plan:title")}
-              description={
-                canPurchaseInApp() ? t("plan:nav") : t("plan:native.nav")
-              }
+              description={t("plan:nav")}
               onClick={() => onSelect("plan")}
             />
           )}

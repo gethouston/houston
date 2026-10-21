@@ -1,7 +1,7 @@
 import { strictEqual } from "node:assert";
 import { readFileSync } from "node:fs";
 import { describe, it } from "node:test";
-import type { Capabilities } from "@houston/engine-adapter";
+import type { Capabilities, OrgBilling } from "@houston/engine-adapter";
 import type { AssistantDiscovery } from "../src/lib/assistant-discovery-state.ts";
 import { surfaceGatesFor } from "../src/lib/surface-gates-model.ts";
 
@@ -9,6 +9,21 @@ const owner: Capabilities = {
   multiplayer: true,
   role: "owner",
 } as unknown as Capabilities;
+
+/** A free org's billing, paid for by the caller or by someone else. */
+const orgBilling = (isBillingOwner: boolean): OrgBilling => ({
+  tier: "free",
+  status: "active",
+  lockAt: null,
+  lockReason: null,
+  freeSlot: true,
+  isBillingOwner,
+  seats: 2,
+  seatPriceCents: 1500,
+  seatGraceEndsAt: null,
+  usage: null,
+  routines: null,
+});
 
 const discovering: AssistantDiscovery = {
   handle: null,
@@ -117,31 +132,28 @@ describe("surfaceGatesFor", () => {
     strictEqual(src.includes("capabilitiesLoading?:"), false);
   });
 
-  it("keeps Billing and the Danger zone to the team space that has them", () => {
-    // Both are destinations an agent's hands-on errand can send someone to, so
-    // a gate that said yes off a personal space would hand them a button to a
-    // section that is not rendered anywhere.
-    const spaces = {
-      ...owner,
-      spaces: true,
-      teamBilling: true,
-      workspaceDelete: true,
-    } as never;
+  it("shows Billing wherever the org bills and the caller pays or administers", () => {
+    // A destination an agent's hands-on errand can send someone to, so a gate
+    // that said yes where Admin draws no Billing would hand them a dead button.
+    const spaces = { ...owner, spaces: true, workspaceDelete: true } as never;
     const team = surfaceGatesFor({
       capabilities: spaces,
       isTeam: true,
       assistant: present,
       capabilitiesLoading: false,
+      orgBilling: orgBilling(false),
     });
     strictEqual(team.showBilling, true);
     strictEqual(team.showWorkspaceDanger, true);
+    // The Personal row: no roster and no Danger zone, but it bills its owner.
     const personal = surfaceGatesFor({
-      capabilities: spaces,
+      capabilities: { spaces: true } as never,
       isTeam: false,
       assistant: present,
       capabilitiesLoading: false,
+      orgBilling: orgBilling(true),
     });
-    strictEqual(personal.showBilling, false);
+    strictEqual(personal.showBilling, true);
     strictEqual(personal.showWorkspaceDanger, false);
     // A plain member of the same team sees neither.
     const member = surfaceGatesFor({
@@ -154,19 +166,22 @@ describe("surfaceGatesFor", () => {
       isTeam: true,
       assistant: present,
       capabilitiesLoading: false,
+      orgBilling: orgBilling(false),
     });
     strictEqual(member.showBilling, false);
     strictEqual(member.showWorkspaceDanger, false);
   });
 
-  it("keeps Billing off a deployment that bills no teams", () => {
-    // No `teamBilling`: every billing read 503s, so the tab, the query and the
-    // hands-on billing errand all stay shut while the Danger zone remains.
+  it("keeps Billing off an org without org billing", () => {
+    // A legacy org, or a deployment that bills no orgs, sends no billing: the
+    // tab and the hands-on billing errand stay shut while the Danger zone
+    // remains.
     const gates = surfaceGatesFor({
       capabilities: { ...owner, spaces: true, workspaceDelete: true } as never,
       isTeam: true,
       assistant: present,
       capabilitiesLoading: false,
+      orgBilling: null,
     });
     strictEqual(gates.showBilling, false);
     strictEqual(gates.showWorkspaceDanger, true);

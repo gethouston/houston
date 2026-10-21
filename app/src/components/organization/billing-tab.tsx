@@ -1,92 +1,37 @@
-import { AsyncButton, Spinner } from "@houston-ai/core";
 import { useTranslation } from "react-i18next";
-import {
-  useBilling,
-  useCheckout,
-  usePortal,
-} from "../../hooks/queries/use-billing.ts";
-import { canPurchaseInApp } from "../../lib/purchase-policy.ts";
-import { PlanWebNote } from "../shell/plan-web-note.tsx";
-import { billingAction, trialDaysLeft } from "./billing-tab-model.ts";
-import type { OrgTabProps } from "./organization-view.tsx";
+import { useActiveOrgBilling } from "../../hooks/queries/use-billing.ts";
+import { BillingPlanCard } from "./billing-plan-card.tsx";
+import { BillingTabSkeleton } from "./billing-tab-skeleton.tsx";
+import { BillingUsageCard } from "./billing-usage-card.tsx";
 
 /**
- * Organization > Billing (C8): the active team's seat subscription. Owner sees
- * the status, seat count, and either the monthly checkout button or a
- * "Manage billing" portal button once subscribed; an admin sees the same info
- * read-only with an "ask the owner" note (C8 admin degrade asymmetry — only the
- * owner can check out). Inside a store app the owner reads that the plan is
- * managed on the web instead (`purchase-policy`). Only mounts for owner/admin
- * on a team space (the view gates the tab via `canSeeBillingTab`), so a member
- * never reaches it.
+ * Admin > Billing: what the active org costs and who pays, read off the org's
+ * own billing on the orgs list (`useActiveOrgBilling`). The billing owner
+ * upgrades a free org or manages a paid one; other owners and admins see the
+ * same state and seats and are told to ask the owner. Plain members never
+ * reach it (`canSeeBillingTab`). A free org also shows its weekly pool as a
+ * share of the week, never as a message count.
  *
- * All writes route through the billing hooks' `call()` wrapper, which surfaces
- * failures as a toast + report — no silent failures here.
+ * Checkout and the portal surface their own failures through the engine
+ * call, so nothing here reports a second time.
  */
-export default function BillingTab({ ctx }: OrgTabProps) {
+export default function BillingTab() {
   const { t } = useTranslation("teams");
-  const { data: billing, isLoading } = useBilling();
-  const checkout = useCheckout();
-  const portal = usePortal();
+  const { billing, orgSlug, isLoading } = useActiveOrgBilling();
 
-  if (isLoading) {
-    return (
-      <div className="flex items-center justify-center py-16">
-        <Spinner />
-      </div>
-    );
-  }
+  if (isLoading) return <BillingTabSkeleton />;
 
-  if (!billing) {
+  if (!billing || !orgSlug) {
     return (
       <p className="py-10 text-sm text-ink-muted">{t("billing.unavailable")}</p>
     );
   }
 
-  const daysLeft = trialDaysLeft(billing, new Date());
-  const statusLine =
-    billing.status === "trialing" && daysLeft !== null
-      ? t("billing.status.trialingDays", { count: daysLeft })
-      : t(`billing.status.${billing.status}`);
-  const action = billingAction(billing, ctx.isOwner, canPurchaseInApp());
-
   return (
-    <div className="flex max-w-xl flex-col gap-6 py-6">
-      <div className="flex flex-col gap-1">
-        <p className="text-sm font-medium text-ink">{statusLine}</p>
-        <p className="text-sm text-ink-muted">
-          {t("billing.seats", { count: billing.seats })}
-          {billing.interval
-            ? ` · ${t(`billing.interval.${billing.interval}`)}`
-            : ""}
-        </p>
-      </div>
-
-      {action === "checkout" && (
-        <div className="flex flex-col gap-3">
-          <p className="text-sm text-ink-muted">{t("billing.pickPlan")}</p>
-          <div className="flex flex-wrap gap-3">
-            <AsyncButton onClick={() => checkout.mutateAsync()}>
-              {t("billing.checkoutMonthly")}
-            </AsyncButton>
-          </div>
-        </div>
-      )}
-
-      {action === "web" && <PlanWebNote variant="managed" />}
-
-      {action === "portal" && (
-        <div>
-          <AsyncButton onClick={() => portal.mutateAsync()}>
-            {t("billing.manage")}
-          </AsyncButton>
-        </div>
-      )}
-
-      {!ctx.isOwner && (
-        <p className="text-sm text-ink-muted">
-          {canPurchaseInApp() ? t("billing.askOwner") : t("native.askOwner")}
-        </p>
+    <div className="flex max-w-xl flex-col gap-4 py-6 md:gap-5">
+      <BillingPlanCard billing={billing} orgSlug={orgSlug} />
+      {billing.tier === "free" && billing.usage && (
+        <BillingUsageCard billing={billing} />
       )}
     </div>
   );

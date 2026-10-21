@@ -18,9 +18,9 @@ import {
 } from "./support/billing-choice";
 import { expect, test } from "./support/fixtures";
 import {
-  announcementDialog,
   armPlan,
   billingScreen,
+  FREE_ROUTINES,
   freePlan,
   openBilling,
 } from "./support/plan";
@@ -514,23 +514,27 @@ test("a single-org owner reads that it stays free; the X dismisses it too", asyn
   await expect.poll(routes).toContain("dismiss");
 });
 
-test("it waits behind the launch announcement, then follows it", async ({
+test("it waits behind the paused-routines prompt, then follows it", async ({
   page,
 }) => {
   await armCapabilities({ ...SPACES_OWNER_CAPS, plan: true });
-  await armPlan({ summary: freePlan({ announcement: true }) });
+  await armPlan({
+    summary: freePlan({ routines: { ...FREE_ROUTINES, paused: true } }),
+  });
   await armChoice(ownerChoice());
   await page.goto("/");
 
-  const launch = announcementDialog(page);
-  await expect(launch).toBeVisible({ timeout: 15_000 });
+  const prompt = page
+    .getByRole("dialog")
+    .filter({ hasText: "Your routines were paused" });
+  await expect(prompt).toBeVisible({ timeout: 15_000 });
   await expect.poll(routes).toContain("get");
   await page.clock.runFor(3_000);
   await expect(choiceModal(page)).toBeHidden();
   await expect(page.getByRole("dialog")).toHaveCount(1);
 
-  await launch.getByRole("button", { name: "Maybe later" }).last().click();
-  await expect(launch).toBeHidden();
+  await prompt.getByRole("button", { name: "Not now" }).last().click();
+  await expect(prompt).toBeHidden();
   await expect(page.getByRole("dialog", { name: MODAL_TITLE })).toBeVisible();
 });
 

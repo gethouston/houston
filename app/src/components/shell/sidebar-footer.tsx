@@ -6,7 +6,7 @@ import { UpdateChecker } from "./update-checker";
 
 /**
  * The foot of the rail, under a hairline that sets it off from the team: the
- * update notice when one is waiting, the personal plan entry, the connect rows (`connect-group.tsx`:
+ * update notice when one is waiting, the org's plan entry, the connect rows (`connect-group.tsx`:
  * apps, then AI), then the person's own row (`sidebar-workspace-menu.tsx`),
  * the door to everything that is not an employee or a connection.
  */

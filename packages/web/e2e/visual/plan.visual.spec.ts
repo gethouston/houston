@@ -1,24 +1,22 @@
 /**
- * Visual-regression baselines for the C19 personal plan: the Billing screen of
- * a Free person with the launch discount and the beta tester gift, and the one-time
- * launch announcement, each at desktop and phone width.
+ * Visual-regression baselines for the org plan: Admin > Billing of a free
+ * org (the share of the week, the price and Upgrade) and of a paid one (seats,
+ * the total and Manage billing), each at desktop and phone width.
  *
  * Deterministic by construction: the page clock starts at `PLAN_NOW` and every
- * instant on screen comes from the fixture (`support/plan.ts`); the Free usage
- * stays under 100%, so no local reset time is drawn. The announcement pins its own dark theme; Billing is shot light.
+ * instant on screen comes from the fixture (`support/plan.ts`). Shot light.
  */
+
+import type { PlanSummary } from "@houston/wire-types";
 import type { Page } from "@playwright/test";
 import { expect, test } from "../support/fixtures";
-import { moreRow, openMoreMenu } from "../support/mobile-nav";
 import {
-  announcementDialog,
-  armPlan,
-  billingRow,
-  billingScreen,
+  armOrgPlan,
   freePlan,
   installPlanClock,
+  openOrgBilling,
+  plusPlan,
 } from "../support/plan";
-import { openSettings } from "../support/settings-nav";
 import { pinTheme } from "./support";
 
 test.use({ timezoneId: "UTC" });
@@ -33,49 +31,29 @@ async function boot(page: Page, width: Width): Promise<void> {
   await page.goto("/");
 }
 
-async function openBillingAt(page: Page, width: Width): Promise<void> {
-  if (width === "desktop") await openSettings(page);
-  else {
-    await openMoreMenu(page, "click");
-    await moreRow(page, "nav-settings").click();
-  }
-  await billingRow(page).click();
-  const billing = billingScreen(page);
-  await expect(
-    billing.getByRole("button", { name: "Get Plus for $10" }),
-  ).toBeVisible();
-  await expect(billing.getByText("No invoices yet")).toBeVisible();
-}
+const PLANS: Record<"free" | "paid", PlanSummary> = {
+  // A fixed reset, or the fake host dates it a week from its own clock.
+  free: freePlan({
+    usage: {
+      percent: 25,
+      used: 10,
+      limit: 40,
+      resetsAt: "2026-10-07T17:00:00.000Z",
+    },
+  }),
+  paid: plusPlan(true),
+};
 
-for (const width of ["desktop", "phone"] as const) {
-  test(`billing, Free with the beta tester gift — ${width}`, async ({
-    page,
-  }) => {
-    await armPlan({ summary: freePlan() });
-    await boot(page, width);
-    await openBillingAt(page, width);
-    await page.mouse.move(0, 0);
-    await pinTheme(page, "light");
+for (const width of ["desktop", "phone"] as const)
+  for (const plan of ["free", "paid"] as const)
+    test(`org billing, ${plan} — ${width}`, async ({ page }) => {
+      await armOrgPlan({ summary: PLANS[plan] });
+      await boot(page, width);
+      await openOrgBilling(page);
+      await page.mouse.move(0, 0);
+      await pinTheme(page, "light");
 
-    await expect(page).toHaveScreenshot(`billing-free-offer-${width}.png`, {
-      fullPage: true,
+      await expect(page).toHaveScreenshot(`org-billing-${plan}-${width}.png`, {
+        fullPage: true,
+      });
     });
-  });
-
-  test(`launch announcement — ${width}`, async ({ page }) => {
-    await armPlan({
-      summary: freePlan({ announcement: true }),
-    });
-    await boot(page, width);
-    const dialog = announcementDialog(page);
-    // The first assertion after a cold boot waits as long as the suite's
-    // other boot-dependent waits (chat, onboarding): CI boots near 10s.
-    await expect(
-      dialog.getByRole("button", { name: "Get my first month for $10" }),
-    ).toBeVisible({ timeout: 15_000 });
-    await page.mouse.move(0, 0);
-    await pinTheme(page, "light");
-
-    await expect(page).toHaveScreenshot(`plan-announcement-${width}.png`);
-  });
-}

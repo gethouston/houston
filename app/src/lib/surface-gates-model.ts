@@ -1,4 +1,4 @@
-import type { Capabilities } from "@houston/engine-adapter";
+import type { Capabilities, OrgBilling } from "@houston/engine-adapter";
 import { canSeeOrganization } from "../components/organization/org-view-model.ts";
 import { apiKeysSupported } from "./api-keys-model.ts";
 import type { AssistantDiscovery } from "./assistant-discovery-state.ts";
@@ -18,8 +18,9 @@ export interface SurfaceGates {
    */
   showOrganization: boolean;
   /**
-   * The Billing section INSIDE Admin: a Spaces host, a team space, and
-   * owner/admin (`canSeeBillingTab`). Read it together with
+   * The Billing section INSIDE Admin: a Spaces host, an active org with org
+   * billing, and its billing owner or an owner/admin (`canSeeBillingTab`).
+   * Read it together with
    * {@link showOrganization}, which decides whether Admin renders at all.
    */
   showBilling: boolean;
@@ -84,6 +85,8 @@ export interface SurfaceGateInputs {
   /** Whether the ACTIVE workspace is a team space. */
   isTeam: boolean;
   assistant: AssistantDiscovery;
+  /** The active org's billing off the orgs list; absent where none was read. */
+  orgBilling?: OrgBilling | null;
 }
 
 /**
@@ -91,10 +94,11 @@ export interface SurfaceGateInputs {
  * against plain capability objects. `useSurfaceGates` is the live binding.
  */
 export function surfaceGatesFor(inputs: SurfaceGateInputs): SurfaceGates {
-  const { capabilities, capabilitiesLoading, isTeam, assistant } = inputs;
+  const { capabilities, capabilitiesLoading, isTeam, assistant, orgBilling } =
+    inputs;
   return {
     showOrganization: canSeeOrganization(capabilities, isTeam),
-    showBilling: canSeeBillingTab(capabilities, isTeam),
+    showBilling: canSeeBillingTab(capabilities, orgBilling),
     showWorkspaceDanger:
       capabilities?.workspaceDelete === true &&
       isTeam &&

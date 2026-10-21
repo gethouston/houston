@@ -2,7 +2,9 @@ import { Button, ConfirmDialog } from "@houston-ai/core";
 import { Trash2 } from "lucide-react";
 import { useState } from "react";
 import { useTranslation } from "react-i18next";
+import { useCapabilities } from "../../../hooks/use-capabilities";
 import { useSurfaceGates } from "../../../hooks/use-surface-gates";
+import { canReadTeamBillingSummary } from "../../../lib/billing-gates";
 import { showExpectedStateToast } from "../../../lib/error-toast";
 import { openHome } from "../../../lib/home-nav";
 import { tellOptimisticRefusal } from "../../../lib/optimistic-write";
@@ -43,7 +45,10 @@ import { SettingsControlRow } from "../settings-row";
  */
 export function DangerSection() {
   const { t } = useTranslation("settings");
-  const { showWorkspaceDanger, showBilling } = useSurfaceGates();
+  const { showWorkspaceDanger } = useSurfaceGates();
+  const { capabilities } = useCapabilities();
+  // The danger zone only renders for a team, so the active space is one.
+  const readsBilling = canReadTeamBillingSummary(capabilities, true);
   const currentWorkspace = useWorkspaceStore((s) => s.current);
   const deleteWorkspace = useWorkspaceStore((s) => s.delete);
   const loadAgents = useAgentStore((s) => s.loadAgents);
@@ -101,7 +106,7 @@ export function DangerSection() {
       // Stripe object can exist, so it is skipped as `null`.
       const provablyDeletable = await Promise.all([
         tauriOrg.get(),
-        showBilling ? tauriOrg.getBilling() : null,
+        readsBilling ? tauriOrg.getBilling() : null,
       ]).then(
         ([info, billing]) => canDeleteOptimistically(info.members, billing),
         // Not swallowed: the wire layer reported the read failure, and the

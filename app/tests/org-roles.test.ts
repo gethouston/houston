@@ -1,7 +1,15 @@
 import { deepStrictEqual, notStrictEqual, strictEqual } from "node:assert";
 import { describe, it } from "node:test";
-import type { Capabilities, OrgRole } from "@houston/engine-adapter";
-import { canSeeBilling, canSeeBillingTab } from "../src/lib/billing-gates.ts";
+import type {
+  Capabilities,
+  OrgBilling,
+  OrgRole,
+} from "@houston/engine-adapter";
+import {
+  canReadTeamBillingSummary,
+  canSeeBilling,
+  canSeeBillingTab,
+} from "../src/lib/billing-gates.ts";
 import {
   canCreateAgents,
   canDeleteWorkspace,
@@ -119,34 +127,64 @@ describe("canSeeBilling (C8)", () => {
   });
 });
 
-describe("canSeeBillingTab (C8)", () => {
+describe("canSeeBillingTab", () => {
   const withSpaces = (role: OrgRole): Capabilities =>
-    caps({ multiplayer: true, role, spaces: true, teamBilling: true });
-
-  it("hides it on a deployment with seat billing off", () => {
-    // Without `teamBilling` every billing read can only answer 503
-    // not_configured: no tab promising billing, no query polling it.
-    const off = caps({ multiplayer: true, role: "owner", spaces: true });
-    strictEqual(canSeeBillingTab(off, true), false);
+    caps({ multiplayer: true, role, spaces: true });
+  const billing = (isBillingOwner: boolean): OrgBilling => ({
+    tier: "free",
+    status: "active",
+    lockAt: null,
+    lockReason: null,
+    freeSlot: true,
+    isBillingOwner,
+    seats: 3,
+    seatPriceCents: 1500,
+    seatGraceEndsAt: null,
+    usage: null,
+    routines: null,
   });
 
-  it("shows Billing to owner/admin on a team space of a Spaces host", () => {
-    strictEqual(canSeeBillingTab(withSpaces("owner"), true), true);
-    strictEqual(canSeeBillingTab(withSpaces("admin"), true), true);
-  });
-
-  it("hides it in a personal (non-team) space", () => {
-    strictEqual(canSeeBillingTab(withSpaces("owner"), false), false);
+  it("shows Billing to the billing owner, the co-owner and the admin", () => {
+    strictEqual(canSeeBillingTab(withSpaces("owner"), billing(true)), true);
+    strictEqual(canSeeBillingTab(withSpaces("owner"), billing(false)), true);
+    strictEqual(canSeeBillingTab(withSpaces("admin"), billing(false)), true);
   });
 
   it("hides it from plain members", () => {
-    strictEqual(canSeeBillingTab(withSpaces("user"), true), false);
+    strictEqual(canSeeBillingTab(withSpaces("user"), billing(false)), false);
+  });
+
+  it("shows it on the Personal row, whose sole owner pays for it", () => {
+    // A personal space advertises no multiplayer role; paying is enough.
+    strictEqual(canSeeBillingTab(caps({ spaces: true }), billing(true)), true);
+  });
+
+  it("hides it on an org without org billing (legacy, or unread)", () => {
+    strictEqual(canSeeBillingTab(withSpaces("owner"), null), false);
+    strictEqual(canSeeBillingTab(withSpaces("owner"), undefined), false);
   });
 
   it("hides it off a Spaces host and in single-player", () => {
-    strictEqual(canSeeBillingTab(multiplayer("owner"), true), false); // no spaces flag
-    strictEqual(canSeeBillingTab(caps(), true), false);
-    strictEqual(canSeeBillingTab(null, true), false);
+    strictEqual(canSeeBillingTab(multiplayer("owner"), billing(true)), false);
+    strictEqual(canSeeBillingTab(caps(), billing(true)), false);
+    strictEqual(canSeeBillingTab(null, billing(true)), false);
+  });
+});
+
+describe("canReadTeamBillingSummary (C8)", () => {
+  const withSpaces = (role: OrgRole): Capabilities =>
+    caps({ multiplayer: true, role, spaces: true, teamBilling: true });
+
+  it("reads the team summary for owner/admin on a team of a billing host", () => {
+    strictEqual(canReadTeamBillingSummary(withSpaces("owner"), true), true);
+    strictEqual(canReadTeamBillingSummary(withSpaces("admin"), true), true);
+  });
+
+  it("never reads it off a team, for a member, or with seat billing off", () => {
+    strictEqual(canReadTeamBillingSummary(withSpaces("owner"), false), false);
+    strictEqual(canReadTeamBillingSummary(withSpaces("user"), true), false);
+    const off = caps({ multiplayer: true, role: "owner", spaces: true });
+    strictEqual(canReadTeamBillingSummary(off, true), false);
   });
 });
 

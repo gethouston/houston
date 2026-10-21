@@ -36,7 +36,7 @@
 #   a11y     roles / labels / focus expectations the surface must honor
 #   since    inventory version this component first appeared in
 
-version: 137
+version: 138
 
 components:
   - id: agent-delegation-settings
@@ -2419,52 +2419,56 @@ components:
 
   - id: personal-plan-dialogs
     title: Personal plan dialogs
-    purpose: Ask a Free person to resume routines, choose one to keep, or review the launch plans.
-    anatomy: [title, explanation, routine-list, free-plus-teams-panels, thank-you-gift, primary-action, secondary-action]
-    states: [resume, keep, announcement, beta-gift, no-gift, loading, empty]
+    purpose: Ask the people of a free org to resume its routines or choose the one it keeps.
+    anatomy: [title, explanation, routine-list, primary-action, secondary-action]
+    states: [resume, keep, loading, empty]
     variants: [phone, desktop]
     behavior: >-
-      The plan summary gates resume before keep before the announcement.
-      Dismissing the announcement by any close path persists across devices
-      through the SDK. The beta tester gift starts Plus checkout; without it,
-      the primary action opens Billing. Prices come from the plan summary. Only
-      a real choice closes a dialog: the synthetic Escape a screen change sends
-      is ignored.
+      The org's billing gates resume before keep. The keep dialog's Upgrade
+      opens the org's Billing and shows only to its billing owner; the store
+      apps say the plan is managed on the web instead. Only a real choice
+      closes a dialog: the synthetic Escape a screen change sends is ignored.
     a11y: >-
       Focus-managed dialogs with labeled actions and visible routine names.
-      The struck price has a spoken replacement.
     since: 102
-  - id: personal-billing-screen
-    title: Personal billing screen
-    purpose: Show a person's Free or Plus plan, weekly usage, routine state, and invoices.
-    anatomy: [heading, current-plan-card, upgrade-card, launch-price, gift-line, usage-card, invoice-list]
-    states: [free, plus, beta-gift, preview, past-due, ending, loading, empty-invoices, error]
-    variants: [phone, desktop]
-    behavior: >-
-      Upgrade opens checkout and polls the plan; invoice links open externally.
-      Free shows usage as a percentage, including the prelaunch preview, and
-      routine actions. Launch pricing and the beta tester gift appear when supplied.
-      Plus shows renewal or payment status and subscription management.
-    a11y: Visible actions, labeled progress, status announcement, and keyboard-accessible invoice links.
-    since: 103
 
-  - id: personal-plan-upgrade-row
-    title: Personal plan upgrade row
-    purpose: Make upgrading discoverable throughout the Free experience and show approaching or reached weekly usage limits.
-    anatomy: [status-icon, status-label, upgrade-chip, collapsed-tooltip]
-    states: [hidden, free, near-limit, limit-reached, preview]
-    variants: [expanded-rail, collapsed-rail, phone-more-menu]
+  - id: org-billing-tab
+    title: Organization billing tab
+    purpose: Show what an org costs and who pays, and let its billing owner upgrade or manage it.
+    anatomy: [plan-card, plan-title, seats-and-total, status-badge, seat-grace-line, lock-date, benefits, price-line, upgrade-button, manage-button, ask-owner-line, usage-card, usage-progress, reset-line]
+    states: [free, paid, seat-grace, past-due, scheduled-lock, locked, checkout-open, checkout-succeeded, loading, unavailable]
+    variants: [billing-owner, other-owner-or-admin, store-app, phone, desktop]
     behavior: >-
-      SDK planUpgradeView keeps the entry on Free, warns from 80 percent, and
-      marks the enforced limit at 100 percent. Before limits start, preview
-      usage never claims an enforced limit. Unknown plans and Plus hide it.
-      The rail draws a one-line pill between the update notice and Connect
-      your apps: the status ("Free plan", "85% used", "Limit reached") beside
-      a filled Upgrade chip. The icon rail keeps the status glyph; the phone's
-      More card draws it as its own sheet row. Every variant opens personal
-      Billing; the phone closes More and resets navigation.
-    a11y: Every variant is one button named "Upgrade to Plus" plus the usage state, and the icon rail shows that name as a tooltip. Warning and limit states use text and an icon as well as color.
-    since: 121
+      Admin's Billing section on every cloud org, the Personal row included,
+      read off the org's billing on the orgs list. The billing owner upgrades
+      a free org (checkout, monthly, per seat) or manages a paid one (the
+      Stripe portal); a checkout is tracked until the org is paid and active
+      with no lock. Other owners and admins see the state and seats with a
+      line telling them to ask the owner; plain members never reach it. A
+      seat grace reads "$15 a month until <date>, then $45 a month". A free
+      org's weekly pool shows as a share of the week and its reset time,
+      never a message count. The store apps show no price and no button.
+    a11y: Labeled progress, status text beside its color, and visible actions.
+    since: 138
+
+  - id: org-plan-upgrade-row
+    title: Org plan upgrade row
+    purpose: Make upgrading a free org discoverable to its billing owner, and show everyone else where the shared pool stands.
+    anatomy: [status-icon, status-label, upgrade-chip, ask-owner-label, collapsed-tooltip]
+    states: [hidden, free, near-limit, limit-reached]
+    variants: [billing-owner, member, store-app, expanded-rail, collapsed-rail, phone-more-menu]
+    behavior: >-
+      SDK planUpgradeView keeps the entry on a free org, warns from 80
+      percent, and marks the reached limit at 100 percent; a paid or legacy
+      org hides it. The rail draws a one-line pill between the update notice
+      and Connect your apps. For the billing owner it is a button: the status
+      ("Free plan", "85% used", "Limit reached") beside a filled Upgrade chip,
+      opening the org's Billing. For everyone else it appears from 80 percent
+      as a status line with "Ask the owner". The icon rail keeps the status
+      glyph; the phone's More card draws it as its own sheet row and resets
+      navigation. The store apps show the status alone.
+    a11y: The owner's variant is one button named "Upgrade" plus the usage state; everyone else's is a status line named with the state and who to ask. Warning and limit states use text and an icon as well as color.
+    since: 138
 
   - id: billing-change-modal
     title: Pricing change modal

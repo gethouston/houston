@@ -92,11 +92,11 @@ describe("orgTabIds", () => {
 });
 
 describe("personal workspace sections", () => {
-  it("keeps the Org chart alone, with no organizational administration", () => {
-    // Billing in scope still cannot reach a personal space: it has no roster.
+  it("keeps the Org chart and its Billing, with no roster to administer", () => {
+    // The Personal row is an org that bills its sole owner, so Billing stays.
     strictEqual(
       orgTabIds({ personal: true, billing: true }).join(","),
-      "orgChart",
+      "orgChart,billing",
     );
     strictEqual(
       orgTabIds({ personal: true, billing: false }).join(","),

@@ -6,7 +6,6 @@ import {
   isPurchaseOperation,
   isPurchaseUrl,
   refuseNativePurchase,
-  storeSafePlanDialog,
 } from "../src/lib/purchase-policy.ts";
 import { enterNativeApp } from "./support/native-surface.ts";
 
@@ -44,43 +43,19 @@ describe("refuseNativePurchase", () => {
 
   it("lets the purchase through, unreported, where Houston may sell", () => {
     const { reports, report } = recorder();
-    equal(refuseNativePurchase("plus_checkout", report), false);
+    equal(refuseNativePurchase("billing_checkout", report), false);
     deepEqual(reports, []);
   });
 
   it("refuses every Stripe page inside a store app and reports the bug", () => {
     leave = enterNativeApp("android");
     const { reports, report } = recorder();
-    for (const command of [
-      "plus_checkout",
-      "plus_portal",
-      "billing_checkout",
-      "billing_portal",
-    ] as const)
+    for (const command of ["billing_checkout", "billing_portal"] as const)
       equal(refuseNativePurchase(command, report), true);
     deepEqual(
       reports.map(([command]) => command),
-      ["plus_checkout", "plus_portal", "billing_checkout", "billing_portal"],
+      ["billing_checkout", "billing_portal"],
     );
-  });
-});
-
-describe("storeSafePlanDialog", () => {
-  it("keeps every plan dialog where Houston may sell", () => {
-    for (const dialog of ["resume", "keep", "announcement", null] as const)
-      equal(storeSafePlanDialog(dialog), dialog);
-  });
-
-  it("never opens the launch announcement inside a store app", () => {
-    leave = enterNativeApp();
-    equal(storeSafePlanDialog("announcement"), null);
-  });
-
-  it("still opens the routine dialogs inside a store app", () => {
-    leave = enterNativeApp();
-    equal(storeSafePlanDialog("resume"), "resume");
-    equal(storeSafePlanDialog("keep"), "keep");
-    equal(storeSafePlanDialog(null), null);
   });
 });
 

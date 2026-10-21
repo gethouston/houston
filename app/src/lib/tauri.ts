@@ -34,10 +34,9 @@ import type {
   GrantableOperation,
   IntegrationProviderId,
 } from "@houston/protocol";
-import {
-  type DismissInteractionOutcome,
-  plusCheckoutRefusal,
-  type TimezoneSeedResult,
+import type {
+  DismissInteractionOutcome,
+  TimezoneSeedResult,
 } from "@houston/sdk";
 import type {
   PushDeviceRegistration,
@@ -1979,11 +1978,6 @@ export const tauriOrg = {
     call("create_checkout", () => getEngine().createCheckout()),
   /** C8 billing: open the Stripe customer portal (owner only); returns `{url}`. */
   createPortal: () => call("create_portal", () => getEngine().createPortal()),
-  getPlan: () => call("get_plan", () => getEngine().getPlan()),
-  dismissPlanAnnouncement: () =>
-    call("dismiss_plan_announcement", () =>
-      getEngine().dismissPlanAnnouncement(),
-    ),
   /** The account-wide free-org pick; null off cloud or before the change. */
   getBillingChoice: () =>
     call("get_billing_choice", () => getEngine().getBillingChoice()),
@@ -1994,20 +1988,6 @@ export const tauriOrg = {
     call("dismiss_billing_choice_notice", () =>
       getEngine().dismissBillingChoiceNotice(),
     ),
-  /** C19: start a Plus checkout. The refusals a person can be in (already
-   *  Plus, account being deleted, plan off) are silenced here: the checkout
-   *  surfaces them itself with authored copy (`plus-checkout-failure`). */
-  createPlusCheckout: () =>
-    call(
-      "create_plus_checkout",
-      () => getEngine().createPlusCheckout(),
-      undefined,
-      { silence: (error) => plusCheckoutRefusal(error) !== null },
-    ),
-  createPlusPortal: () =>
-    call("create_plus_portal", () => getEngine().createPlusPortal()),
-  listPlusInvoices: () =>
-    call("list_plus_invoices", () => getEngine().listPlusInvoices()),
   listPlanRoutines: () =>
     call("list_plan_routines", () => getEngine().listPlanRoutines()),
   keepRoutine: (key: import("@houston/engine-adapter").PlanRoutineKey) =>

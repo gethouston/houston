@@ -1,8 +1,4 @@
-import {
-  planAnnouncementDue,
-  planDialog,
-  planDialogBlocks,
-} from "@houston/sdk";
+import { planDialog, planDialogBlocks } from "@houston/sdk";
 import {
   Button,
   Dialog,
@@ -16,20 +12,18 @@ import { cronSummary } from "@houston-ai/routines";
 import { useState } from "react";
 import { useTranslation } from "react-i18next";
 import { useActiveOrgBilling } from "../../hooks/queries/use-billing";
+import { useOrgCheckoutWatcher } from "../../hooks/queries/use-org-checkout";
 import {
   useKeepRoutine,
-  usePlan,
   usePlanRoutines,
   useResumeRoutines,
 } from "../../hooks/queries/use-plan";
-import { usePlusCheckoutWatcher } from "../../hooks/queries/use-plus-checkout";
 import { useCapabilities } from "../../hooks/use-capabilities";
 import { usePlanPresence } from "../../hooks/use-plan-presence";
 import { useRoutineLabels } from "../../hooks/use-routine-labels";
-import { storeSafePlanDialog } from "../../lib/purchase-policy";
+import { openAdmin } from "../../lib/open-admin";
 import { useUIStore } from "../../stores/ui";
 import { BillingChangeModal } from "./billing-change-modal";
-import { PlanAnnouncementDialog } from "./plan-announcement-dialog";
 import { PlanKeepFooter } from "./plan-keep-footer";
 import { useOrgDismissal } from "./use-org-dismissal";
 import { createUserDismissal } from "./user-dismissal";
@@ -37,28 +31,22 @@ import { createUserDismissal } from "./user-dismissal";
 export function PlanLifecycle() {
   const { t } = useTranslation("plan");
   const { capabilities } = useCapabilities();
-  const planQuery = usePlan();
-  const plan = planQuery.data;
   const org = useActiveOrgBilling();
   const [resumeDismissed, setResumeDismissed] = useOrgDismissal(org.orgSlug);
-  const [announcementClosed, setAnnouncementClosed] = useState(false);
   const [keepDismissed, dismissKeep] = useOrgDismissal(org.orgSlug);
   const keepRequested = useUIStore((s) => s.planKeepDialogOpen);
   const setKeepRequested = useUIStore((s) => s.setPlanKeepDialogOpen);
-  const dialog = storeSafePlanDialog(
-    planDialog(org.billing, {
-      resumeDismissed,
-      keepDismissed,
-      keepRequested,
-      announcement: planAnnouncementDue(plan),
-    }),
-  );
+  const dialog = planDialog(org.billing, {
+    resumeDismissed,
+    keepDismissed,
+    keepRequested,
+    announcement: false,
+  });
   const routines = usePlanRoutines(dialog === "keep" || keepRequested);
   const resume = useResumeRoutines();
   const keep = useKeepRoutine();
   const labels = useRoutineLabels();
-  const openSettings = useUIStore((s) => s.openSettings);
-  usePlusCheckoutWatcher();
+  useOrgCheckoutWatcher();
   const [resumeDismissal] = useState(createUserDismissal);
   const [keepDismissal] = useState(createUserDismissal);
   const closeKeep = () => {
@@ -160,26 +148,19 @@ export function PlanLifecycle() {
             ))}
           </div>
           <PlanKeepFooter
-            plusOffer={org.plusOffer}
+            offer={org.billing?.isBillingOwner === true}
             onClose={closeKeep}
             onUpgrade={() => {
               closeKeep();
-              openSettings("plan");
+              openAdmin({ section: "billing" });
             }}
           />
         </DialogContent>
       </Dialog>
-      {plan?.announcement && (
-        <PlanAnnouncementDialog
-          plan={plan}
-          open={dialog === "announcement" && !announcementClosed}
-          onDismiss={() => setAnnouncementClosed(true)}
-        />
-      )}
       <BillingChangeModal
         otherDialogOpen={planDialogBlocks(dialog, {
-          planLoading: planQuery.isLoading || org.isLoading,
-          announcementClosed,
+          planLoading: org.isLoading,
+          announcementClosed: true,
         })}
       />
     </>

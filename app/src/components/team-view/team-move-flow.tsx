@@ -14,6 +14,7 @@ import {
   type TeamMoveSource,
   teamMoveFailureCopy,
 } from "../../lib/move-team";
+import { canPurchaseInApp } from "../../lib/purchase-policy";
 import { ownableTeams, reconcileCreatedTeam } from "../../lib/share-via-team";
 import { closedPostscriptFailureToast } from "../../lib/team-move-retry";
 import { useUIStore } from "../../stores/ui";
@@ -53,12 +54,16 @@ export function TeamMoveFlow({
       : null;
   const create = async (name: string) => {
     try {
-      const team = createdOrg(await flow.createOrg.mutateAsync(name));
+      const team = createdOrg(await flow.createOrg.mutateAsync({ name }));
       if (!team) {
         setState({
           step: "pick",
           creating: false,
-          createError: t("moveTeam.pick.freeOrgTaken"),
+          createError: t(
+            canPurchaseInApp()
+              ? "createTeam.freeTakenInline"
+              : "native.freeTakenInline",
+          ),
         });
         return;
       }

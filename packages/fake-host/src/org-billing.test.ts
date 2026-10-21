@@ -52,6 +52,19 @@ describe("org billing on the fake gateway", () => {
     expect(await orgs()).toEqual({ orgs: [], invites: [], freeOrg: null });
   });
 
+  it("hands out the org's checkout and portal while the plan is armed", async () => {
+    await send("POST", "/__test__/plan", { summary: FREE });
+    const checkout = await send("POST", "/v1/org/billing/checkout", {});
+    expect(await checkout.json()).toEqual({ url: FAKE_CHECKOUT_URL });
+    const portal = await send("POST", "/v1/org/billing/portal");
+    expect(portal.status).toBe(200);
+    const calls = await (await send("GET", "/__test__/plan-calls")).json();
+    expect(calls.calls.map((call: { route: string }) => call.route)).toEqual([
+      "checkout",
+      "portal",
+    ]);
+  });
+
   it("serves the armed plan as the personal org's billing", async () => {
     await send("POST", "/__test__/plan", { summary: FREE });
     const list = await orgs();

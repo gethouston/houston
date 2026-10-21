@@ -1,15 +1,16 @@
+import { formatPlanAmount } from "@houston/sdk";
 import { FormDialog, Input } from "@houston-ai/core";
 import { useEffect, useState } from "react";
 import { useTranslation } from "react-i18next";
+import { useOrgCheckout } from "../../hooks/queries/use-org-checkout";
 import { createdOrg, useCreateTeam } from "../../hooks/queries/use-orgs";
+import { useOrgs } from "../../hooks/queries/use-spaces";
 import { stayOpen } from "../../lib/dialog-stay-open";
-import { openHome } from "../../lib/home-nav";
-import { openAdmin } from "../../lib/open-admin";
-import { orgSlugFromWorkspaceId } from "../../lib/space-id";
-import { useAgentStore } from "../../stores/agents";
-import { useUIStore } from "../../stores/ui";
-import { useWorkspaceStore } from "../../stores/workspaces";
+import { canPurchaseInApp } from "../../lib/purchase-policy";
+import { BILLING_CURRENCY } from "../organization/billing-tab-model";
+import { type PaidOrgOffer, paidOrgOffer } from "./create-org-offer";
 import { MAX_TEAM_NAME_LENGTH, validateTeamName } from "./create-team-model";
+import { useLandInCreatedOrg } from "./use-land-in-created-org";
 
 interface Props {
   open: boolean;
@@ -17,86 +18,133 @@ interface Props {
 }
 
 /**
- * Create an ORGANIZATION (`POST /v1/orgs`) — the shared space a personal
- * workspace turns into (C8 §Share-triggers-team, self-serve path). Only
- * rendered on a hosted deployment that advertises `capabilities.spaces`; the
- * desktop / self-host create action stays the local-workspace dialog.
+ * Create an ORGANIZATION (`POST /v1/orgs`). Only rendered on a hosted
+ * deployment that advertises `capabilities.spaces`; the desktop / self-host
+ * create action stays the local-workspace dialog.
  *
- * On success it switches straight into the new organization through the
- * workspaces store's `setCurrent`, which IS the C8 E3 switch sequence
- * (re-point `x-houston-org` -> drop the query cache -> re-establish the event
- * stream) — never re-implemented here. The new space reaches the switcher via
- * `GET /v1/workspaces`, so the store is reloaded first (it is Zustand, not a
- * React Query cache the hook could invalidate) — the same explicit refresh the
- * local workspace-create flow does today.
+ * A create is free first. Each person owns one free org, so while that slot
+ * is taken the gateway creates nothing and the dialog turns into an offer:
+ * create the org as a paid one and open its checkout, after which the app
+ * switches into it (locked until the payment goes through). The store apps
+ * never sell, so there the dialog only says the free slot is taken.
  */
 export function CreateOrganizationDialog({ open, onOpenChange }: Props) {
-  const { t } = useTranslation(["teams", "common"]);
+  const { t, i18n } = useTranslation(["teams", "common", "plan"]);
   const createOrganization = useCreateTeam();
-  const setCurrentWorkspace = useWorkspaceStore((s) => s.setCurrent);
-  const loadAgents = useAgentStore((s) => s.loadAgents);
-  const addToast = useUIStore((s) => s.addToast);
+  const orgs = useOrgs(open);
+  const checkout = useOrgCheckout();
+  const land = useLandInCreatedOrg();
   const [name, setName] = useState("");
+  const [offer, setOffer] = useState<PaidOrgOffer | null>(null);
+  const purchasable = canPurchaseInApp();
 
   // Start every open with a clean field; reset on close so a reopen after a
   // successful create (or a cancel) never shows the last value.
   useEffect(() => {
-    if (!open) setName("");
+    if (open) return;
+    setName("");
+    setOffer(null);
   }, [open]);
 
   const validation = validateTeamName(name);
   const showTooLong = !validation.ok && validation.reason === "too_long";
 
   // Resolving is what closes the dialog: the recipe owns the close, so an
-  // empty or over-long name is refused by `disabled` alone.
+  // empty or over-long name is refused by `disabled` alone. A failed create
+  // was already surfaced by the engine call (`call()`), so its rejection
+  // becomes `stayOpen()`: the form stays up with the name intact and nothing
+  // is filed a second time. `POST /v1/orgs` is not idempotent, so a retry is
+  // the person's, never a blind one here.
   const submit = async () => {
     if (!validation.ok) return stayOpen();
-    // `mutateAsync` so the recipe's pending state and its close are driven by
-    // the real request. `useCreateTeam` routes through the engine client's
-    // `call()` wrapper, which already surfaces any failure as a red toast +
-    // one Sentry report — so the rejection is turned into `stayOpen()`: the
-    // typed control signal that leaves the form up with the name intact and
-    // files nothing a second time. `POST /v1/orgs` is not idempotent, so the
-    // hook reconciles via `GET /v1/orgs` before a retry. (Not a swallow: the
-    // handler re-rejects.)
     const outcome = await createOrganization
-      .mutateAsync(validation.name)
+      .mutateAsync({ name: validation.name })
       .catch(() => stayOpen());
-    // The free slot is taken: nothing was created and nothing broke.
-    const org = createdOrg(outcome);
-    if (!org) return stayOpen();
-    // `useCreateTeam`'s own onSuccess already awaited `loadWorkspaces()`, so
-    // the store is fresh — reloading again here would double the
-    // `GET /v1/workspaces` fetch. Just read the reloaded store.
-    const ws = useWorkspaceStore
-      .getState()
-      .workspaces.find((w) => orgSlugFromWorkspaceId(w.id) === org.slug);
-    if (ws) {
-      setCurrentWorkspace(ws);
-      await loadAgents(ws.id);
-      // The active space just switched under the user. If they opened this
-      // from Settings (or any non-home view, or an agent that belonged to the
-      // old space and the reload above just dropped), the view would stay put
-      // and the whole create reads as a silent failure. Land them on home —
-      // the same place the shell sends a blocked view — so the switch is
-      // visible. Home is the new space's first employee once its roster and
-      // sidebar layout have settled; until then the Agents home stands and the
-      // desktop boot rule opens that employee. The toast's Invite action then
-      // opens Admin.
-      openHome();
+    if (outcome.kind === "free_org_taken") {
+      // Nothing was created and nothing failed: the dialog stays to offer
+      // the paid create.
+      setOffer(paidOrgOffer(validation.name, outcome.freeOrgSlug, orgs.data));
+      return false;
     }
-    // Point the user at the Admin dashboard after the new space is active.
-    // The switch (setCurrent) happens before the action can navigate.
-    addToast({
-      title: t("teams:createTeam.successTitle", { name: org.name }),
-      description: t("teams:createTeam.successBody"),
-      variant: "success",
-      action: {
-        label: t("teams:createTeam.successAction"),
-        onClick: () => openAdmin(),
-      },
-    });
+    await land(outcome.org, null);
   };
+
+  const submitPaid = async () => {
+    if (!offer) return stayOpen();
+    // Claimed now, while the click's activation is live: the checkout URL
+    // only arrives with the create's answer.
+    const tab = checkout.reserveTab();
+    const outcome = await createOrganization
+      .mutateAsync({ name: offer.name, plan: "paid" })
+      .catch(() => {
+        tab?.discard();
+        return stayOpen();
+      });
+    const org = createdOrg(outcome);
+    if (outcome.kind !== "checkout") {
+      tab?.discard();
+      if (!org) return stayOpen();
+      await land(org, null);
+      return;
+    }
+    const fallbackUrl = await checkout.resume(
+      outcome.org.slug,
+      outcome.checkoutUrl,
+      tab,
+    );
+    await land(outcome.org, { fallbackUrl });
+  };
+
+  if (offer) {
+    const freeOrg =
+      offer.freeOrg?.kind === "personal"
+        ? t("plan:choice.picker.personal")
+        : offer.freeOrg?.name;
+    const price =
+      offer.seatPriceCents === null
+        ? null
+        : formatPlanAmount(
+            offer.seatPriceCents,
+            BILLING_CURRENCY,
+            i18n.language,
+          );
+    return (
+      <FormDialog
+        open={open}
+        onOpenChange={onOpenChange}
+        title={
+          purchasable
+            ? t("teams:createTeam.paidTitle", { name: offer.name })
+            : t("teams:native.freeTakenTitle")
+        }
+        description={
+          freeOrg
+            ? t("teams:createTeam.freeTaken", { freeOrg })
+            : t("teams:createTeam.freeTakenUnknown")
+        }
+        primary={
+          purchasable
+            ? {
+                label: t("teams:createTeam.paidSubmit"),
+                pendingLabel: t("teams:createTeam.creating"),
+                onClick: submitPaid,
+                disabled: checkout.outstanding,
+              }
+            : { label: t("common:actions.close") }
+        }
+        secondary={purchasable ? undefined : null}
+        labels={{ cancel: t("common:actions.cancel") }}
+      >
+        <p className="text-sm text-ink-muted" data-testid="paid-org-offer">
+          {!purchasable
+            ? t("teams:native.freeTakenBody")
+            : price
+              ? t("teams:createTeam.paidPrice", { name: offer.name, price })
+              : t("teams:createTeam.paidPriceUnknown", { name: offer.name })}
+        </p>
+      </FormDialog>
+    );
+  }
 
   return (
     <FormDialog

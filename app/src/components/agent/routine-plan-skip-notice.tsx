@@ -22,6 +22,7 @@ import { useActiveOrgBilling } from "../../hooks/queries/use-billing";
 import { useResumeRoutines } from "../../hooks/queries/use-plan";
 import { agentTriggerStatusQueryOptions } from "../../hooks/queries/use-triggers";
 import { useSession } from "../../hooks/use-session";
+import { openAdmin } from "../../lib/open-admin";
 import { useUIStore } from "../../stores/ui";
 import { RoutinePlanSkipNoticeControls } from "./routine-plan-skip-notice-controls";
 
@@ -49,9 +50,8 @@ export function RoutinePlanSkipNotice({
     ...agentTriggerStatusQueryOptions(agentId, routineIds),
     enabled: !!routine.trigger,
   });
-  const { billing, plusOffer } = useActiveOrgBilling();
+  const { billing, upgradeOffer } = useActiveOrgBilling();
   const { data: session } = useSession();
-  const openSettings = useUIStore((s) => s.openSettings);
   const openKeepChooser = useUIStore((s) => s.setPlanKeepDialogOpen);
   const resume = useResumeRoutines();
 
@@ -63,7 +63,7 @@ export function RoutinePlanSkipNotice({
       viewerId: session?.uid,
       // A hosted agent's client-side id IS its gateway slug.
       agentSlug: agentId,
-      plusOffer,
+      plusOffer: upgradeOffer,
     },
   );
   if (!notice) return null;
@@ -72,7 +72,7 @@ export function RoutinePlanSkipNotice({
     <RoutinePlanSkipNoticeControls
       notice={notice}
       effects={{
-        openBilling: () => openSettings("plan"),
+        openBilling: () => openAdmin({ section: "billing" }),
         openKeepChooser: () => openKeepChooser(true),
         // A failure is surfaced by the engine call itself (`tauriOrg`).
         resume: () => resume.mutate(),

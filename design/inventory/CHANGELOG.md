@@ -3,6 +3,25 @@
 Every `version` bump in `inventory.yaml` needs a matching entry here (enforced by
 `pnpm check:parity`). Newest first. Use `## vN` headings.
 
+## v138 - 2026-10-21
+
+Billing moves from the person to the organization. Every cloud
+organization, the Personal row included, has a Billing section in Admin
+(`org-billing-tab`, replacing `personal-billing-screen`): a plan card with
+Free or Paid, the seats and the monthly total, a status badge for a payment
+problem or a lock, and the one action the reader has. The billing owner
+upgrades a free organization (three short benefits, the price per member
+and the total, an Upgrade button) or manages a paid one; during a seat
+grace the card reads "$15 a month until <date>, then $45 a month". Other
+owners and admins see the same state and seats with a line telling them to
+ask the owner, and plain members never see the section. A free
+organization adds a usage card: how much of the week everyone has used, as
+a percentage, and when it resets, never a message count. The upgrade row
+in the rail (`org-plan-upgrade-row`, replacing `personal-plan-upgrade-row`)
+opens that Billing for the billing owner and, for everyone else, shows the
+pool from 80 percent with "Ask the owner". The plan dialogs lose the launch
+announcement. The store apps show no price and send nobody to upgrade.
+
 ## v137 - 2026-10-20
 
 Cloud users hear that teams are out of beta before plans move to

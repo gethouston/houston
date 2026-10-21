@@ -1,105 +1,164 @@
-import { strictEqual } from "node:assert";
+import { deepStrictEqual, strictEqual } from "node:assert";
 import { describe, it } from "node:test";
-import type { BillingSummary } from "@houston/engine-adapter";
+import type { OrgBilling } from "@houston/engine-adapter";
 import {
   billingAction,
-  isSubscribed,
-  trialDaysLeft,
+  billingPrice,
+  billingStatus,
+  scheduledLock,
 } from "../src/components/organization/billing-tab-model.ts";
 
-const NOW = new Date("2026-07-08T12:00:00Z");
+const NOW = Date.parse("2026-10-21T12:00:00Z");
 
-function billing(patch: Partial<BillingSummary>): BillingSummary {
-  return { plan: "team", status: "free", seats: 2, ...patch };
+function free(patch: Partial<OrgBilling> = {}): OrgBilling {
+  return {
+    tier: "free",
+    status: "active",
+    lockAt: null,
+    lockReason: null,
+    freeSlot: true,
+    isBillingOwner: true,
+    seats: 3,
+    seatPriceCents: 1500,
+    seatGraceEndsAt: null,
+    usage: {
+      scope: "org",
+      used: 12,
+      limit: 40,
+      resetsAt: "2026-10-26T00:00:00Z",
+    },
+    routines: null,
+    ...patch,
+  };
 }
 
-describe("isSubscribed", () => {
-  it("is true for active and past_due", () => {
-    strictEqual(isSubscribed(billing({ status: "active" })), true);
-    strictEqual(isSubscribed(billing({ status: "past_due" })), true);
-  });
-
-  it("is true when an interval is set (proof of a subscription)", () => {
-    strictEqual(
-      isSubscribed(billing({ status: "trialing", interval: "annual" })),
-      true,
-    );
-  });
-
-  it("is false for free / trialing / expired without an interval", () => {
-    strictEqual(isSubscribed(billing({ status: "free" })), false);
-    strictEqual(isSubscribed(billing({ status: "trialing" })), false);
-    strictEqual(isSubscribed(billing({ status: "expired" })), false);
-  });
-});
+function paid(patch: Partial<OrgBilling> = {}): OrgBilling {
+  return free({ tier: "paid", freeSlot: false, usage: null, ...patch });
+}
 
 describe("billingAction", () => {
-  it("is none for a non-owner (admin sees billing read-only)", () => {
-    strictEqual(
-      billingAction(billing({ status: "expired" }), false, true),
-      "none",
-    );
-    strictEqual(
-      billingAction(billing({ status: "active" }), false, true),
-      "none",
-    );
+  it("offers the billing owner checkout on a free org and the portal on a paid one", () => {
+    strictEqual(billingAction(free(), true), "checkout");
+    strictEqual(billingAction(paid(), true), "portal");
   });
 
-  it("is checkout for an owner on an unsubscribed team", () => {
+  it("offers checkout on a free org locked unpaid, and the portal on a paid org past due", () => {
     strictEqual(
-      billingAction(billing({ status: "free" }), true, true),
+      billingAction(free({ status: "locked", lockReason: "unpaid" }), true),
       "checkout",
     );
-    strictEqual(
-      billingAction(billing({ status: "trialing" }), true, true),
-      "checkout",
-    );
-    strictEqual(
-      billingAction(billing({ status: "expired" }), true, true),
-      "checkout",
-    );
+    strictEqual(billingAction(paid({ status: "past_due" }), true), "portal");
   });
 
-  it("is portal for an owner on a subscribed team", () => {
+  it("follows orgRecovery for a locked paid org: checkout once the subscription ended", () => {
     strictEqual(
-      billingAction(billing({ status: "active" }), true, true),
+      billingAction(
+        paid({
+          status: "locked",
+          lockAt: "2026-10-01T00:00:00Z",
+          lockReason: "canceled",
+        }),
+        true,
+      ),
+      "checkout",
+    );
+    strictEqual(
+      billingAction(
+        paid({
+          status: "locked",
+          lockAt: "2026-10-01T00:00:00Z",
+          lockReason: "payment_failed",
+        }),
+        true,
+      ),
       "portal",
     );
+  });
+
+  it("sends the billing owner to the web inside a store app", () => {
+    strictEqual(billingAction(free(), false), "web");
+    strictEqual(billingAction(paid(), false), "web");
+  });
+
+  it("tells every other owner and admin to ask the owner, in any state and app", () => {
+    for (const billing of [free(), paid(), paid({ status: "past_due" })])
+      for (const purchasable of [true, false])
+        strictEqual(
+          billingAction({ ...billing, isBillingOwner: false }, purchasable),
+          "ask_owner",
+        );
+  });
+});
+
+describe("billingStatus", () => {
+  it("names the plan while it is active", () => {
+    strictEqual(billingStatus(free()), "free");
+    strictEqual(billingStatus(paid()), "paid");
+  });
+
+  it("lets a payment problem or a lock outrank the plan", () => {
+    strictEqual(billingStatus(paid({ status: "past_due" })), "past_due");
+    strictEqual(billingStatus(free({ status: "locked" })), "locked");
+    strictEqual(billingStatus(paid({ status: "locked" })), "locked");
+  });
+});
+
+describe("scheduledLock", () => {
+  it("is the date of a lock still ahead", () => {
     strictEqual(
-      billingAction(billing({ status: "past_due" }), true, true),
-      "portal",
+      scheduledLock(free({ lockAt: "2026-11-04T00:00:00Z" }), NOW),
+      "2026-11-04T00:00:00Z",
     );
   });
 
-  it("is web for an owner inside a store app, whatever the status", () => {
-    for (const status of ["free", "trialing", "expired", "active"] as const)
-      strictEqual(billingAction(billing({ status }), true, false), "web");
-  });
-
-  it("stays none for a non-owner inside a store app", () => {
+  it("is null with no lock, a lock already reached, or a locked org", () => {
+    strictEqual(scheduledLock(free(), NOW), null);
     strictEqual(
-      billingAction(billing({ status: "expired" }), false, false),
-      "none",
+      scheduledLock(free({ lockAt: "2026-10-01T00:00:00Z" }), NOW),
+      null,
+    );
+    strictEqual(
+      scheduledLock(
+        free({ status: "locked", lockAt: "2026-11-04T00:00:00Z" }),
+        NOW,
+      ),
+      null,
     );
   });
 });
 
-describe("trialDaysLeft", () => {
-  it("returns days left while trialing", () => {
-    strictEqual(
-      trialDaysLeft(
-        billing({ status: "trialing", trialEndsAt: "2026-07-11T12:00:00Z" }),
-        NOW,
-      ),
-      3,
+describe("billingPrice", () => {
+  it("bills every member as a seat", () => {
+    deepStrictEqual(billingPrice(free(), NOW), {
+      monthly: 4500,
+      today: null,
+      graceEndsAt: null,
+    });
+  });
+
+  it("bills at least one seat", () => {
+    strictEqual(billingPrice(free({ seats: 0 }), NOW).monthly, 1500);
+  });
+
+  it("bills one seat until a seat grace ends, then every member", () => {
+    deepStrictEqual(
+      billingPrice(paid({ seatGraceEndsAt: "2026-11-20T00:00:00Z" }), NOW),
+      { monthly: 4500, today: 1500, graceEndsAt: "2026-11-20T00:00:00Z" },
     );
   });
 
-  it("is null when not trialing", () => {
-    strictEqual(trialDaysLeft(billing({ status: "active" }), NOW), null);
-  });
-
-  it("is null when trialing without a trial clock", () => {
-    strictEqual(trialDaysLeft(billing({ status: "trialing" }), NOW), null);
+  it("drops a grace that ended, and one a single member never needed", () => {
+    strictEqual(
+      billingPrice(paid({ seatGraceEndsAt: "2026-10-01T00:00:00Z" }), NOW)
+        .today,
+      null,
+    );
+    strictEqual(
+      billingPrice(
+        paid({ seats: 1, seatGraceEndsAt: "2026-11-20T00:00:00Z" }),
+        NOW,
+      ).today,
+      null,
+    );
   });
 });

@@ -1,54 +1,99 @@
 import { equal, ok } from "node:assert/strict";
-import { afterEach, before, describe, it } from "node:test";
-import { planOffer, planPriceAmounts } from "@houston/sdk";
-import type { PlanSummary } from "@houston/wire-types";
-import type { ReactElement } from "react";
-import en from "../src/locales/en/plan.json" with { type: "json" };
-import es from "../src/locales/es/plan.json" with { type: "json" };
-import pt from "../src/locales/pt/plan.json" with { type: "json" };
+import { afterEach, before, describe, it, mock } from "node:test";
+import type { OrgBilling } from "@houston/wire-types";
+import { createElement, type ReactElement, type ReactNode } from "react";
+import enPlan from "../src/locales/en/plan.json" with { type: "json" };
+import enTeams from "../src/locales/en/teams.json" with { type: "json" };
+import esPlan from "../src/locales/es/plan.json" with { type: "json" };
+import esTeams from "../src/locales/es/teams.json" with { type: "json" };
+import ptPlan from "../src/locales/pt/plan.json" with { type: "json" };
+import ptTeams from "../src/locales/pt/teams.json" with { type: "json" };
 import { enterNativeApp } from "./support/native-surface.ts";
 
-// Store-safe payments, rendered: every purchase surface keeps today's look on
-// desktop and in a browser tab, and inside the iOS/Android app shows no
-// price, no checkout or portal button, and the managed-on-the-web line.
+// Store-safe payments, rendered per reader: the billing owner gets the
+// price, checkout and the portal on desktop and in a browser tab; everyone
+// else is told to ask the owner; inside the iOS/Android app nobody sees a
+// price, a checkout or portal button, or a push to upgrade.
 
-const free: PlanSummary = {
-  plan: "free",
-  announcement: false,
-  usage: { percent: 100, used: 50, limit: 50 },
-  plus: {
-    status: "none",
-    manageable: false,
-    price: {
-      amount: 1500,
-      currency: "usd",
-      interval: "month",
-      compareAt: 2000,
+let billing: OrgBilling | null = null;
+const IDLE_CHECKOUT = {
+  outstanding: false,
+  orgSlug: null as string | null,
+  fallbackUrl: null as string | null,
+  succeeded: null as string | null,
+};
+let checkout = IDLE_CHECKOUT;
+
+mock.module(
+  new URL("../src/hooks/queries/use-billing.ts", import.meta.url).href,
+  {
+    namedExports: {
+      useActiveOrgBilling: () => ({
+        billing,
+        orgSlug: "acme",
+        isLoading: false,
+      }),
+      usePortal: () => ({
+        isPending: false,
+        mutate: () => {},
+        fallbackUrl: null,
+      }),
     },
-    offer: { amount: 100, currency: "usd" },
   },
-};
-const plus: PlanSummary = {
-  plan: "plus",
-  announcement: false,
-  plus: {
+);
+mock.module(
+  new URL("../src/hooks/queries/use-org-checkout.ts", import.meta.url).href,
+  {
+    namedExports: {
+      useOrgCheckout: () => ({
+        start: () => {},
+        resume: () => {},
+        ...checkout,
+      }),
+    },
+  },
+);
+
+mock.module(new URL("../src/lib/open-admin.ts", import.meta.url).href, {
+  namedExports: { openAdmin: () => {} },
+});
+mock.module(
+  new URL("../src/components/shell/fallback-link.tsx", import.meta.url).href,
+  {
+    namedExports: {
+      FallbackLink: (props: { href: string; children?: ReactNode }) =>
+        createElement("a", { href: props.href }, props.children),
+    },
+  },
+);
+
+function free(patch: Partial<OrgBilling> = {}): OrgBilling {
+  return {
+    tier: "free",
     status: "active",
-    renewsAt: "2026-11-08T12:00:00Z",
-    manageable: true,
-    price: { amount: 1500, currency: "usd", interval: "month" },
-  },
-};
-const price = planPriceAmounts(free, "en");
-const offer = planOffer(free, "en");
+    lockAt: null,
+    lockReason: null,
+    freeSlot: true,
+    isBillingOwner: true,
+    seats: 3,
+    seatPriceCents: 1500,
+    seatGraceEndsAt: null,
+    usage: { scope: "org", used: 12, limit: 40, resetsAt: "" },
+    routines: null,
+    ...patch,
+  };
+}
+const paid = (patch: Partial<OrgBilling> = {}) =>
+  free({ tier: "paid", freeSlot: false, usage: null, ...patch });
 
 let render: (element: ReactElement) => string;
 let markup: (element: ReactElement) => string;
 let h: typeof import("react").createElement;
 let surfaces: {
-  PlanPrice: typeof import("../src/components/settings/sections/plan-price.tsx").PlanPrice;
-  CurrentPlanCard: typeof import("../src/components/settings/sections/plan-current-card.tsx").CurrentPlanCard;
-  UpgradeCard: typeof import("../src/components/settings/sections/billing-upgrade-card.tsx").UpgradeCard;
+  BillingPlanCard: typeof import("../src/components/organization/billing-plan-card.tsx").BillingPlanCard;
+  BillingUsageCard: typeof import("../src/components/organization/billing-usage-card.tsx").BillingUsageCard;
   PlanMessageLimitCard: typeof import("../src/components/shell/provider-error-cards/plan-limit.tsx").PlanMessageLimitCard;
+  PlanUpgradeRow: typeof import("../src/components/shell/plan-upgrade-row.tsx").PlanUpgradeRow;
   PlanWebNote: typeof import("../src/components/shell/plan-web-note.tsx").PlanWebNote;
 };
 
@@ -56,6 +101,7 @@ const text = (html: string) =>
   html
     .replace(/<[^>]+>/g, " ")
     .replace(/&#x27;/g, "'")
+    .replace(/&quot;/g, '"')
     .replace(/\s+/g, " ");
 
 before(async () => {
@@ -63,27 +109,28 @@ before(async () => {
   Object.assign(globalThis, { React });
   h = React.createElement;
   const { renderToStaticMarkup } = await import("react-dom/server");
-  markup = renderToStaticMarkup;
-  render = (element) => text(renderToStaticMarkup(element));
+  const { TooltipProvider } = await import("@houston-ai/core");
+  markup = (element) => renderToStaticMarkup(h(TooltipProvider, null, element));
+  render = (element) => text(markup(element));
   const i18next = (await import("i18next")).default;
   const { initReactI18next } = await import("react-i18next");
   await i18next.use(initReactI18next).init({
     lng: "en",
-    ns: ["plan"],
+    ns: ["plan", "teams"],
     defaultNS: "plan",
-    resources: { en: { plan: en }, es: { plan: es }, pt: { plan: pt } },
+    resources: {
+      en: { plan: enPlan, teams: enTeams },
+      es: { plan: esPlan, teams: esTeams },
+      pt: { plan: ptPlan, teams: ptTeams },
+    },
   });
   surfaces = {
-    ...(await import("../src/components/settings/sections/plan-price.tsx")),
-    ...(await import(
-      "../src/components/settings/sections/plan-current-card.tsx"
-    )),
-    ...(await import(
-      "../src/components/settings/sections/billing-upgrade-card.tsx"
-    )),
+    ...(await import("../src/components/organization/billing-plan-card.tsx")),
+    ...(await import("../src/components/organization/billing-usage-card.tsx")),
     ...(await import(
       "../src/components/shell/provider-error-cards/plan-limit.tsx"
     )),
+    ...(await import("../src/components/shell/plan-upgrade-row.tsx")),
     ...(await import("../src/components/shell/plan-web-note.tsx")),
   };
 });
@@ -92,130 +139,188 @@ let leave: (() => void) | null = null;
 afterEach(() => {
   leave?.();
   leave = null;
+  billing = null;
+  checkout = IDLE_CHECKOUT;
 });
 const native = () => {
   leave = enterNativeApp();
 };
-const noop = () => undefined;
-const limitError = {
-  kind: "plan_message_limit" as const,
-  provider: "",
-  resets_at: "",
-  message: "",
-};
+const planCard = (value: OrgBilling) =>
+  render(h(surfaces.BillingPlanCard, { billing: value, orgSlug: "acme" }));
+const hasButton = (element: ReactElement) =>
+  markup(element).includes("<button");
 
-describe("PlanPrice", () => {
-  it("shows the price on desktop and in a browser tab", () => {
-    ok(render(h(surfaces.PlanPrice, { plan: free })).includes(price.current));
+describe("BillingPlanCard", () => {
+  it("offers the billing owner of a free org the monthly price and Upgrade", () => {
+    const html = planCard(free());
+    ok(html.includes(enTeams.billing.planFree), html);
+    ok(
+      html.includes("$15 per member a month, $45 a month for 3 members"),
+      html,
+    );
+    ok(html.includes(enTeams.billing.upgrade), html);
   });
 
-  it("shows nothing inside a store app", () => {
+  it("shows the billing owner of a paid org its seats, total and Manage billing", () => {
+    const html = planCard(paid());
+    ok(html.includes(enTeams.billing.planPaid), html);
+    ok(html.includes("3 seats, $45 a month"), html);
+    ok(html.includes(enTeams.billing.manage), html);
+  });
+
+  it("shows a seat grace's price today and the later total", () => {
+    const html = planCard(paid({ seatGraceEndsAt: "2099-11-20T12:00:00Z" }));
+    ok(/\$15 a month until .+2099, then \$45 a month/.test(html), html);
+  });
+
+  it("shows another owner or admin the state and seats, and who to ask", () => {
+    for (const value of [free(), paid()]) {
+      const element = h(surfaces.BillingPlanCard, {
+        billing: { ...value, isBillingOwner: false },
+        orgSlug: "acme",
+      });
+      const html = text(markup(element));
+      ok(html.includes(enTeams.billing.askOwner), html);
+      equal(hasButton(element), false, html);
+    }
+    ok(planCard(paid({ isBillingOwner: false })).includes("3 seats"));
+  });
+
+  it("offers a blocked checkout's link only on the org it pays for", () => {
+    checkout = {
+      outstanding: true,
+      orgSlug: "other",
+      fallbackUrl: "https://checkout.stripe.com/c/other",
+      succeeded: null,
+    };
+    equal(planCard(free()).includes(enTeams.billing.openCheckout), false);
+    checkout = { ...checkout, orgSlug: "acme" };
+    ok(planCard(free()).includes(enTeams.billing.openCheckout));
+  });
+
+  it("tells every reader of a free org how many members share it", () => {
+    ok(planCard(free()).includes("3 members share one weekly allowance"));
+    ok(
+      planCard(free({ isBillingOwner: false })).includes(
+        "3 members share one weekly allowance",
+      ),
+    );
+  });
+
+  it("draws no price and no button inside a store app", () => {
     native();
-    equal(render(h(surfaces.PlanPrice, { plan: free })), "");
+    for (const value of [free(), paid(), paid({ isBillingOwner: false })]) {
+      const element = h(surfaces.BillingPlanCard, {
+        billing: value,
+        orgSlug: "acme",
+      });
+      const html = text(markup(element));
+      equal(html.includes("$"), false, html);
+      equal(hasButton(element), false, html);
+    }
+    ok(planCard(free()).includes(enPlan.managedOnWeb));
+    ok(planCard(paid()).includes("3 seats"));
+    ok(
+      planCard(paid({ isBillingOwner: false })).includes(
+        enTeams.native.askOwner,
+      ),
+    );
   });
 });
 
-describe("CurrentPlanCard", () => {
-  const card = (plan: PlanSummary) =>
-    render(
-      h(surfaces.CurrentPlanCard, {
-        plan,
-        onManage: noop,
-        managing: false,
-        portalFallback: h("a", { href: "#" }, en.openPortal),
-      }),
-    );
-
-  it("shows the price, Manage and the portal link off the store apps", () => {
-    const html = card(plus);
-    ok(html.includes(en.plus), html);
-    ok(html.includes(price.current), html);
-    ok(html.includes(en.manage), html);
-    ok(html.includes(en.openPortal), html);
-    equal(html.includes(en.managedOnWeb), false);
-  });
-
-  it("shows the plan and its state, but no price or portal, in a store app", () => {
-    native();
-    const html = card(plus);
-    ok(html.includes(en.plus), html);
-    ok(html.includes("Renews"), html);
-    ok(html.includes(en.managedOnWeb), html);
-    for (const sold of [price.current, en.manage, en.openPortal])
-      equal(html.includes(sold), false, sold);
-  });
-
-  it("names the Free plan with the web line in a store app", () => {
-    native();
-    const html = card(free);
-    ok(html.includes(en.freePlan), html);
-    ok(html.includes(en.managedOnWeb), html);
-  });
-});
-
-describe("UpgradeCard", () => {
-  const card = () =>
-    render(
-      h(surfaces.UpgradeCard, {
-        plan: free,
-        onUpgrade: noop,
-        upgrading: false,
-        checkoutFallback: h("a", { href: "#" }, en.openCheckout),
-      }),
-    );
-
-  it("offers Plus with its price and checkout off the store apps", () => {
-    const html = card();
-    ok(html.includes(en.upgradeTitle), html);
-    ok(html.includes(price.current), html);
-    ok(offer && html.includes(offer.amount), html);
-    ok(html.includes(en.openCheckout), html);
-  });
-
-  it("is not drawn inside a store app", () => {
-    native();
-    equal(card(), "");
+describe("BillingUsageCard", () => {
+  it("shows the pool as a share of the week, never a message count", () => {
+    const html = render(h(surfaces.BillingUsageCard, { billing: free() }));
+    ok(html.includes("30% used"), html);
+    equal(/\b(12|40)\b/.test(html), false, html);
   });
 });
 
 describe("PlanMessageLimitCard", () => {
-  const card = () =>
-    render(
-      h(surfaces.PlanMessageLimitCard, { error: limitError, plusOffer: true }),
-    );
+  const error = {
+    kind: "plan_message_limit" as const,
+    provider: "",
+    resets_at: "",
+    message: "",
+    scope: "org" as const,
+  };
+  const card = () => h(surfaces.PlanMessageLimitCard, { error });
 
-  it("offers the upgrade off the store apps", () => {
-    const html = card();
-    ok(html.includes(en.limitTitle), html);
-    ok(html.includes(en.limitBodyNoTime), html);
-    ok(html.includes(en.upgrade), html);
+  it("offers the billing owner the upgrade off the store apps", () => {
+    billing = free();
+    const html = render(card());
+    ok(html.includes(enPlan.limitBodyNoTime), html);
+    ok(hasButton(card()), html);
   });
 
-  it("says the limit and the web line, with no button, in a store app", () => {
+  it("tells everyone else to ask the owner, with no button", () => {
+    billing = free({ isBillingOwner: false });
+    const html = render(card());
+    ok(html.includes(enPlan.limitBodyMemberNoTime), html);
+    equal(hasButton(card()), false, html);
+  });
+
+  it("only says when a paid seat's own allowance resets", () => {
+    billing = paid();
+    const html = render(
+      h(surfaces.PlanMessageLimitCard, { error: { ...error, scope: "seat" } }),
+    );
+    ok(html.includes(enPlan.limitBodyResetOnlyNoTime), html);
+  });
+
+  it("offers no upgrade where the org's billing is not a free org's", () => {
+    for (const value of [paid(), null]) {
+      billing = value;
+      ok(render(card()).includes(enPlan.limitBodyResetOnlyNoTime));
+      equal(hasButton(card()), false);
+    }
+  });
+
+  it("never sends anyone to upgrade inside a store app", () => {
     native();
-    const html = card();
-    ok(html.includes(en.limitTitle), html);
-    ok(html.includes(en.native.limitBodyNoTime), html);
-    equal(html.includes(en.upgrade), false, html);
-    equal(
-      markup(
-        h(surfaces.PlanMessageLimitCard, {
-          error: limitError,
-          plusOffer: true,
-        }),
-      ).includes("<button"),
-      false,
-    );
+    billing = free();
+    ok(render(card()).includes(enPlan.native.limitBodyNoTime));
+    equal(hasButton(card()), false);
+    billing = free({ isBillingOwner: false });
+    ok(render(card()).includes(enPlan.native.limitBodyMemberNoTime));
+    equal(hasButton(card()), false);
+  });
+});
+
+describe("PlanUpgradeRow", () => {
+  const row = () => h(surfaces.PlanUpgradeRow, {});
+  const near = { used: 34, limit: 40 };
+  const atUsage = (patch: Partial<OrgBilling>, used = near) =>
+    free({
+      usage: { scope: "org", ...used, resetsAt: "" },
+      ...patch,
+    });
+
+  it("is the billing owner's Upgrade button", () => {
+    billing = free();
+    const html = markup(row());
+    ok(html.includes("<button"), html);
+    ok(text(html).includes(enPlan.sidebar.upgrade), html);
   });
 
-  it("offers no upgrade where Plus would not pay for the org", () => {
-    const html = markup(
-      h(surfaces.PlanMessageLimitCard, { error: limitError, plusOffer: false }),
-    );
-    ok(text(html).includes(en.limitTitle));
-    ok(text(html).includes(en.limitBodyResetOnlyNoTime));
-    ok(!text(html).includes("Plus"));
-    ok(!html.includes("<button"));
+  it("is a status line with who to ask for everyone else, from 80%", () => {
+    billing = atUsage({ isBillingOwner: false });
+    const html = markup(row());
+    equal(html.includes("<button"), false, html);
+    ok(html.includes('role="status"'), html);
+    ok(text(html).includes(enPlan.sidebar.askOwner), html);
+    billing = free({ isBillingOwner: false });
+    equal(markup(row()), "");
+  });
+
+  it("never asks anyone to upgrade inside a store app", () => {
+    native();
+    billing = atUsage({ isBillingOwner: false });
+    const html = text(markup(row()));
+    ok(html.includes("85% used"), html);
+    equal(html.includes(enPlan.sidebar.askOwner), false, html);
+    billing = free();
+    equal(markup(row()), "");
   });
 });
 
@@ -231,9 +336,9 @@ describe("PlanWebNote", () => {
   it("names the website in en, es and pt", async () => {
     const i18next = (await import("i18next")).default;
     for (const [language, copy] of [
-      ["en", en],
-      ["es", es],
-      ["pt", pt],
+      ["en", enPlan],
+      ["es", esPlan],
+      ["pt", ptPlan],
     ] as const) {
       await i18next.changeLanguage(language);
       const html = render(h(surfaces.PlanWebNote, { variant: "managed" }));

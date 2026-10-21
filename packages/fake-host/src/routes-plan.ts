@@ -25,7 +25,15 @@ const CHECKOUT_REFUSALS: Record<state.PlanCheckoutRefusal, number> = {
 
 /** True for a path the personal plan owns (the gateway's `/v1/me/*` set). */
 function isPlanPath(segs: string[]): boolean {
-  if (segs[0] !== "v1" || segs[1] !== "me") return false;
+  if (segs[0] !== "v1") return false;
+  // The org's own checkout and portal, served from the same armed world.
+  if (segs[1] === "org")
+    return (
+      segs[2] === "billing" &&
+      (segs[3] === "checkout" || segs[3] === "portal") &&
+      segs.length === 4
+    );
+  if (segs[1] !== "me") return false;
   return (
     segs[2] === "plan" ||
     segs[2] === "plus" ||
@@ -80,6 +88,12 @@ export function handlePlanRoutes(
       state.recordPlanCall("portal");
       if (!seed.summary.plus.manageable)
         return refuse(409, "no_subscription", "no subscription");
+      return json({ url: seed.portalUrl });
+    case "POST /v1/org/billing/checkout":
+      state.recordPlanCall("checkout", body);
+      return json({ url: seed.checkoutUrl });
+    case "POST /v1/org/billing/portal":
+      state.recordPlanCall("portal");
       return json({ url: seed.portalUrl });
     case "GET /v1/me/routines":
       state.recordPlanCall("routines");

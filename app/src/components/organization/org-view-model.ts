@@ -22,9 +22,9 @@ export type OrgTabId = "orgChart" | "people" | "billing" | "activity";
 export const DEFAULT_ORG_TAB: OrgTabId = "orgChart";
 
 /**
- * The sections of a team space. `billing` (C8) is the only conditional one,
- * added by {@link orgTabIds} on a Spaces host, in a team space, for
- * owner/admin; see that function for the authoritative display order.
+ * The sections of a team space. `billing` is the only conditional one, added
+ * by {@link orgTabIds} where `canSeeBillingTab` holds; see that function for
+ * the authoritative display order.
  */
 export const ORG_TAB_IDS: readonly OrgTabId[] = [
   "orgChart",
@@ -37,7 +37,7 @@ export const ORG_TAB_IDS: readonly OrgTabId[] = [
  * the source: Org chart (the identity lozenge and landing section), then
  * People, Billing when `canSeeBillingTab` (in `lib/billing-gates`) holds, then
  * Activity. A personal space has no roster to administer, so it keeps the Org
- * chart alone. Pure so the tab set is unit-tested without React; the view maps
+ * chart and, where it bills, its Billing. Pure so the tab set is unit-tested without React; the view maps
  * each id to its component + `t()` label.
  *
  * The Org chart takes no gate of its own: the whole dashboard is mounted
@@ -47,7 +47,8 @@ export function orgTabIds(gates: {
   billing: boolean;
   personal: boolean;
 }): readonly OrgTabId[] {
-  if (gates.personal) return ["orgChart"];
+  if (gates.personal)
+    return gates.billing ? ["orgChart", "billing"] : ["orgChart"];
   return [
     "orgChart",
     "people",

@@ -4,7 +4,7 @@ import { join, relative } from "node:path";
 import { describe, it } from "node:test";
 
 // Store-safe payments, wired: every place that can open Stripe, show a price
-// or sell Plus answers to `lib/purchase-policy.ts`. A new entry point fails
+// or sell a paid plan answers to `lib/purchase-policy.ts`. A new entry point fails
 // the inventory below until someone decides how it is gated in the store apps.
 
 const SRC = join(import.meta.dirname, "../src");
@@ -20,37 +20,27 @@ function sourceFiles(dir: string): string[] {
 
 /** Opens checkout or the portal, formats a price, or draws a sale. */
 const ENTRY_POINT =
-  /\b(usePlusCheckout|usePlusPortal|useCheckout|usePortal|planPriceAmounts|planOffer|planAnnouncementView)\(|<(PlanPrice|UpgradeCard|BillingInvoices|PlanAnnouncementDialog|ReferralPanel)\b/;
+  /\b(useOrgCheckout|usePortal|formatPlanAmount)\(|<(ReferralPanel)\b/;
 
 /** Each entry point and the file whose policy check gates it. */
 const GATED_BY: Record<string, string> = {
   "components/auth/sign-in-screen.tsx": "components/auth/sign-in-screen.tsx",
-  "components/organization/billing-tab.tsx":
-    "components/organization/billing-tab.tsx",
-  "components/settings/sections/billing-upgrade-card.tsx":
-    "components/settings/sections/billing-upgrade-card.tsx",
-  "components/settings/sections/plan-current-card.tsx":
-    "components/settings/sections/plan-current-card.tsx",
-  "components/settings/sections/plan-price.tsx":
-    "components/settings/sections/plan-price.tsx",
-  // Draws the cards above, which gate themselves, and the invoices.
-  "components/settings/sections/plan.tsx":
-    "components/settings/sections/billing-invoices.tsx",
-  // Only ever opened by the plan lifecycle's `storeSafePlanDialog`.
-  "components/shell/plan-announcement-dialog.tsx":
-    "components/shell/plan-lifecycle.tsx",
-  "components/shell/plan-composer-state.tsx":
-    "components/shell/plan-composer-state.tsx",
-  "components/shell/plan-lifecycle.tsx": "components/shell/plan-lifecycle.tsx",
+  // Draws the checkout and portal buttons; its card decides the action.
+  "components/organization/billing-plan-action.tsx":
+    "components/organization/billing-plan-card.tsx",
+  "components/organization/billing-plan-card.tsx":
+    "components/organization/billing-plan-card.tsx",
+  "components/shell/create-organization-dialog.tsx":
+    "components/shell/create-organization-dialog.tsx",
   "hooks/queries/use-billing.ts": "hooks/queries/use-billing.ts",
-  "hooks/queries/use-plan.ts": "hooks/queries/use-plan.ts",
-  "hooks/queries/use-plus-checkout.ts": "hooks/queries/use-plus-checkout.ts",
+  "hooks/queries/use-org-checkout.ts": "hooks/queries/use-org-checkout.ts",
 };
 
 /** Upsell copy and Upgrade buttons that sell without opening Stripe. */
 const UPSELL_SURFACES = [
   "components/agent/routine-plan-skip-notice-view.tsx",
-  "components/settings/settings-index.tsx",
+  "components/shell/plan-composer-state.tsx",
+  "components/shell/plan-keep-footer.tsx",
   "components/shell/plan-upgrade-row.tsx",
   "components/shell/provider-error-cards/plan-limit.tsx",
   "components/shell/team-status-banner.tsx",
@@ -59,7 +49,7 @@ const UPSELL_SURFACES = [
 
 const consultsPolicy = (file: string) =>
   /from "[./]+\/(lib\/)?purchase-(policy|approval)(\.ts)?"/.test(read(file)) &&
-  /\b(canPurchaseInApp|refuseNativePurchase|storeSafePlanDialog|blocksPurchaseUrl|refusesPurchaseApproval)\(/.test(
+  /\b(canPurchaseInApp|refuseNativePurchase|blocksPurchaseUrl|refusesPurchaseApproval)\(/.test(
     read(file),
   );
 
@@ -97,20 +87,8 @@ function body(file: string, name: string): string {
 describe("checkout and portal hooks", () => {
   const HOOKS = [
     [
-      "hooks/queries/use-plus-checkout.ts",
-      "usePlusCheckout",
-      "plus_checkout",
-      "tracker",
-    ],
-    [
-      "hooks/queries/use-plan.ts",
-      "usePlusPortal",
-      "plus_portal",
-      "tauriOrg.createPlusPortal",
-    ],
-    [
-      "hooks/queries/use-billing.ts",
-      "useCheckout",
+      "hooks/queries/use-org-checkout.ts",
+      "useOrgCheckout",
       "billing_checkout",
       "tauriOrg.createCheckout",
     ],
@@ -134,15 +112,34 @@ describe("checkout and portal hooks", () => {
     });
 });
 
+describe("a paid create's checkout", () => {
+  it("refuses in the store apps before it reaches the tracker", () => {
+    const source = body("hooks/queries/use-org-checkout.ts", "useOrgCheckout");
+    const resume = source.indexOf("const resume = useCallback(");
+    const refusal = source.indexOf("if (refuseNativePurchase(", resume);
+    const run = source.indexOf("return begin(", resume);
+    ok(
+      resume >= 0 && refusal > resume,
+      "resume never asks the purchase policy",
+    );
+    ok(run > refusal, "resume reaches the tracker before the refusal");
+  });
+});
+
 /** Copy that sends someone to ask for an upgrade (owner-directed). */
 const OWNER_UPGRADE_COPY =
-  /degrade\.(owner|member|writeBlocked)|billing\.askOwner|inviteInbox\.errors\.\$\{|shareViaTeam\.moveFailed\.\$\{/;
+  /degrade\.(owner|member|writeBlocked)|billing\.askOwner|askOwner(Hint|Label)|sidebar\.askOwner|limitBodyMember|freeTakenInline|inviteInbox\.errors\.\$\{|shareViaTeam\.moveFailed\.\$\{/;
 
 /** Each place that shows it, all with a store-app variant. */
 const OWNER_UPGRADE_SURFACES = [
   "components/agent/share-via-team-failed-steps.tsx",
-  "components/organization/billing-tab.tsx",
+  "components/agent/share-via-team-flow.tsx",
+  "components/organization/billing-plan-action.tsx",
+  "components/shell/plan-composer-state.tsx",
+  "components/shell/plan-upgrade-row.tsx",
+  "components/shell/provider-error-cards/plan-limit.tsx",
   "components/shell/team-status-banner.tsx",
+  "components/team-view/team-move-flow.tsx",
   "hooks/queries/use-invites.ts",
   "lib/tauri.ts",
 ];

@@ -19,6 +19,7 @@ import {
   recordPendingMove,
   releaseMove,
 } from "../../lib/pending-move";
+import { canPurchaseInApp } from "../../lib/purchase-policy";
 import { isExpectedShareError, shareErrorCode } from "../../lib/share-error";
 import {
   addInviteEmails,
@@ -176,9 +177,18 @@ export function ShareViaTeamFlow({
 
   const handleCreate = async (name: string) => {
     try {
-      const created = createdOrg(await createTeam.mutateAsync(name));
+      const created = createdOrg(await createTeam.mutateAsync({ name }));
       if (!created) {
-        setState((s) => createFailed(s, t("shareViaTeam.pick.freeOrgTaken")));
+        setState((s) =>
+          createFailed(
+            s,
+            t(
+              canPurchaseInApp()
+                ? "createTeam.freeTakenInline"
+                : "native.freeTakenInline",
+            ),
+          ),
+        );
         return;
       }
       setState(pickTeam({ slug: created.slug, name: created.name }));

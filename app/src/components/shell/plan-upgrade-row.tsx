@@ -9,8 +9,8 @@ import { CircleAlert, Gauge, type LucideIcon } from "lucide-react";
 import { useTranslation } from "react-i18next";
 import { useActiveOrgBilling } from "../../hooks/queries/use-billing";
 import type { NavMode } from "../../lib/nav-stack";
+import { openAdmin } from "../../lib/open-admin";
 import { canPurchaseInApp } from "../../lib/purchase-policy";
-import { useUIStore } from "../../stores/ui";
 
 /** Plain Free draws no glyph beside its words; the icon rail, which has
  *  nothing else to draw, falls back to the usage gauge. */
@@ -27,7 +27,7 @@ const TONE: Record<PlanUpgradeView["status"], string> = {
 };
 
 /** The way out drawn as a small filled pill inside the row, so it reads as
- *  an action even to someone who never opened Settings. */
+ *  an action even to someone who never opened Billing. */
 function UpgradeChip({ label }: { label: string }) {
   return (
     <span className="shrink-0 rounded-full bg-action px-2 py-0.5 font-medium text-action-text text-xs">
@@ -36,24 +36,34 @@ function UpgradeChip({ label }: { label: string }) {
   );
 }
 
+/** Who to ask, for someone who does not pay: plain words, not a control. */
+function AskOwner({ label }: { label: string }) {
+  return <span className="shrink-0 pr-2 text-ink-muted text-xs">{label}</span>;
+}
+
 const RAIL_PILL =
-  "flex items-center rounded-full bg-sidebar-hover text-ink ht-hairline transition-[background-color,transform] duration-200 hover:bg-sidebar-active focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-focus active:scale-[0.96]";
+  "flex items-center rounded-full bg-sidebar-hover text-ink ht-hairline focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-focus";
+
+/** Press feedback, only where the pill is a button. */
+const RAIL_PILL_PRESS =
+  "transition-[background-color,transform] duration-200 hover:bg-sidebar-active active:scale-[0.96]";
 
 /**
  * A free org's way to a paid plan, on every screen: where its weekly pool
- * stands (`planUpgradeView`: Free, the 80% warning, or the reached limit)
- * beside an Upgrade chip that opens Billing. It shows only where buying Plus
- * would pay for this org (`plusOffer`); a paid or legacy org and deployments
- * without org billing draw nothing.
+ * stands (`planUpgradeView`: Free, the 80% warning, or the reached limit).
+ * For the billing owner it is a button beside an Upgrade chip that opens the
+ * org's Billing; for everyone else it is the pool's state and "Ask the owner",
+ * from the 80% warning on. A paid or legacy org and deployments without org
+ * billing draw nothing.
  *
  * The rail draws a one-line pill between the update notice and the connect
  * rows, the icon rail the glyph alone with the same name as a tooltip. The
  * phone's More card draws it as its own sheet row, navigating with
- * `nav: "reset"`. Every variant closes More, a no-op on the desktop.
+ * `nav: "reset"`. Opening Admin closes More, a no-op on the desktop.
  *
  * The store apps never sell (`canPurchaseInApp`): there the row is the usage
- * status alone, with no chip, and plain Free (nothing but the offer) draws
- * nothing.
+ * status alone, with no chip and no "Ask the owner", and plain Free (nothing
+ * but the offer) draws nothing.
  */
 export function PlanUpgradeRow({
   collapsed = false,
@@ -65,26 +75,39 @@ export function PlanUpgradeRow({
   nav?: NavMode;
 }) {
   const { t } = useTranslation("plan");
-  const { billing, plusOffer } = useActiveOrgBilling();
-  const openSettings = useUIStore((s) => s.openSettings);
-  const setMobileMoreOpen = useUIStore((s) => s.setMobileMoreOpen);
-  const view = plusOffer ? planUpgradeView(billing) : null;
+  const { billing } = useActiveOrgBilling();
+  const view = planUpgradeView(billing);
   const purchasable = canPurchaseInApp();
-  if (!view || (!purchasable && view.status === "free")) return null;
+  const payer = billing?.isBillingOwner === true;
+  if (!view || (view.status === "free" && (!purchasable || !payer)))
+    return null;
 
   const status = t(`sidebar.${view.status}`, { percent: view.percent });
-  const name = purchasable ? t("sidebar.label", { status }) : status;
-  const chip = purchasable && <UpgradeChip label={t("sidebar.upgrade")} />;
+  // The store apps never send anyone to upgrade: there the row is the
+  // pool's state alone, for the owner and everyone else.
+  const name = !purchasable
+    ? status
+    : payer
+      ? t("sidebar.label", { status })
+      : t("sidebar.askOwnerLabel", { status });
+  const chip = !purchasable ? null : payer ? (
+    <UpgradeChip label={t("sidebar.upgrade")} />
+  ) : (
+    <AskOwner label={t("sidebar.askOwner")} />
+  );
   const Icon = GLYPH[view.status];
   const RailIcon = Icon ?? Gauge;
   const tone = TONE[view.status];
-  const open = () => {
-    openSettings("plan", { nav });
-    setMobileMoreOpen(false);
-  };
+  // Only the billing owner can act on the pool; for everyone else the row
+  // is the pool's state, read by assistive tech as a status line.
+  const Row = payer ? "button" : "div";
   const attrs = {
-    type: "button" as const,
-    onClick: open,
+    ...(payer
+      ? {
+          type: "button" as const,
+          onClick: () => openAdmin({ nav, section: "billing" }),
+        }
+      : { role: "status" }),
     "aria-label": name,
     "data-testid": "plan-upgrade",
     "data-status": view.status,
@@ -92,13 +115,13 @@ export function PlanUpgradeRow({
 
   if (surface === "sheet")
     return (
-      <button {...attrs} className={sidebarSheetRowClasses}>
+      <Row {...attrs} className={sidebarSheetRowClasses}>
         <span className="flex size-5 shrink-0 items-center justify-center">
           {Icon && <Icon aria-hidden="true" className={cn("size-5", tone)} />}
         </span>
         <span className="min-w-0 flex-1 truncate tabular-nums">{status}</span>
         {chip}
-      </button>
+      </Row>
     );
 
   if (collapsed)
@@ -106,12 +129,17 @@ export function PlanUpgradeRow({
       <div className="flex justify-center px-2 py-1">
         <Tooltip>
           <TooltipTrigger asChild>
-            <button
+            <Row
               {...attrs}
-              className={cn(RAIL_PILL, "size-8 shrink-0 justify-center")}
+              tabIndex={payer ? undefined : 0}
+              className={cn(
+                RAIL_PILL,
+                payer && RAIL_PILL_PRESS,
+                "size-8 shrink-0 justify-center",
+              )}
             >
               <RailIcon aria-hidden="true" className={cn("size-4", tone)} />
-            </button>
+            </Row>
           </TooltipTrigger>
           <TooltipContent side="right" sideOffset={8}>
             {name}
@@ -122,9 +150,13 @@ export function PlanUpgradeRow({
 
   return (
     <div className="px-2 py-1">
-      <button
+      <Row
         {...attrs}
-        className={cn(RAIL_PILL, "min-h-8 w-full min-w-0 gap-2 py-1 pr-1 pl-3")}
+        className={cn(
+          RAIL_PILL,
+          payer && RAIL_PILL_PRESS,
+          "min-h-8 w-full min-w-0 gap-2 py-1 pr-1 pl-3",
+        )}
       >
         {Icon && (
           <Icon aria-hidden="true" className={cn("size-4 shrink-0", tone)} />
@@ -138,7 +170,7 @@ export function PlanUpgradeRow({
           {status}
         </span>
         {chip}
-      </button>
+      </Row>
     </div>
   );
 }

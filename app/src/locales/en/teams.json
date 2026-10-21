@@ -307,7 +307,17 @@
     "tooLong": "Keep the name under {{max}} characters.",
     "successTitle": "Organization \"{{name}}\" created",
     "successBody": "Invite people so you can work together.",
-    "successAction": "Invite your team"
+    "successAction": "Invite your team",
+    "paidTitle": "Create {{name}} as a paid organization",
+    "freeTaken": "Each person gets one free organization, and yours is {{freeOrg}}.",
+    "freeTakenUnknown": "Each person gets one free organization, and you already have yours.",
+    "paidPrice": "{{name}} costs {{price}} per member a month. You'll pay in your browser, and it unlocks once the payment goes through.",
+    "paidPriceUnknown": "You'll pay for {{name}} in your browser, and it unlocks once the payment goes through.",
+    "paidSubmit": "Continue to payment",
+    "paidSuccessTitle": "Finish paying for \"{{name}}\"",
+    "paidSuccessBody": "Checkout is open in your browser. The organization unlocks once the payment goes through.",
+    "freeTakenInline": "You already have a free organization. Create this one from the organization menu as a paid organization.",
+    "paidBlockedBody": "Your browser didn't open the checkout. Open it to finish the payment, and the organization unlocks once it goes through."
   },
   "shareViaTeam": {
     "sectionHelper": "This AI Employee lives in your personal space. Move it into a team to share it with teammates.",
@@ -321,8 +331,7 @@
       "nameLabel": "Team name",
       "create": "Create",
       "creating": "Creating…",
-      "failed": "We couldn't create the team. Please try again.",
-      "freeOrgTaken": "You already have a free team, so a new one needs a paid plan."
+      "failed": "We couldn't create the team. Please try again."
     },
     "confirm": {
       "body": "{{agent}} will move to {{team}}. You and your teammates will find it there.",
@@ -388,8 +397,7 @@
       "nameLabel": "Space name",
       "create": "Create",
       "creating": "Creating…",
-      "failed": "We couldn't create the space. Please try again.",
-      "freeOrgTaken": "You already have a free space, so a new one needs a paid plan."
+      "failed": "We couldn't create the space. Please try again."
     },
     "confirm": {
       "body_one": "Move {{team}} and its {{count}} AI Employee to {{destination}}?",
@@ -419,7 +427,7 @@
     "nameTaken": "{{team}} could not finish moving because the new team already has an AI Employee with the same name as one being moved. Rename that AI Employee first, then try again."
   },
   "billing": {
-    "unavailable": "We couldn't load billing for this team.",
+    "unavailable": "We couldn't load billing for this organization.",
     "status": {
       "free": "Free",
       "trialing": "Free trial",
@@ -427,20 +435,38 @@
       "trialingDays_other": "Free trial, {{count}} days left",
       "active": "Active",
       "past_due": "Payment past due",
-      "expired": "Trial ended"
+      "expired": "Trial ended",
+      "paid": "Active",
+      "locked": "Locked"
     },
     "seats_one": "{{count}} seat",
     "seats_other": "{{count}} seats",
-    "interval": {
-      "monthly": "Billed monthly",
-      "annual": "Billed yearly"
-    },
-    "pickPlan": "Choose a plan to add your whole team.",
-    "checkoutMonthly": "Upgrade, monthly",
     "manage": "Manage billing",
-    "askOwner": "Only the owner can change billing. Ask them to upgrade your team.",
+    "askOwner": "Only the owner who pays for this organization can change its plan. Ask them if you need more.",
     "trialPill_one": "{{count}} day left in trial",
-    "trialPill_other": "{{count}} days left in trial"
+    "trialPill_other": "{{count}} days left in trial",
+    "loading": "Loading billing",
+    "planFree": "Free plan",
+    "planPaid": "Paid plan",
+    "seatsTotal_one": "{{count}} seat, {{total}} a month",
+    "seatsTotal_other": "{{count}} seats, {{total}} a month",
+    "grace": "{{today}} a month until {{date}}, then {{total}} a month",
+    "locksOn": "Locks on {{date}}",
+    "benefitUsage": "Everyone gets their own usage, with no weekly limit",
+    "benefitRoutines": "Run all your routines, as often as you need",
+    "benefitAway": "Routines keep running while you're away",
+    "upgradePrice_one": "{{price}} a month for {{count}} member",
+    "upgradePrice_other": "{{price}} per member a month, {{total}} a month for {{count}} members",
+    "upgrade": "Upgrade",
+    "openCheckout": "Open checkout",
+    "openPortal": "Open billing portal",
+    "success": "Payment received. Everyone here can keep going.",
+    "usageTitle": "This week's free usage",
+    "usageUsed": "{{percent}}% used",
+    "usageShared": "Everyone in this organization shares it. Resets {{time}}.",
+    "usageSharedNoTime": "Everyone in this organization shares it. Resets later this week.",
+    "freeSummary_one": "{{count}} member, with one weekly allowance",
+    "freeSummary_other": "{{count}} members share one weekly allowance"
   },
   "degrade": {
     "owner": "Your team's trial ended. Upgrade to keep everyone working.",
@@ -660,14 +686,17 @@
     "settingsUnavailableBody": "This AI Employee is no longer in this space. It may have been removed or moved."
   },
   "native": {
-    "askOwner": "Only the owner can change your team's plan.",
+    "askOwner": "Only the owner who pays for this organization can change its plan.",
     "degradeOwner": "Your team's trial ended. Manage your plan on the web.",
     "degradeMember": "Your team's trial ended. Your team's plan doesn't include changes right now.",
     "writeBlockedTitle": "Not included in your team's plan",
     "writeBlockedBody": "Your team's trial ended, so your team's plan doesn't include this change right now.",
     "inviteNeedsUpgradeTitle": "This team can't add people right now",
     "inviteNeedsUpgradeBody": "Its trial ended, so its plan doesn't include new people right now.",
-    "moveNeedsUpgrade": "This team's plan doesn't include moving AI Employees into it right now."
+    "moveNeedsUpgrade": "This team's plan doesn't include moving AI Employees into it right now.",
+    "freeTakenInline": "You already have a free organization, so this one can't be created here.",
+    "freeTakenTitle": "You already have a free organization",
+    "freeTakenBody": "This one can't be created here."
   },
   "writeFailed": {
     "removeMember": {
