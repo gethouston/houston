@@ -145,6 +145,9 @@
       "now": "Here's how your organizations look now.",
       "until": "You can change this in Settings until {{date}}.",
       "locks": "A locked organization keeps its agents and files, read-only, until it has a plan.",
+      "messages_one": "{{count}} message in 30 days",
+      "messages_other": "{{count}} messages in 30 days",
+      "noMessages": "No messages in 30 days",
       "confirm": {
         "title": "We kept {{free}} free",
         "titlePaid": "We kept {{free}} free and moved your subscription to {{paid}}",

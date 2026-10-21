@@ -7,6 +7,7 @@ import {
   LA_FILA,
   PERSONAL,
   SPACES_OWNER_CAPS,
+  settingsPicker,
 } from "./support/billing-choice";
 import { expect, test } from "./support/fixtures";
 import {
@@ -17,6 +18,7 @@ import {
   provisionalPayer,
   WINDOW_CLOSED,
 } from "./support/pick-confirm";
+import { armPlan, billingScreen, freePlan, openBilling } from "./support/plan";
 
 /**
  * The pick after the cutover applied it. An owner the cutover picked for sees
@@ -50,9 +52,9 @@ test("a provisional payer sees what the cutover picked over a working shell, and
     "We went by where you're most active. You can change this until November 6.",
   );
   await expect(modal.getByRole("listitem")).toHaveText([
-    "ACAcme2 members · 520 messages in the last 30 daysYour subscription",
-    "PEPersonal1 member · 240 messages in the last 30 daysFree",
-    "LFLa Fila3 members · 96 messages in the last 30 daysLocks November 6",
+    "ACAcme2 members · 520 messages in 30 daysYour subscription",
+    "PEPersonal1 member · 240 messages in 30 daysFree",
+    "LFLa Fila3 members · 96 messages in 30 daysLocks November 6",
   ]);
   await expect(modal).toContainText(
     "A locked organization keeps its agents and files, read-only, until it has a plan.",
@@ -178,4 +180,36 @@ test("a closed window answers Confirm with its own copy and no error report", as
   await expect(page.getByText("The change window has closed")).toBeVisible();
   expect(await routes()).not.toContain("dismiss");
   expect(reports).toEqual([]);
+});
+
+test("Billing offers the change until the window ends, on the same picker", async ({
+  page,
+}) => {
+  await armCapabilities({ ...SPACES_OWNER_CAPS, plan: true });
+  await armPlan({ summary: freePlan() });
+  await armApplied(provisionalPayer());
+  await page.goto("/");
+  await choiceModal(page)
+    .getByRole("button", { name: "Maybe later" })
+    .click({ timeout: 15_000 });
+
+  await openBilling(page);
+  const billing = billingScreen(page);
+  await expect(
+    billing.getByRole("heading", { name: "Change your free organization" }),
+  ).toBeVisible();
+  await expect(billing).toContainText(
+    "Personal is your free organization. You can change it until November 6.",
+  );
+  await billing.getByRole("button", { name: "Change" }).click();
+  const picker = settingsPicker(page);
+  await expect(picker.getByRole("radio", { name: /Personal/ })).toBeChecked();
+  await picker.getByRole("button", { name: "Next" }).click();
+  await picker.getByRole("button", { name: "Pay for Acme" }).click();
+  await expect(
+    page.getByRole("dialog", {
+      name: "Personal is your free organization now",
+    }),
+  ).toBeVisible();
+  await expect(row(picker, "La Fila")).toContainText("Locks November 6");
 });

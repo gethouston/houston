@@ -145,6 +145,9 @@
       "now": "Así quedan tus organizaciones ahora.",
       "until": "Puedes cambiarlo en Configuración hasta el {{date}}.",
       "locks": "Una organización bloqueada conserva sus agentes y archivos, solo para lectura, hasta que tenga un plan.",
+      "messages_one": "{{count}} mensaje en 30 días",
+      "messages_other": "{{count}} mensajes en 30 días",
+      "noMessages": "Sin mensajes en 30 días",
       "confirm": {
         "title": "Dejamos {{free}} gratis",
         "titlePaid": "Dejamos {{free}} gratis y movimos tu suscripción a {{paid}}",

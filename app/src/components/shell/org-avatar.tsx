@@ -43,10 +43,12 @@ export function OrgAvatar({
   slug,
   name,
   size = "md",
+  className,
 }: {
   slug: string;
   name: string;
   size?: keyof typeof SIZE;
+  className?: string;
 }) {
   const tone = orgTone(slug);
   return (
@@ -62,6 +64,7 @@ export function OrgAvatar({
       className={cn(
         "plan-briefing-avatar grid shrink-0 place-items-center font-semibold",
         SIZE[size],
+        className,
       )}
     >
       {initials(name)}
