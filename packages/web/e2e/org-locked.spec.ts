@@ -1,5 +1,6 @@
 import { FAKE_HOST_URL, SEED_AGENT_NAME } from "@houston/fake-host";
 import type { Page } from "@playwright/test";
+import { openAgentSettingsSection } from "./support/agent-nav";
 import { FOLLOW_UP_PLACEHOLDER } from "./support/composer";
 import { expect, test } from "./support/fixtures";
 import { missionCard, screen } from "./support/nav-common";
@@ -14,8 +15,8 @@ import {
 } from "./support/org-lock";
 import { openedUrls, PORTAL_URL, planCalls, stubOpener } from "./support/plan";
 import { openAdminSection } from "./support/settings-nav";
-import { openAgentSkills, seedAgentSkills } from "./support/skills-nav";
-import { openTeamSection } from "./support/team-nav";
+import { seedAgentSkills } from "./support/skills-nav";
+import { openTeamSection, teamTab } from "./support/team-nav";
 
 /**
  * A locked org (H4): the strip says why and offers the way out the SDK allows
@@ -115,7 +116,11 @@ test("locked: a skill opens and reads, and nothing adds, saves or deletes one", 
   await armOrgLock(page, { team: LOCKED });
   await page.goto("/");
 
-  await openAgentSkills(page);
+  await teamTab(page, "Settings").click();
+  await openAgentSettingsSection(page, "Skills");
+  await expect(
+    screen(page).getByRole("searchbox", { name: "Search skills" }),
+  ).toBeVisible();
   await expect(screen(page).getByTestId("org-locked-note")).toHaveText(
     OWNER_REASON,
   );
@@ -146,7 +151,7 @@ test("locked: the owner moves an AI Employee out to Personal, where it then list
   await armOrgLock(page, { team: LOCKED });
   await page.goto("/");
 
-  await openTeamSection(page, "Settings");
+  await teamTab(page, "Settings").click();
   await page
     .getByRole("button", { name: /^Move to another organization/ })
     .click();
@@ -156,8 +161,6 @@ test("locked: the owner moves an AI Employee out to Personal, where it then list
     `${SEED_AGENT_NAME} will move to Personal, where only you work with it.`,
   );
   await dialog.getByRole("button", { name: "Move AI Employee" }).click();
-  await expect(dialog).toContainText(`${SEED_AGENT_NAME} is in Personal now.`);
-  await dialog.getByRole("button", { name: "Done" }).click();
 
   // The app switched to Personal, which works, and the employee is there.
   await expect(statusBanner(page)).toHaveCount(0);
