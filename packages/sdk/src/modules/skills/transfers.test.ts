@@ -181,7 +181,59 @@ describe("keeping a shared skill on one employee", () => {
     };
     await expect(keep()).rejects.toMatchObject({ reason: "enabled_elsewhere" });
     expect(state.shared).toBe(CONTENT);
+    expect(state.local).toBeNull();
+  });
+  it("undoes a half-written copy so a retry can finish", async () => {
+    const { state, keep } = fixture();
+    state.fail = `PUT ${LOCAL}`;
+    await expect(keep()).rejects.toMatchObject({ status: 500 });
+    expect(state.local).toBeNull();
+    expect(state.shared).toBe(CONTENT);
+    state.fail = "";
+    await keep();
     expect(state.local).toBe(CONTENT);
+    expect(state.shared).toBeNull();
+  });
+  it("undoes the enable it added when a later step refuses", async () => {
+    const { state, keep } = fixture();
+    state.enabled.a = ["other"];
+    state.before = (step) => {
+      if (
+        step === "PUT /agents/a/skills-manifest" &&
+        state.enabled.b.length === 0
+      )
+        state.enabled.b = ["triage"];
+    };
+    await expect(keep()).rejects.toMatchObject({ reason: "enabled_elsewhere" });
+    expect(state.enabled.a).toEqual(["other"]);
+    expect(state.local).toBeNull();
+  });
+  it("keeps a copy someone edited after the verbatim save", async () => {
+    const { state, keep } = fixture();
+    state.before = (step) => {
+      if (step === "PUT /agents/a/skills-manifest") state.local = "edited";
+    };
+    await expect(keep()).rejects.toMatchObject({ reason: "skill_changed" });
+    expect(state.local).toBe("edited");
+    expect(state.shared).toBe(CONTENT);
+  });
+  it("never deletes a copy it did not create", async () => {
+    const { state, calls, keep } = fixture();
+    state.before = (step) => {
+      if (step === "POST /agents/a/skills") state.local = "raced in";
+    };
+    await expect(keep()).rejects.toMatchObject({ status: 409 });
+    expect(state.local).toBe("raced in");
+    expect(calls.some((c) => c.step === `DELETE ${LOCAL}`)).toBe(false);
+  });
+  it("reports both failures when the undo fails too", async () => {
+    const { state, keep } = fixture();
+    state.before = (step) => {
+      if (step === `PUT ${LOCAL}`) state.fail = `PUT ${LOCAL}`;
+      if (step === `GET ${LOCAL}` && state.fail) state.fail = `GET ${LOCAL}`;
+    };
+    await expect(keep()).rejects.toBeInstanceOf(AggregateError);
+    expect(state.shared).toBe(CONTENT);
   });
   it("retains a shared version edited while the local copy was written", async () => {
     const { state, keep } = fixture();
@@ -190,7 +242,7 @@ describe("keeping a shared skill on one employee", () => {
     };
     await expect(keep()).rejects.toMatchObject({ reason: "skill_changed" });
     expect(state.shared).toBe("new version");
-    expect(state.local).toBe(CONTENT);
+    expect(state.local).toBeNull();
   });
   it("dispatches the same capability", async () => {
     const { state, sdk } = fixture();

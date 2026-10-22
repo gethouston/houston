@@ -39,8 +39,7 @@ export async function localSkill(
 /**
  * Shares a newly created skill and enables only its creator. The local copy
  * survives any failure, and a concurrent edit survives as an override.
- * @assistant group:skills
- * @assistant confirm: outward. Publishes the employee's skill to the workspace.
+ * Not an assistant operation, for the reason keepSharedSkillForAgent gives.
  */
 export async function shareNewSkillToWorkspace(
   agent: AgentSkillsFacade,

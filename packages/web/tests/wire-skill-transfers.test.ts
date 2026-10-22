@@ -89,8 +89,8 @@ test("keeping privately uses only existing routes in a safe order with gateway h
   for (const call of calls) expectGatewayHeaders(call);
 });
 
-test("partial failures reach the caller and invalidate both skill sources", async () => {
-  store("PUT /agents/a/skills-manifest");
+test("partial failures undo the copy, reach the caller and invalidate both skill sources", async () => {
+  store("PUT /agents/a/skills/triage");
   const echoes: string[] = [];
   const unsubscribe = bus.on((event) => echoes.push(event.type));
   try {
@@ -100,6 +100,10 @@ test("partial failures reach the caller and invalidate both skill sources", asyn
     expect(echoes).toContain("SkillsChanged");
     expect(echoes).toContain("SharedSkillsChanged");
     expect(trace()).not.toContain(`DELETE ${SHARED}`);
+    expect(trace().slice(-2)).toEqual([
+      "GET /agents/a/skills/triage",
+      "DELETE /agents/a/skills/triage",
+    ]);
   } finally {
     unsubscribe();
   }
