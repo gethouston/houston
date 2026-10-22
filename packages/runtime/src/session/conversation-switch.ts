@@ -3,6 +3,7 @@ import type { ResolvedModel } from "../backends/types";
 import { conversationCompactions } from "../store/conversation-compaction";
 import { serverBackendFor } from "./conversation-backends";
 import type { Conversation } from "./conversation-record";
+import { openConversationSession } from "./open-conversation-session";
 
 /**
  * The two mid-conversation rebuilds a cached session can need: moving it to the
@@ -65,7 +66,7 @@ export async function switchBackendIfNeeded(
   // Build the new backend's session directly at the requested mode, so a switch
   // that ALSO flips mode lands on it in ONE rebuild — `switchModeIfNeeded` then
   // no-ops (conv.mode is already the requested mode).
-  conv.session = await backend.createSession({
+  conv.session = await openConversationSession(backend, {
     conversationId,
     model,
     mode,
@@ -106,13 +107,16 @@ export async function switchModeIfNeeded(
 ): Promise<{ rebuilt: boolean }> {
   if (conv.mode === mode) return { rebuilt: false };
   conv.session.dispose();
-  conv.session = await serverBackendFor(model.provider).createSession({
-    conversationId,
-    model,
-    mode,
-    // Preserve the conversation's startup context across the rebuild (HOU-711).
-    ...(conv.context ? { context: conv.context } : {}),
-  });
+  conv.session = await openConversationSession(
+    serverBackendFor(model.provider),
+    {
+      conversationId,
+      model,
+      mode,
+      // Preserve the conversation's startup context across the rebuild (HOU-711).
+      ...(conv.context ? { context: conv.context } : {}),
+    },
+  );
   conv.mode = mode;
   return { rebuilt: true };
 }

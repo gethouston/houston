@@ -10,6 +10,7 @@ import {
 import { serverBackendFor } from "./conversation-backends";
 import type { Conversation } from "./conversation-record";
 import { clearNativeSessionState } from "./native-session-state";
+import { openConversationSession } from "./open-conversation-session";
 import type { ReplayPreamble } from "./replay-transcript";
 import { carryAfterRun } from "./routine-carry";
 import {
@@ -83,7 +84,7 @@ export async function resetRoutineSessionIfNeeded(
   conv.session.dispose();
   clearNativeSessionState(config.dataDir, conversationId);
   const backend = serverBackendFor(model.provider);
-  conv.session = await backend.createSession({
+  conv.session = await openConversationSession(backend, {
     conversationId,
     model,
     mode,
