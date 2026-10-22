@@ -27,7 +27,8 @@ export const DEFAULT_MODEL: Partial<Record<ProviderId, string>> = {
   // live probe that proves it lives; `app/tests/codex-models.test.ts` pins the
   // two together so the copy cannot drift silently.
   "openai-codex": "gpt-6-luna",
-  // The cheapest model served on every Copilot plan (HOU-578). GitHub retired
+  // The cheapest model served on every paid Copilot plan (HOU-578; Free and
+  // Student get auto model selection only). GitHub retired
   // gpt-4.1 on 2026-06-01 and gpt-5-mini on 2026-10-19, naming the latest GPT
   // Luna as its successor (pi 1.4.0 dropped the row). Under usage-based billing
   // every model spends AI credits, so the default is the lowest-cost row rather

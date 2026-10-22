@@ -12,18 +12,18 @@ import { SAMPLE_CATALOG } from "./fixtures/sample-catalog.ts";
 before(() => hydrateProviderCatalog(SAMPLE_CATALOG));
 
 // HOU-578: plan-gated premium models 404 `model_not_supported` on a plan that
-// lacks them. The picker therefore MUST offer the cheapest model every plan
-// serves, and the default MUST be it — otherwise a user lands on a model that
+// lacks them. The picker therefore MUST offer the cheapest model every paid
+// plan serves (Free and Student get auto model selection only), and the default MUST be it — otherwise a user lands on a model that
 // can never answer, with nothing usable to switch to. GitHub retired the
 // earlier base models, gpt-4.1 (2026-06-01) and gpt-5-mini (2026-10-19).
 const BASE_MODEL = "gpt-6-luna";
 
 describe("GitHub Copilot model picker (HOU-578)", () => {
-  it("offers the gpt-6-luna base model — the one option every plan serves", () => {
+  it("offers the gpt-6-luna base model — the one option every paid plan serves", () => {
     const models = getProvider("github-copilot")?.models ?? [];
     ok(
       models.some((m) => m.id === BASE_MODEL),
-      "github-copilot picker must include the gpt-6-luna base model so every plan has a usable option",
+      "github-copilot picker must include the gpt-6-luna base model so every paid plan has a usable option",
     );
   });
 

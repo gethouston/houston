@@ -124,7 +124,11 @@ export const MODEL_ALIASES: Partial<
   // not this table — is the authority on what it routes. `mimo-v2.5-free` is
   // `mimo-v2.6-flash-free` in pi 0.87.1: the same free tier (zero cost,
   // text+image, 200k window), so the map holds the tier.
-  opencode: { "mimo-v2.5-free": "mimo-v2.6-flash-free" },
+  // pi 1.4.0 dropped `claude-sonnet-4`; Sonnet 4.6 costs the same per token.
+  opencode: {
+    "mimo-v2.5-free": "mimo-v2.6-flash-free",
+    "claude-sonnet-4": "claude-sonnet-4-6",
+  },
   // Each row is a model pi dropped from OpenCode Go, mapped to its successor.
   // 0.99.1 dropped the glm, kimi and qwen rows, each to the same price tier.
   // 1.1.0 dropped the free `space-bunny-free` preview: `space-bunny` is the

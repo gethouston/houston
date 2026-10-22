@@ -142,7 +142,8 @@ test("an open-catalog gateway carries only its renames", () => {
   expect(opencode["mimo-v2.5-free"]).toBe("mimo-v2.6-flash-free");
   // Nothing else: a gateway id with no successor must keep passing through, so
   // the picker's live list — not this table — decides what it can move to.
-  expect(Object.keys(opencode)).toEqual(["mimo-v2.5-free"]);
+  expect(opencode["claude-sonnet-4"]).toBe("claude-sonnet-4-6");
+  expect(Object.keys(opencode)).toEqual(["mimo-v2.5-free", "claude-sonnet-4"]);
   // Each OpenCode Go row is a model pi dropped, mapped to its successor.
   expect(MODEL_ALIASES["opencode-go"]).toEqual({
     "glm-5.1": "glm-5.2",

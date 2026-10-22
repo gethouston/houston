@@ -74,7 +74,8 @@ export const SUBSCRIPTION_OVERRIDES: Record<string, ProviderOverride> = {
     copilotConnect: true,
     models: {
       "gpt-6-luna": {
-        description: "Fast and lightweight. Cheapest on every Copilot plan.",
+        description:
+          "Fast and lightweight. Cheapest on every paid Copilot plan.",
       },
       // Sonnet 4.6 retired on Copilot 2026-09-01 (all but annual individual
       // plans); Sonnet 5 is GitHub's named replacement.

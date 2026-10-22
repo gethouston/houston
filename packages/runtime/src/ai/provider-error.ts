@@ -286,7 +286,7 @@ const PLAN_LIMIT_PATTERNS = [
 ];
 
 /**
- * The cheapest GitHub Copilot model every plan serves, offered as the concrete
+ * The cheapest GitHub Copilot model every paid plan serves, offered as the concrete
  * switch target on a `model_unavailable` card. GitHub retired the old base
  * models (gpt-4.1 / gpt-4o, then gpt-5-mini on 2026-10-19); gpt-6-luna is the
  * lowest-cost row every paid plan serves. Kept in sync with
