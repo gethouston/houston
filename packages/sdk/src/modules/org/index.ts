@@ -31,6 +31,7 @@ import {
   removeOrgMember,
   setOrgMemberRole,
 } from "./http";
+import { listMemberRoutines, type MemberRoutines } from "./member-routines";
 import {
   type AddOrgMemberResult,
   OrgCommand,
@@ -52,6 +53,11 @@ import {
 } from "./usage";
 
 export { OrgHttpError } from "./http";
+export type {
+  MemberRoutine,
+  MemberRoutineKind,
+  MemberRoutines,
+} from "./member-routines";
 export type {
   AddOrgMemberResult,
   OrgInfo,
@@ -84,6 +90,8 @@ export interface OrgModule {
   deleteOrgInvite(inviteId: string): Promise<void>;
   /** Remove a member from the active space by user id. */
   removeOrgMember(userId: string): Promise<void>;
+  /** The routines a member created that removing them would stop (owner only). */
+  listMemberRoutines(userId: string): Promise<MemberRoutines>;
   /** Change what a member may do in the active space. */
   setOrgMemberRole(userId: string, role: OrgRole): Promise<void>;
   /** The audit trail, newest first; both bounds optional. */
@@ -111,6 +119,9 @@ export function createOrgModule(ctx: ModuleContext): OrgModule {
   ctx.registerCommand(OrgCommand.RemoveMember, (p) =>
     removeOrgMember(scope, requireString(p, "userId")),
   );
+  ctx.registerCommand(OrgCommand.MemberRoutines, (p) =>
+    listMemberRoutines(scope, requireString(p, "userId")),
+  );
   ctx.registerCommand(OrgCommand.SetMemberRole, (p) =>
     setOrgMemberRole(scope, requireString(p, "userId"), requireRole(p, "role")),
   );
@@ -131,6 +142,7 @@ export function createOrgModule(ctx: ModuleContext): OrgModule {
     addOrgMember: (email, role) => addOrgMember(scope, email, role),
     deleteOrgInvite: (inviteId) => deleteOrgInvite(scope, inviteId),
     removeOrgMember: (userId) => removeOrgMember(scope, userId),
+    listMemberRoutines: (userId) => listMemberRoutines(scope, userId),
     setOrgMemberRole: (userId, role) => setOrgMemberRole(scope, userId, role),
     orgAudit: (before, limit) => orgAudit(scope, before, limit),
     orgUsage: (days) => orgUsage(scope, days),

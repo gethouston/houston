@@ -249,7 +249,14 @@
     },
     "removeConfirm": {
       "title": "Remover {{name}}?",
-      "description": "Ela perderá o acesso a todos os funcionários de IA compartilhados com ela. Você pode adicioná-la novamente depois.",
+      "description": "Ela perderá o acesso a todos os funcionários de IA compartilhados com ela, e os apps que ela conectou saem junto. Você pode adicioná-la novamente depois.",
+      "routinesLoading": "Verificando as rotinas que ela configurou...",
+      "routinesFailed": "Não conseguimos verificar as rotinas que ela configurou. Qualquer rotina que ela criou vai parar quando ela sair.",
+      "routinesTitle_one": "Esta rotina que ela configurou vai parar:",
+      "routinesTitle_other": "Estas {{count}} rotinas que ela configurou vão parar:",
+      "routinesHint": "As rotinas usam os apps de quem as configurou. Para manter uma funcionando, peça a alguém que vai ficar para configurá-la de novo.",
+      "untitledRoutine": "Rotina sem título",
+      "paused": "Pausada",
       "confirm": "Remover",
       "cancel": "Cancelar"
     },

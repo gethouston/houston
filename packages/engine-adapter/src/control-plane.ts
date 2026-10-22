@@ -40,6 +40,7 @@ export type {
   IntegrationConnection,
   IntegrationProviderStatus,
   IntegrationToolkit,
+  MemberRoutines,
   OrgInfo,
   OrgInvite,
   OrgInviteSummary,

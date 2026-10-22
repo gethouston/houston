@@ -23,6 +23,7 @@ export * from "./heartbeat";
 export * from "./interactions";
 export * from "./linkedin";
 export * from "./local-model-bridge";
+export * from "./member-routines";
 export * from "./move-refusal";
 export * from "./onboarding";
 export * from "./org-billing";

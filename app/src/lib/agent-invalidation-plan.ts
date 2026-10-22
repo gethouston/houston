@@ -78,6 +78,8 @@ export function planInvalidation(
       break;
     case "RoutinesChanged":
       plan.invalidate.push(queryKeys.routines(ev.data.agent_path));
+      // An open remove confirmation lists routines by their creator.
+      plan.invalidate.push(queryKeys.memberRoutines());
       break;
     case "RoutineRunsChanged":
       plan.invalidate.push(["routine-runs", ev.data.agent_path]);

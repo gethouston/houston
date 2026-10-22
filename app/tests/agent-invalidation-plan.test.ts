@@ -325,3 +325,14 @@ describe("planInvalidation — AgentRoleChanged renames the row", () => {
     strictEqual(planInvalidation(ev, {}).reloadAgentsWorkspace, undefined);
   });
 });
+
+describe("planInvalidation — RoutinesChanged reaches the remove confirmation", () => {
+  it("refreshes the agent's routines and every member's routines list", () => {
+    const plan = planInvalidation(
+      { type: "RoutinesChanged", data: { agent_path: PATH } } as HoustonEvent,
+      {},
+    );
+    ok(invalidates(plan, queryKeys.routines(PATH)));
+    ok(invalidates(plan, queryKeys.memberRoutines()));
+  });
+});

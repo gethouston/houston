@@ -33,6 +33,8 @@ export const GATEWAY_ONLY_ROUTES: Readonly<Record<string, string>> = {
     "withdraws a pending invitation the gateway issued",
   "DELETE /v1/org/members/{userId}": "removes a person from the space",
   "PATCH /v1/org/members/{userId}": "changes a member's role in the space",
+  "GET /v1/org/members/{userId}/routines":
+    "the routines that run as a member, which the gateway stops on removal",
   "GET /v1/org/audit": "the admin activity log the gateway records",
   "GET /v1/org/usage": "per-member turn usage the gateway meters",
   "GET /v1/org/compute-usage": "engine-pod compute the gateway meters",

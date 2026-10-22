@@ -91,6 +91,7 @@ Calling an operation returns the host's raw response. Where the adapter function
 - `deleteOrgInvite`: Cancels a pending invitation to this space. **Confirmation required.**
 - `getOrg`: Shows the current space, the user's role in it, and the people in it.
 - `getOrgPeople`: Lists the people the user shares this space with.
+- `listMemberRoutines`: Lists the routines someone set up that would stop if they were removed from this space.
 - `orgAudit`: Shows the record of who did what in this space, newest first.
 - `orgUsage`: Shows how much each person and agent used this space over recent days.
 - `removeOrgMember`: Removes someone from the current space. **Confirmation required.**
