@@ -7,11 +7,11 @@ import {
   choiceModal,
   INNOVA,
   installChoiceClock,
-  LA_FILA,
   MODAL_TITLE,
   memberChoice,
   openPicker,
   ownerChoice,
+  PERSONAL,
   payerChoice,
   SPACES_OWNER_CAPS,
   settingsPicker,
@@ -67,6 +67,7 @@ test("an owner picks the org that stays free from the modal, and it stays gone",
   await expect(
     page.getByRole("dialog", { name: "Nothing gets deleted" }),
   ).toBeVisible();
+  await expect(modal).toContainText("Organizations you don't keep free");
   await expect(modal).toContainText("Step 2 of 4");
   await expect(modal.getByRole("listitem")).toHaveText([
     "You can still open themEvery agent, mission and file stays where it is.",
@@ -148,6 +149,9 @@ test("a Plus payer picks the org the subscription covers first, then the free on
     },
   );
   await expect(modal).toContainText("Step 1 of 5");
+  await expect(modal.getByRole("listitem").nth(2)).toHaveText(
+    "Your subscription covers one organization$15 per member a month. You pick it in a moment.",
+  );
   await openPicker(modal, true);
 
   await expect(
@@ -176,23 +180,33 @@ test("a Plus payer picks the org the subscription covers first, then the free on
     modal.getByRole("radio", { name: /Innova/ }),
   ).toHaveAccessibleName(/^Innova Your subscription/);
   await expect(modal.getByRole("radio", { name: /La Fila/ })).toBeChecked();
-  // Back keeps the paid pick; going on again returns to the same free pick.
+  await modal.getByText("Personal", { exact: true }).click();
+  // Back keeps the paid pick, then leaves the picker for the intro; both
+  // picks survive the trip there and back.
   await modal.getByRole("button", { name: "Back" }).click();
   await expect(modal.getByRole("radio", { name: /Innova/ })).toBeChecked();
+  await modal.getByRole("button", { name: "Back" }).click();
+  await expect(
+    page.getByRole("dialog", { name: "Nothing gets deleted" }),
+  ).toBeVisible();
+  await expect(modal).toContainText("Step 2 of 5");
+  await modal.getByRole("button", { name: "Next", exact: true }).click();
+  await expect(modal.getByRole("radio", { name: /Innova/ })).toBeChecked();
   await modal.getByRole("button", { name: "Use it for Innova" }).click();
-  await modal.getByRole("button", { name: "Keep La Fila free" }).click();
+  await expect(modal.getByRole("radio", { name: /Personal/ })).toBeChecked();
+  await modal.getByRole("button", { name: "Keep Personal free" }).click();
 
   await expect(
-    page.getByRole("dialog", { name: "La Fila stays free" }),
+    page.getByRole("dialog", { name: "Personal stays free" }),
   ).toBeVisible();
-  await expect(outcome(modal, "La Fila")).toContainText("Free");
+  await expect(outcome(modal, "Personal")).toContainText("Free");
   await expect(outcome(modal, "Innova")).toContainText("Your subscription");
   // A third org is neither free nor paid for.
-  await expect(outcome(modal, "Personal")).toContainText("Needs a plan");
+  await expect(outcome(modal, "La Fila")).toContainText("Needs a plan");
   expect((await choiceCalls()).filter((c) => c.route === "set")).toEqual([
     {
       route: "set",
-      body: { freeOrgSlug: LA_FILA.slug, paidOrgSlug: INNOVA.slug },
+      body: { freeOrgSlug: PERSONAL.slug, paidOrgSlug: INNOVA.slug },
     },
   ]);
   await modal.getByRole("button", { name: "Done" }).click();
