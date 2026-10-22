@@ -27,7 +27,10 @@ import { OPENAI_COMPATIBLE } from "./openai-compatible-model";
  * The deadline is `config.turnFirstByteDeadlineMs` (15 s, 3x the small
  * prompts' p99) plus 50 ms per thousand prompt tokens: 35 s at 400k, 55 s at
  * 800k (about twice the slowest first byte seen there), 65 s at 1M, still far
- * short of the stalled provider's 300 s. A custom endpoint is the user's own
+ * short of the stalled provider's 300 s. The Claude Code CLI takes one
+ * deadline for a whole turn, sized with 100k tokens of growth on top
+ * (backends/claude/turn-prompt-size.ts): a Claude turn waits at least 20 s,
+ * its size known or not. A custom endpoint is the user's own
  * server (Ollama, LM Studio, vLLM), where loading a model on a laptop can
  * take minutes before the first byte: it is never hedged and never cut.
  */
@@ -39,8 +42,7 @@ const MS_PER_PROMPT_TOKEN = 50 / 1000;
 
 /**
  * The hedge deadline for a request to `provider` carrying `promptTokens`
- * (undefined when unknown, which gets the small-prompt deadline). 0 = never
- * hedged.
+ * (undefined counts as 0 tokens). 0 = never hedged.
  */
 export function firstByteDeadlineMs(
   provider: string,
