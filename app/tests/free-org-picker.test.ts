@@ -422,14 +422,14 @@ describe("the announcement", () => {
     ok(shown !== "closed");
     deepStrictEqual(shown.points[2], [
       "Your subscription covers one organization",
-      "You choose which one in a moment.",
+      "$15 per member a month. You pick it in a moment.",
     ]);
   });
 
   it("says what happens to the orgs not kept free, with Back", () => {
     const owner = introText({ ...CHOICE, payer: null }, "not_kept");
     deepStrictEqual(owner, {
-      head: ["Nothing gets deleted"],
+      head: ["Organizations you don't keep free", "Nothing gets deleted"],
       points: [
         [
           "You can still open them",

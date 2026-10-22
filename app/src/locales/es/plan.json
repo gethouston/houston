@@ -89,7 +89,7 @@
       },
       "covers": {
         "title": "Tu suscripción cubre una organización",
-        "body": "En un momento eliges cuál."
+        "body": "{{price}} por miembro al mes. La eliges en un momento."
       },
       "staysFree": "{{name}} sigue gratis",
       "paysFor": "Tu suscripción paga por {{name}}",
@@ -102,6 +102,7 @@
       "gotIt": "Entendido",
       "close": "Cerrar",
       "notKept": {
+        "label": "Organizaciones que no mantienes gratis",
         "title": "No se borra nada",
         "open": {
           "title": "Puedes seguir abriéndolas",

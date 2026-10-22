@@ -53,7 +53,9 @@ export function useNoticePoints(
           ? {
               icon: CreditCard,
               title: t("choice.notice.covers.title"),
-              body: t("choice.notice.covers.body"),
+              body: t("choice.notice.covers.body", {
+                price: orgSeatPrice(i18n.language),
+              }),
             }
           : {
               icon: CreditCard,

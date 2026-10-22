@@ -89,7 +89,7 @@
       },
       "covers": {
         "title": "Sua assinatura cobre uma organização",
-        "body": "Você escolhe qual daqui a pouco."
+        "body": "{{price}} por membro por mês. Você escolhe qual daqui a pouco."
       },
       "staysFree": "{{name}} continua grátis",
       "paysFor": "Sua assinatura paga por {{name}}",
@@ -102,6 +102,7 @@
       "gotIt": "Entendi",
       "close": "Fechar",
       "notKept": {
+        "label": "Organizações que você não mantém grátis",
         "title": "Nada é apagado",
         "open": {
           "title": "Você ainda pode abri-las",

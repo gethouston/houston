@@ -46,6 +46,9 @@ export function BillingChangeIntro({
     return (
       <>
         <PickerProgress progress={progress} />
+        <p className="mb-2 text-sm font-medium text-ink-muted">
+          {t("choice.notice.notKept.label")}
+        </p>
         <DialogTitle tabIndex={-1} className={`mb-7 ${TITLE_CLASS}`}>
           {t("choice.notice.notKept.title")}
         </DialogTitle>

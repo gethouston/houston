@@ -4,7 +4,8 @@ import type { ChoiceIntroPage } from "@houston/sdk";
 import {
   CLOSED_CHOICE_FRAME,
   choiceDone,
-  choiceIntroPages,
+  choiceFramePick,
+  choiceIntroProgress,
   choiceModal,
   closeChoiceFrame,
   closeDismisses,
@@ -15,6 +16,7 @@ import {
   pickFlow,
   pickFlowProgress,
   previousChoicePage,
+  withChoicePick,
 } from "@houston/sdk";
 import { useState } from "react";
 import { useTranslation } from "react-i18next";
@@ -109,10 +111,7 @@ export function BillingChangeModal({
             notice={notice}
             choice={choice}
             page={page}
-            progress={pickFlowProgress(flow, {
-              step: "intro",
-              index: choiceIntroPages(notice).indexOf(page),
-            })}
+            progress={choiceIntroProgress(choice, notice, page)}
             onNext={next}
             onBack={back}
             onClose={close}
@@ -147,6 +146,15 @@ export function BillingChangeModal({
           <PickerBody
             choice={choice}
             flow={flow}
+            draft={choiceFramePick(frame, choice)}
+            onDraft={(update) =>
+              setFrame((current) =>
+                withChoicePick(
+                  current,
+                  update(choiceFramePick(current, choice)),
+                ),
+              )
+            }
             onBack={back}
             onAnswer={(outcome) =>
               setFrame((current) => finishPicking(current, outcome))

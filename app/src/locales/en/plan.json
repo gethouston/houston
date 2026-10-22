@@ -89,7 +89,7 @@
       },
       "covers": {
         "title": "Your subscription covers one organization",
-        "body": "You choose which one in a moment."
+        "body": "{{price}} per member a month. You pick it in a moment."
       },
       "staysFree": "{{name}} stays free",
       "paysFor": "Your subscription pays for {{name}}",
@@ -102,6 +102,7 @@
       "gotIt": "Got it",
       "close": "Close",
       "notKept": {
+        "label": "Organizations you don't keep free",
         "title": "Nothing gets deleted",
         "open": {
           "title": "You can still open them",
