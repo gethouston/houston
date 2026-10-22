@@ -110,7 +110,10 @@ test("a refused gpt-5.5 pin lands on the latest Sol, not on gpt-6-astra", () => 
 test("a Copilot row GitHub retired maps to the successor GitHub names", () => {
   const copilot = MODEL_ALIASES["github-copilot"] ?? {};
   expect(copilot["gpt-5-mini"]).toBe("gpt-6-luna");
-  expect(copilot["gpt-5.5"]).toBe("gpt-6.1-sol");
+  // Sol needs Copilot Pro+; gpt-5.5 ran on Pro, so its pin stays on a Pro row.
+  expect(copilot["gpt-5.5"]).toBe("gpt-5.6-terra");
+  // Kimi K3 costs about 3.5x more, so the retired Kimi id is not moved up.
+  expect(copilot["kimi-k2.7-code"]).toBeUndefined();
   expect(copilot["gemini-3.6-flash"]).toBe("gemini-3.8-flash");
   // A row Copilot still serves is never renamed.
   expect(copilot["claude-haiku-4.5"]).toBeUndefined();

@@ -66,8 +66,8 @@ export const MODEL_DISPLAY: Partial<
   // Copilot serves several labs through one plan, so its rows name the lab
   // too — "Sonnet 5" alone would not say whose model it is on that card.
   "github-copilot": {
-    "gpt-6.1-sol": "GPT-6.1 Sol",
     "gpt-6-luna": "GPT-6 Luna",
+    "gpt-5.6-terra": "GPT-5.6 Terra",
     "claude-sonnet-5": "Claude Sonnet 5",
     "claude-opus-4.8": "Claude Opus 4.8",
     "claude-haiku-4.5": "Claude Haiku 4.5",

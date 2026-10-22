@@ -87,18 +87,21 @@ export const MODEL_ALIASES: Partial<
     "gpt-5.5": "gpt-6.1-sol",
   },
   // Rows GitHub retired from Copilot (2026-09-10 to 2026-10-19) and pi 1.4.0
-  // dropped, each mapped to the successor GitHub's retirement table names.
-  // Copilot is open in VALID_MODELS, so each entry is a rename.
+  // dropped, each mapped to the successor GitHub's retirement table names when
+  // it costs no more and stays on the same plan. GitHub names the latest Sol
+  // for gpt-5.4 and gpt-5.5, but Sol needs Copilot Pro+ while both ran on Pro,
+  // so they land on gpt-5.6-terra (Pro, cheaper than either). kimi-k2.7-code
+  // has no row: GitHub's successor, Kimi K3, costs about 3.5x more. Copilot is
+  // open in VALID_MODELS, so each entry is a rename.
   "github-copilot": {
     "gpt-5-mini": "gpt-6-luna",
     "gpt-5.4-mini": "gpt-6-luna",
-    "gpt-5.4": "gpt-6.1-sol",
-    "gpt-5.5": "gpt-6.1-sol",
+    "gpt-5.4": "gpt-5.6-terra",
+    "gpt-5.5": "gpt-5.6-terra",
     "claude-opus-4.7": "claude-opus-5.5",
     "gemini-3.5-flash": "gemini-3.8-flash",
     "gemini-3.6-flash": "gemini-3.8-flash",
     "gemini-3.7-flash": "gemini-3.8-flash",
-    "kimi-k2.7-code": "kimi-k3",
     "mai-code-1-flash-picker": "mai-code-1.1-flash",
   },
   // pi 1.4.0 dropped the MiMo V2.5 line. Each V2.6 row costs the same as the

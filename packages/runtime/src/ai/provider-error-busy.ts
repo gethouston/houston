@@ -2,11 +2,19 @@
 const UPSTREAM_PROVIDER_ERROR = /provider.?returned.?(?:an.?)?error/;
 /** pi-ai's `service.?(?:is.?)?(?:temporarily.?)?unavailable` (utils/retry). */
 const SERVICE_UNAVAILABLE = /service.?(?:is.?)?(?:temporarily.?)?unavailable/;
-/** pi-ai 1.4.0's gateway `response.failed` codes and stream breaks (utils/retry). */
+/**
+ * pi-ai 1.4.0's gateway `response.failed` codes and stream breaks (utils/retry).
+ * Only the snake_case codes, never pi's looser `upstream.?request.?failed`: a
+ * gateway's "upstream request failed: model not found" is a refusal.
+ */
 const UPSTREAM_STREAM_BREAK =
-  /upstream.?request.?failed|upstream_stream_read_error|stream was interrupted|http\/?2 stream failed|stream disconnected before completion/;
-/** pi-ai 1.4.0's node-fetch system error, e.g. Vertex's ADC token refresh. */
-const NODE_FETCH_FAILURE = /request to \S+ failed, reason:/;
+  /upstream_request_failed|upstream_stream_read_error|stream was interrupted|http\/?2 stream failed|stream disconnected before completion/;
+/**
+ * pi-ai 1.4.0's node-fetch system error with an EMPTY reason (Vertex's ADC
+ * token refresh). A named reason such as `getaddrinfo ENOTFOUND` is the user's
+ * own network and must stay `network_unreachable`.
+ */
+const NODE_FETCH_FAILURE = /request to \S+ failed, reason:\s*$/;
 
 /**
  * Status-less server failures pi retries itself, so one reaches the
@@ -26,7 +34,7 @@ const NODE_FETCH_FAILURE = /request to \S+ failed, reason:/;
  * already reads as a server failure by its status.
  * pi 1.4.0 added more gateway `response.failed` codes, HTTP/2 stream breaks,
  * the Codex CLI proxies' "stream disconnected before completion", and
- * node-fetch's `request to <url> failed, reason:` (the reason is often empty).
+ * node-fetch's `request to <url> failed, reason:` when the reason is empty.
  * Same status gate: a status-less break is the provider's side giving out.
  *
  * `lower` is the already-lowercased error message.

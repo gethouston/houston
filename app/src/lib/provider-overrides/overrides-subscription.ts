@@ -88,8 +88,8 @@ export const SUBSCRIPTION_OVERRIDES: Record<string, ProviderOverride> = {
       "claude-haiku-4.5": {
         description: "Anthropic's fastest, for quick tasks. Needs Copilot Pro.",
       },
-      "gpt-6.1-sol": {
-        description: "OpenAI's newest model. Needs Copilot Pro+.",
+      "gpt-5.6-terra": {
+        description: "OpenAI's balanced mid-tier model. Needs Copilot Pro.",
       },
       "gemini-3.8-flash": {
         description: "Google's fast model. Needs Copilot Pro.",
