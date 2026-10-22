@@ -39,8 +39,8 @@ export function PeopleRosterConfirm({
         }}
         title={t("people.makeOwnerConfirm.title", {
           name: owner
-          ? rosterPersonName(owner, t("people.roster.unnamedAccount"))
-          : "",
+            ? rosterPersonName(owner, t("people.roster.unnamedAccount"))
+            : "",
         })}
         description={t("people.makeOwnerConfirm.description")}
         confirmLabel={t("people.makeOwnerConfirm.confirm")}
