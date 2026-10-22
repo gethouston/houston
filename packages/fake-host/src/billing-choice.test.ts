@@ -171,4 +171,12 @@ describe("billing choice", () => {
     });
     expect(res.status).toBe(400);
   });
+
+  it("rejects an unknown top-level refusal", async () => {
+    const res = await send("POST", "/__test__/billing-choice", {
+      choice: CHOICE,
+      refuse: "nope",
+    });
+    expect(res.status).toBe(400);
+  });
 });

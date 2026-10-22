@@ -91,8 +91,11 @@ export function handleBillingChoiceControl(
   });
   if (refusals.length !== entries.length)
     return json({ error: "unknown refusal in refusals" }, 400);
+  const refuse = refusalOf(body?.refuse);
+  if (body?.refuse !== undefined && !refuse)
+    return json({ error: "unknown refuse" }, 400);
   state.armBillingChoice(choiceOf(body?.choice), {
-    refuse: refusalOf(body?.refuse),
+    refuse,
     refusals,
     afterRefusal: choiceOf(body?.afterRefusal),
     failDismiss: body?.failDismiss === true,
