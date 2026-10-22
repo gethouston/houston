@@ -2,6 +2,7 @@ import { layout } from "@houston/design-tokens";
 import type { BillingChoice, BillingChoiceSave } from "@houston/engine-adapter";
 import {
   type ChoicePickerFrame,
+  choicePickerPick,
   choicePickerSaved,
   closeChoicePicker,
   type PickerState,
@@ -11,12 +12,10 @@ import {
   pickFlow,
   pickFlowProgress,
   pickRefused,
-  reconcilePick,
-  startPick,
   toFreeStep,
+  withPickerDraft,
 } from "@houston/sdk";
 import { DialogTitle } from "@houston-ai/core";
-import { useState } from "react";
 import { useTranslation } from "react-i18next";
 import { useSetBillingChoice } from "../../hooks/queries/use-billing-choice";
 import { DoneStep } from "./free-org-picker-done";
@@ -118,31 +117,10 @@ export function PickerBody({
   );
 }
 
-/** The Settings picker's draft lives as long as its open: a fresh one each time. */
-function SettingsPickerBody({
-  choice,
-  onAnswer,
-}: {
-  choice: BillingChoice;
-  onAnswer: (outcome: BillingChoiceSave) => void;
-}) {
-  const [stored, setStored] = useState<PickerState>(() => startPick(choice));
-  return (
-    <PickerBody
-      choice={choice}
-      flow={pickFlow(choice, null)}
-      draft={reconcilePick(choice, stored)}
-      onDraft={(update) =>
-        setStored((current) => update(reconcilePick(choice, current)))
-      }
-      onAnswer={onAnswer}
-    />
-  );
-}
-
 /**
  * The picker on its own, opened from Settings > Billing, then its success
- * step until the person closes it. The row that opens it holds the frame.
+ * step until the person closes it. The row that opens it holds the frame,
+ * and the frame holds the draft for one open ({@link choicePickerPick}).
  */
 export function FreeOrgPicker({
   choice,
@@ -158,6 +136,7 @@ export function FreeOrgPicker({
 }) {
   const { t } = useTranslation("plan");
   const close = () => setFrame(closeChoicePicker);
+  const flow = pickFlow(choice, null, frame.pick);
   return (
     <PlanBriefingFrame
       open={frame.open}
@@ -175,14 +154,22 @@ export function FreeOrgPicker({
         {frame.done ? (
           <DoneStep
             done={frame.done}
-            progress={pickFlowProgress(pickFlow(choice, null), {
-              step: "done",
-            })}
+            progress={pickFlowProgress(flow, { step: "done" })}
             onClose={close}
           />
         ) : (
-          <SettingsPickerBody
+          <PickerBody
             choice={choice}
+            flow={flow}
+            draft={choicePickerPick(frame, choice)}
+            onDraft={(update) =>
+              setFrame((current) =>
+                withPickerDraft(
+                  current,
+                  update(choicePickerPick(current, choice)),
+                ),
+              )
+            }
             onAnswer={(outcome) =>
               setFrame((current) => choicePickerSaved(current, outcome))
             }

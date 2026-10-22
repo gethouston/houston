@@ -28,13 +28,29 @@ export interface PickerState {
   step: PickerStep;
   free: string | null;
   paid: string | null;
+  /**
+   * The gateway refused the paid pick (`not_payer`, {@link pickRefused}): the
+   * picker stays on the free step even while the choice still names the
+   * person a payer. Never inferred from the draft's shape.
+   */
+  paidRefused: boolean;
 }
 
 /** The picker as it opens: a payer on the paid step, everyone else on the free one. */
 export function startPick(choice: BillingChoice): PickerState {
   if (!choosesPaidOrg(choice))
-    return { step: "free", free: defaultFreeOrg(choice, null), paid: null };
-  return { step: "paid", free: null, paid: defaultPaidOrg(choice) };
+    return {
+      step: "free",
+      free: defaultFreeOrg(choice, null),
+      paid: null,
+      paidRefused: false,
+    };
+  return {
+    step: "paid",
+    free: null,
+    paid: defaultPaidOrg(choice),
+    paidRefused: false,
+  };
 }
 
 /**
@@ -53,13 +69,26 @@ export function toFreeStep(
 }
 
 /**
+ * Whether the picker has a paid step: the choice names the person a payer and
+ * the gateway has not refused their paid pick ({@link pickRefused}).
+ */
+export function pickHasPaidStep(
+  choice: BillingChoice,
+  state: PickerState | null,
+): boolean {
+  return choosesPaidOrg(choice) && !state?.paidRefused;
+}
+
+/**
  * The picker's state made valid against the latest choice. A refusal's
  * refetch can drop an org the person no longer owns or end their payer
- * status. A dropped paid org goes back to the paid step on the busiest org; a
- * dropped free org alone goes back to the free step on its default. Without a
- * subscription, or after the gateway refused one ({@link pickRefused}), only
- * the free step is left. The paid step keeps any free pick still owned, even
- * the org now picked as paid: {@link toFreeStep} settles that collision.
+ * status, and a payer status can start under an open draft (a subscription
+ * in another tab, a comp grant). Without a paid step ({@link pickHasPaidStep})
+ * only the free step is left. Otherwise a missing or dropped paid org goes
+ * back to the paid step on the default one, and a dropped free org alone
+ * goes back to the free step on its default. The paid step keeps any free
+ * pick still owned, even the org now picked as paid: {@link toFreeStep}
+ * settles that collision.
  */
 export function reconcilePick(
   choice: BillingChoice,
@@ -68,15 +97,18 @@ export function reconcilePick(
   const owned = (slug: string | null) =>
     slug !== null && choice.orgs.some((org) => org.slug === slug);
   const free = owned(state.free) ? state.free : null;
-  if (!choosesPaidOrg(choice) || (state.step === "free" && !state.paid))
+  const { paidRefused } = state;
+  if (!pickHasPaidStep(choice, state))
     return {
       step: "free",
       free: free ?? defaultFreeOrg(choice, null),
       paid: null,
+      paidRefused,
     };
   if (!owned(state.paid))
-    return { step: "paid", free, paid: defaultPaidOrg(choice) };
-  if (state.step === "paid") return { step: "paid", free, paid: state.paid };
+    return { step: "paid", free, paid: defaultPaidOrg(choice), paidRefused };
+  if (state.step === "paid")
+    return { step: "paid", free, paid: state.paid, paidRefused };
   return {
     step: "free",
     free:
@@ -84,6 +116,7 @@ export function reconcilePick(
         ? free
         : defaultFreeOrg(choice, state.paid),
     paid: state.paid,
+    paidRefused,
   };
 }
 
@@ -98,7 +131,7 @@ export function pickRefused(
   outcome: BillingChoiceSave,
 ): PickerState {
   return outcome.kind === "not_payer"
-    ? { ...state, step: "free", paid: null }
+    ? { ...state, step: "free", paid: null, paidRefused: true }
     : state;
 }
 

@@ -4,9 +4,11 @@ import {
   CLOSED_CHOICE_PICKER,
   choiceDone,
   choicePickerEntry,
+  choicePickerPick,
   choicePickerSaved,
   closeChoicePicker,
   openChoicePicker,
+  withPickerDraft,
 } from "./choice-done";
 import {
   BEFORE,
@@ -116,7 +118,43 @@ describe("the picker opened from Settings", () => {
     });
     // Closing keeps the step for the close animation; reopening drops it.
     expect(closeChoicePicker(frame)).toEqual({ ...frame, open: false });
-    expect(openChoicePicker()).toEqual({ open: true, done: null });
+    expect(openChoicePicker()).toEqual({ open: true, done: null, pick: null });
+  });
+
+  it("holds the draft for this open and drops it on the next", () => {
+    const owner = choice({ freeOrgSlug: INNOVA.slug });
+    const open = openChoicePicker();
+    expect(choicePickerPick(open, owner)).toEqual({
+      step: "free",
+      free: INNOVA.slug,
+      paid: null,
+      paidRefused: false,
+    });
+    const changed = withPickerDraft(open, {
+      ...choicePickerPick(open, owner),
+      free: PERSONAL.slug,
+    });
+    expect(choicePickerPick(changed, owner).free).toBe(PERSONAL.slug);
+    // Closing and opening again starts from the stored pick.
+    closeChoicePicker(changed);
+    expect(choicePickerPick(openChoicePicker(), owner).free).toBe(INNOVA.slug);
+  });
+
+  it("keeps a refused draft through the success step", () => {
+    const payer = choice({ payer: "plus" });
+    const refused = withPickerDraft(openChoicePicker(), {
+      step: "free",
+      free: INNOVA.slug,
+      paid: null,
+      paidRefused: true,
+    });
+    expect(choicePickerPick(refused, payer).step).toBe("free");
+    const done = choicePickerSaved(
+      refused,
+      saved({ freeOrgSlug: INNOVA.slug }),
+    );
+    expect(done.pick?.paidRefused).toBe(true);
+    expect(done.done?.free).toEqual(INNOVA);
   });
 
   it("never shows the success step for a refusal or a closed picker", () => {

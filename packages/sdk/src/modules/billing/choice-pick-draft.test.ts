@@ -35,6 +35,7 @@ describe("the picker's draft in the modal frame", () => {
       step: "free",
       free: LA_FILA.slug,
       paid: null,
+      paidRefused: false,
     });
   });
 
@@ -49,7 +50,12 @@ describe("the picker's draft in the modal frame", () => {
     frame = nextChoicePage(frame);
     expect(frame.phase).toEqual({ step: "picking" });
     const draft = choiceFramePick(frame, owner);
-    expect(draft).toEqual({ step: "free", free: PERSONAL.slug, paid: null });
+    expect(draft).toEqual({
+      step: "free",
+      free: PERSONAL.slug,
+      paid: null,
+      paidRefused: false,
+    });
     expect(pickerSubmission(draft)).toEqual({ freeOrgSlug: PERSONAL.slug });
   });
 
@@ -67,6 +73,7 @@ describe("the picker's draft in the modal frame", () => {
       step: "paid",
       free: PERSONAL.slug,
       paid: INNOVA.slug,
+      paidRefused: false,
     });
     frame = withChoicePick(frame, back ?? choiceFramePick(frame, payer));
     expect(pickerBack(choiceFramePick(frame, payer))).toBeNull();
@@ -76,6 +83,7 @@ describe("the picker's draft in the modal frame", () => {
       step: "paid",
       free: PERSONAL.slug,
       paid: INNOVA.slug,
+      paidRefused: false,
     });
     expect(pickerSubmission(toFreeStep(payer, draft))).toEqual({
       freeOrgSlug: PERSONAL.slug,
@@ -88,6 +96,7 @@ describe("the picker's draft in the modal frame", () => {
       step: "free",
       free: PERSONAL.slug,
       paid: null,
+      paidRefused: false,
     });
     const refetched = nextChoiceModalFrame(
       frame,
@@ -97,6 +106,7 @@ describe("the picker's draft in the modal frame", () => {
       step: "free",
       free: PERSONAL.slug,
       paid: null,
+      paidRefused: false,
     });
     const reopened = nextChoiceModalFrame(
       closeChoiceFrame(frame),
@@ -107,6 +117,7 @@ describe("the picker's draft in the modal frame", () => {
       step: "free",
       free: LA_FILA.slug,
       paid: null,
+      paidRefused: false,
     });
   });
 
@@ -115,31 +126,30 @@ describe("the picker's draft in the modal frame", () => {
       step: "free",
       free: PERSONAL.slug,
       paid: null,
+      paidRefused: false,
     });
     const left = choice({ orgs: [LA_FILA, INNOVA] });
     expect(choiceFramePick(frame, left)).toEqual({
       step: "free",
       free: LA_FILA.slug,
       paid: null,
+      paidRefused: false,
     });
   });
 });
 
 describe("choiceIntroProgress", () => {
   it("counts a pick's intro pages into the flow", () => {
-    const notice = choiceModal(owner, ctx);
-    if (!notice.open) throw new Error("the modal is closed");
-    expect(choiceIntroProgress(owner, notice.notice, "notice")).toEqual({
+    const frame = open();
+    expect(choiceIntroProgress(frame, owner, "notice")).toEqual({
       current: 1,
       total: 4,
     });
-    expect(choiceIntroProgress(owner, notice.notice, "not_kept")).toEqual({
+    expect(choiceIntroProgress(frame, owner, "not_kept")).toEqual({
       current: 2,
       total: 4,
     });
-    const paying = choiceModal(payer, ctx);
-    if (!paying.open) throw new Error("the modal is closed");
-    expect(choiceIntroProgress(payer, paying.notice, "not_kept")).toEqual({
+    expect(choiceIntroProgress(open(payer), payer, "not_kept")).toEqual({
       current: 2,
       total: 5,
     });
@@ -147,9 +157,8 @@ describe("choiceIntroProgress", () => {
 
   it("answers null for any notice but a pick", () => {
     const single = choice({ needed: false, payer: "plus", orgs: [LA_FILA] });
-    const modal = choiceModal(single, ctx);
-    if (!modal.open) throw new Error("the modal is closed");
-    expect(modal.notice.kind).toBe("single_org");
-    expect(choiceIntroProgress(single, modal.notice, "notice")).toBeNull();
+    const frame = open(single);
+    expect(frame.shown?.notice.kind).toBe("single_org");
+    expect(choiceIntroProgress(frame, single, "notice")).toBeNull();
   });
 });

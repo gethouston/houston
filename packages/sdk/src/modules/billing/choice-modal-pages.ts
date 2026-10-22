@@ -4,10 +4,10 @@ import {
   choiceIntroPages,
   type FlowProgress,
   leadsToPicker,
+  type PickFlow,
   pickFlow,
   pickFlowProgress,
 } from "./choice-flow";
-import type { AnnouncedChoice } from "./choice-modal";
 import type { ChoiceModalFrame } from "./choice-modal-frame";
 import { type PickerState, reconcilePick, startPick } from "./choice-picker";
 
@@ -62,16 +62,32 @@ export function withChoicePick(
 }
 
 /**
- * Where an intro page sits in the pick's progress, or null for any notice
- * but `pick`: a one-page notice shows no progress.
+ * The modal's flow: the shown notice's intro, then the picker over the
+ * frame's draft, so a refused paid pick drops the paid step from every
+ * count, Back and the success step alike.
+ */
+export function choiceFrameFlow(
+  frame: ChoiceModalFrame,
+  choice: BillingChoice,
+): PickFlow {
+  return pickFlow(choice, frame.shown?.notice ?? null, frame.pick);
+}
+
+/**
+ * Where an intro page of the shown notice sits in the pick's progress, or
+ * null for any notice but `pick`: a one-page notice shows no progress.
  */
 export function choiceIntroProgress(
+  frame: ChoiceModalFrame,
   choice: BillingChoice,
-  notice: AnnouncedChoice,
   page: ChoiceIntroPage,
 ): FlowProgress | null {
-  if (notice.kind !== "pick") return null;
+  const notice = frame.shown?.notice;
+  if (notice?.kind !== "pick") return null;
   const index = choiceIntroPages(notice).indexOf(page);
   if (index < 0) return null;
-  return pickFlowProgress(pickFlow(choice, notice), { step: "intro", index });
+  return pickFlowProgress(choiceFrameFlow(frame, choice), {
+    step: "intro",
+    index,
+  });
 }

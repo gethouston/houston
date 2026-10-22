@@ -1,7 +1,10 @@
 import type { BillingChoice } from "@houston/wire-types";
 import type { AnnouncedChoice } from "./choice-modal";
-import { choosesPaidOrg } from "./choice-model";
-import type { PickerStep } from "./choice-picker";
+import {
+  type PickerState,
+  type PickerStep,
+  pickHasPaidStep,
+} from "./choice-picker";
 
 /**
  * A page the modal shows before its picker. `notice`: the notice's own page
@@ -26,21 +29,26 @@ export function choiceIntroPages(
  * The pages a pick runs through: `intro` pages counted into its progress (the
  * pick notice's; none when the picker opens from Settings or from the
  * cutover's pick to confirm), then the picker's steps (a payer's `paid`, then
- * `free`), then the success step.
+ * `free`), then the success step. `payer` is false once the gateway refused
+ * the paid pick, whatever the cached choice still says.
  */
 export interface PickFlow {
   intro: number;
   payer: boolean;
 }
 
-/** The flow for the picker, after `notice`'s intro or on its own (null). */
+/**
+ * The flow for the picker, after `notice`'s intro or on its own (null), over
+ * the picker's draft (null before the person changes it).
+ */
 export function pickFlow(
   choice: BillingChoice,
   notice: AnnouncedChoice | null,
+  pick: PickerState | null,
 ): PickFlow {
   return {
     intro: notice?.kind === "pick" ? choiceIntroPages(notice).length : 0,
-    payer: choosesPaidOrg(choice),
+    payer: pickHasPaidStep(choice, pick),
   };
 }
 

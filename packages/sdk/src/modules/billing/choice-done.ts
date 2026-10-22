@@ -1,6 +1,7 @@
 import type { BillingChoice, BillingChoiceOrg } from "@houston/wire-types";
 import type { BillingChoiceSave } from "./choice";
 import { canChangeChoice, choosesPaidOrg, pickerRows } from "./choice-model";
+import { type PickerState, reconcilePick, startPick } from "./choice-picker";
 
 /**
  * What an owned org becomes at the cutover. `free`: the pick. `subscription`:
@@ -71,21 +72,44 @@ export function choiceDone(saved: BillingChoice): ChoiceDone | null {
  * The free-org picker opened on its own (Settings > Billing): the picker,
  * then its success step once a save is stored, until the person closes it.
  * A closed frame keeps `done` so the success step stays through the close
- * animation.
+ * animation. `pick` is the picker's draft for this open, null until the
+ * person changes it ({@link choicePickerPick}); it outlives the picker so the
+ * success step counts the same steps.
  */
 export interface ChoicePickerFrame {
   open: boolean;
   done: ChoiceDone | null;
+  pick: PickerState | null;
 }
 
 export const CLOSED_CHOICE_PICKER: ChoicePickerFrame = {
   open: false,
   done: null,
+  pick: null,
 };
 
-/** Opens on the picker, never on a success step left from the last open. */
+/**
+ * Opens on the picker from the stored pick, never on a success step or a
+ * draft left from the last open.
+ */
 export function openChoicePicker(): ChoicePickerFrame {
-  return { open: true, done: null };
+  return { open: true, done: null, pick: null };
+}
+
+/** The Settings picker's draft, valid against the latest choice. */
+export function choicePickerPick(
+  frame: ChoicePickerFrame,
+  choice: BillingChoice,
+): PickerState {
+  return reconcilePick(choice, frame.pick ?? startPick(choice));
+}
+
+/** The Settings frame holding the picker's new draft. */
+export function withPickerDraft(
+  frame: ChoicePickerFrame,
+  pick: PickerState,
+): ChoicePickerFrame {
+  return { ...frame, pick };
 }
 
 /** Closed by the person: the X, Escape, a click outside or Done. */
@@ -103,7 +127,7 @@ export function choicePickerSaved(
 ): ChoicePickerFrame {
   if (!frame.open || frame.done || outcome.kind !== "saved") return frame;
   const done = choiceDone(outcome.choice);
-  return done ? { open: true, done } : frame;
+  return done ? { ...frame, done } : frame;
 }
 
 /**

@@ -4,6 +4,7 @@ import type { ChoiceIntroPage } from "@houston/sdk";
 import {
   CLOSED_CHOICE_FRAME,
   choiceDone,
+  choiceFrameFlow,
   choiceFramePick,
   choiceIntroProgress,
   choiceModal,
@@ -13,7 +14,6 @@ import {
   finishPicking,
   nextChoiceModalFrame,
   nextChoicePage,
-  pickFlow,
   pickFlowProgress,
   previousChoicePage,
   withChoicePick,
@@ -77,7 +77,7 @@ export function BillingChangeModal({
     setFrame(answer.frame);
   };
   const notice = shown.notice;
-  const flow = pickFlow(choice, notice);
+  const flow = choiceFrameFlow(frame, choice);
   const next = () => setFrame(nextChoicePage);
   const back = () => setFrame(previousChoicePage);
   const firstPage = phase.step === "intro" && phase.page === "notice";
@@ -111,7 +111,7 @@ export function BillingChangeModal({
             notice={notice}
             choice={choice}
             page={page}
-            progress={choiceIntroProgress(choice, notice, page)}
+            progress={choiceIntroProgress(frame, choice, page)}
             onNext={next}
             onBack={back}
             onClose={close}
