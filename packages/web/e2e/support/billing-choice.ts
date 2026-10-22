@@ -97,6 +97,14 @@ export const armChoice = (
   options: {
     /** What the gateway answers once a pick is refused. */
     afterRefusal?: BillingChoice;
+    /**
+     * Refusals the next picks answer, one each, before `refuse`; each may
+     * swap the choice the refetch reads (`after`). Then picks store.
+     */
+    refusals?: {
+      refuse: "not_owner" | "not_payer" | "same_org";
+      after?: BillingChoice;
+    }[];
     /** Every dismissal answers 500. */
     failDismiss?: boolean;
   } = {},

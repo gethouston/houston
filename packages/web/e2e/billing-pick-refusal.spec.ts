@@ -16,11 +16,14 @@ import { expect, test } from "./support/fixtures";
 import { armPlan, billingScreen, freePlan, openBilling } from "./support/plan";
 
 /**
- * A payer's paid pick the gateway refuses (`not_payer`) while the refetch
- * still names them a payer: no refusal arms an `afterRefusal`, so every GET
+ * A payer's paid pick the gateway refuses (`not_payer`) once, while the
+ * refetch still names them a payer: the refusal swaps no choice, so every GET
  * keeps answering the payer choice. The picker stays on the free step, sends
- * the free pick alone, and counts no paid step.
+ * the free pick alone, which stores, and counts no paid step through the
+ * success step.
  */
+
+const REFUSE_ONCE = { refusals: [{ refuse: "not_payer" as const }] };
 
 test.beforeEach(async ({ page }) => {
   await installChoiceClock(page);
@@ -37,7 +40,7 @@ test("after a refused paid pick the modal drops the paid step from progress, Bac
   page,
 }) => {
   await armCapabilities(SPACES_OWNER_CAPS);
-  await armChoice(payerChoice(), "not_payer");
+  await armChoice(payerChoice(), undefined, REFUSE_ONCE);
   await page.goto("/");
   const modal = choiceModal(page);
   await openPicker(modal, true);
@@ -68,8 +71,14 @@ test("after a refused paid pick the modal drops the paid step from progress, Bac
   await expect(modal.getByRole("radio", { name: /Innova/ })).toBeChecked();
 
   await modal.getByRole("button", { name: "Keep Innova free" }).click();
-  await expect.poll(sets).toHaveLength(2);
+  await expect(
+    page.getByRole("dialog", { name: "Innova stays free" }),
+  ).toBeVisible();
+  await expect(modal).toContainText("Step 4 of 4");
   expect((await sets())[1]).toEqual({ freeOrgSlug: INNOVA.slug });
+  await modal.getByRole("button", { name: "Done" }).click();
+  await expect(modal).toBeHidden();
+  await expect(page.getByRole("dialog")).toHaveCount(0);
 });
 
 /** Opens the Settings picker from Billing, past the modal. */
@@ -88,7 +97,7 @@ test("after a refused paid pick the Settings picker has one step, no Back, and r
 }) => {
   await armCapabilities({ ...SPACES_OWNER_CAPS, plan: true });
   await armPlan({ summary: freePlan() });
-  await armChoice(payerChoice(), "not_payer");
+  await armChoice(payerChoice(), undefined, REFUSE_ONCE);
   const billing = await openSettingsPicker(page);
   await billing.getByRole("button", { name: "Choose" }).click();
   const picker = settingsPicker(page);
@@ -98,11 +107,26 @@ test("after a refused paid pick the Settings picker has one step, no Back, and r
   await picker.getByRole("button", { name: "Keep Innova free" }).click();
   await expect(page.getByText(NO_SUBSCRIPTION)).toBeVisible();
 
-  await expect(picker).not.toContainText("of 3");
+  await expect(picker).not.toContainText(/Step \d+ of/);
   await expect(picker.getByRole("button", { name: "Back" })).toHaveCount(0);
   await picker.getByRole("button", { name: "Keep Innova free" }).click();
-  await expect.poll(sets).toHaveLength(2);
+  await expect(
+    page.getByRole("dialog", { name: "Innova stays free" }),
+  ).toBeVisible();
+  // One step and its success step: no progress there either.
+  await expect(picker).not.toContainText(/Step \d+ of/);
   expect((await sets())[1]).toEqual({ freeOrgSlug: INNOVA.slug });
+  await picker.getByRole("button", { name: "Done" }).click();
+  await expect(picker).toBeHidden();
+  const change = billing.getByRole("button", { name: "Change" });
+  await expect(change).toBeFocused();
+
+  // A fresh open forgets the refusal: the payer picks the paid org first.
+  await change.click();
+  await expect(picker).toContainText("Step 1 of 3");
+  await expect(
+    picker.getByRole("button", { name: "Use it for La Fila" }),
+  ).toBeVisible();
 });
 
 test("the Settings picker reopens on the stored pick, not the last open's draft", async ({

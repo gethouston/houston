@@ -134,4 +134,41 @@ describe("billing choice", () => {
       after,
     );
   });
+
+  it("answers queued refusals in order, then stores", async () => {
+    const payer = { ...CHOICE, payer: "plus" };
+    await send("POST", "/__test__/billing-choice", {
+      choice: payer,
+      refusals: [
+        { refuse: "not_payer", after: CHOICE },
+        { refuse: "not_owner", after: payer },
+      ],
+    });
+    const pick = { freeOrgSlug: "2222222222222222" };
+    const first = await send("PUT", "/v1/me/billing-choice", pick);
+    expect(await first.json()).toMatchObject({ code: "not_payer" });
+    expect(
+      await (await send("GET", "/v1/me/billing-choice")).json(),
+    ).toMatchObject({ payer: null });
+    const second = await send("PUT", "/v1/me/billing-choice", pick);
+    expect(await second.json()).toMatchObject({ code: "not_owner" });
+    const stored = await send("PUT", "/v1/me/billing-choice", {
+      ...pick,
+      paidOrgSlug: "1111111111111111",
+    });
+    expect(stored.status).toBe(200);
+    expect(await stored.json()).toMatchObject({
+      payer: "plus",
+      freeOrgSlug: "2222222222222222",
+      paidOrgSlug: "1111111111111111",
+    });
+  });
+
+  it("rejects an unknown queued refusal", async () => {
+    const res = await send("POST", "/__test__/billing-choice", {
+      choice: CHOICE,
+      refusals: [{ refuse: "nope" }],
+    });
+    expect(res.status).toBe(400);
+  });
 });
