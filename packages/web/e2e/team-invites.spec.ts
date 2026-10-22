@@ -195,7 +195,7 @@ test("a needs_upgrade rejection explains itself in a plain toast, keeping the in
     .getByRole("button", { name: `Accept the invitation to ${ACME}` })
     .click();
 
-  const message = page.getByText("This team needs an upgrade");
+  const message = page.getByText("This organization is locked");
   await expect(message).toBeVisible();
   // Informational, NOT a red bug toast: nothing is broken, so the toast stack's
   // `alert` channel stays empty.
@@ -205,7 +205,7 @@ test("a needs_upgrade rejection explains itself in a plain toast, keeping the in
   // The toast row itself carries no danger border (`variant:"info"`).
   await expect(message.locator("xpath=../..")).not.toHaveClass(/border-danger/);
 
-  // The invite STAYS: an upgrade makes it acceptable again.
+  // The invite STAYS: unlocking the org makes it acceptable again.
   await expect(inviteCards(page)).toHaveCount(1);
 });
 
