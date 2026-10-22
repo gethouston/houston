@@ -88,20 +88,17 @@ test("Change moves the subscription to a three-member team and shows each org's 
     timeout: 15_000,
   });
 
-  // The picker starts on what the cutover applied.
-  await expect(modal.getByRole("radio", { name: /Personal/ })).toBeChecked();
-  await modal.getByRole("button", { name: "Next" }).click();
+  // The picker starts on what the cutover applied, the subscription first.
   await expect(modal.getByRole("radio", { name: /Acme/ })).toBeChecked();
   await modal.getByText("La Fila", { exact: true }).click();
-  await expect(modal).toContainText(
-    "Your price stays $15 a month until November 22, then it's $45 a month.",
-  );
+  await modal.getByRole("button", { name: "Use it for La Fila" }).click();
+  await expect(modal.getByRole("radio", { name: /Personal/ })).toBeChecked();
   // The save moves the subscription and the locks: every org is read again.
   const orgsRead = page.waitForRequest(
     (req) =>
       req.method() === "GET" && new URL(req.url()).pathname === "/v1/orgs",
   );
-  await modal.getByRole("button", { name: "Pay for La Fila" }).click();
+  await modal.getByRole("button", { name: "Keep Personal free" }).click();
   await orgsRead;
 
   await expect(
@@ -213,9 +210,10 @@ test("Billing offers the change until the window ends, on the same picker", asyn
   );
   await billing.getByRole("button", { name: "Change" }).click();
   const picker = settingsPicker(page);
+  await expect(picker.getByRole("radio", { name: /Acme/ })).toBeChecked();
+  await picker.getByRole("button", { name: "Use it for Acme" }).click();
   await expect(picker.getByRole("radio", { name: /Personal/ })).toBeChecked();
-  await picker.getByRole("button", { name: "Next" }).click();
-  await picker.getByRole("button", { name: "Pay for Acme" }).click();
+  await picker.getByRole("button", { name: "Keep Personal free" }).click();
   await expect(
     page.getByRole("dialog", {
       name: "Personal is your free organization now",

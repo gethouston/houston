@@ -124,6 +124,19 @@ export const settingsPicker = (page: Page): Locator =>
 export const MODAL_TITLE = "Teams are out of beta";
 export const CHOOSE = "Choose my free organization";
 
+/**
+ * Next through the pick's two intro pages to the picker: page two's action
+ * is "Choose my free organization", or Next for a payer.
+ */
+export async function openPicker(modal: Locator, payer = false): Promise<void> {
+  await modal
+    .getByRole("button", { name: "Next", exact: true })
+    .click({ timeout: 15_000 });
+  await modal
+    .getByRole("button", { name: payer ? "Next" : CHOOSE, exact: true })
+    .click();
+}
+
 /** A single-org owner: the one org they own stays free. */
 export function singleOrgChoice(
   patch: Partial<BillingChoice> = {},

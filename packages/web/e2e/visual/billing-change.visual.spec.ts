@@ -1,6 +1,7 @@
 /**
- * Visual-regression baselines for the pricing-change modal: an owner's intro,
- * the picker, a payer's second step and both success steps in the same frame,
+ * Visual-regression baselines for the pricing-change modal: an owner's two
+ * intro pages, the picker, a payer's paid step then free step, and both
+ * success steps in the same frame,
  * the read-only member and single-org notices, and the Spanish intro, at
  * desktop and phone width. The page clock is pinned before the cutover and
  * every value on screen comes from the fixture. The modal pins its own dark theme; the shell
@@ -11,10 +12,10 @@ import type { Locator, Page } from "@playwright/test";
 import {
   armCapabilities,
   armChoice,
-  CHOOSE,
   choiceModal,
   installChoiceClock,
   memberChoice,
+  openPicker,
   ownerChoice,
   payerChoice,
   SPACES_OWNER_CAPS,
@@ -58,16 +59,23 @@ for (const width of ["desktop", "phone"] as const) {
     await shoot(page, `billing-change-modal-intro-${width}.png`);
   });
 
+  test(`pricing change modal, not kept page — ${width}`, async ({ page }) => {
+    const modal = await boot(page, width, ownerChoice());
+    await modal.getByRole("button", { name: "Next", exact: true }).click();
+    await expect(modal).toContainText("Nothing gets deleted");
+    await shoot(page, `billing-change-modal-not-kept-${width}.png`);
+  });
+
   test(`pricing change modal, picker step — ${width}`, async ({ page }) => {
     const modal = await boot(page, width, ownerChoice());
-    await modal.getByRole("button", { name: CHOOSE }).click();
+    await openPicker(modal);
     await expect(modal.getByRole("radio").first()).toBeVisible();
     await shoot(page, `billing-change-modal-picker-${width}.png`);
   });
 
   test(`pricing change modal, success step — ${width}`, async ({ page }) => {
     const modal = await boot(page, width, ownerChoice());
-    await modal.getByRole("button", { name: CHOOSE }).click();
+    await openPicker(modal);
     await modal.getByRole("button", { name: "Keep La Fila free" }).click();
     await expect(modal.getByRole("button", { name: "Done" })).toBeVisible();
     await expect(modal).toContainText("La Fila stays free");
@@ -80,22 +88,32 @@ for (const width of ["desktop", "phone"] as const) {
     await expect(modal).toContainText("Los equipos salieron de beta");
     await shoot(page, `billing-change-modal-intro-es-${width}.png`);
   });
+
+  test(`pricing change modal, payer step — ${width}`, async ({ page }) => {
+    const modal = await boot(page, width, payerChoice());
+    await expect(modal).toContainText(
+      "Your subscription covers one organization",
+    );
+    await openPicker(modal, true);
+    await expect(modal).toContainText("Step 3 of 5");
+    await shoot(page, `billing-change-modal-payer-${width}.png`);
+  });
 }
 
-test("pricing change modal, payer step — desktop", async ({ page }) => {
+test("pricing change modal, payer free step — desktop", async ({ page }) => {
   const modal = await boot(page, "desktop", payerChoice());
-  await expect(modal).toContainText("Your subscription comes with you");
-  await modal.getByRole("button", { name: CHOOSE }).click();
-  await modal.getByRole("button", { name: "Next" }).click();
-  await expect(modal).toContainText("Step 2 of 2");
-  await shoot(page, "billing-change-modal-payer-desktop.png");
+  await openPicker(modal, true);
+  await modal.getByRole("button", { name: "Use it for La Fila" }).click();
+  await expect(modal).toContainText("Step 4 of 5");
+  await shoot(page, "billing-change-modal-payer-free-desktop.png");
 });
 
 test("pricing change modal, payer success step — desktop", async ({ page }) => {
   const modal = await boot(page, "desktop", payerChoice());
-  await modal.getByRole("button", { name: CHOOSE }).click();
-  await modal.getByRole("button", { name: "Next" }).click();
-  await modal.getByRole("button", { name: "Pay for Innova" }).click();
+  await openPicker(modal, true);
+  await modal.getByText("Innova", { exact: true }).click();
+  await modal.getByRole("button", { name: "Use it for Innova" }).click();
+  await modal.getByRole("button", { name: "Keep La Fila free" }).click();
   await expect(modal.getByRole("button", { name: "Done" })).toBeVisible();
   await expect(modal).toContainText("Your subscription");
   await expect(modal).toContainText("Needs a plan");
