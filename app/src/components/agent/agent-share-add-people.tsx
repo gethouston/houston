@@ -12,6 +12,7 @@ import {
 import { Plus } from "lucide-react";
 import { useState } from "react";
 import { useTranslation } from "react-i18next";
+import { personDisplayName } from "../organization/people-tab-model";
 
 /**
  * The "Add people" row of the Share dialog: a searchable picker over org
@@ -53,11 +54,17 @@ export function AgentShareAddPeople({
           <CommandList>
             <CommandEmpty>{t("share.noPeople")}</CommandEmpty>
             {candidates.map((member) => {
-              const name = member.email ?? member.userId;
+              const name = personDisplayName(
+                { email: member.email, userId: member.userId },
+                t("people.roster.unnamedAccount"),
+              );
+              // cmdk keys items by `value`, so two unnamed accounts sharing a
+              // label would collide; the visible name is the search keyword.
               return (
                 <CommandItem
                   key={member.userId}
-                  value={name}
+                  value={member.userId}
+                  keywords={[name]}
                   onSelect={() => {
                     onAdd(member);
                     setOpen(false);

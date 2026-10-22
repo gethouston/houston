@@ -4,7 +4,6 @@ import type { OrgMember } from "@houston/engine-adapter";
 import {
   agentLabel,
   memberLabel,
-  shortenId,
 } from "../src/components/organization/org-roster.ts";
 
 const members: OrgMember[] = [
@@ -18,11 +17,20 @@ const agents = [
 ];
 
 describe("org roster resolvers", () => {
-  it("memberLabel prefers email, falls back to a short id", () => {
-    strictEqual(memberLabel("u1", members), "maria@acme.com");
-    strictEqual(memberLabel("u2", members), "u2");
-    strictEqual(memberLabel("aaaaaaaabbbbbbbb", members), "aaaaaaaa");
-    strictEqual(memberLabel("u3", undefined), "u3");
+  const labels = { unnamedAccount: "Unnamed", formerMember: "Former" };
+
+  it("memberLabel names a member, never by their id", () => {
+    strictEqual(memberLabel("u1", members, labels), "maria@acme.com");
+    strictEqual(memberLabel("u2", members, labels), "Unnamed");
+    strictEqual(memberLabel("aaaaaaaabbbbbbbb", members, labels), "Former");
+    strictEqual(memberLabel("u3", undefined, labels), "Former");
+  });
+
+  it("memberLabel prefers the display name over the email", () => {
+    const named: OrgMember[] = [
+      { userId: "u4", displayName: "Ana", email: "ana@acme.com", role: "user" },
+    ];
+    strictEqual(memberLabel("u4", named, labels), "Ana");
   });
 
   it("agentLabel resolves by slug (folderPath) or id, else humanizes", () => {
@@ -30,11 +38,5 @@ describe("org roster resolvers", () => {
     strictEqual(agentLabel("id-2", agents), "Support");
     strictEqual(agentLabel("legal_bot", agents), "Legal bot");
     strictEqual(agentLabel(undefined, agents), "");
-  });
-
-  it("shortenId keeps short ids intact", () => {
-    strictEqual(shortenId("short"), "short");
-    strictEqual(shortenId("aaaaaaaabbbbbbbb"), "aaaaaaaa");
-    strictEqual(shortenId(""), "");
   });
 });

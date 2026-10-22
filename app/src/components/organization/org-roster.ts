@@ -5,8 +5,8 @@ import { personDisplayName } from "./people-tab-model.ts";
  * Pure, DOM-free display helpers for the Organization dashboard (Teams v2).
  * Audit and usage rows carry raw user ids and agent slugs; these resolve them
  * to human names (email / agent name) against the loaded roster + agent list,
- * with a graceful fallback so a missing entry never renders a bare uuid or
- * crashes the feed. Node:test-safe (no React, no DOM).
+ * with translated stand-ins so a missing entry never renders an id or crashes
+ * the feed. Node:test-safe (no React, no DOM).
  */
 
 /** A minimal agent shape the resolvers need — the loaded agent list rows. */
@@ -17,25 +17,28 @@ export interface RosterAgent {
   folderPath: string;
 }
 
-/** Shorten an opaque id for a last-resort label (never the primary path). */
-export function shortenId(id: string): string {
-  if (!id) return "";
-  return id.length <= 12 ? id : id.slice(0, 8);
+/** Translated stand-ins for a person the screen cannot name. */
+export interface UnnamedLabels {
+  /** A member on the roster with no name and no email. */
+  unnamedAccount: string;
+  /** An id no longer on the roster (a since-removed member in an old row). */
+  formerMember: string;
 }
 
 /**
- * A member's display name, resolved from the raw id an audit or usage row
- * carries. The name itself is the shared {@link personDisplayName}; a stranger
- * id (a since-removed member still named in an old row) degrades to the short
- * id rather than throwing.
+ * A member's display name, resolved from the raw id an audit row, usage row
+ * or invite carries. The name itself is the shared {@link personDisplayName};
+ * an opaque id is never shown, not even shortened.
  */
 export function memberLabel(
   userId: string,
   members: readonly OrgMember[] | undefined,
+  labels: UnnamedLabels,
 ): string {
   const found = members?.find((m) => m.userId === userId);
-  const fallback = shortenId(userId);
-  return found ? personDisplayName(found, fallback) : fallback;
+  return found
+    ? personDisplayName(found, labels.unnamedAccount)
+    : labels.formerMember;
 }
 
 /**

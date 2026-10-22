@@ -111,15 +111,3 @@ export function describeAddResult(
   const kind = result.invited ? "invited" : "added";
   return { kind, email: result.email ?? email };
 }
-
-/**
- * Human label for who sent a pending invite: the inviter's email if they're in
- * the roster we already loaded, else their raw id (an inviter who has since
- * left). Data-only (no i18n) so the caller wraps it in a translated template.
- */
-export function inviterLabel(
-  invitedBy: string,
-  members: readonly OrgMember[],
-): string {
-  return members.find((m) => m.userId === invitedBy)?.email ?? invitedBy;
-}

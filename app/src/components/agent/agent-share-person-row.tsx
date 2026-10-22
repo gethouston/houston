@@ -11,12 +11,8 @@ import {
 } from "@houston-ai/core";
 import { Check, ChevronDown } from "lucide-react";
 import { useTranslation } from "react-i18next";
+import { personDisplayName } from "../organization/people-tab-model";
 import type { ShareAction, SharePerson } from "./agent-access-model";
-
-function initial(person: SharePerson): string {
-  const source = person.email ?? person.userId;
-  return source.trim().charAt(0).toUpperCase() || "?";
-}
 
 /**
  * One row in the Share dialog's people list. The org owner renders as a static
@@ -45,7 +41,7 @@ export function AgentSharePersonRow({
   onAction?: (action: ShareAction) => void;
 }) {
   const { t } = useTranslation("teams");
-  const name = person.email ?? person.userId;
+  const name = personDisplayName(person, t("people.roster.unnamedAccount"));
   const levelLabel =
     person.access === "manager"
       ? t("share.levels.manager")
@@ -57,7 +53,9 @@ export function AgentSharePersonRow({
         {avatarUrl && (
           <AvatarImage src={avatarUrl} alt="" referrerPolicy="no-referrer" />
         )}
-        <AvatarFallback>{initial(person)}</AvatarFallback>
+        <AvatarFallback>
+          {name.trim().charAt(0).toUpperCase() || "?"}
+        </AvatarFallback>
       </Avatar>
       <div className="min-w-0 flex-1">
         <div className="truncate text-sm text-ink">

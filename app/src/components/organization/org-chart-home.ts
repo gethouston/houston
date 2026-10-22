@@ -16,7 +16,11 @@ export function agentHome(
   );
   const manager = people?.manages
     .filter((p) => assigned.has(p.userId))
-    .sort((a, b) => a.name.localeCompare(b.name))[0];
+    // Unnamed accounts share one label; the id keeps the pick deterministic.
+    .sort(
+      (a, b) =>
+        a.name.localeCompare(b.name) || a.userId.localeCompare(b.userId),
+    )[0];
   if (manager) return manager.userId;
   if (people && people.uses !== "everyone" && people.uses.length === 1)
     return people.uses[0].userId;

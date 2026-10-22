@@ -240,6 +240,7 @@
     },
     "roster": {
       "unnamedAccount": "Conta sem nome",
+      "formerMember": "Ex-membro",
       "title": "Equipe",
       "you": "(você)",
       "changeRole": "Alterar a função de {{name}}",

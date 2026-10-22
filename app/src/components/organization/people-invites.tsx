@@ -2,7 +2,8 @@ import type { OrgInvite, OrgMember } from "@houston/engine-adapter";
 import { Avatar, AvatarFallback, Button } from "@houston-ai/core";
 import { useTranslation } from "react-i18next";
 import { useDeleteInvite } from "../../hooks/queries";
-import { initialsFor, inviterLabel } from "./people-tab-model";
+import { memberLabel } from "./org-roster";
+import { initialsFor } from "./people-tab-model";
 
 /**
  * Pending invitations on the People tab: people invited by email who haven't
@@ -47,7 +48,10 @@ export function PendingInvites({
                 </div>
                 <div className="truncate text-xs text-ink-muted">
                   {t("people.invites.invitedBy", {
-                    name: inviterLabel(invite.invitedBy, members),
+                    name: memberLabel(invite.invitedBy, members, {
+                      unnamedAccount: t("people.roster.unnamedAccount"),
+                      formerMember: t("people.roster.formerMember"),
+                    }),
                   })}
                 </div>
               </div>

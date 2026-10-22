@@ -6,7 +6,6 @@ import {
   describeAddResult,
   grantsOwner,
   initialsFor,
-  inviterLabel,
   personDisplayName,
   rosterPersonName,
 } from "../src/components/organization/people-tab-model.ts";
@@ -142,18 +141,5 @@ describe("people tab model — describeAddResult", () => {
       describeAddResult("typed@x.io", { role: "user", invited: true }),
       { kind: "invited", email: "typed@x.io" },
     );
-  });
-});
-
-describe("people tab model — inviterLabel", () => {
-  const roster = [
-    member({ userId: "owner1", email: "boss@x.io", role: "owner" }),
-    member({ userId: "u2", email: "second@x.io" }),
-  ];
-  it("resolves an inviter still in the roster to their email", () => {
-    strictEqual(inviterLabel("owner1", roster), "boss@x.io");
-  });
-  it("falls back to the raw id for an inviter who has left", () => {
-    strictEqual(inviterLabel("ghost", roster), "ghost");
   });
 });

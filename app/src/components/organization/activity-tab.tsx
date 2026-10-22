@@ -42,14 +42,18 @@ export default function ActivityTab({ ctx }: OrgTabProps) {
 
   const entries = useMemo(() => data?.pages.flat() ?? [], [data]);
   const members = ctx.org.members;
+  const unnamed = {
+    unnamedAccount: t("people.roster.unnamedAccount"),
+    formerMember: t("people.roster.formerMember"),
+  };
 
   const resolversFor = (
     actorId: string,
     agentSlug?: string,
   ): AuditResolvers => ({
-    actor: memberLabel(actorId, members),
+    actor: memberLabel(actorId, members, unnamed),
     agent: agentLabel(agentSlug, agents),
-    member: (id) => memberLabel(id, members),
+    member: (id) => memberLabel(id, members, unnamed),
     role: (r) => t(`activityTab.roles.${roleKey(r)}`),
     apps: (tks) => tks.map(humanizeSkillName).join(", "),
   });
