@@ -10,6 +10,7 @@ import {
 } from "@earendil-works/pi-coding-agent";
 import type { WireEvent } from "@houston/runtime-client";
 import { HoustonAuthStore } from "../auth/credential-store";
+import { SentRequests } from "../backends/pi/model-phase";
 import { PiSession } from "../backends/pi/session";
 import { hedgedModelRuntime } from "./hedged-runtime";
 
@@ -50,12 +51,13 @@ export async function hedgedSession(
   });
   runtime.registerNativeProvider(faux.provider);
   const answered: number[] = [];
+  const requests = new SentRequests();
   const { session } = await createAgentSession({
     cwd,
     agentDir: cwd,
     modelRuntime: hedgedModelRuntime(
       runtime,
-      { answered: (afterMs) => answered.push(afterMs) },
+      requests.observe({ answered: (afterMs) => answered.push(afterMs) }),
       () => deadlineMs,
     ),
     model: faux.getModel() as never,
@@ -64,7 +66,7 @@ export async function hedgedSession(
     tools: [],
     customTools: [],
   });
-  const wrapped = new PiSession(session);
+  const wrapped = new PiSession(session, requests);
   const events: WireEvent[] = [];
   wrapped.subscribe((e) => events.push(e));
   return { faux, session: wrapped, events, answered };

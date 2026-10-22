@@ -16,6 +16,7 @@ import {
 import type { WireEvent } from "@houston/runtime-client";
 import { expect, test, vi } from "vitest";
 import { HoustonAuthStore } from "../../auth/credential-store";
+import { SentRequests } from "./model-phase";
 import { PiSession } from "./session";
 
 /**
@@ -77,7 +78,7 @@ async function fauxSession(responses: AssistantMessage[]) {
     tools: [],
     customTools: [],
   });
-  const wrapped = new PiSession(session);
+  const wrapped = new PiSession(session, new SentRequests());
   const events: WireEvent[] = [];
   wrapped.subscribe((e) => events.push(e));
   return { faux, session: wrapped, events };

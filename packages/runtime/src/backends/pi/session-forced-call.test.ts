@@ -7,6 +7,7 @@ import type { AgentSession } from "@earendil-works/pi-coding-agent";
 import type { WireEvent } from "@houston/runtime-client";
 import { expect, test } from "vitest";
 import type { HarnessTimingEvent } from "../types";
+import { SentRequests } from "./model-phase";
 import { PiSession } from "./session";
 
 /**
@@ -112,7 +113,10 @@ class Stub {
 
 function make() {
   const stub = new Stub();
-  const session = new PiSession(stub as unknown as AgentSession);
+  const session = new PiSession(
+    stub as unknown as AgentSession,
+    new SentRequests(),
+  );
   const wire: WireEvent[] = [];
   const calls: HarnessTimingEvent[] = [];
   session.subscribe((e) => wire.push(e));

@@ -20,6 +20,7 @@ import type {
   HarnessBackend,
   HarnessSession,
 } from "../types";
+import { SentRequests } from "./model-phase";
 import { PiSession } from "./session";
 import { piTransportSettings } from "./transport-settings";
 
@@ -174,6 +175,7 @@ export function createPiBackend(deps: PiBackendDeps): HarnessBackend {
         deps.role,
       );
       await loader.reload();
+      const requests = new SentRequests();
       const { session } = await createAgentSession({
         cwd: deps.workspaceDir,
         agentDir: deps.dataDir,
@@ -181,7 +183,10 @@ export function createPiBackend(deps: PiBackendDeps): HarnessBackend {
         ...(opts.thinkingLevel ? { thinkingLevel: opts.thinkingLevel } : {}),
         // Every session request is hedged against a provider that never
         // answers (ai/hedged-runtime.ts).
-        modelRuntime: hedgedModelRuntime(deps.modelRuntime, deps.hedge),
+        modelRuntime: hedgedModelRuntime(
+          deps.modelRuntime,
+          requests.observe(deps.hedge),
+        ),
         // A cross-backend rebuild (opts.fresh) mints a NEW session file in the
         // conversation's dir instead of reopening the most recent one: the
         // history arrives as a transcript replay on the first prompt (HOU-951),
@@ -198,7 +203,7 @@ export function createPiBackend(deps: PiBackendDeps): HarnessBackend {
         customTools: deps.customTools,
       });
       if (isManagedBridgeModel(opts.model)) session.setAutoRetryEnabled(false);
-      return new PiSession(session);
+      return new PiSession(session, requests);
     },
   };
 }

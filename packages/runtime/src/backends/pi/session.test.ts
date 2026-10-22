@@ -11,6 +11,7 @@ import type { WireEvent } from "@houston/runtime-client";
 import { expect, test } from "vitest";
 import type { ModelPhase } from "../model-phase";
 import type { ResolvedModel, ThinkingLevel } from "../types";
+import { SentRequests } from "./model-phase";
 import { PiSession } from "./session";
 
 /**
@@ -100,8 +101,6 @@ class StubAgentSession {
   lastThinking: ThinkingLevel | undefined;
   contextUsage: { tokens: number | null } | undefined;
   model: { provider: string } | undefined = { provider: "opencode" };
-  systemPrompt = "";
-  messages: unknown[] = [];
 
   subscribe(l: (e: AgentSessionEvent) => void): () => void {
     this.listeners.add(l);
@@ -134,9 +133,11 @@ class StubAgentSession {
   }
 }
 
-function make(): { stub: StubAgentSession; session: PiSession } {
+function make() {
   const stub = new StubAgentSession();
-  return { stub, session: new PiSession(stub as unknown as AgentSession) };
+  const requests = new SentRequests();
+  const session = new PiSession(stub as unknown as AgentSession, requests);
+  return { stub, session, hedge: requests.observe() };
 }
 
 test("subscribe maps text/thinking/tool events to the exact WireEvents", () => {
@@ -359,15 +360,10 @@ test("subscribeModelPhase marks each request, its response, and the gaps between
   emit({ type: "compaction_start", reason: "threshold" });
 
   expect(phases).toEqual([
-    { phase: "requesting", provider: "opencode", promptTokens: 0 },
+    { phase: "requesting", provider: "opencode" },
     { phase: "responding" },
     { phase: "idle" },
-    {
-      phase: "requesting",
-      provider: "anthropic",
-      afterMs: 2000,
-      promptTokens: 0,
-    },
+    { phase: "requesting", provider: "anthropic", afterMs: 2000 },
     { phase: "idle" },
   ]);
   unsub();
@@ -375,22 +371,29 @@ test("subscribeModelPhase marks each request, its response, and the gaps between
   expect(phases).toHaveLength(5);
 });
 
-test("a request's phase carries the size of the prompt it sends", () => {
-  const { stub, session } = make();
+test("a request's phase carries the size the hedge sent, in pi's event order", () => {
+  const { stub, session, hedge } = make();
   const phases: ModelPhase[] = [];
   session.subscribeModelPhase((p) => phases.push(p));
-  stub.systemPrompt = "s".repeat(400);
-  stub.messages = [{ role: "user", content: "x".repeat(4000), timestamp: 0 }];
-  stub.emit({ type: "turn_start" } as AgentSessionEvent);
-  stub.messages.push(assistantMessage(usage({ totalTokens: 800_000 })), {
-    role: "user",
-    content: "y".repeat(4000),
-    timestamp: 0,
-  });
-  stub.emit({ type: "turn_start" } as AgentSessionEvent);
+  const user = { role: "user", content: "x".repeat(3_200_000), timestamp: 0 };
+  const assistant = assistantMessage(usage({}));
+  const emit = (e: unknown) => stub.emit(e as AgentSessionEvent);
+
+  // pi announces the turn before it appends the prompt...
+  emit({ type: "turn_start" });
+  emit({ type: "message_start", message: user });
+  emit({ type: "message_end", message: user });
+  // ...so only the hedge, sending the request pi built, knows its size.
+  hedge.sent?.({ provider: "opencode", promptTokens: 801_000 });
+  emit({ type: "message_start", message: assistant });
+  emit({ type: "message_end", message: assistant });
+  // A request outside the turn (a forced tool call) moves no phase.
+  hedge.sent?.({ provider: "opencode", promptTokens: 801_500 });
 
   expect(phases).toEqual([
-    { phase: "requesting", provider: "opencode", promptTokens: 1100 },
+    { phase: "requesting", provider: "opencode" },
     { phase: "requesting", provider: "opencode", promptTokens: 801_000 },
+    { phase: "responding" },
+    { phase: "idle" },
   ]);
 });

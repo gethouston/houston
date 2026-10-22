@@ -19,6 +19,7 @@ import type { WireEvent } from "@houston/runtime-client";
 import { Type } from "typebox";
 import { expect, test } from "vitest";
 import { HoustonAuthStore } from "../../auth/credential-store";
+import { SentRequests } from "../../backends/pi/model-phase";
 import { PiSession } from "../../backends/pi/session";
 import {
   newInteractionHolder,
@@ -92,7 +93,7 @@ async function fauxSession(responses: AssistantMessage[]) {
       lookupTool,
     ],
   });
-  const wrapped = new PiSession(session);
+  const wrapped = new PiSession(session, new SentRequests());
   const holder = newInteractionHolder();
   const events: WireEvent[] = [];
   wrapped.subscribeAssistantMessageStart(() =>
