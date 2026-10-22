@@ -2535,9 +2535,12 @@ components:
       the cutover, then one row per owned org with its status from SDK
       choiceDone (Free, Your subscription, Locks {date} or Needs a plan),
       that it can change in Settings, and a Done pill. After the cutover the
-      success step reads as now and says until when the pick can change,
+      success step reads as now (an org paying on its own subscription reads
+      Paid) and says until when the pick can change,
       and the Settings row stays open through the change window; a save
-      after it comes back as choice_closed with its own copy. Done, the X,
+      after it comes back as choice_closed with its own copy. A pick saved
+      after the cutover, from here or the modal, settles the announcement on
+      every device and rereads every org's billing. Done, the X,
       Escape and a click outside close it; the stored pick then keeps the
       modal from showing again. It opens as the pricing-change modal's second
       step, and the Settings plan screen keeps a row that opens it on its own,
@@ -2563,8 +2566,8 @@ components:
       naming the org that locks instead, and Delete org; at most two buttons
       show and the rest sit in an always-visible More menu. Everyone else
       reads "Ask the owner who pays for it" with no button. While a checkout
-      is open the pay buttons wait, and the strip clears only once the org is
-      working again. The store apps show the plan is managed on the web.
+      or a Fix payment portal is open the pay buttons wait and the orgs list
+      is polled, and the strip clears only once the org is working again. The store apps show the plan is managed on the web.
       An old gateway's degraded org with no billing reads as locked.
     a11y: A status region with the reason as text beside its icon and color; every action is a visible labelled button, the More menu included; the swap confirmation is a titled dialog.
     since: 139
@@ -2579,8 +2582,13 @@ components:
       Replaces the composer of every chat in a locked org, the AI Manager
       included, with the same reason the strip gives and the billing owner's
       way out. The same lock turns off creating employees and tasks, file
-      uploads and edits, instructions and company context, employee settings
-      and routines, and invites, each with the reason beside it, and keeps
-      reading, downloading, removing people and moving agents out open.
+      uploads and edits, instructions and company context, employee settings,
+      skills (creating, adding, editing, deleting) and routines, new API keys,
+      new channel connections, the morning briefing, and invites, each with
+      the reason beside it, and keeps reading (a skill still opens), revoking
+      keys, disconnecting channels, downloading, removing people and moving
+      agents out open. An owner or admin moves an employee out from its
+      settings (Move to another organization) to any working org they run,
+      Personal included, which needs no invite.
     a11y: The reason is text, the action a visible labelled button.
     since: 139

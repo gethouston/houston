@@ -20,8 +20,13 @@ the organization that locks instead, and Delete org; everyone else is told
 to ask the owner. On a locked organization the composer becomes a locked
 card (`org-locked-composer`), and creating employees or tasks, editing
 files, instructions and settings, and inviting people turn off with the
-same reason, while reading, downloading, removing people and moving agents
-out stay open.
+same reason, as do skills, new API keys, new channel connections and the
+morning briefing, while reading, downloading, removing people and moving
+agents out stay open. An owner or admin moves an employee out from its
+settings (Move to another organization) to any working organization they
+run, Personal included. A pick saved after the cutover, from the modal or
+Settings, settles the announcement everywhere, and an organization paying on
+its own subscription reads Paid in the picker's success step.
 
 ## v138 - 2026-10-21
 

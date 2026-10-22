@@ -373,5 +373,5 @@ components:
     notes: Renders in app and is not extracted as a reusable ui component.
   org-locked-composer:
     status: partial
-    ref: "app/src/components/shell/org-locked-card.tsx via plan-composer-state.tsx; write gating through hooks/use-org-write-lock.ts and shell/org-locked-fieldset.tsx"
+    ref: "app/src/components/shell/org-locked-card.tsx via plan-composer-state.tsx; write gating through hooks/use-org-write-lock.ts and shell/org-locked-fieldset.tsx; moving out through agent-settings/agent-settings-org-move.tsx over SDK canMoveAgentsOut and moveOutDestinations"
     notes: Renders in app and is not extracted as a reusable ui component.
