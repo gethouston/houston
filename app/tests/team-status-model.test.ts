@@ -34,8 +34,9 @@ function billing(patch: Partial<OrgBilling>): OrgBilling {
   };
 }
 
-/** The cutover's change window, still open. */
+/** The cutover's change window, still open, for an owner with a pick. */
 const OPEN_PICK = {
+  needed: true,
   state: "applied",
   changeableUntil: FUTURE,
 } as BillingChoice;

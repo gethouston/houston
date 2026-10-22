@@ -35,9 +35,9 @@ const GATED_BY: Record<string, string> = {
   "hooks/queries/use-billing.ts": "hooks/queries/use-billing.ts",
   "hooks/queries/use-org-checkout.ts": "hooks/queries/use-org-checkout.ts",
   // The org-status strip and the locked composer card hand the policy's
-  // answer in; the view drops every pay button without it.
+  // answer in; the view drops every pay button without it. Their pay
+  // actions run through `useOrgCheckout` (start, recover), gated there.
   "hooks/use-team-status.ts": "components/shell/team-status-banner.tsx",
-  "hooks/use-team-status-actions.ts": "components/shell/team-status-banner.tsx",
 };
 
 /** Upsell copy and Upgrade buttons that sell without opening Stripe. */
@@ -138,7 +138,7 @@ const OWNER_UPGRADE_COPY =
 /** Each place that shows it, all with a store-app variant. */
 const OWNER_UPGRADE_SURFACES = [
   "components/agent/share-via-team-failed-steps.tsx",
-  "components/agent/share-via-team-flow.tsx",
+  "components/agent/use-share-create-team.ts",
   "components/organization/billing-plan-action.tsx",
   "components/shell/plan-composer-state.tsx",
   "components/shell/plan-upgrade-row.tsx",
