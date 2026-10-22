@@ -62,7 +62,9 @@ for (const width of ["desktop", "phone"] as const) {
     await modal.getByRole("button", { name: "Change" }).click();
     await modal.getByText("La Fila", { exact: true }).click();
     await modal.getByRole("button", { name: "Use it for La Fila" }).click();
-    await modal.getByRole("button", { name: "Keep Personal free" }).click();
+    await modal
+      .getByRole("button", { name: "Keep Personal on the free tier" })
+      .click();
     await expect(modal.getByRole("button", { name: "Done" })).toBeVisible();
     await expect(modal).toContainText("Locks November 6");
     await shoot(page, `pick-confirm-changed-${width}.png`);

@@ -211,7 +211,7 @@
     "enterNumber": "Enter a number",
     "maxInterval": "Enter {max} {unit} or less",
     "pickDay": "Pick at least one day",
-    "minIntervalHint": "On Free, routines run at most once every {minutes} minutes.",
+    "minIntervalHint": "On the free tier, routines run at most once every {minutes} minutes.",
     "weekdaysLabel": "On these days",
     "weekdayShortcuts": {
       "everyDay": "Every day",

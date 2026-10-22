@@ -118,10 +118,10 @@ describe("the free-org picker", () => {
     strictEqual(checked?.value, "1111111111111111");
     ok(
       page.body.textContent?.startsWith(
-        "Which organization stays free?Everyone in it uses Houston free.",
+        "Which organization stays on the free tier?Everyone in it shares the free tier's weekly limit.",
       ),
     );
-    deepStrictEqual(buttons(page), [["Keep La Fila free", false]]);
+    deepStrictEqual(buttons(page), [["Keep La Fila on the free tier", false]]);
   });
 
   it("asks for a pick and holds the action until there is one", () => {
@@ -152,7 +152,7 @@ describe("the free-org picker", () => {
       ["3333333333333333", false, false],
     ]);
     deepStrictEqual(buttons(page), [
-      ["Keep Innova free", false],
+      ["Keep Innova on the free tier", false],
       ["Back", false],
     ]);
   });
@@ -201,7 +201,7 @@ describe("the free-org picker", () => {
       ["Back", true],
     ]);
     deepStrictEqual(buttons(free({ busy: true })), [
-      ["Keep La Fila free", true],
+      ["Keep La Fila on the free tier", true],
     ]);
   });
 
@@ -281,13 +281,13 @@ describe("the success step", () => {
     deepStrictEqual(
       doneText({ ...CHOICE, payer: null, freeOrgSlug: "1111111111111111" }),
       {
-        title: "La Fila stays free",
+        title: "La Fila stays on the free tier",
         lines: [
           "Here's how your organizations look from Friday, October 23.",
           "You can change this in Settings.",
         ],
         orgs: [
-          ["La Fila", "Free"],
+          ["La Fila", "Free tier"],
           ["Innova", "Needs a plan"],
           ["Personal", "Needs a plan"],
         ],
@@ -306,7 +306,7 @@ describe("the success step", () => {
       [
         ["La Fila", "Needs a plan"],
         ["Innova", "Your subscription"],
-        ["Personal", "Free"],
+        ["Personal", "Free tier"],
       ],
     );
   });
@@ -324,7 +324,7 @@ describe("the success step", () => {
         "Así quedan tus organizaciones desde el viernes, 23 de octubre.",
       );
       deepStrictEqual(orgs, [
-        ["La Fila", "Gratis"],
+        ["La Fila", "Nivel gratuito"],
         ["Innova", "Tu suscripción"],
         ["Personal", "Necesita un plan"],
       ]);
@@ -394,8 +394,8 @@ const SINGLE = {
 
 const PICK_HEAD = ["From Friday, October 23", "Teams are out of beta"];
 const ONE_FREE_ALL = [
-  "One free organization per account",
-  "Everyone in it uses Houston free.",
+  "Each account gets one organization on the free tier",
+  "Everyone in it shares the free tier's weekly limit.",
 ];
 
 describe("the announcement", () => {
@@ -429,14 +429,14 @@ describe("the announcement", () => {
   it("says what happens to the orgs not kept free, with Back", () => {
     const owner = introText({ ...CHOICE, payer: null }, "not_kept");
     deepStrictEqual(owner, {
-      head: ["Organizations you don't keep free", "Nothing gets deleted"],
+      head: ["Organizations not on the free tier", "Nothing gets deleted"],
       points: [
         [
           "You can still open them",
           "Every agent, mission and file stays where it is.",
         ],
         [
-          "Move agents to your free organization",
+          "Move agents to your organization on the free tier",
           "Bring the ones you want to keep using.",
         ],
         [
@@ -444,7 +444,7 @@ describe("the announcement", () => {
           "When you open one, you can pay for it there.",
         ],
       ],
-      buttons: ["Choose my free organization", "Back"],
+      buttons: ["Choose my organization for the free tier", "Back"],
     });
     const payer = introText(CHOICE, "not_kept");
     ok(payer !== "closed");
@@ -459,7 +459,7 @@ describe("the announcement", () => {
     const nothing = "Nothing to do. It keeps working the way it does today.";
     deepStrictEqual(introText(SINGLE), {
       head: HEAD,
-      points: [named, ["La Fila stays free", nothing]],
+      points: [named, ["La Fila stays on the free tier", nothing]],
       buttons: ["Got it"],
     });
     const payer = introText({ ...SINGLE, payer: "plus" });

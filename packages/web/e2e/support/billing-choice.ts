@@ -142,11 +142,11 @@ export async function openSettingsPicker(page: Page): Promise<Locator> {
 }
 
 export const MODAL_TITLE = "Teams are out of beta";
-export const CHOOSE = "Choose my free organization";
+export const CHOOSE = "Choose my organization for the free tier";
 
 /**
  * Next through the pick's two intro pages to the picker: page two's action
- * is "Choose my free organization", or Next for a payer.
+ * is "Choose my organization for the free tier", or Next for a payer.
  */
 export async function openPicker(modal: Locator, payer = false): Promise<void> {
   await modal

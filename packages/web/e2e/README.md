@@ -328,7 +328,7 @@ set a 390×844 viewport per test):
 | First-run language gate | one (the pre-app screens pin `data-theme="light"` themselves) | `onboarding.visual.spec.ts` |
 | First-run onboarding in the manager's chat: the Connect your AI step, the first survey question | light + dark each | `onboarding.visual.spec.ts` |
 | Billing (Free with the beta tester gift) + the launch announcement, desktop + phone | light (the announcement pins its own dark frame) | `plan.visual.spec.ts` |
-| The Free plan upgrade entry at 25, 85 and 100% on the rail's foot and the phone's More card, plus the icon rail at 100% | light + dark each | `plan-upgrade.visual.spec.ts` |
+| The free tier upgrade entry at 25, 85 and 100% on the rail's foot and the phone's More card, plus the icon rail at 100% | light + dark each | `plan-upgrade.visual.spec.ts` |
 
 Theme is pinned by setting `data-theme`, the matching Houston `data-palette`
 and the gutter background on `<html>` (`visual/support.ts` `pinTheme`) — NOT the `houston.pref.theme` preference: the

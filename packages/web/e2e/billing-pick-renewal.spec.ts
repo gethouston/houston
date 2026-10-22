@@ -49,21 +49,27 @@ test("a payer refused, then none, then a payer again gets the paid step back", a
   const modal = choiceModal(page);
   await openPicker(modal, true);
   await modal.getByRole("button", { name: "Use it for La Fila" }).click();
-  await modal.getByRole("button", { name: "Keep Innova free" }).click();
+  await modal
+    .getByRole("button", { name: "Keep Innova on the free tier" })
+    .click();
 
   // No payer: the free step is the picker's only one.
   await expect(modal).toContainText("Step 3 of 4");
   await expect(modal.getByRole("radio", { name: /Innova/ })).toBeChecked();
-  await modal.getByRole("button", { name: "Keep Innova free" }).click();
+  await modal
+    .getByRole("button", { name: "Keep Innova on the free tier" })
+    .click();
   await expect.poll(sets).toHaveLength(2);
 
   // A payer again: the paid step returns, and the pick carries the paid org.
   await expect(modal).toContainText("Step 3 of 5");
   await modal.getByRole("button", { name: "Use it for La Fila" }).click();
   await expect(modal).toContainText("Step 4 of 5");
-  await modal.getByRole("button", { name: "Keep Innova free" }).click();
+  await modal
+    .getByRole("button", { name: "Keep Innova on the free tier" })
+    .click();
   await expect(
-    page.getByRole("dialog", { name: "Innova stays free" }),
+    page.getByRole("dialog", { name: "Innova stays on the free tier" }),
   ).toBeVisible();
   await expect(modal).toContainText("Step 5 of 5");
   expect(await sets()).toEqual([
@@ -84,21 +90,27 @@ test("the Settings picker gets the paid step back when a payer returns", async (
   const picker = settingsPicker(page);
   await expect(picker).toContainText("Step 1 of 3");
   await picker.getByRole("button", { name: "Use it for La Fila" }).click();
-  await picker.getByRole("button", { name: "Keep Innova free" }).click();
+  await picker
+    .getByRole("button", { name: "Keep Innova on the free tier" })
+    .click();
 
   // No payer: one step, so no progress.
   await expect(picker).not.toContainText(/Step \d+ of/);
   await expect(picker.getByRole("radio", { name: /Innova/ })).toBeChecked();
-  await picker.getByRole("button", { name: "Keep Innova free" }).click();
+  await picker
+    .getByRole("button", { name: "Keep Innova on the free tier" })
+    .click();
   await expect.poll(sets).toHaveLength(2);
 
   // A payer again: the paid step returns, and the pick carries the paid org.
   await expect(picker).toContainText("Step 1 of 3");
   await picker.getByRole("button", { name: "Use it for La Fila" }).click();
   await expect(picker).toContainText("Step 2 of 3");
-  await picker.getByRole("button", { name: "Keep Innova free" }).click();
+  await picker
+    .getByRole("button", { name: "Keep Innova on the free tier" })
+    .click();
   await expect(
-    page.getByRole("dialog", { name: "Innova stays free" }),
+    page.getByRole("dialog", { name: "Innova stays on the free tier" }),
   ).toBeVisible();
   await expect(picker).toContainText("Step 3 of 3");
   expect(await sets()).toEqual([

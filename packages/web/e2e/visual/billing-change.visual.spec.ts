@@ -76,9 +76,11 @@ for (const width of ["desktop", "phone"] as const) {
   test(`pricing change modal, success step — ${width}`, async ({ page }) => {
     const modal = await boot(page, width, ownerChoice());
     await openPicker(modal);
-    await modal.getByRole("button", { name: "Keep La Fila free" }).click();
+    await modal
+      .getByRole("button", { name: "Keep La Fila on the free tier" })
+      .click();
     await expect(modal.getByRole("button", { name: "Done" })).toBeVisible();
-    await expect(modal).toContainText("La Fila stays free");
+    await expect(modal).toContainText("La Fila stays on the free tier");
     await shoot(page, `billing-change-modal-done-${width}.png`);
   });
 
@@ -113,7 +115,9 @@ test("pricing change modal, payer success step — desktop", async ({ page }) =>
   await openPicker(modal, true);
   await modal.getByText("Innova", { exact: true }).click();
   await modal.getByRole("button", { name: "Use it for Innova" }).click();
-  await modal.getByRole("button", { name: "Keep La Fila free" }).click();
+  await modal
+    .getByRole("button", { name: "Keep La Fila on the free tier" })
+    .click();
   await expect(modal.getByRole("button", { name: "Done" })).toBeVisible();
   await expect(modal).toContainText("Your subscription");
   await expect(modal).toContainText("Needs a plan");
@@ -128,6 +132,6 @@ test("pricing change modal, member — desktop", async ({ page }) => {
 
 test("pricing change modal, single org — desktop", async ({ page }) => {
   const modal = await boot(page, "desktop", singleOrgChoice());
-  await expect(modal).toContainText("La Fila stays free");
+  await expect(modal).toContainText("La Fila stays on the free tier");
   await shoot(page, "billing-change-modal-single-org-desktop.png");
 });

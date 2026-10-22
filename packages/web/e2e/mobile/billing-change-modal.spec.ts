@@ -52,7 +52,9 @@ test("the modal fills the phone, and the picker and its success step open in the
   const chooseBox = await choose.boundingBox();
   expect(chooseBox && viewport && chooseBox.y > viewport.height / 2).toBe(true);
   await choose.tap();
-  const keep = modal.getByRole("button", { name: "Keep La Fila free" });
+  const keep = modal.getByRole("button", {
+    name: "Keep La Fila on the free tier",
+  });
   await expect(keep).toBeVisible();
   const picking = await modal.boundingBox();
   expect(picking && Math.round(picking.y + picking.height)).toBe(
@@ -64,7 +66,7 @@ test("the modal fills the phone, and the picker and its success step open in the
   await keep.tap();
   const done = modal.getByRole("button", { name: "Done" });
   await expect(done).toBeVisible();
-  await expect(modal).toContainText("La Fila stays free");
+  await expect(modal).toContainText("La Fila stays on the free tier");
   const doneBox = await done.boundingBox();
   expect(doneBox && viewport && doneBox.y > viewport.height / 2).toBe(true);
   await done.tap();
@@ -94,7 +96,7 @@ test("a long org name truncates inside the action, which stays one line and name
     .tap({ timeout: 15_000 });
   await modal.getByRole("button", { name: CHOOSE }).tap();
   const keep = modal.getByRole("button", {
-    name: `Keep ${name} free`,
+    name: `Keep ${name} on the free tier`,
     exact: true,
   });
   await expect(keep).toBeVisible();
@@ -132,7 +134,7 @@ test("a long org name truncates inside the action, which stays one line and name
     pieces: [
       { text: "Keep ", inside: true },
       { text: name, inside: true },
-      { text: " free", inside: true },
+      { text: " on the free tier", inside: true },
     ],
   });
 });

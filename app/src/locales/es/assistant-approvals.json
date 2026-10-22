@@ -5,7 +5,7 @@
     "addCustomIntegration": "Agregar una app externa tuya a partir de un enlace.",
     "addOrgMember": "Invitar a alguien a este espacio con el rol que elegiste.",
     "cancelRoutineRun": "Detener esta ejecución de la rutina mientras está en curso.",
-    "claimFreeSlot": "Hacer que esta organización sea la gratuita. La organización que hoy es gratuita se bloquea hasta que se pague.",
+    "claimFreeSlot": "Pasar esta organización al nivel gratuito. La organización que hoy está en el nivel gratuito se bloquea hasta que se pague.",
     "conversations.delete": "Eliminar este chat y todo lo que se dijo en él. Esto no se puede deshacer.",
     "createAgent": "Crear un empleado de IA nuevo.",
     "createApiKey": "Crear una clave de API nueva.",
@@ -29,7 +29,7 @@
     "forgetCredential": "Cerrar la sesión de este espacio de trabajo en la cuenta de IA.",
     "installAgentFromGithub": "Instalar un empleado de IA desde un repositorio de GitHub.",
     "integrations.disconnect": "Desconectar una app externa de tu cuenta.",
-    "keepRoutine": "Mantener esta rutina activa en Gratis. Las demás quedan guardadas, pero dejan de ejecutarse.",
+    "keepRoutine": "Mantener esta rutina activa en el nivel gratuito. Las demás quedan guardadas, pero dejan de ejecutarse.",
     "mintRoutineWebhookKey": "Crear una clave nueva para que un servicio externo pueda iniciar esta rutina. Cualquier clave anterior deja de funcionar.",
     "moveAgent": "Mover este empleado de IA a un espacio compartido para que tu equipo pueda trabajar con él.",
     "promoteSharedSkill": "Compartir la habilidad del empleado de IA con todo el espacio de trabajo.",
@@ -56,7 +56,7 @@
     "updateActivity": "Actualizar los detalles o el estado de esta misión.",
     "updateRoutine": "Actualizar el horario o las instrucciones de esta rutina.",
     "writeAgentFile": "Reemplazar el contenido de uno de los archivos guardados del empleado de IA.",
-    "setChoice": "Elegir qué organización sigue gratis cuando los planes pasen a las organizaciones. Las demás necesitarán un plan pago para seguir enviando mensajes."
+    "setChoice": "Elegir qué organización sigue en el nivel gratuito cuando los planes pasen a las organizaciones. Las demás necesitarán un plan pago para seguir enviando mensajes."
   },
   "arguments": {
     "agentId": "empleado de IA",

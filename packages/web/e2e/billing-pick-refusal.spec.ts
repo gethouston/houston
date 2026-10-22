@@ -47,7 +47,9 @@ test("after a refused paid pick the modal drops the paid step from progress, Bac
   await openPicker(modal, true);
   await modal.getByRole("button", { name: "Use it for La Fila" }).click();
   await expect(modal).toContainText("Step 4 of 5");
-  await modal.getByRole("button", { name: "Keep Innova free" }).click();
+  await modal
+    .getByRole("button", { name: "Keep Innova on the free tier" })
+    .click();
   await expect(page.getByText(NO_SUBSCRIPTION)).toBeVisible();
   expect(await sets()).toEqual([
     { freeOrgSlug: INNOVA.slug, paidOrgSlug: LA_FILA.slug },
@@ -66,14 +68,18 @@ test("after a refused paid pick the modal drops the paid step from progress, Bac
   await expect(modal).toContainText("Step 2 of 4");
   await modal.getByRole("button", { name: "Next", exact: true }).click();
   await expect(
-    page.getByRole("dialog", { name: "Which organization stays free?" }),
+    page.getByRole("dialog", {
+      name: "Which organization stays on the free tier?",
+    }),
   ).toBeVisible();
   await expect(modal).toContainText("Step 3 of 4");
   await expect(modal.getByRole("radio", { name: /Innova/ })).toBeChecked();
 
-  await modal.getByRole("button", { name: "Keep Innova free" }).click();
+  await modal
+    .getByRole("button", { name: "Keep Innova on the free tier" })
+    .click();
   await expect(
-    page.getByRole("dialog", { name: "Innova stays free" }),
+    page.getByRole("dialog", { name: "Innova stays on the free tier" }),
   ).toBeVisible();
   await expect(modal).toContainText("Step 4 of 4");
   expect((await sets())[1]).toEqual({ freeOrgSlug: INNOVA.slug });
@@ -94,14 +100,18 @@ test("after a refused paid pick the Settings picker has one step, no Back, and r
   await expect(picker).toContainText("Step 1 of 3");
   await picker.getByRole("button", { name: "Use it for La Fila" }).click();
   await expect(picker).toContainText("Step 2 of 3");
-  await picker.getByRole("button", { name: "Keep Innova free" }).click();
+  await picker
+    .getByRole("button", { name: "Keep Innova on the free tier" })
+    .click();
   await expect(page.getByText(NO_SUBSCRIPTION)).toBeVisible();
 
   await expect(picker).not.toContainText(/Step \d+ of/);
   await expect(picker.getByRole("button", { name: "Back" })).toHaveCount(0);
-  await picker.getByRole("button", { name: "Keep Innova free" }).click();
+  await picker
+    .getByRole("button", { name: "Keep Innova on the free tier" })
+    .click();
   await expect(
-    page.getByRole("dialog", { name: "Innova stays free" }),
+    page.getByRole("dialog", { name: "Innova stays on the free tier" }),
   ).toBeVisible();
   // One step and its success step: no progress there either.
   await expect(picker).not.toContainText(/Step \d+ of/);

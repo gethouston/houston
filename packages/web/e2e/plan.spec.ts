@@ -58,7 +58,7 @@ test("Admin > Billing on a free org: the share of the week and Upgrade", async (
   const billing = await openOrgBilling(page);
 
   await expect(
-    billing.getByRole("heading", { name: "Free plan" }),
+    billing.getByRole("heading", { name: "Free tier", exact: true }),
   ).toBeVisible();
   await expect(billing.getByText("25% used")).toBeVisible();
   await expect(
@@ -141,7 +141,7 @@ test("a send refused with message_limit renders the limit card and is not retrie
 
   await expect(page.getByText("Weekly usage limit reached")).toBeVisible();
   await expect(
-    page.getByText(/^Your organization's free usage resets /),
+    page.getByText(/^Your organization's free tier limit resets /),
   ).toBeVisible();
   await expect(
     page.getByRole("button", { name: "Upgrade", exact: true }),
@@ -192,7 +192,9 @@ test("at 80% the composer shows the usage hint and the way to Billing", async ({
   await openNewMission(page);
 
   await expect(
-    page.getByText("Your organization has used 85% of this week's free usage."),
+    page.getByText(
+      "Your organization has used 85% of this week's free tier limit.",
+    ),
   ).toBeVisible();
   // The hint never blocks: the composer stays open.
   await expect(page.getByPlaceholder(NEW_TASK_PLACEHOLDER)).toBeEditable();

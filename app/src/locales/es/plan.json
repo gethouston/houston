@@ -1,27 +1,27 @@
 {
   "title": "Facturación",
-  "nav": "Elige qué organización queda gratis",
+  "nav": "Elige qué organización queda en el nivel gratuito",
   "upgrade": "Mejorar",
-  "hint": "Tu organización usó el {{percent}}% del uso gratis de esta semana.",
+  "hint": "Tu organización usó el {{percent}}% del límite semanal del nivel gratuito.",
   "limitTitle": "Llegaste al límite de uso semanal",
-  "limitBody": "El uso gratis de tu organización se reinicia {{time}}. Mejora el plan para seguir ahora.",
+  "limitBody": "El límite del nivel gratuito de tu organización se reinicia {{time}}. Mejora el plan para seguir ahora.",
   "limitBodyResetOnly": "Tu uso se reinicia {{time}}.",
   "resumeTitle": "Tus rutinas se pausaron",
   "resumeBody": "Se pausaron mientras no estabas. Puedes reanudarlas ahora.",
   "resume": "Reanudar",
   "notNow": "Ahora no",
   "keepTitle": "Elige una rutina para mantener activa",
-  "keepBody": "Gratis mantiene una rutina activa. Las demás quedan guardadas.",
+  "keepBody": "El nivel gratuito mantiene una rutina activa. Las demás quedan guardadas.",
   "keep": "Mantener esta",
   "trigger": "Se ejecuta cuando ocurre el evento",
   "schedule": "Se ejecuta según su horario",
-  "shortInterval": "En Gratis, elige un intervalo de al menos {{minutes}} minutos.",
+  "shortInterval": "En el nivel gratuito, elige un intervalo de al menos {{minutes}} minutos.",
   "shortIntervalBody": "No se guardó nada. Elige un horario menos frecuente.",
   "success": "Todo listo",
   "empty": "No hay rutinas para elegir.",
   "error": "No se pudo cargar tu plan.",
   "retry": "Intentar de nuevo",
-  "limitBodyNoTime": "El uso gratis de tu organización se reinicia más adelante esta semana. Mejora el plan para seguir ahora.",
+  "limitBodyNoTime": "El límite del nivel gratuito de tu organización se reinicia más adelante esta semana. Mejora el plan para seguir ahora.",
   "limitBodyResetOnlyNoTime": "Tu uso se reinicia más adelante esta semana.",
   "questions": "¿Tienes preguntas sobre facturación?",
   "contact": "Contáctanos",
@@ -35,18 +35,18 @@
   "triggerSkipped": {
     "title_one": "Se omitió {{count}} ejecución de esta rutina en las últimas 24 horas",
     "title_other": "Se omitieron {{count}} ejecuciones de esta rutina en las últimas 24 horas",
-    "minInterval": "El plan Gratis de tu organización limita cuántas veces puede ejecutarse esta rutina. Mejora el plan para que se ejecute siempre.",
-    "minIntervalNoOffer": "El plan Gratis de tu organización limita cuántas veces puede ejecutarse esta rutina.",
-    "routineLimit": "Gratis mantiene una rutina activa, y la que sigue activa es otra. Elige esta rutina para mantenerla activa, o mejora el plan para ejecutarlas todas.",
-    "routineLimitNoOffer": "Gratis mantiene una rutina activa, y la que sigue activa es otra. Elige esta rutina para mantenerla activa.",
-    "routineLimitPaused": "Gratis mantiene una rutina activa, y la que sigue activa es otra. Además, tus rutinas se pausaron mientras no estabas, así que reanúdalas primero.",
+    "minInterval": "El nivel gratuito de tu organización limita con qué frecuencia puede ejecutarse esta rutina. Mejora el plan para que se ejecute siempre.",
+    "minIntervalNoOffer": "El nivel gratuito de tu organización limita con qué frecuencia puede ejecutarse esta rutina.",
+    "routineLimit": "El nivel gratuito mantiene una rutina activa, y la que sigue activa es otra. Elige esta rutina para mantenerla activa, o mejora el plan para ejecutarlas todas.",
+    "routineLimitNoOffer": "El nivel gratuito mantiene una rutina activa, y la que sigue activa es otra. Elige esta rutina para mantenerla activa.",
+    "routineLimitPaused": "El nivel gratuito mantiene una rutina activa, y la que sigue activa es otra. Además, tus rutinas se pausaron mientras no estabas, así que reanúdalas primero.",
     "inactivePaused": "Tus rutinas se pausaron mientras no estabas. Reanúdalas para que esta rutina vuelva a ejecutarse.",
     "inactiveResumed": "Tus rutinas estuvieron en pausa mientras no estabas. Ya están activas otra vez.",
-    "creatorPlan": "Esta rutina usa el plan Gratis de quien la creó, que limita cuántas veces puede ejecutarse. Esa persona puede mejorar el plan para que se ejecute siempre.",
+    "creatorPlan": "Esta rutina usa el nivel gratuito de quien la creó, que limita con qué frecuencia puede ejecutarse. Esa persona puede mejorar el plan para que se ejecute siempre.",
     "orgLocked": "Esta organización está bloqueada, así que sus rutinas están en pausa hasta que se pague."
   },
   "sidebar": {
-    "free": "Plan gratis",
+    "free": "Nivel gratuito",
     "nearLimit": "{{percent}}% usado",
     "limit": "Límite alcanzado",
     "upgrade": "Mejorar",
@@ -57,16 +57,16 @@
   "managedOnWeb": "Tu plan se administra en la web, en gethouston.ai.",
   "manageOnWeb": "Administra tu plan en la web.",
   "native": {
-    "limitBody": "El uso gratis de tu organización se reinicia {{time}}. Administra tu plan en la web.",
-    "limitBodyNoTime": "El uso gratis de tu organización se reinicia más adelante esta semana. Administra tu plan en la web.",
+    "limitBody": "El límite del nivel gratuito de tu organización se reinicia {{time}}. Administra tu plan en la web.",
+    "limitBodyNoTime": "El límite del nivel gratuito de tu organización se reinicia más adelante esta semana. Administra tu plan en la web.",
     "triggerSkipped": {
-      "minInterval": "Tu plan Gratis limita cuántas veces puede ejecutarse esta rutina. Administra tu plan en la web.",
-      "routineLimit": "Gratis mantiene una rutina activa, y la que sigue activa es otra. Elige esta rutina para mantenerla activa, o administra tu plan en la web.",
-      "creatorPlan": "Esta rutina usa el plan Gratis de quien la creó, que limita cuántas veces puede ejecutarse."
+      "minInterval": "Tu nivel gratuito limita con qué frecuencia puede ejecutarse esta rutina. Administra tu plan en la web.",
+      "routineLimit": "El nivel gratuito mantiene una rutina activa, y la que sigue activa es otra. Elige esta rutina para mantenerla activa, o administra tu plan en la web.",
+      "creatorPlan": "Esta rutina usa el nivel gratuito de quien la creó, que limita con qué frecuencia puede ejecutarse."
     },
     "purchaseLinkTitle": "Este enlace no está disponible en la app",
-    "limitBodyMember": "El uso gratis de tu organización se reinicia {{time}}.",
-    "limitBodyMemberNoTime": "El uso gratis de tu organización se reinicia más adelante esta semana."
+    "limitBodyMember": "El límite del nivel gratuito de tu organización se reinicia {{time}}.",
+    "limitBodyMemberNoTime": "El límite del nivel gratuito de tu organización se reinicia más adelante esta semana."
   },
   "choice": {
     "notice": {
@@ -80,8 +80,8 @@
         "invite": "Puedes invitar personas a cualquiera de ellos."
       },
       "oneFree": {
-        "title": "Una organización gratis por cuenta",
-        "body": "Todos los que están en ella usan Houston gratis."
+        "title": "Cada cuenta puede tener una organización en el nivel gratuito",
+        "body": "Quienes están en ella comparten el límite semanal del nivel gratuito."
       },
       "rest": {
         "title": "Las demás cuestan {{price}} por miembro al mes",
@@ -91,25 +91,25 @@
         "title": "Tu suscripción cubre una organización",
         "body": "{{price}} por miembro al mes. La eliges en un momento."
       },
-      "staysFree": "{{name}} sigue gratis",
+      "staysFree": "{{name}} sigue en el nivel gratuito",
       "paysFor": "Tu suscripción paga por {{name}}",
       "nothingToDo": "No tienes que hacer nada. Sigue funcionando como hoy.",
       "member": {
         "title": "No tienes que hacer nada",
         "body": "Los equipos en los que estás siguen funcionando como hoy."
       },
-      "choose": "Elegir mi organización gratis",
+      "choose": "Elegir mi organización para el nivel gratuito",
       "gotIt": "Entendido",
       "close": "Cerrar",
       "notKept": {
-        "label": "Organizaciones que no mantienes gratis",
+        "label": "Organizaciones fuera del nivel gratuito",
         "title": "No se borra nada",
         "open": {
           "title": "Puedes seguir abriéndolas",
           "body": "Cada agente, misión y archivo se queda donde está."
         },
         "move": {
-          "title": "Mueve agentes a tu organización gratis",
+          "title": "Mueve agentes a tu organización en el nivel gratuito",
           "body": "Trae los que quieras seguir usando."
         },
         "wait": {
@@ -121,8 +121,8 @@
       "back": "Atrás"
     },
     "picker": {
-      "title": "¿Qué organización sigue gratis?",
-      "sub": "Todos los que están en ella usan Houston gratis.",
+      "title": "¿Qué organización sigue en el nivel gratuito?",
+      "sub": "Quienes están en ella comparten el límite semanal del nivel gratuito.",
       "mostActive": "Más activa",
       "personal": "Personal",
       "members_one": "{{count}} miembro",
@@ -131,7 +131,7 @@
       "messages_other": "{{count}} mensajes en los últimos 30 días",
       "noMessages": "Sin mensajes en los últimos 30 días",
       "meta": "{{first}} · {{second}}",
-      "keep": "Mantener <name/> gratis",
+      "keep": "Mantener <name/> en el nivel gratuito",
       "close": "Cerrar",
       "step": "Paso {{step}} de {{total}}",
       "pickOne": "Elige una organización"
@@ -143,10 +143,10 @@
       "use": "Usarla para <name/>"
     },
     "done": {
-      "title": "{{name}} sigue gratis",
+      "title": "{{name}} sigue en el nivel gratuito",
       "sub": "Así quedan tus organizaciones desde el {{date}}.",
       "status": {
-        "free": "Gratis",
+        "free": "Nivel gratuito",
         "subscription": "Tu suscripción",
         "locks": "Se bloquea el {{date}}",
         "paid": "De pago",
@@ -156,7 +156,7 @@
       "close": "Listo"
     },
     "applied": {
-      "title": "{{name}} ahora es tu organización gratis",
+      "title": "{{name}} ahora está en el nivel gratuito",
       "paid": "Tu suscripción ahora paga por {{name}}.",
       "now": "Así quedan tus organizaciones ahora.",
       "until": "Puedes cambiarlo en Configuración hasta el {{date}}.",
@@ -165,8 +165,8 @@
       "messages_other": "{{count}} mensajes en 30 días",
       "noMessages": "Sin mensajes en 30 días",
       "confirm": {
-        "title": "Dejamos {{free}} gratis",
-        "titlePaid": "Dejamos {{free}} gratis y movimos tu suscripción a {{paid}}",
+        "title": "Dejamos {{free}} en el nivel gratuito",
+        "titlePaid": "Dejamos {{free}} en el nivel gratuito y movimos tu suscripción a {{paid}}",
         "sub": "Nos guiamos por dónde tienes más actividad. Puedes cambiarlo hasta el {{date}}.",
         "confirm": "Confirmar",
         "change": "Cambiar"
@@ -179,30 +179,30 @@
       },
       "not_payer": {
         "title": "No hay una suscripción para mover",
-        "body": "Elige solo la organización que sigue gratis."
+        "body": "Elige solo la organización que sigue en el nivel gratuito."
       },
       "same_org": {
         "title": "Elige dos organizaciones distintas",
-        "body": "La organización gratis no puede ser también la que cubre tu suscripción."
+        "body": "La organización en el nivel gratuito no puede ser también la que cubre tu suscripción."
       },
       "choice_closed": {
         "title": "El plazo para cambiar ya terminó",
-        "body": "Tus organizaciones se quedan como están. Aún puedes hacer que una organización sea la gratuita o pagarla desde su página de Facturación."
+        "body": "Tus organizaciones se quedan como están. Aún puedes pasar una organización al nivel gratuito o pagarla desde su página de Facturación."
       }
     },
     "settings": {
-      "title": "Elige tu organización gratis",
-      "pending": "Los planes pasan a las organizaciones el {{date}}. Elige la que sigue gratis.",
-      "picked": "{{name}} sigue gratis desde el {{day}}.",
+      "title": "Elige qué organización está en el nivel gratuito",
+      "pending": "Los planes pasan a las organizaciones el {{date}}. Elige la que sigue en el nivel gratuito.",
+      "picked": "{{name}} sigue en el nivel gratuito desde el {{day}}.",
       "choose": "Elegir",
       "change": "Cambiar",
-      "appliedTitle": "Cambia tu organización gratis",
-      "applied": "{{name}} es tu organización gratis. Puedes cambiarla hasta el {{date}}."
+      "appliedTitle": "Cambia qué organización está en el nivel gratuito",
+      "applied": "{{name}} está en el nivel gratuito. Puedes cambiarlo hasta el {{date}}."
     }
   },
   "askOwnerHint": "Pídele al propietario que mejore el plan.",
-  "limitBodyMember": "El uso gratis de tu organización se reinicia {{time}}. Pídele al propietario que mejore el plan para que todos puedan seguir ahora.",
-  "limitBodyMemberNoTime": "El uso gratis de tu organización se reinicia más adelante esta semana. Pídele al propietario que mejore el plan para que todos puedan seguir ahora.",
+  "limitBodyMember": "El límite del nivel gratuito de tu organización se reinicia {{time}}. Pídele al propietario que mejore el plan para que todos puedan seguir ahora.",
+  "limitBodyMemberNoTime": "El límite del nivel gratuito de tu organización se reinicia más adelante esta semana. Pídele al propietario que mejore el plan para que todos puedan seguir ahora.",
   "orgBilling": {
     "title": "Facturación de la organización",
     "body": "El plan, los asientos y el pago de cada organización están en su Administración, en Facturación.",

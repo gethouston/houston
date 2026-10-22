@@ -62,7 +62,7 @@ test("locked, the owner who pays: the strip, writes off with the reason, reads o
   );
   await expect(banner.getByRole("button", { name: "Unlock" })).toBeEnabled();
   await expect(
-    banner.getByRole("button", { name: "Use as free org" }),
+    banner.getByRole("button", { name: "Move to free tier" }),
   ).toBeEnabled();
 
   // No new AI Employee and no new task in a locked org.
@@ -174,20 +174,20 @@ test("locked: the owner moves an AI Employee out to Personal, where it then list
   expect(names).not.toContain(SEED_AGENT_NAME);
 });
 
-test("Use as free org names the org that locks instead, then the strip clears", async ({
+test("Move to free tier names the org that locks instead, then the strip clears", async ({
   page,
 }) => {
   await armOrgLock(page, { team: LOCKED });
   await page.goto("/");
 
   await statusBanner(page)
-    .getByRole("button", { name: "Use as free org" })
+    .getByRole("button", { name: "Move to free tier" })
     .click();
   const dialog = page.getByRole("alertdialog");
   await expect(dialog).toContainText(
-    "Acme unlocks and becomes free. Personal locks instead until someone pays for it.",
+    "Acme unlocks and moves to the free tier. Personal leaves the free tier and locks until someone pays for it.",
   );
-  await dialog.getByRole("button", { name: "Use as free org" }).click();
+  await dialog.getByRole("button", { name: "Move to free tier" }).click();
 
   await expect(statusBanner(page)).toHaveCount(0);
   expect((await planCalls()).map((call) => call.route)).toContain("org_free");
