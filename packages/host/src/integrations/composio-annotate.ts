@@ -39,6 +39,7 @@ export function multiAccountsByToolkit(
     list.push({
       id: c.connectionId,
       ...(c.accountLabel ? { label: c.accountLabel } : {}),
+      ...(c.createdAt ? { createdAt: c.createdAt } : {}),
     });
     byToolkit.set(key, list);
   }

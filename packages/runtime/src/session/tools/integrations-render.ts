@@ -30,7 +30,7 @@ export interface ToolMatch {
   /** Host-reported: the user's connected accounts for this app, present only
    *  when there is MORE than one — the model targets one via execute's
    *  `account`, or asks the user which to use. */
-  accounts?: { id: string; label?: string }[];
+  accounts?: { id: string; label?: string; createdAt?: string }[];
 }
 
 /** Prefer the explicit status; fall back to the legacy connected boolean. */

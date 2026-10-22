@@ -69,6 +69,32 @@ test("returns the generic tools plus request_connection, correctly named", () =>
   ]);
 });
 
+test("search appends account descriptions and execute repeats the account-selection rule", async () => {
+  mockFetch(() => ({
+    body: {
+      items: [
+        {
+          action: "GOOGLEDRIVE_LIST_FILES",
+          toolkit: "googledrive",
+          description: "List files",
+          accounts: [{ id: "ca_1", createdAt: "2026-07-28" }, { id: "ca_2" }],
+        },
+      ],
+    },
+  }));
+  const out = await run(search, { query: "list drive files" });
+  const text = (out.content[0] as { text: string }).text;
+  expect(text).toContain("ca_1 (connected on July 28, 2026), ca_2 (account 2)");
+  for (const guidance of [
+    "always pass `account`; never omit it",
+    "you MUST ask ONE ask_user question before acting",
+    "never ask when the app has a single account",
+  ]) {
+    expect(text).toContain(guidance);
+    expect(execute.description).toContain(guidance);
+  }
+});
+
 test("search POSTs to the host proxy with the sandbox token + formats matches", async () => {
   const calls = mockFetch((path) =>
     path === "/sandbox/integrations/search"

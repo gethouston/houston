@@ -4,6 +4,10 @@ import { currentActingContext } from "../acting-context";
 import { recordConnection, recordSignin } from "../interaction";
 import { assertNotPlanMode } from "../live-mode-gate";
 import {
+  ACCOUNT_SELECTION_GUIDANCE,
+  multiAccountNote,
+} from "./integrations-accounts";
+import {
   type AppStatus,
   renderSearchItems,
   statusOf,
@@ -403,24 +407,8 @@ export function makeIntegrationTools(opts: IntegrationToolOptions) {
         ),
       ];
       const parts = [list];
-      // Apps holding several connected accounts: name each account once so the
-      // model can target one (execute's `account`) or ask the user which.
-      const multiAccount = new Map<string, { id: string; label?: string }[]>();
-      for (const m of items) {
-        if (m.accounts && m.accounts.length > 1 && !multiAccount.has(m.toolkit))
-          multiAccount.set(m.toolkit, m.accounts);
-      }
-      if (multiAccount.size > 0) {
-        const lines = [...multiAccount].map(
-          ([toolkit, accounts]) =>
-            `- ${toolkit}: ${accounts
-              .map((a) => `${a.id}${a.label ? ` (${a.label})` : ""}`)
-              .join(", ")}`,
-        );
-        parts.push(
-          `These apps have MULTIPLE accounts connected:\n${lines.join("\n")}\nWhen you run an action on one of these apps, pass integration_execute's \`account\` with the right account id. If the user has said which account to use (or the task implies it), pick it; if the choice matters and is ambiguous, ask the user first via ask_user, naming the accounts in plain words (their email or workspace name) - never show a raw account id to the user.`,
-        );
-      }
+      const accountNote = multiAccountNote(items);
+      if (accountNote) parts.push(accountNote);
       const connectable = slugsWith("connectable");
       if (connectable.length > 0) {
         parts.push(
@@ -467,7 +455,8 @@ export function makeIntegrationTools(opts: IntegrationToolOptions) {
     name: "integration_execute",
     label: "Run an app action",
     description:
-      "Run an action on one of the user's connected apps - e.g. send an email, create a calendar event, add a task. Pass the action slug from integration_search and its parameters. The user's own account is used automatically; you never handle credentials. When the app has several connected accounts (integration_search lists them), pass `account` to pick one.",
+      "Run an action on one of the user's connected apps - e.g. send an email, create a calendar event, add a task. Pass the action slug from integration_search and its parameters. The user's own account is used automatically; you never handle credentials. " +
+      ACCOUNT_SELECTION_GUIDANCE,
     promptSnippet: "Run an action on one of the user's connected apps",
     parameters: ExecuteParams,
     executionMode: "sequential",
