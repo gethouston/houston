@@ -25,6 +25,8 @@ export interface SimulatedClaudeCall {
   resume: string | undefined;
   requestTokens: number;
   refused: boolean;
+  /** The CLI's first-byte deadline the call's env carried. */
+  apiTimeoutMs: string | undefined;
 }
 
 export interface SimulatedClaudeApi {
@@ -68,7 +70,13 @@ export function simulatedClaudeApi(opts: {
     const prior = sessions.get(sessionId) ?? 0;
     const requestTokens = opts.systemTokens + prior + tokensOf(prompt);
     const refused = requestTokens > opts.windowTokens;
-    calls.push({ prompt, resume, requestTokens, refused });
+    calls.push({
+      prompt,
+      resume,
+      requestTokens,
+      refused,
+      apiTimeoutMs: options.env?.API_TIMEOUT_MS,
+    });
     const model = options.model ?? null;
     yield sdk({ type: "system", subtype: "init", session_id: sessionId });
     if (refused) {

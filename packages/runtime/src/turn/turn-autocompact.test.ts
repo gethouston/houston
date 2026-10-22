@@ -284,6 +284,26 @@ test("a fresh Claude process reads the fill from the transcript and compacts", a
   expect(lastAssistant(dirs.dataDir)?.turnId).toBe("t1");
 });
 
+test("a fresh Claude process sizes the CLI's first-byte deadline from the transcript's fill", async () => {
+  target.model = claudeModel;
+  const dirs = await directories();
+  seedChat(dirs.dataDir, 150_000);
+  const api = simulatedClaudeApi({
+    windowTokens: 200_000,
+    systemTokens: 1_000,
+    runGrowthTokens: 0,
+  });
+  await seedClaudeSession(dirs, api, 150_000);
+
+  await send(dirs, "t1", { claudeSdk: claudeSdk(api) });
+
+  // 150k recorded, the question, and 100k of growth during the turn: 12.5 s
+  // more than a small prompt's 15 s.
+  expect(api.calls.map((call) => [call.resume, call.apiTimeoutMs])).toEqual([
+    ["sim-old", "27500"],
+  ]);
+});
+
 test("a summary a pod armed is delivered instead of a transcript replay", async () => {
   target.model = claudeModel;
   const dirs = await directories();

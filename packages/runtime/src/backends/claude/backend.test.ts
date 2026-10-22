@@ -283,6 +283,18 @@ test("the session's refreshAuth re-reads the CURRENT token — a rotation betwee
   expect(fresh?.accessDigest).toBe("digest-new");
 });
 
+test("the session's refreshAuth sizes the CLI's first-byte deadline for the prompt it is given", async () => {
+  const backend = createClaudeBackend(backendDeps(() => oauth));
+  await backend.createSession({
+    conversationId: "c1",
+    model: MODEL,
+    recordedContextTokens: () => 640_000,
+  });
+  expect(built[0]?.refreshAuth().env.API_TIMEOUT_MS).toBe("15000");
+  expect(built[0]?.refreshAuth(800_000).env.API_TIMEOUT_MS).toBe("55000");
+  expect(built[0]?.recordedContextTokens?.()).toBe(640_000);
+});
+
 test("refreshAuth re-asserts the personal-scope guard: a token that vanished mid-conversation refuses the turn, never falls through to the team dir", async () => {
   let current: ClaudeToken | undefined = oauth;
   const backend = createClaudeBackend(backendDeps(() => current));

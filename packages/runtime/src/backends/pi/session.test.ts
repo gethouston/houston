@@ -99,6 +99,8 @@ class StubAgentSession {
   lastThinking: ThinkingLevel | undefined;
   contextUsage: { tokens: number | null } | undefined;
   model: { provider: string } | undefined = { provider: "opencode" };
+  systemPrompt = "";
+  messages: unknown[] = [];
 
   subscribe(l: (e: AgentSessionEvent) => void): () => void {
     this.listeners.add(l);
@@ -356,13 +358,38 @@ test("subscribeModelPhase marks each request, its response, and the gaps between
   emit({ type: "compaction_start", reason: "threshold" });
 
   expect(phases).toEqual([
-    { phase: "requesting", provider: "opencode" },
+    { phase: "requesting", provider: "opencode", promptTokens: 0 },
     { phase: "responding" },
     { phase: "idle" },
-    { phase: "requesting", provider: "anthropic", afterMs: 2000 },
+    {
+      phase: "requesting",
+      provider: "anthropic",
+      afterMs: 2000,
+      promptTokens: 0,
+    },
     { phase: "idle" },
   ]);
   unsub();
   emit({ type: "turn_start" });
   expect(phases).toHaveLength(5);
+});
+
+test("a request's phase carries the size of the prompt it sends", () => {
+  const { stub, session } = make();
+  const phases: ModelPhase[] = [];
+  session.subscribeModelPhase((p) => phases.push(p));
+  stub.systemPrompt = "s".repeat(400);
+  stub.messages = [{ role: "user", content: "x".repeat(4000), timestamp: 0 }];
+  stub.emit({ type: "turn_start" } as AgentSessionEvent);
+  stub.messages.push(assistantMessage(usage({ totalTokens: 800_000 })), {
+    role: "user",
+    content: "y".repeat(4000),
+    timestamp: 0,
+  });
+  stub.emit({ type: "turn_start" } as AgentSessionEvent);
+
+  expect(phases).toEqual([
+    { phase: "requesting", provider: "opencode", promptTokens: 1100 },
+    { phase: "requesting", provider: "opencode", promptTokens: 801_000 },
+  ]);
 });
