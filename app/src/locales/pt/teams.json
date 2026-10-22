@@ -378,9 +378,6 @@
         "already_member": "Já está na equipe",
         "generic": "Não foi possível convidar. Tente novamente."
       }
-    },
-    "done": {
-      "heading": "Compartilhado com {{team}}"
     }
   },
   "moveResume": {

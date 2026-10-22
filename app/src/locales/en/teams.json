@@ -378,9 +378,6 @@
         "already_member": "Already on the team",
         "generic": "Couldn't invite. Try again."
       }
-    },
-    "done": {
-      "heading": "Shared with {{team}}"
     }
   },
   "moveResume": {
