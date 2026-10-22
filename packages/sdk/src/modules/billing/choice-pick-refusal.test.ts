@@ -20,6 +20,7 @@ import {
   pickerSubmission,
   pickRefused,
   reconcilePick,
+  toFreeStep,
 } from "./choice-picker";
 
 const ctx = {
@@ -77,6 +78,40 @@ describe("a draft whose choice turns payer", () => {
     ).toEqual({ freeOrgSlug: INNOVA.slug, paidOrgSlug: PERSONAL.slug });
     expect(pickerSubmission(reconcilePick(payer, refused))).toEqual({
       freeOrgSlug: INNOVA.slug,
+    });
+  });
+});
+
+describe("a modal frame whose stored non-payer draft turns payer", () => {
+  it("counts, shows and sends the paid step", () => {
+    const opened = nextChoiceModalFrame(
+      CLOSED_CHOICE_FRAME,
+      choiceModal(choice(), ctx),
+    );
+    const frame = withChoicePick(nextChoicePage(nextChoicePage(opened)), {
+      ...unmarked,
+    });
+    expect(choiceFrameFlow(frame, choice())).toEqual({
+      intro: 2,
+      payer: false,
+    });
+    const draft = choiceFramePick(frame, payer);
+    expect(draft).toEqual({
+      step: "paid",
+      free: INNOVA.slug,
+      paid: LA_FILA.slug,
+      paidRefused: false,
+    });
+    const flow = choiceFrameFlow(frame, payer);
+    expect(flow).toEqual({ intro: 2, payer: true });
+    expect(pickFlowProgress(flow, { step: "paid" })).toEqual({
+      current: 3,
+      total: 5,
+    });
+    const next = withChoicePick(frame, toFreeStep(payer, draft));
+    expect(pickerSubmission(choiceFramePick(next, payer))).toEqual({
+      freeOrgSlug: INNOVA.slug,
+      paidOrgSlug: LA_FILA.slug,
     });
   });
 });

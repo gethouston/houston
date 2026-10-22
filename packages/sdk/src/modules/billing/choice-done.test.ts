@@ -135,8 +135,10 @@ describe("the picker opened from Settings", () => {
       free: PERSONAL.slug,
     });
     expect(choicePickerPick(changed, owner).free).toBe(PERSONAL.slug);
-    // Closing and opening again starts from the stored pick.
-    closeChoicePicker(changed);
+    // Closing keeps the draft through the animation; opening drops it.
+    const closed = closeChoicePicker(changed);
+    expect(closed).toEqual({ ...changed, open: false });
+    expect(openChoicePicker().pick).toBeNull();
     expect(choicePickerPick(openChoicePicker(), owner).free).toBe(INNOVA.slug);
   });
 
