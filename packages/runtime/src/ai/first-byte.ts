@@ -73,3 +73,14 @@ export function unansweredWindowMs(
   // the last attempt still gets its full deadline.
   return Math.round(deadline * (FIRST_BYTE_EXTRA_ATTEMPTS + 1 + 1 / 3));
 }
+
+/**
+ * `unansweredWindowMs` at one configured deadline, in the shape the stall
+ * watchdog asks for a request's window (session/stall-watchdog.ts).
+ */
+export function unansweredWindows(
+  configuredMs: number,
+): (provider: string, promptTokens?: number) => number {
+  return (provider, promptTokens) =>
+    unansweredWindowMs(provider, configuredMs, promptTokens);
+}

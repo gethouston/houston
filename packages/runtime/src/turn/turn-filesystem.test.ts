@@ -13,7 +13,7 @@ import {
 } from "@houston/runtime-client/object-sync";
 import { expect, test } from "vitest";
 import { createSessionsStore } from "../backends/claude/sessions-store";
-import { resumeSessionManager } from "../backends/pi/backend";
+import { resumeSessionManager } from "../backends/pi/session-files";
 import { startTurnRequestFilesystem } from "./turn-claimed-hydration";
 import {
   claimedTurnIncludes,

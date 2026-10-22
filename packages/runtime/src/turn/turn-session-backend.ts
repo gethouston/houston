@@ -5,7 +5,7 @@ import { DEFAULT_REASONING_EFFORT, toThinkingLevel } from "../ai/effort";
 import { logTurnTarget } from "../ai/turn-diagnostic";
 import { readAuthFile } from "../auth/auth-file";
 import type { newUsedTokenCapture } from "../auth/used-token";
-import { hasUnreadablePiSessionTail } from "../backends/pi/backend";
+import { hasUnreadablePiSessionTail } from "../backends/pi/session-files";
 import { recordedContextFill } from "../session/recorded-context-fill";
 import { replayCharBudget } from "../session/replay-transcript";
 import { replayForConversation } from "../session/routine-replay";

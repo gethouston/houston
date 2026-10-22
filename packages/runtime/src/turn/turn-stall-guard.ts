@@ -1,5 +1,5 @@
 import type { ProviderError, WireEvent } from "@houston/runtime-client";
-import { unansweredWindowMs } from "../ai/first-byte";
+import { unansweredWindows } from "../ai/first-byte";
 import type { HarnessSession } from "../backends/types";
 import { describeStall, stallFailure } from "../session/stall-failure";
 import {
@@ -42,8 +42,7 @@ export function guardTurnStall(input: {
   let trip: { reason: StallReason; windowMs: number } | undefined;
   const watchdog = createStallWatchdog({
     timeoutMs: input.timeoutMs,
-    firstResponseMs: (provider, promptTokens) =>
-      unansweredWindowMs(provider, input.firstByteDeadlineMs, promptTokens),
+    firstResponseMs: unansweredWindows(input.firstByteDeadlineMs),
     onStall: (reason, windowMs) => {
       trip = { reason, windowMs };
       console.warn(

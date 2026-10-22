@@ -6,7 +6,7 @@ import {
   SessionManager,
 } from "@earendil-works/pi-coding-agent";
 import { expect, test } from "vitest";
-import { resumeSessionManager } from "./backend";
+import { resumeSessionManager } from "./session-files";
 
 function seedSession(dir: string, name: string, cwd: string): string {
   mkdirSync(dir, { recursive: true });
