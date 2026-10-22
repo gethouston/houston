@@ -1,4 +1,4 @@
-import { FAKE_HOST_URL } from "@houston/fake-host";
+import { FAKE_HOST_URL, SEED_AGENT_NAME } from "@houston/fake-host";
 import type { Page } from "@playwright/test";
 import { FOLLOW_UP_PLACEHOLDER } from "./support/composer";
 import { expect, test } from "./support/fixtures";
@@ -10,6 +10,7 @@ import {
   PAST_DUE,
   setTeamBilling,
   statusBanner,
+  TEAM,
 } from "./support/org-lock";
 import { openedUrls, PORTAL_URL, planCalls, stubOpener } from "./support/plan";
 import { openAdminSection } from "./support/settings-nav";
@@ -137,6 +138,37 @@ test("locked: a skill opens and reads, and nothing adds, saves or deletes one", 
   await editor.getByRole("button", { name: "More actions" }).click();
   for (const item of await page.getByRole("menuitem").all())
     await expect(item).toBeDisabled();
+});
+
+test("locked: the owner moves an AI Employee out to Personal, where it then lists", async ({
+  page,
+}) => {
+  await armOrgLock(page, { team: LOCKED });
+  await page.goto("/");
+
+  await openTeamSection(page, "Settings");
+  await page
+    .getByRole("button", { name: /^Move to another organization/ })
+    .click();
+  const dialog = page.getByRole("dialog");
+  await dialog.getByRole("button", { name: "Personal", exact: true }).click();
+  await expect(dialog).toContainText(
+    `${SEED_AGENT_NAME} will move to Personal, where only you work with it.`,
+  );
+  await dialog.getByRole("button", { name: "Move AI Employee" }).click();
+  await expect(dialog).toContainText(`${SEED_AGENT_NAME} is in Personal now.`);
+  await dialog.getByRole("button", { name: "Done" }).click();
+
+  // The app switched to Personal, which works, and the employee is there.
+  await expect(statusBanner(page)).toHaveCount(0);
+  await expect(
+    page.locator("[data-sidebar-item]").filter({ hasText: SEED_AGENT_NAME }),
+  ).toBeVisible();
+  const acme = await fetch(`${FAKE_HOST_URL}/agents`, {
+    headers: { "x-houston-org": TEAM.slug },
+  });
+  const names = ((await acme.json()) as { name: string }[]).map((a) => a.name);
+  expect(names).not.toContain(SEED_AGENT_NAME);
 });
 
 test("Use as free org names the org that locks instead, then the strip clears", async ({

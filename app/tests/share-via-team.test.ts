@@ -274,6 +274,18 @@ describe("switch then invite (pipeline order is law)", () => {
     assertInviteReady(switchDone(switching));
   });
 
+  it("switchDone ends a move into Personal, with nobody to invite", () => {
+    const personal = {
+      slug: "ffffffffffffffff",
+      name: "Personal",
+      personal: true,
+    };
+    deepStrictEqual(switchDone({ step: "switching", team: personal }), {
+      step: "done",
+      team: personal,
+    });
+  });
+
   it("switchDone only acts from switching", () => {
     strictEqual(switchDone(moving), moving);
   });

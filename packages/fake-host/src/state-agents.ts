@@ -47,11 +47,14 @@ function surfaceConfigWrite(stored: string, content: string): string {
 
 // ---- agents ----
 /** The roster as `GET /agents` serves it: each agent with the role its job
- *  description names, like the real host. */
-export function listAgents(): CpAgent[] {
-  return state.agents.map((agent) => {
+ *  description names, like the real host. Given an org, only the agents that
+ *  space holds: the ones a move put there, and every one never moved. */
+export function listAgents(orgSlug?: string): CpAgent[] {
+  return state.agents.flatMap(({ orgSlug: home, ...agent }) => {
+    if (orgSlug !== undefined && home !== undefined && home !== orgSlug)
+      return [];
     const role = roleOf(agent.id);
-    return role ? { ...agent, role } : agent;
+    return [role ? { ...agent, role } : agent];
   });
 }
 /** Whether an agent other than `exceptId` holds `name` the way the real

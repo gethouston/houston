@@ -110,20 +110,23 @@ export async function declineOrgInvite(
 }
 
 /**
- * Moves an agent into a shared space so teammates can work with it.
+ * Moves an agent into another space: a team so teammates can work with it, or out of its organization into another one the person runs.
  *
- * Move an agent into a team space; returns the `moveId` to poll with
+ * Move an agent into another org; returns the `moveId` to poll with
  * `getMoveStatus`. Never degrades — 403 `unsupported_move` / 409
  * `unmovable_volume` / 403 `needs_upgrade` throw so the caller surfaces them,
  * and so does 409 `name_taken` when the destination space already has an agent
  * with the same name: nothing starts, and the move can only succeed once one of
- * the two is renamed (`classifyMoveError` in `./move-refusals`).
+ * the two is renamed (`classifyMoveError` in `./move-refusals`). An org on
+ * org billing moves agents out to any org the person owns or runs that is not
+ * locked, Personal included, even while it is locked itself
+ * (`moveOutDestinations` in `./move-out`).
  * @param agentSlugOrId The agent this acts on, by the id or slug listAgents
  *   returns. Read it from listAgents rather than writing the name the user
  *   says.
  * @param toSlug The space to move it into, by the slug listOrgs returns.
  * @assistant group:spaces
- * @assistant confirm: outward. The agent and its whole history move into a shared space, where everyone in that space can work with it.
+ * @assistant confirm: outward. The agent and its whole history move into another space, where everyone in that space can work with it.
  */
 export async function moveAgent(
   scope: HttpScope,

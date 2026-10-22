@@ -135,6 +135,7 @@ export {
   activeSpaceOrgSlug,
 } from "./modules/spaces/active-space";
 export { freeOrgTakenSlug } from "./modules/spaces/create-refusals";
+export * from "./modules/spaces/move-out";
 export * from "./modules/spaces/move-refusals";
 // ===== Teams module contract ===========================================
 // `AgentAccess`/`AgentAssignment` are the agents module's; a team assignment

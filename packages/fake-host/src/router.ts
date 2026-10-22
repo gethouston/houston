@@ -27,6 +27,7 @@ import { type ScriptedToolCall, setNextToolCalls } from "./chat-tools";
 import { ASSISTANT_AGENT_ID, SEED_AGENT_ID } from "./config";
 import { CORS, json } from "./http";
 import { handleAgents } from "./routes";
+import { handleAgentMoveRoutes } from "./routes-agent-move";
 import {
   handleBillingChoiceCallsControl,
   handleBillingChoiceControl,
@@ -456,6 +457,8 @@ export async function handle(req: Request): Promise<Response> {
   // --- C8 Spaces gateway routes (the cross-org list + the invitee's inbox) ---
   const spacesRoute = handleSpacesRoutes(method, segs, body);
   if (spacesRoute) return spacesRoute;
+  const moveRoute = handleAgentMoveRoutes(method, segs, body);
+  if (moveRoute) return moveRoute;
 
   const orgBillingRoute = handleOrgBillingRoutes(method, segs, req);
   if (orgBillingRoute) return orgBillingRoute;

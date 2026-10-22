@@ -32,10 +32,15 @@ import {
  */
 export const MOVE_POLL_TIMEOUT_MS = 5 * 60 * 1_000;
 
-/** A team space the agent can move into, identified by its 16-hex slug. */
+/**
+ * An org the agent can move into, identified by its 16-hex slug. `personal`:
+ * the caller's own org, where nobody is invited, so the move ends at the
+ * switch.
+ */
 export interface TeamRef {
   slug: string;
   name: string;
+  personal?: boolean;
 }
 
 /** Per-email invite tracking so a partial failure retries only its own rows. */
@@ -177,9 +182,13 @@ export function moveTimedOut(s: ShareViaTeamState): ShareViaTeamState {
   return { step: "moveFailed", team: s.team, error: "timeout" };
 }
 
-/** The active-space switch finished: open the invite step (empty roster). */
+/**
+ * The active-space switch finished: open the invite step (empty roster), or
+ * end the move into Personal, where there is nobody to invite.
+ */
 export function switchDone(s: ShareViaTeamState): ShareViaTeamState {
   if (s.step !== "switching") return s;
+  if (s.team.personal) return { step: "done", team: s.team };
   return { step: "invite", team: s.team, invites: [] };
 }
 

@@ -1,22 +1,13 @@
-import {
-  Building2,
-  Copy,
-  KeyRound,
-  Palette,
-  Trash2,
-  UsersRound,
-} from "lucide-react";
+import { Copy, KeyRound, Palette, Trash2, UsersRound } from "lucide-react";
 import { useState } from "react";
 import { useTranslation } from "react-i18next";
 import { useCapabilities } from "../../hooks/use-capabilities";
 import { useOrgWriteLock } from "../../hooks/use-org-write-lock";
-import { usePersonalSpace } from "../../hooks/use-personal-space";
 import { useTeams } from "../../hooks/use-teams";
 import { apiKeysSupported } from "../../lib/api-keys-model";
 import { teamOfAgent } from "../../lib/teams-model";
 import type { Agent } from "../../lib/types";
 import { useAgentStore } from "../../stores/agents";
-import { AgentShareSurfaces } from "../agent/agent-share-surfaces";
 import { AgentCopyDialog } from "../agent-actions/agent-copy-action";
 import { AgentDeleteDialog } from "../agent-actions/agent-delete-action";
 import { AgentIdentityDialog } from "../agent-actions/agent-identity-dialog";
@@ -30,11 +21,11 @@ import { SettingsCard, SettingsRow } from "../settings/settings-row";
 import { useAgentSettingsNav } from "../team-view/agent-settings-nav-store";
 import { useMoveAgentTeam } from "../team-view/use-move-agent-team";
 import { AgentApiAccess } from "./agent-api-access";
+import { AgentSettingsOrgMove } from "./agent-settings-org-move";
 import { useAgentManageWrites } from "./use-agent-manage-writes";
 
 export function AgentSettingsManage({ agent }: { agent: Agent }) {
   const { t } = useTranslation(["shell", "teams", "agents", "settings"]);
-  const personalSpace = usePersonalSpace();
   const teams = useTeams();
   const currentTeam = teamOfAgent(teams, agent.id);
   const agents = useAgentStore((state) => state.agents);
@@ -46,7 +37,6 @@ export function AgentSettingsManage({ agent }: { agent: Agent }) {
   const [identityOpen, setIdentityOpen] = useState(false);
   const [moveOpen, setMoveOpen] = useState(false);
   const [pendingTeam, setPendingTeam] = useState<MoveTarget | null>(null);
-  const [organizationOpen, setOrganizationOpen] = useState(false);
   const [copyOpen, setCopyOpen] = useState(false);
   const [deleting, setDeleting] = useState(false);
   const apiAvailable = apiKeysSupported(useCapabilities().capabilities);
@@ -73,16 +63,7 @@ export function AgentSettingsManage({ agent }: { agent: Agent }) {
             onClick={() => setMoveOpen(true)}
           />
         )}
-        {personalSpace && (
-          <SettingsRow
-            icon={Building2}
-            title={t("teams:agentSettings.manage.moveOrganization")}
-            description={t(
-              "teams:agentSettings.manage.moveOrganizationDescription",
-            )}
-            onClick={() => setOrganizationOpen(true)}
-          />
-        )}
+        <AgentSettingsOrgMove agent={agent} />
         <SettingsRow
           icon={Copy}
           title={t("agents:copyAgent.row", { name: agent.name })}
@@ -146,12 +127,6 @@ export function AgentSettingsManage({ agent }: { agent: Agent }) {
             );
           setPendingTeam(null);
         }}
-      />
-      <AgentShareSurfaces
-        agent={agent}
-        surface="inviteTeam"
-        open={organizationOpen}
-        onOpenChange={setOrganizationOpen}
       />
       <AgentCopyDialog
         agent={agent}

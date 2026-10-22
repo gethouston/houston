@@ -13,35 +13,30 @@ import type { PickStepCopy } from "./pick-step-copy";
  * boundary is for `ui/`, not app tabs).
  */
 
-/** Step 1 — pick an existing team the caller owns/admins, or create one inline. */
+/** Creating a team inline from the pick step. */
+export interface PickStepCreate {
+  open: boolean;
+  error: string | null;
+  pending: boolean;
+  onStart: () => void;
+  onCreate: (name: string) => void;
+}
+
+/**
+ * Step 1: pick a destination the caller owns or runs, or (`create`) create
+ * a team inline.
+ */
 export function PickStep({
   copy,
   teams,
-  creating,
-  createError,
-  isCreating,
   onPick,
-  onStartCreate,
-  onCreate,
+  create,
 }: {
   copy: PickStepCopy;
   teams: TeamRef[];
-  creating: boolean;
-  createError: string | null;
-  isCreating: boolean;
   onPick: (team: TeamRef) => void;
-  onStartCreate: () => void;
-  onCreate: (name: string) => void;
+  create?: PickStepCreate;
 }) {
-  const [name, setName] = useState("");
-
-  const submit = (e: FormEvent) => {
-    e.preventDefault();
-    const value = name.trim();
-    if (!value || isCreating) return;
-    onCreate(value);
-  };
-
   return (
     <div className="space-y-3">
       <p className="text-sm text-ink-muted">{copy.subtitle}</p>
@@ -64,7 +59,28 @@ export function PickStep({
         <p className="text-sm text-ink-muted">{copy.empty}</p>
       )}
 
-      {creating ? (
+      {create && <PickCreate copy={copy} create={create} />}
+    </div>
+  );
+}
+
+function PickCreate({
+  copy,
+  create,
+}: {
+  copy: PickStepCopy;
+  create: PickStepCreate;
+}) {
+  const [name, setName] = useState("");
+  const submit = (e: FormEvent) => {
+    e.preventDefault();
+    const value = name.trim();
+    if (!value || create.pending) return;
+    create.onCreate(value);
+  };
+  return (
+    <>
+      {create.open ? (
         <form onSubmit={submit} className="flex items-end gap-2">
           <div className="flex-1">
             <Input
@@ -74,12 +90,12 @@ export function PickStep({
               onChange={(e) => setName(e.target.value)}
               placeholder={copy.namePlaceholder}
               aria-label={copy.nameLabel}
-              disabled={isCreating}
+              disabled={create.pending}
               className="rounded-xl"
             />
           </div>
-          <Button type="submit" disabled={!name.trim() || isCreating}>
-            {isCreating ? copy.creating : copy.create}
+          <Button type="submit" disabled={!name.trim() || create.pending}>
+            {create.pending ? copy.creating : copy.create}
           </Button>
         </form>
       ) : (
@@ -87,17 +103,16 @@ export function PickStep({
           type="button"
           variant="ghost"
           className="w-full justify-start rounded-xl"
-          onClick={onStartCreate}
+          onClick={create.onStart}
         >
           <Plus className="size-4" />
           {copy.createTrigger}
         </Button>
       )}
-
-      {createError ? (
-        <p className="text-sm text-danger">{createError}</p>
+      {create.error ? (
+        <p className="text-sm text-danger">{create.error}</p>
       ) : null}
-    </div>
+    </>
   );
 }
 
@@ -119,7 +134,12 @@ export function ConfirmStep({
   return (
     <div className="space-y-4">
       <p className="text-sm text-ink">
-        {t("shareViaTeam.confirm.body", { agent: agentName, team: team.name })}
+        {t(
+          team.personal
+            ? "moveOut.confirmPersonal"
+            : "shareViaTeam.confirm.body",
+          { agent: agentName, team: team.name },
+        )}
       </p>
       <p className="text-xs text-ink-muted">
         {t("shareViaTeam.confirm.downtime")}
@@ -149,6 +169,29 @@ export function BusyStep({
       <Spinner className="size-6" />
       <p className="text-sm font-medium text-ink">{heading}</p>
       {body ? <p className="text-xs text-ink-muted">{body}</p> : null}
+    </div>
+  );
+}
+
+/** The move into Personal is done: where the AI Employee is now. */
+export function MovedStep({
+  agentName,
+  team,
+  onDone,
+}: {
+  agentName: string;
+  team: TeamRef;
+  onDone: () => void;
+}) {
+  const { t } = useTranslation("teams");
+  return (
+    <div className="space-y-4">
+      <p className="text-sm text-ink">
+        {t("moveOut.done", { agent: agentName, team: team.name })}
+      </p>
+      <div className="flex justify-end">
+        <Button onClick={onDone}>{t("moveOut.close")}</Button>
+      </div>
     </div>
   );
 }

@@ -151,7 +151,7 @@ Calling an operation returns the host's raw response. Where the adapter function
 - `declineOrgInvite`: Declines an invitation to join a shared space. **Confirmation required.**
 - `getMoveStatus`: Checks how an agent's move to another space is going.
 - `listOrgs`: Lists the spaces the user belongs to and any invitations waiting for them.
-- `moveAgent`: Moves an agent into a shared space so teammates can work with it. **Confirmation required.**
+- `moveAgent`: Moves an agent into another space: a team so teammates can work with it, or out of its organization into another one the person runs. **Confirmation required.**
 
 ## system
 

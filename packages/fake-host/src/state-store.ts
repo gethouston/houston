@@ -288,6 +288,11 @@ export interface CpAgent {
   assignedUserIds?: string[];
   access?: AgentAccess;
   assignments?: FakeAssignment[];
+  /**
+   * The org a move put the agent in; only that org's space lists it. Absent
+   * (every seeded agent) = every space lists it. Never served.
+   */
+  orgSlug?: string;
 }
 
 export const ACTIVITY_PATH = ".houston/activity/activity.json";

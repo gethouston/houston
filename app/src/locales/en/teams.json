@@ -63,7 +63,8 @@
       "moveOrganization": "Move to another organization",
       "moveOrganizationDescription": "Move this AI Employee into an organization so a team can work with it.",
       "delete": "Delete {{name}}",
-      "noTeam": "No group"
+      "noTeam": "No group",
+      "moveOutDescription": "Move this AI Employee to another organization you run, Personal included."
     },
     "people": {
       "helper": "Pick whether everyone on your team can use this AI Employee, or only the people you choose.",
@@ -779,5 +780,16 @@
       "askOwner": "{{org}} is locked. Ask the owner who pays for it to unlock it.",
       "store": "{{org}} is locked, so messages and changes are off for now."
     }
+  },
+  "moveOut": {
+    "title": "Move {{name}} to another organization",
+    "personal": "Personal",
+    "pick": {
+      "subtitle": "Pick the organization this AI Employee moves to. It keeps its chats and files.",
+      "empty": "You don't run another organization it can move to."
+    },
+    "confirmPersonal": "{{agent}} will move to {{team}}, where only you work with it.",
+    "done": "{{agent}} is in {{team}} now.",
+    "close": "Done"
   }
 }

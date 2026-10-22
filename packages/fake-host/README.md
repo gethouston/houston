@@ -133,6 +133,12 @@ They drive the failure/reactivity scenarios the specs assert against:
   bodies are flat `{error, code}`, exactly as the Go gateway writes them —
   that `code` is what the client's invite taxonomy reads. Arm the inbox with
   `/__test__/space-invites`.
+- `POST /v1/agents/:slug/move {to}` → `202 {moveId}` and its poll
+  `GET /v1/agents/:slug/move/:moveId` → `{status:"done"}`: the move lands at
+  once, and from then on only the destination's space lists the agent
+  (`GET /agents` filters by `x-houston-org`; a never-moved agent lists
+  everywhere). Any source moves, a locked one included; a locked destination
+  answers `403 needs_upgrade`, one the caller is not in `403 unsupported_move`.
 - `/v1/agents/:slug/settings` + `/v1/org/settings` (Teams v2, the gateway-only
   allowlist/model ceilings `getAgentSettings` / `getOrgSettings` read; GET + the
   manager/owner PUT). Seeded unrestricted; armed by `/__test__/agent-settings`.

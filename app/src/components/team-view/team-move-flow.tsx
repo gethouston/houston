@@ -114,14 +114,15 @@ export function TeamMoveFlow({
           <PickStep
             copy={pickCopy}
             teams={ownableTeams(flow.orgs.data?.orgs ?? [])}
-            creating={state.creating}
-            createError={state.createError}
-            isCreating={flow.createOrg.isPending}
             onPick={(team) => setState(flow.confirmTeamMove(team))}
-            onStartCreate={() =>
-              setState({ step: "pick", creating: true, createError: null })
-            }
-            onCreate={create}
+            create={{
+              open: state.creating,
+              error: state.createError,
+              pending: flow.createOrg.isPending,
+              onStart: () =>
+                setState({ step: "pick", creating: true, createError: null }),
+              onCreate: create,
+            }}
           />
         )}
         {state.step === "confirm" && (

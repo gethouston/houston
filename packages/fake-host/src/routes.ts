@@ -65,7 +65,8 @@ export function handleAgents(
 ): Response | Promise<Response> {
   // /agents
   if (rest.length === 0) {
-    if (method === "GET") return json(state.listAgents());
+    if (method === "GET")
+      return json(state.listAgents(state.requestOrgSlug(req)));
     if (method === "POST") {
       // Trimmed like the real host's `validateAgentName` before it is stored.
       const name = String(body?.name ?? "Agent").trim();

@@ -203,7 +203,7 @@ Each one ends the agent's turn and asks the user before it runs, and states what
 - `createOrg`: money. A paid space starts a subscription, and a repeat leaves a second billable space standing.
 - `declineOrgInvite`: irreversible. A declined invitation stops working, and only whoever sent it can issue another.
 - `deleteOrg`: irreversible. A delete takes the space and everything in it for good.
-- `moveAgent`: outward. The agent and its whole history move into a shared space, where everyone in that space can work with it.
+- `moveAgent`: outward. The agent and its whole history move into another space, where everyone in that space can work with it.
 - `setAgentAssignments`: outward. It decides who in the space may use this agent, so the wrong list hands out or takes away access.
 - `setAgentSettings`: outward. These ceilings decide which apps and models every teammate's turns may use, for everyone who shares the agent.
 
