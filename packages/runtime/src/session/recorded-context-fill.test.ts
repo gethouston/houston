@@ -53,3 +53,25 @@ test("a compaction after the last measured reply leaves the fill unknown", () =>
     ]),
   ).toBeUndefined();
 });
+
+test("a /clear after the last measured reply leaves the fill unknown", () => {
+  expect(
+    recordedContextFill([
+      reply({ usage: fill(812_345) }),
+      reply({ contextCleared: true }),
+      user,
+      reply({ usage: fill(0), providerError: timedOut }),
+    ]),
+  ).toBeUndefined();
+});
+
+test("a reply measured after a /clear is the fill", () => {
+  expect(
+    recordedContextFill([
+      reply({ usage: fill(812_345) }),
+      reply({ contextCleared: true }),
+      user,
+      reply({ usage: fill(12_000) }),
+    ]),
+  ).toBe(12_000);
+});
