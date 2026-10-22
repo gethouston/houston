@@ -21,23 +21,36 @@ function store(resume: string | undefined): SessionsStore {
   };
 }
 
+/** One call's result: its measured prompt size, or a request that failed. */
+type Reply = number | "timed-out";
+
+function result(reply: Reply): SDKMessage {
+  // The CLI reports a request that never answered as an error result whose
+  // usage is all zeros.
+  const failed = reply === "timed-out";
+  return {
+    type: "result",
+    subtype: failed ? "error_during_execution" : "success",
+    is_error: failed,
+    errors: failed ? ["API Error: Request timed out."] : [],
+    usage: { input_tokens: failed ? 0 : reply, output_tokens: 0 },
+    session_id: "s",
+  } as unknown as SDKMessage;
+}
+
 function session(input: {
   resume: string | undefined;
   recorded?: number;
-  usage?: number;
+  replies?: Reply[];
 }) {
   const timeouts: (string | undefined)[] = [];
+  const replies = [...(input.replies ?? [])];
   const query: ClaudeQuery = async function* (params: {
     options: Options;
   }): AsyncIterable<SDKMessage> {
     timeouts.push(params.options.env?.API_TIMEOUT_MS);
-    if (input.usage === undefined) return;
-    yield {
-      type: "result",
-      subtype: "success",
-      usage: { input_tokens: input.usage, output_tokens: 0 },
-      session_id: "s",
-    } as unknown as SDKMessage;
+    const reply = replies.shift();
+    if (reply !== undefined) yield result(reply);
   };
   const claude = new ClaudeSession({
     query,
@@ -88,9 +101,31 @@ test("a later turn sizes from the fill the last request measured", async () => {
   const { claude, timeouts } = session({
     resume: "sess-1",
     recorded: 800_000,
-    usage: 100,
+    replies: [100],
   });
   await claude.prompt("go");
   await claude.prompt("go");
   expect(timeouts).toEqual(["60000", "20005"]);
+});
+
+test("a request that timed out leaves the fill the session measured", async () => {
+  const { claude, timeouts } = session({
+    resume: "sess-1",
+    replies: [800_000, "timed-out"],
+  });
+  await claude.prompt("go");
+  await claude.prompt("go");
+  await claude.prompt("go");
+  expect(timeouts).toEqual(["20000", "60000", "60000"]);
+});
+
+test("a request that timed out leaves the fill the conversation recorded", async () => {
+  const { claude, timeouts } = session({
+    resume: "sess-1",
+    recorded: 800_000,
+    replies: ["timed-out"],
+  });
+  await claude.prompt("go");
+  await claude.prompt("go");
+  expect(timeouts).toEqual(["60000", "60000"]);
 });
