@@ -287,12 +287,12 @@ const PLAN_LIMIT_PATTERNS = [
 
 /**
  * The cheapest GitHub Copilot model every plan serves, offered as the concrete
- * switch target on a `model_unavailable` card. The old base models (gpt-4.1 /
- * gpt-4o) were retired by GitHub in 2026; gpt-5-mini is the lowest-cost row
- * left. Kept in sync with `config.githubCopilotModel`'s default (duplicated,
+ * switch target on a `model_unavailable` card. GitHub retired the old base
+ * models (gpt-4.1 / gpt-4o, then gpt-5-mini on 2026-10-19); gpt-6-luna is the
+ * lowest-cost row every paid plan serves. Kept in sync with `config.githubCopilotModel`'s default (duplicated,
  * not imported, so this classifier stays pure + unit-testable).
  */
-const COPILOT_BASE_FALLBACK = "gpt-5-mini";
+const COPILOT_BASE_FALLBACK = "gpt-6-luna";
 
 /**
  * The Codex model offered as the switch target when a ChatGPT subscription
@@ -362,13 +362,13 @@ const MOONSHOT_BROAD_FALLBACK = "kimi-k2.6";
 
 /**
  * The Xiaomi MiMo model offered as the one-click switch target when a pick
- * answers `Not supported model`: mimo-v2.5-pro is in EVERY Xiaomi catalog —
+ * answers `Not supported model`: mimo-v2.6-pro is in EVERY Xiaomi catalog —
  * the general endpoint and all three Token Plan gateways (pi's xiaomi /
- * xiaomi-token-plan-* tables) — while mimo-v2.5-pro-ultraspeed is
+ * xiaomi-token-plan-* tables) — while mimo-v2.6-pro-ultraspeed is
  * general-only, which is exactly the pick that strands a Token Plan key
  * (PRODUCT-1517).
  */
-const XIAOMI_BROAD_FALLBACK = "mimo-v2.5-pro";
+const XIAOMI_BROAD_FALLBACK = "mimo-v2.6-pro";
 
 /**
  * The Bedrock model offered as the one-click switch target when a pick is one

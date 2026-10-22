@@ -79,11 +79,12 @@ export const SAMPLE_CATALOG: ProviderCatalog = [
       // Non-vision fixture entry (`leaves a non-vision model without the image
       // modality` reads this one).
       reasoningModel("gpt-5.6-luna", { contextWindow: 372_000 }),
-      reasoningModel("gpt-5.5", { contextWindow: 272_000 }),
-      // NOT in VISIBLE_MODELS.openai — pi lists all three, the curated set
-      // hides them from the picker AND the hub. The Codex backend REFUSES
+      reasoningModel("gpt-6.1-sol", { contextWindow: 500_000 }),
+      // NOT in VISIBLE_MODELS.openai — the curated set hides them from the
+      // picker AND the hub. The Codex backend REFUSES gpt-5.5,
       // gpt-5.3-codex-spark and gpt-5.4 for a ChatGPT subscription (see
       // packages/runtime/src/ai/codex-offered.ts); gpt-5.2 is plain curation.
+      reasoningModel("gpt-5.5", { contextWindow: 272_000 }),
       reasoningModel("gpt-5.3-codex-spark", { contextWindow: 128_000 }),
       reasoningModel("gpt-5.4", { contextWindow: 272_000 }),
       reasoningModel("gpt-5.2", { contextWindow: 272_000 }),
@@ -118,14 +119,15 @@ export const SAMPLE_CATALOG: ProviderCatalog = [
     reasoningModel("claude-sonnet-4.6", { contextWindow: 1_000_000 }),
     reasoningModel("claude-opus-4.8", { contextWindow: 200_000 }),
     m("claude-haiku-4.5", { contextWindow: 200_000 }),
-    reasoningModel("gpt-5.5", { contextWindow: 400_000 }),
-    reasoningModel("gpt-5-mini", { contextWindow: 264_000 }),
+    reasoningModel("gpt-6.1-sol", { contextWindow: 400_000 }),
+    reasoningModel("gpt-6-luna", { contextWindow: 264_000 }),
     reasoningModel("gemini-3-flash-preview", { contextWindow: 128_000 }),
   ]),
   provider("opencode", "apiKey", [
     reasoningModel("claude-sonnet-4-6", { contextWindow: 1_000_000 }),
     reasoningModel("claude-opus-4-8", { contextWindow: 1_000_000 }),
     reasoningModel("gpt-5.5", { contextWindow: 1_050_000 }),
+    reasoningModel("gpt-6.1-sol", { contextWindow: 1_050_000 }),
     reasoningModel("gemini-3.5-flash", { contextWindow: 1_048_576 }),
     reasoningModel("deepseek-v4-flash-free", { contextWindow: 200_000 }),
     m("mimo-v2.5-free", { contextWindow: 200_000 }),

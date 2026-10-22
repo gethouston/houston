@@ -101,11 +101,27 @@ test("legacy dated/retired ids stay pinned at their tier (never an auto-upgrade)
   expect(codex["gpt-5.4-mini"]).toBe("gpt-6-luna");
 });
 
-test("a Codex id the subscription serves has NO alias row (never an upgrade)", () => {
-  // gpt-5.5 is served again, so an alias for it would silently move a stored
-  // pin onto gpt-6-astra — a model that spends the allowance far faster than
-  // the one the user chose.
-  expect(MODEL_ALIASES["openai-codex"]?.["gpt-5.5"]).toBeUndefined();
+test("a refused gpt-5.5 pin lands on the latest Sol, not on gpt-6-astra", () => {
+  // The subscription refuses gpt-5.5 since 2026-10-22. gpt-6-astra would spend
+  // the allowance far faster than the model the user chose; Sol costs less.
+  expect(MODEL_ALIASES["openai-codex"]?.["gpt-5.5"]).toBe("gpt-6.1-sol");
+});
+
+test("a Copilot row GitHub retired maps to the successor GitHub names", () => {
+  const copilot = MODEL_ALIASES["github-copilot"] ?? {};
+  expect(copilot["gpt-5-mini"]).toBe("gpt-6-luna");
+  expect(copilot["gpt-5.5"]).toBe("gpt-6.1-sol");
+  expect(copilot["gemini-3.6-flash"]).toBe("gemini-3.8-flash");
+  // A row Copilot still serves is never renamed.
+  expect(copilot["claude-haiku-4.5"]).toBeUndefined();
+});
+
+test("a dropped MiMo V2.5 pin lands on a V2.6 row that costs no more", () => {
+  expect(MODEL_ALIASES.xiaomi).toEqual({
+    "mimo-v2.5": "mimo-v2.6-flash",
+    "mimo-v2.5-pro": "mimo-v2.6-pro",
+    "mimo-v2.5-pro-ultraspeed": "mimo-v2.6-pro",
+  });
 });
 
 test("a renamed deepseek row maps to the id that replaced it", () => {
@@ -129,7 +145,8 @@ test("an open-catalog gateway carries only its renames", () => {
     "glm-5.1": "glm-5.2",
     "kimi-k2.6": "kimi-k2.7-code",
     "qwen3.7-max": "qwen3.8-max",
-    "space-bunny-free": "space-bunny",
+    "space-bunny-free": "deepseek-v4.1-flash",
+    "space-bunny": "deepseek-v4.1-flash",
     "deepseek-v4-flash": "deepseek-v4.1-flash",
     "deepseek-v4-flash-vision-exp": "deepseek-v4.1-flash",
     "minimax-m2.7": "minimax-m3",

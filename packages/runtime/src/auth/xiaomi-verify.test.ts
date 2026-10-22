@@ -23,7 +23,7 @@ const NO_BALANCE =
   '402: {"error":{"message":"Insufficient balance. Please top up your account.","type":"insufficient_quota","code":"insufficient_quota"}}';
 
 const PROBE_MODEL = {
-  id: "mimo-v2.5",
+  id: "mimo-v2.6-flash",
   provider: "xiaomi",
   baseUrl: "https://api.xiaomimimo.com/v1",
 } as never;

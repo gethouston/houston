@@ -16,6 +16,18 @@ test.each([
   ["openai", "Unable to forward upstream stream"],
   ["zai", "The service is temporarily unavailable"],
   ["openai-compatible", "<html><title>503 Service Temporarily Unavailable"],
+  ["openai", "upstream_request_failed"],
+  ["openai", "upstream_stream_read_error"],
+  ["openai-compatible", "The stream was interrupted"],
+  ["openrouter", "HTTP/2 stream failed"],
+  [
+    "openai-compatible",
+    "stream disconnected before completion: stream closed before response.completed",
+  ],
+  [
+    "google-vertex",
+    "request to https://oauth2.googleapis.com/token failed, reason: ",
+  ],
 ])("%s %s → provider_internal", (provider, message) => {
   expect(classifyProviderError({ provider, model: "m", message }).kind).toBe(
     "provider_internal",
@@ -36,6 +48,11 @@ test.each([
   [
     "openai-compatible",
     '404 {"error":{"code":"model_not_found","message":"The service is temporarily unavailable for this model"}}',
+    "model_unavailable",
+  ],
+  [
+    "openai-compatible",
+    '404 {"error":{"code":"model_not_found","message":"upstream request failed: no such model"}}',
     "model_unavailable",
   ],
 ])("an upstream %s 4xx keeps its own verdict: %s", (provider, message, kind) => {

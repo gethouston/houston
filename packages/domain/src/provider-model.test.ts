@@ -34,16 +34,17 @@ const PI_MODELS: Record<string, Set<string>> = {
     "claude-sonnet-5-5",
   ]),
   // pi's Codex catalog MINUS the rows OpenAI refuses a ChatGPT subscription
-  // (gpt-5.3-codex-spark — probed live, see the runtime's ai/codex-offered.ts):
-  // a migration that lands on one produces a first turn that can only fail.
+  // (gpt-5.3-codex-spark, gpt-5.5 — probed live, see the runtime's
+  // ai/codex-offered.ts): a migration that lands on one produces a first turn
+  // that can only fail.
   "openai-codex": new Set([
-    "gpt-5.5",
     "gpt-5.6-luna",
     "gpt-5.6-sol",
     "gpt-5.6-terra",
     "gpt-6-astra",
     "gpt-6-luna",
     "gpt-6-sol",
+    "gpt-6.1-sol",
   ]),
   minimax: new Set([
     "MiniMax-M3[1m]",
@@ -65,11 +66,11 @@ function assertValid(r: ReturnType<typeof migrateProviderModel>, msg: string) {
 
 test("the real legacy desktop inputs map to valid pi ids with no diagnostic", () => {
   // From the user's actual ~/.houston data: {"provider":"openai","model":"gpt-5.5"}.
-  // The ChatGPT subscription serves gpt-5.5, so only the provider dialect
-  // changes: the model the user chose is kept verbatim.
+  // The ChatGPT subscription refuses gpt-5.5 since 2026-10-22, so the pin
+  // lands on the latest Sol, which costs less, rather than on a dead turn.
   const codex = migrateProviderModel("openai", "gpt-5.5");
   expect(codex.provider).toBe("openai-codex");
-  expect(codex.model).toBe("gpt-5.5");
+  expect(codex.model).toBe("gpt-6.1-sol");
   expect(codex.diagnostics).toEqual([]);
   assertValid(codex, "openai/gpt-5.5");
 

@@ -27,13 +27,14 @@ test("a stored OpenCode pin on a row pi dropped still resolves to a runnable mod
   // Each stored id was curated (or the default) while pi shipped it: pi 0.87.1
   // dropped opencode's `mimo-v2.5-free`, pi 0.99.1 the three OpenCode Go rows,
   // pi 1.1.0 OpenCode Go's `space-bunny-free` preview, pi 1.3.0 four more
-  // OpenCode Go rows.
+  // OpenCode Go rows, pi 1.4.0 `space-bunny` itself.
   for (const [provider, stale, successor] of [
     ["opencode", "mimo-v2.5-free", "mimo-v2.6-flash-free"],
     ["opencode-go", "glm-5.1", "glm-5.2"],
     ["opencode-go", "kimi-k2.6", "kimi-k2.7-code"],
     ["opencode-go", "qwen3.7-max", "qwen3.8-max"],
-    ["opencode-go", "space-bunny-free", "space-bunny"],
+    ["opencode-go", "space-bunny-free", "deepseek-v4.1-flash"],
+    ["opencode-go", "space-bunny", "deepseek-v4.1-flash"],
     ["opencode-go", "deepseek-v4-flash", "deepseek-v4.1-flash"],
     ["opencode-go", "deepseek-v4-flash-vision-exp", "deepseek-v4.1-flash"],
     ["opencode-go", "minimax-m2.7", "minimax-m3"],

@@ -334,11 +334,11 @@ test("github-copilot is a registered OAuth provider defaulting to a base model (
   expect(ids).toContain("github-copilot");
   // Subscription OAuth (GitHub device-code flow), not a pasted API key.
   expect(providerAuthMethod("github-copilot")).toBe("oauth");
-  // gpt-5-mini is the cheapest model every Copilot plan serves, so a fresh
+  // gpt-6-luna is the cheapest model every Copilot plan serves, so a fresh
   // Copilot connect works out of the box; a plan-gated premium default answers
-  // model_not_supported on Free. gpt-4.1, the old base model, was retired by
-  // GitHub on 2026-06-01 and left pi's catalog in 0.85.0.
-  expect(providerDefaultModel("github-copilot")).toBe("gpt-5-mini");
+  // model_not_supported. GitHub retired the earlier base models, gpt-4.1
+  // (2026-06-01) and gpt-5-mini (2026-10-19), and pi dropped both.
+  expect(providerDefaultModel("github-copilot")).toBe("gpt-6-luna");
 });
 
 /**

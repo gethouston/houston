@@ -28,11 +28,11 @@ export const DEFAULT_MODEL: Partial<Record<ProviderId, string>> = {
   // two together so the copy cannot drift silently.
   "openai-codex": "gpt-6-luna",
   // The cheapest model served on every Copilot plan (HOU-578). GitHub retired
-  // gpt-4.1, the old base model, on 2026-06-01 (pi dropped it in 0.85.0); under
-  // usage-based billing every model spends AI credits, so the default is the
-  // lowest-cost row rather than a "free" one. Copilot uses DOTTED model ids,
-  // unlike native Anthropic.
-  "github-copilot": "gpt-5-mini",
+  // gpt-4.1 on 2026-06-01 and gpt-5-mini on 2026-10-19, naming the latest GPT
+  // Luna as its successor (pi 1.4.0 dropped the row). Under usage-based billing
+  // every model spends AI credits, so the default is the lowest-cost row rather
+  // than a "free" one. Copilot uses DOTTED model ids, unlike native Anthropic.
+  "github-copilot": "gpt-6-luna",
   opencode: "claude-sonnet-4-6",
   // The GLM row that holds glm-5.1's tier (same price, same plan) — pi 0.99.1
   // dropped glm-5.1, and a default the catalog no longer carries fails every

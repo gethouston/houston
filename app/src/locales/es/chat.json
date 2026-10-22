@@ -266,6 +266,7 @@
     "modelDescriptions": {
       "gpt-6-luna": "La opción predeterminada. El GPT-6 más liviano para tu cuota.",
       "gpt-6-sol": "Nivel medio de GPT-6. Más profundidad que Luna para trabajo difícil.",
+      "gpt-6_1-sol": "El Sol más nuevo. Mismo nivel que GPT-6 Sol, maneja conversaciones más largas.",
       "gpt-6-astra": "El GPT-6 más capaz. Consume tu cuota 5 veces más rápido que Sol.",
       "gpt-5_5": "Nivel completo de la generación anterior, previo a GPT-5.6.",
       "gpt-5_6-sol": "Modelo frontera anterior. Fuerte en trabajo complejo.",

@@ -35,7 +35,7 @@ test("withXiaomiBaseUrl swaps the catalog's general URL for the verified gateway
   const d = dir();
   setXiaomiEndpointIn(d, "token-plan-ams");
   const model = {
-    id: "mimo-v2.5",
+    id: "mimo-v2.6-flash",
     provider: "xiaomi",
     baseUrl: "https://api.xiaomimimo.com/v1",
   } as never;
@@ -53,10 +53,13 @@ test("withXiaomiBaseUrl swaps the catalog's general URL for the verified gateway
 
 test("a token-plan endpoint hides models its gateway does not serve", () => {
   const d = dir();
-  const all = ["mimo-v2.5", "mimo-v2.5-pro", "mimo-v2.5-pro-ultraspeed"];
+  const all = ["mimo-v2.6-flash", "mimo-v2.6-pro", "mimo-v2.6-pro-ultraspeed"];
   expect(xiaomiOfferedModelIds(all, d)).toEqual(all);
   setXiaomiEndpointIn(d, "token-plan-sgp");
-  expect(xiaomiOfferedModelIds(all, d)).toEqual(["mimo-v2.5", "mimo-v2.5-pro"]);
+  expect(xiaomiOfferedModelIds(all, d)).toEqual([
+    "mimo-v2.6-flash",
+    "mimo-v2.6-pro",
+  ]);
 });
 
 test("probe order: general first for sk- keys, plan gateways first for tp- keys", () => {

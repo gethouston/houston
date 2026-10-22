@@ -44,13 +44,15 @@ interface WindowOverride {
  *
  * - `openai-codex` — Codex's `/status` reports a 95%-EFFECTIVE window (the
  *   number the user sees), so each row's default is 95% of pi's window for it:
- *   every served row (the gpt-6 line, the gpt-5.6 line and gpt-5.5) sits at
+ *   every 272k row (the gpt-6 line and the gpt-5.6 line) sits at
  *   272,000 × 0.95 = 258,400, and every row carries the 1M × 95% ceiling of
  *   Codex's opt-in 1M variant. pi reports one window and one price tier for
  *   the whole line, so no row is singled out; the ceiling only ever applies
  *   once observed usage proves it (`effectiveModelWindow`), so a row without
  *   the variant loses nothing, while a served row WITHOUT the ceiling pins the
  *   bar at 100% and compacts at 258k on a chat the provider would carry on.
+ *   gpt-6.1-sol has no row: pi reports a 500k window for it, and no `/status`
+ *   reading backs a different number yet.
  *
  * `anthropic` carries no row: its lineup (Sonnet 5.5, Opus 5.5, Fable 5.1,
  * Haiku 5.5) runs a native 1M window on every plan, Pro included, with no
@@ -70,7 +72,6 @@ export const MODEL_WINDOW_OVERRIDES: Readonly<
     "gpt-5.6-sol": { default: 258_400, max: 950_000 },
     "gpt-5.6-terra": { default: 258_400, max: 950_000 },
     "gpt-5.6-luna": { default: 258_400, max: 950_000 },
-    "gpt-5.5": { default: 258_400, max: 950_000 },
   },
 };
 

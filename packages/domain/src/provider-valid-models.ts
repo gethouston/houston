@@ -32,16 +32,16 @@ export const VALID_MODELS: Partial<Record<ProviderId, ReadonlySet<string>>> = {
   // ChatGPT account` (probed live against the responses endpoint —
   // packages/runtime/src/ai/codex-offered.ts holds the method and the
   // verdicts). Keeping it "valid" is what let a stored id survive migration
-  // into a turn that could only fail. gpt-6.1-sol is out too: pi ships it, but
-  // no probe has a verdict for it yet.
+  // into a turn that could only fail. gpt-5.5 got the same 400 on 2026-10-22
+  // and pi 1.4.0 dropped it.
   "openai-codex": new Set([
-    "gpt-5.5",
     "gpt-5.6-luna",
     "gpt-5.6-sol",
     "gpt-5.6-terra",
     "gpt-6-astra",
     "gpt-6-luna",
     "gpt-6-sol",
+    "gpt-6.1-sol",
   ]),
   // `MiniMax-M3[1m]` is the token/coding-plan SKU: hand-built on the minimax
   // provider (not in pi's catalog), so it must be a VALID id here or the migration

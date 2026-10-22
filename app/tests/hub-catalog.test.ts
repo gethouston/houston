@@ -44,10 +44,10 @@ describe("offers carry Houston provider ids + pi model ids", () => {
   });
 
   it("folds one model id served by several gateways into one row", () => {
-    // gpt-5.5 runs on the ChatGPT subscription, on GitHub's Copilot gateway and
-    // on OpenCode Zen, so the three offers fold into a single row.
-    const gpt = all.byKey.get("gpt 5.5");
-    ok(gpt, "expected a merged 'gpt 5.5' model");
+    // gpt-6.1-sol runs on the ChatGPT subscription, on GitHub's Copilot
+    // gateway and on OpenCode Zen, so the three offers fold into a single row.
+    const gpt = all.byKey.get("gpt 6.1 sol");
+    ok(gpt, "expected a merged 'gpt 6.1 sol' model");
     deepStrictEqual(offerProviders(gpt), [
       "github-copilot",
       "openai",
@@ -88,7 +88,7 @@ describe("offers carry Houston provider ids + pi model ids", () => {
 
 describe("pricing and subscription flags come from pi", () => {
   it("marks OAuth (subscription) offers with no per-token price", () => {
-    const gpt = all.byKey.get("gpt 5.5");
+    const gpt = all.byKey.get("gpt 6.1 sol");
     const oauth = gpt?.offers.filter((o) => o.subscription) ?? [];
     // Copilot and the ChatGPT subscription are OAuth; OpenCode is api-key.
     deepStrictEqual(oauth.map((o) => o.providerId).sort(), [

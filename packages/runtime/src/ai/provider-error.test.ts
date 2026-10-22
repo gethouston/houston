@@ -331,7 +331,7 @@ test("unclassifiable error → unknown, preserving the raw text", () => {
   });
 });
 
-test("GitHub Copilot model_not_supported → model_unavailable + gpt-5-mini fallback (HOU-578)", () => {
+test("GitHub Copilot model_not_supported → model_unavailable + gpt-6-luna fallback (HOU-578)", () => {
   // The verbatim 400 a Copilot Free account answers a premium model with: the
   // model exists in the catalog but the plan doesn't serve it. Must NOT read as
   // auth (credential is fine) or rate/quota (nothing to wait out) — the fix is a
@@ -348,12 +348,12 @@ test("GitHub Copilot model_not_supported → model_unavailable + gpt-5-mini fall
     provider: "github-copilot",
     model: "claude-sonnet-4.6",
     reason: "unknown",
-    suggested_fallback: "gpt-5-mini",
+    suggested_fallback: "gpt-6-luna",
     message,
   });
 });
 
-test("Xiaomi 'Not supported model' 400 → model_unavailable + mimo-v2.5-pro fallback (PRODUCT-1517)", () => {
+test("Xiaomi 'Not supported model' 400 → model_unavailable + mimo-v2.6-pro fallback (PRODUCT-1517)", () => {
   // Verbatim from a Token Plan gateway answering mimo-v2.5-pro-ultraspeed — a
   // model only the general endpoint serves. Xiaomi checks the key before the
   // model (a bad key answers 401 for any model id), so the credential is fine
@@ -372,7 +372,7 @@ test("Xiaomi 'Not supported model' 400 → model_unavailable + mimo-v2.5-pro fal
     provider: "xiaomi",
     model: "mimo-v2.5-pro-ultraspeed",
     reason: "unknown",
-    suggested_fallback: "mimo-v2.5-pro",
+    suggested_fallback: "mimo-v2.6-pro",
     message,
   });
 });
@@ -380,16 +380,16 @@ test("Xiaomi 'Not supported model' 400 → model_unavailable + mimo-v2.5-pro fal
 test("Xiaomi fallback model itself unsupported → no self-referential fallback", () => {
   const err = classifyProviderError({
     provider: "xiaomi",
-    model: "mimo-v2.5-pro",
+    model: "mimo-v2.6-pro",
     message:
-      '400: {"code":"400","message":"Not supported model mimo-v2.5-pro"}',
+      '400: {"code":"400","message":"Not supported model mimo-v2.6-pro"}',
   });
   expect(err.kind).toBe("model_unavailable");
   if (err.kind === "model_unavailable")
     expect(err.suggested_fallback).toBeNull();
 });
 
-test("Copilot 'not available for integrator' 400 → model_unavailable + gpt-5-mini fallback (HOU-977)", () => {
+test("Copilot 'not available for integrator' 400 → model_unavailable + gpt-6-luna fallback (HOU-977)", () => {
   // Copilot's NEWER wording for the same plan-doesn't-serve-this-model failure:
   // no `model_not_supported` code, just prose naming the integrator and the
   // plan's model list. Fell through to `unknown` (generic card + auto bug
@@ -406,7 +406,7 @@ test("Copilot 'not available for integrator' 400 → model_unavailable + gpt-5-m
     provider: "github-copilot",
     model: "gpt-5.6-sol",
     reason: "unknown",
-    suggested_fallback: "gpt-5-mini",
+    suggested_fallback: "gpt-6-luna",
     message,
   });
 });
@@ -521,11 +521,11 @@ test("OpenAI model_not_found → model_unavailable, with a switch target where w
 });
 
 test("Copilot's own base model never self-suggests as the fallback", () => {
-  // gpt-5-mini is the fallback target; if it were ever the failing model, offering
+  // gpt-6-luna is the fallback target; if it were ever the failing model, offering
   // it back would be a no-op loop — suppress it.
   const err = classifyProviderError({
     provider: "github-copilot",
-    model: "gpt-5-mini",
+    model: "gpt-6-luna",
     message: '400 {"error":{"code":"model_not_supported"}}',
   });
   expect(err.kind).toBe("model_unavailable");

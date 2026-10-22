@@ -114,7 +114,7 @@ export function withXiaomiBaseUrl(
 /**
  * Narrow a xiaomi model-id list to what the ACTIVE endpoint actually serves.
  * The Token Plan gateways offer a subset of the general catalog (no
- * `mimo-v2.5-pro-ultraspeed`), derived from pi's own token-plan table — the
+ * `mimo-v2.6-pro-ultraspeed`), derived from pi's own token-plan table — the
  * regional catalogs are identical, so Singapore stands for all three — so a
  * plan user is never offered a model their endpoint 404s.
  */

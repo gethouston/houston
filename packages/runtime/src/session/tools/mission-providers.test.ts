@@ -19,7 +19,7 @@ const OPTIONS: ProviderOption[] = [
     id: "openai-codex",
     name: "ChatGPT / Codex (Plus / Pro)",
     connected: true,
-    models: ["gpt-5.5", "gpt-5.5-codex"],
+    models: ["gpt-6.1-sol", "gpt-5.5-codex"],
   },
   { id: "anthropic", name: "Claude (Pro / Max)", connected: false },
   { id: "openrouter", name: "OpenRouter", connected: true },
@@ -84,7 +84,9 @@ test("only the assistant, which can call it, is pointed at the listing op", () =
 
 test("the description carries the per-provider model ids the registry knows", () => {
   const text = missionModelDescription(OPTIONS);
-  expect(text).toContain("openai-codex: gpt-5.5 = GPT-5.5, gpt-5.5-codex");
+  expect(text).toContain(
+    "openai-codex: gpt-6.1-sol = GPT-6.1 Sol, gpt-5.5-codex",
+  );
   // An open-catalog provider has no list to state.
   expect(text).not.toContain("openrouter:");
 });

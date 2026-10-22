@@ -2,6 +2,11 @@
 const UPSTREAM_PROVIDER_ERROR = /provider.?returned.?(?:an.?)?error/;
 /** pi-ai's `service.?(?:is.?)?(?:temporarily.?)?unavailable` (utils/retry). */
 const SERVICE_UNAVAILABLE = /service.?(?:is.?)?(?:temporarily.?)?unavailable/;
+/** pi-ai 1.4.0's gateway `response.failed` codes and stream breaks (utils/retry). */
+const UPSTREAM_STREAM_BREAK =
+  /upstream.?request.?failed|upstream_stream_read_error|stream was interrupted|http\/?2 stream failed|stream disconnected before completion/;
+/** pi-ai 1.4.0's node-fetch system error, e.g. Vertex's ADC token refresh. */
+const NODE_FETCH_FAILURE = /request to \S+ failed, reason:/;
 
 /**
  * Status-less server failures pi retries itself, so one reaches the
@@ -19,6 +24,10 @@ const SERVICE_UNAVAILABLE = /service.?(?:is.?)?(?:temporarily.?)?unavailable/;
  * `Unable to forward upstream stream` (a Responses `response.failed` with no
  * error code) to its retry list. Both are status-gated the same way: a 5xx
  * already reads as a server failure by its status.
+ * pi 1.4.0 added more gateway `response.failed` codes, HTTP/2 stream breaks,
+ * the Codex CLI proxies' "stream disconnected before completion", and
+ * node-fetch's `request to <url> failed, reason:` (the reason is often empty).
+ * Same status gate: a status-less break is the provider's side giving out.
  *
  * `lower` is the already-lowercased error message.
  */
@@ -34,6 +43,8 @@ export function isRetriedServerFailure(
     (status === null &&
       (UPSTREAM_PROVIDER_ERROR.test(lower) ||
         SERVICE_UNAVAILABLE.test(lower) ||
+        UPSTREAM_STREAM_BREAK.test(lower) ||
+        NODE_FETCH_FAILURE.test(lower) ||
         lower.includes("unable to forward upstream")))
   );
 }

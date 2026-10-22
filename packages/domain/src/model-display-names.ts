@@ -56,22 +56,22 @@ export const MODEL_DISPLAY: Partial<
   },
   "openai-codex": {
     "gpt-6-luna": "GPT-6 Luna",
+    "gpt-6.1-sol": "GPT-6.1 Sol",
     "gpt-6-sol": "GPT-6 Sol",
     "gpt-6-astra": "GPT-6 Astra",
     "gpt-5.6-sol": "GPT-5.6 Sol",
     "gpt-5.6-terra": "GPT-5.6 Terra",
     "gpt-5.6-luna": "GPT-5.6 Luna",
-    "gpt-5.5": "GPT-5.5",
   },
   // Copilot serves several labs through one plan, so its rows name the lab
   // too — "Sonnet 5" alone would not say whose model it is on that card.
   "github-copilot": {
-    "gpt-5.5": "GPT-5.5",
-    "gpt-5-mini": "GPT-5 Mini",
+    "gpt-6.1-sol": "GPT-6.1 Sol",
+    "gpt-6-luna": "GPT-6 Luna",
     "claude-sonnet-5": "Claude Sonnet 5",
     "claude-opus-4.8": "Claude Opus 4.8",
     "claude-haiku-4.5": "Claude Haiku 4.5",
-    "gemini-3.6-flash": "Gemini 3.6 Flash",
+    "gemini-3.8-flash": "Gemini 3.8 Flash",
   },
   opencode: {
     "claude-sonnet-4-6": "Sonnet 4.6",

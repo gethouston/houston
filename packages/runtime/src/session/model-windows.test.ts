@@ -71,8 +71,8 @@ test("MODEL_WINDOW_OVERRIDES: the Claude lineup carries no row (native 1M)", () 
 });
 
 test("MODEL_WINDOW_OVERRIDES: every served Codex row reads the 95%-effective window with the 1M ceiling", () => {
-  // pi reports 272,000 and one price tier for every served Codex row; Codex's
-  // own `/status` sizes against 95% of it. Without the override the bar
+  // pi reports 272,000 and one price tier for every served 272k Codex row;
+  // Codex's own `/status` sizes against 95% of it. Without the override the bar
   // divides by 272,000 and reads the chat as emptier than Codex does — on
   // gpt-6-luna, the model every unpinned Codex turn runs on. Without the
   // ceiling the bar pins at 100% at 258k and compacts a chat the provider
@@ -84,7 +84,6 @@ test("MODEL_WINDOW_OVERRIDES: every served Codex row reads the 95%-effective win
     "gpt-5.6-sol",
     "gpt-5.6-terra",
     "gpt-5.6-luna",
-    "gpt-5.5",
   ]) {
     expect(MODEL_WINDOW_OVERRIDES["openai-codex"][id], id).toEqual({
       default: 258_400,
@@ -95,6 +94,9 @@ test("MODEL_WINDOW_OVERRIDES: every served Codex row reads the 95%-effective win
       max: 950_000,
     });
   }
+  // pi reports 500,000 for gpt-6.1-sol, and no `/status` reading backs another
+  // number, so pi's window stands.
+  expect(MODEL_WINDOW_OVERRIDES["openai-codex"]["gpt-6.1-sol"]).toBeUndefined();
 });
 
 test("effectiveModelWindow: the Codex default divides by its effective window", () => {
