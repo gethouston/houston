@@ -64,7 +64,7 @@
       "moveOrganizationDescription": "Mueve este empleado de IA a una organización para que un equipo pueda trabajar con él.",
       "delete": "Eliminar a {{name}}",
       "noTeam": "Sin grupo",
-      "moveOutDescription": "Mueve este Empleado de IA a otra organización que administras, incluida Personal."
+      "moveOutDescription": "Mueve este empleado de IA a otra organización que administras, incluida Personal."
     },
     "people": {
       "helper": "Elige si todo tu equipo puede usar este empleado de IA o solo las personas que tú elijas.",
@@ -782,7 +782,7 @@
     "title": "Mover a {{name}} a otra organización",
     "personal": "Personal",
     "pick": {
-      "subtitle": "Elige la organización a la que se mueve este Empleado de IA. Conserva sus chats y archivos.",
+      "subtitle": "Elige la organización a la que se mueve este empleado de IA. Conserva sus chats y archivos.",
       "empty": "No administras otra organización a la que pueda moverse."
     },
     "confirmPersonal": "{{agent}} se moverá a {{team}}, donde solo tú trabajas con él.",

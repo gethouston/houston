@@ -64,7 +64,7 @@
       "moveOrganizationDescription": "Mova este funcionário de IA para uma organização para que uma equipe possa trabalhar com ele.",
       "delete": "Excluir {{name}}",
       "noTeam": "Sem grupo",
-      "moveOutDescription": "Mova este Funcionário de IA para outra organização que você administra, incluindo a Pessoal."
+      "moveOutDescription": "Mova este funcionário de IA para outra organização que você administra, incluindo a Pessoal."
     },
     "people": {
       "helper": "Escolha se toda a sua equipe pode usar este funcionário de IA ou apenas as pessoas que você escolher.",
@@ -782,7 +782,7 @@
     "title": "Mover {{name}} para outra organização",
     "personal": "Pessoal",
     "pick": {
-      "subtitle": "Escolha a organização para onde este Funcionário de IA vai. Ele mantém suas conversas e arquivos.",
+      "subtitle": "Escolha a organização para onde este funcionário de IA vai. Ele mantém suas conversas e arquivos.",
       "empty": "Você não administra outra organização para onde ele possa ir."
     },
     "confirmPersonal": "{{agent}} vai para {{team}}, onde só você trabalha com ele.",

@@ -101,4 +101,12 @@ describe("moving an agent between orgs on the fake gateway", () => {
     expect(await stranger.json()).toMatchObject({ code: "unsupported_move" });
     expect(await names(ACME)).toContain(SEED_AGENT_NAME);
   });
+
+  it("answers a move into the org the agent already lives in as done", async () => {
+    expect((await move(BETA)).status).toBe(202);
+    const again = await move(BETA);
+    expect(again.status).toBe(409);
+    expect(await again.json()).toMatchObject({ code: "agent_moved" });
+    expect(await names(BETA)).toContain(SEED_AGENT_NAME);
+  });
 });

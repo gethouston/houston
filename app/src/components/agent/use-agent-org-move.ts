@@ -39,7 +39,7 @@ function workspaceIdMatches(id: string, team: TeamRef): boolean {
  * flow that moves one AI Employee into another org: start the move, poll it
  * to `done` (with a wall-clock ceiling), then SWITCH the active space to the
  * destination and load its agents. What follows the switch is the flow's:
- * sharing invites teammates, moving out of a locked org just ends.
+ * sharing invites teammates, a move into Personal just ends.
  *
  * The move-completion signal is the poll route only, never the event stream.
  * An accepted move is recorded before polling, so a closed dialog or an app

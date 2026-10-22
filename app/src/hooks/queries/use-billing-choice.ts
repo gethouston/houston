@@ -7,6 +7,7 @@ import { canChangeChoice, saveSettlesNotice } from "@houston/sdk";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { useEffect, useState } from "react";
 import { useTranslation } from "react-i18next";
+import { reportError } from "../../lib/error-report";
 import { showExpectedStateToast } from "../../lib/error-toast";
 import { hasSpaces } from "../../lib/org-roles";
 import { queryKeys } from "../../lib/query-keys";
@@ -71,10 +72,17 @@ export function useSetBillingChoice() {
       if (outcome.kind === "saved") {
         client.setQueryData(queryKeys.billingChoice(), outcome.choice);
         if (saveSettlesNotice(outcome)) dismiss.mutate();
-        await Promise.all([
+        // Not awaited: a slow reread must never hold the stored pick's success step.
+        Promise.all([
           client.invalidateQueries({ queryKey: queryKeys.orgs() }),
           client.invalidateQueries({ queryKey: queryKeys.billingAll() }),
-        ]);
+        ]).catch((error: unknown) =>
+          reportError(
+            "billing_choice_refresh",
+            "Could not reread org billing after a pick",
+            error,
+          ),
+        );
         return;
       }
       showExpectedStateToast(

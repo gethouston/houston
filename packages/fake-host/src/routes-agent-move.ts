@@ -4,7 +4,8 @@
  * destination's space from then on, and every poll answers `done`. Like the
  * gateway it takes any source, a locked one included (moving agents out is
  * how a locked org empties), and refuses a destination that is locked
- * (`403 needs_upgrade`) or that the caller is not in.
+ * (`403 needs_upgrade`) or that the caller is not in, and answers a move into
+ * the org the agent already lives in with `409 agent_moved`.
  */
 
 import { json } from "./http";
@@ -33,6 +34,8 @@ export function handleAgentMoveRoutes(
   const to = typeof body?.to === "string" ? body.to : "";
   if (!knownOrg(to))
     return json({ error: "not a member", code: "unsupported_move" }, 403);
+  if (agent.orgSlug === to)
+    return json({ error: "already there", code: "agent_moved" }, 409);
   if (state.orgWritesLocked(to))
     return json(
       { error: "this organization is locked", code: "needs_upgrade" },
