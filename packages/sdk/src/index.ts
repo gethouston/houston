@@ -62,8 +62,10 @@ export {
 export * from "./local-model-bridge";
 export type { ModuleContext } from "./module-context";
 export * from "./modules/billing/choice-done";
+export * from "./modules/billing/choice-flow";
 export * from "./modules/billing/choice-modal";
 export * from "./modules/billing/choice-modal-frame";
+export * from "./modules/billing/choice-modal-pages";
 export * from "./modules/billing/choice-model";
 export * from "./modules/billing/choice-picker";
 export * from "./modules/billing/choice-price";

@@ -1,5 +1,10 @@
 import type { BillingChoiceSave } from "./choice";
 import { type ChoiceDone, choiceDone } from "./choice-done";
+import {
+  type ChoiceIntroPage,
+  choiceIntroPages,
+  leadsToPicker,
+} from "./choice-flow";
 import type {
   AnnouncedChoice,
   ChoiceModal,
@@ -7,11 +12,12 @@ import type {
 } from "./choice-modal";
 
 /**
- * Which step the modal's frame shows: the intro, the picker (only ever while
- * the notice is `pick` or `confirm`), or the success step after a stored pick.
+ * Which step the modal's frame shows: one of the notice's intro pages
+ * ({@link choiceIntroPages}), the picker (only ever while the notice is
+ * `pick` or `confirm`), or the success step after a stored pick.
  */
 export type ChoiceModalPhase =
-  | { step: "intro" }
+  | { step: "intro"; page: ChoiceIntroPage }
   | { step: "picking" }
   | { step: "done"; done: ChoiceDone };
 
@@ -38,7 +44,7 @@ export interface ChoiceModalFrame {
   hold: ChoiceFrameHold;
 }
 
-const INTRO: ChoiceModalPhase = { step: "intro" };
+const INTRO: ChoiceModalPhase = { step: "intro", page: "notice" };
 
 export const CLOSED_CHOICE_FRAME: ChoiceModalFrame = {
   open: false,
@@ -48,10 +54,11 @@ export const CLOSED_CHOICE_FRAME: ChoiceModalFrame = {
 };
 
 /**
- * The frame for the latest {@link ChoiceModal}. It reopens on the intro, so a
- * modal hidden behind a plan dialog comes back where it started; a notice that
- * stops being a pick (a refusal's refetch shows the person cannot pick) drops
- * the picker. A modal that closes for any other reason than a plan dialog
+ * The frame for the latest {@link ChoiceModal}. It reopens on the first intro
+ * page, so a modal hidden behind a plan dialog comes back where it started; a
+ * notice that stops being a pick (a refusal's refetch shows the person cannot
+ * pick) drops the picker, and any intro page it no longer has, back to the
+ * first page. A modal that closes for any other reason than a plan dialog
  * leaves an open picker open (`until_answer`). An open success step ignores
  * the modal, which a stored pick closes, except to step aside for a plan
  * dialog; only the person closes it ({@link closeChoiceFrame}). Answers
@@ -84,22 +91,27 @@ export function nextChoiceModalFrame(
     return frame.hold === "until_answer"
       ? frame
       : { ...frame, hold: "until_answer" };
-  const picking =
-    frame.open && frame.phase.step === "picking" && picks(modal.notice);
+  const phase = frame.open ? carried(frame.phase, modal.notice) : INTRO;
   const unchanged =
     frame.open &&
     frame.hold === "none" &&
-    picking === (frame.phase.step === "picking") &&
+    phase === frame.phase &&
     frame.shown !== null &&
     frame.shown.close === modal.close &&
     sameNotice(frame.shown.notice, modal.notice);
   if (unchanged) return frame;
-  return {
-    open: true,
-    shown: modal,
-    phase: picking ? frame.phase : INTRO,
-    hold: "none",
-  };
+  return { open: true, shown: modal, phase, hold: "none" };
+}
+
+/** An open frame's phase under a changed notice: kept while the notice still has it. */
+function carried(
+  phase: ChoiceModalPhase,
+  notice: AnnouncedChoice,
+): ChoiceModalPhase {
+  if (phase.step === "picking") return leadsToPicker(notice) ? phase : INTRO;
+  if (phase.step === "intro" && choiceIntroPages(notice).includes(phase.page))
+    return phase;
+  return INTRO;
 }
 
 /** A success step the person has not closed: it only steps aside. */
@@ -111,23 +123,6 @@ function doneFrame(
   if (frame.open)
     return behind ? { ...frame, open: false, hold: "behind_dialog" } : frame;
   return behind ? frame : { ...frame, open: true, hold: "none" };
-}
-
-/** The frame once the person asks to pick; unchanged unless a pick is open. */
-export function startPicking(frame: ChoiceModalFrame): ChoiceModalFrame {
-  if (
-    !frame.open ||
-    frame.phase.step !== "intro" ||
-    !frame.shown ||
-    !picks(frame.shown.notice)
-  )
-    return frame;
-  return { ...frame, phase: { step: "picking" } };
-}
-
-/** A notice whose intro leads on to the picker. */
-function picks(notice: AnnouncedChoice): boolean {
-  return notice.kind === "pick" || notice.kind === "confirm";
 }
 
 /**

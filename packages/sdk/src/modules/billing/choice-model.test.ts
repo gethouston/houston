@@ -14,7 +14,7 @@ import {
   formatCutoverDate,
   pickerRows,
 } from "./choice-model";
-import { payerTotals } from "./choice-price";
+import { orgSeatPrice } from "./choice-price";
 
 const at = (now: number) => ({ now, locale: "en" });
 
@@ -191,28 +191,10 @@ describe("pickerRows", () => {
   });
 });
 
-describe("payerTotals", () => {
-  it("prices today, the grace end, and the full monthly total", () => {
-    const priced = choice({
-      payer: "plus",
-      orgs: [
-        { ...INNOVA, monthlyTotalCents: 6000, seatGraceEndsOn: "2026-11-22" },
-        { ...PERSONAL, monthlyTotalCents: 1500 },
-      ],
-    });
-    expect(payerTotals(priced, INNOVA.slug, "en")).toEqual({
-      today: "$15",
-      graceEndsOn: "November 22",
-      monthly: "$60",
-      seat: "$15",
-    });
-    expect(payerTotals(priced, PERSONAL.slug, "en")).toEqual({
-      today: "$15",
-      graceEndsOn: null,
-      monthly: "$15",
-      seat: "$15",
-    });
-    expect(payerTotals(priced, "missing", "en")).toBeNull();
+describe("orgSeatPrice", () => {
+  it("formats one seat a month in the reader's locale", () => {
+    expect(orgSeatPrice("en")).toBe("$15");
+    expect(orgSeatPrice("pt")).toBe("US$\u00a015");
   });
 });
 
