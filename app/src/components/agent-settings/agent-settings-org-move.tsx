@@ -19,33 +19,21 @@ export function AgentSettingsOrgMove({ agent }: { agent: Agent }) {
   const personalSpace = usePersonalSpace();
   const destinations = useMoveOutDestinations();
   const [open, setOpen] = useState(false);
-  // Which flow runs is fixed when it opens: the move itself switches the
-  // space, and swapping flows mid-run would restart it from the picker.
-  const [fromPersonal, setFromPersonal] = useState<boolean | null>(null);
-  const [opened, setOpened] = useState<typeof destinations>(null);
-  const offered =
-    personalSpace || (destinations !== null && destinations.length > 0);
-  const flowFromPersonal = fromPersonal ?? personalSpace;
-  if (!offered && fromPersonal === null) return null;
+  if (!personalSpace && (destinations === null || destinations.length === 0))
+    return null;
   return (
     <>
-      {offered && (
-        <SettingsRow
-          icon={Building2}
-          title={t("agentSettings.manage.moveOrganization")}
-          description={t(
-            personalSpace
-              ? "agentSettings.manage.moveOrganizationDescription"
-              : "agentSettings.manage.moveOutDescription",
-          )}
-          onClick={() => {
-            setFromPersonal(personalSpace);
-            setOpened(destinations);
-            setOpen(true);
-          }}
-        />
-      )}
-      {flowFromPersonal ? (
+      <SettingsRow
+        icon={Building2}
+        title={t("agentSettings.manage.moveOrganization")}
+        description={t(
+          personalSpace
+            ? "agentSettings.manage.moveOrganizationDescription"
+            : "agentSettings.manage.moveOutDescription",
+        )}
+        onClick={() => setOpen(true)}
+      />
+      {personalSpace ? (
         <AgentShareSurfaces
           agent={agent}
           surface="inviteTeam"
@@ -57,10 +45,7 @@ export function AgentSettingsOrgMove({ agent }: { agent: Agent }) {
           agent={agent}
           open={open}
           onOpenChange={setOpen}
-          mode={{
-            kind: "move_out",
-            destinations: opened ?? destinations ?? [],
-          }}
+          mode={{ kind: "move_out", destinations: destinations ?? [] }}
         />
       )}
     </>
