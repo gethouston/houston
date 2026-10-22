@@ -618,6 +618,22 @@
     "classification": "sdk"
   },
   {
+    "pattern": "/v1/metrics/people",
+    "methods": [
+      "GET"
+    ],
+    "classification": "infra",
+    "reason": "the internal Product dashboard's server pulls it with the shared GW_PEOPLE_TOKEN bearer on behalf of a staff viewer; no Houston principal is behind the call and the app never reads it"
+  },
+  {
+    "pattern": "/v1/metrics/people/{user_id}",
+    "methods": [
+      "GET"
+    ],
+    "classification": "infra",
+    "reason": "the internal Product dashboard's server pulls it with the shared GW_PEOPLE_TOKEN bearer on behalf of a staff viewer; no Houston principal is behind the call and the app never reads it"
+  },
+  {
     "pattern": "/v1/metrics/product",
     "methods": [
       "GET"
@@ -1289,6 +1305,13 @@
   },
   {
     "pattern": "/v1/org/billing/checkout",
+    "methods": [
+      "POST"
+    ],
+    "classification": "sdk"
+  },
+  {
+    "pattern": "/v1/org/billing/free",
     "methods": [
       "POST"
     ],
