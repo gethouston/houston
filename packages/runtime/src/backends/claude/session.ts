@@ -73,6 +73,7 @@ export class ClaudeSession
       promptTokens: claudeTurnPromptTokens(fill, prompt),
     });
     if (outcome === "retry-fresh") {
+      if (this.disposed || this.aborting) return;
       // The SDK refused the resume id (its cwd-scoped lookup missed the
       // transcript — e.g. the workspace was renamed), or resumed it with
       // Houston's tool server detached (PRODUCT-1706). The stale mapping is
