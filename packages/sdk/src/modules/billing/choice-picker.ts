@@ -31,7 +31,8 @@ export interface PickerState {
   /**
    * The gateway refused the paid pick (`not_payer`, {@link pickRefused}): the
    * picker stays on the free step even while the choice still names the
-   * person a payer. Never inferred from the draft's shape.
+   * person a payer, until a choice naming no payer confirms it
+   * ({@link settlePick}). Never inferred from the draft's shape.
    */
   paidRefused: boolean;
 }

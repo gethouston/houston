@@ -16,6 +16,7 @@ import {
   nextChoicePage,
   pickFlowProgress,
   previousChoicePage,
+  settleChoicePick,
   withChoicePick,
 } from "@houston/sdk";
 import { useState } from "react";
@@ -61,7 +62,8 @@ export function BillingChangeModal({
     otherDialogOpen,
   });
   // Derived from the last render's frame; React re-renders before painting.
-  const frame = nextChoiceModalFrame(stored, modal);
+  const moved = nextChoiceModalFrame(stored, modal);
+  const frame = choice ? settleChoicePick(moved, choice) : moved;
   if (frame !== stored) setFrame(frame);
   const { shown, phase } = frame;
   if (!choice || !shown) return null;
