@@ -23,12 +23,19 @@ export function createUsageTracker(
   onContextTokens: (tokens: number) => void,
 ): UsageTracker {
   let lastRequestUsage: TokenUsage | null = null;
+  // A request that failed (the CLI's own timeout included) reports all-zero
+  // usage. The context it would have sent is still there, so zero is never a
+  // fill: it would size the next request's first-byte deadline for an empty
+  // conversation.
+  const reportFill = (tokens: number) => {
+    if (tokens > 0) onContextTokens(tokens);
+  };
 
   function noteRequestUsage(usage: unknown): void {
     const requestUsage = normalizeUsage(usage);
     if (!requestUsage) return;
     lastRequestUsage = requestUsage;
-    onContextTokens(requestUsage.context_tokens);
+    reportFill(requestUsage.context_tokens);
   }
 
   function noteCompactBoundary(postTokens: number): void {
@@ -51,7 +58,7 @@ export function createUsageTracker(
     // aggregate is only the fallback when no assistant usage arrived, where
     // the two coincide (a turn of exactly one request).
     const usage = lastRequestUsage ?? normalizeUsage(resultUsage);
-    if (usage) onContextTokens(usage.context_tokens);
+    if (usage) reportFill(usage.context_tokens);
     return usage;
   }
 
