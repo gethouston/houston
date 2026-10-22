@@ -33,10 +33,13 @@ export interface AgentPeople {
 
 const ROLE_RANK: Record<OrgRole, number> = { owner: 0, admin: 1, user: 2 };
 
-export function chartPerson(member: OrgMember): ChartPerson {
+export function chartPerson(
+  member: OrgMember,
+  unnamedAccount: string,
+): ChartPerson {
   return {
     userId: member.userId,
-    name: rosterPersonName(member),
+    name: rosterPersonName(member, unnamedAccount),
     role: member.role,
     imageUrl: member.photoUrl,
   };
@@ -72,6 +75,7 @@ function assignmentsVisible(agent: AgentAccessFields): boolean {
 export function agentPeople(
   agent: AgentAccessFields,
   members: readonly OrgMember[],
+  unnamedAccount: string,
 ): AgentPeople | null {
   if (!assignmentsVisible(agent)) return null;
   const roster = new Map(members.map((m) => [m.userId, m]));
@@ -85,7 +89,7 @@ export function agentPeople(
   const resolve = (ids: Iterable<string>) =>
     [...ids].flatMap((id) => {
       const member = roster.get(id);
-      return member ? [chartPerson(member)] : [];
+      return member ? [chartPerson(member, unnamedAccount)] : [];
     });
   const manages = resolve(managerIds).sort(byRoleThenName);
   if (assignments.length === 0) return { manages, uses: "everyone" };

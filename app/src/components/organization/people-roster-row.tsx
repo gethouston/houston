@@ -37,8 +37,8 @@ export function PeopleRosterRow({
 }) {
   const { t } = useTranslation("teams");
   // Display name is primary when the gateway resolved one; the email then
-  // drops to a muted secondary line. Falls back to email/id.
-  const name = rosterPersonName(member);
+  // drops to a muted secondary line. Unnamed accounts use translated copy.
+  const name = rosterPersonName(member, t("people.roster.unnamedAccount"));
   const secondaryEmail =
     member.displayName && member.email ? member.email : null;
   const avatarUrl = member.photoUrl ?? null;

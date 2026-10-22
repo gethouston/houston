@@ -47,7 +47,13 @@ const agent = (id: string) => ({
 });
 const tree = (personal: boolean, name = "Acme & Co") =>
   buildOrgTree(
-    { agents: [agent("a"), agent("b")], members, name, personal },
+    {
+      unnamedAccount: "Unnamed account",
+      agents: [agent("a"), agent("b")],
+      members,
+      name,
+      personal,
+    },
     SHARE_CARD_CAPS,
   );
 
@@ -112,7 +118,13 @@ describe("shareCardCaps", () => {
   });
   const team = (members: OrgMember[], agents: Agent[] = []) =>
     buildOrgTree(
-      { agents, members, name: "Acme", personal: false },
+      {
+        unnamedAccount: "Unnamed account",
+        agents,
+        members,
+        name: "Acme",
+        personal: false,
+      },
       shareCardCaps(members.length),
     );
 

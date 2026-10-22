@@ -84,6 +84,7 @@ function rankOf(row: AgentPersonRow): number {
  * revoke. Sorted owner, then managers, then can-use, then no-access, by email.
  */
 export function buildAgentPeople(opts: {
+  unnamedAccount: string;
   agent: Pick<Agent, "assignments" | "assignedUserIds">;
   members: readonly OrgMember[];
   selfId: string | null;
@@ -106,7 +107,9 @@ export function buildAgentPeople(opts: {
     if (r !== 0) return r;
     // Ordered by the name each row SHOWS: sorting on a key the user cannot
     // read (the email behind a display name) makes the list look unsorted.
-    return rosterPersonName(a.member).localeCompare(rosterPersonName(b.member));
+    return rosterPersonName(a.member, opts.unnamedAccount).localeCompare(
+      rosterPersonName(b.member, opts.unnamedAccount),
+    );
   });
 }
 

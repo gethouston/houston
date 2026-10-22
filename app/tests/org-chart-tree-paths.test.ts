@@ -108,6 +108,7 @@ describe("treeEdges", () => {
   });
   const tree = buildOrgTree(
     {
+      unnamedAccount: "Unnamed account",
       agents: [agent("a"), agent("b"), agent("c")],
       members,
       name: "Acme",

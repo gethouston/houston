@@ -41,7 +41,16 @@ const render = (
 ) =>
   renderToStaticMarkup(
     createElement(OrgChartTreeView, {
-      tree: buildOrgTree({ agents, members, name: "Acme", personal }, caps),
+      tree: buildOrgTree(
+        {
+          unnamedAccount: "Unnamed account",
+          agents,
+          members,
+          name: "Acme",
+          personal,
+        },
+        caps,
+      ),
       onOpenBoard: () => {},
       onOpenPerson: () => {},
       onShare: () => {},

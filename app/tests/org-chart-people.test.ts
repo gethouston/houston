@@ -31,6 +31,7 @@ describe("agentPeople", () => {
         ],
       },
       members,
+      "Unnamed account",
     );
     deepStrictEqual(shape(people), {
       manages: ["julian", "sara"],
@@ -49,6 +50,7 @@ describe("agentPeople", () => {
         ],
       },
       members,
+      "Unnamed account",
     );
     deepStrictEqual(shape(people), {
       manages: ["julian", "sara"],
@@ -60,6 +62,7 @@ describe("agentPeople", () => {
     const people = agentPeople(
       { access: "manager", assignments: [{ userId: "tom", access: "user" }] },
       members,
+      "Unnamed account",
     );
     deepStrictEqual(shape(people), { manages: ["julian"], uses: ["tom"] });
   });
@@ -74,6 +77,7 @@ describe("agentPeople", () => {
         ],
       },
       members,
+      "Unnamed account",
     );
     deepStrictEqual(shape(people), {
       manages: ["julian"],
@@ -84,12 +88,20 @@ describe("agentPeople", () => {
   it("reads a managed agent with no assignment fields as shared with everyone", () => {
     // The gateway omits an empty assignment list, so an agent shared with
     // everyone arrives with both fields absent even for its manager.
-    const people = agentPeople({ access: "manager" }, members);
+    const people = agentPeople(
+      { access: "manager" },
+      members,
+      "Unnamed account",
+    );
     deepStrictEqual(shape(people), { manages: ["julian"], uses: "everyone" });
   });
 
   it("reads the everyone sentinel as one Everyone, not every face", () => {
-    const people = agentPeople({ access: "manager", assignments: [] }, members);
+    const people = agentPeople(
+      { access: "manager", assignments: [] },
+      members,
+      "Unnamed account",
+    );
     deepStrictEqual(shape(people), { manages: ["julian"], uses: "everyone" });
   });
 
@@ -97,23 +109,28 @@ describe("agentPeople", () => {
     const people = agentPeople(
       { access: "manager", assignedUserIds: ["tom"] },
       members,
+      "Unnamed account",
     );
     deepStrictEqual(shape(people), { manages: ["julian"], uses: ["tom"] });
   });
 
   it("is null when the caller does not manage the agent", () => {
-    strictEqual(agentPeople({ access: "user" }, members), null);
+    strictEqual(
+      agentPeople({ access: "user" }, members, "Unnamed account"),
+      null,
+    );
     strictEqual(
       agentPeople(
         { access: "user", assignments: [{ userId: "tom", access: "user" }] },
         members,
+        "Unnamed account",
       ),
       null,
     );
   });
 
   it("is null when a host that predates access levels withholds the fields", () => {
-    strictEqual(agentPeople({}, members), null);
+    strictEqual(agentPeople({}, members, "Unnamed account"), null);
   });
 
   it("leaves out ids that are no longer on the roster", () => {
@@ -127,6 +144,7 @@ describe("agentPeople", () => {
         ],
       },
       members,
+      "Unnamed account",
     );
     deepStrictEqual(shape(people), { manages: ["julian"], uses: ["tom"] });
   });
@@ -135,6 +153,7 @@ describe("agentPeople", () => {
     const people = agentPeople(
       { access: "manager", assignments: [{ userId: "ana", access: "user" }] },
       members,
+      "Unnamed account",
     );
     strictEqual(
       people?.uses === "everyone" ? null : people?.uses[0]?.name,

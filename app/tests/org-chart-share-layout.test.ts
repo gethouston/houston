@@ -33,7 +33,13 @@ const roster = (n: number): OrgMember[] => [
 const layout = (agents: Agent[], members: OrgMember[], personal = false) =>
   shareCardLayout(
     buildOrgTree(
-      { agents, members, name: "Acme", personal },
+      {
+        unnamedAccount: "Unnamed account",
+        agents,
+        members,
+        name: "Acme",
+        personal,
+      },
       shareCardCaps(members.length),
     ),
     {

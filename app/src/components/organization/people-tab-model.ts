@@ -38,19 +38,19 @@ export function personDisplayName(
  * screen reader reads from the controls beside it alike — one name per row, or
  * the screen says one thing and announces another.
  *
- * It is {@link personDisplayName} with the row's own last resort: a row is
- * keyed by user id, so the id is all that is left when the gateway exposed
- * neither a name nor an email to this caller.
+ * The caller supplies the translated label for an unnamed account. An opaque
+ * user id identifies the row internally, but never names its person on screen.
  */
 export function rosterPersonName(
   member: Pick<OrgMember, "displayName" | "email" | "userId">,
+  unnamedAccount: string,
 ): string {
-  return personDisplayName(member, member.userId);
+  return personDisplayName(member, unnamedAccount);
 }
 
 /**
  * Up to two uppercase initials for an avatar fallback, derived from an email
- * local part or a raw name/id. Splits on the usual separators (`.`, `-`, `_`,
+ * local part or a display name. Splits on the usual separators (`.`, `-`, `_`,
  * `+`, whitespace); falls back to the first two characters when there's only
  * one token, and to `?` for an empty source so the badge is never blank.
  */

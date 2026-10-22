@@ -1,4 +1,5 @@
 import { useMemo } from "react";
+import { useTranslation } from "react-i18next";
 import { useComputeUsage, useOrgUsage } from "../../hooks/queries";
 import { useCapabilities } from "../../hooks/use-capabilities";
 import { useAgentStore } from "../../stores/agents";
@@ -32,6 +33,8 @@ import { useStableByContent } from "./use-stable-by-content";
  * its chart always count the same window.
  */
 export function useOrgChartData(ctx: OrgViewContext) {
+  const { t } = useTranslation("teams");
+  const unnamedAccount = t("people.roster.unnamedAccount");
   const agents = useAgentStore((store) => store.agents);
   const agentsLoaded = useAgentStore((store) => store.loaded);
   const { capabilities } = useCapabilities();
@@ -59,8 +62,14 @@ export function useOrgChartData(ctx: OrgViewContext) {
     [agents, usage.data, scope],
   );
   const lines = useMemo(
-    () => buildLedger(agents, members ?? [], { work, usage: counts, scope }),
-    [agents, members, work, counts, scope],
+    () =>
+      buildLedger(agents, members ?? [], {
+        work,
+        usage: counts,
+        scope,
+        unnamedAccount,
+      }),
+    [agents, members, work, counts, scope, unnamedAccount],
   );
   const trees = useMemo(() => {
     const input = {
@@ -68,12 +77,13 @@ export function useOrgChartData(ctx: OrgViewContext) {
       members: members ?? [],
       name: ctx.org.name,
       personal: ctx.isPersonal,
+      unnamedAccount,
     };
     return {
       screen: buildOrgTree(input, SCREEN_TREE_CAPS),
       share: buildOrgTree(input, shareCardCaps(input.members.length)),
     };
-  }, [agents, members, ctx.org.name, ctx.isPersonal]);
+  }, [agents, members, ctx.org.name, ctx.isPersonal, unnamedAccount]);
   const screenTree = useStableByContent(trees.screen);
   const shareTree = useStableByContent(trees.share);
   const figures = heroFigures({
@@ -103,7 +113,10 @@ export function useOrgChartData(ctx: OrgViewContext) {
 
   return {
     state: orgChartState({ agentsLoaded, agentCount: agents.length }),
-    title: ctx.isPersonal && owner ? rosterPersonName(owner) : ctx.org.name,
+    title:
+      ctx.isPersonal && owner
+        ? rosterPersonName(owner, unnamedAccount)
+        : ctx.org.name,
     lines,
     trees: { screen: screenTree, share: shareTree },
     lead,

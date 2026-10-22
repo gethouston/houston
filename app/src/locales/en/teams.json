@@ -239,6 +239,7 @@
       "revokeLabel": "Revoke invitation for {{email}}"
     },
     "roster": {
+      "unnamedAccount": "Unnamed account",
       "title": "Team",
       "you": "(you)",
       "changeRole": "Change role for {{name}}",

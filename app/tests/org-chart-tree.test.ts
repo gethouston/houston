@@ -1,8 +1,8 @@
 import { deepStrictEqual, ok, strictEqual } from "node:assert";
 import { describe, it } from "node:test";
 import type { Agent, OrgMember } from "@houston/engine-adapter";
+import { agentHome } from "../src/components/organization/org-chart-home.ts";
 import {
-  agentHome,
   buildOrgTree,
   type OrgTree,
   type OrgTreeCaps,
@@ -33,6 +33,7 @@ const build = (
 ) =>
   buildOrgTree(
     {
+      unnamedAccount: "Unnamed account",
       agents,
       members: opts.roster ?? members,
       name: "Acme",
@@ -258,9 +259,9 @@ describe("buildOrgTree", () => {
 describe("agentHome", () => {
   it("falls back to the first person when the roster has no owner", () => {
     strictEqual(
-      agentHome(null, [{ userId: "x", name: "X", role: "user" }]),
+      agentHome(null, [{ userId: "x", name: "X", role: "user" }], []),
       "x",
     );
-    strictEqual(agentHome(null, []), null);
+    strictEqual(agentHome(null, [], []), null);
   });
 });

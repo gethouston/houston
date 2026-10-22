@@ -55,7 +55,7 @@ export function AgentPersonRow({
   onAction: (action: ShareAction) => void;
 }) {
   const { t } = useTranslation("teams");
-  const name = rosterPersonName(row.member);
+  const name = rosterPersonName(row.member, t("people.roster.unnamedAccount"));
   const label = levelLabel(row.level, t);
 
   return (

@@ -1,6 +1,7 @@
 import type { Agent, OrgMember } from "@houston/engine-adapter";
+import { currentAssignments } from "../agent/agent-access-model.ts";
+import { agentHome } from "./org-chart-home.ts";
 import {
-  type AgentPeople,
   agentPeople,
   type ChartPerson,
   chartPerson,
@@ -13,9 +14,9 @@ import {
  *
  * Every owner manages every agent, so "who manages it" cannot place an
  * agent: it would hang every AI Employee under the owner. An agent's HOME is
- * the person closest to it instead: its first admin manager by name, else
- * its one user when exactly one person uses it, else the first owner. An
- * agent whose people the caller cannot see homes under the first owner.
+ * the person explicitly assigned to manage it, by name when several match,
+ * else its one user, else the first owner. Assignment rows carry no timestamp.
+ * Agents whose people the caller cannot see home under the first owner.
  *
  * A personal space is one person, so its tree is that person over every AI
  * Employee, with no people row.
@@ -89,23 +90,6 @@ function treeAgent(agent: Agent): OrgTreeAgent {
 }
 
 /**
- * The userId an agent lives under, or `null` when nobody on the roster can
- * hold it. `roster` is already in people order, so its first owner is the
- * fallback.
- */
-export function agentHome(
-  people: AgentPeople | null,
-  roster: readonly ChartPerson[],
-): string | null {
-  const admin = people?.manages.find((person) => person.role === "admin");
-  if (admin) return admin.userId;
-  if (people && people.uses !== "everyone" && people.uses.length === 1)
-    return people.uses[0].userId;
-  const owner = roster.find((person) => person.role === "owner");
-  return (owner ?? roster[0])?.userId ?? null;
-}
-
-/**
  * The people a capped row keeps: every owner first (the person sharing the
  * chart is never the one cut), then people with AI Employees, then the
  * rest, drawn in roster order.
@@ -134,10 +118,13 @@ export function buildOrgTree(
     /** The space's name. */
     name: string;
     personal: boolean;
+    unnamedAccount: string;
   },
   caps: OrgTreeCaps,
 ): OrgTree {
-  const roster = input.members.map(chartPerson).sort(byRoleThenName);
+  const roster = input.members
+    .map((member) => chartPerson(member, input.unnamedAccount))
+    .sort(byRoleThenName);
   const agents = input.agents.map(treeAgent).sort(byName);
 
   if (input.personal) {
@@ -160,8 +147,14 @@ export function buildOrgTree(
   const byId = new Map(input.agents.map((agent) => [agent.id, agent]));
   for (const agent of agents) {
     const source = byId.get(agent.id);
-    const people = source ? agentPeople(source, input.members) : null;
-    const home = agentHome(people, roster);
+    const people = source
+      ? agentPeople(source, input.members, input.unnamedAccount)
+      : null;
+    const home = agentHome(
+      people,
+      roster,
+      source ? currentAssignments(source) : [],
+    );
     if (home === null) homeless.push(agent);
     else homed.set(home, [...(homed.get(home) ?? []), agent]);
   }

@@ -18,7 +18,13 @@ const { buildOrgTree, SCREEN_TREE_CAPS } = await import(
 
 const tree = (name = "Acme") =>
   buildOrgTree(
-    { agents: [], members: [], name, personal: false },
+    {
+      unnamedAccount: "Unnamed account",
+      agents: [],
+      members: [],
+      name,
+      personal: false,
+    },
     SCREEN_TREE_CAPS,
   );
 

@@ -27,23 +27,32 @@ describe("people tab model — rosterPersonName", () => {
     displayName: "Ada Lovelace",
   });
 
-  it("is the shared display rule, with the row's id as its last resort", () => {
+  it("is the shared display rule, with a translated label as its last resort", () => {
     for (const person of [
       row,
       member({ userId: "u1", email: "ada@x.io" }),
       member({ userId: "u1" }),
     ]) {
-      strictEqual(rosterPersonName(person), personDisplayName(person, "u1"));
+      strictEqual(
+        rosterPersonName(person, "Unnamed account"),
+        personDisplayName(person, "Unnamed account"),
+      );
     }
   });
 
   it("names a person by the name they set, not their email", () => {
-    strictEqual(rosterPersonName(row), "Ada Lovelace");
+    strictEqual(rosterPersonName(row, "Unnamed account"), "Ada Lovelace");
     strictEqual(
-      rosterPersonName(member({ userId: "u1", email: "ada@x.io" })),
+      rosterPersonName(
+        member({ userId: "u1", email: "ada@x.io" }),
+        "Unnamed account",
+      ),
       "ada@x.io",
     );
-    strictEqual(rosterPersonName(member({ userId: "u1" })), "u1");
+    strictEqual(
+      rosterPersonName(member({ userId: "u1" }), "Unnamed account"),
+      "Unnamed account",
+    );
   });
 });
 

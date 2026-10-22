@@ -239,6 +239,7 @@
       "revokeLabel": "Revogar o convite de {{email}}"
     },
     "roster": {
+      "unnamedAccount": "Conta sem nome",
       "title": "Equipe",
       "you": "(você)",
       "changeRole": "Alterar a função de {{name}}",

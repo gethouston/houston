@@ -69,7 +69,12 @@ export function AgentPeopleTab({
     action: ShareAction;
   } | null>(null);
 
-  const rows = buildAgentPeople({ agent, members, selfId });
+  const rows = buildAgentPeople({
+    agent,
+    members,
+    selfId,
+    unnamedAccount: t("people.roster.unnamedAccount"),
+  });
 
   const write = (userId: string, action: ShareAction) =>
     share.mutate({

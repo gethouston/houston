@@ -73,7 +73,12 @@ describe("buildLedger", () => {
       [hours("ws/kevin", 56), hours("ws/rob", 72), hours("ws/finance", 56)],
       NOW,
     );
-    const lines = buildLedger(agents, members, { work, usage, scope: "org" });
+    const lines = buildLedger(agents, members, {
+      unnamedAccount: "Unnamed account",
+      work,
+      usage,
+      scope: "org",
+    });
     deepStrictEqual(
       lines.map((l) => [l.id, l.workMs / HOUR, l.messages]),
       [
@@ -88,6 +93,7 @@ describe("buildLedger", () => {
 
   it("ranks and scales by messages when hours cannot be read", () => {
     const lines = buildLedger(agents, members, {
+      unnamedAccount: "Unnamed account",
       work: null,
       usage,
       scope: "org",
@@ -101,6 +107,7 @@ describe("buildLedger", () => {
 
   it("falls back to names, bars empty, when nothing can be read", () => {
     const lines = buildLedger(agents, members, {
+      unnamedAccount: "Unnamed account",
       work: null,
       usage: null,
       scope: "org",
@@ -128,6 +135,7 @@ describe("buildLedger", () => {
       NOW,
     );
     const [line] = buildLedger([shared], members, {
+      unnamedAccount: "Unnamed account",
       work: null,
       usage: counted,
       scope: "org",
@@ -149,6 +157,7 @@ describe("buildLedger", () => {
     });
     const hidden = agent("hidden", { assignments: undefined });
     const lines = buildLedger([managed, hidden], members, {
+      unnamedAccount: "Unnamed account",
       work: null,
       usage: null,
       scope: "org",
@@ -187,6 +196,7 @@ describe("an admin's chart, scoped to their own AI Employees", () => {
 
   it("says Not counted for a line whose messages the gateway does not count", () => {
     const lines = buildLedger(mine, members, {
+      unnamedAccount: "Unnamed account",
       work,
       usage: counts,
       scope: "yours",
@@ -198,6 +208,7 @@ describe("an admin's chart, scoped to their own AI Employees", () => {
 
   it("counts every line for the owner", () => {
     const lines = buildLedger(mine, members, {
+      unnamedAccount: "Unnamed account",
       work,
       usage: counts,
       scope: "org",
@@ -210,6 +221,7 @@ describe("an admin's chart, scoped to their own AI Employees", () => {
 
   it("totals only managed messages for an admin with mixed access", () => {
     const lines = buildLedger(mine, members, {
+      unnamedAccount: "Unnamed account",
       work,
       usage: counts,
       scope: "yours",
@@ -256,6 +268,7 @@ describe("an admin's chart, scoped to their own AI Employees", () => {
   it("shows no messages lead when an admin manages none of the lines", () => {
     const onlyUsed = [agent("rob", { access: "user" })];
     const lines = buildLedger(onlyUsed, members, {
+      unnamedAccount: "Unnamed account",
       work: null,
       usage: counts,
       scope: "yours",
@@ -280,6 +293,7 @@ describe("an admin's chart, scoped to their own AI Employees", () => {
     ];
     const counted = orgChartUsage(mixed, [talk("zeta", "tom", 7)], NOW);
     const lines = buildLedger(mixed, members, {
+      unnamedAccount: "Unnamed account",
       work: null,
       usage: counted,
       scope: "yours",
@@ -301,6 +315,7 @@ describe("an admin's chart, scoped to their own AI Employees", () => {
       agent("aardvark", { access: "user" }),
     ];
     const lines = buildLedger(mixed, members, {
+      unnamedAccount: "Unnamed account",
       work: null,
       usage: null,
       scope: "yours",
@@ -313,6 +328,7 @@ describe("an admin's chart, scoped to their own AI Employees", () => {
 
   it("gives the owner the organization's figures, people included", () => {
     const lines = buildLedger(mine, members, {
+      unnamedAccount: "Unnamed account",
       work,
       usage: counts,
       scope: "org",

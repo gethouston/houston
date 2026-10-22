@@ -108,8 +108,9 @@ function peopleOf(
   agent: Agent,
   members: readonly OrgMember[],
   talked: ReadonlyMap<string, number>,
+  unnamedAccount: string,
 ): AgentPeople | null {
-  const people = agentPeople(agent, members);
+  const people = agentPeople(agent, members, unnamedAccount);
   if (people === null || people.uses === "everyone") return people;
   const uses = [...people.uses].sort(
     (a, b) => (talked.get(b.userId) ?? 0) - (talked.get(a.userId) ?? 0),
@@ -130,6 +131,7 @@ export function buildLedger(
     work: OrgChartWork | null;
     usage: OrgChartUsage | null;
     scope: OrgChartScope;
+    unnamedAccount: string;
   },
 ): LedgerLine[] {
   const lines = agents.map((agent) => {
@@ -146,7 +148,7 @@ export function buildLedger(
       workMs: reads.work?.byAgent.get(agent.id) ?? 0,
       messages: counted ? (usage?.total ?? 0) : null,
       share: 0,
-      people: peopleOf(agent, members, talked),
+      people: peopleOf(agent, members, talked, reads.unnamedAccount),
     };
   });
   const messages = (line: LedgerLine) => line.messages ?? 0;

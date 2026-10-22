@@ -28,7 +28,9 @@ export function PeopleRosterConfirm({
 }) {
   const { t } = useTranslation("teams");
   const owner = pending?.kind === "makeOwner";
-  const name = pending ? rosterPersonName(pending.member) : "";
+  const name = pending
+    ? rosterPersonName(pending.member, t("people.roster.unnamedAccount"))
+    : "";
 
   return (
     <ConfirmDialog

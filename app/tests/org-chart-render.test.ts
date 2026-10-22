@@ -72,6 +72,7 @@ const ledger = (
   renderToStaticMarkup(
     createElement(OrgChartLedger, {
       lines: buildLedger(agents, members, {
+        unnamedAccount: "Unnamed account",
         work: orgChartWork(agents, computeRows(agents.map((a) => a.id)), NOW),
         usage: orgChartUsage(agents, rows, NOW),
         scope,

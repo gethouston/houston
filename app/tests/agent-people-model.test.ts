@@ -45,6 +45,7 @@ describe("buildAgentPeople", () => {
       assignments: [{ userId: "u-bob", access: "user" }],
     });
     const rows = buildAgentPeople({
+      unnamedAccount: "Unnamed account",
       agent: a,
       members: ROSTER,
       selfId: "u-self",
@@ -61,6 +62,7 @@ describe("buildAgentPeople", () => {
   it("an everyone-agent shows every non-owner at can-use", () => {
     const a = agent({ id: "e", assignedUserIds: [], assignments: [] });
     const rows = buildAgentPeople({
+      unnamedAccount: "Unnamed account",
       agent: a,
       members: ROSTER,
       selfId: "u-self",
@@ -80,6 +82,7 @@ describe("buildAgentPeople", () => {
       assignments: [{ userId: "u-cara", access: "manager" }],
     });
     const rows = buildAgentPeople({
+      unnamedAccount: "Unnamed account",
       agent: a,
       members: ROSTER,
       selfId: "u-self",
@@ -93,6 +96,7 @@ describe("buildAgentPeople", () => {
   it("flags self, owner, and manager-seat eligibility", () => {
     const a = agent({ id: "x", assignedUserIds: ["u-bob"], assignments: [] });
     const rows = buildAgentPeople({
+      unnamedAccount: "Unnamed account",
       agent: a,
       members: ROSTER,
       selfId: "u-bob",
@@ -216,6 +220,7 @@ describe("writeAgentPerson (set-replace write)", () => {
 describe("agentPersonNeedsConfirm (self-lockout gate)", () => {
   const rowFor = (m: OrgMember, selfId: string) =>
     buildAgentPeople({
+      unnamedAccount: "Unnamed account",
       agent: agent({
         id: "x",
         assignedUserIds: [m.userId],
@@ -245,6 +250,7 @@ describe("agentPersonNeedsConfirm (self-lockout gate)", () => {
 
   it("never confirms for the org owner", () => {
     const row = buildAgentPeople({
+      unnamedAccount: "Unnamed account",
       agent: agent({ id: "x", assignedUserIds: ["u-bob"], assignments: [] }),
       members: ROSTER,
       selfId: "u-self",
