@@ -44,6 +44,7 @@ describe("nextChoiceModalFrame", () => {
       shown: pick,
       phase: INTRO,
       hold: "none",
+      pick: null,
     });
   });
 
@@ -63,6 +64,7 @@ describe("nextChoiceModalFrame", () => {
       shown: single,
       phase: INTRO,
       hold: "none",
+      pick: null,
     });
   });
 
@@ -74,12 +76,14 @@ describe("nextChoiceModalFrame", () => {
       shown: pick,
       phase: { step: "picking" },
       hold: "none",
+      pick: null,
     });
     expect(nextChoiceModalFrame(shut, pick)).toEqual({
       open: true,
       shown: pick,
       phase: INTRO,
       hold: "none",
+      pick: null,
     });
   });
 });
@@ -120,6 +124,7 @@ describe("a picker the modal closes under", () => {
       shown: pick,
       phase: { step: "picking" },
       hold: "none",
+      pick: null,
     });
   });
 });
@@ -178,6 +183,7 @@ describe("an intro page", () => {
       shown: single,
       phase: INTRO,
       hold: "none",
+      pick: null,
     });
   });
 
@@ -189,6 +195,7 @@ describe("an intro page", () => {
       shown: pick,
       phase: INTRO,
       hold: "none",
+      pick: null,
     });
   });
 });
@@ -262,6 +269,7 @@ describe("the success step", () => {
       shown: pick,
       phase: INTRO,
       hold: "none",
+      pick: null,
     });
   });
 });

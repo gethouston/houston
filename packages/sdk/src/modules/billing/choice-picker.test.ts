@@ -11,6 +11,9 @@ import {
   defaultFreeOrg,
   defaultPaidOrg,
   nextChoiceDeadline,
+  pickerBack,
+  pickerSubmission,
+  pickRefused,
   reconcilePick,
   startPick,
   toFreeStep,
@@ -96,9 +99,10 @@ describe("reconcilePick", () => {
 
   it("goes back to the paid step when the paid org is dropped", () => {
     const left = choice({ payer: "plus", orgs: [PERSONAL, INNOVA] });
+    // The free pick stays on the paid step; the free step settles the collision.
     expect(reconcilePick(left, freeStep)).toEqual({
       step: "paid",
-      free: null,
+      free: INNOVA.slug,
       paid: INNOVA.slug,
     });
     const keepsFree = { ...freeStep, free: PERSONAL.slug };
@@ -123,6 +127,91 @@ describe("reconcilePick", () => {
     expect(
       reconcilePick(left, { step: "free", free: LA_FILA.slug, paid: null }),
     ).toEqual({ step: "free", free: INNOVA.slug, paid: null });
+  });
+});
+
+describe("changing the paid pick after Back", () => {
+  it("keeps the free pick while it is still owned", () => {
+    // Paid La Fila, free Innova, Back, Innova as paid, La Fila again, Next.
+    let state = toFreeStep(payer, {
+      step: "paid",
+      free: null,
+      paid: LA_FILA.slug,
+    });
+    state = { ...state, free: INNOVA.slug };
+    state = pickerBack(state) ?? state;
+    state = reconcilePick(payer, { ...state, paid: INNOVA.slug });
+    expect(state).toEqual({
+      step: "paid",
+      free: INNOVA.slug,
+      paid: INNOVA.slug,
+    });
+    state = reconcilePick(payer, { ...state, paid: LA_FILA.slug });
+    expect(toFreeStep(payer, state)).toEqual({
+      step: "free",
+      free: INNOVA.slug,
+      paid: LA_FILA.slug,
+    });
+  });
+});
+
+describe("pickRefused", () => {
+  const freeStep = {
+    step: "free" as const,
+    free: INNOVA.slug,
+    paid: LA_FILA.slug,
+  };
+
+  it("drops the paid pick on not_payer and stays on the free step", () => {
+    const refused = pickRefused(freeStep, { kind: "not_payer" });
+    expect(refused).toEqual({ step: "free", free: INNOVA.slug, paid: null });
+    // A refetch that lags or fails still names a payer: nothing is resent.
+    expect(reconcilePick(payer, refused)).toEqual(refused);
+    expect(pickerSubmission(reconcilePick(payer, refused))).toEqual({
+      freeOrgSlug: INNOVA.slug,
+    });
+    expect(pickerBack(refused)).toBeNull();
+  });
+
+  it("keeps the picker on any other answer", () => {
+    expect(pickRefused(freeStep, { kind: "not_owner" })).toBe(freeStep);
+    expect(pickRefused(freeStep, { kind: "saved", choice: payer })).toBe(
+      freeStep,
+    );
+  });
+});
+
+describe("pickerBack", () => {
+  it("returns a payer's free step to the paid one, else leaves the picker", () => {
+    expect(
+      pickerBack({ step: "free", free: INNOVA.slug, paid: LA_FILA.slug }),
+    ).toEqual({ step: "paid", free: INNOVA.slug, paid: LA_FILA.slug });
+    expect(
+      pickerBack({ step: "paid", free: null, paid: LA_FILA.slug }),
+    ).toBeNull();
+    expect(pickerBack({ step: "free", free: INNOVA.slug, paid: null })).toBe(
+      null,
+    );
+  });
+});
+
+describe("pickerSubmission", () => {
+  it("sends the free pick, with the paid one for a payer", () => {
+    expect(
+      pickerSubmission({ step: "free", free: INNOVA.slug, paid: null }),
+    ).toEqual({ freeOrgSlug: INNOVA.slug });
+    expect(
+      pickerSubmission({ step: "free", free: INNOVA.slug, paid: LA_FILA.slug }),
+    ).toEqual({ freeOrgSlug: INNOVA.slug, paidOrgSlug: LA_FILA.slug });
+  });
+
+  it("sends nothing without a free pick or before the free step", () => {
+    expect(pickerSubmission({ step: "free", free: null, paid: null })).toBe(
+      null,
+    );
+    expect(
+      pickerSubmission({ step: "paid", free: INNOVA.slug, paid: LA_FILA.slug }),
+    ).toBeNull();
   });
 });
 

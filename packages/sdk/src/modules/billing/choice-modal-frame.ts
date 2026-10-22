@@ -10,6 +10,7 @@ import type {
   ChoiceModal,
   ShownChoiceModal,
 } from "./choice-modal";
+import type { PickerState } from "./choice-picker";
 
 /**
  * Which step the modal's frame shows: one of the notice's intro pages
@@ -35,13 +36,16 @@ export type ChoiceFrameHold = "none" | "until_answer" | "behind_dialog";
 /**
  * What the pricing-change modal's frame shows, carried from one render to the
  * next. `shown` is the last open modal: it keeps the frame's content through
- * the close animation, after the notice itself has gone.
+ * the close animation, after the notice itself has gone. `pick` is the
+ * picker's draft, kept while the person steps back into the intro and out
+ * again, null until they change it ({@link choiceFramePick}).
  */
 export interface ChoiceModalFrame {
   open: boolean;
   shown: ShownChoiceModal | null;
   phase: ChoiceModalPhase;
   hold: ChoiceFrameHold;
+  pick: PickerState | null;
 }
 
 const INTRO: ChoiceModalPhase = { step: "intro", page: "notice" };
@@ -51,6 +55,7 @@ export const CLOSED_CHOICE_FRAME: ChoiceModalFrame = {
   shown: null,
   phase: INTRO,
   hold: "none",
+  pick: null,
 };
 
 /**
@@ -100,7 +105,9 @@ export function nextChoiceModalFrame(
     frame.shown.close === modal.close &&
     sameNotice(frame.shown.notice, modal.notice);
   if (unchanged) return frame;
-  return { open: true, shown: modal, phase, hold: "none" };
+  // Only a fresh open drops the draft.
+  const pick = frame.open ? frame.pick : null;
+  return { open: true, shown: modal, phase, hold: "none", pick };
 }
 
 /** An open frame's phase under a changed notice: kept while the notice still has it. */
