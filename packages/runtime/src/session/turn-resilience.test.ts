@@ -3,11 +3,11 @@ import { tmpdir } from "node:os";
 import { join } from "node:path";
 import type { WireEvent } from "@houston/runtime-client";
 import { afterEach, expect, test, vi } from "vitest";
+import type { ModelPhase } from "../backends/model-phase";
 import type {
   CreateSessionOptions,
   HarnessBackend,
   HarnessSession,
-  ModelPhase,
   ResolvedModel,
 } from "../backends/types";
 

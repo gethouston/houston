@@ -274,8 +274,12 @@ export async function execTurn(
   const interaction = newInteractionHolder();
   const watchdog = createStallWatchdog({
     timeoutMs: config.turnStallTimeoutMs,
-    firstResponseMs: (provider) =>
-      unansweredWindowMs(provider, config.turnFirstByteDeadlineMs),
+    firstResponseMs: (provider, promptTokens) =>
+      unansweredWindowMs(
+        provider,
+        config.turnFirstByteDeadlineMs,
+        promptTokens,
+      ),
     onStall: (reason, windowMs) => {
       stalled = { reason, windowMs };
       // The only log line a watchdog cut leaves: pi's echo below is logged as

@@ -6,6 +6,7 @@ import { logTurnTarget } from "../ai/turn-diagnostic";
 import { readAuthFile } from "../auth/auth-file";
 import type { newUsedTokenCapture } from "../auth/used-token";
 import { hasUnreadablePiSessionTail } from "../backends/pi/backend";
+import { recordedContextFill } from "../session/recorded-context-fill";
 import { replayCharBudget } from "../session/replay-transcript";
 import { replayForConversation } from "../session/routine-replay";
 import { estimateTokens } from "../session/token-estimate";
@@ -149,6 +150,7 @@ export async function openTurnBackendSession(input: {
     ...(turn.mode ? { mode: turn.mode } : {}),
     ...(freshSession ? { fresh: true } : {}),
     ...(harness === "claude" ? { freshRetryPromptPrefix: retryReplay } : {}),
+    recordedContextTokens: () => recordedContextFill(input.canonicalMessages),
   });
   if (turn.timings) turn.timings.t_backend_session = performance.now();
   // Proactive autocompact, as the pod runs it before every prompt: only a

@@ -10,6 +10,7 @@ import {
   runAutocompact,
 } from "../session/autocompact-guard";
 import type { FactHarvestTarget } from "../session/durable-facts-harvest";
+import { recordedContextFill } from "../session/recorded-context-fill";
 
 /**
  * Houston's proactive autocompact for a POOLED turn: the standing server's
@@ -83,8 +84,7 @@ export function turnAutocompactCooldown(
 
 /**
  * The context fill this turn starts from: the session's own reading, else the
- * last reply's recorded usage. A compaction or a provider switch with no usage
- * after it means the fill is unknown, exactly as pi answers after compacting.
+ * last reply's recorded usage.
  */
 export function pooledContextFill(
   session: HarnessSession,
@@ -96,13 +96,7 @@ export function pooledContextFill(
   // pi answers undefined only for a model with no window, where the pod
   // never compacts either.
   if (!transcriptFill) return null;
-  for (let i = canonical.length - 1; i >= 0; i--) {
-    const message = canonical[i];
-    if (message?.role !== "assistant") continue;
-    if (message.usage) return message.usage.context_tokens;
-    if (message.compaction || message.providerSwitch) return null;
-  }
-  return null;
+  return recordedContextFill(canonical) ?? null;
 }
 
 /**

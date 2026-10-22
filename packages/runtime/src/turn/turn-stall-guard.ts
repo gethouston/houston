@@ -42,8 +42,8 @@ export function guardTurnStall(input: {
   let trip: { reason: StallReason; windowMs: number } | undefined;
   const watchdog = createStallWatchdog({
     timeoutMs: input.timeoutMs,
-    firstResponseMs: (provider) =>
-      unansweredWindowMs(provider, input.firstByteDeadlineMs),
+    firstResponseMs: (provider, promptTokens) =>
+      unansweredWindowMs(provider, input.firstByteDeadlineMs, promptTokens),
     onStall: (reason, windowMs) => {
       trip = { reason, windowMs };
       console.warn(

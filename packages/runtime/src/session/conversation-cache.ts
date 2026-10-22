@@ -2,10 +2,12 @@ import { DEFAULT_TURN_MODE } from "@houston/protocol";
 import { resolveModel } from "../ai/providers";
 import { config } from "../config";
 import { LruCache } from "../lru";
+import { getHistory } from "../store/conversations";
 import { claudeSessionTokenStale } from "./claude-token-guard";
 import { serverBackendFor } from "./conversation-backends";
 import { type Conversation, isConvBusy } from "./conversation-record";
 import type { TurnPin } from "./exec-turn";
+import { recordedContextFill } from "./recorded-context-fill";
 import type { ProvidedContext } from "./workspace-context";
 
 export type { Conversation } from "./conversation-record";
@@ -110,6 +112,10 @@ export async function getConversation(
     // message in the same conversation reuses this session, so context edits
     // take effect on the next chat, matching the local file behavior (HOU-711).
     ...(carriedContext ? { context: carriedContext } : {}),
+    // The recent page holds the last reply; the whole history could mean
+    // reading archive segments.
+    recordedContextTokens: () =>
+      recordedContextFill(getHistory(id, { limit: 50 })?.messages ?? []),
   });
 
   const conv: Conversation = {

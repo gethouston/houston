@@ -115,7 +115,7 @@ export function createClaudeBackend(deps: ClaudeBackendDeps): HarnessBackend {
       // 401ing forever on the token it was built with. Re-asserting the scope
       // guard keeps a personal turn whose token vanished a typed refusal, never
       // a silent fall-through onto the pod-shared (team) credential.
-      const refreshAuth = () => {
+      const refreshAuth = (promptTokens?: number) => {
         const fresh = deps.readToken();
         assertAnthropicScopeCredential(fresh);
         return {
@@ -126,6 +126,7 @@ export function createClaudeBackend(deps: ClaudeBackendDeps): HarnessBackend {
             credentialStorageDir: deps.layout.credentialStorageDir,
             homeDir: deps.layout.homeDir,
             filesStillLanding: deps.beforeTool !== undefined,
+            promptTokens,
           }),
           accessDigest: fresh?.accessDigest,
         };
@@ -181,6 +182,7 @@ export function createClaudeBackend(deps: ClaudeBackendDeps): HarnessBackend {
         model: toSdkModel(opts.model.id),
         thinkingLevel: opts.thinkingLevel,
         freshRetryPromptPrefix: opts.freshRetryPromptPrefix,
+        recordedContextTokens: opts.recordedContextTokens,
         refreshAuth,
         // WHICH token the subprocess env carries, for the revoked-token
         // report (PRODUCT-1319) — updated by refreshAuth on every prompt so it

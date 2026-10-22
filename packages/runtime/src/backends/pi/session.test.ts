@@ -9,7 +9,8 @@ import type {
 } from "@earendil-works/pi-coding-agent";
 import type { WireEvent } from "@houston/runtime-client";
 import { expect, test } from "vitest";
-import type { ModelPhase, ResolvedModel, ThinkingLevel } from "../types";
+import type { ModelPhase } from "../model-phase";
+import type { ResolvedModel, ThinkingLevel } from "../types";
 import { PiSession } from "./session";
 
 /**

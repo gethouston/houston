@@ -128,6 +128,8 @@ export function buildClaudeEnv(
     shellFencePath?: string | null;
     /** The agent's deferred files may land after the CLI starts. */
     filesStillLanding?: boolean;
+    /** The largest prompt this CLI run sends, in tokens, when known. */
+    promptTokens?: number;
     platform?: NodeJS.Platform;
   },
 ): Record<string, string> {
@@ -165,6 +167,7 @@ export function buildClaudeEnv(
   const deadline = firstByteDeadlineMs(
     "anthropic",
     config.turnFirstByteDeadlineMs,
+    opts.promptTokens,
   );
   if (deadline > 0 && env.API_TIMEOUT_MS === undefined)
     env.API_TIMEOUT_MS = String(deadline);

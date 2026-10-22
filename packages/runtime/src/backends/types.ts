@@ -3,6 +3,7 @@ import type { WireEvent } from "@houston/runtime-client";
 import type { PiThinkingLevel } from "../ai/effort";
 import type { ProvidedContext } from "../session/workspace-context";
 import type { ForcedToolCall, ForcedToolCallRequest } from "./forced-tool-call";
+import type { ModelPhase } from "./model-phase";
 import type { ReplyBeat } from "./reply-beat";
 
 export type { ReplyBeat } from "./reply-beat";
@@ -47,17 +48,6 @@ export interface ResolvedModel {
 export interface CompactionOutcome {
   summary: string;
 }
-
-/**
- * Where one model round-trip stands. `requesting`: a request to `provider`'s
- * model is out (or goes out after `afterMs` of retry backoff) and its
- * response has not started. `responding`: the response is streaming.
- * `idle`: no request is out (a tool runs, a compaction summarizes).
- */
-export type ModelPhase =
-  | { phase: "requesting"; provider: string; afterMs?: number }
-  | { phase: "responding" }
-  | { phase: "idle" };
 
 /**
  * A timing the harness observed: one finished model call, or (Claude only) the
@@ -192,6 +182,11 @@ export interface CreateSessionOptions {
    * resume that succeeds must never pay for.
    */
   freshRetryPromptPrefix?: () => string;
+  /**
+   * The context fill the conversation's last reply recorded, for a backend
+   * that only measures its own once a turn has run (Claude).
+   */
+  recordedContextTokens?: () => number | undefined;
 }
 
 /** A pluggable turn-execution backend for a provider. */

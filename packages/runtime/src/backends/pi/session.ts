@@ -1,15 +1,16 @@
 import type { Api, Model } from "@earendil-works/pi-ai";
 import type { AgentSession } from "@earendil-works/pi-coding-agent";
 import type { WireEvent } from "@houston/runtime-client";
+import { estimatePromptTokens } from "../../ai/prompt-tokens";
 import type {
   ForcedToolCall,
   ForcedToolCallRequest,
 } from "../forced-tool-call";
+import type { ModelPhase } from "../model-phase";
 import type {
   CompactionOutcome,
   HarnessSession,
   HarnessTimingEvent,
-  ModelPhase,
   ReplyBeat,
   ResolvedModel,
   ThinkingLevel,
@@ -96,16 +97,15 @@ export class PiSession implements HarnessSession {
    * out after its backoff.
    */
   subscribeModelPhase(listener: (phase: ModelPhase) => void): () => void {
-    const provider = () => this.session.model?.provider ?? "";
+    const requesting = () => ({
+      phase: "requesting" as const,
+      provider: this.session.model?.provider ?? "",
+      promptTokens: estimatePromptTokens(this.session),
+    });
     return this.session.subscribe((e) => {
-      if (e.type === "turn_start")
-        listener({ phase: "requesting", provider: provider() });
+      if (e.type === "turn_start") listener(requesting());
       else if (e.type === "auto_retry_start")
-        listener({
-          phase: "requesting",
-          provider: provider(),
-          afterMs: e.delayMs,
-        });
+        listener({ ...requesting(), afterMs: e.delayMs });
       else if (e.type === "message_start" && e.message.role === "assistant")
         listener({ phase: "responding" });
       else if (

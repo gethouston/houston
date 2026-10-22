@@ -1,7 +1,6 @@
 import { mkdtempSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
-import type { Options } from "@anthropic-ai/claude-agent-sdk";
 import { afterEach, beforeEach, expect, test, vi } from "vitest";
 import { runWithActingContext } from "../../session/acting-context";
 import type { ResolvedModel } from "../types";
@@ -12,16 +11,16 @@ import {
   createClaudeBackend,
 } from "./backend";
 import { claudeLoginConfigDir, serverClaudeLayout } from "./paths";
+import type { ClaudeSessionDeps } from "./session-deps";
 
 // Capture the deps the backend hands a session WITHOUT running the SDK: the
 // whole point of the scope guard is that a refused turn never builds an env at
 // all, so "was a session constructed, and with which env" is the assertion —
 // plus, since PRODUCT-1355, "does its refreshAuth re-read the CURRENT token".
-type CapturedDeps = {
-  baseOptions: Options;
-  refreshAuth: () => { env: Record<string, string>; accessDigest?: string };
-  usedAccessDigest?: string;
-};
+type CapturedDeps = Pick<
+  ClaudeSessionDeps,
+  "baseOptions" | "refreshAuth" | "recordedContextTokens" | "usedAccessDigest"
+>;
 const { built } = vi.hoisted(() => ({ built: [] as CapturedDeps[] }));
 vi.mock("./session", () => ({
   ClaudeSession: class {

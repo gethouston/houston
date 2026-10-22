@@ -3,11 +3,8 @@ import { tmpdir } from "node:os";
 import { join } from "node:path";
 import type { WireEvent, WireFrame } from "@houston/runtime-client";
 import { beforeEach, expect, test, vi } from "vitest";
-import type {
-  HarnessBackend,
-  HarnessSession,
-  ModelPhase,
-} from "../backends/types";
+import type { ModelPhase } from "../backends/model-phase";
+import type { HarnessBackend, HarnessSession } from "../backends/types";
 import { loadConversation } from "../store/conversation-file";
 import { runTurn, type TurnDirectories } from "./turn-session";
 

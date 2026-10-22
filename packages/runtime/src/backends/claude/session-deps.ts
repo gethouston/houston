@@ -37,7 +37,8 @@ export interface ClaudeSessionDeps {
   /** Canonical history, built only when a rejected resume must retry fresh. */
   freshRetryPromptPrefix?: () => string;
   /**
-   * Re-read the stored credential and rebuild the subprocess env from it.
+   * Re-read the stored credential and rebuild the subprocess env from it, its
+   * first-byte deadline sized for `promptTokens`.
    * Called at the start of EVERY prompt (PRODUCT-1355): each `query()` spawns
    * its own SDK subprocess (resumed by session id), so the env is a per-turn
    * lever — a session must never stay pinned to the token it was built with,
@@ -47,7 +48,13 @@ export interface ClaudeSessionDeps {
    * token disappeared); exec-turn classifies that into the reconnect card, the
    * same surface `createSession`'s own guard produces.
    */
-  refreshAuth: () => TurnAuth;
+  refreshAuth: (promptTokens?: number) => TurnAuth;
+  /**
+   * The context fill the conversation's last reply recorded. The session
+   * measures its own only once a turn has run in this process, and sizes its
+   * first request's first-byte deadline from this until then.
+   */
+  recordedContextTokens?: () => number | undefined;
   /**
    * Digest of the OAuth access token in the subprocess env at BUILD time —
    * what a revoked-token report names. Updated by `refreshAuth` on every

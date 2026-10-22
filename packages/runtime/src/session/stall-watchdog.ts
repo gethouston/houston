@@ -1,5 +1,5 @@
 import type { ProviderError, WireEvent } from "@houston/runtime-client";
-import type { ModelPhase } from "../backends/types";
+import type { ModelPhase } from "../backends/model-phase";
 import { createRunawayDetector } from "./runaway-output";
 
 /**
@@ -41,8 +41,8 @@ export function isAbortEcho(error: ProviderError): boolean {
  * - `silent`: no event for `timeoutMs`. A reasoning model may think silently for
  *   minutes after its response opens, so this window is long.
  * - `unanswered`: a request whose response never opened, for
- *   `firstResponseMs(provider)` (fed by `onPhase`). A provider that has not
- *   even sent its response headers is not thinking. The hedge
+ *   `firstResponseMs(provider, promptTokens)` (fed by `onPhase`). A provider
+ *   that has not even sent its response headers is not thinking. The hedge
  *   (ai/hedged-runtime.ts) sends such a request again first; this window is
  *   the backstop once every attempt has had its deadline (ai/first-byte.ts).
  * - `degenerate`: the reply turned into a repetition loop (runaway-output.ts).
@@ -81,7 +81,7 @@ export type StallReason = "silent" | "unanswered" | "degenerate";
 export function createStallWatchdog(opts: {
   timeoutMs: number;
   /** The `unanswered` window for a request to `provider`; 0 = none. */
-  firstResponseMs?: (provider: string) => number;
+  firstResponseMs?: (provider: string, promptTokens?: number) => number;
   /** Fired once, with the reason and the window that elapsed (0 for a loop). */
   onStall: (reason: StallReason, windowMs: number) => void;
 }): StallWatchdog {
@@ -111,7 +111,7 @@ export function createStallWatchdog(opts: {
     const silent = isOn(timeoutMs) ? timeoutMs : undefined;
     const first =
       phase.phase === "requesting"
-        ? (opts.firstResponseMs?.(phase.provider) ?? 0)
+        ? (opts.firstResponseMs?.(phase.provider, phase.promptTokens) ?? 0)
         : 0;
     if (phase.phase !== "requesting" || !isOn(first))
       return silent === undefined
