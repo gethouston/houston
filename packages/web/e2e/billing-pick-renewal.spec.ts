@@ -7,11 +7,14 @@ import {
   installChoiceClock,
   LA_FILA,
   openPicker,
+  openSettingsPicker,
   ownerChoice,
   payerChoice,
   SPACES_OWNER_CAPS,
+  settingsPicker,
 } from "./support/billing-choice";
 import { expect, test } from "./support/fixtures";
+import { armPlan, freePlan } from "./support/plan";
 
 /**
  * A refused paid pick that a later choice settles in the same open. The
@@ -20,6 +23,13 @@ import { expect, test } from "./support/fixtures";
  * (a subscription started in another tab): the paid step comes back, and the
  * pick stores with the paid org.
  */
+
+const RENEWAL = {
+  refusals: [
+    { refuse: "not_payer" as const, after: ownerChoice() },
+    { refuse: "not_owner" as const, after: payerChoice() },
+  ],
+};
 
 test.beforeEach(async ({ page }) => {
   await installChoiceClock(page);
@@ -34,12 +44,7 @@ test("a payer refused, then none, then a payer again gets the paid step back", a
   page,
 }) => {
   await armCapabilities(SPACES_OWNER_CAPS);
-  await armChoice(payerChoice(), undefined, {
-    refusals: [
-      { refuse: "not_payer", after: ownerChoice() },
-      { refuse: "not_owner", after: payerChoice() },
-    ],
-  });
+  await armChoice(payerChoice(), undefined, RENEWAL);
   await page.goto("/");
   const modal = choiceModal(page);
   await openPicker(modal, true);
@@ -61,6 +66,41 @@ test("a payer refused, then none, then a payer again gets the paid step back", a
     page.getByRole("dialog", { name: "Innova stays free" }),
   ).toBeVisible();
   await expect(modal).toContainText("Step 5 of 5");
+  expect(await sets()).toEqual([
+    { freeOrgSlug: INNOVA.slug, paidOrgSlug: LA_FILA.slug },
+    { freeOrgSlug: INNOVA.slug },
+    { freeOrgSlug: INNOVA.slug, paidOrgSlug: LA_FILA.slug },
+  ]);
+});
+
+test("the Settings picker gets the paid step back when a payer returns", async ({
+  page,
+}) => {
+  await armCapabilities({ ...SPACES_OWNER_CAPS, plan: true });
+  await armPlan({ summary: freePlan() });
+  await armChoice(payerChoice(), undefined, RENEWAL);
+  const billing = await openSettingsPicker(page);
+  await billing.getByRole("button", { name: "Choose" }).click();
+  const picker = settingsPicker(page);
+  await expect(picker).toContainText("Step 1 of 3");
+  await picker.getByRole("button", { name: "Use it for La Fila" }).click();
+  await picker.getByRole("button", { name: "Keep Innova free" }).click();
+
+  // No payer: one step, so no progress.
+  await expect(picker).not.toContainText(/Step \d+ of/);
+  await expect(picker.getByRole("radio", { name: /Innova/ })).toBeChecked();
+  await picker.getByRole("button", { name: "Keep Innova free" }).click();
+  await expect.poll(sets).toHaveLength(2);
+
+  // A payer again: the paid step returns, and the pick carries the paid org.
+  await expect(picker).toContainText("Step 1 of 3");
+  await picker.getByRole("button", { name: "Use it for La Fila" }).click();
+  await expect(picker).toContainText("Step 2 of 3");
+  await picker.getByRole("button", { name: "Keep Innova free" }).click();
+  await expect(
+    page.getByRole("dialog", { name: "Innova stays free" }),
+  ).toBeVisible();
+  await expect(picker).toContainText("Step 3 of 3");
   expect(await sets()).toEqual([
     { freeOrgSlug: INNOVA.slug, paidOrgSlug: LA_FILA.slug },
     { freeOrgSlug: INNOVA.slug },

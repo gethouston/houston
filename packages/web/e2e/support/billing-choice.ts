@@ -1,6 +1,7 @@
 import { FAKE_HOST_URL } from "@houston/fake-host";
 import type { BillingChoice, BillingChoiceOrg } from "@houston/wire-types";
 import { expect, type Locator, type Page } from "@playwright/test";
+import { billingScreen, openBilling } from "./plan";
 
 /**
  * The free-org pick, armed on the fake host (`/__test__/billing-choice`), and
@@ -128,6 +129,17 @@ export const choiceModal = (page: Page): Locator =>
 /** The picker opened from Settings > Billing. */
 export const settingsPicker = (page: Page): Locator =>
   page.getByTestId("free-org-picker");
+
+/** Settings > Billing, reached past the modal; the picker opens from there. */
+export async function openSettingsPicker(page: Page): Promise<Locator> {
+  await page.goto("/");
+  await choiceModal(page)
+    .getByRole("button", { name: "Maybe later" })
+    .first()
+    .click({ timeout: 15_000 });
+  await openBilling(page);
+  return billingScreen(page);
+}
 
 export const MODAL_TITLE = "Teams are out of beta";
 export const CHOOSE = "Choose my free organization";

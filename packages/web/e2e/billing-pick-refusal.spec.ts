@@ -7,6 +7,7 @@ import {
   installChoiceClock,
   LA_FILA,
   openPicker,
+  openSettingsPicker,
   ownerChoice,
   payerChoice,
   SPACES_OWNER_CAPS,
@@ -80,17 +81,6 @@ test("after a refused paid pick the modal drops the paid step from progress, Bac
   await expect(modal).toBeHidden();
   await expect(page.getByRole("dialog")).toHaveCount(0);
 });
-
-/** Opens the Settings picker from Billing, past the modal. */
-async function openSettingsPicker(page: import("@playwright/test").Page) {
-  await page.goto("/");
-  await choiceModal(page)
-    .getByRole("button", { name: "Maybe later" })
-    .first()
-    .click({ timeout: 15_000 });
-  await openBilling(page);
-  return billingScreen(page);
-}
 
 test("after a refused paid pick the Settings picker has one step, no Back, and resends the free pick alone", async ({
   page,
