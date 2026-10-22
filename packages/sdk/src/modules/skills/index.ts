@@ -33,6 +33,7 @@ import {
 } from "./agent-facade";
 import { createSkillDraftWrites, type SkillDraftWrites } from "./drafts-writes";
 import { createSharedSkills } from "./shared-skills";
+import { createSkillTransfers } from "./transfers";
 import { AgentSkillsCommand, AgentSkillsHttpError } from "./types-agent";
 import type { SharedSkillsModule } from "./types-shared";
 
@@ -51,8 +52,15 @@ export {
   AgentSkillsHttpError,
 } from "./types-agent";
 
+type SkillTransfers = Omit<
+  ReturnType<typeof createSkillTransfers>,
+  "createSkill"
+>;
+
+export * from "./transfer-types";
+
 /** The typed facade for every skill family. */
-export interface SkillsModule extends SkillDraftWrites {
+export interface SkillsModule extends SkillDraftWrites, SkillTransfers {
   /** One agent's own skills (`.agents/skills/`) and its manifest. */
   agent: AgentSkillsFacade;
   /** The workspace-wide library every agent in a space can draw from. */
@@ -63,7 +71,15 @@ export function createSkillsModule(ctx: ModuleContext): SkillsModule {
   const agent = createAgentSkillsFacade(
     moduleScope(ctx, "skills", AgentSkillsHttpError),
   );
-  registerAgentSkillCommands(ctx, agent);
+  const shared = createSharedSkills(ctx);
+  const { createSkill, ...transfers } = createSkillTransfers(
+    ctx,
+    moduleScope(ctx, "skills", AgentSkillsHttpError),
+    agent,
+    shared,
+  );
+  const withDefaults = { ...agent, createSkill };
+  registerAgentSkillCommands(ctx, withDefaults);
   // A creation chat is a conversation on the agent's board, so throwing one
   // away is the board's own archive write.
   const drafts = createSkillDraftWrites(
@@ -75,5 +91,5 @@ export function createSkillsModule(ctx: ModuleContext): SkillsModule {
       requireString(p, "activityId"),
     ),
   );
-  return { agent, shared: createSharedSkills(ctx), ...drafts };
+  return { agent: withDefaults, shared, ...drafts, ...transfers };
 }

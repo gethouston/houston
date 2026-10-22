@@ -1,15 +1,6 @@
 /**
- * Where this client points, and who it speaks as.
- *
- * The transport half of {@link AdapterContext}: the base URL, the bearer, the
- * one `authFetch` both the HoustonClient and the SDK ride, and the live
- * `ControlPlaneConfig` that routes hosted calls at a space. It owns the two
- * repoints the shell performs on a LIVE client — a new engine
- * ({@link EngineEndpoint.setEndpoint}) and a new space
- * ({@link EngineEndpoint.setActiveOrg}) — so every consequence of "we now talk
- * to something else" (which requesters rebuild, which caches are void, what the
- * agent list still means) is decided in one file. {@link AdapterContext} extends
- * it, so every member here is reached off the shared context like the rest.
+ * One live endpoint and active-space identity for the SDK and transport.
+ * Repoints rebuild requesters; changing space invalidates the agent roster.
  */
 
 import { HoustonEngineClient } from "@houston/runtime-client";
@@ -99,6 +90,7 @@ export abstract class EngineEndpoint extends AgentSelection {
     this.sdk = createEngineSdk({
       baseUrl: this.baseUrl,
       fetch: authFetch,
+      activeOrgSlug: () => this._cp?.activeOrgSlug ?? null,
       liveToken: () => liveToken(this.token),
     });
     // Mark the new TS engine as the active backend so the frontend can surface
@@ -127,6 +119,7 @@ export abstract class EngineEndpoint extends AgentSelection {
     return createEngineSdk({
       baseUrl: this.baseUrl,
       fetch: gatewayAuthFetch(this.token, () => orgSlug),
+      activeOrgSlug: () => orgSlug,
       liveToken: () => liveToken(this.token),
     });
   }
@@ -170,6 +163,7 @@ export abstract class EngineEndpoint extends AgentSelection {
     this.sdk = createEngineSdk({
       baseUrl: this.baseUrl,
       fetch: this.authFetch,
+      activeOrgSlug: () => this._cp?.activeOrgSlug ?? null,
       liveToken: () => liveToken(this.token),
     });
     this.sdk.turns.adoptTypingState(typing);

@@ -37,6 +37,8 @@ import type {
 import {
   type DismissInteractionOutcome,
   plusCheckoutRefusal,
+  type SkillShareHooks,
+  SkillTransferRefusalError,
   type TimezoneSeedResult,
 } from "@houston/sdk";
 import type {
@@ -755,6 +757,24 @@ export const tauriSkills = {
 };
 
 export const tauriSharedSkills = {
+  shareNew: (
+    workspaceId: string,
+    agentPath: string,
+    slug: string,
+    hooks?: SkillShareHooks,
+  ) =>
+    call("share_new_skill_to_workspace", () =>
+      getEngine().shareNewSkillToWorkspace(workspaceId, agentPath, slug, hooks),
+    ),
+  keepForAgent: (workspaceId: string, agentPath: string, slug: string) => {
+    blockWriteWhileWarming(agentPath);
+    return call(
+      "keep_shared_skill_for_agent",
+      () => getEngine().keepSharedSkillForAgent(workspaceId, agentPath, slug),
+      undefined,
+      { silence: (error) => error instanceof SkillTransferRefusalError },
+    );
+  },
   /**
    * The workspace skill store, or the typed "this deployment has no store"
    * answer.
@@ -824,21 +844,11 @@ export const tauriSharedSkills = {
         content,
       }),
     ),
-  /** "Share to workspace": full SKILL.md verbatim, at the exact slug. The
-   *  org-share default (HOU-1192) passes a `silence` classifier for the
-   *  expected declines (collision / role / no store) it degrades on inline;
-   *  the explicit Skills-page action passes none and toasts as before. */
-  promote: (
-    workspaceId: string,
-    slug: string,
-    content: string,
-    options?: EngineCallOptions,
-  ) =>
-    call<SkillDetail>(
-      "promote_shared_skill",
-      () => getEngine().promoteSharedSkill(workspaceId, slug, content),
-      undefined,
-      options,
+  /** Explicit sharing preserves the full content at its exact slug.
+   *  The SDK's shareNew capability handles the automatic creation default. */
+  promote: (workspaceId: string, slug: string, content: string) =>
+    call<SkillDetail>("promote_shared_skill", () =>
+      getEngine().promoteSharedSkill(workspaceId, slug, content),
     ),
   delete: (workspaceId: string, slug: string) =>
     call<void>("delete_shared_skill", () =>

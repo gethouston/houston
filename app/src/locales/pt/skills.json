@@ -78,7 +78,15 @@
       "disableForAgent": "Desativar para este funcionário de IA",
       "deleteForEveryone": "Excluir para todos os funcionários de IA",
       "checkingEveryone": "Verificando os outros funcionários de IA…",
-      "checkEveryoneFailed": "Não foi possível verificar os outros funcionários de IA"
+      "checkEveryoneFailed": "Não foi possível verificar os outros funcionários de IA",
+      "keepOnly": "Manter só neste funcionário de IA",
+      "keepRefusal": {
+        "enabled_elsewhere": "Esta habilidade está ativada em outro funcionário de IA. Desative lá primeiro.",
+        "local_copy_exists": "Este funcionário de IA tem uma versão diferente desta habilidade. Mantenha ou remova essa versão primeiro.",
+        "skill_changed": "Esta habilidade mudou durante a transferência. Revise e tente novamente.",
+        "agent_not_in_workspace": "Este funcionário de IA não está mais neste espaço de trabalho. Atualize e tente novamente.",
+        "workspace_not_owned": "Só o proprietário do espaço de trabalho pode mover esta habilidade compartilhada. Peça para manter neste funcionário de IA."
+      }
     },
     "createdShared": "Skill adicionada ao seu espaço de trabalho",
     "enabledForAll_one": "Ativada para {{count}} funcionário de IA",

@@ -78,7 +78,15 @@
       "disableForAgent": "Disable for this AI Employee",
       "deleteForEveryone": "Delete for all AI Employees",
       "checkingEveryone": "Checking the other AI Employees…",
-      "checkEveryoneFailed": "Couldn't check the other AI Employees"
+      "checkEveryoneFailed": "Couldn't check the other AI Employees",
+      "keepOnly": "Keep only on this AI Employee",
+      "keepRefusal": {
+        "enabled_elsewhere": "This skill is enabled on another AI Employee. Disable it there first.",
+        "local_copy_exists": "This AI Employee has a different version of this skill. Keep or remove that version first.",
+        "skill_changed": "This skill changed while it was moving. Review it and try again.",
+        "agent_not_in_workspace": "This AI Employee is no longer in this workspace. Refresh and try again.",
+        "workspace_not_owned": "Only the workspace owner can move this shared skill. Ask them to keep it on this AI Employee."
+      }
     },
     "createdShared": "Skill added to your workspace",
     "enabledForAll_one": "Enabled for {{count}} AI Employee",

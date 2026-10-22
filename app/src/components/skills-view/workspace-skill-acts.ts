@@ -103,3 +103,16 @@ export function withCanonicalHolder<T extends WorkspaceActsRow>(
     agents: [...mine, ...row.agents.filter((a) => a.id !== agentId)],
   };
 }
+
+/** Only the store copy used by this employee alone may leave the workspace. */
+export function offersKeepOnlyForAgent(
+  row: WorkspaceActsRow,
+  agentId: string,
+  sharedStore: boolean,
+): boolean {
+  return (
+    sharedStore &&
+    row.origin === "shared" &&
+    row.agents.every((agent) => agent.id === agentId)
+  );
+}

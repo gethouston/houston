@@ -1,3 +1,4 @@
+import type { SkillShareHooks } from "@houston/sdk";
 import type {
   CreateSkillRequest,
   SaveSkillRequest,
@@ -29,6 +30,46 @@ export function SharedSkillsMixin<TBase extends BaseCtor>(Base: TBase) {
      */
     private wireWorkspaceId(workspaceId: string): Promise<string> {
       return this.ctx.workspaceIds.resolve(workspaceId);
+    }
+
+    async shareNewSkillToWorkspace(
+      workspaceId: string,
+      agentPath: string,
+      slug: string,
+      hooks?: SkillShareHooks,
+    ) {
+      if (!this.ctx.cp) throw new Error("Shared skills need a host workspace.");
+      const wire = await this.wireWorkspaceId(workspaceId);
+      try {
+        return await viaSdk(sharedSkillsPath(wire, slug), () =>
+          this.ctx.sdk.skills.shareNewSkillToWorkspace(
+            wire,
+            agentPath,
+            slug,
+            hooks,
+          ),
+        );
+      } finally {
+        emitLocalEcho("SharedSkillsChanged", { workspaceId });
+        emitLocalEcho("SkillsChanged", { agentPath });
+      }
+    }
+
+    async keepSharedSkillForAgent(
+      workspaceId: string,
+      agentPath: string,
+      slug: string,
+    ) {
+      if (!this.ctx.cp) throw new Error("Shared skills need a host workspace.");
+      const wire = await this.wireWorkspaceId(workspaceId);
+      try {
+        await viaSdk(sharedSkillsPath(wire, slug), () =>
+          this.ctx.sdk.skills.keepSharedSkillForAgent(wire, agentPath, slug),
+        );
+      } finally {
+        emitLocalEcho("SharedSkillsChanged", { workspaceId });
+        emitLocalEcho("SkillsChanged", { agentPath });
+      }
     }
 
     async listSharedSkills(workspaceId: string) {

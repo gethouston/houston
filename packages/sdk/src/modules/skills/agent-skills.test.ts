@@ -94,8 +94,13 @@ describe("the agent-skills requests", () => {
     ]);
   });
 
-  it("creates a skill with the whole body in one POST", async () => {
-    const { sdk, calls } = ok({});
+  it("creates with the whole body before applying the sharing default", async () => {
+    const { sdk, calls } = makeSdk((path) => {
+      if (path === "/agents") return json([{ id: "a1", workspaceId: "ws" }]);
+      if (path.endsWith("/triage"))
+        return json({ error: "skill not found" }, 404);
+      return json({});
+    });
 
     await sdk.skills.agent.createSkill("a1", {
       name: "Triage",
@@ -112,6 +117,8 @@ describe("the agent-skills requests", () => {
           content: "# Triage\n",
         }),
       },
+      { method: "GET", url: `${BASE}/agents`, body: null },
+      { method: "GET", url: `${BASE}/agents/a1/skills/triage`, body: null },
     ]);
   });
 

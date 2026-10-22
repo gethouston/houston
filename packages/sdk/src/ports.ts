@@ -93,6 +93,8 @@ export interface PageLifecycle {
  * `fetch` signature exactly so the runtime-client can be driven by it.
  */
 export interface SdkPorts {
+  /** Hosted active workspace identity. Null uses each agent's host workspace. */
+  activeWorkspaceId?: () => string | null;
   /** Current authenticated user; null disables account-specific device caches. */
   userId?: () => string | null;
   /** HTTP transport, shaped exactly like the global `fetch`. */

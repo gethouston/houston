@@ -3,6 +3,13 @@
 Every `version` bump in `inventory.yaml` needs a matching entry here (enforced by
 `pnpm check:parity`). Newest first. Use `## vN` headings.
 
+## v138 - 2026-10-22
+
+The employee skill menu offers "Keep only on this AI Employee" for a shared
+skill enabled on at most that employee. The SDK preserves and enables the
+local version before deleting the workspace copy. The same menu ships on
+phone and desktop.
+
 ## v137 - 2026-10-20
 
 Cloud users hear that teams are out of beta before plans move to

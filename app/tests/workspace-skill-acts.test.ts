@@ -4,6 +4,7 @@ import {
   everyReadAnswered,
   offersDeleteForEveryone,
   offersEnableForAll,
+  offersKeepOnlyForAgent,
   offersShareToWorkspace,
   withCanonicalHolder,
   workspaceActsState,
@@ -154,5 +155,16 @@ describe("everyReadAnswered", () => {
       everyReadAnswered([{ isSuccess: true }, { isSuccess: false }]),
       false,
     );
+  });
+});
+
+describe("offersKeepOnlyForAgent", () => {
+  it("offers it only for an unassigned store skill or this employee alone", () => {
+    strictEqual(offersKeepOnlyForAgent(store([]), "a", true), true);
+    strictEqual(offersKeepOnlyForAgent(store(["a"]), "a", true), true);
+    strictEqual(offersKeepOnlyForAgent(store(["b"]), "a", true), false);
+    strictEqual(offersKeepOnlyForAgent(store(["a", "b"]), "a", true), false);
+    strictEqual(offersKeepOnlyForAgent(local(["a"]), "a", true), false);
+    strictEqual(offersKeepOnlyForAgent(store(["a"]), "a", false), false);
   });
 });

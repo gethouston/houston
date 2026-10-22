@@ -5,10 +5,12 @@ import { logAndReportError } from "../../lib/error-report";
 import type { Agent } from "../../lib/types";
 import type { SharedSkillRow } from "../../lib/workspace-shared-skills";
 import type { SkillEditorActions } from "./skill-editor-props";
+import { useKeepSkill } from "./use-keep-skill";
 import { useSkillsModels } from "./use-skills-models";
 import {
   offersDeleteForEveryone,
   offersEnableForAll,
+  offersKeepOnlyForAgent,
   offersShareToWorkspace,
   withCanonicalHolder,
   workspaceActsState,
@@ -54,6 +56,7 @@ export function WorkspaceSkillMenuItems(props: WorkspaceSkillMenuProps) {
  */
 function WorkspaceActs(props: WorkspaceSkillMenuProps) {
   const { t } = useTranslation("skills");
+  const keep = useKeepSkill();
   const models = useSkillsModels(props.workspaceAgents);
   const row = models.rows.find((r) => r.slug === props.slug);
   const state = workspaceActsState({
@@ -107,6 +110,22 @@ function WorkspaceActs(props: WorkspaceSkillMenuProps) {
             {t("global.manage.enableAll")}
           </DropdownMenuItem>
         )}
+      {offersKeepOnlyForAgent(row, props.agent.id, sharedStore) && shared && (
+        <DropdownMenuItem
+          onSelect={() =>
+            props.guard(() => {
+              void keep(
+                shared.workspaceId,
+                props.agent.folderPath,
+                props.slug,
+                props.onBack,
+              );
+            })
+          }
+        >
+          {t("global.manage.keepOnly")}
+        </DropdownMenuItem>
+      )}
       {offersDeleteForEveryone(row, sharedStore) && (
         <DropdownMenuItem
           variant="destructive"

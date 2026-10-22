@@ -36,7 +36,7 @@
 #   a11y     roles / labels / focus expectations the surface must honor
 #   since    inventory version this component first appeared in
 
-version: 137
+version: 138
 
 components:
   - id: agent-delegation-settings
@@ -1202,7 +1202,10 @@ components:
       renderer with search and title-sorted rows; selecting a row places that
       skill in the composer. The add-an-existing-skill list is the same row
       with one "Add" action at its right edge, which loads the workspace skill
-      onto that employee and drops the row from the list.
+      onto that employee and drops the row from the list. The employee's
+      editor menu offers "Keep only on this AI Employee" for a shared skill
+      enabled on at most that employee, once every employee read has answered.
+      It preserves the workspace version locally before removing the shared copy.
     a11y: >-
       a row is ONE labeled button; any action beside it is a sibling, never
       nested, and names the skill it acts on. State is conveyed as text, never

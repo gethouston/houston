@@ -112,6 +112,12 @@ export {
   type SkillDraftActivityWrites,
   type SkillDraftWrites,
 } from "./modules/skills/drafts-writes";
+export {
+  type SkillShareHooks,
+  SkillTransferCommand,
+  type SkillTransferRefusal,
+  SkillTransferRefusalError,
+} from "./modules/skills/transfer-types";
 export * from "./modules/teams/trigger-remedy";
 export type {
   Clock,

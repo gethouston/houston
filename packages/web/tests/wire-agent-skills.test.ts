@@ -112,8 +112,14 @@ describe("the delegated skill reads", () => {
 });
 
 describe("the delegated skill writes", () => {
-  test("creating POSTs the three fields and nothing else", async () => {
-    stubFetch(() => json(200, {}));
+  test("creating POSTs the three fields before applying the sharing default", async () => {
+    stubRouted((call) => {
+      if (call.url.endsWith("/agents"))
+        return json(200, [{ id: AGENT, workspaceId: "ws" }]);
+      if (call.url.endsWith("/triage"))
+        return json(404, { error: "skill not found" });
+      return json(200, {});
+    });
 
     await client().createSkill({
       workspacePath: AGENT,
@@ -122,7 +128,7 @@ describe("the delegated skill writes", () => {
       content: "# Triage\n",
     });
 
-    expect(calls).toHaveLength(1);
+    expect(calls).toHaveLength(3);
     expect(calls[0].method).toBe("POST");
     expect(calls[0].url).toBe(`${BASE}/agents/${AGENT}/skills`);
     expect(calls[0].body).toBe(
