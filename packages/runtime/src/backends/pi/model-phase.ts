@@ -7,7 +7,7 @@ export class SentRequests {
   private readonly listeners = new Set<(request: SentRequestSize) => void>();
 
   /** `observer`, also reporting every request it is told of here. */
-  observe(observer: HedgeObserver = {}): HedgeObserver {
+  observe(observer: HedgeObserver = {}): Required<HedgeObserver> {
     return {
       answered: (afterMs, attempt) => observer.answered?.(afterMs, attempt),
       hedged: (attempt) => observer.hedged?.(attempt),
