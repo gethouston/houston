@@ -9,7 +9,8 @@ export class SentRequests {
   /** `observer`, also reporting every request it is told of here. */
   observe(observer: HedgeObserver = {}): HedgeObserver {
     return {
-      ...observer,
+      answered: (afterMs, attempt) => observer.answered?.(afterMs, attempt),
+      hedged: (attempt) => observer.hedged?.(attempt),
       sent: (request) => {
         observer.sent?.(request);
         for (const listener of this.listeners) listener(request);
