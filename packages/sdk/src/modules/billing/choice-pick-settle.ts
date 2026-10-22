@@ -1,4 +1,5 @@
 import type { BillingChoice } from "@houston/wire-types";
+import { namesPayer } from "./choice-model";
 import type { PickerState } from "./choice-picker";
 
 /**
@@ -15,8 +16,7 @@ export function settlePick(
   state: PickerState,
   choice: BillingChoice,
 ): PickerState {
-  const subscribes = choice.payer === "plus" || choice.payer === "comp";
-  return state.paidRefused && !subscribes
+  return state.paidRefused && !namesPayer(choice)
     ? { ...state, paidRefused: false }
     : state;
 }
