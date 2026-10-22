@@ -25,7 +25,10 @@ test("account selection guidance matches the desktop prompt and requires asking 
     "unambiguously identify one of the listed accounts",
     "If ANY account lacks an identity label and the choice is still unclear, you MUST ask ONE `ask_user` question before acting, even for read-only actions",
     "Never guess which account is work or personal",
-    "without asking again for the same task",
+    "an earlier choice in this conversation",
+    "keep using that account for the rest of this conversation without asking again",
+    "settle the account while setting it up and write it into the routine's instructions",
+    "If no one can answer a question right now and nothing identifies the account, do not act on that app",
     "never ask when the app has a single account",
   ]) {
     expect(paragraph).toContain(phrase);

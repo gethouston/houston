@@ -72,12 +72,36 @@ test("a mix of named and unnamed accounts requires one question before any actio
   expect(text).toContain("ca_1 (work@example.com), ca_2 (account 2)");
   expect(text).toContain("always pass `account`; never omit it");
   expect(text).toContain(
-    "the task unambiguously identify one of the listed accounts",
+    "or an earlier choice in this conversation unambiguously identify one of the listed accounts",
   );
   expect(text).toContain(
     "If ANY account lacks an identity label and the choice is still unclear, you MUST ask ONE ask_user question before acting, even for read-only actions",
   );
   expect(text).toContain("Never guess which account is work or personal");
-  expect(text).toContain("without asking again for the same task");
+  expect(text).toContain(
+    "keep using that account for the rest of this conversation without asking again",
+  );
+  expect(text).toContain(
+    "If no one can answer a question right now and nothing identifies the account, do not act on that app",
+  );
+  expect(text).toContain("that always needs their attention");
   expect(text).toContain("never ask when the app has a single account");
+});
+
+test("unnamed accounts connected on the same day carry their order within that day", () => {
+  const text = multiAccountNote([
+    match([
+      { id: "ca_2", createdAt: "2026-07-28T18:00:00.000Z" },
+      { id: "ca_1", createdAt: "2026-07-28T09:00:00.000Z" },
+      {
+        id: "ca_3",
+        label: "work@example.com",
+        createdAt: "2026-07-28T12:00:00Z",
+      },
+      { id: "ca_4", createdAt: "2026-07-29T09:00:00.000Z" },
+    ]),
+  ]);
+  expect(text).toContain(
+    "- googledrive: ca_2 (connected on July 28, 2026, the 2nd of 2 that day), ca_1 (connected on July 28, 2026, the 1st of 2 that day), ca_3 (work@example.com), ca_4 (connected on July 29, 2026)",
+  );
 });
