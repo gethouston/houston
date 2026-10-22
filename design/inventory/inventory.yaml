@@ -36,7 +36,7 @@
 #   a11y     roles / labels / focus expectations the surface must honor
 #   since    inventory version this component first appeared in
 
-version: 139
+version: 140
 
 components:
   - id: agent-delegation-settings
@@ -2473,19 +2473,28 @@ components:
   - id: billing-change-modal
     title: Pricing change modal
     purpose: Tell a cloud user, when the app opens, that teams are out of beta and plans move to organizations, and let an owner choose which org stays free.
-    anatomy: [date-chip, title, thanks-line, points, point-icon-tile, primary-pill, maybe-later-action, close-button, picker-step, success-step]
+    anatomy: [page-progress, date-chip, title, thanks-line, points, point-icon-tile, primary-pill, maybe-later-action, back-action, close-button, not-kept-page, picker-step, success-step]
     states: [hidden, pick, pick-payer, single-org, member, confirm, confirm-payer, applied-note, waiting-behind-plan-dialog, done]
     variants: [phone-full-height-sheet, desktop-dialog]
     behavior: >-
       SDK choiceModal decides from the account's billing choice. It opens on
-      a date chip ("From {cutover}"), the title, one thanks line and a short
-      list of points, each an icon tile with a title and a muted line. Every
-      variant leads with "Every space works like a team". An owner of several
-      orgs who has not picked also reads that each account keeps one free
-      org and that they pick it (a Plus or comp payer: that the subscription
-      comes with them), sees it on every app open until they pick, and the
-      primary action opens the free-org picker in the same frame; Maybe later
-      and the X hide it for that session only. A single-org owner reads that
+      a date chip ("From {cutover}"), the title and a short list of points,
+      each an icon tile with a title and a muted line. Every variant leads
+      with "Every space works like a team". An owner of several orgs who has
+      not picked reads it as pages, one idea each, the pages from SDK
+      choiceIntroPages and Next and Back from nextChoicePage /
+      previousChoicePage, under a row of progress dots spanning every page
+      through the success step (SDK pickFlowProgress): first one free org
+      per account, free for everyone in it, and the rest at the SDK's seat
+      price per member a month (a Plus or comp payer: the subscription
+      covers one org they choose next); then "Nothing gets deleted": the
+      orgs not kept free still open, their agents can move to the free org,
+      and new conversations wait for a plan. The second page's action
+      ("Choose my free organization", a payer's Next) opens the free-org
+      picker in the same frame. It shows on every app open until they pick;
+      Maybe later sits on the first page only, Back on every later page, and
+      the X hides it for that session only. A single-org owner or a member
+      reads one page with a thanks line. A single-org owner reads that
       the org stays free (or that the subscription pays for it), and a member
       of someone else's org reads there is nothing to do; each sees it once,
       and Got it or the X stores the dismissal so no device shows it again.
@@ -2503,7 +2512,7 @@ components:
       list, and Got it hides it everywhere. Neither shows to the owner of a
       single org. It never stacks on a plan dialog and
       waits until that one is gone. The date is the server's cutoverAt in the
-      reader's language; the intro names no price (the payer step does). Cloud only. It wears the launch announcement's dark
+      reader's language. No page has a pay action. Cloud only. It wears the launch announcement's dark
       briefing frame: centered on desktop, full height on phones with the
       actions at the bottom.
     a11y: A titled, described dialog; the X is labelled; every action is a visible button, never hover-only; only the person closes it. A new step takes focus on its checked radio, else its title.
@@ -2512,7 +2521,7 @@ components:
   - id: free-org-picker
     title: Free organization picker
     purpose: Let an owner choose which org stays free and, for a payer, which org the subscription pays for.
-    anatomy: [step-progress, title, org-radio-rows, org-avatar, most-active-tag, member-and-activity-meta, check-circle, seat-price-meta, disabled-free-row, grace-note, primary-pill, back-action, close-button, success-check, success-title, success-date-line, org-status-summary, settings-hint, done-pill]
+    anatomy: [step-progress, payer-label, title, subtitle, org-radio-rows, org-avatar, most-active-tag, subscription-tag, member-and-activity-meta, check-circle, seat-price-meta, disabled-subscription-row, primary-pill, back-action, close-button, success-check, success-title, success-date-line, org-status-summary, settings-hint, done-pill]
     states: [free-step, paid-step, saving, refused, done, applied-done]
     variants: [desktop-dialog, phone-full-height-sheet]
     behavior: >-
@@ -2523,11 +2532,15 @@ components:
       an ink ring and a filled check. The stored pick, else the busiest, is
       preselected, and the full-width pill names what it does ("Keep {org}
       free"), its label changing at once as the pick moves, a long org name
-      truncated so the pill stays one line. A Plus or comp
-      payer sees a two-step progress bar, presses Next, then picks the org the
-      subscription pays for ("Pay for {org}"): each row's seat price from
-      payerTotals, the free pick still listed in place but disabled, the
-      grace note under the list and Back under the pill. Save calls
+      truncated so the pill stays one line; the free step's subtitle says
+      everyone in it uses Houston free. A Plus or comp payer first picks the
+      org the subscription covers ("You already pay for Houston", "Use it
+      for {org}", each row's members and the SDK seat price, the busiest
+      tagged), then the free org, where the subscription's org stays listed
+      in place, disabled and tagged Your subscription, with Back under the
+      pill; SDK startPick, toFreeStep and reconcilePick hold the order and
+      the defaults. Progress dots show whenever more than one page leads to
+      the success step. Save calls
       setChoice; not_owner, not_payer and same_org come back as outcomes with
       their own copy. A stored pick moves to a success step in the same frame
       (SDK finishPicking / choicePickerSaved; a refusal never does): a check

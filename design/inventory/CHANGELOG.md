@@ -3,6 +3,19 @@
 Every `version` bump in `inventory.yaml` needs a matching entry here (enforced by
 `pnpm check:parity`). Newest first. Use `## vN` headings.
 
+## v140 - 2026-10-22
+
+The pricing-change modal splits its intro into short pages with progress
+dots for an owner who has to pick: what changes (one free organization,
+free for everyone in it; the rest at the seat price per member a month, or
+for a payer that the subscription covers one organization), then "Nothing
+gets deleted" for the organizations not kept free. Maybe later sits on the
+first page only and Back on every later one. A payer now picks the
+organization the subscription covers first ("Use it for {org}"), then the
+free one, where the subscription's organization stays listed but disabled;
+the grace price line is gone and nothing in the modal asks to pay. The
+Settings picker and the post-cutover Change use the same order.
+
 ## v139 - 2026-10-21
 
 After the cutover, an owner of several organizations whose organizations

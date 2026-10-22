@@ -76,19 +76,20 @@
       "team": {
         "title": "Cada espacio funciona como un equipo",
         "any": "Los espacios personales y de equipo pasan a ser lo mismo, así que puedes invitar personas a cualquiera de ellos.",
-        "named": "Los espacios personales y de equipo pasan a ser lo mismo, así que puedes invitar personas a {{name}}."
+        "named": "Los espacios personales y de equipo pasan a ser lo mismo, así que puedes invitar personas a {{name}}.",
+        "invite": "Puedes invitar personas a cualquiera de ellos."
       },
       "oneFree": {
         "title": "Una organización gratis por cuenta",
-        "body": "Sigue funcionando como hoy."
+        "body": "Todos los que están en ella usan Houston gratis."
       },
-      "pick": {
-        "title": "Elige la que se queda gratis",
-        "body": "¿Creaste varias solo para probar? Elige la tuya y nosotros nos encargamos del resto."
+      "rest": {
+        "title": "Las demás cuestan {{price}} por miembro al mes",
+        "body": "Solo para las organizaciones que quieras que sigan funcionando."
       },
-      "moves": {
-        "title": "Tu suscripción viene contigo",
-        "body": "Elige la organización que sigue gratis y la que paga tu suscripción."
+      "covers": {
+        "title": "Tu suscripción cubre una organización",
+        "body": "En un momento eliges cuál."
       },
       "staysFree": "{{name}} sigue gratis",
       "paysFor": "Tu suscripción paga por {{name}}",
@@ -99,10 +100,28 @@
       },
       "choose": "Elegir mi organización gratis",
       "gotIt": "Entendido",
-      "close": "Cerrar"
+      "close": "Cerrar",
+      "notKept": {
+        "title": "No se borra nada",
+        "open": {
+          "title": "Puedes seguir abriéndolas",
+          "body": "Cada agente, misión y archivo se queda donde está."
+        },
+        "move": {
+          "title": "Mueve agentes a tu organización gratis",
+          "body": "Trae los que quieras seguir usando."
+        },
+        "wait": {
+          "title": "Las conversaciones nuevas esperan un plan",
+          "body": "Cuando abras una, puedes pagarla ahí mismo."
+        }
+      },
+      "next": "Siguiente",
+      "back": "Atrás"
     },
     "picker": {
       "title": "¿Qué organización sigue gratis?",
+      "sub": "Todos los que están en ella usan Houston gratis.",
       "mostActive": "Más activa",
       "personal": "Personal",
       "members_one": "{{count}} miembro",
@@ -113,19 +132,14 @@
       "meta": "{{first}} · {{second}}",
       "keep": "Mantener <name/> gratis",
       "close": "Cerrar",
-      "step": "Paso {{step}} de 2",
-      "next": "Siguiente",
+      "step": "Paso {{step}} de {{total}}",
       "pickOne": "Elige una organización"
     },
     "payer": {
-      "title": "¿Cuál paga tu suscripción?",
+      "label": "Ya pagas Houston",
+      "title": "¿Qué organización cubre tu suscripción?",
       "each": "{{price}} cada uno",
-      "free": "Gratis",
-      "staysFree": "Sigue gratis",
-      "grace": "Tu precio sigue en {{today}} al mes hasta el {{date}}, y luego pasa a {{monthly}} al mes.",
-      "noGrace": "Tu precio sigue en {{monthly}} al mes.",
-      "back": "Atrás",
-      "use": "Pagar por <name/>"
+      "use": "Usarla para <name/>"
     },
     "done": {
       "title": "{{name}} sigue gratis",
@@ -168,7 +182,7 @@
       },
       "same_org": {
         "title": "Elige dos organizaciones distintas",
-        "body": "La organización gratis no puede ser también la que paga tu suscripción."
+        "body": "La organización gratis no puede ser también la que cubre tu suscripción."
       },
       "choice_closed": {
         "title": "El plazo para cambiar ya terminó",

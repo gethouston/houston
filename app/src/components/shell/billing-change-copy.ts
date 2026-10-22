@@ -1,9 +1,11 @@
 import type { BillingChoice } from "@houston/engine-adapter";
-import type { AnnouncedChoice } from "@houston/sdk";
+import { type AnnouncedChoice, orgSeatPrice } from "@houston/sdk";
 import {
+  ArrowRightLeft,
   CreditCard,
+  Eye,
   Gift,
-  Layers,
+  Lock,
   type LucideIcon,
   Smile,
   Users,
@@ -24,14 +26,14 @@ export interface NoticePoint {
 }
 
 /**
- * The pricing-change modal's points, for the notice it announces. None names
- * a price: the payer step of the picker carries it.
+ * The pricing-change modal's first page, as points, for the notice it
+ * announces. Only a pick names the price, which comes from the SDK.
  */
 export function useNoticePoints(
   notice: IntroNotice,
   choice: BillingChoice,
 ): NoticePoint[] {
-  const { t } = useTranslation("plan");
+  const { t, i18n } = useTranslation("plan");
   const orgName = useOrgName();
   const team = (body: string): NoticePoint => ({
     icon: Users,
@@ -41,7 +43,7 @@ export function useNoticePoints(
   switch (notice.kind) {
     case "pick":
       return [
-        team(t("choice.notice.team.any")),
+        team(t("choice.notice.team.invite")),
         {
           icon: Gift,
           title: t("choice.notice.oneFree.title"),
@@ -50,13 +52,15 @@ export function useNoticePoints(
         notice.payer
           ? {
               icon: CreditCard,
-              title: t("choice.notice.moves.title"),
-              body: t("choice.notice.moves.body"),
+              title: t("choice.notice.covers.title"),
+              body: t("choice.notice.covers.body"),
             }
           : {
-              icon: Layers,
-              title: t("choice.notice.pick.title"),
-              body: t("choice.notice.pick.body"),
+              icon: CreditCard,
+              title: t("choice.notice.rest.title", {
+                price: orgSeatPrice(i18n.language),
+              }),
+              body: t("choice.notice.rest.body"),
             },
       ];
     case "single_org": {
@@ -83,4 +87,26 @@ export function useNoticePoints(
         },
       ];
   }
+}
+
+/** The pick's second page: what happens to the orgs not kept free. */
+export function useNotKeptPoints(): NoticePoint[] {
+  const { t } = useTranslation("plan");
+  return [
+    {
+      icon: Eye,
+      title: t("choice.notice.notKept.open.title"),
+      body: t("choice.notice.notKept.open.body"),
+    },
+    {
+      icon: ArrowRightLeft,
+      title: t("choice.notice.notKept.move.title"),
+      body: t("choice.notice.notKept.move.body"),
+    },
+    {
+      icon: Lock,
+      title: t("choice.notice.notKept.wait.title"),
+      body: t("choice.notice.notKept.wait.body"),
+    },
+  ];
 }

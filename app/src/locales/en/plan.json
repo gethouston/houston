@@ -76,19 +76,20 @@
       "team": {
         "title": "Every space works like a team",
         "any": "Personal and team spaces become the same thing, so you can invite people to any of them.",
-        "named": "Personal and team spaces become the same thing, so you can invite people to {{name}}."
+        "named": "Personal and team spaces become the same thing, so you can invite people to {{name}}.",
+        "invite": "You can invite people to any of them."
       },
       "oneFree": {
         "title": "One free organization per account",
-        "body": "It keeps working the way it does today."
+        "body": "Everyone in it uses Houston free."
       },
-      "pick": {
-        "title": "Pick the one to keep free",
-        "body": "Made a few just to try things? Choose yours and we'll handle the rest."
+      "rest": {
+        "title": "The rest are {{price}} per member a month",
+        "body": "Only for organizations you want to keep working."
       },
-      "moves": {
-        "title": "Your subscription comes with you",
-        "body": "Pick the organization that stays free and the one your subscription pays for."
+      "covers": {
+        "title": "Your subscription covers one organization",
+        "body": "You choose which one in a moment."
       },
       "staysFree": "{{name}} stays free",
       "paysFor": "Your subscription pays for {{name}}",
@@ -99,10 +100,28 @@
       },
       "choose": "Choose my free organization",
       "gotIt": "Got it",
-      "close": "Close"
+      "close": "Close",
+      "notKept": {
+        "title": "Nothing gets deleted",
+        "open": {
+          "title": "You can still open them",
+          "body": "Every agent, mission and file stays where it is."
+        },
+        "move": {
+          "title": "Move agents to your free organization",
+          "body": "Bring the ones you want to keep using."
+        },
+        "wait": {
+          "title": "New conversations wait for a plan",
+          "body": "When you open one, you can pay for it there."
+        }
+      },
+      "next": "Next",
+      "back": "Back"
     },
     "picker": {
       "title": "Which organization stays free?",
+      "sub": "Everyone in it uses Houston free.",
       "mostActive": "Most active",
       "personal": "Personal",
       "members_one": "{{count}} member",
@@ -113,19 +132,14 @@
       "meta": "{{first}} · {{second}}",
       "keep": "Keep <name/> free",
       "close": "Close",
-      "step": "Step {{step}} of 2",
-      "next": "Next",
+      "step": "Step {{step}} of {{total}}",
       "pickOne": "Pick an organization"
     },
     "payer": {
-      "title": "Which one does your subscription pay for?",
+      "label": "You already pay for Houston",
+      "title": "Which organization does your subscription cover?",
       "each": "{{price}} each",
-      "free": "Free",
-      "staysFree": "Stays free",
-      "grace": "Your price stays {{today}} a month until {{date}}, then it's {{monthly}} a month.",
-      "noGrace": "Your price stays {{monthly}} a month.",
-      "back": "Back",
-      "use": "Pay for <name/>"
+      "use": "Use it for <name/>"
     },
     "done": {
       "title": "{{name}} stays free",
@@ -168,7 +182,7 @@
       },
       "same_org": {
         "title": "Pick two different organizations",
-        "body": "The free organization can't also be the one your subscription pays for."
+        "body": "The free organization can't also be the one your subscription covers."
       },
       "choice_closed": {
         "title": "The change window has closed",
