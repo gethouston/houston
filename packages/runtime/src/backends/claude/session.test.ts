@@ -394,7 +394,7 @@ test("every prompt spawns with the env refreshAuth returns AT THAT PROMPT — a 
   expect(session.getUsedAccessDigest()).toBe("digest-rotated");
 });
 
-test("the retry-fresh rerun reuses the SAME prompt's auth (one read per prompt, not per attempt)", async () => {
+test("the retry-fresh rerun runs on its own credential read, and the digest names it", async () => {
   const store = fakeStore("sess-gone");
   let reads = 0;
   const optionsSeen: Options[] = [];
@@ -413,13 +413,17 @@ test("the retry-fresh rerun reuses the SAME prompt's auth (one read per prompt, 
     store,
     refreshAuth: () => {
       reads++;
-      return { env: { CLAUDE_CODE_OAUTH_TOKEN: "tok" }, accessDigest: "d" };
+      return {
+        env: { CLAUDE_CODE_OAUTH_TOKEN: `tok-${reads}` },
+        accessDigest: `d-${reads}`,
+      };
     },
   });
   await session.prompt("go");
-  expect(reads).toBe(1);
-  expect(optionsSeen).toHaveLength(2);
-  expect(optionsSeen[1]?.env?.CLAUDE_CODE_OAUTH_TOKEN).toBe("tok");
+  expect(
+    optionsSeen.map((options) => options.env?.CLAUDE_CODE_OAUTH_TOKEN),
+  ).toEqual(["tok-1", "tok-2"]);
+  expect(session.getUsedAccessDigest()).toBe("d-2");
 });
 
 test("getContextUsage is undefined before a turn, then reflects the last usage", async () => {

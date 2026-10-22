@@ -21,10 +21,13 @@ function store(resume: string | undefined): SessionsStore {
   };
 }
 
-/** One call's result: its measured prompt size, or a request that failed. */
-type Reply = number | "timed-out";
+/**
+ * One call's result: its measured prompt size, a request that failed, or the
+ * CLI refusing the session id the call tried to resume.
+ */
+type Reply = number | "timed-out" | "resume-refused";
 
-function result(reply: Reply): SDKMessage {
+function result(reply: number | "timed-out"): SDKMessage {
   // The CLI reports a request that never answered as an error result whose
   // usage is all zeros.
   const failed = reply === "timed-out";
@@ -42,6 +45,7 @@ function session(input: {
   resume: string | undefined;
   recorded?: number;
   replies?: Reply[];
+  replay?: string;
 }) {
   const timeouts: (string | undefined)[] = [];
   const replies = [...(input.replies ?? [])];
@@ -50,6 +54,8 @@ function session(input: {
   }): AsyncIterable<SDKMessage> {
     timeouts.push(params.options.env?.API_TIMEOUT_MS);
     const reply = replies.shift();
+    if (reply === "resume-refused")
+      throw new Error("No conversation found with session ID: sess-1");
     if (reply !== undefined) yield result(reply);
   };
   const claude = new ClaudeSession({
@@ -61,6 +67,9 @@ function session(input: {
     refreshAuth: (promptTokens) => ({
       env: buildClaudeEnv(undefined, { configDir: "/config", promptTokens }),
     }),
+    ...(input.replay === undefined
+      ? {}
+      : { freshRetryPromptPrefix: () => input.replay ?? "" }),
     ...(input.recorded === undefined
       ? {}
       : { recordedContextTokens: () => input.recorded }),
@@ -128,4 +137,16 @@ test("a request that timed out leaves the fill the conversation recorded", async
   await claude.prompt("go");
   await claude.prompt("go");
   expect(timeouts).toEqual(["60000", "60000"]);
+});
+
+test("a refused resume's fresh retry waits for the replay it sends", async () => {
+  const { claude, timeouts } = session({
+    resume: "sess-1",
+    recorded: 10_000,
+    replies: ["resume-refused", 100],
+    // About 750k tokens of canonical history, far past the resumed fill.
+    replay: "word ".repeat(600_000),
+  });
+  await claude.prompt("go");
+  expect(timeouts).toEqual(["20500", "57500"]);
 });
