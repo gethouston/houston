@@ -96,7 +96,13 @@ test("Change moves the subscription to a three-member team and shows each org's 
   await expect(modal).toContainText(
     "Your price stays $15 a month until November 22, then it's $45 a month.",
   );
+  // The save moves the subscription and the locks: every org is read again.
+  const orgsRead = page.waitForRequest(
+    (req) =>
+      req.method() === "GET" && new URL(req.url()).pathname === "/v1/orgs",
+  );
   await modal.getByRole("button", { name: "Pay for La Fila" }).click();
+  await orgsRead;
 
   await expect(
     page.getByRole("dialog", {
@@ -119,9 +125,13 @@ test("Change moves the subscription to a three-member team and shows each org's 
   await page.clock.runFor(3_000);
   await expect(modal).toBeVisible();
 
+  // The save itself settled the notice; closing sends no second dismissal.
+  await expect.poll(routes).toContain("dismiss");
   await modal.getByRole("button", { name: "Done" }).click();
   await expect(modal).toBeHidden();
-  await expect.poll(routes).toContain("dismiss");
+  expect((await routes()).filter((route) => route === "dismiss")).toHaveLength(
+    1,
+  );
 });
 
 test("Maybe later hides it for the session; the next open asks again", async ({
@@ -212,4 +222,11 @@ test("Billing offers the change until the window ends, on the same picker", asyn
     }),
   ).toBeVisible();
   await expect(row(picker, "La Fila")).toContainText("Locks November 6");
+
+  // Confirming from Settings settles the notice too: no modal next open.
+  await expect.poll(routes).toContain("dismiss");
+  await page.reload();
+  await expect(page.locator("[data-sidebar-item]").first()).toBeVisible();
+  await page.clock.runFor(3_000);
+  await expect(choiceModal(page)).toHaveCount(0);
 });
