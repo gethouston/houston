@@ -44,8 +44,15 @@ const DANGLING_RESUME_RE = /No conversation found with session ID/i;
  */
 export async function runTurnAttempt(
   state: TurnAttemptState,
-  { text, resume, env }: TurnAttemptInput,
+  { text, resume, promptTokens }: TurnAttemptInput,
 ): Promise<"success" | "failed" | "retry-fresh"> {
+  // Fresh credential per attempt (PRODUCT-1355): every `query()` spawns its own
+  // SDK subprocess, so re-reading here means this attempt runs on the token the
+  // store holds NOW — a reconnect or the gateway's rotation lands on the very
+  // next turn instead of never. The digest follows the env so a revoked-token
+  // report names the token this attempt actually ran on (PRODUCT-1319).
+  const { env, accessDigest } = state.deps.refreshAuth(promptTokens);
+  state.setUsedAccessDigest(accessDigest);
   const abortController = new AbortController();
   state.beginAttempt(abortController);
 
@@ -67,7 +74,7 @@ export async function runTurnAttempt(
     onContextTokens: (t) => {
       state.setContextTokens(t);
     },
-    usedAccessDigest: state.usedAccessDigest,
+    usedAccessDigest: accessDigest,
   });
   let capturedSessionId: string | undefined;
   // True once this turn has surfaced a provider_error (from `translate`), so a
@@ -111,7 +118,7 @@ export async function runTurnAttempt(
             "Houston's tools did not attach to this turn (the houston MCP server is not connected); the turn was stopped instead of running without them",
             state.model,
             null,
-            state.usedAccessDigest,
+            accessDigest,
           ),
         });
         return "failed";
@@ -154,12 +161,7 @@ export async function runTurnAttempt(
     providerErrored = true;
     state.emit({
       type: "provider_error",
-      data: classifyText(
-        errMessage(err),
-        state.model,
-        null,
-        state.usedAccessDigest,
-      ),
+      data: classifyText(errMessage(err), state.model, null, accessDigest),
     });
   } finally {
     if (capturedSessionId)

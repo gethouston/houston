@@ -39,7 +39,7 @@ export interface ClaudeSessionDeps {
   /**
    * Re-read the stored credential and rebuild the subprocess env from it, its
    * first-byte deadline sized for `promptTokens`.
-   * Called at the start of EVERY prompt (PRODUCT-1355): each `query()` spawns
+   * Called at the start of EVERY attempt (PRODUCT-1355): each `query()` spawns
    * its own SDK subprocess (resumed by session id), so the env is a per-turn
    * lever — a session must never stay pinned to the token it was built with,
    * because the gateway's normal rotation invalidates the superseded access
@@ -58,7 +58,7 @@ export interface ClaudeSessionDeps {
   /**
    * Digest of the OAuth access token in the subprocess env at BUILD time —
    * what a revoked-token report names. Updated by `refreshAuth` on every
-   * prompt, so it always tracks the token the CURRENT turn runs on
+   * attempt, so it always tracks the token the CURRENT attempt runs on
    * (PRODUCT-1319, PRODUCT-1355). Undefined when the session runs on an
    * api_key or the config-dir credential, where the report must not fire.
    */

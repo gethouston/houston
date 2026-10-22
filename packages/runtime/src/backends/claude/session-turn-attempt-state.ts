@@ -1,6 +1,6 @@
 import type { WireEvent } from "@houston/runtime-client";
 import type { HarnessTimingEvent, ReplyBeat, ThinkingLevel } from "../types";
-import type { ClaudeSessionDeps, TurnAuth } from "./session-deps";
+import type { ClaudeSessionDeps } from "./session-deps";
 
 /**
  * The exact slice of `ClaudeSession` one attempt reads and writes, handed over
@@ -12,8 +12,6 @@ export interface TurnAttemptState {
   /** The SDK model string this attempt spawns with. */
   readonly model: string;
   readonly thinkingLevel: ThinkingLevel | undefined;
-  /** Digest of the OAuth access token this attempt runs on, for error reports. */
-  readonly usedAccessDigest: string | undefined;
   /**
    * Clear the session's abort flag and register this attempt's controller, so
    * the user's Stop (and dispose) cancels the query that is about to run.
@@ -22,6 +20,8 @@ export interface TurnAttemptState {
   /** Whether the user's Stop already fired for this attempt. */
   isAborting(): boolean;
   setContextTokens(tokens: number): void;
+  /** Record the digest of the OAuth access token this attempt runs on. */
+  setUsedAccessDigest(digest: string | undefined): void;
   /** Why this attempt asked for a fresh rerun, for the session's warn line. */
   setRetryReason(reason: string): void;
   emit(e: WireEvent): void;
@@ -33,9 +33,13 @@ export interface TurnAttemptState {
   emitTiming(e: HarnessTimingEvent): void;
 }
 
-/** The per-attempt inputs: the prompt, the resume id to try, the turn's env. */
+/**
+ * The per-attempt inputs: the prompt, the resume id to try, and the largest
+ * prompt the attempt's turn sends (`claudeTurnPromptTokens`), which sizes the
+ * first-byte deadline of the env it runs on.
+ */
 export interface TurnAttemptInput {
   text: string;
   resume: string | undefined;
-  env: TurnAuth["env"];
+  promptTokens: number;
 }

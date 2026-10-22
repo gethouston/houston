@@ -185,8 +185,8 @@ export function createClaudeBackend(deps: ClaudeBackendDeps): HarnessBackend {
         recordedContextTokens: opts.recordedContextTokens,
         refreshAuth,
         // WHICH token the subprocess env carries, for the revoked-token
-        // report (PRODUCT-1319) — updated by refreshAuth on every prompt so it
-        // always names the token the current turn runs on (PRODUCT-1355).
+        // report (PRODUCT-1319) — updated by refreshAuth on every attempt so it
+        // always names the token the current attempt runs on (PRODUCT-1355).
         usedAccessDigest: initialAuth.accessDigest,
       });
     },

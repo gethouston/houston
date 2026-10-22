@@ -51,7 +51,7 @@ export class ClaudeSession
 
   /**
    * The digest of the OAuth access token this session's next spawn runs on
-   * (build-time until the first prompt, then each prompt's `refreshAuth` read).
+   * (build-time until the first prompt, then each attempt's `refreshAuth` read).
    * The conversation cache compares it against the CURRENTLY stored credential
    * to rebuild sessions left on a rotated-out token (PRODUCT-1355 layer 2).
    */
@@ -67,17 +67,10 @@ export class ClaudeSession
       : this.deps.sessionsStore.resolveResume(this.deps.conversationId);
     const prompt = `${checkpoint ? compactedPreamble(checkpoint.summary) : ""}${text}`;
     const fill = resume === undefined ? undefined : this.knownFill();
-    // Fresh credential per turn (PRODUCT-1355): every `query()` spawns its own
-    // SDK subprocess, so re-reading here means this turn runs on the token the
-    // store holds NOW — a reconnect or the gateway's rotation lands on the very
-    // next turn instead of never. The digest follows the env so a revoked-token
-    // report names the token this turn actually ran on (PRODUCT-1319).
-    const auth = this.deps.refreshAuth(claudeTurnPromptTokens(fill, prompt));
-    this.usedAccessDigest = auth.accessDigest;
     let outcome = await runTurnAttempt(this.attemptState(), {
       text: prompt,
       resume,
-      env: auth.env,
+      promptTokens: claudeTurnPromptTokens(fill, prompt),
     });
     if (outcome === "retry-fresh") {
       // The SDK refused the resume id (its cwd-scoped lookup missed the
@@ -88,10 +81,11 @@ export class ClaudeSession
       console.warn(
         `[claude] resume for conversation ${this.deps.conversationId} ${this.retryReason}; starting a fresh session`,
       );
+      const retryText = `${this.deps.freshRetryPromptPrefix?.() ?? ""}${prompt}`;
       outcome = await runTurnAttempt(this.attemptState(), {
-        text: `${this.deps.freshRetryPromptPrefix?.() ?? ""}${prompt}`,
+        text: retryText,
         resume: undefined,
-        env: auth.env,
+        promptTokens: claudeTurnPromptTokens(undefined, retryText),
       });
     }
     if (outcome === "success" && checkpoint)
@@ -104,7 +98,6 @@ export class ClaudeSession
       deps: this.deps,
       model: this.model,
       thinkingLevel: this.thinkingLevel,
-      usedAccessDigest: this.usedAccessDigest,
       beginAttempt: (controller) => {
         this.aborting = false;
         this.abortController = controller;
@@ -112,6 +105,9 @@ export class ClaudeSession
       isAborting: () => this.aborting,
       setContextTokens: (tokens) => {
         this.contextTokens = tokens;
+      },
+      setUsedAccessDigest: (digest) => {
+        this.usedAccessDigest = digest;
       },
       setRetryReason: (reason) => {
         this.retryReason = reason;
