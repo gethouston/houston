@@ -845,7 +845,7 @@ export const tauriSharedSkills = {
       }),
     ),
   /** Explicit sharing preserves the full content at its exact slug.
-   *  The SDK's shareNew capability handles the automatic creation default. */
+   *  The create chat's sharing default is the SDK's shareNew capability. */
   promote: (workspaceId: string, slug: string, content: string) =>
     call<SkillDetail>("promote_shared_skill", () =>
       getEngine().promoteSharedSkill(workspaceId, slug, content),

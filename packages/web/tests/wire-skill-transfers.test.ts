@@ -131,7 +131,7 @@ test("sharing a create-chat skill promotes the exact content and enables only it
   for (const call of calls) expectGatewayHeaders(call);
 });
 
-test("SDK creation defaults use the active org, not the pod's internal workspace", async () => {
+test("a plain createSkill only creates: sharing is the create chat's act", async () => {
   store();
   await client().createSkill({
     workspacePath: "a",
@@ -139,15 +139,5 @@ test("SDK creation defaults use the active org, not the pod's internal workspace
     description: "Sort messages",
     content: "Sort messages.",
   });
-  expect(trace()).toEqual([
-    "POST /agents/a/skills",
-    "GET /agents",
-    "GET /agents/a/skills/triage",
-    `POST ${SHARED}`,
-    "GET /agents/a/skills-manifest",
-    "PUT /agents/a/skills-manifest",
-    "GET /agents/a/skills/triage",
-    "DELETE /agents/a/skills/triage",
-  ]);
-  for (const call of calls) expectGatewayHeaders(call);
+  expect(trace()).toEqual(["POST /agents/a/skills"]);
 });

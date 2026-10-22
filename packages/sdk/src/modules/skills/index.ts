@@ -52,10 +52,7 @@ export {
   AgentSkillsHttpError,
 } from "./types-agent";
 
-type SkillTransfers = Omit<
-  ReturnType<typeof createSkillTransfers>,
-  "createSkill"
->;
+type SkillTransfers = ReturnType<typeof createSkillTransfers>;
 
 export * from "./transfer-types";
 
@@ -72,14 +69,13 @@ export function createSkillsModule(ctx: ModuleContext): SkillsModule {
     moduleScope(ctx, "skills", AgentSkillsHttpError),
   );
   const shared = createSharedSkills(ctx);
-  const { createSkill, ...transfers } = createSkillTransfers(
+  const transfers = createSkillTransfers(
     ctx,
     moduleScope(ctx, "skills", AgentSkillsHttpError),
     agent,
     shared,
   );
-  const withDefaults = { ...agent, createSkill };
-  registerAgentSkillCommands(ctx, withDefaults);
+  registerAgentSkillCommands(ctx, agent);
   // A creation chat is a conversation on the agent's board, so throwing one
   // away is the board's own archive write.
   const drafts = createSkillDraftWrites(
@@ -91,5 +87,5 @@ export function createSkillsModule(ctx: ModuleContext): SkillsModule {
       requireString(p, "activityId"),
     ),
   );
-  return { agent: withDefaults, shared, ...drafts, ...transfers };
+  return { agent, shared, ...drafts, ...transfers };
 }

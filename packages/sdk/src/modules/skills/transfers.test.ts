@@ -13,7 +13,8 @@ const json = (body: unknown, status = 200) =>
 
 function fixture() {
   const state = {
-    activeWorkspaceId: null as string | null,
+    /** The gateway scopes /agents to the active org, so no outsider shows. */
+    orgScopedRoster: false,
     wireWorkspaceId: "ws",
     orgRole: "owner",
     orgSlug: "team",
@@ -43,7 +44,7 @@ function fixture() {
         return json([
           { id: "a", workspaceId: state.wireWorkspaceId },
           { id: "b", workspaceId: state.wireWorkspaceId },
-          ...(state.activeWorkspaceId
+          ...(state.orgScopedRoster
             ? []
             : [{ id: "outside", workspaceId: "elsewhere" }]),
         ]);
@@ -106,7 +107,6 @@ function fixture() {
     reactivity: false,
     ports: {
       fetch: fetchImpl,
-      activeWorkspaceId: () => state.activeWorkspaceId,
       storage: memoryKv(),
       devicePreferences: memoryKv(),
       clock: { now: () => 0, setTimeout: () => 0, clearTimeout: () => {} },
@@ -314,16 +314,17 @@ describe("sharing a newly created skill", () => {
     state.local = null;
     expect(await share()).toEqual({ outcome: "skipped" });
   });
-  it("applies the default to SDK createSkill too", async () => {
-    const { state, sdk } = fixture();
+  it("never runs on a plain SDK createSkill", async () => {
+    const { state, sdk, calls } = fixture();
     state.shared = null;
     await sdk.skills.agent.createSkill("a", {
       name: "Triage",
       description: "Sort messages",
       content: "Sort messages.",
     });
-    expect(state.shared).toContain("Sort messages.");
-    expect(state.local).toBeNull();
+    expect(calls.map((call) => call.step)).toEqual(["POST /agents/a/skills"]);
+    expect(state.shared).toBeNull();
+    expect(state.local).toContain("Sort messages.");
   });
 });
 
@@ -382,30 +383,11 @@ describe("sharing defaults and expected refusals", () => {
 describe("cloud workspace identity and roster visibility", () => {
   it("keeps an org store skill even though its agents report the internal Houston workspace", async () => {
     const { state, sdk } = fixture();
-    state.activeWorkspaceId = "org:team";
+    state.orgScopedRoster = true;
     state.wireWorkspaceId = "Houston";
     await sdk.skills.keepSharedSkillForAgent("org:team", "a", "triage");
     expect(state.local).toBe(CONTENT);
     expect(state.shared).toBeNull();
-  });
-  it("uses the active workspace for SDK creation defaults", async () => {
-    const { state, sdk, calls } = fixture();
-    state.activeWorkspaceId = "org:team";
-    state.wireWorkspaceId = "Houston";
-    state.shared = null;
-    await sdk.skills.agent.createSkill("a", {
-      name: "Triage",
-      description: "Sort",
-      content: "Sort messages.",
-    });
-    expect(
-      calls.some(
-        (call) =>
-          call.step === "POST /v1/workspaces/org%3Ateam/shared-skills/triage",
-      ),
-    ).toBe(true);
-    expect(state.shared).toContain("Sort messages.");
-    expect(state.local).toBeNull();
   });
   it("refuses a partial admin roster without writing", async () => {
     const { state, sdk, calls } = fixture();

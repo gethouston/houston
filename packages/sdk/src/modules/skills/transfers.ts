@@ -1,6 +1,4 @@
-import { slugify } from "@houston/domain";
 import type { ModuleContext } from "../../module-context";
-import { listAgents } from "../agents/http";
 import type { HttpScope } from "../http";
 import { requireString } from "../payload";
 import type { AgentSkillsFacade } from "./agent-facade";
@@ -65,23 +63,5 @@ export function createSkillTransfers(
   return {
     shareNewSkillToWorkspace: shareNew,
     keepSharedSkillForAgent: keep,
-    /** The default also applies to callers creating through the SDK. */
-    createSkill: async (
-      agentId: string,
-      body: Parameters<AgentSkillsFacade["createSkill"]>[1],
-    ) => {
-      const activeWorkspaceId = ctx.config.ports.activeWorkspaceId?.();
-      await agent.createSkill(agentId, body);
-      const employee = (await listAgents(scope)).find((a) => a.id === agentId);
-      if (!employee)
-        throw new Error(
-          "created skill's employee is absent from the workspace roster",
-        );
-      await shareNew(
-        activeWorkspaceId ?? employee.workspaceId,
-        agentId,
-        slugify(body.name),
-      );
-    },
   };
 }

@@ -105,7 +105,6 @@ export interface EngineSdkOptions {
    */
   fetch: typeof fetch;
   liveToken?: () => string;
-  activeOrgSlug?: () => string | null;
 }
 
 /**
@@ -128,10 +127,6 @@ export function createEngineSdk(opts: EngineSdkOptions): HoustonSdk {
     reactivity: false,
     ports: {
       fetch: transientRetryFetch(opts.fetch),
-      activeWorkspaceId: () => {
-        const slug = opts.activeOrgSlug?.();
-        return slug ? `org:${slug}` : null;
-      },
       userId: opts.liveToken
         ? () => jwtSub(opts.liveToken?.() ?? "")
         : undefined,
