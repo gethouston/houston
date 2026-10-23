@@ -68,7 +68,6 @@ export function PromoEndedModal({
   const dismiss = useDismissPriceNotice();
   const announceRefusal = useSeatRefusalToast();
   const [closed, setClosed] = useState(false);
-  const [inProgress, setInProgress] = useState(false);
   const [answer, setAnswer] = useState<Answer | null>(null);
   const [picked, setPicked] = useState<BillingInterval>(
     DEFAULT_CHECKOUT_INTERVAL,
@@ -84,7 +83,7 @@ export function PromoEndedModal({
   const orgName =
     org?.kind === "personal" ? t("choice.picker.personal") : (org?.name ?? "");
   const pick = sellsYearly(shown.prices) ? picked : "month";
-  const pending = switching.isPending || dismiss.isPending || inProgress;
+  const pending = switching.isPending || dismiss.isPending;
   const close = () => {
     setAnswer(null);
     setClosed(true);
@@ -118,13 +117,9 @@ export function PromoEndedModal({
         return;
       case "already_yearly":
       case "no_subscription":
+      case "switch_in_progress":
         // Nothing left to offer: the refetched billing is the answer.
         close();
-        return;
-      case "switch_in_progress":
-        // A switch is already under way: stay switching until the refetched
-        // billing clears the notice, which unmounts the offer.
-        setInProgress(true);
         return;
       case "payment_failed":
         showExpectedStateToast(
@@ -143,8 +138,7 @@ export function PromoEndedModal({
     <PlanBriefingFrame
       open
       onDismiss={() => {
-        // A switch already under way leaves the X a way out.
-        if (!switching.isPending && !dismiss.isPending) close();
+        if (!pending) close();
       }}
       closeLabel={answer ? t("choice.notice.close") : t("maybeLater")}
       width={layout["choice-dialog-width"]}

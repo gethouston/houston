@@ -239,8 +239,7 @@
     "monthly": {
       "title": "You're staying on monthly",
       "sub_one": "From {{date}}, {{org}} costs {{total}} a month for {{count}} member.",
-      "sub_other": "From {{date}}, {{org}} costs {{monthly}} per member a month, which is {{total}} a month for {{count}} members.",
-      "fine": "Yearly stays open in Settings, under Billing, at {{promo}} per member a month."
+      "sub_other": "From {{date}}, {{org}} costs {{monthly}} per member a month, which is {{total}} a month for {{count}} members."
     },
     "done": "Done",
     "gotIt": "Got it",

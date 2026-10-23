@@ -134,6 +134,8 @@ describe("the answered steps", () => {
       body,
     );
     ok(body.includes("Got it"), body);
+    // The paid Billing tab has no switch to yearly, so nothing points there.
+    strictEqual(body.includes("Settings"), false, body);
   });
 });
 

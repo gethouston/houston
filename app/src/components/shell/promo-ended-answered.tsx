@@ -84,7 +84,7 @@ export function PromoMonthlyStep({
   onClose: () => void;
 }) {
   const { t } = useTranslation("plan");
-  const { money, yearly, vars } = usePromoFacts(view, org);
+  const { money, vars } = usePromoFacts(view, org);
   return (
     <>
       <span
@@ -96,17 +96,12 @@ export function PromoMonthlyStep({
       <DialogTitle tabIndex={-1} className={DONE_TITLE_CLASS}>
         {t("promo.monthly.title")}
       </DialogTitle>
-      <DialogDescription className="mb-5 text-base leading-normal text-ink-muted">
+      <DialogDescription className="mb-8 text-base leading-normal text-ink-muted">
         {t("promo.monthly.sub", {
           ...vars,
           total: money(view.nextCents * view.seats),
         })}
       </DialogDescription>
-      {yearly !== null && (
-        <p className="mb-8 text-[13px] leading-normal text-ink-muted">
-          {t("promo.monthly.fine", { promo: money(yearly / 12) })}
-        </p>
-      )}
       <div className="mt-auto flex flex-col md:mt-0">
         <PlanBriefingCta label={t("promo.gotIt")} onClick={onClose} />
       </div>

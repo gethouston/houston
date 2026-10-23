@@ -239,8 +239,7 @@
     "monthly": {
       "title": "Sigues en el plan mensual",
       "sub_one": "Desde el {{date}}, {{org}} cuesta {{total}} al mes por {{count}} miembro.",
-      "sub_other": "Desde el {{date}}, {{org}} cuesta {{monthly}} por miembro al mes, es decir, {{total}} al mes por {{count}} miembros.",
-      "fine": "El plan anual sigue disponible en Configuración, en Facturación, a {{promo}} por miembro al mes."
+      "sub_other": "Desde el {{date}}, {{org}} cuesta {{monthly}} por miembro al mes, es decir, {{total}} al mes por {{count}} miembros."
     },
     "done": "Listo",
     "gotIt": "Entendido",
