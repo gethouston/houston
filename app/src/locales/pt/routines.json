@@ -297,9 +297,9 @@
     "unsupportedTitle": "Atualização necessária",
     "unsupportedBody": "Criar um endereço de webhook precisa da versão mais recente do Houston.",
     "creatorOnly": "Só quem criou esta rotina pode criar ou mudar o endereço de webhook dela.",
-    "ownerOnly": "Só o dono deste espaço pode criar ou mudar o endereço de webhook desta rotina.",
+    "ownerOnly": "Só o proprietário deste espaço pode criar ou mudar o endereço de webhook desta rotina.",
     "creatorOnlyTitle": "Você não pode mudar este endereço de webhook",
-    "creatorOnlyBody": "Só quem criou esta rotina pode criar ou mudar o endereço de webhook dela. Se a rotina não tem criador, só o dono deste espaço pode.",
+    "creatorOnlyBody": "Só quem criou esta rotina pode criar ou mudar o endereço de webhook dela. Se a rotina não tem criador, só o proprietário deste espaço pode.",
     "dialog": {
       "title": "Seu endereço de webhook",
       "subtitle": "Envie uma requisição para este endereço para acionar a rotina.",

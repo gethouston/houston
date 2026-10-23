@@ -297,9 +297,9 @@
     "unsupportedTitle": "Actualización necesaria",
     "unsupportedBody": "Crear una dirección de webhook necesita la última versión de Houston.",
     "creatorOnly": "Solo la persona que creó esta rutina puede crear o cambiar su dirección de webhook.",
-    "ownerOnly": "Solo el dueño de este espacio puede crear o cambiar la dirección de webhook de esta rutina.",
+    "ownerOnly": "Solo el propietario de este espacio puede crear o cambiar la dirección de webhook de esta rutina.",
     "creatorOnlyTitle": "No puedes cambiar esta dirección de webhook",
-    "creatorOnlyBody": "Solo la persona que creó esta rutina puede crear o cambiar su dirección de webhook. Si la rutina no tiene creador, solo puede hacerlo el dueño de este espacio.",
+    "creatorOnlyBody": "Solo la persona que creó esta rutina puede crear o cambiar su dirección de webhook. Si la rutina no tiene creador, solo puede hacerlo el propietario de este espacio.",
     "dialog": {
       "title": "Tu dirección de webhook",
       "subtitle": "Envía una solicitud a esta dirección para activar la rutina.",

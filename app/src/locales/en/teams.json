@@ -450,7 +450,7 @@
     "askOwner": "Only the owner who pays for this organization can change its plan. Ask them if you need more.",
     "loading": "Loading billing",
     "planFree": "Free tier",
-    "planPaid": "Paid plan",
+    "planPaid": "Paid tier",
     "seatsTotal_one": "{{count}} seat, {{total}} a month",
     "seatsTotal_other": "{{count}} seats, {{total}} a month",
     "grace": "{{today}} a month until {{date}}, then {{total}} a month",

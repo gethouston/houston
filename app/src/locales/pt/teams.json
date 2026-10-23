@@ -450,7 +450,7 @@
     "askOwner": "Somente o proprietário que paga por esta organização pode mudar o plano. Peça a essa pessoa se precisar de mais.",
     "loading": "Carregando a cobrança",
     "planFree": "Nível gratuito",
-    "planPaid": "Plano pago",
+    "planPaid": "Nível pago",
     "seatsTotal_one": "{{count}} assento, {{total}} por mês",
     "seatsTotal_other": "{{count}} assentos, {{total}} por mês",
     "grace": "{{today}} por mês até {{date}}, depois {{total}} por mês",
@@ -473,7 +473,7 @@
   },
   "degrade": {
     "writeBlockedTitle": "Esta organização está bloqueada",
-    "writeBlockedBody": "Ninguém pode fazer alterações aqui até ela ser desbloqueada. Peça ao dono que paga por ela para desbloqueá-la."
+    "writeBlockedBody": "Ninguém pode fazer alterações aqui até ela ser desbloqueada. Peça ao proprietário que paga por ela para desbloqueá-la."
   },
   "personalSpace": {
     "inviteBlockedTitle": "Este é o seu espaço pessoal",
@@ -741,9 +741,9 @@
     "lockedMoveOut": "Você ainda pode ler tudo e tirar seus Funcionários de IA de lá.",
     "lockedRead": "Você ainda pode ler tudo.",
     "askOwner": {
-      "scheduled": "Peça ao dono que paga por ela para mantê-la ativa.",
-      "pastDue": "Peça ao dono que paga por ela para resolver o pagamento.",
-      "locked": "Peça ao dono que paga por ela para desbloqueá-la."
+      "scheduled": "Peça ao proprietário que paga por ela para mantê-la ativa.",
+      "pastDue": "Peça ao proprietário que paga por ela para resolver o pagamento.",
+      "locked": "Peça ao proprietário que paga por ela para desbloqueá-la."
     },
     "waiting": "Aguardando seu pagamento. Isto se atualiza sozinho quando ele for aprovado.",
     "openPaymentPage": "Abrir a página de pagamento",
@@ -770,7 +770,7 @@
           "body": "A assinatura dela continua ativa, então ela não pode passar para o nível gratuito. Resolva o pagamento."
         },
         "not_billing_owner": {
-          "title": "Só o dono que paga pode fazer isso",
+          "title": "Só o proprietário que paga pode fazer isso",
           "body": "Peça ao proprietário que paga por esta organização para passá-la para o nível gratuito."
         }
       }
@@ -781,7 +781,7 @@
     "writeLocked": {
       "unlock": "{{org}} está bloqueada. Desbloqueie para enviar mensagens e fazer alterações.",
       "fixPayment": "{{org}} está bloqueada. Resolva o pagamento para enviar mensagens e fazer alterações.",
-      "askOwner": "{{org}} está bloqueada. Peça ao dono que paga por ela para desbloqueá-la.",
+      "askOwner": "{{org}} está bloqueada. Peça ao proprietário que paga por ela para desbloqueá-la.",
       "store": "{{org}} está bloqueada, então mensagens e alterações estão pausadas por enquanto."
     }
   },

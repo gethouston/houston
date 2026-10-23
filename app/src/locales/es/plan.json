@@ -1,7 +1,7 @@
 {
   "title": "Facturación",
   "nav": "Elige qué organización queda en el nivel gratuito",
-  "upgrade": "Mejorar",
+  "upgrade": "Mejorar plan",
   "hint": "Tu organización usó el {{percent}}% del límite semanal del nivel gratuito.",
   "limitTitle": "Llegaste al límite de uso semanal",
   "limitBody": "El límite del nivel gratuito de tu organización se reinicia {{time}}. Mejora el plan para seguir ahora.",
@@ -48,10 +48,10 @@
   "sidebar": {
     "free": "Nivel gratuito",
     "nearLimit": "{{percent}}% usado",
-    "limit": "Límite alcanzado",
-    "upgrade": "Mejorar",
-    "label": "Mejorar. {{status}}",
-    "askOwner": "Pregunta al propietario",
+    "limit": "Al límite",
+    "upgrade": "Mejorar plan",
+    "label": "Mejorar plan. {{status}}",
+    "askOwner": "Pídele al propietario",
     "askOwnerLabel": "{{status}}. Pídele al propietario que mejore el plan."
   },
   "managedOnWeb": "Tu plan se administra en la web, en gethouston.ai.",

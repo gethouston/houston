@@ -82,7 +82,7 @@ test("Admin > Billing on a paid org: seats, the total and Manage billing", async
   const billing = await openOrgBilling(page);
 
   await expect(
-    billing.getByRole("heading", { name: "Paid plan" }),
+    billing.getByRole("heading", { name: "Paid tier" }),
   ).toBeVisible();
   await expect(billing.getByText("1 seat, $15 a month")).toBeVisible();
   await expect(billing.getByTestId("billing-usage")).toHaveCount(0);

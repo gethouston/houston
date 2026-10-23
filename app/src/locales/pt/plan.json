@@ -48,10 +48,10 @@
   "sidebar": {
     "free": "Nível gratuito",
     "nearLimit": "{{percent}}% usado",
-    "limit": "Limite atingido",
+    "limit": "No limite",
     "upgrade": "Fazer upgrade",
     "label": "Fazer upgrade. {{status}}",
-    "askOwner": "Fale com o proprietário",
+    "askOwner": "Peça ao proprietário",
     "askOwnerLabel": "{{status}}. Peça ao proprietário para fazer upgrade."
   },
   "managedOnWeb": "Seu plano é gerenciado na web, em gethouston.ai.",
