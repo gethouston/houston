@@ -32,7 +32,7 @@ export default {
     twDescription:
       "Houston es el espacio de trabajo compartido donde las personas y los agentes de IA trabajan juntos. Agentes compartidos, un solo tablero de misiones y roles para todo tu equipo. Empieza en el nivel gratuito.",
     jsonLdDescription:
-      "App de escritorio con un nivel gratuito que pone agentes de IA a hacer trabajo real por ti, con la suscripción de ChatGPT o Claude que ya tienes y más de 1.500 integraciones.",
+      "App de escritorio que pone agentes de IA a hacer trabajo real por ti, con la suscripción de ChatGPT o Claude que ya tienes, más de 1.500 integraciones y un nivel gratuito.",
     ogImageAlt: "Houston: agentes de IA que sí hacen el trabajo.",
   },
 
@@ -456,7 +456,7 @@ export default {
           {
             q: "¿Qué es una organización?",
             aHtml:
-              "Es donde trabaja tu equipo: sus personas, agentes y misiones. Puedes invitar a quien quieras y cambiar entre organizaciones con un clic. Puedes ser dueño de una organización en el nivel gratuito a la vez.",
+              "Es donde trabaja tu equipo: sus personas, agentes y misiones. Puedes invitar a quien quieras y cambiar entre organizaciones con un clic. Puedes tener una sola organización en el nivel gratuito.",
           },
           {
             q: "¿Puedo ponerle límites a un agente compartido?",
@@ -516,7 +516,7 @@ export default {
           {
             q: "¿Qué es el nivel gratuito?",
             aHtml:
-              "Puedes ser dueño de una organización en el nivel gratuito a la vez, sin tarjeta. Invita a quien quieras. Todos comparten un cupo semanal de mensajes, y el plan Equipo quita el límite.",
+              "Puedes tener una sola organización en el nivel gratuito, sin tarjeta. Invita a quien quieras. Todos comparten un cupo semanal de mensajes, y el plan Equipo quita el límite.",
           },
           {
             q: "¿Quién paga por un equipo?",
