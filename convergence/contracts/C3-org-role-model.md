@@ -66,6 +66,11 @@ belongs to another org is a 409 for now).
 
 ## Role matrix (enforced ONLY at the gateway)
 
+> Superseded twice: by the Teams role matrix v2 (admins no longer see or
+> manage every agent; per-agent `access` decides, see
+> `app/src/lib/agent-access.ts`) and by matrix v3 below (the `partner`
+> role). Kept as the v1 record.
+
 | Capability | owner | admin | user |
 |---|---|---|---|
 | List agents | all org agents | all org agents | assigned only |
@@ -100,3 +105,83 @@ call away for an owner).
 
 All multiplayer UI gates on `capabilities.multiplayer`; role read from
 capabilities. OSS/self-host never sees any of it.
+
+## Matrix v3: Houston Partner (2026-10-23)
+
+Proposal and reasoning: `docs/proposals/implementer-role-and-meta-posting.md`.
+An agency that builds and runs AI Employees for a client becomes a **Houston
+Partner**. Its people hold the `partner` org role inside the client's org; the
+client's IT person stays `owner` (and billing owner). Wire shapes:
+`OrgRole` (`packages/protocol/src/core.ts`, `packages/wire-types/src/types.ts`),
+`Agent.managedBy` / `Agent.pause` (`packages/wire-types/src/agents.ts`) and the
+refusals in `packages/wire-types/src/partner.ts`. The gateway serves none of it
+yet; until it does, clients read every field as optional and treat `partner`
+as no more than a `user` (fail-closed).
+
+### Concepts
+
+- **Partner**: an org member with role `partner`. Only an owner grants it. The
+  grant's confirm step is the owner's one-time agreement to everything below,
+  pausing included; there is no approval per pause. A partner is a normal paid
+  seat (`seats = count(org_members)`).
+- **Partner-managed agent** (`managedBy: "partner"`): set when a partner
+  creates an agent in the org or moves one in. All of the org's partners manage
+  it together (v1: one agency per org).
+- **Pause** (`pause: {by, at, note?}`): a partner's switch on a managed agent.
+  A paused agent refuses chat turns and routine runs with `409 agent_paused`
+  (the body carries the `pause`); its data stays readable to whoever could read
+  it before. Only a partner clears it. Independent of the billing lock: the
+  agent runs only when neither is set.
+
+### Matrix
+
+Rows marked *managed* apply to partner-managed agents; every other agent keeps
+matrix v2.
+
+| Capability | owner | admin | partner | user |
+|---|---|---|---|---|
+| Add/remove members, change roles | ✓ | ✗ | ✗ | ✗ |
+| Grant/revoke `partner` | ✓ | ✗ | ✗ | ✗ |
+| Leave the org | ✓ (≥1 owner) | ✓ | ✓ | ✓ |
+| Delete the org | ✓ | ✗ | ✗ | ✗ |
+| Read billing / seats | ✓ | ✓ | ✗ | ✗ |
+| Pay, change plan, portal | billing owner | ✗ | ✗ | ✗ |
+| `move_out` during a billing lock | ✓ | ✓ | ✗ | ✗ |
+| Create agents | ✓ | ✓ | ✓ (born managed) | ✗ |
+| *managed*: use | if assigned | if assigned | ✓ | if assigned |
+| *managed*: set assignments | ✓ | ✗ | ✓ | ✗ |
+| *managed*: settings, instructions, skills, model, allowed apps | ✗ | ✗ | ✓ | ✗ |
+| *managed*: read `CLAUDE.md` / skill files, portable export | ✗ | ✗ | ✓ | ✗ |
+| *managed*: pause / resume | ✗ | ✗ | ✓ | ✗ |
+| *managed*: release (clear `managedBy`) | ✗ | ✗ | ✓ | ✗ |
+| *managed*: move out of the org | ✗ | ✗ | ✗ | ✗ |
+| *managed*: delete | ✓ (paused or not) | ✗ | ✗ | ✗ |
+| *managed*: read conversations | mission audience | mission audience | mission audience | mission audience |
+
+Anything a non-partner may not do on a managed agent answers
+`403 partner_managed`. Conversations follow the existing mission audience
+(`packages/protocol/src/domain/mission-audience.ts`): a partner gets no
+read-all. Removing the last partner (or a partner leaving) pauses every
+managed agent and keeps it sealed; the client keeps its data, not the
+configuration.
+
+### Gateway duties (not built)
+
+- Accept `partner` on `POST /v1/org/members`, `PATCH …/:userId` and invites;
+  advertise `capabilities.role = "partner"`.
+- Serve `managedBy` / `pause` on `GET /agents`; add pause, resume and release
+  routes (each an `sdk` route with one SDK method, R1 to R5).
+- Enforce the seal on the proxied agent paths (settings, skills, `CLAUDE.md`,
+  `portable/export`) and admit no turn or routine on a paused agent.
+- Hide billing from partners; drop `move_out` for them.
+- Write every grant, pause, resume, release and removal to the org audit log.
+
+### Policy, not enforcement
+
+- Partners never connect a client's apps under their own login: client people
+  connect their own (Composio `user_id` is per person, C1). Routines run on
+  their creator's grants (C4), so a routine on a managed agent belongs to a
+  client person; how a partner hands one over is open.
+- The seal covers routes and files, not the conversation: an agent can still
+  be asked to recite its instructions. Product prompt guidance lowers that;
+  nothing removes it.

@@ -1,4 +1,4 @@
-# Proposal: implementer role and direct Meta posting
+# Proposal: Houston Partner role and direct Meta posting
 
 Status: draft for decision. No product code changed.
 Date: 2026-10-23.
@@ -6,7 +6,7 @@ Context: an agency partner that resells and implements Houston agents for its cl
 
 ## Summary
 
-### Implementer role
+### Partner role
 
 **What the agency needs:** its client owns and pays for the Houston org, while the agency keeps control of the agents it built. That means protecting their instructions and skills (the agency's IP) and being able to switch them off when the client stops paying the agency.
 
@@ -16,9 +16,9 @@ Context: an agency partner that resells and implements Houston agents for its cl
 2. An owner manages every agent (`app/src/lib/agent-access.ts:32`). They can open its Settings, read `CLAUDE.md` and the skills in Files, and export the whole agent. A client owner would get the agency's IP.
 
 **Recommendation:**
-- Add a fourth org role, `implementer`, for the agency's people inside the client's org.
-- Add a per-agent **managed** mark on the agents an implementer builds or deploys there.
-- On a managed agent, implementers hold the configuration (sealed from everyone else, owner included) and can **pause** or resume it.
+- Add a fourth org role, `partner`, for the agency's people inside the client's org.
+- Add a per-agent **managed** mark on the agents a partner builds or deploys there.
+- On a managed agent, partners hold the configuration (sealed from everyone else, owner included) and can **pause** or resume it.
 - The owner keeps the org, its people, its billing, its data, and the right to remove the agency. Removing the agency pauses its managed agents rather than handing them over.
 
 **Size and timing:**
@@ -49,15 +49,15 @@ Meta's Access Verification list names `pages_manage_posts` and `instagram_busine
 
 ### Decisions needed (details in A8 and B7)
 
-- Implementer rules still open: deleting a paused agent, conversation privacy. (Decided 2026-10-23: the owner agrees to pausing once, when granting the role.)
-- Implementer pricing: decided 2026-10-23, implementers are normal paid seats.
+- Partner rules: all decided 2026-10-23 (A8). The role is called Houston Partner (`partner` on the wire).
+- Partner pricing: decided 2026-10-23, partners are normal paid seats.
 - The Meta live test: skipped for now (decided 2026-10-23), so Composio stays unverified.
 - Whether to apply for our own Meta app.
-- Priority: decided 2026-10-23, the implementer role goes first, Meta posting after.
+- Priority: decided 2026-10-23, the partner role goes first, Meta posting after.
 
 ---
 
-## Part A: implementer role
+## Part A: Houston Partner role
 
 ### A1. How it works today (code facts)
 
@@ -86,7 +86,7 @@ Enforcement: every rule above is decided by the closed cloud gateway. The app's 
 
 ### A2. User stories
 
-- **Agency (implementer).** "I build and maintain AI Employees inside my client's Houston org. My instructions and skills are my product, so my client's people can use them but not read or copy them. If my client stops paying me, I pause my agents in their org. When we part ways, my agents stop and my client keeps their own data."
+- **Agency (partner).** "I build and maintain AI Employees inside my client's Houston org. My instructions and skills are my product, so my client's people can use them but not read or copy them. If my client stops paying me, I pause my agents in their org. When we part ways, my agents stop and my client keeps their own data."
 - **Client's IT person (owner).** "My company owns and pays for our Houston org. I control who is in it, including the agency. I can see which AI Employees the agency manages and who to call. I keep our files and conversations. I'm never surprised: if something is paused, I see who paused it and why."
 - **Client's staff (member).** "I use the AI Employees I've been given. If one is paused, it tells me in plain words and who to contact."
 
@@ -95,32 +95,32 @@ Enforcement: every rule above is decided by the closed cloud gateway. The app's 
 1. **Keep the agency as owner (today).** Works for the agency, fails the client: the client doesn't control its own org, and the agency is the billing owner by default. Rejected.
 2. **Make the agency a Manager (`admin`).** Managers can see billing (`app/src/lib/billing-gates.ts:19`), and the owner still reads every agent's IP and can never be locked out. Fixes nothing. Rejected.
 3. **Agents stay in the agency's org, client staff join as guests.** Protects IP. But Houston would bill the agency, not the client, and the client's data and connected apps would sit in the agency's org. That contradicts "the client pays Houston for the platform". Rejected for v1. It may come back as a later "agency workspace" for managing many clients.
-4. **Recommended: an `implementer` org role, plus "managed" agents.** Reuses membership, invites, the org switcher (an agency person already belongs to many orgs), the audit log and billing as they are. Adds one role and one per-agent mark.
+4. **Recommended: a `partner` org role, plus partner-managed agents.** Reuses membership, invites, the org switcher (an agency person already belongs to many orgs), the audit log and billing as they are. Adds one role and one per-agent mark.
 
 ### A4. How it works
 
 **Concepts.**
-- **Implementer**: an org member with role `implementer`. UI label to decide, for example "Implementer" or "Partner". Only an owner can grant it.
-- **Managed agent**: an agent carrying `managedBy: "implementer"`. It is set automatically when an implementer creates an agent in the org, or moves one in from their own org. An implementer can also claim an existing agent, but only with the owner's confirmation.
-- **Paused**: a managed agent's `pause: { by, at, note? } | null`. A paused agent refuses chat turns and routine runs with an authored, translated message: "This AI Employee is paused. Contact <implementer name>." It keeps its data. Missions, files and conversations stay readable to the people who could read them before.
+- **Partner**: an org member with role `partner`, shown as **Partner** in every language; the agency's program is **Houston Partner**. Only an owner can grant it.
+- **Managed agent**: an agent carrying `managedBy: "partner"`. It is set automatically when a partner creates an agent in the org, or moves one in from their own org. A partner can also claim an existing agent, but only with the owner's confirmation.
+- **Paused**: a managed agent's `pause: { by, at, note? } | null`. A paused agent refuses chat turns and routine runs with an authored, translated message: "This AI Employee is paused. Contact <partner name>." It keeps its data. Missions, files and conversations stay readable to the people who could read them before.
 
-In v1, all implementers in an org act as one group, so one agency per client org. Two agencies in the same org is open question 6.
+In v1, all partners in an org act as one group, so one agency per client org. Two agencies in the same org is out of scope for v1 (A8.6).
 
 **Lifecycle.**
-1. **Join.** The owner invites the agency person with role `implementer`. The owner sees a confirm step that explains what an implementer can do, including pausing. That one confirmation is the owner's agreement to every later pause.
-2. **Deploy.** The implementer builds in the client org, or builds in the agency's own org and moves the agent in (`POST /v1/agents/{slug}/move`). Either way the agent becomes managed.
-3. **Run.** The owner, or the implementer, decides who on the client side can use it ("Everyone" / "Only specific people"). Client staff connect their own apps (HubSpot and so on). See the routine caveat in A7.
-4. **Pause and resume.** The implementer pauses or resumes any managed agent in one action, or all of them at once. The owner sees the state, who did it, and when.
-5. **Release.** The implementer can release an agent: it stops being managed, the seal lifts, and the owner manages it like any other. This is the "hand over the IP" action, and only the implementer can do it.
-6. **Agency removed or leaves.** Every managed agent pauses and stays sealed. The client keeps its data. The agent configuration is not handed over. Who can delete a paused agent is open question 2.
+1. **Join.** The owner invites the agency person with role `partner`. The owner sees a confirm step that explains what a partner can do, including pausing. That one confirmation is the owner's agreement to every later pause.
+2. **Deploy.** The partner builds in the client org, or builds in the agency's own org and moves the agent in (`POST /v1/agents/{slug}/move`). Either way the agent becomes managed.
+3. **Run.** The owner, or the partner, decides who on the client side can use it ("Everyone" / "Only specific people"). Client staff connect their own apps (HubSpot and so on). See the routine caveat in A7.
+4. **Pause and resume.** The partner pauses or resumes any managed agent in one action, or all of them at once. The owner sees the state, who did it, and when.
+5. **Release.** The partner can release an agent: it stops being managed, the seal lifts, and the owner manages it like any other. This is the "hand over the IP" action, and only the partner can do it.
+6. **Agency removed or leaves.** Every managed agent pauses and stays sealed. The client keeps its data. The agent configuration is not handed over. The owner can delete a paused agent (A8.2).
 
 **Permission matrix (proposed).** Rows marked *managed* apply to managed agents. Unmanaged agents keep today's rules.
 
-| Capability | Owner | Manager (`admin`) | Implementer | Member (`user`) |
+| Capability | Owner | Manager (`admin`) | Partner | Member (`user`) |
 |---|---|---|---|---|
 | Invite, remove, re-role members | yes | no | no | no |
-| Grant or revoke the implementer role | yes | no | no | no |
-| Remove the implementer from the org | yes | no | leave only | no |
+| Grant or revoke the partner role | yes | no | no | no |
+| Remove the partner from the org | yes | no | leave only | no |
 | Delete the org | yes | no | no | no |
 | See billing, seats, invoices | yes | yes | **no** | no |
 | Pay, change plan, open the billing portal | billing owner | no | **no** | no |
@@ -142,57 +142,57 @@ In v1, all implementers in an org act as one group, so one agency per client org
 
 **The billing lockout: two separate locks.**
 
-| | Houston billing lock (exists) | Implementer pause (new) |
+| | Houston billing lock (exists) | Partner pause (new) |
 |---|---|---|
-| Who sets it | Houston billing (`lockReason`) | An implementer |
+| Who sets it | Houston billing (`lockReason`) | A partner |
 | Covers | The whole org | Managed agents only |
-| Who clears it | The billing owner, by paying | The implementer who manages them |
-| What the client sees | Today's billing recovery (`orgRecovery`) | "Paused, contact <implementer>" |
-| Implementer's actions during it | Ask the owner. No `move_out` (today's `role !== "user"` rule would wrongly grant it, so it must change) | Pause, resume, release |
+| Who clears it | The billing owner, by paying | The partner who manages them |
+| What the client sees | Today's billing recovery (`orgRecovery`) | "Paused, contact <partner>" |
+| Partner's actions during it | Ask the owner. No `move_out` (today's `role !== "user"` rule would wrongly grant it, so it must change) | Pause, resume, release |
 
-The two never mix: the implementer can't see or trigger Houston billing, and Houston billing never decides whether the agency was paid. Both can be active at once. The agent runs only when neither is.
+The two never mix: the partner can't see or trigger Houston billing, and Houston billing never decides whether the agency was paid. Both can be active at once. The agent runs only when neither is.
 
 ### A5. Changes needed, by area
 
 | Area | Where | What | Size |
 |---|---|---|---|
-| Wire shapes | `packages/protocol/src/core.ts`, `packages/wire-types/src/types.ts`, `packages/wire-types/src/agents.ts` | Add `"implementer"` to `OrgRole`. Add `managedBy` and `pause` to `Agent` (additive). Add refusal codes `agent_paused`, `managed_agent`. | S |
-| Gateway (cloud repo) | org members, invites, assignments, move, proxy path gating, turn and routine admission, billing summary | The real enforcement: role matrix, seal (deny config paths, `CLAUDE.md`, skills and portable export to non-implementers on managed agents), pause admission (chat and routines), billing fields hidden from implementers, pause-on-removal, audit events. Re-vendor the route inventory (`pnpm vendor:gateway-routes`). | L |
+| Wire shapes | `packages/protocol/src/core.ts`, `packages/wire-types/src/types.ts`, `packages/wire-types/src/agents.ts` | Add `"partner"` to `OrgRole`. Add `managedBy` and `pause` to `Agent` (additive). Add refusal codes `agent_paused`, `partner_managed`. | S |
+| Gateway (cloud repo) | org members, invites, assignments, move, proxy path gating, turn and routine admission, billing summary | The real enforcement: role matrix, seal (deny config paths, `CLAUDE.md`, skills and portable export to non-partners on managed agents), pause admission (chat and routines), billing fields hidden from partners, pause-on-removal, audit events. Re-vendor the route inventory (`pnpm vendor:gateway-routes`). | L |
 | Host | `packages/host/src/turn/files-list.ts`, `routes/agent-file-scope.ts`, `routes/portable-export.ts` | Files listing must drop `CLAUDE.md` and skills for callers the gateway marks as sealed-from (needs a claim on the signed acting-as header), since the gateway can't filter a listing body it only proxies. | M |
 | Product prompt | `packages/host/src/houston-prompt.ts` | Tell a managed agent not to recite its instructions. Best effort only (see A7). | S |
-| SDK | `packages/sdk/src/modules/org/types.ts` (`ORG_ROLES`), `packages/sdk/src/modules/agents/` | Add `pause`, `resume`, `release` methods with `@assistant` JSDoc (the AI Manager can do it for an implementer), and refusal classification. Fix `recovery.ts:52`. | M |
+| SDK | `packages/sdk/src/modules/org/types.ts` (`ORG_ROLES`), `packages/sdk/src/modules/agents/` | Add `pause`, `resume`, `release` methods with `@assistant` JSDoc (the AI Manager can do it for a partner), and refusal classification. Fix `recovery.ts:52`. | M |
 | Engine adapter | `packages/engine-adapter` | Bind the new methods via `viaSdk`. | S |
 | App gates | `app/src/lib/org-roles.ts`, `app/src/lib/agent-access.ts`, `app/src/lib/billing-gates.ts`, `app/src/lib/team-sections.ts`, `app/src/components/agent/agent-access-model.ts` | About 20 org-role comparisons across `app/src` and the SDK assume three roles. Each needs a decision (`Record<OrgRole, …>` in `org-chart-people.ts:34` at least fails to compile). | M |
 | App UI | `app/src/components/organization/` (roster, role picker, confirm), `app/src/components/agent-settings/` (managed badge, pause, release), chat banner; `app/src/locales/{en,es,pt}` | Both breakpoints. Bump `design/inventory/inventory.yaml` for new components. | M |
 | Proof | `packages/web/tests/wire-org.test.ts`, `wire-spaces.test.ts`, a new `wire-agent-pause.test.ts`, SDK module tests, `app/tests/org-roles.test.ts`, e2e for the paused banner | | M |
-| Docs | `convergence/contracts/C3-org-role-model.md`, `CONTEXT.md` | Update the matrix. Define *implementer*, *managed agent*, *paused*. | S |
+| Docs | `convergence/contracts/C3-org-role-model.md`, `CONTEXT.md` | Update the matrix. Define *partner*, *managed agent*, *paused*. | S |
 
 ### A6. Phases
 
 1. **Now, no code.** Keep today's workaround (agency as owner). Write the agency-client terms that the role will encode.
 2. **v1.** Role, managed mark, seal, pause and resume, release, pause on removal. One agency per org.
-3. **Later.** An agency workspace across all its clients: push one agent update to every client, roll up health. Possibly a separate implementer billing plan.
+3. **Later.** An agency workspace across all its clients: push one agent update to every client, roll up health. Possibly a separate partner billing plan.
 
 ### A7. Risks
 
 1. **Customer trust and legal.** A non-owner who can switch off a paying customer's tools is the sharpest edge here. It needs a clear disclosure when the role is granted, a visible "paused by" banner, the agency-client agreement, and a line in Houston's terms. Get a legal read before shipping.
 2. **IP protection is partial, not absolute.** The seal stops the UI, the files routes and export. It can't stop a client user asking the agent to "tell me your instructions" in chat. Prompt guidance lowers that risk but doesn't remove it. Say so to agencies; don't promise secrecy.
-3. **Routines run on their creator's connected apps** (C4). A routine the agency sets up runs on the agency person's HubSpot connection, or fails if they have none. Real client work needs a client person to connect the app and own the routine, or the agency to hold client credentials. That's a policy choice (open question 5), not a bug.
-4. **Seats.** Implementers count as seats (`count(org_members)`), and that stays (decided 2026-10-23): the client pays Houston a normal seat for each agency person. The confirm step when granting the role should say so, so the client isn't surprised by the invoice.
+3. **Routines run on their creator's connected apps** (C4). A routine the agency sets up runs on the agency person's HubSpot connection, or fails if they have none. Real client work needs a client person to connect the app and own the routine, or the agency to hold client credentials. Decided: client people connect and own them (A8.5).
+4. **Seats.** Partners count as seats (`count(org_members)`), and that stays (decided 2026-10-23): the client pays Houston a normal seat for each agency person. The confirm step when granting the role should say so, so the client isn't surprised by the invoice.
 5. **Gateway first.** Every rule lives in the closed gateway. A UI that ships ahead of it promises protection the server doesn't give. Gate the UI on the server advertising the role.
 6. **Role sprawl.** About 20 call sites compare roles directly. Missing one can widen power, as `recovery.ts:52` (`role !== "user"`) already shows.
 7. **Compromised agency account.** One login could pause every client at once. Rate-limit pausing "all", and record it in the audit log.
-8. **Contract drift.** C3 is stale. Update it before gateway work starts.
+8. **Contract drift.** C3 was stale. Matrix v3 is now written into `convergence/contracts/C3-org-role-model.md`; the gateway builds to that.
 
 ### A8. Open questions
 
-1. **Pause without the owner's agreement?** Decided (2026-10-23): the owner agrees once, when granting the implementer role (a confirm step with the explanation). There is no approval per pause. A legal read of the wording is still needed (A7.1).
-2. **Can the owner delete a paused managed agent?** Recommendation: yes. It's their org and their data, and deleting doesn't leak IP. Their way out is deletion, not takeover.
-3. **Implementer pricing:** decided (2026-10-23): normal paid seats, no change to billing.
-4. **Conversation privacy:** should implementers see client staff's conversations for support? Recommendation: no, beyond today's mission audience rules.
-5. **Client credentials:** should the agency's people ever connect a client's HubSpot under their own login? Recommendation: no. Client staff connect, and routines are re-owned by a client person.
-6. **Two agencies in one client org:** out of scope for v1?
-7. **Priority and date:** decided (2026-10-23): the implementer role goes before Meta posting. Still open: is 2026-11-06 the roadmap date or a ship date? This doc assumes roadmap.
+1. **Pause without the owner's agreement?** Decided (2026-10-23): the owner agrees once, when granting the partner role (a confirm step with the explanation). There is no approval per pause. A legal read of the wording is still needed (A7.1).
+2. **Can the owner delete a paused managed agent?** Decided (2026-10-23): yes. It's their org and their data, and deleting doesn't leak IP. Their way out is deletion, not takeover.
+3. **Partner pricing:** decided (2026-10-23): normal paid seats, no change to billing.
+4. **Conversation privacy:** decided (2026-10-23): partners get no access beyond today's mission audience rules.
+5. **Client credentials:** decided (2026-10-23): the agency never connects a client's apps under its own login. Client staff connect, and routines on managed agents belong to a client person. Still open: how a partner hands a routine it set up to a client person.
+6. **Two agencies in one client org:** decided (2026-10-23): out of scope for v1; all partners in an org manage its managed agents together.
+7. **Priority and date:** decided (2026-10-23): the partner role goes before Meta posting. Still open: is 2026-11-06 the roadmap date or a ship date? This doc assumes roadmap.
 
 ---
 
@@ -304,7 +304,7 @@ The two never mix: the implementer can't see or trigger Houston billing, and Hou
 1. **Live test:** skipped for now (decided 2026-10-23). When it's picked up, it needs a real Instagram Business or Creator account and a Facebook Page someone controls, connected in the Houston app. Until then, B1's "possibly works today" stays unverified.
 2. **Apply for our own Meta app (path 2)**, under the same business portfolio as the houston-os WhatsApp work? Recommendation: yes, as a separate app from the WhatsApp one, so their reviews don't block each other. Same verified business.
 3. **Instagram first, or both from day one?** Composio has both, so the test should cover both.
-4. **Priority:** decided (2026-10-23): after the implementer role.
+4. **Priority:** decided (2026-10-23): after the partner role.
 
 ### B8. Relation to the houston-os Meta session
 
