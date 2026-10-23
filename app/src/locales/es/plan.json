@@ -31,6 +31,8 @@
   "cancelBody": "No se realizó ningún cargo.",
   "openHouston": "Abrir Houston",
   "continueBrowser": "Continuar en el navegador",
+  "returnOpening": "Estamos abriendo Houston. Si no se abre, usa el botón de abajo.",
+  "returnTaken": "Tu pestaña de Houston ya muestra la Facturación. Puedes cerrar esta.",
   "maybeLater": "Quizás después",
   "triggerSkipped": {
     "title_one": "Se omitió {{count}} ejecución de esta rutina en las últimas 24 horas",
