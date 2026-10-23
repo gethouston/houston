@@ -4,6 +4,7 @@
  */
 
 import type { AgentInitialConfig } from "@houston/protocol";
+import type { AgentPause, AgentSteward } from "./partner";
 import type { AgentAccess, AgentAssignment } from "./types";
 
 export interface Agent {
@@ -56,6 +57,15 @@ export interface Agent {
    * single-player mode. `assignedUserIds` mirrors these user ids for back-compat.
    */
   assignments?: AgentAssignment[];
+  /**
+   * Houston Partner: present when the org's partners manage this agent (a
+   * partner built it here or moved it in). Its configuration is then theirs:
+   * anyone else, the owner included, is refused `partner_managed` on it.
+   * Absent means the org's own agent, under the ordinary rules.
+   */
+  managedBy?: AgentSteward;
+  /** Houston Partner: a partner's pause on this agent; null or absent = running. */
+  pause?: AgentPause | null;
 }
 
 export interface CreateAgent {

@@ -31,7 +31,12 @@ export interface AgentPeople {
   uses: ChartPerson[] | "everyone";
 }
 
-const ROLE_RANK: Record<OrgRole, number> = { owner: 0, admin: 1, user: 2 };
+const ROLE_RANK: Record<OrgRole, number> = {
+  owner: 0,
+  admin: 1,
+  partner: 2,
+  user: 3,
+};
 
 export function chartPerson(
   member: OrgMember,

@@ -224,6 +224,7 @@
     "roles": {
       "owner": "Proprietário",
       "admin": "Manager",
+      "partner": "Partner",
       "user": "Membro"
     },
     "roleHelp": {
@@ -281,6 +282,7 @@
     "roles": {
       "owner": "Proprietário",
       "admin": "Manager",
+      "partner": "Partner",
       "user": "Membro"
     },
     "actions": {

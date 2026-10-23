@@ -1,4 +1,4 @@
-import type { OrgRole } from "@houston/engine-adapter";
+import type { GrantableOrgRole } from "@houston/engine-adapter";
 import {
   AsyncButton,
   ConfirmDialog,
@@ -32,7 +32,7 @@ export function PeopleAddRow() {
   const { t } = useTranslation("teams");
   const addMember = useAddMember();
   const [email, setEmail] = useState("");
-  const [role, setRole] = useState<OrgRole>("user");
+  const [role, setRole] = useState<GrantableOrgRole>("user");
   const [outcome, setOutcome] = useState<AddOutcome | null>(null);
   const [confirmOwner, setConfirmOwner] = useState(false);
 
@@ -95,7 +95,10 @@ export function PeopleAddRow() {
           >
             {t("people.add.roleLabel")}
           </label>
-          <Select value={role} onValueChange={(v) => setRole(v as OrgRole)}>
+          <Select
+            value={role}
+            onValueChange={(v) => setRole(v as GrantableOrgRole)}
+          >
             <SelectTrigger id="org-add-role" className="rounded-xl">
               <SelectValue />
             </SelectTrigger>

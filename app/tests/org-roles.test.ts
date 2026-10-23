@@ -17,6 +17,7 @@ import {
   canSeeAiModelsPage,
   canSeeMembers,
   GRANTABLE_ROLES,
+  isGrantableRole,
   isMultiplayer,
   isSpaceOwner,
   orgRole,
@@ -253,5 +254,34 @@ describe("isSpaceOwner", () => {
 describe("grantable roles", () => {
   it("owner is grantable (multi-owner orgs), then admin and user", () => {
     deepStrictEqual([...GRANTABLE_ROLES], ["owner", "admin", "user"]);
+  });
+});
+
+describe("partner (Houston Partner, C3 matrix v3)", () => {
+  const partner = multiplayer("partner");
+
+  it("reads the role off the capabilities as sent", () => {
+    strictEqual(orgRole(partner), "partner");
+  });
+
+  // The partner gates land with the app layer; until then a partner is held
+  // to a plain member's affordances, never widened past them.
+  it("opens none of the org's owner or manager affordances", () => {
+    strictEqual(canCreateAgents(partner), false);
+    strictEqual(canSeeMembers(partner), false);
+    strictEqual(canManageMembers(partner), false);
+    strictEqual(canDeleteWorkspace(partner), false);
+    strictEqual(isSpaceOwner(partner, true), false);
+  });
+
+  it("never sees billing", () => {
+    strictEqual(canSeeBilling(partner), false);
+    strictEqual(canReadTeamBillingSummary(partner, true), false);
+  });
+
+  it("is not a role the picker grants, unlike the other three", () => {
+    strictEqual(isGrantableRole("partner"), false);
+    for (const role of GRANTABLE_ROLES)
+      strictEqual(isGrantableRole(role), true);
   });
 });

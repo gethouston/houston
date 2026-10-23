@@ -1,4 +1,4 @@
-import type { OrgInfo, OrgRole } from "@houston/engine-adapter";
+import type { GrantableOrgRole, OrgInfo } from "@houston/engine-adapter";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { useCallback } from "react";
 import { useTranslation } from "react-i18next";
@@ -46,7 +46,7 @@ export function useAddMember() {
       options,
     }: {
       email: string;
-      role: OrgRole;
+      role: GrantableOrgRole;
       options?: EngineCallOptions;
     }) => tauriOrg.addMember(email, role, options),
     onSuccess: (_data, { role }) => {
@@ -123,7 +123,7 @@ export function useRemoveMember() {
 export function useSetMemberRole() {
   const write = useOrgWrite();
   return useCallback(
-    (userId: string, role: OrgRole) =>
+    (userId: string, role: GrantableOrgRole) =>
       write({
         command: "set_org_member_role",
         copy: "memberRole",

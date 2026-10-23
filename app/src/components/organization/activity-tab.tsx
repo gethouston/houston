@@ -15,8 +15,10 @@ import { agentLabel, memberLabel } from "./org-roster";
 import { formatRelativeTime } from "./org-time";
 import type { OrgTabProps } from "./organization-view";
 
-function roleKey(role: string): "owner" | "admin" | "user" {
-  return role === "owner" || role === "admin" ? role : "user";
+function roleKey(role: string): "owner" | "admin" | "partner" | "user" {
+  return role === "owner" || role === "admin" || role === "partner"
+    ? role
+    : "user";
 }
 
 /**

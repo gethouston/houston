@@ -109,6 +109,7 @@ describe("orgRecovery for everyone who does not pay", () => {
   const roles: [OrgRole, string[]][] = [
     ["owner", ["move_out", "ask_owner"]],
     ["admin", ["move_out", "ask_owner"]],
+    ["partner", ["ask_owner"]],
     ["user", ["ask_owner"]],
   ];
 

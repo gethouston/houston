@@ -27,6 +27,7 @@ export * from "./member-routines";
 export * from "./move-refusal";
 export * from "./onboarding";
 export * from "./org-billing";
+export * from "./partner";
 export * from "./plan";
 export * from "./prewarm";
 export * from "./provider-refusal";

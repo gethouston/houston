@@ -62,7 +62,7 @@ export function OrgsMixin<TBase extends BaseCtor>(Base: TBase) {
     }
     async addOrgMember(
       email: string,
-      role: controlPlane.OrgRole,
+      role: controlPlane.GrantableOrgRole,
     ): Promise<controlPlane.AddOrgMemberResult> {
       if (!this.ctx.cp)
         throw new Error("multiplayer requires the hosted gateway");
@@ -98,7 +98,7 @@ export function OrgsMixin<TBase extends BaseCtor>(Base: TBase) {
     }
     async setOrgMemberRole(
       userId: string,
-      role: controlPlane.OrgRole,
+      role: controlPlane.GrantableOrgRole,
     ): Promise<void> {
       if (!this.ctx.cp)
         throw new Error("multiplayer requires the hosted gateway");

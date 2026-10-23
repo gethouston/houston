@@ -10,9 +10,10 @@
  */
 
 import type { OrgRole } from "@houston/protocol";
+import type { GrantableOrgRole } from "@houston/wire-types";
 import { field, requireString } from "../payload";
 
-export type { OrgRole };
+export type { GrantableOrgRole, OrgRole };
 
 /** The write vocabulary — the same constants back the facade and `dispatch`. */
 export const OrgCommand = {
@@ -32,11 +33,17 @@ export const OrgCommand = {
 export type OrgCommandType = (typeof OrgCommand)[keyof typeof OrgCommand];
 
 /**
- * The runtime mirror of the protocol's {@link OrgRole} union — a command
- * payload arrives untyped, and a union is not a value to check it against. A
- * role added to the protocol must be added here too, or this module refuses it.
+ * The roles a command may GRANT (`addMember`, `setMemberRole`): a command
+ * payload arrives untyped, and a union is not a value to check it against.
+ * Narrower than the {@link OrgRole} union on purpose: `partner` is readable on
+ * the wire but joins this list only once the gateway grants it, so neither a
+ * surface nor the AI Manager asks for a role the server would refuse.
  */
-export const ORG_ROLES: readonly OrgRole[] = ["owner", "admin", "user"];
+export const ORG_ROLES: readonly GrantableOrgRole[] = [
+  "owner",
+  "admin",
+  "user",
+];
 
 /** One member of the caller's active space. */
 export interface OrgMember {
@@ -154,7 +161,7 @@ export function optionalNumber(
 }
 
 /** A role off an untrusted command payload, refused unless it is one we know. */
-export function requireRole(payload: unknown, key: string): OrgRole {
+export function requireRole(payload: unknown, key: string): GrantableOrgRole {
   const value = requireString(payload, key);
   const role = ORG_ROLES.find((known) => known === value);
   if (!role) {

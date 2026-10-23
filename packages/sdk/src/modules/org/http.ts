@@ -18,9 +18,9 @@
 import { type HttpScope, httpRequest, SdkHttpError } from "../http";
 import type {
   AddOrgMemberResult,
+  GrantableOrgRole,
   OrgInfo,
   OrgPerson,
-  OrgRole,
   UserProfilesResult,
 } from "./types";
 
@@ -89,7 +89,7 @@ export async function getOrgPeople(scope: HttpScope): Promise<OrgPerson[]> {
 export async function addOrgMember(
   scope: HttpScope,
   email: string,
-  role: OrgRole,
+  role: GrantableOrgRole,
 ): Promise<AddOrgMemberResult> {
   const res = await httpRequest(scope, "/v1/org/members", {
     method: "POST",
@@ -139,7 +139,7 @@ export async function removeOrgMember(
 export async function setOrgMemberRole(
   scope: HttpScope,
   userId: string,
-  role: OrgRole,
+  role: GrantableOrgRole,
 ): Promise<void> {
   await httpRequest(scope, `/v1/org/members/${encodeURIComponent(userId)}`, {
     method: "PATCH",

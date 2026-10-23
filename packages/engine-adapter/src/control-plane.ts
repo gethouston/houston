@@ -37,6 +37,7 @@ export type {
   EditableProfile,
   EditableProfileCustom,
   EditableProfileUpdate,
+  GrantableOrgRole,
   IntegrationConnection,
   IntegrationProviderStatus,
   IntegrationToolkit,

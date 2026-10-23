@@ -1,4 +1,4 @@
-import type { Agent, OrgMember } from "@houston/engine-adapter";
+import type { Agent, OrgMember, OrgRole } from "@houston/engine-adapter";
 import { currentAssignments } from "../agent/agent-access-model.ts";
 import { agentHome } from "./org-chart-home.ts";
 import {
@@ -72,7 +72,12 @@ export const SCREEN_TREE_CAPS: OrgTreeCaps = {
   rootAgents: 24,
 };
 
-const ROLE_RANK = { owner: 0, admin: 1, user: 2 } as const;
+const ROLE_RANK: Record<OrgRole, number> = {
+  owner: 0,
+  admin: 1,
+  partner: 2,
+  user: 3,
+};
 
 const byRoleThenName = (a: ChartPerson, b: ChartPerson) =>
   ROLE_RANK[a.role] - ROLE_RANK[b.role] || a.name.localeCompare(b.name);

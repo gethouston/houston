@@ -34,10 +34,10 @@ import {
 import { listMemberRoutines, type MemberRoutines } from "./member-routines";
 import {
   type AddOrgMemberResult,
+  type GrantableOrgRole,
   OrgCommand,
   type OrgInfo,
   type OrgPerson,
-  type OrgRole,
   optionalNumber,
   requireNumber,
   requireRole,
@@ -60,6 +60,7 @@ export type {
 } from "./member-routines";
 export type {
   AddOrgMemberResult,
+  GrantableOrgRole,
   OrgInfo,
   OrgInvite,
   OrgMember,
@@ -85,7 +86,10 @@ export interface OrgModule {
   /** The sanitized co-member directory of the active space. */
   getOrgPeople(): Promise<OrgPerson[]>;
   /** Add someone by email, or create a pending invite when they are not a user yet. */
-  addOrgMember(email: string, role: OrgRole): Promise<AddOrgMemberResult>;
+  addOrgMember(
+    email: string,
+    role: GrantableOrgRole,
+  ): Promise<AddOrgMemberResult>;
   /** Cancel a pending invitation by id. */
   deleteOrgInvite(inviteId: string): Promise<void>;
   /** Remove a member from the active space by user id. */
@@ -93,7 +97,7 @@ export interface OrgModule {
   /** The routines a member created that removing them would stop (owner only). */
   listMemberRoutines(userId: string): Promise<MemberRoutines>;
   /** Change what a member may do in the active space. */
-  setOrgMemberRole(userId: string, role: OrgRole): Promise<void>;
+  setOrgMemberRole(userId: string, role: GrantableOrgRole): Promise<void>;
   /** The audit trail, newest first; both bounds optional. */
   orgAudit(before?: number, limit?: number): Promise<AuditEntry[]>;
   /** Per (agent, user, day) message counts over the last `days` days. */

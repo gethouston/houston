@@ -1881,7 +1881,7 @@ export const tauriOrg = {
     }),
   addMember: (
     email: string,
-    role: import("@houston/engine-adapter").OrgRole,
+    role: import("@houston/engine-adapter").GrantableOrgRole,
     options?: EngineCallOptions,
   ) =>
     call(
@@ -1925,7 +1925,7 @@ export const tauriOrg = {
     ),
   setMemberRole: (
     userId: string,
-    role: import("@houston/engine-adapter").OrgRole,
+    role: import("@houston/engine-adapter").GrantableOrgRole,
   ) =>
     call("set_org_member_role", () =>
       getEngine().setOrgMemberRole(userId, role),

@@ -1,4 +1,8 @@
-import type { Capabilities, OrgRole } from "@houston/engine-adapter";
+import type {
+  Capabilities,
+  GrantableOrgRole,
+  OrgRole,
+} from "@houston/engine-adapter";
 
 /**
  * Pure, DOM-free caps-only role logic for the multiplayer org surface. Mirrors
@@ -169,8 +173,17 @@ export function isSpaceOwner(
  * both surfaces (add row + roster) because it hands out full org authority
  * including billing.
  */
-export const GRANTABLE_ROLES: readonly OrgRole[] = [
+export const GRANTABLE_ROLES: readonly GrantableOrgRole[] = [
   "owner",
   "admin",
   "user",
 ] as const;
+
+/**
+ * Can the roster's role picker show this member's role? A `partner` (Houston
+ * Partner, C3 matrix v3) is read off the wire but not granted through the
+ * picker, so a partner's row shows the role read-only and keeps only Remove.
+ */
+export function isGrantableRole(role: OrgRole): role is GrantableOrgRole {
+  return (GRANTABLE_ROLES as readonly OrgRole[]).includes(role);
+}

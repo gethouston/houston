@@ -251,10 +251,11 @@ export interface Capabilities {
 /**
  * A member's authority inside a multiplayer org. `owner` is the billing/root
  * seat, `admin` manages members + agents, `user` is a plain seat that can only
- * use the agents assigned to them. Kept in sync (by hand) with the protocol
+ * use the agents assigned to them, `partner` is a Houston Partner's seat in its
+ * client's org (see `./partner`). Kept in sync (by hand) with the protocol
  * `OrgRole` — the engine side is the source of truth.
  */
-export type OrgRole = "owner" | "admin" | "user";
+export type OrgRole = "owner" | "admin" | "partner" | "user";
 
 /** One member of the current user's org. */
 export interface OrgMember {

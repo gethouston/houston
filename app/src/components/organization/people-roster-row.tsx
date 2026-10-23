@@ -1,4 +1,8 @@
-import type { OrgMember, OrgRole } from "@houston/engine-adapter";
+import type {
+  GrantableOrgRole,
+  OrgMember,
+  OrgRole,
+} from "@houston/engine-adapter";
 import {
   Avatar,
   AvatarFallback,
@@ -12,7 +16,7 @@ import {
   SelectValue,
 } from "@houston-ai/core";
 import { useTranslation } from "react-i18next";
-import { GRANTABLE_ROLES } from "../../lib/org-roles";
+import { GRANTABLE_ROLES, isGrantableRole } from "../../lib/org-roles";
 import { initialsFor, rosterPersonName } from "./people-tab-model";
 
 /**
@@ -32,7 +36,7 @@ export function PeopleRosterRow({
   isSelf: boolean;
   editable: boolean;
   focused: boolean;
-  onRole: (role: OrgRole) => void;
+  onRole: (role: GrantableOrgRole) => void;
   onRemove: () => void;
 }) {
   const { t } = useTranslation("teams");
@@ -78,10 +82,10 @@ export function PeopleRosterRow({
           )}
         </div>
       </div>
-      {editable ? (
+      {editable && isGrantableRole(member.role) ? (
         <Select
           value={member.role}
-          onValueChange={(value) => onRole(value as OrgRole)}
+          onValueChange={(value) => onRole(value as GrantableOrgRole)}
         >
           <SelectTrigger
             className="h-8 w-32 rounded-full"

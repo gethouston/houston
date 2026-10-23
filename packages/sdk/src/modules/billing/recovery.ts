@@ -49,7 +49,9 @@ export function orgRecovery(
     if (changeWindowOpen(choice, now)) actions.push("change_pick");
     if (unpaid) actions.push("claim_free", "delete");
   }
-  if (role !== "user") actions.push("move_out");
+  // Named, not `role !== "user"`: a partner moving agents out would carry the
+  // client's own conversations and files out of the client's org with them.
+  if (role === "owner" || role === "admin") actions.push("move_out");
   if (!billing.isBillingOwner) actions.push("ask_owner");
   return actions;
 }

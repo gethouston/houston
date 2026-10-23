@@ -40,9 +40,12 @@ export interface VersionResponse {
 /**
  * A member's authority inside a multiplayer org. `owner` is the billing/root
  * seat, `admin` manages members + agents, `user` is a plain seat that can only
- * use the agents assigned to them. Absent capability means single-player.
+ * use the agents assigned to them. `partner` (Houston Partner) is an agency's
+ * seat inside its client's org: it manages the agents it builds there and
+ * nothing of the org itself (C3 matrix v3). Absent capability means
+ * single-player.
  */
-export type OrgRole = "owner" | "admin" | "user";
+export type OrgRole = "owner" | "admin" | "partner" | "user";
 
 /** See `Capabilities.customIntegrationScope`. */
 export type CustomIntegrationScope = "host" | "agent";
