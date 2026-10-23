@@ -307,3 +307,11 @@ test("the CSS hides the inactive price for the attributes the template uses", as
     ),
   );
 });
+
+test("the save badge shares the existing pill style", async () => {
+  const css = await readFile(
+    new URL("../src/assets/css/landing-marketing.css", import.meta.url),
+    "utf8",
+  );
+  assert.match(css, /\.faq-count,\s*\.price-save\s*\{/);
+});

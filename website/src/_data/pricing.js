@@ -20,8 +20,8 @@ export default function () {
     // The yearly price shown as a monthly rate, so the two compare at a glance.
     teamYearlyPerMonth: teamYearly / 12,
     // What yearly billing saves against monthly, as a whole percent (the
-    // Yearly badge).
-    teamYearlySavePercent: Math.round(
+    // Yearly badge), rounded down so the badge never overstates it.
+    teamYearlySavePercent: Math.floor(
       (1 - teamYearly / 12 / teamMonthly) * 100,
     ),
   };
