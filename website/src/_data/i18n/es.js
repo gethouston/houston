@@ -6,9 +6,11 @@
 // - Las claves que terminan en `Html` pueden traer marcado y se renderizan con
 //   `| safe`. Todo lo demás es texto plano y la plantilla lo escapa.
 // - Nada de rayas largas. Usa una coma, dos puntos o un punto seguido.
-// - `{price}` y `{days}` son los únicos marcadores. Las plantillas los
-//   sustituyen desde _data/pricing.js, así ningún precio queda escrito a mano
-//   dentro de una traducción.
+// - `{price}` (el precio mensual por persona), `{yearlyPrice}` (el precio anual
+//   por persona expresado por mes) y `{yearlyTotal}` (el precio anual por
+//   persona) son los únicos marcadores. Las plantillas los sustituyen desde
+//   _data/pricing.js, así ningún precio queda escrito a mano dentro de una
+//   traducción.
 // - La estructura (tonos de avatar, elencos de caras, rutas de logos, insignias)
 //   vive en _data/landing.js. Los arreglos de aquí calzan por índice con los de
 //   allá.
@@ -24,15 +26,15 @@ export default {
   meta: {
     title: "Houston: agentes de IA que sí hacen el trabajo",
     description:
-      "Houston es el espacio de trabajo compartido donde las personas y los agentes de IA trabajan juntos. Agentes compartidos, un solo tablero de misiones y roles para todo tu equipo. Gratis para empezar por tu cuenta.",
+      "Houston es el espacio de trabajo compartido donde las personas y los agentes de IA trabajan juntos. Agentes compartidos, un solo tablero de misiones y roles para todo tu equipo. Empieza en el nivel gratuito.",
     ogTitle: "Houston: agentes de IA que sí hacen el trabajo",
     ogDescription:
-      "Houston es el espacio de trabajo compartido donde las personas y los agentes de IA trabajan juntos. Agentes compartidos, un solo tablero de misiones y roles para todo tu equipo. Gratis para empezar por tu cuenta.",
+      "Houston es el espacio de trabajo compartido donde las personas y los agentes de IA trabajan juntos. Agentes compartidos, un solo tablero de misiones y roles para todo tu equipo. Empieza en el nivel gratuito.",
     twTitle: "Houston: agentes de IA que sí hacen el trabajo",
     twDescription:
-      "Houston es el espacio de trabajo compartido donde las personas y los agentes de IA trabajan juntos. Agentes compartidos, un solo tablero de misiones y roles para todo tu equipo. Gratis para empezar por tu cuenta.",
+      "Houston es el espacio de trabajo compartido donde las personas y los agentes de IA trabajan juntos. Agentes compartidos, un solo tablero de misiones y roles para todo tu equipo. Empieza en el nivel gratuito.",
     jsonLdDescription:
-      "App de escritorio gratuita que pone agentes de IA a hacer trabajo real por ti, con la suscripción de ChatGPT o Claude que ya tienes y más de 1.500 integraciones.",
+      "App de escritorio que pone agentes de IA a hacer trabajo real por ti, con la suscripción de ChatGPT o Claude que ya tienes, más de 1.500 integraciones y un nivel gratuito.",
     ogImageAlt: "Houston: agentes de IA que sí hacen el trabajo.",
   },
 
@@ -378,30 +380,39 @@ export default {
 
   pricing: {
     title: "¿Listo para multiplicar por 10 a tu equipo de un día para otro?",
-    lead: "Empieza gratis, por tu cuenta. Pasa al plan de equipo cuando todos quieran entrar.",
     free: {
-      name: "Gratis",
-      note: "para ti",
+      name: "Nivel gratuito",
+      note: "para una organización por cuenta",
       items: [
-        "Tu espacio de trabajo personal, gratis y con margen de sobra para explorar",
+        "Invita a todo tu equipo",
+        "Un cupo semanal de mensajes, compartido por todos",
         "Las más de 1.500 integraciones",
         "Funciona con tu suscripción de IA",
       ],
       cta: "Descargar la app",
     },
+    period: {
+      label: "Periodo de facturación",
+      month: "Mensual",
+      year: "Anual",
+      save: "Ahorra {save}%",
+      yearName: "Anual, ahorra {save}%",
+    },
     team: {
       chip: "El más popular",
       name: "Equipo",
       per: "/persona/mes",
-      note: "facturado al año · {price} facturado al mes",
+      unit: "por persona al mes",
+      unitYearly: "por persona al año",
+      note: "facturado cada mes al dueño",
+      noteYearly: "facturado al dueño una vez al año ({yearlyTotal})",
       items: [
-        "Todo lo del plan Gratis",
-        "Compañeros ilimitados",
-        "Uso ilimitado, agentes a toda hora",
-        "Agentes compartidos y espacios de equipo",
-        "Roles y límites",
+        "Todo lo del nivel gratuito",
+        "Uso ilimitado para cada persona",
+        "Rutinas ilimitadas, agentes a toda hora",
+        "Pagas por cada miembro, con prorrateo",
       ],
-      cta: "Empezar prueba gratis",
+      cta: "Pásate a Equipo",
     },
     enterprise: {
       name: "Empresarial",
@@ -453,9 +464,9 @@ export default {
               "Tú decides, agente por agente. Cada persona solo ve y usa los agentes que le compartes, así el resto del espacio de trabajo queda privado.",
           },
           {
-            q: "¿Qué es un espacio?",
+            q: "¿Qué es una organización?",
             aHtml:
-              "Cada persona tiene un espacio personal que es solo suyo. Al lado están los espacios de equipo para el trabajo compartido, y cambias entre ellos con un clic.",
+              "Es donde trabaja tu equipo: sus personas, agentes y misiones. Puedes invitar a quien quieras y cambiar entre organizaciones con un clic. Puedes tener una sola organización en el nivel gratuito.",
           },
           {
             q: "¿Puedo ponerle límites a un agente compartido?",
@@ -470,7 +481,7 @@ export default {
           {
             q: "¿Escritorio o web?",
             aHtml:
-              "Los dos. Llegas a los mismos espacios, agentes y misiones desde la app de escritorio o desde la web.",
+              "Los dos. Llegas a las mismas organizaciones, agentes y misiones desde la app de escritorio o desde la web.",
           },
         ],
       },
@@ -513,29 +524,29 @@ export default {
         title: "Precios y facturación",
         items: [
           {
-            q: "¿Qué es gratis?",
+            q: "¿Qué es el nivel gratuito?",
             aHtml:
-              "Houston es gratis para una persona, sin tarjeta y con margen de sobra para explorar. Alcanza para poner agentes a hacer trabajo real y sentir el valor. Cuando quieras sumar a tu equipo, o necesites uso ilimitado, pasas al plan Equipo.",
+              "Puedes tener una sola organización en el nivel gratuito, sin tarjeta. Invita a quien quieras. Todos comparten un cupo semanal de mensajes, y el plan Equipo quita el límite.",
           },
           {
             q: "¿Quién paga por un equipo?",
             aHtml:
-              "El dueño. Todas las personas que invitas van dentro del plan del dueño, así que los miembros nunca ponen una tarjeta propia.",
+              "El dueño, a {price} por persona al mes, o a {yearlyPrice} por persona al mes con facturación anual ({yearlyTotal} al año). Cada persona de la organización ocupa un lugar en el plan del dueño, así que los miembros nunca ponen una tarjeta propia.",
           },
           {
             q: "¿Qué cuenta como una persona?",
             aHtml:
-              "Un miembro que acepta tu invitación. Las invitaciones pendientes no se cobran, y el cobro se prorratea cuando alguien entra o sale.",
+              "Cada miembro de una organización con plan Equipo, incluido el dueño. Las invitaciones pendientes no se cobran, y el cobro se prorratea cuando alguien entra o sale.",
           },
           {
-            q: "¿Cómo funciona la prueba gratis?",
+            q: "¿Puedo ser dueño de más de una organización?",
             aHtml:
-              "Un espacio de equipo tiene {days} días de prueba gratis, sin tarjeta. Empieza cuando tu segunda persona acepta.",
+              "Sí. Una de las organizaciones de las que eres dueño puede estar en el nivel gratuito, y todas las demás van con el plan Equipo desde el inicio. Si la pasas al plan Equipo o la borras, puedes crear otra en el nivel gratuito.",
           },
           {
-            q: "¿Qué pasa cuando termina la prueba?",
+            q: "¿Qué pasa cuando se acaba el cupo semanal?",
             aHtml:
-              "No se borra nada. El espacio vuelve al plan gratis: todos conservan el acceso y el uso queda limitado. Cada agente y cada misión se quedan donde están. Agrega una tarjeta cuando quieras.",
+              "No se borra nada, y nada de lo que ya está corriendo se corta. Puedes volver a enviar mensajes después del reinicio semanal, o el dueño se pasa al plan Equipo para tener uso ilimitado.",
           },
           {
             q: "¿Los miembros descargan o pagan?",
@@ -560,7 +571,7 @@ export default {
           {
             q: "¿Cómo entro?",
             aHtml:
-              "Houston es gratis mientras estamos en beta. Toca descargar, cuéntanos quién eres y el instalador arranca de inmediato.",
+              "Toca descargar, cuéntanos quién eres y el instalador arranca de inmediato.",
           },
         ],
       },
@@ -569,7 +580,7 @@ export default {
 
   footer: {
     blurb:
-      "El espacio de trabajo donde las personas y los agentes de IA trabajan juntos. Gratis para probar, y para todo el equipo cuando estés listo.",
+      "El espacio de trabajo donde las personas y los agentes de IA trabajan juntos. Empieza en el nivel gratuito con todo tu equipo.",
     download: "Descargar",
     mac: "macOS",
     windows: "Windows",

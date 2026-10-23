@@ -1,10 +1,11 @@
 {# Four groups, first one open. The counts are the group lengths, so a group
    can never claim a number it does not have. Answers are `Html` keys, and the
-   trial length arrives through the {days} placeholder rather than being
-   written into a translation.
+   seat prices arrive through the {price}, {yearlyPrice} and {yearlyTotal}
+   placeholders rather than being written into a translation.
 
    The one chevron below is used by both the group and the item summaries. #}
 {%- macro chevron() %}<svg class="faq-chevron" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" aria-hidden="true"><path d="M6 9l6 6 6-6"/></svg>{% endmacro -%}
+{%- set cur = pricing.currency[locale.code] %}
 <section id="faq" class="section">
   <div class="faq-head reveal">
     <h2 class="sec-title">{{ t.faq.title }}</h2>
@@ -19,7 +20,7 @@
 {%- for item in group.items %}
         <details class="faq-item">
           <summary>{{ item.q }}{{ chevron() }}</summary>
-          <div class="faq-answer"><p>{{ item.aHtml | replace("{days}", pricing.trialDays) | safe }}</p></div>
+          <div class="faq-answer"><p>{{ item.aHtml | replace("{price}", cur + pricing.teamMonthly) | replace("{yearlyPrice}", cur + pricing.teamYearlyPerMonth) | replace("{yearlyTotal}", cur + pricing.teamYearly) | safe }}</p></div>
         </details>
 {%- endfor %}
       </div>

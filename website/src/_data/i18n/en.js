@@ -6,8 +6,10 @@
 // - Keys ending in `Html` may contain markup and are rendered with `| safe`.
 //   Everything else is plain text and must be escaped by the template.
 // - No em dashes anywhere. Use a comma, a colon, or a sentence break.
-// - `{price}` and `{days}` are the only placeholders. Templates substitute them
-//   from _data/pricing.js, so a price never gets hardcoded into a translation.
+// - `{price}` (the monthly seat price), `{yearlyPrice}` (the yearly seat price
+//   as a monthly rate) and `{yearlyTotal}` (the yearly seat price) are the only
+//   placeholders. Templates substitute them from _data/pricing.js, so a price
+//   never gets hardcoded into a translation.
 // - Structure (avatar tones, face rosters, logo paths, badges) lives in
 //   _data/landing.js. Arrays here zip by index with the arrays there.
 // - The `js` subtree is serialized into the page as window.HOUSTON_I18N by
@@ -22,15 +24,15 @@ export default {
   meta: {
     title: "Houston: AI agents that actually do the work",
     description:
-      "Houston is the shared workspace where people and AI agents work together. Shared agents, one mission board, roles for your whole team. Free to start on your own.",
+      "Houston is the shared workspace where people and AI agents work together. Shared agents, one mission board, roles for your whole team. Start on the free tier.",
     ogTitle: "Houston: AI agents that actually do the work",
     ogDescription:
-      "Houston is the shared workspace where people and AI agents work together. Shared agents, one mission board, roles for your whole team. Free to start on your own.",
+      "Houston is the shared workspace where people and AI agents work together. Shared agents, one mission board, roles for your whole team. Start on the free tier.",
     twTitle: "Houston: AI agents that actually do the work",
     twDescription:
-      "Houston is the shared workspace where people and AI agents work together. Shared agents, one mission board, roles for your whole team. Free to start on your own.",
+      "Houston is the shared workspace where people and AI agents work together. Shared agents, one mission board, roles for your whole team. Start on the free tier.",
     jsonLdDescription:
-      "Free desktop app that runs AI agents which do real work for you, on your existing ChatGPT or Claude subscription, with over 1,500 integrations.",
+      "Desktop app that runs AI agents which do real work for you, on your existing ChatGPT or Claude subscription, with over 1,500 integrations and a free tier.",
     ogImageAlt: "Houston: AI agents that actually do the work.",
   },
 
@@ -364,30 +366,43 @@ export default {
 
   pricing: {
     title: "Ready to 10x your team overnight?",
-    lead: "Start free, on your own. Upgrade when the team wants in.",
     free: {
-      name: "Free",
-      note: "for yourself",
+      name: "Free tier",
+      note: "for one organization per account",
       items: [
-        "Your personal workspace, free with a generous tier to explore",
+        "Invite your whole team",
+        "One weekly message allowance, shared by everyone",
         "All 1,500+ integrations",
         "Works with your AI subscription",
       ],
       cta: "Download the app",
     },
+    // The Monthly / Yearly switch above the cards.
+    period: {
+      label: "Billing period",
+      month: "Monthly",
+      year: "Yearly",
+      // The badge on the Yearly option and that button's spoken name; {save}
+      // is the yearly discount, computed in _data/pricing.js.
+      save: "Save {save}%",
+      yearName: "Yearly, save {save}%",
+    },
     team: {
       chip: "Most popular",
       name: "Team",
       per: "/seat/mo",
-      note: "billed annually · {price} billed monthly",
+      // Structured-data unit for the price, read by search engines.
+      unit: "per seat per month",
+      unitYearly: "per seat per year",
+      note: "billed monthly to the owner",
+      noteYearly: "billed yearly to the owner ({yearlyTotal})",
       items: [
-        "Everything in Free",
-        "Unlimited teammates",
-        "Unlimited usage, agents around the clock",
-        "Shared agents and team spaces",
-        "Roles and guardrails",
+        "Everything in the free tier",
+        "Unlimited usage for every seat",
+        "Unlimited routines, agents around the clock",
+        "Seats follow your members, prorated",
       ],
-      cta: "Start free trial",
+      cta: "Upgrade",
     },
     enterprise: {
       name: "Enterprise",
@@ -435,9 +450,9 @@ export default {
               "You choose, per agent. People only see and use the agents shared with them, so the rest of the workspace stays private.",
           },
           {
-            q: "What is a space?",
+            q: "What is an organization?",
             aHtml:
-              "Everyone gets a personal space that is just for them. Team spaces sit beside it for shared work, and you switch between them in a click.",
+              "It is where your team works: its people, agents, and missions. You can invite anyone to it and switch between organizations in a click. You can own one organization on the free tier at a time.",
           },
           {
             q: "Can I set guardrails on a shared agent?",
@@ -452,7 +467,7 @@ export default {
           {
             q: "Desktop or web?",
             aHtml:
-              "Both. Reach the same spaces, agents, and missions from the desktop app or the web.",
+              "Both. Reach the same organizations, agents, and missions from the desktop app or the web.",
           },
         ],
       },
@@ -495,29 +510,29 @@ export default {
         title: "Pricing and billing",
         items: [
           {
-            q: "What is free?",
+            q: "What is the free tier?",
             aHtml:
-              "Houston is free for one person, with no credit card and a generous tier to explore. Enough to put agents on real work and feel the value. When you want teammates in, or you need unlimited usage, you upgrade to Team.",
+              "You can own one organization on the free tier at a time, with no credit card. Invite anyone you like. Everyone in it shares one weekly message allowance, and Team takes the limit off.",
           },
           {
             q: "Who pays for a team?",
             aHtml:
-              "The owner. Everyone you invite rides on the owner's plan, so members never enter a card of their own.",
+              "The owner, at {price} per seat per month, or {yearlyPrice} per seat per month billed yearly ({yearlyTotal} a year). Everyone in the organization takes a seat on the owner's plan, so members never enter a card of their own.",
           },
           {
             q: "What counts as a seat?",
             aHtml:
-              "One member who accepts your invite. Pending invites are free, and seats are prorated when people join or leave.",
+              "Every member of a Team organization, the owner included. Pending invites are not charged, and seats are prorated when people join or leave.",
           },
           {
-            q: "How does the free trial work?",
+            q: "Can I own more than one organization?",
             aHtml:
-              "A team space gets a {days}-day free trial with no card. It starts when your second member accepts.",
+              "Yes. One of the organizations you own can be on the free tier, and every other one is on Team from the start. Upgrade or delete that one and you can start a new one on the free tier.",
           },
           {
-            q: "What happens when the trial ends?",
+            q: "What happens when the weekly allowance runs out?",
             aHtml:
-              "Nothing is deleted. The space drops to the free plan: everyone keeps access and usage gets limited. Every agent and mission stays put. Add a card whenever you are ready.",
+              "Nothing is deleted, and nothing already running gets cut off. You can send again after the weekly reset, or the owner upgrades to Team for unlimited usage.",
           },
           {
             q: "Do members download or pay?",
@@ -542,7 +557,7 @@ export default {
           {
             q: "How do I get in?",
             aHtml:
-              "Houston is free while we're in beta. Hit download, tell us who you are, and the installer starts right away.",
+              "Hit download, tell us who you are, and the installer starts right away.",
           },
         ],
       },
@@ -551,7 +566,7 @@ export default {
 
   footer: {
     blurb:
-      "The workspace where people and AI agents work together. Free to try, for the whole team when you are ready.",
+      "The workspace where people and AI agents work together. Start on the free tier with your whole team.",
     download: "Download",
     mac: "macOS",
     windows: "Windows",

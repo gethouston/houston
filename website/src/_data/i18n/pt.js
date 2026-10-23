@@ -6,9 +6,11 @@
 // - Chaves terminadas em `Html` podem trazer marcação e são renderizadas com
 //   `| safe`. Todo o resto é texto puro e o template escapa.
 // - Nada de travessão longo. Use vírgula, dois-pontos ou uma frase nova.
-// - `{price}` e `{days}` são os únicos marcadores. Os templates substituem a
-//   partir de _data/pricing.js, então nenhum preço fica escrito na mão dentro
-//   de uma tradução.
+// - `{price}` (o preço mensal por pessoa), `{yearlyPrice}` (o preço anual por
+//   pessoa expresso por mês) e `{yearlyTotal}` (o preço anual por pessoa) são
+//   os únicos marcadores. Os templates os substituem a partir de
+//   _data/pricing.js, então nenhum preço fica escrito na mão dentro de uma
+//   tradução.
 // - A estrutura (tons de avatar, elencos de rostos, caminhos de logo, selos)
 //   vive em _data/landing.js. Os arrays daqui casam por índice com os de lá.
 // - A subárvore `js` é serializada na página como window.HOUSTON_I18N pelo
@@ -23,15 +25,15 @@ export default {
   meta: {
     title: "Houston: agentes de IA que fazem o trabalho de verdade",
     description:
-      "O Houston é o espaço de trabalho compartilhado onde pessoas e agentes de IA trabalham juntos. Agentes compartilhados, um único quadro de missões e papéis para o time inteiro. Grátis para começar por conta própria.",
+      "O Houston é o espaço de trabalho compartilhado onde pessoas e agentes de IA trabalham juntos. Agentes compartilhados, um único quadro de missões e papéis para o time inteiro. Comece no nível gratuito.",
     ogTitle: "Houston: agentes de IA que fazem o trabalho de verdade",
     ogDescription:
-      "O Houston é o espaço de trabalho compartilhado onde pessoas e agentes de IA trabalham juntos. Agentes compartilhados, um único quadro de missões e papéis para o time inteiro. Grátis para começar por conta própria.",
+      "O Houston é o espaço de trabalho compartilhado onde pessoas e agentes de IA trabalham juntos. Agentes compartilhados, um único quadro de missões e papéis para o time inteiro. Comece no nível gratuito.",
     twTitle: "Houston: agentes de IA que fazem o trabalho de verdade",
     twDescription:
-      "O Houston é o espaço de trabalho compartilhado onde pessoas e agentes de IA trabalham juntos. Agentes compartilhados, um único quadro de missões e papéis para o time inteiro. Grátis para começar por conta própria.",
+      "O Houston é o espaço de trabalho compartilhado onde pessoas e agentes de IA trabalham juntos. Agentes compartilhados, um único quadro de missões e papéis para o time inteiro. Comece no nível gratuito.",
     jsonLdDescription:
-      "App de computador gratuito que coloca agentes de IA para fazer trabalho de verdade por você, com a assinatura de ChatGPT ou Claude que você já tem e mais de 1.500 integrações.",
+      "App de computador que coloca agentes de IA para fazer trabalho de verdade por você, com a assinatura de ChatGPT ou Claude que você já tem, mais de 1.500 integrações e um nível gratuito.",
     ogImageAlt: "Houston: agentes de IA que fazem o trabalho de verdade.",
   },
 
@@ -377,30 +379,39 @@ export default {
 
   pricing: {
     title: "Pronto para multiplicar seu time por 10 da noite para o dia?",
-    lead: "Comece grátis, por conta própria. Suba de plano quando o time quiser entrar.",
     free: {
-      name: "Grátis",
-      note: "para você",
+      name: "Nível gratuito",
+      note: "para uma organização por conta",
       items: [
-        "Seu espaço de trabalho pessoal, grátis e com folga de sobra para explorar",
+        "Convide o time inteiro",
+        "Uma cota semanal de mensagens, compartilhada por todos",
         "Todas as mais de 1.500 integrações",
         "Funciona com sua assinatura de IA",
       ],
       cta: "Baixar o app",
     },
+    period: {
+      label: "Período de cobrança",
+      month: "Mensal",
+      year: "Anual",
+      save: "Economize {save}%",
+      yearName: "Anual, economize {save}%",
+    },
     team: {
       chip: "Mais popular",
       name: "Time",
       per: "/pessoa/mês",
-      note: "cobrado por ano · {price} cobrado por mês",
+      unit: "por pessoa por mês",
+      unitYearly: "por pessoa por ano",
+      note: "cobrado do dono todo mês",
+      noteYearly: "cobrado do dono uma vez por ano ({yearlyTotal})",
       items: [
-        "Tudo do plano Grátis",
-        "Colegas ilimitados",
-        "Uso ilimitado, agentes a qualquer hora",
-        "Agentes compartilhados e espaços de time",
-        "Papéis e limites",
+        "Tudo do nível gratuito",
+        "Uso ilimitado para cada pessoa",
+        "Rotinas ilimitadas, agentes a qualquer hora",
+        "Você paga por cada membro, de forma proporcional",
       ],
-      cta: "Começar teste grátis",
+      cta: "Assinar o Time",
     },
     enterprise: {
       name: "Empresarial",
@@ -448,9 +459,9 @@ export default {
               "Você decide, agente por agente. Cada pessoa só vê e usa os agentes compartilhados com ela, então o resto do espaço de trabalho fica privado.",
           },
           {
-            q: "O que é um espaço?",
+            q: "O que é uma organização?",
             aHtml:
-              "Cada pessoa ganha um espaço pessoal que é só dela. Ao lado ficam os espaços de time para o trabalho compartilhado, e você troca entre eles em um clique.",
+              "É onde o seu time trabalha: as pessoas, os agentes e as missões. Você pode convidar quem quiser e trocar entre organizações em um clique. Você pode ser dono de uma organização no nível gratuito por vez.",
           },
           {
             q: "Dá para colocar limites em um agente compartilhado?",
@@ -465,7 +476,7 @@ export default {
           {
             q: "No computador ou na web?",
             aHtml:
-              "Nos dois. Você chega nos mesmos espaços, agentes e missões pelo app de computador ou pela web.",
+              "Nos dois. Você chega nas mesmas organizações, agentes e missões pelo app de computador ou pela web.",
           },
         ],
       },
@@ -508,29 +519,29 @@ export default {
         title: "Preços e cobrança",
         items: [
           {
-            q: "O que é grátis?",
+            q: "O que é o nível gratuito?",
             aHtml:
-              "O Houston é grátis para uma pessoa, sem cartão e com folga de sobra para explorar. O suficiente para colocar agentes em trabalho de verdade e sentir o valor. Quando você quiser trazer o time, ou precisar de uso ilimitado, é só subir para o plano Time.",
+              "Você pode ser dono de uma organização no nível gratuito por vez, sem cartão. Convide quem você quiser. Todo mundo divide uma cota semanal de mensagens, e o plano Time tira o limite.",
           },
           {
             q: "Quem paga por um time?",
             aHtml:
-              "O dono. Todo mundo que você convida entra no plano do dono, então os membros nunca colocam um cartão próprio.",
+              "O dono, a {price} por pessoa por mês, ou {yearlyPrice} por pessoa por mês com cobrança anual ({yearlyTotal} por ano). Cada pessoa da organização ocupa um lugar no plano do dono, então os membros nunca colocam um cartão próprio.",
           },
           {
             q: "O que conta como uma pessoa?",
             aHtml:
-              "Um membro que aceita o seu convite. Convites pendentes não são cobrados, e a cobrança é proporcional quando alguém entra ou sai.",
+              "Cada membro de uma organização no plano Time, incluindo o dono. Convites pendentes não são cobrados, e a cobrança é proporcional quando alguém entra ou sai.",
           },
           {
-            q: "Como funciona o teste grátis?",
+            q: "Posso ser dono de mais de uma organização?",
             aHtml:
-              "Um espaço de time ganha {days} dias de teste grátis, sem cartão. Começa quando a sua segunda pessoa aceita.",
+              "Pode. Uma das organizações das quais você é dono pode estar no nível gratuito, e todas as outras ficam no plano Time desde o início. Se você mudar essa organização para o plano Time ou apagá-la, pode criar outra no nível gratuito.",
           },
           {
-            q: "O que acontece quando o teste acaba?",
+            q: "O que acontece quando a cota semanal acaba?",
             aHtml:
-              "Nada é apagado. O espaço volta para o plano grátis: todo mundo continua com acesso e o uso fica limitado. Cada agente e cada missão continuam no lugar. Coloque um cartão quando quiser.",
+              "Nada é apagado, e nada que já está rodando é interrompido. Dá para enviar de novo depois do reinício semanal, ou o dono assina o plano Time para ter uso ilimitado.",
           },
           {
             q: "Os membros baixam ou pagam?",
@@ -555,7 +566,7 @@ export default {
           {
             q: "Como eu entro?",
             aHtml:
-              "O Houston é grátis enquanto estamos em beta. Toque em baixar, conte quem você é e o instalador começa na hora.",
+              "Toque em baixar, conte quem você é e o instalador começa na hora.",
           },
         ],
       },
@@ -564,7 +575,7 @@ export default {
 
   footer: {
     blurb:
-      "O espaço de trabalho onde pessoas e agentes de IA trabalham juntos. Grátis para testar, e para o time inteiro quando você quiser.",
+      "O espaço de trabalho onde pessoas e agentes de IA trabalham juntos. Comece no nível gratuito com o time inteiro.",
     download: "Baixar",
     mac: "macOS",
     windows: "Windows",

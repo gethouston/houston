@@ -17,8 +17,78 @@
   max-width: none;
   margin: 0 auto;
 }
-.pricing-head .sec-lead {
-  margin: 16px auto 0;
+/* Monthly / Yearly switch. Shown only once html.js is set (before first
+   paint): without JS the Team card keeps the default yearly price and no dead
+   switch appears. */
+.price-period {
+  display: none;
+  gap: 2px;
+  margin-top: 24px;
+  padding: 4px;
+  background: var(--panel);
+  border: 1px solid var(--line);
+  border-radius: 999px;
+}
+html.js .price-period {
+  display: inline-flex;
+}
+.price-period button {
+  display: inline-flex;
+  align-items: center;
+  white-space: nowrap;
+  font: inherit;
+  font-size: 14px;
+  font-weight: 500;
+  min-height: 36px;
+  padding: 0 18px;
+  border: 0;
+  border-radius: 999px;
+  background: transparent;
+  color: var(--ink-muted);
+  cursor: pointer;
+  transition:
+    background-color var(--dur-fast) var(--ease-standard),
+    color var(--dur-fast) var(--ease-standard),
+    box-shadow var(--dur-fast) var(--ease-standard),
+    transform var(--dur-fast) var(--ease-entrance);
+}
+.price-period button:active {
+  transform: scale(0.97);
+}
+@media (prefers-reduced-motion: reduce) {
+  .price-period button {
+    transition: none;
+  }
+  .price-period button:active {
+    transform: none;
+  }
+}
+.price-period button[aria-pressed="true"] {
+  background: var(--card);
+  color: var(--ink-strong);
+  box-shadow:
+    0 1px 2px rgba(13, 13, 13, 0.08),
+    0 0 0 1px var(--line);
+}
+/* The Yearly badge wears the FAQ count pill (shared rule below). */
+.price-save {
+  margin-left: 8px;
+}
+/* Both Team prices sit in one grid cell, so the card is always sized for the
+   larger and switching never moves anything. The hidden one is
+   visibility: hidden, which also drops it from the accessibility tree. */
+.price-swap {
+  display: inline-grid;
+}
+.price-note.price-swap {
+  display: grid;
+}
+.price-swap > [data-show] {
+  grid-area: 1 / 1;
+}
+#pricing[data-period="month"] .price-swap > [data-show="year"],
+#pricing[data-period="year"] .price-swap > [data-show="month"] {
+  visibility: hidden;
 }
 .pricing-grid {
   display: grid;
@@ -252,7 +322,9 @@ details.faq-group > summary .faq-chevron {
 details.faq-group[open] > summary .faq-chevron {
   transform: rotate(180deg);
 }
-.faq-count {
+/* Also the Yearly badge in the pricing switch (.price-save). */
+.faq-count,
+.price-save {
   min-width: 22px;
   height: 22px;
   padding: 0 7px;
