@@ -6,6 +6,7 @@ import {
   orgReturnFromWebUrl,
   parseCheckoutReturnMessage,
 } from "../lib/checkout-return";
+import { createCheckoutLinkGate } from "../lib/checkout-return-links";
 import { reportError } from "../lib/error-report";
 import { listenDeepLink } from "../lib/identity/deep-link-listen";
 import { openAdmin } from "../lib/open-admin";
@@ -16,11 +17,7 @@ import { queryClient } from "../lib/query-client";
 import { queryKeys } from "../lib/query-keys";
 import { useWorkspaceStore } from "../stores/workspaces";
 
-/**
- * The OS answers the cold-start read with the launching link for the whole
- * run, so every shell remount reads it again: each link lands once per run.
- */
-const landedLinks = new Set<string>();
+const linkGate = createCheckoutLinkGate(() => Date.now());
 /** The org return the web app booted on, taken out of the address bar. */
 let bootReturn: OrgCheckoutReturn | null | undefined;
 /** A return that arrived before its org was in the workspace list. */
@@ -52,11 +49,9 @@ function land(r: OrgCheckoutReturn): void {
   openAdmin({ section: "billing" });
 }
 
-function landLink(link: string): void {
+function landLink(link: string, via: "launch" | "live"): void {
   const r = orgReturnFromDeepLink(link);
-  if (!r || landedLinks.has(link)) return;
-  landedLinks.add(link);
-  land(r);
+  if (r && linkGate[via](link)) land(r);
 }
 
 /**
@@ -71,8 +66,7 @@ function listenForReturnPage(): () => void {
     const message = parseCheckoutReturnMessage(event.data);
     if (message?.type !== "returned") return;
     refetchBilling();
-    const state = billingCheckout.getSnapshot();
-    if (state.phase === "idle" || state.orgSlug !== message.org) return;
+    if (!billingCheckout.claimReturn(message.org)) return;
     channel.postMessage({ type: "taken", org: message.org });
     window.focus();
     land(message);
@@ -93,7 +87,9 @@ export function useOrgCheckoutReturn(): void {
     const booted = captureBootReturn();
     if (booted) land(booted);
     void osCurrentDeepLinks()
-      .then((links) => links.forEach(landLink))
+      .then((links) => {
+        for (const link of links) landLink(link, "launch");
+      })
       .catch((error: unknown) =>
         reportError(
           "checkout_return_initial_link",
@@ -103,7 +99,7 @@ export function useOrgCheckoutReturn(): void {
       );
     let disposed = false;
     let unlisten: (() => void) | undefined;
-    void listenDeepLink(landLink)
+    void listenDeepLink((link) => landLink(link, "live"))
       .then((stop) => {
         if (disposed) stop();
         else unlisten = stop;

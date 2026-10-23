@@ -236,3 +236,40 @@ describe("a success does not outlive the payment", () => {
     expect(tracker.getSnapshot().phase).toBe("idle");
   });
 });
+
+describe("the return page's hand-back belongs to the app that opened it", () => {
+  it("is still this app's after the poll gave up, once", async () => {
+    const { tracker, advance } = harness();
+    await tracker.start(ORG, ports());
+    advance(600_000);
+    expect(tracker.getSnapshot().phase).toBe("idle");
+    expect(tracker.claimReturn("00000000000000bb")).toBe(false);
+    expect(tracker.claimReturn(ORG)).toBe(true);
+    expect(tracker.claimReturn(ORG)).toBe(false);
+  });
+
+  it("lapses after a day, and on an identity change", async () => {
+    const { tracker, advance } = harness();
+    await tracker.start(ORG, ports());
+    advance(86_400_000);
+    expect(tracker.claimReturn(ORG)).toBe(false);
+    const fresh = harness().tracker;
+    await fresh.start(ORG, ports());
+    fresh.reset();
+    expect(fresh.claimReturn(ORG)).toBe(false);
+  });
+
+  it("is never claimed for a checkout that was refused", async () => {
+    const { tracker } = harness();
+    const refused = {
+      ...ports(),
+      create: vi.fn(
+        async (): Promise<SeatCheckoutOutcome> => ({
+          kind: "interval_unavailable",
+        }),
+      ),
+    };
+    await tracker.start(ORG, refused);
+    expect(tracker.claimReturn(ORG)).toBe(false);
+  });
+});

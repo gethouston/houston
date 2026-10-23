@@ -13,6 +13,7 @@ import {
   handOffCheckoutReturn,
   type ReturnPagePorts,
 } from "../src/lib/checkout-return-handoff.ts";
+import { createCheckoutLinkGate } from "../src/lib/checkout-return-links.ts";
 import { settingsSectionFromDeepLink } from "../src/lib/settings-sections.ts";
 
 const ORG = "0123456789abcdef";
@@ -145,5 +146,30 @@ describe("handOffCheckoutReturn", () => {
     const { ports, calls } = fakePorts(true);
     await handOffCheckoutReturn(r, { ...ports, channel: null });
     deepStrictEqual(calls, ["show desktop", `deep ${desktopReturnLink(r)}`]);
+  });
+});
+
+describe("checkout deep links that land", () => {
+  const link = `houston://settings/plan?org=${ORG}&checkout=cancel`;
+
+  it("lands a second live return for the same org and outcome", () => {
+    let now = 0;
+    const gate = createCheckoutLinkGate(() => now);
+    strictEqual(gate.live(link), true);
+    now += 300;
+    strictEqual(gate.live(link), false, "the same event fired twice");
+    now += 60_000;
+    strictEqual(gate.live(link), true);
+  });
+
+  it("lands the launch link once per run, however it arrives", () => {
+    let now = 0;
+    const gate = createCheckoutLinkGate(() => now);
+    strictEqual(gate.launch(link), true);
+    now += 200;
+    strictEqual(gate.live(link), false, "the launch link replayed as an event");
+    now += 60_000;
+    strictEqual(gate.launch(link), false, "a shell remount reads it again");
+    strictEqual(gate.live(link), true);
   });
 });
