@@ -34,12 +34,12 @@ export function useCreateTeam() {
     }) => tauriOrg.createOrg(input),
     onSuccess: async (outcome) => {
       qc.invalidateQueries({ queryKey: queryKeys.orgs() });
-      if (outcome.kind !== "free_org_taken") await loadWorkspaces();
+      if (createdOrg(outcome)) await loadWorkspaces();
     },
   });
 }
 
-/** The org a create made, or null when the free slot was taken. */
+/** The org a create made, or null when nothing was (the free slot taken, a refused interval). */
 export function createdOrg(outcome: CreateOrgOutcome): OrgSummary | null {
-  return outcome.kind === "free_org_taken" ? null : outcome.org;
+  return "org" in outcome ? outcome.org : null;
 }

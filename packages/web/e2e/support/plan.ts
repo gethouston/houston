@@ -137,6 +137,20 @@ export async function planCalls(): Promise<
   return ((await res.json()) as { calls: { route: PlanCallRoute }[] }).calls;
 }
 
+/**
+ * Stop the fake gateway selling a yearly seat, as when its yearly price is
+ * unset: the orgs list drops the yearly price and a yearly checkout or paid
+ * create answers 409 `interval_unavailable`. Reset sells it again.
+ */
+export async function stopSellingYearly(): Promise<void> {
+  const res = await fetch(`${FAKE_HOST_URL}/__test__/yearly`, {
+    method: "POST",
+    headers: { "content-type": "application/json" },
+    body: JSON.stringify({ sold: false }),
+  });
+  if (!res.ok) throw new Error(`yearly switch answered ${res.status}`);
+}
+
 /** How many times one plan route was called. Poll it with `expect.poll`. */
 export async function planCallCount(route: PlanCallRoute): Promise<number> {
   return (await planCalls()).filter((call) => call.route === route).length;

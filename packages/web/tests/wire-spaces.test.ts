@@ -125,8 +125,21 @@ describe("the delegated spaces requests", () => {
       checkoutUrl: "https://checkout.stripe.test/c/9",
     });
     expect(soleCall().body).toBe(
-      JSON.stringify({ name: "Acme", plan: "paid", interval: "month" }),
+      JSON.stringify({ name: "Acme", plan: "paid" }),
     );
+  });
+
+  test("a paid createOrg whose yearly interval is refused creates nothing", async () => {
+    stubFetch(() =>
+      json(409, { error: "yearly off", code: "interval_unavailable" }),
+    );
+    expect(
+      await client().createOrg({
+        name: "Acme",
+        plan: "paid",
+        interval: "year",
+      }),
+    ).toEqual({ kind: "interval_unavailable" });
   });
 
   test("a yearly paid createOrg names its interval", async () => {

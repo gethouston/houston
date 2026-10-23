@@ -39,17 +39,20 @@ export function BillingPlanCard({
   const now = Date.now();
   const status = billingStatus(billing);
   const badge = BADGE[status];
-  const price = orgBillingPrice(billing, now);
-  const yearly = price.interval === "year";
   const lockAt = scheduledLock(billing, now);
   const money = (cents: number) =>
     formatPlanAmount(cents, BILLING_CURRENCY, i18n.language);
   const day = (iso: string) => formatLocalDate(iso, i18n.language);
   const paid = billing.tier === "paid";
   const seats = Math.max(1, billing.seats);
-  // The store apps never draw a price (`purchase-policy`). During a seat
-  // grace the header names the seats alone: the grace line says the prices.
+  // The store apps never draw a price (`purchase-policy`), and an org whose
+  // interval the wire does not state (a comp grant, an ended subscription)
+  // shows its seats alone. During a seat grace the header names the seats
+  // alone: the grace line says the prices.
   const purchasable = canPurchaseInApp();
+  const price = orgBillingPrice(billing, now);
+  const priced = purchasable && price.kind === "priced" ? price : null;
+  const yearly = priced?.interval === "year";
   return (
     <Card className="gap-4 px-5 py-5 md:px-6" data-testid="billing-plan">
       <div className="flex items-start justify-between gap-3">
@@ -60,10 +63,10 @@ export function BillingPlanCard({
           <p className="text-sm text-ink-muted tabular-nums">
             {!paid
               ? t("billing.freeSummary", { count: seats })
-              : purchasable && price.today === null
+              : priced && priced.today === null
                 ? t(yearly ? "billing.seatsTotalYear" : "billing.seatsTotal", {
                     count: seats,
-                    total: money(price.total),
+                    total: money(priced.total),
                   })
                 : t("billing.seats", { count: seats })}
           </p>
@@ -76,12 +79,12 @@ export function BillingPlanCard({
           />
         )}
       </div>
-      {purchasable && price.today !== null && price.graceEndsAt && (
+      {priced && priced.today !== null && priced.graceEndsAt && (
         <p className="text-sm tabular-nums">
           {t(yearly ? "billing.graceYear" : "billing.grace", {
-            today: money(price.today),
-            date: day(price.graceEndsAt),
-            total: money(price.total),
+            today: money(priced.today),
+            date: day(priced.graceEndsAt),
+            total: money(priced.total),
           })}
         </p>
       )}

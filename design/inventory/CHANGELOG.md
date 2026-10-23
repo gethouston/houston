@@ -9,14 +9,18 @@ A seat is sold monthly or yearly, and every price comes from the wire. The
 Billing tab's Upgrade, the strip's and the locked composer's Unlock, and the
 paid offer of a second organization let the billing owner pick Monthly
 ($20 per member a month) or Yearly ($15 per member a month, billed yearly,
-$180 a year), Yearly preselected and tagged with what it saves (worked out
+$180 per member a year), Yearly preselected and tagged with what it saves (worked out
 from the two prices), with the total for the members under the choice; where
 the gateway sells monthly only there is no choice. A paid
 organization's card reads its seats and what they bill per its
 subscription's interval at the price it is billed, and a seat grace reads
 per that interval. The pricing-change modal prices the rest at the list
 prices and a payer's organizations at the payer's own price, and names no
-price where none is known or inside a store app.
+price where none is known or inside a store app. A paid
+organization whose interval the wire does not state shows its seats with no
+figure. When the gateway refuses yearly, the choice stays up on Monthly,
+the prices refetch so Yearly leaves, and an info toast says yearly billing
+isn't available right now.
 
 ## v140 - 2026-10-22
 

@@ -25,6 +25,7 @@ import type {
   BillingInterval,
   PlanRoutine,
   PlanRoutineKey,
+  SeatCheckoutOutcome,
 } from "@houston/wire-types";
 import type { ModuleContext } from "../../module-context";
 import { moduleScope, SdkHttpError } from "../http";
@@ -48,7 +49,7 @@ import {
   reportPresence,
   resumeRoutines,
 } from "./routines";
-import { UNNAMED_CHECKOUT_INTERVAL } from "./seat-price";
+import { checkoutIntervalField } from "./seat-price";
 import {
   type BillingCheckout,
   BillingCommand,
@@ -70,11 +71,11 @@ export interface BillingModule {
   getBilling(): Promise<BillingSummary>;
   /**
    * Start a per-seat checkout for the active org, monthly unless `interval`
-   * says `year` (billing owner only). The body always names the interval.
+   * says `year` (billing owner only). An interval refusal is an outcome.
    */
   createCheckout(input?: {
     interval?: BillingInterval;
-  }): Promise<BillingCheckout>;
+  }): Promise<SeatCheckoutOutcome>;
   /** Open the Stripe customer portal for the active org (billing owner only). */
   createPortal(): Promise<BillingCheckout>;
   /** Make the active org the free one; the caller's states are outcomes. */
@@ -108,7 +109,7 @@ export function createBillingModule(ctx: ModuleContext): BillingModule {
   const module: BillingModule = {
     getBilling: () => getBilling(scope),
     createCheckout: (input) =>
-      createCheckout(scope, input?.interval ?? UNNAMED_CHECKOUT_INTERVAL),
+      createCheckout(scope, checkoutIntervalField(input?.interval)),
     createPortal: () => createPortal(scope),
     claimFreeSlot: () => claimFreeSlot(scope),
     getChoice: () => getChoice(scope),

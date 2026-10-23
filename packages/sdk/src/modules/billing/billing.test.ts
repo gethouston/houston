@@ -69,9 +69,10 @@ describe("the billing requests", () => {
     ]);
   });
 
-  it("starts a monthly checkout by default, naming the interval", async () => {
+  it("starts a monthly checkout with no interval in the body", async () => {
     const { sdk, calls } = ok({ url: "https://checkout.stripe.test/c/1" });
     expect(await sdk.billing.createCheckout()).toEqual({
+      kind: "checkout",
       url: "https://checkout.stripe.test/c/1",
     });
     await sdk.billing.createCheckout({ interval: "month" });
@@ -79,14 +80,31 @@ describe("the billing requests", () => {
       {
         method: "POST",
         url: `${BASE}/v1/org/billing/checkout`,
-        body: JSON.stringify({ interval: "month" }),
+        body: "{}",
       },
       {
         method: "POST",
         url: `${BASE}/v1/org/billing/checkout`,
-        body: JSON.stringify({ interval: "month" }),
+        body: "{}",
       },
     ]);
+  });
+
+  it("answers the gateway's interval refusals as outcomes, never throws", async () => {
+    for (const [code, status] of [
+      ["interval_unavailable", 409],
+      ["invalid_interval", 400],
+    ] as const) {
+      const { sdk } = makeSdk(() => json({ code }, status));
+      expect(await sdk.billing.createCheckout({ interval: "year" })).toEqual({
+        kind: code,
+      });
+    }
+    // A code under a status the contract does not pair it with still throws.
+    const { sdk } = makeSdk(() => json({ code: "interval_unavailable" }, 400));
+    await expect(
+      sdk.billing.createCheckout({ interval: "year" }),
+    ).rejects.toBeInstanceOf(BillingHttpError);
   });
 
   it("starts a yearly checkout by naming the interval", async () => {
@@ -220,7 +238,7 @@ describe("the dispatch path", () => {
       type: BillingCommand.CreateCheckout,
     });
     expect(result.ok).toBe(true);
-    expect(calls[0].body).toBe(JSON.stringify({ interval: "month" }));
+    expect(calls[0].body).toBe("{}");
   });
 
   it("dispatches a yearly checkout and refuses an interval it does not sell", async () => {

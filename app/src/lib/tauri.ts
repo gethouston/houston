@@ -1983,8 +1983,8 @@ export const tauriOrg = {
    *  Degrades to null off-entitlement so the billing UI renders nothing. */
   getBilling: () => call("get_billing", () => getEngine().getBilling()),
   /** Start a per-seat Stripe Checkout for the active org, monthly or yearly
-   *  (billing owner only); returns `{url}` to open externally. A failure
-   *  surfaces via `call` (red bug toast + report). */
+   *  (billing owner only); answers the page to open externally, or the
+   *  interval refused as an outcome. A failure surfaces via `call`. */
   createCheckout: (
     interval: import("@houston/engine-adapter").BillingInterval,
   ) => call("create_checkout", () => getEngine().createCheckout({ interval })),

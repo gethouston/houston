@@ -1,4 +1,8 @@
-import type { OrgBilling, OrgsList } from "@houston/wire-types";
+import type {
+  OrgBilling,
+  OrgsList,
+  SeatCheckoutOutcome,
+} from "@houston/wire-types";
 import { describe, expect, it, vi } from "vitest";
 import {
   BillingCheckoutTracker,
@@ -44,9 +48,14 @@ function harness() {
   return { tracker, advance };
 }
 
+const checkout = (url: string): SeatCheckoutOutcome => ({
+  kind: "checkout",
+  url,
+});
+
 function ports(opened = true) {
   return {
-    create: vi.fn(async () => ({ url: "https://checkout.stripe.test/s" })),
+    create: vi.fn(async () => checkout("https://checkout.stripe.test/s")),
     open: vi.fn(async () => opened),
   };
 }
@@ -57,9 +66,9 @@ describe("a checkout is started once until it resolves", () => {
     const p = ports();
     const first = tracker.start(ORG, p);
     expect(billingCheckoutOutstanding(tracker.getSnapshot())).toBe(true);
-    expect(await tracker.start(ORG, p)).toBe(false);
-    expect(await first).toBe(true);
-    expect(await tracker.start(ORG, p)).toBe(false);
+    expect(await tracker.start(ORG, p)).toBe("skipped");
+    expect(await first).toBe("started");
+    expect(await tracker.start(ORG, p)).toBe("skipped");
     expect(p.create).toHaveBeenCalledTimes(1);
     expect(tracker.getSnapshot()).toMatchObject({
       phase: "open",
@@ -83,6 +92,21 @@ describe("a checkout is started once until it resolves", () => {
       create: vi.fn(async () => Promise.reject(new Error("503"))),
     };
     await expect(tracker.start(ORG, failing)).rejects.toThrow("503");
+    expect(tracker.getSnapshot().phase).toBe("idle");
+  });
+
+  it("answers an interval refusal, back to idle, and opens nothing", async () => {
+    const { tracker } = harness();
+    const refused = {
+      ...ports(),
+      create: vi.fn(
+        async (): Promise<SeatCheckoutOutcome> => ({
+          kind: "interval_unavailable",
+        }),
+      ),
+    };
+    expect(await tracker.start(ORG, refused)).toBe("interval_unavailable");
+    expect(refused.open).not.toHaveBeenCalled();
     expect(tracker.getSnapshot().phase).toBe("idle");
   });
 
@@ -149,7 +173,7 @@ describe("an identity change forgets the checkout", () => {
     tracker.reset();
     expect(tracker.getSnapshot().phase).toBe("idle");
     advance(300_000);
-    expect(await tracker.start(ORG, ports())).toBe(true);
+    expect(await tracker.start(ORG, ports())).toBe("started");
     advance(300_000);
     expect(tracker.getSnapshot().phase).toBe("open");
   });
@@ -164,15 +188,17 @@ describe("an identity change forgets the checkout", () => {
 
   it("drops a session the previous identity was still creating", async () => {
     const { tracker } = harness();
-    let resolve: (value: { url: string }) => void = () => {};
+    let resolve: (value: SeatCheckoutOutcome) => void = () => {};
     const slow = {
-      create: vi.fn(() => new Promise<{ url: string }>((r) => (resolve = r))),
+      create: vi.fn(
+        () => new Promise<SeatCheckoutOutcome>((r) => (resolve = r)),
+      ),
       open: vi.fn(async () => true),
     };
     const started = tracker.start(ORG, slow);
     tracker.reset();
-    resolve({ url: "https://checkout.stripe.test/s" });
-    expect(await started).toBe(false);
+    resolve(checkout("https://checkout.stripe.test/s"));
+    expect(await started).toBe("skipped");
     expect(slow.open).not.toHaveBeenCalled();
     expect(tracker.getSnapshot().phase).toBe("idle");
   });
@@ -181,17 +207,17 @@ describe("an identity change forgets the checkout", () => {
     const { tracker } = harness();
     let settleOpen: (opened: boolean) => void = () => {};
     const previous = {
-      create: vi.fn(async () => ({ url: "https://checkout.stripe.test/old" })),
+      create: vi.fn(async () => checkout("https://checkout.stripe.test/old")),
       open: vi.fn(() => new Promise<boolean>((r) => (settleOpen = r))),
     };
     const oldStart = tracker.start(ORG, previous);
     await vi.waitFor(() => expect(previous.open).toHaveBeenCalled());
     tracker.reset();
     const next = {
-      create: vi.fn(async () => ({ url: "https://checkout.stripe.test/new" })),
+      create: vi.fn(async () => checkout("https://checkout.stripe.test/new")),
       open: vi.fn(async () => true),
     };
-    expect(await tracker.start(ORG, next)).toBe(true);
+    expect(await tracker.start(ORG, next)).toBe("started");
     settleOpen(false);
     await oldStart;
     expect(tracker.getSnapshot()).toMatchObject({

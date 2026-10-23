@@ -18,8 +18,21 @@ export const seatPricesSchema = z.object({
 });
 export type SeatPrices = z.infer<typeof seatPricesSchema>;
 
-/** The 409 a yearly checkout answers where the deployment sells no yearly seat. */
-export const INTERVAL_UNAVAILABLE = "interval_unavailable";
+/**
+ * The refusals a seat checkout answers for the interval it asked for, with
+ * their status: yearly where the deployment sells no yearly seat, or an
+ * interval the gateway does not know.
+ */
+export const SEAT_INTERVAL_REFUSALS = {
+  interval_unavailable: 409,
+  invalid_interval: 400,
+} as const;
+export type SeatIntervalRefusal = keyof typeof SEAT_INTERVAL_REFUSALS;
+
+/** What a seat checkout answered: its hosted page, or the interval refused. */
+export type SeatCheckoutOutcome =
+  | { kind: "checkout"; url: string }
+  | { kind: SeatIntervalRefusal };
 
 /**
  * The optional part of every body that starts a seat checkout (the org

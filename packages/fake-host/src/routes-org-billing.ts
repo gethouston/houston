@@ -45,6 +45,8 @@ export function handleOrgBillingRoutes(
         );
       state.recordPlanCall("checkout", { orgSlug: slug, ...asked.data });
       if (!owner) return notBillingOwner();
+      if (asked.data.interval === "year" && !state.sellsYearlySeat())
+        return refuse(409, "interval_unavailable", "yearly billing is off");
       return json({ url: seed?.checkoutUrl ?? state.FAKE_CHECKOUT_URL });
     }
     case "portal":

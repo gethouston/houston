@@ -468,7 +468,7 @@
       "month": "Mensal",
       "year": "Anual",
       "monthMeta": "{{price}} por membro por mês",
-      "yearMeta": "{{price}} por membro por mês, cobrado uma vez por ano, {{yearly}} por ano",
+      "yearMeta": "{{price}} por membro por mês, cobrado uma vez por ano ({{yearly}} por membro por ano)",
       "save": "Economize {{percent}}%"
     },
     "checkoutTotal": {
@@ -476,6 +476,10 @@
       "month_other": "{{total}} por mês para {{count}} membros",
       "year_one": "{{total}} por ano para {{count}} membro",
       "year_other": "{{total}} por ano para {{count}} membros"
+    },
+    "yearlyUnavailable": {
+      "title": "O pagamento anual não está disponível agora",
+      "body": "Você pode pagar mensalmente."
     },
     "upgrade": "Fazer upgrade",
     "openCheckout": "Abrir o pagamento",

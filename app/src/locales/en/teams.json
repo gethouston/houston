@@ -468,7 +468,7 @@
       "month": "Monthly",
       "year": "Yearly",
       "monthMeta": "{{price}} per member a month",
-      "yearMeta": "{{price}} per member a month, billed yearly, {{yearly}} a year",
+      "yearMeta": "{{price}} per member a month, billed yearly ({{yearly}} per member a year)",
       "save": "Save {{percent}}%"
     },
     "checkoutTotal": {
@@ -476,6 +476,10 @@
       "month_other": "{{total}} a month for {{count}} members",
       "year_one": "{{total}} a year for {{count}} member",
       "year_other": "{{total}} a year for {{count}} members"
+    },
+    "yearlyUnavailable": {
+      "title": "Yearly billing isn't available right now",
+      "body": "You can pay monthly instead."
     },
     "upgrade": "Upgrade",
     "openCheckout": "Open checkout",

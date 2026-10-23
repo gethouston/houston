@@ -5,11 +5,8 @@
  * failures.
  */
 
-import {
-  type BillingInterval,
-  FREE_ORG_TAKEN,
-  readCreatedOrg,
-} from "@houston/wire-types";
+import { FREE_ORG_TAKEN, readCreatedOrg } from "@houston/wire-types";
+import { seatIntervalRefusal } from "../billing/seat-refusal";
 import { type HttpScope, httpRequest } from "../http";
 import { freeOrgTakenSlug } from "./create-refusals";
 import type { CreateOrgOutcome, OrgPlan } from "./types";
@@ -30,8 +27,10 @@ import type { CreateOrgOutcome, OrgPlan } from "./types";
  * @param name What to call the new space, in the user's own words.
  * @param plan `free` unless the user asked for a paid organization; a paid
  *   one starts a subscription.
- * @param interval A paid organization's billing: `year` when the user asked
- *   to pay yearly, else `month`. A free one sends none.
+ * @param interval `year` when the user asked to pay yearly for a paid
+ *   organization; leave it out to pay monthly. A paid create whose interval
+ *   the gateway refuses answers `interval_unavailable` or `invalid_interval`
+ *   and creates nothing.
  * @assistant group:spaces
  * @assistant confirm: money. A paid space starts a subscription, and a repeat leaves a second billable space standing.
  */
@@ -39,7 +38,7 @@ export async function createOrg(
   scope: HttpScope,
   name: string,
   plan: OrgPlan,
-  interval?: BillingInterval,
+  interval?: "year",
 ): Promise<CreateOrgOutcome> {
   try {
     const res = await httpRequest(scope, "/v1/orgs", {
@@ -50,6 +49,8 @@ export async function createOrg(
   } catch (err) {
     const freeOrgSlug = freeOrgTakenSlug(err);
     if (freeOrgSlug) return { kind: FREE_ORG_TAKEN, freeOrgSlug };
+    const refusal = seatIntervalRefusal(err);
+    if (refusal) return { kind: refusal };
     throw err;
   }
 }

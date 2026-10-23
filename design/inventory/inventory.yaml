@@ -2451,7 +2451,11 @@ components:
       there is no choice and the line says the price per member and the
       total. A paid org's header reads its seats and what they bill per its
       subscription's interval ("3 seats, $540 a year"), at the price the org
-      is billed. Other owners and admins see the state and seats with a
+      is billed; with no interval on the wire (a comp grant, an ended
+      subscription) it reads the seats alone. A refused yearly checkout
+      stays on the card, moves the choice to Monthly, refetches the prices
+      and says yearly billing isn't available right now. Other owners and
+      admins see the state and seats with a
       line telling them to ask the owner; plain members never reach it. A
       seat grace reads "$20 a month until <date>, then $60 a month" (a year
       for a yearly org). Every figure comes from the wire. A free

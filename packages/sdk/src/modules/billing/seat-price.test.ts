@@ -2,6 +2,7 @@ import type { BillingChoice, OrgsList } from "@houston/wire-types";
 import { describe, expect, it } from "vitest";
 import { freeOrgBilling, paidOrgBilling } from "./org-billing-fixtures";
 import {
+  checkoutIntervalField,
   checkoutTotal,
   DEFAULT_CHECKOUT_INTERVAL,
   listSeatPrices,
@@ -10,7 +11,6 @@ import {
   seatPlans,
   sellableInterval,
   sellsYearly,
-  UNNAMED_CHECKOUT_INTERVAL,
   yearlySavingsPercent,
 } from "./seat-price";
 
@@ -40,9 +40,8 @@ describe("sellableInterval", () => {
     expect(sellsYearly(null)).toBe(false);
   });
 
-  it("preselects yearly, bills monthly when unnamed, and falls back to monthly", () => {
+  it("preselects yearly and falls back to monthly where it is not sold", () => {
     expect(DEFAULT_CHECKOUT_INTERVAL).toBe("year");
-    expect(UNNAMED_CHECKOUT_INTERVAL).toBe("month");
     expect(sellableInterval(MONTHLY_ONLY, DEFAULT_CHECKOUT_INTERVAL)).toBe(
       "month",
     );
@@ -76,6 +75,14 @@ describe("yearlySavingsPercent", () => {
   });
 });
 
+describe("checkoutIntervalField", () => {
+  it("names yearly and leaves monthly as the absent field", () => {
+    expect(checkoutIntervalField("year")).toBe("year");
+    expect(checkoutIntervalField("month")).toBeUndefined();
+    expect(checkoutIntervalField(undefined)).toBeUndefined();
+  });
+});
+
 describe("listSeatPrices", () => {
   const org = (billing: OrgsList["orgs"][number]["billing"]) => ({
     id: "o",
@@ -106,8 +113,12 @@ describe("listSeatPrices", () => {
 });
 
 describe("orgBillingPrice", () => {
+  const monthly = (patch: Parameters<typeof paidOrgBilling>[0] = {}) =>
+    paidOrgBilling({ interval: "month", ...patch });
+
   it("bills every member as a seat, per the subscription's interval", () => {
-    expect(orgBillingPrice(freeOrgBilling(), NOW)).toEqual({
+    expect(orgBillingPrice(monthly(), NOW)).toEqual({
+      kind: "priced",
       interval: "month",
       total: 6000,
       today: null,
@@ -118,20 +129,43 @@ describe("orgBillingPrice", () => {
         paidOrgBilling({ interval: "year", seatPriceCents: 18000 }),
         NOW,
       ),
-    ).toMatchObject({ interval: "year", total: 54000 });
+    ).toMatchObject({ kind: "priced", interval: "year", total: 54000 });
+  });
+
+  it("names no figure where the wire states no interval", () => {
+    // A comp grant, an ended subscription, an interval this client does not
+    // know (parsed to null), and a free org with no subscription.
+    expect(orgBillingPrice(paidOrgBilling({ interval: null }), NOW)).toEqual({
+      kind: "unpriced",
+    });
+    expect(orgBillingPrice(freeOrgBilling(), NOW)).toEqual({
+      kind: "unpriced",
+    });
+    // A live subscription whose price the gateway has not read yet.
+    expect(
+      orgBillingPrice(
+        paidOrgBilling({ interval: null, seatPriceCents: null }),
+        NOW,
+      ),
+    ).toEqual({ kind: "unpriced" });
+    expect(
+      orgBillingPrice(
+        paidOrgBilling({ interval: "month", seatPriceCents: null }),
+        NOW,
+      ),
+    ).toEqual({ kind: "unpriced" });
   });
 
   it("keeps a payer on the price they are billed", () => {
     expect(
-      orgBillingPrice(
-        paidOrgBilling({ interval: "month", seatPriceCents: 1500 }),
-        NOW,
-      ).total,
-    ).toBe(4500);
+      orgBillingPrice(monthly({ seatPriceCents: 1500 }), NOW),
+    ).toMatchObject({ total: 4500 });
   });
 
   it("bills at least one seat", () => {
-    expect(orgBillingPrice(freeOrgBilling({ seats: 0 }), NOW).total).toBe(2000);
+    expect(orgBillingPrice(monthly({ seats: 0 }), NOW)).toMatchObject({
+      total: 2000,
+    });
   });
 
   it("bills one seat until a seat grace ends, then every member", () => {
@@ -145,6 +179,7 @@ describe("orgBillingPrice", () => {
         NOW,
       ),
     ).toEqual({
+      kind: "priced",
       interval: "year",
       total: 54000,
       today: 18000,
@@ -155,16 +190,16 @@ describe("orgBillingPrice", () => {
   it("drops a grace that ended, and one a single member never needed", () => {
     expect(
       orgBillingPrice(
-        paidOrgBilling({ seatGraceEndsAt: "2026-10-01T00:00:00Z" }),
+        monthly({ seatGraceEndsAt: "2026-10-01T00:00:00Z" }),
         NOW,
-      ).today,
-    ).toBeNull();
+      ),
+    ).toMatchObject({ today: null });
     expect(
       orgBillingPrice(
-        paidOrgBilling({ seats: 1, seatGraceEndsAt: "2026-11-20T00:00:00Z" }),
+        monthly({ seats: 1, seatGraceEndsAt: "2026-11-20T00:00:00Z" }),
         NOW,
-      ).today,
-    ).toBeNull();
+      ),
+    ).toMatchObject({ today: null });
   });
 });
 

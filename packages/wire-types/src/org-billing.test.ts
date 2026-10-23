@@ -70,6 +70,28 @@ describe("parseOrgBilling", () => {
     );
   });
 
+  it("reads a live subscription whose price is not read yet", () => {
+    const pending = {
+      ...BILLING,
+      tier: "paid",
+      interval: null,
+      seatPriceCents: null,
+    };
+    expect(parseOrgBilling(pending)).toEqual(pending);
+    // With no list prices either, no checkout price is known at all.
+    const { seatPrices: _, ...bare } = pending;
+    expect(parseOrgBilling(bare)?.seatPrices).toBeNull();
+  });
+
+  it("reads malformed list prices as monthly only, keeping the billing", () => {
+    expect(
+      parseOrgBilling({ ...BILLING, seatPrices: { monthlyCents: "20" } }),
+    ).toEqual({
+      ...BILLING,
+      seatPrices: { monthlyCents: 2000, annualCents: null },
+    });
+  });
+
   it("keeps the state when a later gateway adds a lock reason", () => {
     expect(
       parseOrgBilling({

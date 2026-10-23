@@ -164,7 +164,7 @@ describe("BillingPlanCard", () => {
     // Yearly wears its saving, worked out from the wire's two prices.
     ok(
       html.includes(
-        "Yearly Save 25% $15 per member a month, billed yearly, $180 a year",
+        "Yearly Save 25% $15 per member a month, billed yearly ($180 per member a year)",
       ),
       html,
     );
@@ -193,6 +193,31 @@ describe("BillingPlanCard", () => {
     ok(html.includes(enTeams.billing.planPaid), html);
     ok(html.includes("3 seats, $60 a month"), html);
     ok(html.includes(enTeams.billing.manage), html);
+  });
+
+  it("shows the seats alone when the wire states no interval", () => {
+    // A comp grant or an ended subscription: no figure is better than a guess.
+    for (const value of [
+      paid({ interval: null }),
+      paid({ interval: null, seatGraceEndsAt: "2099-11-20T12:00:00Z" }),
+      // A live subscription whose price the gateway has not read yet.
+      paid({ interval: null, seatPriceCents: null }),
+    ]) {
+      const html = planCard(value);
+      ok(html.includes("3 seats"), html);
+      equal(html.includes("$"), false, html);
+    }
+  });
+
+  it("offers Upgrade with no figure where no checkout price is known", () => {
+    const element = h(surfaces.BillingPlanCard, {
+      billing: free({ seatPrices: null }),
+      orgSlug: "acme",
+    });
+    const html = text(markup(element));
+    ok(html.includes(enTeams.billing.upgrade), html);
+    equal(html.includes("$"), false, html);
+    equal(markup(element).includes('role="radiogroup"'), false, html);
   });
 
   it("bills a yearly org per year and a moved payer at their own price", () => {

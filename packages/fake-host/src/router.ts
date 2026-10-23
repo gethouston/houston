@@ -98,6 +98,13 @@ export async function handle(req: Request): Promise<Response> {
     clearChatStreams();
     resetPortable();
     state.reset();
+    state.setYearlySold(true);
+    return json({ ok: true });
+  }
+  // `{ sold: false }` stops selling a yearly seat (see `setYearlySold`).
+  if (path === "/__test__/yearly" && method === "POST") {
+    const body = await parseBody(req);
+    state.setYearlySold(body?.sold !== false);
     return json({ ok: true });
   }
   // What the last portable export carried — the copy wizard's selection.

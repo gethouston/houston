@@ -20,11 +20,17 @@ import type {
 export const DEFAULT_CHECKOUT_INTERVAL: BillingInterval = "year";
 
 /**
- * The interval a checkout bills when its caller names none: monthly, the
- * contract's default and the one interval every deployment sells. The body
- * always names it, so the gateway never has to guess.
+ * The `interval` a checkout body carries: yearly by name, monthly as the
+ * absent field (`JSON.stringify` drops `undefined`). Every gateway, an older
+ * one included, reads an absent interval as monthly, and an older one refuses
+ * a named "month"; yearly is only offered where the gateway sent a yearly
+ * price.
  */
-export const UNNAMED_CHECKOUT_INTERVAL: BillingInterval = "month";
+export function checkoutIntervalField(
+  interval: BillingInterval | undefined,
+): "year" | undefined {
+  return interval === "year" ? "year" : undefined;
+}
 
 /** One way to pay for a seat at checkout. */
 export interface SeatPlan {
@@ -95,27 +101,39 @@ export function checkoutTotal(
 
 /** The list prices any org on the list carries, or null while none does. */
 export function listSeatPrices(orgs: OrgsList | undefined): SeatPrices | null {
-  return orgs?.orgs.find((org) => org.billing)?.billing?.seatPrices ?? null;
+  return (
+    orgs?.orgs.find((org) => org.billing?.seatPrices)?.billing?.seatPrices ??
+    null
+  );
 }
 
 /**
- * What an org's subscription bills, in Stripe minor units, per `interval`
- * (monthly while it has none). Every member is a seat, and an org always
- * bills at least one. During a seat grace the subscription still bills one
- * seat, so `today` is that one seat until `graceEndsAt` and `total` is the
- * bill after it; outside a grace `today` is null.
+ * What an org's subscription bills, in Stripe minor units, per its
+ * `interval`. Every member is a seat, and an org always bills at least one.
+ * During a seat grace the subscription still bills one seat, so `today` is
+ * that one seat until `graceEndsAt` and `total` is the bill after it; outside
+ * a grace `today` is null. An org whose interval or seat price the wire does
+ * not state (no subscription, a comp grant, an interval this client does not
+ * know, a price not read from Stripe yet) is `unpriced`: no figure is shown
+ * rather than a guessed one.
  */
-export interface OrgBillingPrice {
-  interval: BillingInterval;
-  total: number;
-  today: number | null;
-  graceEndsAt: string | null;
-}
+export type OrgBillingPrice =
+  | { kind: "unpriced" }
+  | {
+      kind: "priced";
+      interval: BillingInterval;
+      total: number;
+      today: number | null;
+      graceEndsAt: string | null;
+    };
 
 export function orgBillingPrice(
   billing: OrgBilling,
   now: number,
 ): OrgBillingPrice {
+  const seatCents = billing.seatPriceCents;
+  if (billing.interval === null || seatCents === null)
+    return { kind: "unpriced" };
   const seats = Math.max(1, billing.seats);
   const grace =
     billing.tier === "paid" &&
@@ -125,9 +143,10 @@ export function orgBillingPrice(
       ? billing.seatGraceEndsAt
       : null;
   return {
-    interval: billing.interval ?? "month",
-    total: seats * billing.seatPriceCents,
-    today: grace ? billing.seatPriceCents : null,
+    kind: "priced",
+    interval: billing.interval,
+    total: seats * seatCents,
+    today: grace ? seatCents : null,
     graceEndsAt: grace,
   };
 }

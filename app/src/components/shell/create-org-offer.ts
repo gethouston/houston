@@ -1,11 +1,13 @@
 import type { OrgsList, SeatPrices } from "@houston/engine-adapter";
+import { listSeatPrices } from "@houston/sdk";
 
 /**
  * What the create dialog offers when the free slot is taken: the name of the
  * org that holds it (`null` for the Personal row, which the app names itself)
- * and a new checkout's seat prices, read off that org's billing. The prices
- * are the gateway's, never a constant here, so an org whose billing is
- * unknown offers the paid create, monthly, without a figure.
+ * and a new checkout's seat prices, read off the orgs list. The prices are
+ * the gateway's, never a constant here, so a list that carries none offers
+ * the paid create, monthly, without a figure. Read on every render, so a
+ * refetch after a refused yearly drops the choice at once.
  */
 export interface PaidOrgOffer {
   name: string;
@@ -19,8 +21,6 @@ export function paidOrgOffer(
   orgs: OrgsList | undefined,
 ): PaidOrgOffer {
   const free = orgs?.orgs.find((org) => org.slug === freeOrgSlug);
-  const priced =
-    free?.billing ?? orgs?.orgs.find((org) => org.billing)?.billing;
   return {
     name,
     freeOrg: !free
@@ -28,6 +28,6 @@ export function paidOrgOffer(
       : free.kind === "personal"
         ? { kind: "personal" }
         : { kind: "named", name: free.name },
-    seatPrices: priced?.seatPrices ?? null,
+    seatPrices: listSeatPrices(orgs),
   };
 }

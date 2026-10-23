@@ -17,7 +17,7 @@
 
 import type { BillingInterval } from "@houston/wire-types";
 import type { ModuleContext } from "../../module-context";
-import { UNNAMED_CHECKOUT_INTERVAL } from "../billing/seat-price";
+import { checkoutIntervalField } from "../billing/seat-price";
 import { optionalInterval } from "../billing/types";
 import { moduleScope, SdkHttpError } from "../http";
 import { field, requireString } from "../payload";
@@ -103,7 +103,7 @@ export function createSpacesModule(ctx: ModuleContext): SpacesModule {
         name,
         plan,
         // A free create starts no checkout, so it names no interval.
-        plan === "paid" ? (interval ?? UNNAMED_CHECKOUT_INTERVAL) : undefined,
+        plan === "paid" ? checkoutIntervalField(interval) : undefined,
       ),
     deleteOrg: (slug) => deleteOrg(scope, slug),
     acceptOrgInvite: (inviteId) => acceptOrgInvite(scope, inviteId),

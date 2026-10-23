@@ -13,6 +13,7 @@ import {
   openOrgBilling,
   orgBilling,
   planCalls,
+  stopSellingYearly,
   stubOpener,
 } from "./support/plan";
 import { expectAdminSections, openAdmin } from "./support/settings-nav";
@@ -223,7 +224,7 @@ test("the billing owner of a free org gets yearly first, picks monthly, and the 
   await expect(yearly).toBeChecked();
   await expect(choice).toContainText("$20 per member a month");
   await expect(choice).toContainText(
-    "Save 25%$15 per member a month, billed yearly, $180 a year",
+    "Save 25%$15 per member a month, billed yearly ($180 per member a year)",
   );
   await expect(billing.getByText("$540 a year for 3 members")).toBeVisible();
 
@@ -235,8 +236,41 @@ test("the billing owner of a free org gets yearly first, picks monthly, and the 
   const checkouts = (await planCalls()).filter(
     (call) => call.route === "checkout",
   );
+  expect(checkouts.map((call) => call.body)).toEqual([{ orgSlug: TEAM.slug }]);
+});
+
+test("a refused yearly checkout says so, drops Yearly and pays monthly next", async ({
+  page,
+}) => {
+  await stubOpener(page, false);
+  await armTeam("owner", teamBilling({}));
+  await enterTeam(page);
+  const billing = await openOrgBilling(page);
+  await expect(billing.getByRole("radio", { name: /^Yearly/ })).toBeChecked();
+
+  // The gateway stops selling yearly after the app read the prices.
+  await stopSellingYearly();
+  await billing.getByRole("button", { name: "Upgrade" }).click();
+  await expect(
+    page.getByText("Yearly billing isn't available right now"),
+  ).toBeVisible();
+  // An expected state: nothing opened and nothing reported as a bug.
+  await expect(page.getByRole("alert")).toHaveCount(0);
+  expect(await openedUrls(page)).toEqual([]);
+  // The refetched prices sell monthly alone, so the choice is gone.
+  await expect(billing.getByRole("radiogroup")).toHaveCount(0);
+  await expect(
+    billing.getByText("$20 per member a month, $60 a month for 3 members"),
+  ).toBeVisible();
+
+  await billing.getByRole("button", { name: "Upgrade" }).click();
+  await expect.poll(() => openedUrls(page)).toEqual([CHECKOUT_URL]);
+  const checkouts = (await planCalls()).filter(
+    (call) => call.route === "checkout",
+  );
   expect(checkouts.map((call) => call.body)).toEqual([
-    { orgSlug: TEAM.slug, interval: "month" },
+    { orgSlug: TEAM.slug, interval: "year" },
+    { orgSlug: TEAM.slug },
   ]);
 });
 
@@ -260,9 +294,7 @@ test("where only monthly is sold, Upgrade offers no choice and bills monthly", a
   const checkouts = (await planCalls()).filter(
     (call) => call.route === "checkout",
   );
-  expect(checkouts.map((call) => call.body)).toEqual([
-    { orgSlug: TEAM.slug, interval: "month" },
-  ]);
+  expect(checkouts.map((call) => call.body)).toEqual([{ orgSlug: TEAM.slug }]);
 });
 
 test("creating an org while the free slot is taken offers a paid org and its checkout", async ({
@@ -321,6 +353,49 @@ test("creating an org while the free slot is taken offers a paid org and its che
   const billing = await openOrgBilling(page);
   await expect(billing.getByRole("button", { name: "Upgrade" })).toBeVisible();
   await expect(orgBilling(page).getByText("Locked")).toBeVisible();
+});
+
+test("a paid create refused yearly stays open on monthly, then creates monthly", async ({
+  page,
+}) => {
+  await stubOpener(page, false);
+  await arm("capabilities", {
+    multiplayer: true,
+    teams: true,
+    spaces: true,
+    role: "owner",
+  });
+  await armPlan({ summary: freePlan() });
+  await page.goto("/");
+  await workspaceMenuTrigger(page).click();
+  await page.getByRole("menuitem", { name: "Create organization" }).click();
+  const dialog = page.getByRole("dialog");
+  await dialog.getByRole("textbox").fill("Labs");
+  await dialog.getByRole("button", { name: "Create organization" }).click();
+  await expect(dialog.getByRole("radio", { name: /^Yearly/ })).toBeChecked();
+
+  await stopSellingYearly();
+  await dialog.getByRole("button", { name: "Continue to payment" }).click();
+  await expect(
+    page.getByText("Yearly billing isn't available right now"),
+  ).toBeVisible();
+  await expect(page.getByRole("alert")).toHaveCount(0);
+  // Nothing was created: the offer stays, now monthly alone.
+  await expect(dialog).toBeVisible();
+  await expect(dialog.getByRole("radiogroup")).toHaveCount(0);
+  await expect(
+    dialog.getByText(/Labs costs \$20 per member a month\./),
+  ).toBeVisible();
+  expect(await openedUrls(page)).toEqual([]);
+
+  const create = page.waitForRequest(
+    (req) =>
+      req.method() === "POST" && new URL(req.url()).pathname === "/v1/orgs",
+  );
+  await dialog.getByRole("button", { name: "Continue to payment" }).click();
+  expect((await create).postDataJSON()).toEqual({ name: "Labs", plan: "paid" });
+  await expect(dialog).toBeHidden();
+  await expect.poll(() => openedUrls(page)).toEqual([CHECKOUT_URL]);
 });
 
 test("a paid create whose checkout the browser refused offers it in the toast", async ({

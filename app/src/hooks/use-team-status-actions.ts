@@ -24,14 +24,14 @@ export function useTeamStatusActions(
   const openSettings = useUIStore((s) => s.openSettings);
   const [claimOpen, setClaimOpen] = useState(false);
   const [checkoutOpen, setCheckoutOpen] = useState(false);
-  const startCheckout = (interval: BillingInterval) => {
-    if (orgSlug) checkout.start(orgSlug, interval);
-  };
+  // Never rejects; resolves with the interval refusal, if any.
+  const startCheckout = (interval: BillingInterval) =>
+    orgSlug ? checkout.start(orgSlug, interval) : Promise.resolve(null);
   const run = (action: TeamStatusAction) => {
     switch (action) {
       case "checkout":
         if (sellsYearly(prices)) setCheckoutOpen(true);
-        else startCheckout("month");
+        else void startCheckout("month");
         return;
       case "portal":
         if (orgSlug) checkout.recover(orgSlug);

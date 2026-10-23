@@ -15,13 +15,14 @@
  */
 
 import {
-  type BillingInterval,
   CLAIM_FREE_REFUSALS,
   type ClaimFreeRefusal,
+  type SeatCheckoutOutcome,
 } from "@houston/wire-types";
 import { type HttpScope, httpRequest } from "../http";
 import { refusalCode, refusalStatus } from "../refusal-code";
 import type { BillingSummary } from "../spaces/types";
+import { seatIntervalRefusal } from "./seat-refusal";
 import type { BillingCheckout } from "./types";
 
 /**
@@ -46,23 +47,32 @@ export async function getBilling(scope: HttpScope): Promise<BillingSummary> {
  * Start a Stripe Checkout session for the active org, billed per seat every
  * month or once a year (billing owner only; anyone else gets 403
  * `not_billing_owner`). Yearly is sold only where the org's
- * `billing.seatPrices.annualCents` is set; elsewhere it answers 409
- * `interval_unavailable`. Returns the hosted `{url}`. Never degrades: a
- * failure throws so the UI surfaces the real reason.
+ * `billing.seatPrices.annualCents` is set. Answers the hosted page as
+ * `checkout`, or the interval refused as an outcome: `interval_unavailable`
+ * (no yearly seat is sold here) or `invalid_interval`. Every other failure
+ * throws so the UI surfaces the real reason.
  *
- * @param interval `year` when the user asked to pay yearly, else `month`.
+ * @param interval `year` when the user asked to pay yearly; leave it out to
+ *   pay monthly.
  * @assistant group:billing
  * @assistant confirm: money. It starts a real subscription, and the card it charges is the user's own.
  */
 export async function createCheckout(
   scope: HttpScope,
-  interval?: BillingInterval,
-): Promise<BillingCheckout> {
-  const res = await httpRequest(scope, "/v1/org/billing/checkout", {
-    method: "POST",
-    body: JSON.stringify({ interval }),
-  });
-  return (await res.json()) as BillingCheckout;
+  interval?: "year",
+): Promise<SeatCheckoutOutcome> {
+  try {
+    const res = await httpRequest(scope, "/v1/org/billing/checkout", {
+      method: "POST",
+      body: JSON.stringify({ interval }),
+    });
+    const { url } = (await res.json()) as BillingCheckout;
+    return { kind: "checkout", url };
+  } catch (err) {
+    const refusal = seatIntervalRefusal(err);
+    if (refusal) return { kind: refusal };
+    throw err;
+  }
 }
 
 /**

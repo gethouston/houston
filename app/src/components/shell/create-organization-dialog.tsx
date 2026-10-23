@@ -1,12 +1,16 @@
-import type { BillingInterval } from "@houston/engine-adapter";
+import type {
+  BillingInterval,
+  SeatIntervalRefusal,
+} from "@houston/engine-adapter";
 import { FormDialog, Input } from "@houston-ai/core";
 import { useEffect, useState } from "react";
 import { useTranslation } from "react-i18next";
 import { useOrgCheckout } from "../../hooks/queries/use-org-checkout";
 import { createdOrg, useCreateTeam } from "../../hooks/queries/use-orgs";
 import { useOrgs } from "../../hooks/queries/use-spaces";
+import { useSeatRefusalToast } from "../../hooks/use-seat-refusal-toast";
 import { stayOpen } from "../../lib/dialog-stay-open";
-import { type PaidOrgOffer, paidOrgOffer } from "./create-org-offer";
+import { paidOrgOffer } from "./create-org-offer";
 import { MAX_TEAM_NAME_LENGTH, validateTeamName } from "./create-team-model";
 import { PaidOrgOfferDialog } from "./paid-org-offer-dialog";
 import { useLandInCreatedOrg } from "./use-land-in-created-org";
@@ -33,15 +37,24 @@ export function CreateOrganizationDialog({ open, onOpenChange }: Props) {
   const orgs = useOrgs(open);
   const checkout = useOrgCheckout();
   const land = useLandInCreatedOrg();
+  const announceRefusal = useSeatRefusalToast();
   const [name, setName] = useState("");
-  const [offer, setOffer] = useState<PaidOrgOffer | null>(null);
+  // The free slot taken: what to offer as paid. Its prices are read off the
+  // live orgs list on every render (`paidOrgOffer`).
+  const [taken, setTaken] = useState<{
+    name: string;
+    freeOrgSlug: string;
+  } | null>(null);
+  const offer = taken
+    ? paidOrgOffer(taken.name, taken.freeOrgSlug, orgs.data)
+    : null;
 
   // Start every open with a clean field; reset on close so a reopen after a
   // successful create (or a cancel) never shows the last value.
   useEffect(() => {
     if (open) return;
     setName("");
-    setOffer(null);
+    setTaken(null);
   }, [open]);
 
   const validation = validateTeamName(name);
@@ -61,13 +74,19 @@ export function CreateOrganizationDialog({ open, onOpenChange }: Props) {
     if (outcome.kind === "free_org_taken") {
       // Nothing was created and nothing failed: the dialog stays to offer
       // the paid create.
-      setOffer(paidOrgOffer(validation.name, outcome.freeOrgSlug, orgs.data));
+      setTaken({ name: validation.name, freeOrgSlug: outcome.freeOrgSlug });
       return false;
     }
-    await land(outcome.org, null);
+    const org = createdOrg(outcome);
+    if (!org) return stayOpen();
+    await land(org, null);
   };
 
-  const submitPaid = async (interval: BillingInterval) => {
+  // Resolves with the refused interval (nothing was created; the orgs list
+  // refetches and the person is told), so the offer stays up on monthly.
+  const submitPaid = async (
+    interval: BillingInterval,
+  ): Promise<SeatIntervalRefusal | undefined> => {
     if (!offer) return stayOpen();
     // Claimed now, while the click's activation is live: the checkout URL
     // only arrives with the create's answer.
@@ -78,6 +97,14 @@ export function CreateOrganizationDialog({ open, onOpenChange }: Props) {
         tab?.discard();
         return stayOpen();
       });
+    if (
+      outcome.kind === "interval_unavailable" ||
+      outcome.kind === "invalid_interval"
+    ) {
+      tab?.discard();
+      announceRefusal();
+      return outcome.kind;
+    }
     const org = createdOrg(outcome);
     if (outcome.kind !== "checkout") {
       tab?.discard();
@@ -100,6 +127,7 @@ export function CreateOrganizationDialog({ open, onOpenChange }: Props) {
         onOpenChange={onOpenChange}
         offer={offer}
         outstanding={checkout.outstanding}
+        pending={createOrganization.isPending}
         onSubmit={submitPaid}
       />
     );

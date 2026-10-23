@@ -1,4 +1,7 @@
-import type { BillingInterval } from "@houston/engine-adapter";
+import type {
+  BillingInterval,
+  SeatIntervalRefusal,
+} from "@houston/engine-adapter";
 import {
   DEFAULT_CHECKOUT_INTERVAL,
   formatPlanAmount,
@@ -26,13 +29,19 @@ export function PaidOrgOfferDialog({
   onOpenChange,
   offer,
   outstanding,
+  pending,
   onSubmit,
 }: {
   open: boolean;
   onOpenChange: (open: boolean) => void;
   offer: PaidOrgOffer;
   outstanding: boolean;
-  onSubmit: (interval: BillingInterval) => Promise<unknown>;
+  /** The create is in flight: the choice holds still. */
+  pending: boolean;
+  /** Resolves with the refused interval, if the gateway refused it. */
+  onSubmit: (
+    interval: BillingInterval,
+  ) => Promise<SeatIntervalRefusal | undefined>;
 }) {
   const { t, i18n } = useTranslation(["teams", "common", "plan"]);
   const [picked, setPicked] = useState<BillingInterval>(
@@ -65,13 +74,21 @@ export function PaidOrgOfferDialog({
           ? {
               label: t("teams:createTeam.paidSubmit"),
               pendingLabel: t("teams:createTeam.creating"),
-              onClick: () => onSubmit(interval),
+              onClick: async () => {
+                const refusal = await onSubmit(interval);
+                if (!refusal) return;
+                setPicked("month");
+                return false;
+              },
               disabled: outstanding,
             }
           : { label: t("common:actions.close") }
       }
       secondary={purchasable ? undefined : null}
-      labels={{ cancel: t("common:actions.cancel") }}
+      labels={{
+        cancel: t("common:actions.cancel"),
+        close: t("common:actions.close"),
+      }}
     >
       <div className="flex flex-col gap-3" data-testid="paid-org-offer">
         {choosing && prices && (
@@ -79,6 +96,7 @@ export function PaidOrgOfferDialog({
             prices={prices}
             value={interval}
             onChange={setPicked}
+            disabled={pending}
           />
         )}
         {choosing && prices && (

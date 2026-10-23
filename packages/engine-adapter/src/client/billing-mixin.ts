@@ -5,6 +5,7 @@ import type {
   BillingInterval,
   PlanRoutine,
   PlanRoutineKey,
+  SeatCheckoutOutcome,
 } from "@houston/wire-types";
 import type * as controlPlane from "../control-plane";
 import { HoustonEngineError } from "./errors";
@@ -53,7 +54,7 @@ export function BillingMixin<TBase extends BaseCtor>(Base: TBase) {
     }
     async createCheckout(input?: {
       interval?: BillingInterval;
-    }): Promise<controlPlane.BillingCheckout> {
+    }): Promise<SeatCheckoutOutcome> {
       if (!this.ctx.cp) throw new Error("Billing needs the hosted gateway.");
       return viaSdk("/v1/org/billing/checkout", () =>
         this.ctx.sdk.billing.createCheckout(input),

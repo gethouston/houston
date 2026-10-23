@@ -32,7 +32,7 @@ export function BillingPlanAction({
 }: {
   action: BillingTabAction;
   orgSlug: string;
-  prices: SeatPrices;
+  prices: SeatPrices | null;
   seats: number;
 }) {
   const { t } = useTranslation("teams");
@@ -41,7 +41,7 @@ export function BillingPlanAction({
   const [picked, setPicked] = useState<BillingInterval>(
     DEFAULT_CHECKOUT_INTERVAL,
   );
-  const interval = sellableInterval(prices, picked);
+  const interval = prices ? sellableInterval(prices, picked) : "month";
   return (
     <div className="flex flex-col gap-4 border-t border-line pt-4">
       {checkout.succeeded === orgSlug && (
@@ -62,7 +62,7 @@ export function BillingPlanAction({
               </li>
             ))}
           </ul>
-          {sellsYearly(prices) && (
+          {prices && sellsYearly(prices) && (
             <SeatIntervalChoice
               prices={prices}
               value={interval}
@@ -79,7 +79,12 @@ export function BillingPlanAction({
             <Button
               className="self-start md:self-auto"
               disabled={checkout.outstanding}
-              onClick={() => checkout.start(orgSlug, interval)}
+              onClick={() => {
+                // Never rejects; a refused interval leaves monthly picked.
+                void checkout.start(orgSlug, interval).then((refusal) => {
+                  if (refusal) setPicked("month");
+                });
+              }}
             >
               {t("billing.upgrade")}
             </Button>

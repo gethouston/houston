@@ -147,9 +147,7 @@ describe("the spaces requests", () => {
       org: locked,
       checkoutUrl: "https://checkout.stripe.test/c/9",
     });
-    expect(calls[0].body).toBe(
-      JSON.stringify({ name: "Acme", plan: "paid", interval: "month" }),
-    );
+    expect(calls[0].body).toBe(JSON.stringify({ name: "Acme", plan: "paid" }));
     await sdk.spaces.createOrg({
       name: "Acme",
       plan: "paid",
@@ -161,6 +159,22 @@ describe("the spaces requests", () => {
     // A free create starts no checkout, so it never names an interval.
     await sdk.spaces.createOrg({ name: "Acme", interval: "year" });
     expect(calls[2].body).toBe(JSON.stringify({ name: "Acme", plan: "free" }));
+  });
+
+  it("answers a paid create's interval refusal as an outcome", async () => {
+    for (const [code, status] of [
+      ["interval_unavailable", 409],
+      ["invalid_interval", 400],
+    ] as const) {
+      const { sdk } = makeSdk(() => json({ code }, status));
+      expect(
+        await sdk.spaces.createOrg({
+          name: "Acme",
+          plan: "paid",
+          interval: "year",
+        }),
+      ).toEqual({ kind: code });
+    }
   });
 
   it("still throws a 409 that is not the free slot", async () => {
@@ -277,9 +291,7 @@ describe("the dispatch path", () => {
       type: SpacesCommand.Create,
       payload: { name: "Acme", plan: "paid" },
     });
-    expect(calls[1].body).toBe(
-      JSON.stringify({ name: "Acme", plan: "paid", interval: "month" }),
-    );
+    expect(calls[1].body).toBe(JSON.stringify({ name: "Acme", plan: "paid" }));
     await sdk.dispatch({
       id: "1c",
       type: SpacesCommand.Create,

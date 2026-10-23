@@ -16,7 +16,8 @@ export function CheckoutPriceLine({
   seats,
   className,
 }: {
-  prices: SeatPrices;
+  /** Null while the wire states no price: nothing is drawn. */
+  prices: SeatPrices | null;
   interval: BillingInterval;
   seats: number;
   className?: string;
@@ -24,6 +25,7 @@ export function CheckoutPriceLine({
   const { t, i18n } = useTranslation("teams");
   const money = (cents: number) =>
     formatPlanAmount(cents, BILLING_CURRENCY, i18n.language);
+  if (!prices) return null;
   const count = Math.max(1, seats);
   const total = money(checkoutTotal(prices, interval, count));
   return (
