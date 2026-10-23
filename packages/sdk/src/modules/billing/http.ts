@@ -50,7 +50,7 @@ export async function getBilling(scope: HttpScope): Promise<BillingSummary> {
  * `interval_unavailable`. Returns the hosted `{url}`. Never degrades: a
  * failure throws so the UI surfaces the real reason.
  *
- * @param interval `year` when the user asked to pay yearly; monthly otherwise.
+ * @param interval `year` when the user asked to pay yearly, else `month`.
  * @assistant group:billing
  * @assistant confirm: money. It starts a real subscription, and the card it charges is the user's own.
  */

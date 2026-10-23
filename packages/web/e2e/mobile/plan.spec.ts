@@ -38,7 +38,7 @@ test("Admin > Billing on a free org fits the phone and checks out", async ({
   const billing = await openOrgBilling(page);
 
   await expect(billing.getByText("25% used")).toBeVisible();
-  await expect(billing.getByText("$20 a month for 1 member")).toBeVisible();
+  await expect(billing.getByText("$180 a year for 1 member")).toBeVisible();
   const upgrade = billing.getByRole("button", { name: "Upgrade" });
   await expect(upgrade).toBeVisible();
   await expectNoOverflow(page);

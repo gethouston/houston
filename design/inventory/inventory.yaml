@@ -2445,7 +2445,8 @@ components:
       portal); a checkout is tracked until the org is paid and active with
       no lock. Where the gateway sells a yearly seat, Upgrade sits under a
       Monthly or Yearly radio pair (each row with its price per member from
-      the org's seatPrices, Monthly preselected) and the price line says the
+      the org's seatPrices, Yearly preselected and tagged with what it saves,
+      worked out from the two prices) and the price line says the
       picked interval's total for the members; where it sells monthly only,
       there is no choice and the line says the price per member and the
       total. A paid org's header reads its seats and what they bill per its
@@ -2589,7 +2590,7 @@ components:
       agents out. The billing owner gets Unlock (checkout) for an unpaid lock
       or Fix payment (the Stripe portal) for a live subscription; where the
       gateway sells a yearly seat, Unlock and Upgrade first open a dialog to
-      pick Monthly or Yearly with the org's total, then Continue to payment
+      pick Monthly or Yearly (Yearly preselected) with the org's total, then Continue to payment
       opens checkout, and where it sells monthly only they open it at once. Change pick
       while the change window is open, Use as free org behind a confirmation
       naming the org that locks instead, and Delete org; at most two buttons

@@ -2,7 +2,6 @@ import type { BillingChoice, OrgsList } from "@houston/wire-types";
 import { describe, expect, it } from "vitest";
 import { freeOrgBilling, paidOrgBilling } from "./org-billing-fixtures";
 import {
-  checkoutIntervalField,
   checkoutTotal,
   DEFAULT_CHECKOUT_INTERVAL,
   listSeatPrices,
@@ -11,6 +10,8 @@ import {
   seatPlans,
   sellableInterval,
   sellsYearly,
+  UNNAMED_CHECKOUT_INTERVAL,
+  yearlySavingsPercent,
 } from "./seat-price";
 
 const NOW = Date.parse("2026-10-21T12:00:00Z");
@@ -39,8 +40,12 @@ describe("sellableInterval", () => {
     expect(sellsYearly(null)).toBe(false);
   });
 
-  it("keeps a sold interval and falls back to monthly", () => {
-    expect(DEFAULT_CHECKOUT_INTERVAL).toBe("month");
+  it("preselects yearly, bills monthly when unnamed, and falls back to monthly", () => {
+    expect(DEFAULT_CHECKOUT_INTERVAL).toBe("year");
+    expect(UNNAMED_CHECKOUT_INTERVAL).toBe("month");
+    expect(sellableInterval(MONTHLY_ONLY, DEFAULT_CHECKOUT_INTERVAL)).toBe(
+      "month",
+    );
     expect(sellableInterval(BOTH, "year")).toBe("year");
     expect(sellableInterval(MONTHLY_ONLY, "year")).toBe("month");
   });
@@ -55,11 +60,19 @@ describe("checkoutTotal", () => {
   });
 });
 
-describe("checkoutIntervalField", () => {
-  it("names yearly and leaves monthly as the absent field", () => {
-    expect(checkoutIntervalField("year")).toBe("year");
-    expect(checkoutIntervalField("month")).toBeUndefined();
-    expect(checkoutIntervalField(undefined)).toBeUndefined();
+describe("yearlySavingsPercent", () => {
+  it("is what a year saves against twelve months, off the wire's prices", () => {
+    expect(yearlySavingsPercent(BOTH)).toBe(25);
+    expect(
+      yearlySavingsPercent({ monthlyCents: 1000, annualCents: 10000 }),
+    ).toBe(17);
+  });
+
+  it("is null where no yearly seat is sold or it saves nothing", () => {
+    expect(yearlySavingsPercent(MONTHLY_ONLY)).toBeNull();
+    expect(
+      yearlySavingsPercent({ monthlyCents: 2000, annualCents: 24000 }),
+    ).toBeNull();
   });
 });
 

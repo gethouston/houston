@@ -125,7 +125,7 @@ describe("the delegated spaces requests", () => {
       checkoutUrl: "https://checkout.stripe.test/c/9",
     });
     expect(soleCall().body).toBe(
-      JSON.stringify({ name: "Acme", plan: "paid" }),
+      JSON.stringify({ name: "Acme", plan: "paid", interval: "month" }),
     );
   });
 

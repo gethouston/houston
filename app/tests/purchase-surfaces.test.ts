@@ -153,7 +153,7 @@ const hasButton = (element: ReactElement) =>
   markup(element).includes("<button");
 
 describe("BillingPlanCard", () => {
-  it("offers the billing owner of a free org monthly or yearly, then Upgrade", () => {
+  it("offers the billing owner of a free org yearly or monthly, then Upgrade", () => {
     const element = h(surfaces.BillingPlanCard, {
       billing: free(),
       orgSlug: "acme",
@@ -161,15 +161,16 @@ describe("BillingPlanCard", () => {
     const html = text(markup(element));
     ok(html.includes(enTeams.billing.planFree), html);
     ok(html.includes("Monthly $20 per member a month"), html);
+    // Yearly wears its saving, worked out from the wire's two prices.
     ok(
       html.includes(
-        "Yearly $15 per member a month, billed yearly, $180 a year",
+        "Yearly Save 25% $15 per member a month, billed yearly, $180 a year",
       ),
       html,
     );
-    // Monthly is preselected, so the total under the choice is a month's.
-    ok(html.includes("$60 a month for 3 members"), html);
-    ok(/checked="" value="month"/.test(markup(element)), markup(element));
+    // Yearly is preselected, so the total under the choice is a year's.
+    ok(html.includes("$540 a year for 3 members"), html);
+    ok(/checked="" value="year"/.test(markup(element)), markup(element));
     ok(html.includes(enTeams.billing.upgrade), html);
   });
 
@@ -184,6 +185,7 @@ describe("BillingPlanCard", () => {
       html,
     );
     equal(markup(element).includes('role="radiogroup"'), false, html);
+    equal(html.includes("Save"), false, html);
   });
 
   it("shows the billing owner of a paid org its seats, total and Manage billing", () => {

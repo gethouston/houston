@@ -1,9 +1,15 @@
 import type { BillingInterval, SeatPrices } from "@houston/engine-adapter";
-import { formatPlanAmount, type SeatPlan, seatPlans } from "@houston/sdk";
+import {
+  formatPlanAmount,
+  type SeatPlan,
+  seatPlans,
+  yearlySavingsPercent,
+} from "@houston/sdk";
 import { cn } from "@houston-ai/core";
 import { Check } from "lucide-react";
 import { useId } from "react";
 import { useTranslation } from "react-i18next";
+import { RowTag } from "../shell/free-org-picker-rows.tsx";
 import { BILLING_CURRENCY } from "./billing-tab-model.ts";
 
 /**
@@ -12,7 +18,8 @@ import { BILLING_CURRENCY } from "./billing-tab-model.ts";
  * native radio inside the label, so the arrow keys move the pick) and the
  * picked row wears an ink ring and a filled check, so it reads without
  * hovering. Stacked at every width: the yearly line is long, and a column
- * keeps both rows the same width in a dialog and on the Billing card.
+ * keeps both rows the same width in a dialog and on the Billing card. Yearly
+ * wears what it saves, worked out from the wire's two prices.
  */
 export function SeatIntervalChoice({
   prices,
@@ -29,6 +36,7 @@ export function SeatIntervalChoice({
   // Two choices can share a screen (the Billing tab and the status strip's
   // dialog), so each group names its own radios.
   const group = useId();
+  const saves = yearlySavingsPercent(prices);
   return (
     <div
       role="radiogroup"
@@ -41,6 +49,7 @@ export function SeatIntervalChoice({
           key={plan.interval}
           group={group}
           plan={plan}
+          saves={plan.interval === "year" ? saves : null}
           checked={plan.interval === value}
           disabled={disabled}
           onSelect={() => onChange(plan.interval)}
@@ -53,12 +62,14 @@ export function SeatIntervalChoice({
 function IntervalRow({
   group,
   plan,
+  saves,
   checked,
   disabled,
   onSelect,
 }: {
   group: string;
   plan: SeatPlan;
+  saves: number | null;
   checked: boolean;
   disabled?: boolean;
   onSelect: () => void;
@@ -85,8 +96,13 @@ function IntervalRow({
         onChange={onSelect}
       />
       <span className="min-w-0">
-        <span className="block text-sm font-medium text-ink">
-          {t(`billing.interval.${plan.interval}`)}
+        <span className="flex items-center gap-2">
+          <span className="text-sm font-medium text-ink">
+            {t(`billing.interval.${plan.interval}`)}
+          </span>
+          {saves !== null && (
+            <RowTag label={t("billing.interval.save", { percent: saves })} />
+          )}
         </span>
         <span className="mt-0.5 block text-[13px] leading-snug text-ink-muted tabular-nums">
           {plan.interval === "month"

@@ -147,7 +147,9 @@ describe("the spaces requests", () => {
       org: locked,
       checkoutUrl: "https://checkout.stripe.test/c/9",
     });
-    expect(calls[0].body).toBe(JSON.stringify({ name: "Acme", plan: "paid" }));
+    expect(calls[0].body).toBe(
+      JSON.stringify({ name: "Acme", plan: "paid", interval: "month" }),
+    );
     await sdk.spaces.createOrg({
       name: "Acme",
       plan: "paid",
@@ -275,7 +277,9 @@ describe("the dispatch path", () => {
       type: SpacesCommand.Create,
       payload: { name: "Acme", plan: "paid" },
     });
-    expect(calls[1].body).toBe(JSON.stringify({ name: "Acme", plan: "paid" }));
+    expect(calls[1].body).toBe(
+      JSON.stringify({ name: "Acme", plan: "paid", interval: "month" }),
+    );
     await sdk.dispatch({
       id: "1c",
       type: SpacesCommand.Create,

@@ -468,7 +468,8 @@
       "month": "Mensal",
       "year": "Anual",
       "monthMeta": "{{price}} por membro por mês",
-      "yearMeta": "{{price}} por membro por mês, cobrado uma vez por ano, {{yearly}} por ano"
+      "yearMeta": "{{price}} por membro por mês, cobrado uma vez por ano, {{yearly}} por ano",
+      "save": "Economize {{percent}}%"
     },
     "checkoutTotal": {
       "month_one": "{{total}} por mês para {{count}} membro",

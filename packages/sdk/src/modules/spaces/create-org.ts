@@ -30,8 +30,8 @@ import type { CreateOrgOutcome, OrgPlan } from "./types";
  * @param name What to call the new space, in the user's own words.
  * @param plan `free` unless the user asked for a paid organization; a paid
  *   one starts a subscription.
- * @param interval `year` when the user asked to pay yearly for a paid
- *   organization; monthly otherwise. A free one sends none.
+ * @param interval A paid organization's billing: `year` when the user asked
+ *   to pay yearly, else `month`. A free one sends none.
  * @assistant group:spaces
  * @assistant confirm: money. A paid space starts a subscription, and a repeat leaves a second billable space standing.
  */

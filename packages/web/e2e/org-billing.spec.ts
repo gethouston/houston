@@ -209,7 +209,7 @@ test("the billing owner sees a seat grace's price today and the total after", as
   ).toBeVisible();
 });
 
-test("the billing owner of a free org picks yearly, and the checkout bills yearly", async ({
+test("the billing owner of a free org gets yearly first, picks monthly, and the checkout bills monthly", async ({
   page,
 }) => {
   await stubOpener(page, false);
@@ -220,23 +220,23 @@ test("the billing owner of a free org picks yearly, and the checkout bills yearl
   const choice = billing.getByRole("radiogroup", { name: "How to pay" });
   const monthly = choice.getByRole("radio", { name: /^Monthly/ });
   const yearly = choice.getByRole("radio", { name: /^Yearly/ });
-  await expect(monthly).toBeChecked();
+  await expect(yearly).toBeChecked();
   await expect(choice).toContainText("$20 per member a month");
   await expect(choice).toContainText(
-    "$15 per member a month, billed yearly, $180 a year",
+    "Save 25%$15 per member a month, billed yearly, $180 a year",
   );
-  await expect(billing.getByText("$60 a month for 3 members")).toBeVisible();
-
-  await choice.getByText("Yearly", { exact: true }).click();
-  await expect(yearly).toBeChecked();
   await expect(billing.getByText("$540 a year for 3 members")).toBeVisible();
+
+  await choice.getByText("Monthly", { exact: true }).click();
+  await expect(monthly).toBeChecked();
+  await expect(billing.getByText("$60 a month for 3 members")).toBeVisible();
   await billing.getByRole("button", { name: "Upgrade" }).click();
   await expect.poll(() => openedUrls(page)).toEqual([CHECKOUT_URL]);
   const checkouts = (await planCalls()).filter(
     (call) => call.route === "checkout",
   );
   expect(checkouts.map((call) => call.body)).toEqual([
-    { orgSlug: TEAM.slug, interval: "year" },
+    { orgSlug: TEAM.slug, interval: "month" },
   ]);
 });
 
@@ -260,7 +260,9 @@ test("where only monthly is sold, Upgrade offers no choice and bills monthly", a
   const checkouts = (await planCalls()).filter(
     (call) => call.route === "checkout",
   );
-  expect(checkouts.map((call) => call.body)).toEqual([{ orgSlug: TEAM.slug }]);
+  expect(checkouts.map((call) => call.body)).toEqual([
+    { orgSlug: TEAM.slug, interval: "month" },
+  ]);
 });
 
 test("creating an org while the free slot is taken offers a paid org and its checkout", async ({
@@ -291,9 +293,7 @@ test("creating an org while the free slot is taken offers a paid org and its che
     ),
   ).toBeVisible();
   const choice = dialog.getByRole("radiogroup", { name: "How to pay" });
-  await expect(choice.getByRole("radio", { name: /^Monthly/ })).toBeChecked();
-  await expect(dialog.getByText("$20 a month for 1 member")).toBeVisible();
-  await choice.getByText("Yearly", { exact: true }).click();
+  await expect(choice.getByRole("radio", { name: /^Yearly/ })).toBeChecked();
   await expect(dialog.getByText("$180 a year for 1 member")).toBeVisible();
   await expect(
     dialog.getByText(

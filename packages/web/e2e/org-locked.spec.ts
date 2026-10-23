@@ -114,7 +114,7 @@ test("locked, the owner who pays: the strip, writes off with the reason, reads o
   await expect(page.getByRole("button", { name: /^Remove bo/ })).toBeEnabled();
 });
 
-test("locked, the owner who pays: Unlock asks monthly or yearly, then opens that checkout", async ({
+test("locked, the owner who pays: Unlock asks yearly or monthly, then opens that checkout", async ({
   page,
 }) => {
   await stubOpener(page, false);
@@ -127,9 +127,7 @@ test("locked, the owner who pays: Unlock asks monthly or yearly, then opens that
     "You'll pay in your browser, and Acme unlocks once the payment goes through.",
   );
   const choice = dialog.getByRole("radiogroup", { name: "How to pay" });
-  await expect(choice.getByRole("radio", { name: /^Monthly/ })).toBeChecked();
-  await expect(dialog.getByText("$60 a month for 3 members")).toBeVisible();
-  await choice.getByText("Yearly", { exact: true }).click();
+  await expect(choice.getByRole("radio", { name: /^Yearly/ })).toBeChecked();
   await expect(dialog.getByText("$540 a year for 3 members")).toBeVisible();
   await dialog.getByRole("button", { name: "Continue to payment" }).click();
 

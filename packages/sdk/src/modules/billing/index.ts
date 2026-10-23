@@ -48,7 +48,7 @@ import {
   reportPresence,
   resumeRoutines,
 } from "./routines";
-import { checkoutIntervalField } from "./seat-price";
+import { UNNAMED_CHECKOUT_INTERVAL } from "./seat-price";
 import {
   type BillingCheckout,
   BillingCommand,
@@ -70,7 +70,7 @@ export interface BillingModule {
   getBilling(): Promise<BillingSummary>;
   /**
    * Start a per-seat checkout for the active org, monthly unless `interval`
-   * says `year` (billing owner only).
+   * says `year` (billing owner only). The body always names the interval.
    */
   createCheckout(input?: {
     interval?: BillingInterval;
@@ -108,7 +108,7 @@ export function createBillingModule(ctx: ModuleContext): BillingModule {
   const module: BillingModule = {
     getBilling: () => getBilling(scope),
     createCheckout: (input) =>
-      createCheckout(scope, checkoutIntervalField(input?.interval)),
+      createCheckout(scope, input?.interval ?? UNNAMED_CHECKOUT_INTERVAL),
     createPortal: () => createPortal(scope),
     claimFreeSlot: () => claimFreeSlot(scope),
     getChoice: () => getChoice(scope),

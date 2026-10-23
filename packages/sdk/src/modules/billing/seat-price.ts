@@ -14,10 +14,17 @@ import type {
  */
 
 /**
- * The interval a checkout preselects. Monthly: the first charge is the price
- * a person reads per month, and it is the one interval every deployment sells.
+ * The interval a checkout surface preselects: yearly, as the website does.
+ * Where no yearly seat is sold, `sellableInterval` turns it into monthly.
  */
-export const DEFAULT_CHECKOUT_INTERVAL: BillingInterval = "month";
+export const DEFAULT_CHECKOUT_INTERVAL: BillingInterval = "year";
+
+/**
+ * The interval a checkout bills when its caller names none: monthly, the
+ * contract's default and the one interval every deployment sells. The body
+ * always names it, so the gateway never has to guess.
+ */
+export const UNNAMED_CHECKOUT_INTERVAL: BillingInterval = "month";
 
 /** One way to pay for a seat at checkout. */
 export interface SeatPlan {
@@ -51,6 +58,19 @@ export function sellsYearly(prices: SeatPrices | null | undefined): boolean {
   return prices?.annualCents != null;
 }
 
+/**
+ * What yearly saves against twelve monthly seats, as a whole percent ("25"),
+ * from the wire's two prices; null where no yearly seat is sold or it saves
+ * nothing.
+ */
+export function yearlySavingsPercent(prices: SeatPrices): number | null {
+  if (prices.annualCents === null || prices.monthlyCents <= 0) return null;
+  const percent = Math.round(
+    (1 - prices.annualCents / 12 / prices.monthlyCents) * 100,
+  );
+  return percent > 0 ? percent : null;
+}
+
 /** The interval to start a checkout on: `wanted` when sold, else monthly. */
 export function sellableInterval(
   prices: SeatPrices,
@@ -76,19 +96,6 @@ export function checkoutTotal(
 /** The list prices any org on the list carries, or null while none does. */
 export function listSeatPrices(orgs: OrgsList | undefined): SeatPrices | null {
   return orgs?.orgs.find((org) => org.billing)?.billing?.seatPrices ?? null;
-}
-
-/**
- * The `interval` a checkout body carries: yearly by name, monthly as the
- * absent field (`JSON.stringify` drops `undefined`). Every gateway reads an
- * absent interval as monthly, so a monthly checkout never depends on the
- * gateway knowing intervals; yearly is only offered where it sent a yearly
- * price.
- */
-export function checkoutIntervalField(
-  interval: BillingInterval | undefined,
-): "year" | undefined {
-  return interval === "year" ? "year" : undefined;
 }
 
 /**

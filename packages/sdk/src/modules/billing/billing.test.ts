@@ -69,7 +69,7 @@ describe("the billing requests", () => {
     ]);
   });
 
-  it("starts a monthly checkout with no interval in the body", async () => {
+  it("starts a monthly checkout by default, naming the interval", async () => {
     const { sdk, calls } = ok({ url: "https://checkout.stripe.test/c/1" });
     expect(await sdk.billing.createCheckout()).toEqual({
       url: "https://checkout.stripe.test/c/1",
@@ -79,12 +79,12 @@ describe("the billing requests", () => {
       {
         method: "POST",
         url: `${BASE}/v1/org/billing/checkout`,
-        body: "{}",
+        body: JSON.stringify({ interval: "month" }),
       },
       {
         method: "POST",
         url: `${BASE}/v1/org/billing/checkout`,
-        body: "{}",
+        body: JSON.stringify({ interval: "month" }),
       },
     ]);
   });
@@ -220,7 +220,7 @@ describe("the dispatch path", () => {
       type: BillingCommand.CreateCheckout,
     });
     expect(result.ok).toBe(true);
-    expect(calls[0].body).toBe("{}");
+    expect(calls[0].body).toBe(JSON.stringify({ interval: "month" }));
   });
 
   it("dispatches a yearly checkout and refuses an interval it does not sell", async () => {

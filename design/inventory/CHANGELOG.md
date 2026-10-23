@@ -9,8 +9,9 @@ A seat is sold monthly or yearly, and every price comes from the wire. The
 Billing tab's Upgrade, the strip's and the locked composer's Unlock, and the
 paid offer of a second organization let the billing owner pick Monthly
 ($20 per member a month) or Yearly ($15 per member a month, billed yearly,
-$180 a year), Monthly preselected, with the total for the members under the
-choice; where the gateway sells monthly only there is no choice. A paid
+$180 a year), Yearly preselected and tagged with what it saves (worked out
+from the two prices), with the total for the members under the choice; where
+the gateway sells monthly only there is no choice. A paid
 organization's card reads its seats and what they bill per its
 subscription's interval at the price it is billed, and a seat grace reads
 per that interval. The pricing-change modal prices the rest at the list
