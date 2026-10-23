@@ -31,6 +31,8 @@
   "cancelBody": "No charge was made.",
   "openHouston": "Open Houston",
   "continueBrowser": "Continue in browser",
+  "returnOpening": "We're opening Houston for you. If it doesn't open, use the button below.",
+  "returnTaken": "Your Houston tab now shows Billing. You can close this one.",
   "maybeLater": "Maybe later",
   "triggerSkipped": {
     "title_one": "{{count}} run of this routine was skipped in the last 24 hours",

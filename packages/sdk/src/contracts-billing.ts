@@ -26,6 +26,7 @@ export {
   switchToYearlyRefusal,
 } from "./modules/billing";
 export {
+  BILLING_CHECKOUT_RETURN_MS,
   BILLING_CHECKOUT_WINDOW_MS,
   type BillingCheckoutPorts,
   type BillingCheckoutStart,

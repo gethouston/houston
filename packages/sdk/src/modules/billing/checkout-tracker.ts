@@ -13,6 +13,12 @@ import type { Clock } from "../../ports";
  */
 export const BILLING_CHECKOUT_WINDOW_MS = 600_000;
 
+/**
+ * How long this app owns the return from a checkout it opened. Separate from
+ * the poll window: Stripe's page can stay open long after the poll gives up.
+ */
+export const BILLING_CHECKOUT_RETURN_MS = 86_400_000;
+
 export type BillingCheckoutState =
   | { phase: "idle" }
   | { phase: "creating"; orgSlug: string }
@@ -66,6 +72,8 @@ export class BillingCheckoutTracker {
   #state: BillingCheckoutState = { phase: "idle" };
   #listeners = new Set<() => void>();
   #expiry: number | null = null;
+  /** Org slug to the time its return stops being this app's to take. */
+  #returns = new Map<string, number>();
   /** Bumped by `reset`, so a start the previous identity began cannot land. */
   #generation = 0;
 
@@ -106,6 +114,7 @@ export class BillingCheckoutTracker {
       return outcome.kind;
     }
     const { url } = outcome;
+    this.#returns.set(orgSlug, this.clock.now() + BILLING_CHECKOUT_RETURN_MS);
     this.#set({
       phase: "open",
       orgSlug,
@@ -154,12 +163,24 @@ export class BillingCheckoutTracker {
   }
 
   /**
+   * Take the return page's hand-back for `orgSlug`: true once per checkout
+   * this app opened in the last `BILLING_CHECKOUT_RETURN_MS`, whatever the
+   * poll's phase, so a tab whose poll timed out still answers its own return.
+   */
+  claimReturn(orgSlug: string): boolean {
+    const until = this.#returns.get(orgSlug);
+    this.#returns.delete(orgSlug);
+    return until !== undefined && until > this.clock.now();
+  }
+
+  /**
    * Forget everything about the current checkout: the signed-in identity
    * changed, and the next account must not inherit its poll or its success.
    */
   reset(): void {
     this.#generation += 1;
     this.#clearExpiry();
+    this.#returns.clear();
     if (this.#state.phase !== "idle") this.#set({ phase: "idle" });
   }
 

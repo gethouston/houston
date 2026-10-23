@@ -31,6 +31,8 @@
   "cancelBody": "Nenhuma cobrança foi feita.",
   "openHouston": "Abrir Houston",
   "continueBrowser": "Continuar no navegador",
+  "returnOpening": "Estamos abrindo o Houston. Se ele não abrir, use o botão abaixo.",
+  "returnTaken": "Sua aba do Houston já mostra a Cobrança. Você pode fechar esta.",
   "maybeLater": "Talvez depois",
   "triggerSkipped": {
     "title_one": "{{count}} execução desta rotina foi ignorada nas últimas 24 horas",

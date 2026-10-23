@@ -57,6 +57,9 @@ export function settingsSectionFromDeepLink(
   try {
     const url = new URL(value);
     if (url.protocol !== "houston:" || url.hostname !== "settings") return null;
+    // An org checkout's return opens that org's Billing in Admin instead
+    // (`checkout-return.ts`).
+    if (url.searchParams.has("org")) return null;
     const section = settingsSectionFromPath(`/settings${url.pathname}`);
     return section === "plan" ? section : null;
   } catch {
