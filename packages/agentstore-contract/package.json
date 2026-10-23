@@ -34,7 +34,7 @@
   },
   "dependencies": {
     "yaml": "2.9.0",
-    "zod": "4.4.3"
+    "zod": "4.6.6"
   },
   "devDependencies": {
     "@types/node": "22.20.0",
