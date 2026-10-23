@@ -310,14 +310,14 @@
     "successBody": "Invita a otras personas para trabajar juntos.",
     "successAction": "Invita a tu equipo",
     "paidTitle": "Crea {{name}} como organización de pago",
-    "freeTaken": "Cada persona tiene una organización gratis, y la tuya es {{freeOrg}}.",
-    "freeTakenUnknown": "Cada persona tiene una organización gratis, y ya tienes la tuya.",
+    "freeTaken": "Cada persona puede tener una organización en el nivel gratuito, y la tuya es {{freeOrg}}.",
+    "freeTakenUnknown": "Cada persona puede tener una organización en el nivel gratuito, y ya tienes la tuya.",
     "paidPrice": "{{name}} cuesta {{price}} por miembro al mes. Pagarás en tu navegador, y se desbloquea cuando se confirme el pago.",
     "paidPriceUnknown": "Pagarás {{name}} en tu navegador, y se desbloquea cuando se confirme el pago.",
     "paidSubmit": "Continuar al pago",
     "paidSuccessTitle": "Termina el pago de \"{{name}}\"",
     "paidSuccessBody": "El pago está abierto en tu navegador. La organización se desbloquea cuando se confirme el pago.",
-    "freeTakenInline": "Ya tienes una organización gratis. Créala desde el menú de organizaciones como organización de pago.",
+    "freeTakenInline": "Ya tienes una organización en el nivel gratuito. Créala desde el menú de organizaciones como organización de pago.",
     "paidBlockedBody": "Tu navegador no abrió el pago. Ábrelo para terminar, y la organización se desbloquea cuando se confirme."
   },
   "shareViaTeam": {
@@ -427,7 +427,7 @@
   "billing": {
     "unavailable": "No pudimos cargar la facturación de esta organización.",
     "status": {
-      "free": "Gratis",
+      "free": "Nivel gratuito",
       "trialing": "Prueba gratis",
       "trialingDays_one": "Prueba gratis, queda {{count}} día",
       "trialingDays_other": "Prueba gratis, quedan {{count}} días",
@@ -442,7 +442,7 @@
     "manage": "Gestionar facturación",
     "askOwner": "Solo el propietario que paga esta organización puede cambiar su plan. Pídeselo si necesitas más.",
     "loading": "Cargando la facturación",
-    "planFree": "Plan gratis",
+    "planFree": "Nivel gratuito",
     "planPaid": "Plan de pago",
     "seatsTotal_one": "{{count}} asiento, {{total}} al mes",
     "seatsTotal_other": "{{count}} asientos, {{total}} al mes",
@@ -457,7 +457,7 @@
     "openCheckout": "Abrir el pago",
     "openPortal": "Abrir el portal de facturación",
     "success": "Recibimos el pago. Todos aquí pueden seguir.",
-    "usageTitle": "Uso gratis de esta semana",
+    "usageTitle": "Uso del nivel gratuito esta semana",
     "usageUsed": "{{percent}}% usado",
     "usageShared": "Todos en esta organización lo comparten. Se reinicia {{time}}.",
     "usageSharedNoTime": "Todos en esta organización lo comparten. Se reinicia más adelante esta semana.",
@@ -685,8 +685,8 @@
     "inviteNeedsUpgradeTitle": "Este equipo no puede sumar personas por ahora",
     "inviteNeedsUpgradeBody": "Está bloqueada, así que no puede sumar personas por ahora.",
     "moveNeedsUpgrade": "El plan de este equipo no incluye mover Empleados de IA a él por ahora.",
-    "freeTakenInline": "Ya tienes una organización gratis, así que esta no se puede crear aquí.",
-    "freeTakenTitle": "Ya tienes una organización gratis",
+    "freeTakenInline": "Ya tienes una organización en el nivel gratuito, así que esta no se puede crear aquí.",
+    "freeTakenTitle": "Ya tienes una organización en el nivel gratuito",
     "freeTakenBody": "Esta no se puede crear aquí."
   },
   "writeFailed": {
@@ -746,25 +746,25 @@
       "fixPayment": "Arreglar pago",
       "manageBilling": "Gestionar pagos",
       "changePick": "Cambiar elección",
-      "claimFree": "Usar como gratuita",
+      "claimFree": "Pasar al nivel gratuito",
       "delete": "Eliminar organización",
       "more": "Más"
     },
     "claim": {
-      "title": "¿Usar {{org}} como tu organización gratuita?",
-      "bodySwap": "{{org}} se desbloquea y pasa a ser gratuita. {{other}} se bloquea en su lugar hasta que alguien la pague.",
-      "bodyFree": "{{org}} se desbloquea y pasa a ser tu organización gratuita.",
+      "title": "¿Pasar {{org}} al nivel gratuito?",
+      "bodySwap": "{{org}} se desbloquea y pasa al nivel gratuito. {{other}} sale del nivel gratuito y se bloquea hasta que alguien la pague.",
+      "bodyFree": "{{org}} se desbloquea y pasa al nivel gratuito.",
       "cancel": "Cancelar",
       "pending": "Cambiando",
-      "done": "{{org}} ahora es tu organización gratuita.",
+      "done": "{{org}} ahora está en el nivel gratuito.",
       "refused": {
         "has_subscription": {
           "title": "Esta organización todavía tiene un plan",
-          "body": "Su suscripción sigue activa, así que no puede ser la gratuita. Mejor arregla el pago."
+          "body": "Su suscripción sigue activa, así que no puede pasar al nivel gratuito. Primero resuelve el pago."
         },
         "not_billing_owner": {
           "title": "Solo el dueño que paga puede hacer esto",
-          "body": "Pídele al dueño que paga esta organización que la haga la gratuita."
+          "body": "Pídele al propietario que paga esta organización que la pase al nivel gratuito."
         }
       }
     },

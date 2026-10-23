@@ -4,6 +4,7 @@ import {
   formatCutoverDate,
   formatCutoverDay,
   openChoicePicker,
+  settleChoicePick,
 } from "@houston/sdk";
 import { Button, Card } from "@houston-ai/core";
 import { type RefObject, useRef, useState } from "react";
@@ -28,7 +29,10 @@ export function FreeOrgChoiceRow({
   const { t, i18n } = useTranslation("plan");
   const { data: choice } = useBillingChoice();
   const orgName = useOrgName();
-  const [frame, setFrame] = useState(CLOSED_CHOICE_PICKER);
+  const [stored, setFrame] = useState(CLOSED_CHOICE_PICKER);
+  // Derived from the last render's frame; React re-renders before painting.
+  const frame = choice ? settleChoicePick(stored, choice) : stored;
+  if (frame !== stored) setFrame(frame);
   const opener = useRef<HTMLButtonElement>(null);
   const now = useChoiceNow(choice);
   const entry = choicePickerEntry(choice, now, frame);

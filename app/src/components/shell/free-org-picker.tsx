@@ -1,21 +1,21 @@
 import { layout } from "@houston/design-tokens";
-import type {
-  BillingChoice,
-  BillingChoicePick,
-  BillingChoiceSave,
-} from "@houston/engine-adapter";
+import type { BillingChoice, BillingChoiceSave } from "@houston/engine-adapter";
 import {
   type ChoicePickerFrame,
+  choicePickerPick,
   choicePickerSaved,
-  choosesPaidOrg,
   closeChoicePicker,
-  defaultFreeOrg,
-  defaultPaidOrg,
   type PickerState,
-  reconcilePick,
+  type PickFlow,
+  pickerBack,
+  pickerSubmission,
+  pickFlow,
+  pickFlowProgress,
+  pickRefused,
+  toFreeStep,
+  withPickerDraft,
 } from "@houston/sdk";
 import { DialogTitle } from "@houston-ai/core";
-import { useState } from "react";
 import { useTranslation } from "react-i18next";
 import { useSetBillingChoice } from "../../hooks/queries/use-billing-choice";
 import { DoneStep } from "./free-org-picker-done";
@@ -24,80 +24,93 @@ import { PlanBriefingFrame } from "./plan-briefing-frame";
 import { BriefingStep } from "./plan-briefing-swap";
 
 const TITLE_CLASS =
-  "mb-5 pr-8 text-2xl font-semibold leading-tight tracking-tight text-balance text-ink outline-none";
+  "mb-2 pr-8 text-2xl font-semibold leading-tight tracking-tight text-balance text-ink outline-none";
+
+/** Changes the picker's draft from the latest one, reconciled. */
+export type PickDraftUpdate = (
+  update: (draft: PickerState) => PickerState,
+) => void;
 
 /**
- * The steps, mounted fresh on every open so each one starts on the stored
- * pick (else the busiest org). A Plus or comp payer gets a second step in the
- * same frame for the org their subscription pays for. Renders inside a
+ * The picker's steps over a draft its frame holds (`draft`, already valid
+ * against `choice`), so the pricing-change modal keeps it while the person
+ * steps back into the intro. A Plus or comp payer first picks the org their
+ * subscription covers, then the free one, in the same frame. Renders inside a
  * {@link PlanBriefingFrame}: the Settings entry's own, or the pricing-change
- * modal's after its intro. Every save's answer goes to `onAnswer`, whose SDK
- * frame moves a stored pick to the success step.
+ * modal's after its intro, whose page Back returns to from the first step
+ * (`onBack`). Every save's answer goes to `onAnswer`, whose SDK frame moves a
+ * stored pick to the success step.
  */
 export function PickerBody({
   choice,
+  flow,
+  draft,
+  onDraft,
   onAnswer,
+  onBack,
 }: {
   choice: BillingChoice;
+  flow: PickFlow;
+  draft: PickerState;
+  onDraft: PickDraftUpdate;
   onAnswer: (outcome: BillingChoiceSave) => void;
+  onBack?: () => void;
 }) {
   const save = useSetBillingChoice();
-  const payer = choosesPaidOrg(choice);
-  const [state, setState] = useState<PickerState>(() => ({
-    step: "free",
-    free: defaultFreeOrg(choice),
-    paid: null,
-  }));
-  // Valid against the latest choice, which a refusal's refetch may change.
-  const { step, free, paid } = reconcilePick(choice, state);
-  const update = (patch: Partial<PickerState>) =>
-    setState({ step, free, paid, ...patch });
+  const { step, free, paid } = draft;
   const title = (text: string, id: string) => (
     // The id rides an inner span: Radix names the frame by the title's own id.
     <DialogTitle tabIndex={-1} className={TITLE_CLASS}>
       <span id={id}>{text}</span>
     </DialogTitle>
   );
-
-  const submit = (pick: BillingChoicePick) =>
+  const submit = () => {
+    const pick = pickerSubmission(draft);
+    if (!pick) return;
     save.mutate(pick, {
       onSuccess: (outcome) => {
-        if (outcome.kind === "not_payer") update({ step: "free", paid: null });
+        onDraft((current) => pickRefused(current, outcome));
         onAnswer(outcome);
       },
     });
+  };
+  const back = () => {
+    const previous = pickerBack(draft);
+    if (previous) onDraft(() => previous);
+    else onBack?.();
+  };
+  const progress = pickFlowProgress(flow, { step });
 
   return (
     <BriefingStep step={step}>
       {step === "paid" ? (
         <PaidStep
           choice={choice}
-          freeSlug={free ?? ""}
           selected={paid ?? ""}
-          onSelect={(slug) => update({ paid: slug })}
+          onSelect={(slug) =>
+            onDraft((current) => ({ ...current, paid: slug }))
+          }
           busy={save.isPending}
           title={title}
-          onBack={() => update({ step: "free" })}
+          progress={progress}
+          onBack={onBack}
           onConfirm={() =>
-            free && paid && submit({ freeOrgSlug: free, paidOrgSlug: paid })
+            paid && onDraft((current) => toFreeStep(choice, current))
           }
         />
       ) : (
         <FreeStep
           choice={choice}
+          paidSlug={paid}
           selected={free ?? ""}
-          onSelect={(slug) => update({ free: slug })}
-          payer={payer}
+          onSelect={(slug) =>
+            onDraft((current) => ({ ...current, free: slug }))
+          }
           busy={save.isPending}
           title={title}
-          onConfirm={() => {
-            if (!free) return;
-            if (!payer) return submit({ freeOrgSlug: free });
-            update({
-              step: "paid",
-              paid: paid && paid !== free ? paid : defaultPaidOrg(choice, free),
-            });
-          }}
+          progress={progress}
+          onBack={pickerBack(draft) || onBack ? back : undefined}
+          onConfirm={submit}
         />
       )}
     </BriefingStep>
@@ -106,7 +119,8 @@ export function PickerBody({
 
 /**
  * The picker on its own, opened from Settings > Billing, then its success
- * step until the person closes it. The row that opens it holds the frame.
+ * step until the person closes it. The row that opens it holds the frame,
+ * and the frame holds the draft for one open ({@link choicePickerPick}).
  */
 export function FreeOrgPicker({
   choice,
@@ -122,6 +136,7 @@ export function FreeOrgPicker({
 }) {
   const { t } = useTranslation("plan");
   const close = () => setFrame(closeChoicePicker);
+  const flow = pickFlow(choice, null, frame.pick);
   return (
     <PlanBriefingFrame
       open={frame.open}
@@ -137,10 +152,24 @@ export function FreeOrgPicker({
     >
       <BriefingStep step={frame.done ? "done" : "picking"}>
         {frame.done ? (
-          <DoneStep done={frame.done} onClose={close} />
+          <DoneStep
+            done={frame.done}
+            progress={pickFlowProgress(flow, { step: "done" })}
+            onClose={close}
+          />
         ) : (
           <PickerBody
             choice={choice}
+            flow={flow}
+            draft={choicePickerPick(frame, choice)}
+            onDraft={(update) =>
+              setFrame((current) =>
+                withPickerDraft(
+                  current,
+                  update(choicePickerPick(current, choice)),
+                ),
+              )
+            }
             onAnswer={(outcome) =>
               setFrame((current) => choicePickerSaved(current, outcome))
             }

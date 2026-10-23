@@ -1,27 +1,27 @@
 {
   "title": "Billing",
-  "nav": "Choose which organization stays free",
+  "nav": "Choose which organization stays on the free tier",
   "upgrade": "Upgrade",
-  "hint": "Your organization has used {{percent}}% of this week's free usage.",
+  "hint": "Your organization has used {{percent}}% of this week's free tier limit.",
   "limitTitle": "Weekly usage limit reached",
-  "limitBody": "Your organization's free usage resets {{time}}. Upgrade to keep going now.",
+  "limitBody": "Your organization's free tier limit resets {{time}}. Upgrade to keep going now.",
   "limitBodyResetOnly": "Your usage resets {{time}}.",
   "resumeTitle": "Your routines were paused",
   "resumeBody": "They paused while you were away. You can resume them now.",
   "resume": "Resume",
   "notNow": "Not now",
   "keepTitle": "Choose a routine to keep running",
-  "keepBody": "Free keeps one routine running. The others stay saved.",
+  "keepBody": "The free tier keeps one routine running. The others stay saved.",
   "keep": "Keep this one",
   "trigger": "Runs when its event happens",
   "schedule": "Runs on its schedule",
-  "shortInterval": "On Free, choose an interval of at least {{minutes}} minutes.",
+  "shortInterval": "On the free tier, choose an interval of at least {{minutes}} minutes.",
   "shortIntervalBody": "Nothing was saved. Pick a slower schedule.",
   "success": "You're all set",
   "empty": "No routines to choose from.",
   "error": "Could not load your plan.",
   "retry": "Try again",
-  "limitBodyNoTime": "Your organization's free usage resets later this week. Upgrade to keep going now.",
+  "limitBodyNoTime": "Your organization's free tier limit resets later this week. Upgrade to keep going now.",
   "limitBodyResetOnlyNoTime": "Your usage resets later this week.",
   "questions": "Questions about billing?",
   "contact": "Contact us",
@@ -35,18 +35,18 @@
   "triggerSkipped": {
     "title_one": "{{count}} run of this routine was skipped in the last 24 hours",
     "title_other": "{{count}} runs of this routine were skipped in the last 24 hours",
-    "minInterval": "Your organization's Free plan limits how often this routine can run. Upgrade so it runs every time.",
-    "minIntervalNoOffer": "Your organization's Free plan limits how often this routine can run.",
-    "routineLimit": "Free keeps one routine running, and the one that stays active is a different one. Choose this routine to keep it running instead, or upgrade to run them all.",
-    "routineLimitNoOffer": "Free keeps one routine running, and the one that stays active is a different one. Choose this routine to keep it running instead.",
-    "routineLimitPaused": "Free keeps one routine running, and the one that stays active is a different one. Your routines also paused while you were away, so resume them first.",
+    "minInterval": "Your organization's free tier limits how often this routine can run. Upgrade so it runs every time.",
+    "minIntervalNoOffer": "Your organization's free tier limits how often this routine can run.",
+    "routineLimit": "The free tier keeps one routine running, and the one that stays active is a different one. Choose this routine to keep it running instead, or upgrade to run them all.",
+    "routineLimitNoOffer": "The free tier keeps one routine running, and the one that stays active is a different one. Choose this routine to keep it running instead.",
+    "routineLimitPaused": "The free tier keeps one routine running, and the one that stays active is a different one. Your routines also paused while you were away, so resume them first.",
     "inactivePaused": "Your routines paused while you were away. Resume them to run this routine again.",
     "inactiveResumed": "Your routines were paused while you were away. They're running again now.",
-    "creatorPlan": "This routine runs on its creator's Free plan, which limits how often it can run. They can upgrade so it runs every time.",
+    "creatorPlan": "This routine runs on its creator's free tier, which limits how often it can run. They can upgrade so it runs every time.",
     "orgLocked": "This organization is locked, so its routines are paused until it is paid for."
   },
   "sidebar": {
-    "free": "Free plan",
+    "free": "Free tier",
     "nearLimit": "{{percent}}% used",
     "limit": "Limit reached",
     "upgrade": "Upgrade",
@@ -57,16 +57,16 @@
   "managedOnWeb": "Your plan is managed on the web at gethouston.ai.",
   "manageOnWeb": "Manage your plan on the web.",
   "native": {
-    "limitBody": "Your organization's free usage resets {{time}}. Manage your plan on the web.",
-    "limitBodyNoTime": "Your organization's free usage resets later this week. Manage your plan on the web.",
+    "limitBody": "Your organization's free tier limit resets {{time}}. Manage your plan on the web.",
+    "limitBodyNoTime": "Your organization's free tier limit resets later this week. Manage your plan on the web.",
     "triggerSkipped": {
-      "minInterval": "Your Free plan limits how often this routine can run. Manage your plan on the web.",
-      "routineLimit": "Free keeps one routine running, and the one that stays active is a different one. Choose this routine to keep it running instead, or manage your plan on the web.",
-      "creatorPlan": "This routine runs on its creator's Free plan, which limits how often it can run."
+      "minInterval": "Your free tier limits how often this routine can run. Manage your plan on the web.",
+      "routineLimit": "The free tier keeps one routine running, and the one that stays active is a different one. Choose this routine to keep it running instead, or manage your plan on the web.",
+      "creatorPlan": "This routine runs on its creator's free tier, which limits how often it can run."
     },
     "purchaseLinkTitle": "This link isn't available in the app",
-    "limitBodyMember": "Your organization's free usage resets {{time}}.",
-    "limitBodyMemberNoTime": "Your organization's free usage resets later this week."
+    "limitBodyMember": "Your organization's free tier limit resets {{time}}.",
+    "limitBodyMemberNoTime": "Your organization's free tier limit resets later this week."
   },
   "choice": {
     "notice": {
@@ -76,33 +76,53 @@
       "team": {
         "title": "Every space works like a team",
         "any": "Personal and team spaces become the same thing, so you can invite people to any of them.",
-        "named": "Personal and team spaces become the same thing, so you can invite people to {{name}}."
+        "named": "Personal and team spaces become the same thing, so you can invite people to {{name}}.",
+        "invite": "You can invite people to any of them."
       },
       "oneFree": {
-        "title": "One free organization per account",
-        "body": "It keeps working the way it does today."
+        "title": "Each account gets one organization on the free tier",
+        "body": "Everyone in it shares the free tier's weekly limit."
       },
-      "pick": {
-        "title": "Pick the one to keep free",
-        "body": "Made a few just to try things? Choose yours and we'll handle the rest."
+      "rest": {
+        "title": "The rest are {{price}} per member a month",
+        "body": "Only for organizations you want to keep working."
       },
-      "moves": {
-        "title": "Your subscription comes with you",
-        "body": "Pick the organization that stays free and the one your subscription pays for."
+      "covers": {
+        "title": "Your subscription covers one organization",
+        "body": "{{price}} per member a month. You pick it in a moment."
       },
-      "staysFree": "{{name}} stays free",
+      "staysFree": "{{name}} stays on the free tier",
       "paysFor": "Your subscription pays for {{name}}",
       "nothingToDo": "Nothing to do. It keeps working the way it does today.",
       "member": {
         "title": "Nothing to do on your side",
         "body": "The teams you're in keep working like today."
       },
-      "choose": "Choose my free organization",
+      "choose": "Choose my organization for the free tier",
       "gotIt": "Got it",
-      "close": "Close"
+      "close": "Close",
+      "notKept": {
+        "label": "Organizations not on the free tier",
+        "title": "Nothing gets deleted",
+        "open": {
+          "title": "You can still open them",
+          "body": "Every agent, mission and file stays where it is."
+        },
+        "move": {
+          "title": "Move agents to your organization on the free tier",
+          "body": "Bring the ones you want to keep using."
+        },
+        "wait": {
+          "title": "New conversations wait for a plan",
+          "body": "When you open one, you can pay for it there."
+        }
+      },
+      "next": "Next",
+      "back": "Back"
     },
     "picker": {
-      "title": "Which organization stays free?",
+      "title": "Which organization stays on the free tier?",
+      "sub": "Everyone in it shares the free tier's weekly limit.",
       "mostActive": "Most active",
       "personal": "Personal",
       "members_one": "{{count}} member",
@@ -111,27 +131,22 @@
       "messages_other": "{{count}} messages in the last 30 days",
       "noMessages": "No messages in the last 30 days",
       "meta": "{{first}} · {{second}}",
-      "keep": "Keep <name/> free",
+      "keep": "Keep <name/> on the free tier",
       "close": "Close",
-      "step": "Step {{step}} of 2",
-      "next": "Next",
+      "step": "Step {{step}} of {{total}}",
       "pickOne": "Pick an organization"
     },
     "payer": {
-      "title": "Which one does your subscription pay for?",
+      "label": "You already pay for Houston",
+      "title": "Which organization does your subscription cover?",
       "each": "{{price}} each",
-      "free": "Free",
-      "staysFree": "Stays free",
-      "grace": "Your price stays {{today}} a month until {{date}}, then it's {{monthly}} a month.",
-      "noGrace": "Your price stays {{monthly}} a month.",
-      "back": "Back",
-      "use": "Pay for <name/>"
+      "use": "Use it for <name/>"
     },
     "done": {
-      "title": "{{name}} stays free",
+      "title": "{{name}} stays on the free tier",
       "sub": "Here's how your organizations look from {{date}}.",
       "status": {
-        "free": "Free",
+        "free": "Free tier",
         "subscription": "Your subscription",
         "locks": "Locks {{date}}",
         "paid": "Paid",
@@ -141,7 +156,7 @@
       "close": "Done"
     },
     "applied": {
-      "title": "{{name}} is your free organization now",
+      "title": "{{name}} is on the free tier now",
       "paid": "Your subscription now pays for {{name}}.",
       "now": "Here's how your organizations look now.",
       "until": "You can change this in Settings until {{date}}.",
@@ -150,8 +165,8 @@
       "messages_other": "{{count}} messages in 30 days",
       "noMessages": "No messages in 30 days",
       "confirm": {
-        "title": "We kept {{free}} free",
-        "titlePaid": "We kept {{free}} free and moved your subscription to {{paid}}",
+        "title": "We kept {{free}} on the free tier",
+        "titlePaid": "We kept {{free}} on the free tier and moved your subscription to {{paid}}",
         "sub": "We went by where you're most active. You can change this until {{date}}.",
         "confirm": "Confirm",
         "change": "Change"
@@ -164,30 +179,30 @@
       },
       "not_payer": {
         "title": "There's no subscription to move",
-        "body": "Choose only the organization that stays free."
+        "body": "Choose only the organization that stays on the free tier."
       },
       "same_org": {
         "title": "Pick two different organizations",
-        "body": "The free organization can't also be the one your subscription pays for."
+        "body": "The organization on the free tier can't also be the one your subscription covers."
       },
       "choice_closed": {
         "title": "The change window has closed",
-        "body": "Your organizations stay as they are now. You can still make an organization the free one or pay for it from its Billing page."
+        "body": "Your organizations stay as they are now. You can still move an organization to the free tier or pay for it from its Billing page."
       }
     },
     "settings": {
-      "title": "Choose your free organization",
-      "pending": "Plans move to organizations on {{date}}. Pick the one that stays free.",
-      "picked": "{{name}} stays free from {{day}}.",
+      "title": "Choose which organization is on the free tier",
+      "pending": "Plans move to organizations on {{date}}. Pick the one that stays on the free tier.",
+      "picked": "{{name}} stays on the free tier from {{day}}.",
       "choose": "Choose",
       "change": "Change",
-      "appliedTitle": "Change your free organization",
-      "applied": "{{name}} is your free organization. You can change it until {{date}}."
+      "appliedTitle": "Change which organization is on the free tier",
+      "applied": "{{name}} is on the free tier. You can change this until {{date}}."
     }
   },
   "askOwnerHint": "Ask the owner to upgrade.",
-  "limitBodyMember": "Your organization's free usage resets {{time}}. Ask the owner to upgrade so everyone can keep going now.",
-  "limitBodyMemberNoTime": "Your organization's free usage resets later this week. Ask the owner to upgrade so everyone can keep going now.",
+  "limitBodyMember": "Your organization's free tier limit resets {{time}}. Ask the owner to upgrade so everyone can keep going now.",
+  "limitBodyMemberNoTime": "Your organization's free tier limit resets later this week. Ask the owner to upgrade so everyone can keep going now.",
   "orgBilling": {
     "title": "Organization billing",
     "body": "Each organization's plan, seats and payment are in its Admin, under Billing.",

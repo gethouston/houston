@@ -27,15 +27,15 @@ test("the modal fills the phone, and the picker and its success step open in the
   await page.goto("/");
 
   const modal = choiceModal(page);
-  const choose = modal.getByRole("button", { name: CHOOSE });
-  await expect(choose).toBeVisible({ timeout: 15_000 });
+  const next = modal.getByRole("button", { name: "Next", exact: true });
+  await expect(next).toBeVisible({ timeout: 15_000 });
   const viewport = page.viewportSize();
   const box = await modal.boundingBox();
   expect(box && viewport && Math.round(box.y)).toBe(0);
   expect(box && viewport && Math.round(box.y + box.height)).toBe(
     viewport?.height,
   );
-  const button = await choose.boundingBox();
+  const button = await next.boundingBox();
   expect(button && viewport && button.y > viewport.height / 2).toBe(true);
   expect(
     await page.evaluate(
@@ -45,8 +45,16 @@ test("the modal fills the phone, and the picker and its success step open in the
     ),
   ).toBeLessThanOrEqual(0);
 
+  await next.tap();
+  // Page two seats its actions at the bottom too.
+  const choose = modal.getByRole("button", { name: CHOOSE });
+  await expect(choose).toBeVisible();
+  const chooseBox = await choose.boundingBox();
+  expect(chooseBox && viewport && chooseBox.y > viewport.height / 2).toBe(true);
   await choose.tap();
-  const keep = modal.getByRole("button", { name: "Keep La Fila free" });
+  const keep = modal.getByRole("button", {
+    name: "Keep La Fila on the free tier",
+  });
   await expect(keep).toBeVisible();
   const picking = await modal.boundingBox();
   expect(picking && Math.round(picking.y + picking.height)).toBe(
@@ -58,7 +66,7 @@ test("the modal fills the phone, and the picker and its success step open in the
   await keep.tap();
   const done = modal.getByRole("button", { name: "Done" });
   await expect(done).toBeVisible();
-  await expect(modal).toContainText("La Fila stays free");
+  await expect(modal).toContainText("La Fila stays on the free tier");
   const doneBox = await done.boundingBox();
   expect(doneBox && viewport && doneBox.y > viewport.height / 2).toBe(true);
   await done.tap();
@@ -83,9 +91,12 @@ test("a long org name truncates inside the action, which stays one line and name
   await page.goto("/");
 
   const modal = choiceModal(page);
-  await modal.getByRole("button", { name: CHOOSE }).tap({ timeout: 15_000 });
+  await modal
+    .getByRole("button", { name: "Next", exact: true })
+    .tap({ timeout: 15_000 });
+  await modal.getByRole("button", { name: CHOOSE }).tap();
   const keep = modal.getByRole("button", {
-    name: `Keep ${name} free`,
+    name: `Keep ${name} on the free tier`,
     exact: true,
   });
   await expect(keep).toBeVisible();
@@ -123,7 +134,7 @@ test("a long org name truncates inside the action, which stays one line and name
     pieces: [
       { text: "Keep ", inside: true },
       { text: name, inside: true },
-      { text: " free", inside: true },
+      { text: " on the free tier", inside: true },
     ],
   });
 });

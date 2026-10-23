@@ -310,14 +310,14 @@
     "successBody": "Invite people so you can work together.",
     "successAction": "Invite your team",
     "paidTitle": "Create {{name}} as a paid organization",
-    "freeTaken": "Each person gets one free organization, and yours is {{freeOrg}}.",
-    "freeTakenUnknown": "Each person gets one free organization, and you already have yours.",
+    "freeTaken": "Each person gets one organization on the free tier, and yours is {{freeOrg}}.",
+    "freeTakenUnknown": "Each person gets one organization on the free tier, and you already have yours.",
     "paidPrice": "{{name}} costs {{price}} per member a month. You'll pay in your browser, and it unlocks once the payment goes through.",
     "paidPriceUnknown": "You'll pay for {{name}} in your browser, and it unlocks once the payment goes through.",
     "paidSubmit": "Continue to payment",
     "paidSuccessTitle": "Finish paying for \"{{name}}\"",
     "paidSuccessBody": "Checkout is open in your browser. The organization unlocks once the payment goes through.",
-    "freeTakenInline": "You already have a free organization. Create this one from the organization menu as a paid organization.",
+    "freeTakenInline": "You already have an organization on the free tier. Create this one from the organization menu as a paid organization.",
     "paidBlockedBody": "Your browser didn't open the checkout. Open it to finish the payment, and the organization unlocks once it goes through."
   },
   "shareViaTeam": {
@@ -427,7 +427,7 @@
   "billing": {
     "unavailable": "We couldn't load billing for this organization.",
     "status": {
-      "free": "Free",
+      "free": "Free tier",
       "trialing": "Free trial",
       "trialingDays_one": "Free trial, {{count}} day left",
       "trialingDays_other": "Free trial, {{count}} days left",
@@ -442,7 +442,7 @@
     "manage": "Manage billing",
     "askOwner": "Only the owner who pays for this organization can change its plan. Ask them if you need more.",
     "loading": "Loading billing",
-    "planFree": "Free plan",
+    "planFree": "Free tier",
     "planPaid": "Paid plan",
     "seatsTotal_one": "{{count}} seat, {{total}} a month",
     "seatsTotal_other": "{{count}} seats, {{total}} a month",
@@ -457,7 +457,7 @@
     "openCheckout": "Open checkout",
     "openPortal": "Open billing portal",
     "success": "Payment received. Everyone here can keep going.",
-    "usageTitle": "This week's free usage",
+    "usageTitle": "This week's free tier usage",
     "usageUsed": "{{percent}}% used",
     "usageShared": "Everyone in this organization shares it. Resets {{time}}.",
     "usageSharedNoTime": "Everyone in this organization shares it. Resets later this week.",
@@ -685,8 +685,8 @@
     "inviteNeedsUpgradeTitle": "This team can't add people right now",
     "inviteNeedsUpgradeBody": "It is locked, so it can't add people right now.",
     "moveNeedsUpgrade": "This team's plan doesn't include moving AI Employees into it right now.",
-    "freeTakenInline": "You already have a free organization, so this one can't be created here.",
-    "freeTakenTitle": "You already have a free organization",
+    "freeTakenInline": "You already have an organization on the free tier, so this one can't be created here.",
+    "freeTakenTitle": "You already have an organization on the free tier",
     "freeTakenBody": "This one can't be created here."
   },
   "writeFailed": {
@@ -746,25 +746,25 @@
       "fixPayment": "Fix payment",
       "manageBilling": "Manage billing",
       "changePick": "Change pick",
-      "claimFree": "Use as free org",
+      "claimFree": "Move to free tier",
       "delete": "Delete org",
       "more": "More"
     },
     "claim": {
-      "title": "Use {{org}} as your free organization?",
-      "bodySwap": "{{org}} unlocks and becomes free. {{other}} locks instead until someone pays for it.",
-      "bodyFree": "{{org}} unlocks and becomes your free organization.",
+      "title": "Move {{org}} to the free tier?",
+      "bodySwap": "{{org}} unlocks and moves to the free tier. {{other}} leaves the free tier and locks until someone pays for it.",
+      "bodyFree": "{{org}} unlocks and moves to the free tier.",
       "cancel": "Cancel",
       "pending": "Switching",
-      "done": "{{org}} is now your free organization.",
+      "done": "{{org}} is on the free tier now.",
       "refused": {
         "has_subscription": {
           "title": "This organization still has a plan",
-          "body": "Its subscription is still active, so it can't be the free one. Fix the payment instead."
+          "body": "Its subscription is still active, so it can't move to the free tier. Fix the payment instead."
         },
         "not_billing_owner": {
           "title": "Only the owner who pays can do this",
-          "body": "Ask the owner who pays for this organization to make it the free one."
+          "body": "Ask the owner who pays for this organization to move it to the free tier."
         }
       }
     },

@@ -8,8 +8,8 @@ import {
   closeChoiceFrame,
   finishPicking,
   nextChoiceModalFrame,
-  startPicking,
 } from "./choice-modal-frame";
+import { nextChoicePage, previousChoicePage } from "./choice-modal-pages";
 
 const at = (patch: Partial<ChoiceModalContext> = {}): ChoiceModalContext => ({
   now: BEFORE,
@@ -26,12 +26,16 @@ const stored = choice({ freeOrgSlug: INNOVA.slug });
 const saved: BillingChoiceSave = { kind: "saved", choice: stored };
 /** The modal once the save's refetch shows the stored pick. */
 const picked = choiceModal(stored, at());
-const INTRO = { step: "intro" };
+const INTRO = { step: "intro", page: "notice" };
+const NOT_KEPT = { step: "intro", page: "not_kept" };
+/** Next through both of the pick's intro pages, onto the picker. */
+const toPicker = (frame: ChoiceModalFrame) =>
+  nextChoicePage(nextChoicePage(frame));
 
 /** The frame after each modal in turn, from a closed one. */
 const run = (...modals: (typeof pick)[]): ChoiceModalFrame =>
   modals.reduce(nextChoiceModalFrame, CLOSED_CHOICE_FRAME);
-const savedFrame = () => finishPicking(startPicking(run(pick)), saved);
+const savedFrame = () => finishPicking(toPicker(run(pick)), saved);
 
 describe("nextChoiceModalFrame", () => {
   it("opens on the intro", () => {
@@ -40,11 +44,12 @@ describe("nextChoiceModalFrame", () => {
       shown: pick,
       phase: INTRO,
       hold: "none",
+      pick: null,
     });
   });
 
   it("answers the same frame while nothing changes, so a render settles", () => {
-    const frame = startPicking(run(pick));
+    const frame = toPicker(run(pick));
     expect(nextChoiceModalFrame(frame, choiceModal(choice(), at()))).toBe(
       frame,
     );
@@ -54,28 +59,31 @@ describe("nextChoiceModalFrame", () => {
 
   it("drops the picker when the notice stops being a pick", () => {
     // A refusal's refetch shows the person owns one org now: nothing to pick.
-    expect(nextChoiceModalFrame(startPicking(run(pick)), single)).toEqual({
+    expect(nextChoiceModalFrame(toPicker(run(pick)), single)).toEqual({
       open: true,
       shown: single,
       phase: INTRO,
       hold: "none",
+      pick: null,
     });
   });
 
   it("keeps the last content through the close, then reopens on the intro", () => {
-    const picking = startPicking(run(pick));
+    const picking = toPicker(run(pick));
     const shut = nextChoiceModalFrame(picking, closed);
     expect(shut).toEqual({
       open: false,
       shown: pick,
       phase: { step: "picking" },
       hold: "none",
+      pick: null,
     });
     expect(nextChoiceModalFrame(shut, pick)).toEqual({
       open: true,
       shown: pick,
       phase: INTRO,
       hold: "none",
+      pick: null,
     });
   });
 });
@@ -84,7 +92,7 @@ describe("a picker the modal closes under", () => {
   // The save's cache write turns the notice into picked, which closes the
   // modal, before or after the save's own answer reaches finishPicking.
   it("stays open until the save answers, then moves to the success step", () => {
-    const held = nextChoiceModalFrame(startPicking(run(pick)), picked);
+    const held = nextChoiceModalFrame(toPicker(run(pick)), picked);
     expect(held).toMatchObject({ open: true, phase: { step: "picking" } });
     expect(nextChoiceModalFrame(held, picked)).toBe(held);
     expect(finishPicking(held, saved)).toMatchObject({
@@ -94,7 +102,7 @@ describe("a picker the modal closes under", () => {
   });
 
   it("closes on a refusal, since the notice no longer asks", () => {
-    const held = nextChoiceModalFrame(startPicking(run(pick)), picked);
+    const held = nextChoiceModalFrame(toPicker(run(pick)), picked);
     expect(finishPicking(held, { kind: "not_owner" })).toMatchObject({
       open: false,
       phase: { step: "picking" },
@@ -102,7 +110,7 @@ describe("a picker the modal closes under", () => {
   });
 
   it("closes when the person closes it", () => {
-    const held = nextChoiceModalFrame(startPicking(run(pick)), picked);
+    const held = nextChoiceModalFrame(toPicker(run(pick)), picked);
     expect(closeChoiceFrame(held)).toMatchObject({ open: false });
     expect(nextChoiceModalFrame(closeChoiceFrame(held), picked)).toMatchObject({
       open: false,
@@ -110,26 +118,85 @@ describe("a picker the modal closes under", () => {
   });
 
   it("follows the modal again once it reopens on the same pick", () => {
-    const held = nextChoiceModalFrame(startPicking(run(pick)), picked);
+    const held = nextChoiceModalFrame(toPicker(run(pick)), picked);
     expect(nextChoiceModalFrame(held, pick)).toEqual({
       open: true,
       shown: pick,
       phase: { step: "picking" },
       hold: "none",
+      pick: null,
     });
   });
 });
 
-describe("startPicking", () => {
-  it("moves an open pick to the picker", () => {
-    expect(startPicking(run(pick)).phase).toEqual({ step: "picking" });
+describe("nextChoicePage", () => {
+  it("walks the pick's intro pages, then opens the picker", () => {
+    const first = run(pick);
+    const second = nextChoicePage(first);
+    expect(second).toEqual({ ...first, phase: NOT_KEPT });
+    expect(nextChoicePage(second)).toEqual({
+      ...first,
+      phase: { step: "picking" },
+    });
   });
 
-  it("never opens the picker for a read-only notice or a closed frame", () => {
+  it("never moves a read-only notice, a picker or a closed frame", () => {
     const frame = run(single);
-    expect(startPicking(frame)).toBe(frame);
+    expect(nextChoicePage(frame)).toBe(frame);
+    const picking = toPicker(run(pick));
+    expect(nextChoicePage(picking)).toBe(picking);
     const shut = run(pick, closed);
-    expect(startPicking(shut)).toBe(shut);
+    expect(nextChoicePage(shut)).toBe(shut);
+  });
+});
+
+describe("previousChoicePage", () => {
+  it("steps back from the picker through the intro pages to the first", () => {
+    const picking = toPicker(run(pick));
+    const second = previousChoicePage(picking);
+    expect(second.phase).toEqual(NOT_KEPT);
+    const first = previousChoicePage(second);
+    expect(first.phase).toEqual(INTRO);
+    expect(previousChoicePage(first)).toBe(first);
+  });
+
+  it("never leaves the success step or a closed frame", () => {
+    const done = savedFrame();
+    expect(previousChoicePage(done)).toBe(done);
+    const shut = closeChoiceFrame(toPicker(run(pick)));
+    expect(previousChoicePage(shut)).toBe(shut);
+  });
+});
+
+describe("an intro page", () => {
+  it("stays on the second page while the notice holds", () => {
+    const second = nextChoicePage(run(pick));
+    expect(nextChoiceModalFrame(second, choiceModal(choice(), at()))).toBe(
+      second,
+    );
+  });
+
+  it("drops back to the first page when the notice stops being a pick", () => {
+    const second = nextChoicePage(run(pick));
+    expect(nextChoiceModalFrame(second, single)).toEqual({
+      open: true,
+      shown: single,
+      phase: INTRO,
+      hold: "none",
+      pick: null,
+    });
+  });
+
+  it("reopens on the first page after a close", () => {
+    const shut = nextChoiceModalFrame(nextChoicePage(run(pick)), closed);
+    expect(shut).toMatchObject({ open: false, phase: NOT_KEPT });
+    expect(nextChoiceModalFrame(shut, pick)).toEqual({
+      open: true,
+      shown: pick,
+      phase: INTRO,
+      hold: "none",
+      pick: null,
+    });
   });
 });
 
@@ -177,7 +244,7 @@ describe("the success step", () => {
   });
 
   it("never follows a refusal", () => {
-    const picking = startPicking(run(pick));
+    const picking = toPicker(run(pick));
     for (const kind of ["not_owner", "not_payer", "same_org"] as const)
       expect(finishPicking(picking, { kind })).toBe(picking);
   });
@@ -185,12 +252,12 @@ describe("the success step", () => {
   it("needs an open picker: never from the intro or a closed frame", () => {
     const intro = run(pick);
     expect(finishPicking(intro, saved)).toBe(intro);
-    const shut = closeChoiceFrame(startPicking(run(pick)));
+    const shut = closeChoiceFrame(toPicker(run(pick)));
     expect(finishPicking(shut, saved)).toBe(shut);
   });
 
   it("ignores a save that stored no free pick", () => {
-    const picking = startPicking(run(pick));
+    const picking = toPicker(run(pick));
     const empty: BillingChoiceSave = { kind: "saved", choice: choice() };
     expect(finishPicking(picking, empty)).toBe(picking);
   });
@@ -202,6 +269,7 @@ describe("the success step", () => {
       shown: pick,
       phase: INTRO,
       hold: "none",
+      pick: null,
     });
   });
 });

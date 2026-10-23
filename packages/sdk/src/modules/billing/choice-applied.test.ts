@@ -10,8 +10,8 @@ import {
   finishConfirming,
   finishPicking,
   nextChoiceModalFrame,
-  startPicking,
 } from "./choice-modal-frame";
+import { nextChoicePage } from "./choice-modal-pages";
 import { appliedPick, canChangeChoice, choiceNotice } from "./choice-model";
 import { orgLocked } from "./recovery";
 
@@ -161,7 +161,7 @@ describe("the confirm frame", () => {
   const saved: BillingChoiceSave = { kind: "saved", choice: changed };
 
   it("moves Change on to the picker", () => {
-    expect(startPicking(intro).phase).toEqual({ step: "picking" });
+    expect(nextChoicePage(intro).phase).toEqual({ step: "picking" });
   });
 
   it("closes for the session on a stored confirmation", () => {
@@ -192,7 +192,7 @@ describe("the confirm frame", () => {
   });
 
   it("holds the picker when a stored change turns the notice into applied", () => {
-    const picking = startPicking(intro);
+    const picking = nextChoicePage(intro);
     const applied = choiceModal(changed, modalAt());
     const held = nextChoiceModalFrame(picking, applied);
     expect(held).toMatchObject({
@@ -220,7 +220,7 @@ describe("the confirm frame", () => {
   });
 
   it("stores no second dismissal when a change's success step closes: the save settled it", () => {
-    const done = finishPicking(startPicking(intro), saved);
+    const done = finishPicking(nextChoicePage(intro), saved);
     expect(closeDismisses(done)).toBe(false);
     expect(closeDismisses(intro)).toBe(false);
     const note = nextChoiceModalFrame(

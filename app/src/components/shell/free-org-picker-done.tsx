@@ -1,5 +1,6 @@
 import {
   type ChoiceDone,
+  type FlowProgress,
   formatCutoverDate,
   formatCutoverDay,
 } from "@houston/sdk";
@@ -7,7 +8,7 @@ import { DialogDescription, DialogTitle } from "@houston-ai/core";
 import { Check } from "lucide-react";
 import { useTranslation } from "react-i18next";
 import { ChoiceOrgList } from "./free-org-picker-list";
-import { useOrgName } from "./free-org-picker-rows";
+import { PickerProgress, useOrgName } from "./free-org-picker-rows";
 import { PlanBriefingCta } from "./plan-briefing-cta";
 
 /**
@@ -23,9 +24,12 @@ export function DoneStep({
   onClose,
   until,
   closeLabel,
+  progress = null,
 }: {
   done: ChoiceDone;
   onClose: () => void;
+  /** The last dot of the flow that led here, if it shows progress. */
+  progress?: FlowProgress | null;
   /**
    * The last day the pick may change, formatted, or null once it can't.
    * Defaults to the window the stored pick answered with.
@@ -51,6 +55,7 @@ export function DoneStep({
     : [t("choice.done.change")];
   return (
     <>
+      <PickerProgress progress={progress} />
       <span
         aria-hidden
         className="plan-briefing-badge mb-5 grid size-13 place-items-center rounded-full bg-success/15 text-success-ink"

@@ -9,7 +9,7 @@ import {
 } from "../support/plan";
 
 for (const { percent, status } of [
-  { percent: 25, status: "Free plan" },
+  { percent: 25, status: "Free tier" },
   { percent: 85, status: "85% used" },
   { percent: 100, status: "Limit reached" },
 ]) {

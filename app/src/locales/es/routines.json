@@ -211,7 +211,7 @@
     "enterNumber": "Ingresa un número",
     "maxInterval": "Ingresa {max} {unit} o menos",
     "pickDay": "Elige al menos un día",
-    "minIntervalHint": "En Gratis, las rutinas se ejecutan como máximo una vez cada {minutes} minutos.",
+    "minIntervalHint": "En el nivel gratuito, las rutinas se ejecutan como máximo una vez cada {minutes} minutos.",
     "weekdaysLabel": "En estos días",
     "weekdayShortcuts": {
       "everyDay": "Todos los días",

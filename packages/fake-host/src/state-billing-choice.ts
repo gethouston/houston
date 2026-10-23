@@ -23,6 +23,11 @@ export type BillingPickRefusal =
   | "same_org"
   | "choice_closed";
 
+export interface BillingQueuedRefusal {
+  refuse: BillingPickRefusal;
+  after?: BillingChoice | null;
+}
+
 /** What a spec arms beyond the choice itself. */
 export interface BillingChoiceArming {
   /**
@@ -35,6 +40,12 @@ export interface BillingChoiceArming {
    * changed under the picker (a transfer, a deletion).
    */
   afterRefusal?: BillingChoice | null;
+  /**
+   * Refusals the next picks answer, one each, in order, before `refuse`;
+   * each may swap the choice (`after`), as a refetch sees it. Once they run
+   * out a pick is checked as the gateway would.
+   */
+  refusals?: BillingQueuedRefusal[];
   /** Every dismissal answers 500 and stores nothing. */
   failDismiss?: boolean;
   /**
@@ -89,6 +100,11 @@ export function refuseBillingPick(
   choice: BillingChoice,
   pick: BillingChoicePick,
 ): BillingPickRefusal | null {
+  const queued = arming.refusals?.shift();
+  if (queued) {
+    if (queued.after) armed = structuredClone(queued.after);
+    return queued.refuse;
+  }
   const forced = arming.refuse ?? null;
   if (forced) {
     if (arming.afterRefusal) armed = structuredClone(arming.afterRefusal);

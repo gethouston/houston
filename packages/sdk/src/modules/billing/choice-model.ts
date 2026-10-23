@@ -91,12 +91,14 @@ export function canChangeChoice(
   return deadline !== null && now < deadline;
 }
 
+/** True when the choice names a Plus or comp subscription to place. */
+export function namesPayer(choice: BillingChoice): boolean {
+  return choice.payer === "plus" || choice.payer === "comp";
+}
+
 /** A subscriber whose subscription moves to one org they choose. */
 export function choosesPaidOrg(choice: BillingChoice): boolean {
-  return (
-    (choice.payer === "plus" || choice.payer === "comp") &&
-    choice.orgs.length > 1
-  );
+  return namesPayer(choice) && choice.orgs.length > 1;
 }
 
 export function choiceNotice(
@@ -126,7 +128,7 @@ export function choiceNotice(
     kind: "single_org",
     date,
     orgSlug: only.slug,
-    payer: choice.payer === "plus" || choice.payer === "comp",
+    payer: namesPayer(choice),
   };
 }
 

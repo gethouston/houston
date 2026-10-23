@@ -227,7 +227,7 @@ test("creating an org while the free slot is taken offers a paid org and its che
   ).toBeVisible();
   await expect(
     dialog.getByText(
-      "Each person gets one free organization, and yours is Personal.",
+      "Each person gets one organization on the free tier, and yours is Personal.",
     ),
   ).toBeVisible();
   await expect(

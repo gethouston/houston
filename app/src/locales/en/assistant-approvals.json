@@ -5,7 +5,7 @@
     "addCustomIntegration": "Add an outside app of your own from a link.",
     "addOrgMember": "Invite someone to this space with the role you chose.",
     "cancelRoutineRun": "Stop this routine run while it is under way.",
-    "claimFreeSlot": "Make this organization the free one. The organization that is free today locks until it is paid for.",
+    "claimFreeSlot": "Move this organization to the free tier. The organization on the free tier today locks until it is paid for.",
     "conversations.delete": "Delete this chat and everything said in it. This cannot be undone.",
     "createAgent": "Create a new AI Employee.",
     "createApiKey": "Create a new API key.",
@@ -29,7 +29,7 @@
     "forgetCredential": "Sign this workspace out of the AI account.",
     "installAgentFromGithub": "Install an AI Employee from a GitHub repository.",
     "integrations.disconnect": "Disconnect an outside app from your account.",
-    "keepRoutine": "Keep this routine running on Free. The others stay saved but stop firing.",
+    "keepRoutine": "Keep this routine running on the free tier. The others stay saved but stop firing.",
     "mintRoutineWebhookKey": "Create a fresh key that lets an outside service start this routine. Any key issued before stops working.",
     "moveAgent": "Move this AI Employee into a shared space so teammates can work with it.",
     "promoteSharedSkill": "Share the AI Employee's skill with everyone in the workspace.",
@@ -56,7 +56,7 @@
     "updateActivity": "Update this mission's details or status.",
     "updateRoutine": "Update this routine's schedule or instructions.",
     "writeAgentFile": "Replace the contents of one of the AI Employee's saved data files.",
-    "setChoice": "Choose which organization stays free when plans move to organizations. The others will need a paid plan to keep sending messages."
+    "setChoice": "Choose which organization stays on the free tier when plans move to organizations. The others will need a paid plan to keep sending messages."
   },
   "arguments": {
     "agentId": "AI Employee",

@@ -14,7 +14,7 @@ test.beforeEach(async ({ page }) => {
 });
 
 for (const { percent, status } of [
-  { percent: 25, status: "Free plan" },
+  { percent: 25, status: "Free tier" },
   { percent: 80, status: "80% used" },
   { percent: 100, status: "Limit reached" },
 ]) {

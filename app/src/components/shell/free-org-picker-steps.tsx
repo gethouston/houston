@@ -1,5 +1,5 @@
 import type { BillingChoice } from "@houston/engine-adapter";
-import { payerTotals, pickerRows } from "@houston/sdk";
+import { type FlowProgress, orgSeatPrice, pickerRows } from "@houston/sdk";
 import { type ReactNode, useId } from "react";
 import { Trans, useTranslation } from "react-i18next";
 import {
@@ -17,7 +17,10 @@ interface StepProps {
   busy: boolean;
   /** Renders the frame's title; the id names an inner span for aria-labelledby. */
   title: (text: string, id: string) => ReactNode;
+  progress: FlowProgress | null;
   onConfirm: () => void;
+  /** Absent on the first page of a flow. */
+  onBack?: () => void;
 }
 
 /**
@@ -45,140 +48,146 @@ function NamedLabel({
 }
 
 /** The phone sheet seats the actions at the bottom, under the thumb. */
-function Actions({ children }: { children: ReactNode }) {
-  return <div className="mt-auto flex flex-col md:mt-0">{children}</div>;
+function Actions({
+  label,
+  disabled,
+  onConfirm,
+  onBack,
+  busy,
+}: {
+  label: ReactNode;
+  disabled: boolean;
+  onConfirm: () => void;
+  onBack?: () => void;
+  busy: boolean;
+}) {
+  const { t } = useTranslation("plan");
+  return (
+    <div className="mt-auto flex flex-col md:mt-0">
+      <PlanBriefingCta label={label} disabled={disabled} onClick={onConfirm} />
+      {onBack && (
+        <PlanBriefingQuietButton onClick={onBack} disabled={busy}>
+          {t("choice.notice.back")}
+        </PlanBriefingQuietButton>
+      )}
+    </div>
+  );
 }
 
-/** The org that stays free. A payer goes on to a second step. */
-export function FreeStep(props: StepProps & { payer: boolean }) {
+/**
+ * The org that stays free, for everyone in it. A payer's subscription org
+ * stays listed where it is, disabled, so the two steps read as one list.
+ */
+export function FreeStep(props: StepProps & { paidSlug: string | null }) {
   const { t } = useTranslation("plan");
   const titleId = useId();
   const orgName = useOrgName();
   const orgMeta = useOrgMeta();
   const rows = pickerRows(props.choice);
-  const picked = rows.find((row) => row.org.slug === props.selected)?.org;
-  const label = !picked ? (
-    t("choice.picker.pickOne")
-  ) : props.payer ? (
-    t("choice.picker.next")
-  ) : (
-    <NamedLabel i18nKey="choice.picker.keep" name={orgName(picked)} />
-  );
+  const picked = rows.find(
+    (row) => row.org.slug === props.selected && row.org.slug !== props.paidSlug,
+  )?.org;
   return (
     <>
-      {props.payer && <PickerProgress step={1} />}
+      <PickerProgress progress={props.progress} />
       {props.title(t("choice.picker.title"), titleId)}
+      <p className="mb-5 text-base leading-normal text-ink-muted">
+        {t("choice.picker.sub")}
+      </p>
       <div
         role="radiogroup"
         aria-labelledby={titleId}
         className="plan-briefing-stagger mb-6 flex flex-col gap-2"
       >
+        {rows.map(({ org, mostActive }) => {
+          const paid = org.slug === props.paidSlug;
+          return (
+            <OrgRadio
+              key={org.slug}
+              group="free-org"
+              value={org.slug}
+              name={orgName(org)}
+              checked={!paid && org.slug === props.selected}
+              disabled={paid}
+              onSelect={props.onSelect}
+              tag={
+                paid
+                  ? t("choice.done.status.subscription")
+                  : mostActive
+                    ? t("choice.picker.mostActive")
+                    : undefined
+              }
+              meta={orgMeta(org)}
+            />
+          );
+        })}
+      </div>
+      <Actions
+        label={
+          picked ? (
+            <NamedLabel i18nKey="choice.picker.keep" name={orgName(picked)} />
+          ) : (
+            t("choice.picker.pickOne")
+          )
+        }
+        disabled={!picked || props.busy}
+        onConfirm={props.onConfirm}
+        onBack={props.onBack}
+        busy={props.busy}
+      />
+    </>
+  );
+}
+
+/** The org a payer's subscription covers, priced per member. Comes first. */
+export function PaidStep(props: StepProps) {
+  const { t, i18n } = useTranslation("plan");
+  const titleId = useId();
+  const orgName = useOrgName();
+  const rows = pickerRows(props.choice);
+  const picked = rows.find((row) => row.org.slug === props.selected)?.org;
+  const price = orgSeatPrice(i18n.language);
+  return (
+    <>
+      <PickerProgress progress={props.progress} />
+      <p className="mb-2 text-sm font-medium text-ink-muted">
+        {t("choice.payer.label")}
+      </p>
+      {props.title(t("choice.payer.title"), titleId)}
+      <div
+        role="radiogroup"
+        aria-labelledby={titleId}
+        className="plan-briefing-stagger mt-3 mb-6 flex flex-col gap-2"
+      >
         {rows.map(({ org, mostActive }) => (
           <OrgRadio
             key={org.slug}
-            group="free-org"
+            group="paid-org"
             value={org.slug}
             name={orgName(org)}
             checked={org.slug === props.selected}
             onSelect={props.onSelect}
             tag={mostActive ? t("choice.picker.mostActive") : undefined}
-            meta={orgMeta(org)}
+            meta={t("choice.picker.meta", {
+              first: t("choice.picker.members", { count: org.memberCount }),
+              second: t("choice.payer.each", { price }),
+            })}
           />
         ))}
       </div>
-      <Actions>
-        <PlanBriefingCta
-          label={label}
-          disabled={!picked || props.busy}
-          onClick={props.onConfirm}
-        />
-      </Actions>
-    </>
-  );
-}
-
-/**
- * The org a payer's subscription pays for, priced per org. The free pick
- * stays listed where it was, disabled, so the two steps read as one list.
- */
-export function PaidStep(
-  props: StepProps & { freeSlug: string; onBack: () => void },
-) {
-  const { t, i18n } = useTranslation("plan");
-  const titleId = useId();
-  const orgName = useOrgName();
-  const rows = pickerRows(props.choice);
-  const picked = rows.find(
-    (row) => row.org.slug === props.selected && row.org.slug !== props.freeSlug,
-  )?.org;
-  const totals = picked
-    ? payerTotals(props.choice, picked.slug, i18n.language)
-    : null;
-  return (
-    <>
-      <PickerProgress step={2} />
-      {props.title(t("choice.payer.title"), titleId)}
-      <div className="mb-6 flex flex-col gap-4">
-        <div
-          role="radiogroup"
-          aria-labelledby={titleId}
-          className="plan-briefing-stagger flex flex-col gap-2"
-        >
-          {rows.map(({ org }) => {
-            const free = org.slug === props.freeSlug;
-            const price = payerTotals(props.choice, org.slug, i18n.language);
-            return (
-              <OrgRadio
-                key={org.slug}
-                group="paid-org"
-                value={org.slug}
-                name={orgName(org)}
-                checked={!free && org.slug === props.selected}
-                disabled={free}
-                onSelect={props.onSelect}
-                tag={free ? t("choice.payer.free") : undefined}
-                meta={
-                  free
-                    ? t("choice.payer.staysFree")
-                    : t("choice.picker.meta", {
-                        first: t("choice.picker.members", {
-                          count: org.memberCount,
-                        }),
-                        second: t("choice.payer.each", { price: price?.seat }),
-                      })
-                }
-              />
-            );
-          })}
-        </div>
-        {totals && (
-          <p className="text-[13px] leading-normal text-ink-muted">
-            {totals.graceEndsOn
-              ? t("choice.payer.grace", {
-                  today: totals.today,
-                  date: totals.graceEndsOn,
-                  monthly: totals.monthly,
-                })
-              : t("choice.payer.noGrace", { monthly: totals.monthly })}
-          </p>
-        )}
-      </div>
-      <Actions>
-        <PlanBriefingCta
-          label={
-            picked ? (
-              <NamedLabel i18nKey="choice.payer.use" name={orgName(picked)} />
-            ) : (
-              t("choice.picker.pickOne")
-            )
-          }
-          disabled={!picked || props.busy}
-          onClick={props.onConfirm}
-        />
-        <PlanBriefingQuietButton onClick={props.onBack} disabled={props.busy}>
-          {t("choice.payer.back")}
-        </PlanBriefingQuietButton>
-      </Actions>
+      <Actions
+        label={
+          picked ? (
+            <NamedLabel i18nKey="choice.payer.use" name={orgName(picked)} />
+          ) : (
+            t("choice.picker.pickOne")
+          )
+        }
+        disabled={!picked || props.busy}
+        onConfirm={props.onConfirm}
+        onBack={props.onBack}
+        busy={props.busy}
+      />
     </>
   );
 }

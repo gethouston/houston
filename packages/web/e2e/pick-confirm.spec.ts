@@ -31,7 +31,8 @@ test.beforeEach(async ({ page }) => {
   await armCapabilities(SPACES_OWNER_CAPS);
 });
 
-const APPLIED = "We kept Personal free and moved your subscription to Acme";
+const APPLIED =
+  "We kept Personal on the free tier and moved your subscription to Acme";
 const routes = async () => (await choiceCalls()).map((call) => call.route);
 const row = (frame: Locator, name: string) =>
   frame.getByRole("listitem").filter({ hasText: name });
@@ -53,7 +54,7 @@ test("a provisional payer sees what the cutover picked over a working shell, and
   );
   await expect(modal.getByRole("listitem")).toHaveText([
     "ACAcmeYour subscription2 members · 520 messages in 30 days",
-    "PEPersonalFree1 member · 240 messages in 30 days",
+    "PEPersonalFree tier1 member · 240 messages in 30 days",
     "LFLa FilaLocks November 63 members · 96 messages in 30 days",
   ]);
   await expect(modal).toContainText(
@@ -88,25 +89,24 @@ test("Change moves the subscription to a three-member team and shows each org's 
     timeout: 15_000,
   });
 
-  // The picker starts on what the cutover applied.
-  await expect(modal.getByRole("radio", { name: /Personal/ })).toBeChecked();
-  await modal.getByRole("button", { name: "Next" }).click();
+  // The picker starts on what the cutover applied, the subscription first.
   await expect(modal.getByRole("radio", { name: /Acme/ })).toBeChecked();
   await modal.getByText("La Fila", { exact: true }).click();
-  await expect(modal).toContainText(
-    "Your price stays $15 a month until November 22, then it's $45 a month.",
-  );
+  await modal.getByRole("button", { name: "Use it for La Fila" }).click();
+  await expect(modal.getByRole("radio", { name: /Personal/ })).toBeChecked();
   // The save moves the subscription and the locks: every org is read again.
   const orgsRead = page.waitForRequest(
     (req) =>
       req.method() === "GET" && new URL(req.url()).pathname === "/v1/orgs",
   );
-  await modal.getByRole("button", { name: "Pay for La Fila" }).click();
+  await modal
+    .getByRole("button", { name: "Keep Personal on the free tier" })
+    .click();
   await orgsRead;
 
   await expect(
     page.getByRole("dialog", {
-      name: "Personal is your free organization now",
+      name: "Personal is on the free tier now",
     }),
   ).toBeVisible();
   await expect(modal).toContainText("Your subscription now pays for La Fila.");
@@ -159,7 +159,9 @@ test("a non-payer who picked reads only the note, and Got it dismisses it", asyn
   await page.goto("/");
   const modal = choiceModal(page);
   await expect(
-    page.getByRole("dialog", { name: "Innova is your free organization now" }),
+    page.getByRole("dialog", {
+      name: "Innova is on the free tier now",
+    }),
   ).toBeVisible({ timeout: 15_000 });
   await expect(modal).toContainText("Here's how your organizations look now.");
   await expect(row(modal, INNOVA.name)).toContainText("Free");
@@ -206,19 +208,24 @@ test("Billing offers the change until the window ends, on the same picker", asyn
   await openBilling(page);
   const billing = billingScreen(page);
   await expect(
-    billing.getByRole("heading", { name: "Change your free organization" }),
+    billing.getByRole("heading", {
+      name: "Change which organization is on the free tier",
+    }),
   ).toBeVisible();
   await expect(billing).toContainText(
-    "Personal is your free organization. You can change it until November 6.",
+    "Personal is on the free tier. You can change this until November 6.",
   );
   await billing.getByRole("button", { name: "Change" }).click();
   const picker = settingsPicker(page);
+  await expect(picker.getByRole("radio", { name: /Acme/ })).toBeChecked();
+  await picker.getByRole("button", { name: "Use it for Acme" }).click();
   await expect(picker.getByRole("radio", { name: /Personal/ })).toBeChecked();
-  await picker.getByRole("button", { name: "Next" }).click();
-  await picker.getByRole("button", { name: "Pay for Acme" }).click();
+  await picker
+    .getByRole("button", { name: "Keep Personal on the free tier" })
+    .click();
   await expect(
     page.getByRole("dialog", {
-      name: "Personal is your free organization now",
+      name: "Personal is on the free tier now",
     }),
   ).toBeVisible();
   await expect(row(picker, "La Fila")).toContainText("Locks November 6");

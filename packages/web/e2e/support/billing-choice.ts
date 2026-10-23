@@ -1,6 +1,7 @@
 import { FAKE_HOST_URL } from "@houston/fake-host";
 import type { BillingChoice, BillingChoiceOrg } from "@houston/wire-types";
 import { expect, type Locator, type Page } from "@playwright/test";
+import { billingScreen, openBilling } from "./plan";
 
 /**
  * The free-org pick, armed on the fake host (`/__test__/billing-choice`), and
@@ -97,6 +98,14 @@ export const armChoice = (
   options: {
     /** What the gateway answers once a pick is refused. */
     afterRefusal?: BillingChoice;
+    /**
+     * Refusals the next picks answer, one each, before `refuse`; each may
+     * swap the choice the refetch reads (`after`). Then picks store.
+     */
+    refusals?: {
+      refuse: "not_owner" | "not_payer" | "same_org";
+      after?: BillingChoice;
+    }[];
     /** Every dismissal answers 500. */
     failDismiss?: boolean;
   } = {},
@@ -121,8 +130,32 @@ export const choiceModal = (page: Page): Locator =>
 export const settingsPicker = (page: Page): Locator =>
   page.getByTestId("free-org-picker");
 
+/** Settings > Billing, reached past the modal; the picker opens from there. */
+export async function openSettingsPicker(page: Page): Promise<Locator> {
+  await page.goto("/");
+  await choiceModal(page)
+    .getByRole("button", { name: "Maybe later" })
+    .first()
+    .click({ timeout: 15_000 });
+  await openBilling(page);
+  return billingScreen(page);
+}
+
 export const MODAL_TITLE = "Teams are out of beta";
-export const CHOOSE = "Choose my free organization";
+export const CHOOSE = "Choose my organization for the free tier";
+
+/**
+ * Next through the pick's two intro pages to the picker: page two's action
+ * is "Choose my organization for the free tier", or Next for a payer.
+ */
+export async function openPicker(modal: Locator, payer = false): Promise<void> {
+  await modal
+    .getByRole("button", { name: "Next", exact: true })
+    .click({ timeout: 15_000 });
+  await modal
+    .getByRole("button", { name: payer ? "Next" : CHOOSE, exact: true })
+    .click();
+}
 
 /** A single-org owner: the one org they own stays free. */
 export function singleOrgChoice(

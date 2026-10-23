@@ -68,7 +68,7 @@ export function handleBillingChoiceRoutes(
 
 /**
  * `POST /__test__/billing-choice`: `{ choice, refuse?, afterRefusal?,
- * failDismiss?, now? }` arms it ({@link state.BillingChoiceArming}),
+ * refusals?, failDismiss?, now? }` arms it ({@link state.BillingChoiceArming}),
  * `{ choice: null }` disarms.
  */
 export function handleBillingChoiceControl(
@@ -76,12 +76,27 @@ export function handleBillingChoiceControl(
 ): Response {
   const choiceOf = (value: unknown) =>
     value && typeof value === "object" ? (value as BillingChoice) : null;
-  const refuse =
-    typeof body?.refuse === "string" && Object.hasOwn(STATUS, body.refuse)
-      ? (body.refuse as state.BillingPickRefusal)
+  const refusalOf = (value: unknown) =>
+    typeof value === "string" && Object.hasOwn(STATUS, value)
+      ? (value as state.BillingPickRefusal)
       : null;
+  const entries: { refuse?: unknown; after?: unknown }[] = Array.isArray(
+    body?.refusals,
+  )
+    ? body.refusals
+    : [];
+  const refusals = entries.flatMap((entry) => {
+    const refuse = refusalOf(entry?.refuse);
+    return refuse ? [{ refuse, after: choiceOf(entry?.after) }] : [];
+  });
+  if (refusals.length !== entries.length)
+    return json({ error: "unknown refusal in refusals" }, 400);
+  const refuse = refusalOf(body?.refuse);
+  if (body?.refuse !== undefined && !refuse)
+    return json({ error: "unknown refuse" }, 400);
   state.armBillingChoice(choiceOf(body?.choice), {
     refuse,
+    refusals,
     afterRefusal: choiceOf(body?.afterRefusal),
     failDismiss: body?.failDismiss === true,
     now: typeof body?.now === "string" ? body.now : null,
