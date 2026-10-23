@@ -96,7 +96,7 @@ export function PaidOrgOfferDialog({
             prices={prices}
             value={interval}
             onChange={setPicked}
-            disabled={pending}
+            disabled={pending || outstanding}
           />
         )}
         {choosing && prices && (

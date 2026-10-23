@@ -102,7 +102,7 @@ export function CreateOrganizationDialog({ open, onOpenChange }: Props) {
       outcome.kind === "invalid_interval"
     ) {
       tab?.discard();
-      announceRefusal();
+      announceRefusal(outcome.kind);
       return outcome.kind;
     }
     const org = createdOrg(outcome);

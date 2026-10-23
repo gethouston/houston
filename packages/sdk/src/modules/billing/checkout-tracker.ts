@@ -32,10 +32,10 @@ export interface BillingCheckoutPorts {
   open(url: string): Promise<boolean>;
 }
 
-/** A checkout is being created, or its page is open and the org is not paid yet. */
 /** What one `start` did: opened a checkout, sent nothing, or was refused. */
 export type BillingCheckoutStart = "started" | "skipped" | SeatIntervalRefusal;
 
+/** A checkout is being created, or its page is open and the org is not paid yet. */
 export function billingCheckoutOutstanding(
   state: BillingCheckoutState,
 ): boolean {

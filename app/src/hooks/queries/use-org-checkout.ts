@@ -104,7 +104,7 @@ export function useOrgCheckout() {
         openCheckout,
         (refusal) => {
           seen.refusal = refusal;
-          announceRefusal();
+          announceRefusal(refusal);
         },
       );
       return seen.refusal;
