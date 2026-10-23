@@ -56,7 +56,8 @@
     "updateActivity": "Actualizar los detalles o el estado de esta misión.",
     "updateRoutine": "Actualizar el horario o las instrucciones de esta rutina.",
     "writeAgentFile": "Reemplazar el contenido de uno de los archivos guardados del empleado de IA.",
-    "setChoice": "Elegir qué organización sigue en el nivel gratuito cuando los planes pasen a las organizaciones. Las demás necesitarán un plan pago para seguir enviando mensajes."
+    "setChoice": "Elegir qué organización sigue en el nivel gratuito cuando los planes pasen a las organizaciones. Las demás necesitarán un plan pago para seguir enviando mensajes.",
+    "switchToYearly": "Cambiar esta organización al plan anual. Se cobra hoy a la tarjeta registrada."
   },
   "arguments": {
     "agentId": "empleado de IA",

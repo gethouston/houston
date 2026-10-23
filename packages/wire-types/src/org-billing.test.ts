@@ -13,6 +13,8 @@ const BILLING = {
   seatPriceCents: 2000,
   seatPrices: { monthlyCents: 2000, annualCents: 18000 },
   seatGraceEndsAt: null,
+  renewsAt: null,
+  priceNotice: null,
   usage: {
     scope: "org",
     used: 12,
@@ -81,6 +83,31 @@ describe("parseOrgBilling", () => {
     // With no list prices either, no checkout price is known at all.
     const { seatPrices: _, ...bare } = pending;
     expect(parseOrgBilling(bare)?.seatPrices).toBeNull();
+  });
+
+  it("reads a promo-ended notice and the next charge", () => {
+    const notice = {
+      kind: "promo_ended",
+      previousCents: 1500,
+      nextCents: 2000,
+      renewsAt: "2026-11-14T17:00:00Z",
+    };
+    const promo = {
+      ...BILLING,
+      tier: "paid",
+      interval: "month",
+      seatPriceCents: 1500,
+      renewsAt: "2026-11-14T17:00:00Z",
+      priceNotice: notice,
+    };
+    expect(parseOrgBilling(promo)).toEqual(promo);
+    // An older gateway omits both; a notice kind added later reads as none.
+    const { renewsAt: _, priceNotice: __, ...older } = BILLING;
+    expect(parseOrgBilling(older)).toEqual(BILLING);
+    expect(
+      parseOrgBilling({ ...promo, priceNotice: { ...notice, kind: "other" } })
+        ?.priceNotice,
+    ).toBeNull();
   });
 
   it("reads malformed list prices as monthly only, keeping the billing", () => {

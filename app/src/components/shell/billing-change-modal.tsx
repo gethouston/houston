@@ -20,7 +20,7 @@ import {
   settleChoicePick,
   withChoicePick,
 } from "@houston/sdk";
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { useTranslation } from "react-i18next";
 import { useActiveOrgBilling } from "../../hooks/queries/use-billing";
 import {
@@ -48,8 +48,11 @@ import { BriefingStep } from "./plan-briefing-swap";
  */
 export function BillingChangeModal({
   otherDialogOpen,
+  onShownChange,
 }: {
   otherDialogOpen: boolean;
+  /** Whether it is up, so the next plan modal waits its turn. */
+  onShownChange?: (shown: boolean) => void;
 }) {
   const { data: choice } = useBillingChoice();
   const { orgs } = useActiveOrgBilling();
@@ -69,6 +72,8 @@ export function BillingChangeModal({
   const frame = choice ? settleChoicePick(moved, choice) : moved;
   if (frame !== stored) setFrame(frame);
   const { shown, phase } = frame;
+  const up = Boolean(choice && shown);
+  useEffect(() => onShownChange?.(up), [up, onShownChange]);
   if (!choice || !shown) return null;
   const close = () => {
     setClosed(true);

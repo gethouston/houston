@@ -1332,6 +1332,20 @@
     "classification": "sdk"
   },
   {
+    "pattern": "/v1/org/billing/price-notice/dismiss",
+    "methods": [
+      "POST"
+    ],
+    "classification": "sdk"
+  },
+  {
+    "pattern": "/v1/org/billing/switch-to-yearly",
+    "methods": [
+      "POST"
+    ],
+    "classification": "sdk"
+  },
+  {
     "pattern": "/v1/org/members",
     "methods": [
       "POST"

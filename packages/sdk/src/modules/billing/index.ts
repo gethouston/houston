@@ -44,6 +44,11 @@ import {
   getBilling,
 } from "./http";
 import {
+  dismissPriceNotice,
+  type SwitchToYearlyResult,
+  switchToYearly,
+} from "./price-notice";
+import {
   keepRoutine,
   listPlanRoutines,
   reportPresence,
@@ -61,6 +66,13 @@ import {
 export type { BillingChoiceSave } from "./choice";
 export { billingChoiceRefusal } from "./choice";
 export { type ClaimFreeSlotResult, claimFreeSlotRefusal } from "./http";
+export {
+  type PromoEndedView,
+  promoEndedModalOpens,
+  promoEndedView,
+  type SwitchToYearlyResult,
+  switchToYearlyRefusal,
+} from "./price-notice";
 export type { BillingCheckout, BillingCommandType } from "./types";
 export { BillingCommand } from "./types";
 
@@ -94,6 +106,10 @@ export interface BillingModule {
   resumeRoutines(): Promise<void>;
   /** Report that the active org is open in the foreground. */
   reportPresence(): Promise<void>;
+  /** Move the active org's monthly subscription to yearly; refusals are outcomes. */
+  switchToYearly(): Promise<SwitchToYearlyResult>;
+  /** Hide the active org's promo-ended notice everywhere. */
+  dismissPriceNotice(): Promise<void>;
 }
 
 /** A failed billing request. `status` is the upstream HTTP status. */
@@ -119,6 +135,8 @@ export function createBillingModule(ctx: ModuleContext): BillingModule {
     keepRoutine: (key) => keepRoutine(scope, key),
     resumeRoutines: () => resumeRoutines(scope),
     reportPresence: () => reportPresence(scope),
+    switchToYearly: () => switchToYearly(scope),
+    dismissPriceNotice: () => dismissPriceNotice(scope),
   };
 
   ctx.registerCommand(BillingCommand.Get, () => module.getBilling());
@@ -146,6 +164,12 @@ export function createBillingModule(ctx: ModuleContext): BillingModule {
     module.resumeRoutines(),
   );
   ctx.registerCommand(BillingCommand.Presence, () => module.reportPresence());
+  ctx.registerCommand(BillingCommand.SwitchToYearly, () =>
+    module.switchToYearly(),
+  );
+  ctx.registerCommand(BillingCommand.DismissPriceNotice, () =>
+    module.dismissPriceNotice(),
+  );
 
   return module;
 }

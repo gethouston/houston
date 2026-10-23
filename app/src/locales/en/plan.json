@@ -210,5 +210,43 @@
     "title": "Organization billing",
     "body": "Each organization's plan, seats and payment are in its Admin, under Billing.",
     "open": "Open billing"
+  },
+  "promo": {
+    "from": "From {{date}}",
+    "title": "Your promotional price is ending",
+    "body": "{{org}} pays a promotional {{promo}} per member a month. From your next charge on {{date}}, it's {{monthly}}. Switch to yearly to keep paying {{promo}} a month.",
+    "bodyMonthly": "{{org}} pays a promotional {{promo}} per member a month. From your next charge on {{date}}, it's {{monthly}}.",
+    "total": {
+      "year_one": "<b>{{total}} a year</b> for {{count}} member, charged today, less a credit for the unused part of this month.",
+      "year_other": "<b>{{total}} a year</b> for {{count}} members, charged today, less a credit for the unused part of this month.",
+      "month_one": "<b>{{total}} a month</b> for {{count}} member, from {{date}}.",
+      "month_other": "<b>{{total}} a month</b> for {{count}} members, from {{date}}."
+    },
+    "switch": "Switch to yearly",
+    "stay": "Continue monthly at {{monthly}}",
+    "switching": "Switching",
+    "yearly": {
+      "title": "You're on yearly now",
+      "sub": "{{org}} keeps paying {{promo}} per member a month.",
+      "fine": "You can change this in Settings, under Billing."
+    },
+    "row": {
+      "plan": "Plan",
+      "next": "Next charge",
+      "members": "Members",
+      "nextValue": "{{total}} on {{date}}"
+    },
+    "monthly": {
+      "title": "You're staying on monthly",
+      "sub_one": "From {{date}}, {{org}} costs {{total}} a month for {{count}} member.",
+      "sub_other": "From {{date}}, {{org}} costs {{monthly}} per member a month, which is {{total}} a month for {{count}} members.",
+      "fine": "Yearly stays open in Settings, under Billing, at {{promo}} per member a month."
+    },
+    "done": "Done",
+    "gotIt": "Got it",
+    "declined": {
+      "title": "Your card was declined",
+      "body": "Nothing changed. Update your card in Settings, under Billing, then try again."
+    }
   }
 }

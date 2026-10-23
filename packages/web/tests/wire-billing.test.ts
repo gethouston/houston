@@ -127,6 +127,34 @@ describe("the delegated billing requests", () => {
     });
   });
 
+  test("switchToYearly POSTs an empty body and reads the org's billing", async () => {
+    stubFetch(() => json(200, { billing: null }));
+    expect(await client().switchToYearly()).toEqual({
+      kind: "switched",
+      billing: null,
+    });
+    const call = soleCall();
+    expect(call.method).toBe("POST");
+    expect(call.url).toBe(`${BASE}/v1/org/billing/switch-to-yearly`);
+    expect(call.body).toBe("{}");
+  });
+
+  test("switchToYearly answers a declined card as an outcome", async () => {
+    stubFetch(() => json(402, { error: "declined", code: "payment_failed" }));
+    expect(await client().switchToYearly()).toEqual({
+      kind: "payment_failed",
+    });
+  });
+
+  test("dismissPriceNotice POSTs an empty body", async () => {
+    stubFetch(() => new Response(null, { status: 204 }));
+    await client().dismissPriceNotice();
+    const call = soleCall();
+    expect(call.method).toBe("POST");
+    expect(call.url).toBe(`${BASE}/v1/org/billing/price-notice/dismiss`);
+    expect(call.body).toBe("{}");
+  });
+
   test("createPortal POSTs the portal route with no body", async () => {
     stubFetch(() => json(200, { url: "https://billing.stripe.test/p/1" }));
     expect(await client().createPortal()).toEqual({

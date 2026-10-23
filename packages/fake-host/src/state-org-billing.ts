@@ -81,6 +81,8 @@ export function planOrgBilling(seed: Required<PlanSeed>): OrgBilling {
       : summary.plus.price.amount,
     seatPrices: FAKE_SEAT_PRICES,
     seatGraceEndsAt: null,
+    renewsAt: null,
+    priceNotice: null,
     usage:
       free && summary.usage
         ? {
@@ -131,6 +133,8 @@ export function freeOrgBilling(): OrgBilling {
     seatPriceCents: FAKE_SEAT_PRICES.monthlyCents,
     seatPrices: FAKE_SEAT_PRICES,
     seatGraceEndsAt: null,
+    renewsAt: null,
+    priceNotice: null,
     usage: null,
     routines: null,
   };
@@ -150,6 +154,8 @@ export function unpaidOrgBilling(): OrgBilling {
     seatPriceCents: FAKE_SEAT_PRICES.monthlyCents,
     seatPrices: FAKE_SEAT_PRICES,
     seatGraceEndsAt: null,
+    renewsAt: null,
+    priceNotice: null,
     usage: null,
     routines: null,
   };

@@ -1,4 +1,5 @@
 import { z } from "zod";
+import { priceNoticeFields } from "./price-notice";
 import {
   BILLING_INTERVALS,
   type SeatIntervalRefusal,
@@ -80,6 +81,7 @@ const orgBillingWire = z.object({
   seatGraceEndsAt: instant.nullable(),
   usage: orgUsageSchema.nullable(),
   routines: orgRoutinesSchema.nullable(),
+  ...priceNoticeFields,
 });
 
 /**
@@ -89,8 +91,10 @@ const orgBillingWire = z.object({
  * (null) and no surface names one.
  */
 export const orgBillingSchema = orgBillingWire.transform(
-  ({ seatPrices, ...billing }) => ({
+  ({ seatPrices, renewsAt, priceNotice, ...billing }) => ({
     ...billing,
+    renewsAt: renewsAt ?? null,
+    priceNotice: priceNotice ?? null,
     seatPrices:
       seatPrices ??
       (billing.seatPriceCents === null

@@ -36,7 +36,7 @@
 #   a11y     roles / labels / focus expectations the surface must honor
 #   since    inventory version this component first appeared in
 
-version: 141
+version: 142
 
 components:
   - id: agent-delegation-settings
@@ -2578,6 +2578,31 @@ components:
       in the same briefing frame, while the pick is open.
     a11y: Each step is a radio group of full-row labelled radios with a visible focus ring; the frame is a titled dialog with a labelled close button. A new step takes focus on its checked radio, else its title, and the button keeps the org's whole name as its accessible name.
     since: 137
+
+  - id: promo-ended-modal
+    title: Promo-ended modal
+    purpose: Tell the billing owner still on the promotional monthly seat price that it ends at the next charge, and let them switch to yearly or keep monthly.
+    anatomy: [date-chip, title, body, interval-choice, save-tag, total-line, primary-pill, maybe-later-action, close-button, success-badge, summary-rows, fine-print, done-pill]
+    states: [offer-yearly, offer-monthly, monthly-only, switching, declined, switched-yearly, stayed-monthly, hidden]
+    variants: [phone-full-height-sheet, desktop-dialog]
+    behavior: >-
+      Opens on app open from the org's billing priceNotice (SDK promoEndedView,
+      the billing owner of a paid org only; the store apps never show it), one
+      modal at a time: it waits for every plan dialog and the pricing-change
+      modal. Yearly is preselected where it is sold, listed first with what it
+      saves; the total line names the year's charge, charged today less a
+      credit for the unused part of the month, or the month's from the next
+      charge, and the pill follows the pick ("Switch to yearly", "Continue
+      monthly at {price}"). Switch calls switchToYearly and shows what the org
+      pays now (plan, members, next charge off the org's billing); a declined
+      card keeps the offer with an info toast; yearly no longer sold moves the
+      pick to monthly. Continue monthly calls dismissPriceNotice and says what
+      the org costs from the next charge. Maybe later, the X and Escape close
+      it for the session. Every figure comes from the wire. It wears the
+      briefing frame: centered on desktop, full height on phones with the
+      actions at the bottom.
+    a11y: A titled, described dialog; the interval choice is a radio group of full-row labelled radios; the X is labelled; every action is a visible button.
+    since: 142
 
   - id: org-status-banner
     title: Organization status strip

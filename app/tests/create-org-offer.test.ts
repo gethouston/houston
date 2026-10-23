@@ -15,6 +15,8 @@ const billing = (monthlyCents: number): OrgBilling => ({
   seatPriceCents: monthlyCents,
   seatPrices: { monthlyCents, annualCents: 18000 },
   seatGraceEndsAt: null,
+  renewsAt: null,
+  priceNotice: null,
   usage: null,
   routines: null,
 });

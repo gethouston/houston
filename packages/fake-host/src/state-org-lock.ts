@@ -36,7 +36,7 @@ export function orgBillingOf(slug: string): OrgBilling | null {
   );
 }
 
-function setOrgBilling(slug: string, billing: OrgBilling): void {
+export function setOrgBilling(slug: string, billing: OrgBilling): void {
   if (slug === PERSONAL_ORG_SLUG) {
     const seed = planSeed();
     if (seed) seed.personalBilling = billing;

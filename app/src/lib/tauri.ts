@@ -1988,6 +1988,14 @@ export const tauriOrg = {
   createCheckout: (
     interval: import("@houston/engine-adapter").BillingInterval,
   ) => call("create_checkout", () => getEngine().createCheckout({ interval })),
+  /** Move the active org's monthly subscription to yearly (billing owner);
+   *  the owner's states (declined card, already yearly, no yearly price)
+   *  come back as outcomes. */
+  switchToYearly: () =>
+    call("switch_to_yearly", () => getEngine().switchToYearly()),
+  /** Hide the active org's promo-ended notice on every device. */
+  dismissPriceNotice: () =>
+    call("dismiss_price_notice", () => getEngine().dismissPriceNotice()),
   /** C8 billing: open the Stripe customer portal (owner only); returns `{url}`. */
   createPortal: () => call("create_portal", () => getEngine().createPortal()),
   /** Make the active org the free one; the refusals come back as outcomes. */

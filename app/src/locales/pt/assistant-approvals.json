@@ -56,7 +56,8 @@
     "updateActivity": "Atualizar os detalhes ou o status desta missão.",
     "updateRoutine": "Atualizar o horário ou as instruções desta rotina.",
     "writeAgentFile": "Substituir o conteúdo de um dos arquivos salvos do funcionário de IA.",
-    "setChoice": "Escolher qual organização continua no nível gratuito quando os planos passarem para as organizações. As outras vão precisar de um plano pago para continuar enviando mensagens."
+    "setChoice": "Escolher qual organização continua no nível gratuito quando os planos passarem para as organizações. As outras vão precisar de um plano pago para continuar enviando mensagens.",
+    "switchToYearly": "Mudar esta organização para o plano anual. A cobrança é feita hoje no cartão cadastrado."
   },
   "arguments": {
     "agentId": "funcionário de IA",

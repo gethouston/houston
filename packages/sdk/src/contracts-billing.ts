@@ -19,6 +19,11 @@ export {
   billingChoiceRefusal,
   type ClaimFreeSlotResult,
   claimFreeSlotRefusal,
+  type PromoEndedView,
+  promoEndedModalOpens,
+  promoEndedView,
+  type SwitchToYearlyResult,
+  switchToYearlyRefusal,
 } from "./modules/billing";
 export {
   BILLING_CHECKOUT_WINDOW_MS,

@@ -70,7 +70,9 @@ export type PlanCallRoute =
   | "presence"
   | "announcement"
   | "send"
-  | "org_free";
+  | "org_free"
+  | "switch_to_yearly"
+  | "price_notice_dismiss";
 
 export interface PlanCall {
   route: PlanCallRoute;

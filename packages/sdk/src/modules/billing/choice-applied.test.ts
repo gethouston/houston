@@ -304,6 +304,8 @@ describe("orgLocked", () => {
       seatPriceCents: 2000,
       seatPrices: { monthlyCents: 2000, annualCents: 18000 },
       seatGraceEndsAt: null,
+      renewsAt: null,
+      priceNotice: null,
       usage: null,
       routines: null,
     };

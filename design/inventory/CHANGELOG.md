@@ -3,6 +3,17 @@
 Every `version` bump in `inventory.yaml` needs a matching entry here (enforced by
 `pnpm check:parity`). Newest first. Use `## vN` headings.
 
+## v142 - 2026-10-23
+
+A new promo-ended modal (`promo-ended-modal`) tells the billing owner whose
+organization still pays the promotional $15 monthly seat price that it moves
+to $20 at the next charge. Yearly is preselected ("Switch to yearly", charged
+today less a credit for the unused part of the month) and monthly is the
+other option ("Continue monthly at $20"); each answer shows what the
+organization pays from then on. A declined card keeps the offer with a toast,
+and Maybe later closes it for the session. It waits for the pricing-change
+modal and every plan dialog.
+
 ## v141 - 2026-10-23
 
 A seat is sold monthly or yearly, and every price comes from the wire. The

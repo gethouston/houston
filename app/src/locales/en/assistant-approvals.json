@@ -56,7 +56,8 @@
     "updateActivity": "Update this mission's details or status.",
     "updateRoutine": "Update this routine's schedule or instructions.",
     "writeAgentFile": "Replace the contents of one of the AI Employee's saved data files.",
-    "setChoice": "Choose which organization stays on the free tier when plans move to organizations. The others will need a paid plan to keep sending messages."
+    "setChoice": "Choose which organization stays on the free tier when plans move to organizations. The others will need a paid plan to keep sending messages.",
+    "switchToYearly": "Switch this organization to yearly billing. It charges the card on file today."
   },
   "arguments": {
     "agentId": "AI Employee",

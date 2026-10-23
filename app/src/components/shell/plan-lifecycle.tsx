@@ -25,6 +25,7 @@ import { openAdmin } from "../../lib/open-admin";
 import { useUIStore } from "../../stores/ui";
 import { BillingChangeModal } from "./billing-change-modal";
 import { PlanKeepFooter } from "./plan-keep-footer";
+import { PromoEndedModal } from "./promo-ended-modal";
 import { useOrgDismissal } from "./use-org-dismissal";
 import { createUserDismissal } from "./user-dismissal";
 
@@ -55,6 +56,11 @@ export function PlanLifecycle() {
   };
 
   usePlanPresence(capabilities?.plan === true, org.orgSlug);
+  const [choiceShown, setChoiceShown] = useState(false);
+  const planBlocked = planDialogBlocks(dialog, {
+    planLoading: org.isLoading,
+    announcementClosed: true,
+  });
 
   return (
     <>
@@ -158,11 +164,13 @@ export function PlanLifecycle() {
         </DialogContent>
       </Dialog>
       <BillingChangeModal
-        otherDialogOpen={planDialogBlocks(dialog, {
-          planLoading: org.isLoading,
-          announcementClosed: true,
-        })}
+        otherDialogOpen={planBlocked}
+        onShownChange={setChoiceShown}
       />
+      {/* One modal at a time: the promo-ended notice waits for the
+          pricing-change modal (the pick or its confirm) and every plan
+          dialog. */}
+      <PromoEndedModal otherDialogOpen={planBlocked || choiceShown} />
     </>
   );
 }

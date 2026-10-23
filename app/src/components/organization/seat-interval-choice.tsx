@@ -26,11 +26,14 @@ export function SeatIntervalChoice({
   value,
   onChange,
   disabled,
+  yearlyFirst = false,
 }: {
   prices: SeatPrices;
   value: BillingInterval;
   onChange: (interval: BillingInterval) => void;
   disabled?: boolean;
+  /** Lead with yearly, where yearly is the offer (the promo-ended notice). */
+  yearlyFirst?: boolean;
 }) {
   const { t } = useTranslation("teams");
   // Two choices can share a screen (the Billing tab and the status strip's
@@ -44,17 +47,19 @@ export function SeatIntervalChoice({
       data-testid="seat-interval-choice"
       className="flex flex-col gap-2"
     >
-      {seatPlans(prices).map((plan) => (
-        <IntervalRow
-          key={plan.interval}
-          group={group}
-          plan={plan}
-          saves={plan.interval === "year" ? saves : null}
-          checked={plan.interval === value}
-          disabled={disabled}
-          onSelect={() => onChange(plan.interval)}
-        />
-      ))}
+      {(yearlyFirst ? [...seatPlans(prices)].reverse() : seatPlans(prices)).map(
+        (plan) => (
+          <IntervalRow
+            key={plan.interval}
+            group={group}
+            plan={plan}
+            saves={plan.interval === "year" ? saves : null}
+            checked={plan.interval === value}
+            disabled={disabled}
+            onSelect={() => onChange(plan.interval)}
+          />
+        ),
+      )}
     </div>
   );
 }

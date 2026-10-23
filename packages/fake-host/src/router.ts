@@ -45,6 +45,10 @@ import {
   handlePlanRoutes,
 } from "./routes-plan";
 import { lastPortableExport, resetPortable } from "./routes-portable";
+import {
+  handlePriceNoticeRoutes,
+  setSwitchDeclines,
+} from "./routes-price-notice";
 import { handleSetupRuntime } from "./routes-setup-runtime";
 import { handleSharedSkillsRoutes } from "./routes-shared-skills";
 import { handleSpaceInvitesControl, handleSpacesRoutes } from "./routes-spaces";
@@ -99,6 +103,13 @@ export async function handle(req: Request): Promise<Response> {
     resetPortable();
     state.reset();
     state.setYearlySold(true);
+    setSwitchDeclines(false);
+    return json({ ok: true });
+  }
+  // `{ decline: true }` makes the next switch to yearly decline the card.
+  if (path === "/__test__/switch-yearly" && method === "POST") {
+    const body = await parseBody(req);
+    setSwitchDeclines(body?.decline === true);
     return json({ ok: true });
   }
   // `{ sold: false }` stops selling a yearly seat (see `setYearlySold`).
@@ -467,6 +478,8 @@ export async function handle(req: Request): Promise<Response> {
   const moveRoute = handleAgentMoveRoutes(method, segs, body);
   if (moveRoute) return moveRoute;
 
+  const priceNoticeRoute = handlePriceNoticeRoutes(method, segs, req);
+  if (priceNoticeRoute) return priceNoticeRoute;
   const orgBillingRoute = handleOrgBillingRoutes(method, segs, req, body);
   if (orgBillingRoute) return orgBillingRoute;
 

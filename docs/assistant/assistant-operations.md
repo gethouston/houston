@@ -35,10 +35,12 @@ A person's message can grant one `createAgent` call with the constrained name, c
 | `createPlusPortal` | POST | unconfirmed: withheld from dispatch | the URL grants access to a signed-in billing session. | none |
 | `createPortal` | POST | unconfirmed: withheld from dispatch | answers with a live Stripe portal session URL, which is a signed-in billing session for anyone who holds it; the person opens billing from the app instead of being handed a link through a model. | none |
 | `dismissChoiceNotice` | POST | unconfirmed: This only records that the announcement was seen. | only the person reading the announcement may dismiss it. | none |
+| `dismissPriceNotice` | POST | unconfirmed: it only hides a notice; billing stays exactly as it is. | visible | none |
 | `getBilling` | GET | unconfirmed: read-only HTTP GET | visible | none |
 | `getChoice` | GET | unconfirmed: read-only HTTP GET | visible | none |
 | `listPlusInvoices` | GET | unconfirmed: read-only HTTP GET | visible | none |
 | `setChoice` | PUT | confirmed: host approval required | visible | pick: free text |
+| `switchToYearly` | POST | confirmed: host approval required | visible | none |
 | `completeSlack` | POST | unconfirmed: withheld from dispatch | redeems a one-time bearer ticket that only the browser returning from Slack holds, and passing one through a chat turn is how it leaks. | ticket: free text |
 | `connectSlack` | POST | unconfirmed: withheld from dispatch | answers with an authorization URL that only the person's own browser may open, and whoever finishes in Slack is who the connection would be offered to. | returnTo: free text |
 | `disconnectChannel` | DELETE | confirmed: host approval required | visible | connectionId: open: A messaging account is not a directory entry, so read its connection id from getChannels. |

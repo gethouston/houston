@@ -210,5 +210,43 @@
     "title": "Cobrança da organização",
     "body": "O plano, os assentos e o pagamento de cada organização ficam na Administração dela, em Cobrança.",
     "open": "Abrir cobrança"
+  },
+  "promo": {
+    "from": "A partir de {{date}}",
+    "title": "Seu preço promocional está acabando",
+    "body": "{{org}} paga um preço promocional de {{promo}} por membro ao mês. A partir da sua próxima cobrança, em {{date}}, passa a {{monthly}}. Mude para o plano anual para continuar pagando {{promo}} ao mês.",
+    "bodyMonthly": "{{org}} paga um preço promocional de {{promo}} por membro ao mês. A partir da sua próxima cobrança, em {{date}}, passa a {{monthly}}.",
+    "total": {
+      "year_one": "<b>{{total}} por ano</b> para {{count}} membro, cobrado hoje, menos um crédito pela parte não usada deste mês.",
+      "year_other": "<b>{{total}} por ano</b> para {{count}} membros, cobrado hoje, menos um crédito pela parte não usada deste mês.",
+      "month_one": "<b>{{total}} por mês</b> para {{count}} membro, a partir de {{date}}.",
+      "month_other": "<b>{{total}} por mês</b> para {{count}} membros, a partir de {{date}}."
+    },
+    "switch": "Mudar para o plano anual",
+    "stay": "Continuar no mensal a {{monthly}}",
+    "switching": "Mudando",
+    "yearly": {
+      "title": "Agora você está no plano anual",
+      "sub": "{{org}} continua pagando {{promo}} por membro ao mês.",
+      "fine": "Você pode mudar isso em Configurações, em Faturamento."
+    },
+    "row": {
+      "plan": "Plano",
+      "next": "Próxima cobrança",
+      "members": "Membros",
+      "nextValue": "{{total}} em {{date}}"
+    },
+    "monthly": {
+      "title": "Você continua no plano mensal",
+      "sub_one": "A partir de {{date}}, {{org}} custa {{total}} por mês para {{count}} membro.",
+      "sub_other": "A partir de {{date}}, {{org}} custa {{monthly}} por membro ao mês, ou seja, {{total}} por mês para {{count}} membros.",
+      "fine": "O plano anual continua disponível em Configurações, em Faturamento, a {{promo}} por membro ao mês."
+    },
+    "done": "Pronto",
+    "gotIt": "Entendi",
+    "declined": {
+      "title": "Seu cartão foi recusado",
+      "body": "Nada mudou. Atualize seu cartão em Configurações, em Faturamento, e tente de novo."
+    }
   }
 }

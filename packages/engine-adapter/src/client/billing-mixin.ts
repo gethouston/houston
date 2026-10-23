@@ -1,4 +1,8 @@
-import type { BillingChoiceSave, ClaimFreeSlotResult } from "@houston/sdk";
+import type {
+  BillingChoiceSave,
+  ClaimFreeSlotResult,
+  SwitchToYearlyResult,
+} from "@houston/sdk";
 import type {
   BillingChoice,
   BillingChoicePick,
@@ -70,6 +74,20 @@ export function BillingMixin<TBase extends BaseCtor>(Base: TBase) {
       if (!this.ctx.cp) throw new Error("Billing needs the hosted gateway.");
       return viaSdk("/v1/org/billing/free", () =>
         this.ctx.sdk.billing.claimFreeSlot(),
+      );
+    }
+    // The promo-ended notice's two answers, for the active org's billing
+    // owner. Off-cloud there is no subscription to change.
+    async switchToYearly(): Promise<SwitchToYearlyResult> {
+      if (!this.ctx.cp) throw new Error("Billing needs the hosted gateway.");
+      return viaSdk("/v1/org/billing/switch-to-yearly", () =>
+        this.ctx.sdk.billing.switchToYearly(),
+      );
+    }
+    async dismissPriceNotice(): Promise<void> {
+      if (!this.ctx.cp) throw new Error("Billing needs the hosted gateway.");
+      return viaSdk("/v1/org/billing/price-notice/dismiss", () =>
+        this.ctx.sdk.billing.dismissPriceNotice(),
       );
     }
     // A free org's routine rules and presence ride the active org's header;

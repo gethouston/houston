@@ -25,10 +25,12 @@ Calling an operation returns the host's raw response. Where the adapter function
 - `claimFreeSlot`: Makes the active organization the free one, in place of the organization that is free today. **Confirmation required.**
 - `createCheckout`: Starts the checkout that puts the organization on a paid plan. **Confirmation required.**
 - `createPlusCheckout`: Start a Plus subscription checkout. **Confirmation required.**
+- `dismissPriceNotice`: Hides the notice that the organization's promotional price is ending.
 - `getBilling`: Shows the plan and payment status of the organization.
 - `getChoice`: Shows which organization stays free when plans move to organizations, and which one a subscription pays for.
 - `listPlusInvoices`: List the person's recent Plus invoices.
 - `setChoice`: Chooses which organization stays free, and for a Plus subscriber which organization the subscription pays for. **Confirmation required.**
+- `switchToYearly`: Moves the organization's monthly subscription to yearly billing. **Confirmation required.**
 
 ## channels
 

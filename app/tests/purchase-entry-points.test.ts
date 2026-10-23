@@ -46,6 +46,10 @@ const GATED_BY: Record<string, string> = {
     "components/shell/free-org-picker-rows.tsx",
   "components/shell/paid-org-offer-dialog.tsx":
     "components/shell/paid-org-offer-dialog.tsx",
+  // The promo-ended notice's steps draw only inside its modal, which the
+  // store apps never open.
+  "components/shell/promo-ended-steps.tsx":
+    "components/shell/promo-ended-modal.tsx",
   "hooks/queries/use-billing.ts": "hooks/queries/use-billing.ts",
   "hooks/queries/use-org-checkout.ts": "hooks/queries/use-org-checkout.ts",
   // The org-status strip and the locked composer card hand the policy's

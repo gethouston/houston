@@ -127,7 +127,10 @@ export type PlanCallRoute =
   | "resume"
   | "presence"
   | "announcement"
-  | "send";
+  | "send"
+  | "org_free"
+  | "switch_to_yearly"
+  | "price_notice_dismiss";
 
 /** Every plan call the fake host served since arming, in order. */
 export async function planCalls(): Promise<

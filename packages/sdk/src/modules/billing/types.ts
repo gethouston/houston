@@ -33,6 +33,8 @@ export const BillingCommand = {
   KeepRoutine: "billing/keepRoutine",
   ResumeRoutines: "billing/resumeRoutines",
   Presence: "billing/presence",
+  SwitchToYearly: "billing/switchToYearly",
+  DismissPriceNotice: "billing/dismissPriceNotice",
 } as const;
 
 export type BillingCommandType =

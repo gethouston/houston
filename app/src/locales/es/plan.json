@@ -210,5 +210,43 @@
     "title": "Facturación de la organización",
     "body": "El plan, los asientos y el pago de cada organización están en su Administración, en Facturación.",
     "open": "Abrir facturación"
+  },
+  "promo": {
+    "from": "Desde el {{date}}",
+    "title": "Tu precio promocional está por terminar",
+    "body": "{{org}} paga un precio promocional de {{promo}} por miembro al mes. Desde tu próximo cobro, el {{date}}, pasa a {{monthly}}. Cámbiate al plan anual para seguir pagando {{promo}} al mes.",
+    "bodyMonthly": "{{org}} paga un precio promocional de {{promo}} por miembro al mes. Desde tu próximo cobro, el {{date}}, pasa a {{monthly}}.",
+    "total": {
+      "year_one": "<b>{{total}} al año</b> por {{count}} miembro, cobrado hoy, menos un crédito por la parte no usada de este mes.",
+      "year_other": "<b>{{total}} al año</b> por {{count}} miembros, cobrado hoy, menos un crédito por la parte no usada de este mes.",
+      "month_one": "<b>{{total}} al mes</b> por {{count}} miembro, desde el {{date}}.",
+      "month_other": "<b>{{total}} al mes</b> por {{count}} miembros, desde el {{date}}."
+    },
+    "switch": "Cambiar al plan anual",
+    "stay": "Seguir en mensual a {{monthly}}",
+    "switching": "Cambiando",
+    "yearly": {
+      "title": "Ya estás en el plan anual",
+      "sub": "{{org}} sigue pagando {{promo}} por miembro al mes.",
+      "fine": "Puedes cambiarlo en Configuración, en Facturación."
+    },
+    "row": {
+      "plan": "Plan",
+      "next": "Próximo cobro",
+      "members": "Miembros",
+      "nextValue": "{{total}} el {{date}}"
+    },
+    "monthly": {
+      "title": "Sigues en el plan mensual",
+      "sub_one": "Desde el {{date}}, {{org}} cuesta {{total}} al mes por {{count}} miembro.",
+      "sub_other": "Desde el {{date}}, {{org}} cuesta {{monthly}} por miembro al mes, es decir, {{total}} al mes por {{count}} miembros.",
+      "fine": "El plan anual sigue disponible en Configuración, en Facturación, a {{promo}} por miembro al mes."
+    },
+    "done": "Listo",
+    "gotIt": "Entendido",
+    "declined": {
+      "title": "Se rechazó tu tarjeta",
+      "body": "No cambió nada. Actualiza tu tarjeta en Configuración, en Facturación, y vuelve a intentarlo."
+    }
   }
 }

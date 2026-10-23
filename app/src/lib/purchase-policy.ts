@@ -43,6 +43,7 @@ const PURCHASE_OPERATIONS: ReadonlySet<string> = new Set([
   "createPlusPortal",
   "createCheckout",
   "createPortal",
+  "switchToYearly",
 ]);
 
 export function isPurchaseOperation(operation: string): boolean {
