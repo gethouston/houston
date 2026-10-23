@@ -22,8 +22,10 @@
 import type {
   BillingChoice,
   BillingChoicePick,
+  BillingInterval,
   PlanRoutine,
   PlanRoutineKey,
+  SeatCheckoutOutcome,
 } from "@houston/wire-types";
 import type { ModuleContext } from "../../module-context";
 import { moduleScope, SdkHttpError } from "../http";
@@ -47,9 +49,11 @@ import {
   reportPresence,
   resumeRoutines,
 } from "./routines";
+import { checkoutIntervalField } from "./seat-price";
 import {
   type BillingCheckout,
   BillingCommand,
+  optionalInterval,
   requireChoicePick,
   requireRoutineKey,
 } from "./types";
@@ -65,8 +69,13 @@ export interface BillingModule {
   /** The active org's C8 subscription summary. Throws a 404/403/503 like
    *  any other status — the not-entitled reading is the surface's. */
   getBilling(): Promise<BillingSummary>;
-  /** Start a monthly per-seat checkout for the active org (billing owner only). */
-  createCheckout(): Promise<BillingCheckout>;
+  /**
+   * Start a per-seat checkout for the active org, monthly unless `interval`
+   * says `year` (billing owner only). An interval refusal is an outcome.
+   */
+  createCheckout(input?: {
+    interval?: BillingInterval;
+  }): Promise<SeatCheckoutOutcome>;
   /** Open the Stripe customer portal for the active org (billing owner only). */
   createPortal(): Promise<BillingCheckout>;
   /** Make the active org the free one; the caller's states are outcomes. */
@@ -99,7 +108,8 @@ export function createBillingModule(ctx: ModuleContext): BillingModule {
 
   const module: BillingModule = {
     getBilling: () => getBilling(scope),
-    createCheckout: () => createCheckout(scope),
+    createCheckout: (input) =>
+      createCheckout(scope, checkoutIntervalField(input?.interval)),
     createPortal: () => createPortal(scope),
     claimFreeSlot: () => claimFreeSlot(scope),
     getChoice: () => getChoice(scope),
@@ -112,8 +122,8 @@ export function createBillingModule(ctx: ModuleContext): BillingModule {
   };
 
   ctx.registerCommand(BillingCommand.Get, () => module.getBilling());
-  ctx.registerCommand(BillingCommand.CreateCheckout, () =>
-    module.createCheckout(),
+  ctx.registerCommand(BillingCommand.CreateCheckout, (p) =>
+    module.createCheckout({ interval: optionalInterval(p) }),
   );
   ctx.registerCommand(BillingCommand.CreatePortal, () => module.createPortal());
   ctx.registerCommand(BillingCommand.ClaimFreeSlot, () =>

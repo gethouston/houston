@@ -1,5 +1,12 @@
+import type { BillingInterval, SeatPrices } from "@houston/engine-adapter";
+import {
+  DEFAULT_CHECKOUT_INTERVAL,
+  sellableInterval,
+  sellsYearly,
+} from "@houston/sdk";
 import { Button } from "@houston-ai/core";
 import { Check } from "lucide-react";
+import { useState } from "react";
 import { useTranslation } from "react-i18next";
 import { usePortal } from "../../hooks/queries/use-billing.ts";
 import { useOrgCheckout } from "../../hooks/queries/use-org-checkout.ts";
@@ -7,6 +14,8 @@ import { canPurchaseInApp } from "../../lib/purchase-policy.ts";
 import { FallbackLink } from "../shell/fallback-link.tsx";
 import { PlanWebNote } from "../shell/plan-web-note.tsx";
 import type { BillingTabAction } from "./billing-tab-model.ts";
+import { CheckoutPriceLine } from "./checkout-price-line.tsx";
+import { SeatIntervalChoice } from "./seat-interval-choice.tsx";
 
 const BENEFITS = [
   "billing.benefitUsage",
@@ -18,19 +27,21 @@ const BENEFITS = [
 export function BillingPlanAction({
   action,
   orgSlug,
-  seatPrice,
-  total,
+  prices,
   seats,
 }: {
   action: BillingTabAction;
   orgSlug: string;
-  seatPrice: string;
-  total: string;
+  prices: SeatPrices | null;
   seats: number;
 }) {
   const { t } = useTranslation("teams");
   const checkout = useOrgCheckout();
   const portal = usePortal();
+  const [picked, setPicked] = useState<BillingInterval>(
+    DEFAULT_CHECKOUT_INTERVAL,
+  );
+  const interval = prices ? sellableInterval(prices, picked) : "month";
   return (
     <div className="flex flex-col gap-4 border-t border-line pt-4">
       {checkout.succeeded === orgSlug && (
@@ -51,18 +62,29 @@ export function BillingPlanAction({
               </li>
             ))}
           </ul>
+          {prices && sellsYearly(prices) && (
+            <SeatIntervalChoice
+              prices={prices}
+              value={interval}
+              onChange={setPicked}
+              disabled={checkout.outstanding}
+            />
+          )}
           <div className="flex flex-col gap-3 md:flex-row md:items-center md:justify-between">
-            <p className="text-sm text-ink-muted tabular-nums">
-              {t("billing.upgradePrice", {
-                price: seatPrice,
-                total,
-                count: seats,
-              })}
-            </p>
+            <CheckoutPriceLine
+              prices={prices}
+              interval={interval}
+              seats={seats}
+            />
             <Button
               className="self-start md:self-auto"
               disabled={checkout.outstanding}
-              onClick={() => checkout.start(orgSlug)}
+              onClick={() => {
+                // Never rejects; a refused interval leaves monthly picked.
+                void checkout.start(orgSlug, interval).then((refusal) => {
+                  if (refusal) setPicked("month");
+                });
+              }}
             >
               {t("billing.upgrade")}
             </Button>

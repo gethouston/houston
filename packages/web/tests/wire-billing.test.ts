@@ -80,13 +80,51 @@ describe("the delegated billing requests", () => {
     expect(call.body).toBeNull();
   });
 
+  // Monthly is the absent field, which every gateway reads as monthly (an
+  // older one refuses a named "month"); yearly is named.
   test("createCheckout POSTs a monthly checkout with no interval", async () => {
     stubFetch(() => json(200, CHECKOUT));
-    expect(await client().createCheckout()).toEqual(CHECKOUT);
+    expect(await client().createCheckout()).toEqual({
+      kind: "checkout",
+      ...CHECKOUT,
+    });
     const call = soleCall();
     expect(call.method).toBe("POST");
     expect(call.url).toBe(`${BASE}/v1/org/billing/checkout`);
     expect(call.body).toBe("{}");
+  });
+
+  test("createCheckout sends no interval for an explicit monthly", async () => {
+    stubFetch(() => json(200, CHECKOUT));
+    await client().createCheckout({ interval: "month" });
+    expect(soleCall().body).toBe("{}");
+  });
+
+  test("createCheckout POSTs a yearly checkout", async () => {
+    stubFetch(() => json(200, CHECKOUT));
+    expect(await client().createCheckout({ interval: "year" })).toEqual({
+      kind: "checkout",
+      ...CHECKOUT,
+    });
+    const call = soleCall();
+    expect(call.method).toBe("POST");
+    expect(call.url).toBe(`${BASE}/v1/org/billing/checkout`);
+    expect(call.body).toBe(JSON.stringify({ interval: "year" }));
+  });
+
+  test("createCheckout answers an interval refusal as an outcome", async () => {
+    stubFetch(() =>
+      json(409, { error: "yearly off", code: "interval_unavailable" }),
+    );
+    expect(await client().createCheckout({ interval: "year" })).toEqual({
+      kind: "interval_unavailable",
+    });
+    stubFetch(() =>
+      json(400, { error: "bad interval", code: "invalid_interval" }),
+    );
+    expect(await client().createCheckout({ interval: "year" })).toEqual({
+      kind: "invalid_interval",
+    });
   });
 
   test("createPortal POSTs the portal route with no body", async () => {

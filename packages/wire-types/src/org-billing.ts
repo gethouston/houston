@@ -1,4 +1,9 @@
 import { z } from "zod";
+import {
+  BILLING_INTERVALS,
+  type SeatIntervalRefusal,
+  seatPricesSchema,
+} from "./seat-prices";
 import type { OrgSummary, OrgsList } from "./types";
 
 /**
@@ -43,7 +48,7 @@ export const orgRoutinesSchema = z.object({
 });
 export type OrgRoutines = z.infer<typeof orgRoutinesSchema>;
 
-export const orgBillingSchema = z.object({
+const orgBillingWire = z.object({
   tier: z.enum(["free", "paid"]),
   status: z.enum(["active", "past_due", "locked"]),
   /** A future instant is a scheduled lock, a past one means locked. */
@@ -54,11 +59,45 @@ export const orgBillingSchema = z.object({
   freeSlot: z.boolean(),
   isBillingOwner: z.boolean(),
   seats: count,
-  seatPriceCents: count,
+  /**
+   * How often the org's subscription bills; null with no subscription. A
+   * gateway that predates intervals, or an interval it adds later, reads null.
+   */
+  interval: z.enum(BILLING_INTERVALS).nullable().catch(null),
+  /**
+   * One seat per `interval`, as this org is actually billed (a payer moved
+   * from an older plan keeps that price). With no subscription, the monthly
+   * list price. Null, with `interval`, while a live subscription's price has
+   * not been read from Stripe yet: no figure to show.
+   */
+  seatPriceCents: count.nullable(),
+  /**
+   * A new checkout's list prices. An older gateway sends none, and a shape
+   * this client cannot read must not drop the whole billing state: both read
+   * as monthly only (see below).
+   */
+  seatPrices: seatPricesSchema.optional().catch(undefined),
   seatGraceEndsAt: instant.nullable(),
   usage: orgUsageSchema.nullable(),
   routines: orgRoutinesSchema.nullable(),
 });
+
+/**
+ * A gateway that predates yearly seats sends no `seatPrices`; its
+ * `seatPriceCents` is then the one monthly price it sells, and nothing is
+ * sold yearly. With neither readable, a new checkout's prices are unknown
+ * (null) and no surface names one.
+ */
+export const orgBillingSchema = orgBillingWire.transform(
+  ({ seatPrices, ...billing }) => ({
+    ...billing,
+    seatPrices:
+      seatPrices ??
+      (billing.seatPriceCents === null
+        ? null
+        : { monthlyCents: billing.seatPriceCents, annualCents: null }),
+  }),
+);
 export type OrgBilling = z.infer<typeof orgBillingSchema>;
 
 /** Whether the caller can create a free org, and which org holds the slot. */
@@ -108,14 +147,16 @@ export const FREE_ORG_TAKEN = "free_org_taken";
 
 /**
  * What a create answered: the org, the free slot already held by another org
- * (nothing was created), or a paid org that stays locked until its checkout
- * completes. A paid create's 201 is the org summary with `checkoutUrl` beside
+ * (nothing was created), a paid org that stays locked until its checkout
+ * completes, or a paid create whose interval the gateway refused (nothing was
+ * created). A paid create's 201 is the org summary with `checkoutUrl` beside
  * it, which an older client reads as a plain summary.
  */
 export type CreateOrgOutcome =
   | { kind: "created"; org: OrgSummary }
   | { kind: typeof FREE_ORG_TAKEN; freeOrgSlug: string }
-  | { kind: "checkout"; org: OrgSummary; checkoutUrl: string };
+  | { kind: "checkout"; org: OrgSummary; checkoutUrl: string }
+  | { kind: SeatIntervalRefusal };
 
 /** Read a 201 from `POST /v1/orgs`. */
 export function readCreatedOrg(raw: unknown): CreateOrgOutcome {

@@ -5,9 +5,8 @@
  *
  * Memberships have ONE source of truth here: the armed team-space rows
  * (`state.teamWorkspaces` — the same rows `GET /v1/workspaces` bridges). So
- * accepting an invite appends a row and the team appears in the switcher AND in
- * the org list at once, exactly as it does behind the real gateway, with no
- * second fixture to keep in sync.
+ * accepting an invite appends a row, so the team appears in the switcher AND
+ * the org list at once, as behind the real gateway, with no second fixture.
  *
  * A PERSONAL `OrgSummary` is listed only while the plan is armed
  * (`PERSONAL_ORG_SLUG`, carrying the armed summary as org billing): the fake
@@ -32,6 +31,7 @@ import {
   PERSONAL_ORG_SLUG,
   planFreeOrg,
   planOrgBilling,
+  servedBilling,
   unpaidOrgBilling,
 } from "./state-org-billing";
 import { FAKE_CHECKOUT_URL, planSeed } from "./state-plan";
@@ -68,7 +68,7 @@ function orgWire(row: FakeTeamWorkspace): OrgSummaryWire {
     role: row.role ?? state.capabilities.role ?? "owner",
     memberCount: row.memberCount ?? 1,
     degraded: row.billing?.status === "locked",
-    billing: row.billing ?? null,
+    billing: servedBilling(row.billing ?? null),
   };
 }
 
@@ -76,7 +76,7 @@ function orgWire(row: FakeTeamWorkspace): OrgSummaryWire {
 function personalOrgWire(): OrgSummaryWire[] {
   const seed = planSeed();
   if (!seed) return [];
-  const billing = planOrgBilling(seed);
+  const billing = servedBilling(planOrgBilling(seed));
   return [
     {
       id: `org-${PERSONAL_ORG_SLUG}`,

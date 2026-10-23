@@ -12,6 +12,7 @@ import {
   closeDismisses,
   finishConfirming,
   finishPicking,
+  listSeatPrices,
   nextChoiceModalFrame,
   nextChoicePage,
   pickFlowProgress,
@@ -21,6 +22,7 @@ import {
 } from "@houston/sdk";
 import { useState } from "react";
 import { useTranslation } from "react-i18next";
+import { useActiveOrgBilling } from "../../hooks/queries/use-billing";
 import {
   useBillingChoice,
   useDismissBillingChoice,
@@ -50,6 +52,7 @@ export function BillingChangeModal({
   otherDialogOpen: boolean;
 }) {
   const { data: choice } = useBillingChoice();
+  const { orgs } = useActiveOrgBilling();
   const { t, i18n } = useTranslation("plan");
   const now = useChoiceNow(choice);
   const dismiss = useDismissBillingChoice();
@@ -112,6 +115,7 @@ export function BillingChangeModal({
           <BillingChangeIntro
             notice={notice}
             choice={choice}
+            listPrices={listSeatPrices(orgs)}
             page={page}
             progress={choiceIntroProgress(frame, choice, page)}
             onNext={next}

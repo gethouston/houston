@@ -1,4 +1,9 @@
-import type { OrgBilling, OrgsList } from "@houston/wire-types";
+import type {
+  OrgBilling,
+  OrgsList,
+  SeatCheckoutOutcome,
+  SeatIntervalRefusal,
+} from "@houston/wire-types";
 import type { Clock } from "../../ports";
 
 /**
@@ -21,10 +26,14 @@ export type BillingCheckoutState =
 
 /** The two effects a checkout needs: the session from the gateway, a browser. */
 export interface BillingCheckoutPorts {
-  create(): Promise<{ url: string }>;
+  /** The session, or the interval the gateway refused (nothing opens). */
+  create(): Promise<SeatCheckoutOutcome>;
   /** Opens the URL outside the app; false when nothing could open it. */
   open(url: string): Promise<boolean>;
 }
+
+/** What one `start` did: opened a checkout, sent nothing, or was refused. */
+export type BillingCheckoutStart = "started" | "skipped" | SeatIntervalRefusal;
 
 /** A checkout is being created, or its page is open and the org is not paid yet. */
 export function billingCheckoutOutstanding(
@@ -70,24 +79,33 @@ export class BillingCheckoutTracker {
   getSnapshot = (): BillingCheckoutState => this.#state;
 
   /**
-   * Create the session for `orgSlug` and open it. Resolves false when a
+   * Create the session for `orgSlug` and open it. Resolves `skipped` when a
    * checkout is already outstanding (nothing is sent) or `reset` ran while the
-   * session was being created (it is never opened); rejects, back to idle,
-   * when the session cannot be created. A browser that did not open leaves the
-   * URL as `fallbackUrl` for the surface to offer as a link.
+   * session was being created (it is never opened), and the refusal, back to
+   * idle, when the gateway refused the interval; rejects, back to idle, when
+   * the session cannot be created. A browser that did not open leaves the URL
+   * as `fallbackUrl` for the surface to offer as a link.
    */
-  async start(orgSlug: string, ports: BillingCheckoutPorts): Promise<boolean> {
-    if (billingCheckoutOutstanding(this.#state)) return false;
+  async start(
+    orgSlug: string,
+    ports: BillingCheckoutPorts,
+  ): Promise<BillingCheckoutStart> {
+    if (billingCheckoutOutstanding(this.#state)) return "skipped";
     this.#set({ phase: "creating", orgSlug });
     const generation = this.#generation;
-    let url: string;
+    let outcome: SeatCheckoutOutcome;
     try {
-      ({ url } = await ports.create());
+      outcome = await ports.create();
     } catch (error) {
       if (generation === this.#generation) this.#set({ phase: "idle" });
       throw error;
     }
-    if (generation !== this.#generation) return false;
+    if (generation !== this.#generation) return "skipped";
+    if (outcome.kind !== "checkout") {
+      this.#set({ phase: "idle" });
+      return outcome.kind;
+    }
+    const { url } = outcome;
     this.#set({
       phase: "open",
       orgSlug,
@@ -111,7 +129,7 @@ export class BillingCheckoutTracker {
       )
         this.#set({ ...this.#state, fallbackUrl: url });
     }
-    return true;
+    return "started";
   }
 
   /**

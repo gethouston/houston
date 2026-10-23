@@ -320,7 +320,7 @@
     "freeTaken": "Cada pessoa pode ter uma organização no nível gratuito, e a sua é {{freeOrg}}.",
     "freeTakenUnknown": "Cada pessoa pode ter uma organização no nível gratuito, e você já tem a sua.",
     "paidPrice": "{{name}} custa {{price}} por membro por mês. Você paga no navegador, e ela é desbloqueada quando o pagamento for confirmado.",
-    "paidPriceUnknown": "Você paga por {{name}} no navegador, e ela é desbloqueada quando o pagamento for confirmado.",
+    "paidInBrowser": "Você paga por {{name}} no navegador, e ela é desbloqueada quando o pagamento for confirmado.",
     "paidSubmit": "Continuar para o pagamento",
     "paidSuccessTitle": "Conclua o pagamento de \"{{name}}\"",
     "paidSuccessBody": "O pagamento está aberto no navegador. A organização é desbloqueada quando o pagamento for confirmado.",
@@ -453,13 +453,34 @@
     "planPaid": "Nível pago",
     "seatsTotal_one": "{{count}} assento, {{total}} por mês",
     "seatsTotal_other": "{{count}} assentos, {{total}} por mês",
+    "seatsTotalYear_one": "{{count}} assento, {{total}} por ano",
+    "seatsTotalYear_other": "{{count}} assentos, {{total}} por ano",
     "grace": "{{today}} por mês até {{date}}, depois {{total}} por mês",
+    "graceYear": "{{today}} por ano até {{date}}, depois {{total}} por ano",
     "locksOn": "Será bloqueada em {{date}}",
     "benefitUsage": "Cada pessoa tem seu próprio uso, sem limite semanal",
     "benefitRoutines": "Rode todas as suas rotinas, com a frequência que precisar",
     "benefitAway": "As rotinas continuam rodando enquanto você está fora",
     "upgradePrice_one": "{{price}} por mês para {{count}} membro",
     "upgradePrice_other": "{{price}} por membro por mês, {{total}} por mês para {{count}} membros",
+    "interval": {
+      "label": "Como pagar",
+      "month": "Mensal",
+      "year": "Anual",
+      "monthMeta": "{{price}} por membro por mês",
+      "yearMeta": "{{price}} por membro por mês, cobrado uma vez por ano ({{yearly}} por membro por ano)",
+      "save": "Economize {{percent}}%"
+    },
+    "checkoutTotal": {
+      "month_one": "{{total}} por mês para {{count}} membro",
+      "month_other": "{{total}} por mês para {{count}} membros",
+      "year_one": "{{total}} por ano para {{count}} membro",
+      "year_other": "{{total}} por ano para {{count}} membros"
+    },
+    "yearlyUnavailable": {
+      "title": "O pagamento anual não está disponível agora",
+      "body": "Você pode pagar mensalmente."
+    },
     "upgrade": "Fazer upgrade",
     "openCheckout": "Abrir o pagamento",
     "openPortal": "Abrir o portal de cobrança",
@@ -783,6 +804,14 @@
       "fixPayment": "{{org}} está bloqueada. Resolva o pagamento para enviar mensagens e fazer alterações.",
       "askOwner": "{{org}} está bloqueada. Peça ao proprietário que paga por ela para desbloqueá-la.",
       "store": "{{org}} está bloqueada, então mensagens e alterações estão pausadas por enquanto."
+    },
+    "checkout": {
+      "unlockTitle": "Desbloqueie {{org}}",
+      "upgradeTitle": "Faça upgrade de {{org}}",
+      "unlockBody": "Você paga no navegador, e {{org}} é desbloqueada quando o pagamento for confirmado.",
+      "upgradeBody": "Você paga no navegador, e {{org}} continua funcionando quando o pagamento for confirmado.",
+      "submit": "Continuar para o pagamento",
+      "cancel": "Cancelar"
     }
   },
   "moveOut": {

@@ -1,12 +1,13 @@
 import { deepStrictEqual, ok, strictEqual } from "node:assert";
 import { before, describe, it } from "node:test";
-import type { BillingChoice } from "@houston/engine-adapter";
+import type { BillingChoice, SeatPrices } from "@houston/engine-adapter";
 import { choiceDone, choiceModal } from "@houston/sdk";
 import { JSDOM } from "jsdom";
 import type { ReactElement } from "react";
 import plan from "../src/locales/en/plan.json" with { type: "json" };
 import planEs from "../src/locales/es/plan.json" with { type: "json" };
 import planPt from "../src/locales/pt/plan.json" with { type: "json" };
+import { enterNativeApp } from "./support/native-surface.ts";
 
 let h: typeof import("react").createElement;
 let render: (element: ReactElement) => string;
@@ -338,6 +339,7 @@ describe("the success step", () => {
 function introText(
   choice: BillingChoice,
   page: "notice" | "not_kept" = "notice",
+  listPrices: SeatPrices | null = LIST_PRICES,
 ) {
   const shown = choiceModal(choice, {
     now: Date.parse("2026-10-20T17:00:00.000Z"),
@@ -356,6 +358,7 @@ function introText(
       h(intro.BillingChangeIntro, {
         notice,
         choice,
+        listPrices,
         page,
         progress: null,
         onNext: noop,
@@ -374,6 +377,8 @@ function introText(
     buttons: [...rendered.querySelectorAll("button")].map((b) => b.textContent),
   };
 }
+
+const LIST_PRICES: SeatPrices = { monthlyCents: 2000, annualCents: 18000 };
 
 const HEAD = [
   "From Friday, October 23",
@@ -409,12 +414,31 @@ describe("the announcement", () => {
         ],
         ONE_FREE_ALL,
         [
-          "The rest are $15 per member a month",
-          "Only for organizations you want to keep working.",
+          "The rest are $20 per member a month",
+          "Or $15 per member a month, billed yearly. Only for organizations you want to keep working.",
         ],
       ],
       buttons: ["Next", "Maybe later"],
     });
+  });
+
+  it("prices the rest off the wire: monthly only, or unsaid while unknown", () => {
+    const owner = { ...CHOICE, payer: null };
+    const monthly = introText(owner, "notice", {
+      monthlyCents: 2000,
+      annualCents: null,
+    });
+    ok(monthly !== "closed");
+    deepStrictEqual(monthly.points[2], [
+      "The rest are $20 per member a month",
+      "Only for organizations you want to keep working.",
+    ]);
+    const unknown = introText(owner, "notice", null);
+    ok(unknown !== "closed");
+    deepStrictEqual(unknown.points[2], [
+      "The rest need the paid tier",
+      "Only for organizations you want to keep working.",
+    ]);
   });
 
   it("tells a payer the subscription covers one org they choose next", () => {
@@ -423,6 +447,36 @@ describe("the announcement", () => {
     deepStrictEqual(shown.points[2], [
       "Your subscription covers one organization",
       "$15 per member a month. You pick it in a moment.",
+    ]);
+  });
+
+  it("names no price inside a store app, which never sells", () => {
+    const leave = enterNativeApp();
+    try {
+      const owner = introText({ ...CHOICE, payer: null });
+      ok(owner !== "closed");
+      deepStrictEqual(owner.points[2], [
+        "The rest need the paid tier",
+        "Only for organizations you want to keep working.",
+      ]);
+      const payer = introText(CHOICE);
+      ok(payer !== "closed");
+      deepStrictEqual(payer.points[2][1], "You pick it in a moment.");
+    } finally {
+      leave();
+    }
+  });
+
+  it("leaves a payer's price unsaid when no org carries a total", () => {
+    const orgs = CHOICE.orgs.map((one) => ({
+      ...one,
+      monthlyTotalCents: null,
+    }));
+    const shown = introText({ ...CHOICE, orgs });
+    ok(shown !== "closed");
+    deepStrictEqual(shown.points[2], [
+      "Your subscription covers one organization",
+      "You pick it in a moment.",
     ]);
   });
 
@@ -501,8 +555,8 @@ describe("the announcement", () => {
         "Los equipos salieron de beta",
       ]);
       deepStrictEqual(shown.points[2], [
-        "Las demás cuestan 15\u00a0US$ por miembro al mes",
-        "Solo para las organizaciones que quieras que sigan funcionando.",
+        "Las demás cuestan 20\u00a0US$ por miembro al mes",
+        "O 15\u00a0US$ por miembro al mes, facturado una vez al año. Solo para las organizaciones que quieras que sigan funcionando.",
       ]);
     } finally {
       await i18next.changeLanguage("en");

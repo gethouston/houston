@@ -1,5 +1,6 @@
 import { deepStrictEqual, strictEqual } from "node:assert";
 import { describe, it } from "node:test";
+import type { SeatCheckoutOutcome } from "@houston/engine-adapter";
 import { BillingCheckoutTracker } from "@houston/sdk";
 import type { ReservedTab } from "../src/lib/browser-tab.ts";
 import {
@@ -8,6 +9,10 @@ import {
 } from "../src/lib/org-checkout-run.ts";
 
 const URL = "https://checkout.stripe.com/c/acme";
+const checkout = (url: string): SeatCheckoutOutcome => ({
+  kind: "checkout",
+  url,
+});
 
 function tracker() {
   return new BillingCheckoutTracker({
@@ -36,7 +41,7 @@ function run(patch: Partial<OrgCheckoutRun>) {
   const opened: string[] = [];
   const base: OrgCheckoutRun = {
     orgSlug: "acme",
-    create: async () => ({ url: URL }),
+    create: async () => checkout(URL),
     tab: null,
     open: async (url) => {
       opened.push(url);
@@ -87,6 +92,33 @@ describe("runOrgCheckout", () => {
     deepStrictEqual(reports, ["billing_checkout"]);
   });
 
+  it("closes the empty tab, refetches and says why when the interval is refused", async () => {
+    const t = tab(() => true);
+    const order: string[] = [];
+    const refused: string[] = [];
+    const { base, reports, opened } = run({
+      tab: t.reserved,
+      create: async () => ({ kind: "interval_unavailable" }),
+      refresh: async () => {
+        order.push("refresh");
+      },
+      onRefused: (refusal) => {
+        order.push("refused");
+        refused.push(refusal);
+      },
+    });
+    const ledger = tracker();
+    strictEqual(await runOrgCheckout(ledger, base), null);
+    deepStrictEqual(refused, ["interval_unavailable"]);
+    // The prices refetch before the surface hears of it, so its choice
+    // already reads monthly only.
+    deepStrictEqual(order, ["refresh", "refused"]);
+    strictEqual(t.log.discarded, 1);
+    deepStrictEqual(opened, []);
+    deepStrictEqual(reports, []);
+    strictEqual(ledger.getSnapshot().phase, "idle");
+  });
+
   it("closes the empty tab when the session cannot be made", async () => {
     const t = tab(() => true);
     const { base, reports } = run({
@@ -110,7 +142,7 @@ describe("runOrgCheckout", () => {
       tab: t.reserved,
       create: async () => {
         created += 1;
-        return { url: URL };
+        return checkout(URL);
       },
     });
     strictEqual(await runOrgCheckout(shared, base), null);
@@ -124,7 +156,7 @@ describe("runOrgCheckout", () => {
     const LABS = "https://checkout.stripe.com/c/labs";
     const { base } = run({
       orgSlug: "labs",
-      create: async () => ({ url: LABS }),
+      create: async () => checkout(LABS),
       madeUrl: LABS,
     });
     strictEqual(await runOrgCheckout(shared, base), LABS);
@@ -136,7 +168,7 @@ describe("runOrgCheckout", () => {
       madeUrl: URL,
       create: async () => {
         shared.reset();
-        return { url: URL };
+        return checkout(URL);
       },
     });
     strictEqual(await runOrgCheckout(shared, base), null);

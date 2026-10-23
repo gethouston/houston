@@ -33,6 +33,7 @@ export * from "./provider-refusal";
 export * from "./push";
 export * from "./retry-after";
 export * from "./routine-refusal";
+export * from "./seat-prices";
 export * from "./trigger-plan-skip";
 export * from "./trigger-status";
 export * from "./turn-setup";

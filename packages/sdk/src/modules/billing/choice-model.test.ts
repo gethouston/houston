@@ -14,7 +14,6 @@ import {
   formatCutoverDate,
   pickerRows,
 } from "./choice-model";
-import { orgSeatPrice } from "./choice-price";
 
 const at = (now: number) => ({ now, locale: "en" });
 
@@ -188,13 +187,6 @@ describe("pickerRows", () => {
   it("tags nothing when no org has messages", () => {
     const rows = pickerRows(choice({ orgs: [org(), org({ slug: "b" })] }));
     expect(rows.every((row) => !row.mostActive)).toBe(true);
-  });
-});
-
-describe("orgSeatPrice", () => {
-  it("formats one seat a month in the reader's locale", () => {
-    expect(orgSeatPrice("en")).toBe("$15");
-    expect(orgSeatPrice("pt")).toBe("US$\u00a015");
   });
 });
 

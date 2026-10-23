@@ -1,3 +1,7 @@
+import type {
+  SeatCheckoutOutcome,
+  SeatIntervalRefusal,
+} from "@houston/engine-adapter";
 import {
   type BillingCheckoutTracker,
   billingCheckoutOutstanding,
@@ -8,7 +12,7 @@ import type { ReservedTab } from "./browser-tab.ts";
 export interface OrgCheckoutRun {
   orgSlug: string;
   /** The session: a fresh one, or the one a paid create already answered. */
-  create: () => Promise<{ url: string }>;
+  create: () => Promise<SeatCheckoutOutcome>;
   /** A session already made, offered as the link if nothing starts. */
   madeUrl?: string;
   /** A tab claimed inside the click, or null to open the browser plainly. */
@@ -18,6 +22,8 @@ export interface OrgCheckoutRun {
   /** Refetch whatever reads the org's billing. */
   refresh: () => Promise<unknown>;
   report: (command: string, error: unknown) => void;
+  /** The gateway refused the interval: nothing opened, the billing refetched. */
+  onRefused?: (refusal: SeatIntervalRefusal) => void;
 }
 
 /**
@@ -53,7 +59,15 @@ export async function runOrgCheckout(
       create: run.create,
       open: async (url) => (await navigate(url)) || run.open(url),
     });
-    if (!started) {
+    if (started !== "started" && started !== "skipped") {
+      tab?.discard();
+      // The prices the surface showed are stale: refetch them, so a yearly
+      // seat the gateway stopped selling leaves the choice.
+      await run.refresh();
+      run.onRefused?.(started);
+      return null;
+    }
+    if (started === "skipped") {
       tab?.discard();
       // Another checkout is outstanding: this one's session still stands.
       // An idle tracker means the identity changed mid-start, and the old

@@ -1,4 +1,9 @@
-import type { OrgsList } from "@houston/engine-adapter";
+import type {
+  BillingInterval,
+  OrgsList,
+  SeatCheckoutOutcome,
+  SeatIntervalRefusal,
+} from "@houston/engine-adapter";
 import { billingCheckoutOutstanding } from "@houston/sdk";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { useCallback, useEffect, useSyncExternalStore } from "react";
@@ -11,6 +16,7 @@ import { billingCheckout as tracker } from "../../lib/plan-session";
 import { refuseNativePurchase } from "../../lib/purchase-policy";
 import { queryKeys } from "../../lib/query-keys";
 import { tauriOrg, tauriSystem } from "../../lib/tauri";
+import { useSeatRefusalToast } from "../use-seat-refusal-toast";
 
 const CHECKOUT_POLL_MS = 5_000;
 
@@ -37,8 +43,11 @@ function reserveCheckoutTab(): ReservedTab | null {
 }
 
 /**
- * An org checkout's view. `start(orgSlug)` opens Stripe for the active org,
- * `resume(orgSlug, url, tab)` opens a session the gateway already made (a
+ * An org checkout's view. `start(orgSlug, interval)` opens Stripe for the
+ * active org, billed monthly or yearly, and resolves with the interval refusal
+ * when the gateway refused it (the prices are refetched and the person told,
+ * so the surface only moves its choice to monthly), `resume(orgSlug, url, tab)` opens a
+ * session the gateway already made (a
  * paid create answers one) in a tab the caller reserved inside its click, and
  * `recover(orgSlug)` opens the portal to fix a failed payment, watched the
  * same way so a webhook that lands late still clears the lock unprompted.
@@ -56,13 +65,15 @@ function reserveCheckoutTab(): ReservedTab | null {
 export function useOrgCheckout() {
   const queryClient = useQueryClient();
   const state = useCheckoutState();
+  const announceRefusal = useSeatRefusalToast();
   const begin = useCallback(
     (
       orgSlug: string,
-      create: () => Promise<{ url: string }>,
+      create: () => Promise<SeatCheckoutOutcome>,
       tab: ReservedTab | null,
       madeUrl?: string,
       open = openCheckout,
+      onRefused?: (refusal: SeatIntervalRefusal) => void,
     ) =>
       runOrgCheckout(tracker, {
         orgSlug,
@@ -73,19 +84,32 @@ export function useOrgCheckout() {
         refresh: () =>
           queryClient.invalidateQueries({ queryKey: queryKeys.orgs() }),
         report: logAndReportError,
+        onRefused,
       }),
     [queryClient],
   );
+  // Never rejects: a failure was surfaced and reported by the engine call.
   const start = useCallback(
-    (orgSlug: string) => {
-      if (refuseNativePurchase("billing_checkout", reportError)) return;
-      void begin(
+    async (
+      orgSlug: string,
+      interval: BillingInterval,
+    ): Promise<SeatIntervalRefusal | null> => {
+      if (refuseNativePurchase("billing_checkout", reportError)) return null;
+      const seen: { refusal: SeatIntervalRefusal | null } = { refusal: null };
+      await begin(
         orgSlug,
-        () => tauriOrg.createCheckout(),
+        () => tauriOrg.createCheckout(interval),
         reserveCheckoutTab(),
+        undefined,
+        openCheckout,
+        (refusal) => {
+          seen.refusal = refusal;
+          announceRefusal(refusal);
+        },
       );
+      return seen.refusal;
     },
-    [begin],
+    [begin, announceRefusal],
   );
   const resume = useCallback(
     (orgSlug: string, url: string, tab: ReservedTab | null) => {
@@ -93,7 +117,12 @@ export function useOrgCheckout() {
         tab?.discard();
         return Promise.resolve(null);
       }
-      return begin(orgSlug, () => Promise.resolve({ url }), tab, url);
+      return begin(
+        orgSlug,
+        () => Promise.resolve({ kind: "checkout" as const, url }),
+        tab,
+        url,
+      );
     },
     [begin],
   );
@@ -102,7 +131,10 @@ export function useOrgCheckout() {
       if (refuseNativePurchase("billing_portal", reportError)) return;
       void begin(
         orgSlug,
-        () => tauriOrg.createPortal(),
+        async () => ({
+          kind: "checkout" as const,
+          ...(await tauriOrg.createPortal()),
+        }),
         reserveCheckoutTab(),
         undefined,
         openPortal,

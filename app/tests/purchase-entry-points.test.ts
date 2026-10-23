@@ -30,8 +30,22 @@ const GATED_BY: Record<string, string> = {
     "components/organization/billing-plan-card.tsx",
   "components/organization/billing-plan-card.tsx":
     "components/organization/billing-plan-card.tsx",
+  // The monthly-or-yearly rows and the bill under them are drawn only by
+  // the plan card, the paid-org offer and the strip's checkout dialog, each
+  // behind the policy's answer.
+  "components/organization/checkout-price-line.tsx":
+    "components/organization/billing-plan-card.tsx",
+  "components/organization/seat-interval-choice.tsx":
+    "components/organization/billing-plan-card.tsx",
+  // The pricing-change modal names prices only where the app sells.
+  "components/shell/billing-change-copy.ts":
+    "components/shell/billing-change-copy.ts",
   "components/shell/create-organization-dialog.tsx":
-    "components/shell/create-organization-dialog.tsx",
+    "components/shell/paid-org-offer-dialog.tsx",
+  "components/shell/free-org-picker-rows.tsx":
+    "components/shell/free-org-picker-rows.tsx",
+  "components/shell/paid-org-offer-dialog.tsx":
+    "components/shell/paid-org-offer-dialog.tsx",
   "hooks/queries/use-billing.ts": "hooks/queries/use-billing.ts",
   "hooks/queries/use-org-checkout.ts": "hooks/queries/use-org-checkout.ts",
   // The org-status strip and the locked composer card hand the policy's
@@ -49,6 +63,7 @@ const UPSELL_SURFACES = [
   "components/shell/plan-upgrade-row.tsx",
   "components/shell/provider-error-cards/plan-limit.tsx",
   "components/shell/team-status-banner.tsx",
+  "components/shell/team-status-checkout-dialog.tsx",
   "components/auth/referral-panel.tsx",
 ];
 

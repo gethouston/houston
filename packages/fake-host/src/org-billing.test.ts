@@ -65,6 +65,51 @@ describe("org billing on the fake gateway", () => {
     ]);
   });
 
+  it("records a yearly checkout and refuses an interval it does not sell", async () => {
+    await send("POST", "/__test__/plan", { summary: FREE });
+    const yearly = await send("POST", "/v1/org/billing/checkout", {
+      interval: "year",
+    });
+    expect(yearly.status).toBe(200);
+    const weekly = await send("POST", "/v1/org/billing/checkout", {
+      interval: "week",
+    });
+    expect(weekly.status).toBe(400);
+    const calls = await (await send("GET", "/__test__/plan-calls")).json();
+    expect(calls.calls).toEqual([
+      {
+        route: "checkout",
+        body: { orgSlug: PERSONAL_ORG_SLUG, interval: "year" },
+      },
+    ]);
+  });
+
+  it("stops selling yearly on request: no yearly price, a 409 for yearly", async () => {
+    await send("POST", "/__test__/plan", { summary: FREE });
+    await send("POST", "/__test__/yearly", { sold: false });
+    const [personal] = (await orgs()).orgs;
+    expect(personal.billing?.seatPrices).toEqual({
+      monthlyCents: 2000,
+      annualCents: null,
+    });
+    const yearly = await send("POST", "/v1/org/billing/checkout", {
+      interval: "year",
+    });
+    expect(yearly.status).toBe(409);
+    expect(await yearly.json()).toMatchObject({ code: "interval_unavailable" });
+    const create = await send("POST", "/v1/orgs", {
+      name: "Labs",
+      plan: "paid",
+      interval: "year",
+    });
+    expect(create.status).toBe(409);
+    const monthly = await send("POST", "/v1/org/billing/checkout", {});
+    expect(monthly.status).toBe(200);
+    await send("POST", "/__test__/reset");
+    await send("POST", "/__test__/plan", { summary: FREE });
+    expect((await orgs()).orgs[0].billing?.seatPrices?.annualCents).toBe(18000);
+  });
+
   it("serves the armed plan as the personal org's billing", async () => {
     await send("POST", "/__test__/plan", { summary: FREE });
     const list = await orgs();

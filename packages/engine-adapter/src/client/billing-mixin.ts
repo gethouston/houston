@@ -2,8 +2,10 @@ import type { BillingChoiceSave, ClaimFreeSlotResult } from "@houston/sdk";
 import type {
   BillingChoice,
   BillingChoicePick,
+  BillingInterval,
   PlanRoutine,
   PlanRoutineKey,
+  SeatCheckoutOutcome,
 } from "@houston/wire-types";
 import type * as controlPlane from "../control-plane";
 import { HoustonEngineError } from "./errors";
@@ -50,10 +52,12 @@ export function BillingMixin<TBase extends BaseCtor>(Base: TBase) {
         throw err;
       }
     }
-    async createCheckout(): Promise<controlPlane.BillingCheckout> {
+    async createCheckout(input?: {
+      interval?: BillingInterval;
+    }): Promise<SeatCheckoutOutcome> {
       if (!this.ctx.cp) throw new Error("Billing needs the hosted gateway.");
       return viaSdk("/v1/org/billing/checkout", () =>
-        this.ctx.sdk.billing.createCheckout(),
+        this.ctx.sdk.billing.createCheckout(input),
       );
     }
     async createPortal(): Promise<controlPlane.BillingCheckout> {

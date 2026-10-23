@@ -5,7 +5,7 @@
  * `state-plan.ts`; this module only reads it.
  */
 
-import type { FreeOrg, OrgBilling } from "@houston/wire-types";
+import type { FreeOrg, OrgBilling, SeatPrices } from "@houston/wire-types";
 import type { PlanSeed } from "./state-plan";
 
 /**
@@ -15,6 +15,40 @@ import type { PlanSeed } from "./state-plan";
  * the range `mintTeamSlug` counts through, so no team ever collides with it.
  */
 export const PERSONAL_ORG_SLUG = "ffffffffffffffff";
+
+/**
+ * A new checkout's list prices in the fake world: a seat a month, or a year
+ * of it on the yearly price, as the gateway sells them with both prices set.
+ */
+export const FAKE_SEAT_PRICES: SeatPrices = {
+  monthlyCents: 2000,
+  annualCents: 18000,
+};
+
+/**
+ * Whether the fake gateway sells a yearly seat (`GW_STRIPE_TEAM_PRICE_ANNUAL`
+ * set). A spec turns it off (`/__test__/yearly`) to reach the refusal: the
+ * orgs list then drops the yearly price and a yearly checkout answers 409
+ * `interval_unavailable`. Reset sells it again.
+ */
+let yearlySold = true;
+
+export function setYearlySold(sold: boolean): void {
+  yearlySold = sold;
+}
+
+export function sellsYearlySeat(): boolean {
+  return yearlySold;
+}
+
+/** An org's billing as the list serves it: no yearly price while none sells. */
+export function servedBilling<T extends OrgBilling | null>(billing: T): T {
+  if (!billing?.seatPrices || yearlySold) return billing;
+  return {
+    ...billing,
+    seatPrices: { ...billing.seatPrices, annualCents: null },
+  };
+}
 
 /** A pool with no stated reset resets a week from now. */
 const WEEK_MS = 7 * 24 * 3_600_000;
@@ -40,7 +74,12 @@ export function planOrgBilling(seed: Required<PlanSeed>): OrgBilling {
     freeSlot: free,
     isBillingOwner: true,
     seats: 1,
-    seatPriceCents: summary.plus.price.amount,
+    // A Plus payer moved to org billing keeps their monthly Plus price.
+    interval: free ? null : "month",
+    seatPriceCents: free
+      ? FAKE_SEAT_PRICES.monthlyCents
+      : summary.plus.price.amount,
+    seatPrices: FAKE_SEAT_PRICES,
     seatGraceEndsAt: null,
     usage:
       free && summary.usage
@@ -88,7 +127,9 @@ export function freeOrgBilling(): OrgBilling {
     freeSlot: true,
     isBillingOwner: true,
     seats: 1,
-    seatPriceCents: 1500,
+    interval: null,
+    seatPriceCents: FAKE_SEAT_PRICES.monthlyCents,
+    seatPrices: FAKE_SEAT_PRICES,
     seatGraceEndsAt: null,
     usage: null,
     routines: null,
@@ -105,7 +146,9 @@ export function unpaidOrgBilling(): OrgBilling {
     freeSlot: false,
     isBillingOwner: true,
     seats: 1,
-    seatPriceCents: 1500,
+    interval: null,
+    seatPriceCents: FAKE_SEAT_PRICES.monthlyCents,
+    seatPrices: FAKE_SEAT_PRICES,
     seatGraceEndsAt: null,
     usage: null,
     routines: null,

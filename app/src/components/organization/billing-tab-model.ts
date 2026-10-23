@@ -4,8 +4,9 @@ import { orgRecovery } from "@houston/sdk";
 /**
  * Pure, DOM-free presentation logic for an org's Billing tab, read off the
  * org's `OrgBilling` (every member can read it; the tab shows it to owners
- * and admins). Kept out of the `.tsx` so the button, the status line and the
- * price unit-test under bare Node.
+ * and admins). Kept out of the `.tsx` so the button and the status line
+ * unit-test under bare Node. What the org costs is the SDK's
+ * (`orgBillingPrice`).
  */
 
 /** `OrgBilling` carries cents only; the gateway bills every org in US dollars. */
@@ -50,36 +51,4 @@ export function billingStatus(billing: OrgBilling): BillingTabStatus {
 export function scheduledLock(billing: OrgBilling, now: number): string | null {
   if (billing.status === "locked" || !billing.lockAt) return null;
   return Date.parse(billing.lockAt) > now ? billing.lockAt : null;
-}
-
-/**
- * What the org costs a month, in Stripe minor units. Every member is a seat,
- * and an org always bills at least one. During a seat grace the subscription
- * still bills one seat, so `today` is that one seat until `graceEndsAt` and
- * `monthly` is the total after it; outside a grace `today` is null.
- */
-export interface BillingTabPrice {
-  monthly: number;
-  today: number | null;
-  graceEndsAt: string | null;
-}
-
-export function billingPrice(
-  billing: OrgBilling,
-  now: number,
-): BillingTabPrice {
-  const seats = Math.max(1, billing.seats);
-  const monthly = seats * billing.seatPriceCents;
-  const grace =
-    billing.tier === "paid" &&
-    seats > 1 &&
-    billing.seatGraceEndsAt !== null &&
-    Date.parse(billing.seatGraceEndsAt) > now
-      ? billing.seatGraceEndsAt
-      : null;
-  return {
-    monthly,
-    today: grace ? billing.seatPriceCents : null,
-    graceEndsAt: grace,
-  };
 }

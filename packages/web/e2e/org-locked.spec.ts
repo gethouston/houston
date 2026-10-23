@@ -13,7 +13,14 @@ import {
   statusBanner,
   TEAM,
 } from "./support/org-lock";
-import { openedUrls, PORTAL_URL, planCalls, stubOpener } from "./support/plan";
+import {
+  CHECKOUT_URL,
+  openedUrls,
+  PORTAL_URL,
+  planCalls,
+  stopSellingYearly,
+  stubOpener,
+} from "./support/plan";
 import { openAdminSection } from "./support/settings-nav";
 import { seedAgentSkills } from "./support/skills-nav";
 import { openTeamSection, teamTab } from "./support/team-nav";
@@ -106,6 +113,68 @@ test("locked, the owner who pays: the strip, writes off with the reason, reads o
   );
   await expect(page.locator("#org-add-email")).toBeDisabled();
   await expect(page.getByRole("button", { name: /^Remove bo/ })).toBeEnabled();
+});
+
+test("locked, the owner who pays: Unlock asks yearly or monthly, then opens that checkout", async ({
+  page,
+}) => {
+  await stubOpener(page, false);
+  await armOrgLock(page, { team: LOCKED });
+  await page.goto("/");
+
+  await statusBanner(page).getByRole("button", { name: "Unlock" }).click();
+  const dialog = page.getByRole("dialog", { name: "Unlock Acme" });
+  await expect(dialog).toContainText(
+    "You'll pay in your browser, and Acme unlocks once the payment goes through.",
+  );
+  const choice = dialog.getByRole("radiogroup", { name: "How to pay" });
+  await expect(choice.getByRole("radio", { name: /^Yearly/ })).toBeChecked();
+  await expect(dialog.getByText("$540 a year for 3 members")).toBeVisible();
+  await dialog.getByRole("button", { name: "Continue to payment" }).click();
+
+  await expect(dialog).toBeHidden();
+  await expect.poll(() => openedUrls(page)).toEqual([CHECKOUT_URL]);
+  const checkouts = (await planCalls()).filter(
+    (call) => call.route === "checkout",
+  );
+  expect(checkouts.map((call) => call.body)).toEqual([
+    { orgSlug: TEAM.slug, interval: "year" },
+  ]);
+});
+
+test("locked: a refused yearly Unlock keeps the dialog on monthly, then pays monthly", async ({
+  page,
+}) => {
+  await stubOpener(page, false);
+  await armOrgLock(page, { team: LOCKED });
+  await page.goto("/");
+
+  await statusBanner(page).getByRole("button", { name: "Unlock" }).click();
+  const dialog = page.getByRole("dialog", { name: "Unlock Acme" });
+  await expect(dialog.getByRole("radio", { name: /^Yearly/ })).toBeChecked();
+  await stopSellingYearly();
+  await dialog.getByRole("button", { name: "Continue to payment" }).click();
+
+  await expect(
+    page.getByText("Yearly billing isn't available right now"),
+  ).toBeVisible();
+  await expect(dialog).toBeVisible();
+  await expect(dialog.getByRole("radiogroup")).toHaveCount(0);
+  await expect(
+    dialog.getByText("$20 per member a month, $60 a month for 3 members"),
+  ).toBeVisible();
+  expect(await openedUrls(page)).toEqual([]);
+
+  await dialog.getByRole("button", { name: "Continue to payment" }).click();
+  await expect(dialog).toBeHidden();
+  await expect.poll(() => openedUrls(page)).toEqual([CHECKOUT_URL]);
+  const checkouts = (await planCalls()).filter(
+    (call) => call.route === "checkout",
+  );
+  expect(checkouts.map((call) => call.body)).toEqual([
+    { orgSlug: TEAM.slug, interval: "year" },
+    { orgSlug: TEAM.slug },
+  ]);
 });
 
 test("locked: a skill opens and reads, and nothing adds, saves or deletes one", async ({

@@ -85,11 +85,14 @@
       },
       "rest": {
         "title": "Las demás cuestan {{price}} por miembro al mes",
-        "body": "Solo para las organizaciones que quieras que sigan funcionando."
+        "body": "Solo para las organizaciones que quieras que sigan funcionando.",
+        "bodyYearly": "O {{price}} por miembro al mes, facturado una vez al año. Solo para las organizaciones que quieras que sigan funcionando.",
+        "titleNoPrice": "Las demás necesitan el nivel de pago"
       },
       "covers": {
         "title": "Tu suscripción cubre una organización",
-        "body": "{{price}} por miembro al mes. La eliges en un momento."
+        "body": "{{price}} por miembro al mes. La eliges en un momento.",
+        "bodyNoPrice": "La eliges en un momento."
       },
       "staysFree": "{{name}} sigue en el nivel gratuito",
       "paysFor": "Tu suscripción paga por {{name}}",

@@ -1,4 +1,8 @@
-import type { CreateOrgOutcome, OrgPlan } from "@houston/wire-types";
+import type {
+  BillingInterval,
+  CreateOrgOutcome,
+  OrgPlan,
+} from "@houston/wire-types";
 import type * as controlPlane from "../control-plane";
 import { HoustonEngineError } from "./errors";
 import type { BaseCtor } from "./mixin";
@@ -36,6 +40,7 @@ export function SpacesMixin<TBase extends BaseCtor>(Base: TBase) {
     async createOrg(input: {
       name: string;
       plan?: OrgPlan;
+      interval?: BillingInterval;
     }): Promise<CreateOrgOutcome> {
       if (!this.ctx.cp)
         throw new Error("Creating a team needs the hosted gateway.");

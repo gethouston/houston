@@ -9,7 +9,9 @@ const BILLING = {
   freeSlot: true,
   isBillingOwner: false,
   seats: 3,
-  seatPriceCents: 1500,
+  interval: null,
+  seatPriceCents: 2000,
+  seatPrices: { monthlyCents: 2000, annualCents: 18000 },
   seatGraceEndsAt: null,
   usage: {
     scope: "org",
@@ -39,6 +41,55 @@ describe("parseOrgBilling", () => {
     ).toBeNull();
     expect(parseOrgBilling({ ...BILLING, tier: "plus" })).toBeNull();
     expect(parseOrgBilling({ ...BILLING, lockAt: "soon" })).toBeNull();
+  });
+
+  it("reads a yearly subscription and a deployment with no yearly seat", () => {
+    const yearly = {
+      ...BILLING,
+      tier: "paid",
+      interval: "year",
+      seatPriceCents: 18000,
+    };
+    expect(parseOrgBilling(yearly)).toEqual(yearly);
+    const monthlyOnly = {
+      ...BILLING,
+      seatPrices: { monthlyCents: 2000, annualCents: null },
+    };
+    expect(parseOrgBilling(monthlyOnly)).toEqual(monthlyOnly);
+  });
+
+  it("reads a gateway that predates intervals as monthly only", () => {
+    const { interval: _, seatPrices: __, ...older } = BILLING;
+    expect(parseOrgBilling({ ...older, seatPriceCents: 1500 })).toEqual({
+      ...BILLING,
+      seatPriceCents: 1500,
+      seatPrices: { monthlyCents: 1500, annualCents: null },
+    });
+    expect(parseOrgBilling({ ...BILLING, interval: "week" })?.interval).toBe(
+      null,
+    );
+  });
+
+  it("reads a live subscription whose price is not read yet", () => {
+    const pending = {
+      ...BILLING,
+      tier: "paid",
+      interval: null,
+      seatPriceCents: null,
+    };
+    expect(parseOrgBilling(pending)).toEqual(pending);
+    // With no list prices either, no checkout price is known at all.
+    const { seatPrices: _, ...bare } = pending;
+    expect(parseOrgBilling(bare)?.seatPrices).toBeNull();
+  });
+
+  it("reads malformed list prices as monthly only, keeping the billing", () => {
+    expect(
+      parseOrgBilling({ ...BILLING, seatPrices: { monthlyCents: "20" } }),
+    ).toEqual({
+      ...BILLING,
+      seatPrices: { monthlyCents: 2000, annualCents: null },
+    });
   });
 
   it("keeps the state when a later gateway adds a lock reason", () => {

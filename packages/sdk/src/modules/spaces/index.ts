@@ -15,7 +15,10 @@
  * A 401 routes through the shared {@link ModuleContext.authExpiry} notifier.
  */
 
+import type { BillingInterval } from "@houston/wire-types";
 import type { ModuleContext } from "../../module-context";
+import { checkoutIntervalField } from "../billing/seat-price";
+import { optionalInterval } from "../billing/types";
 import { moduleScope, SdkHttpError } from "../http";
 import { field, requireString } from "../payload";
 import { createOrg } from "./create-org";
@@ -57,11 +60,16 @@ export interface SpacesModule {
   /** The caller's spaces plus the invitations waiting for them. */
   listOrgs(): Promise<OrgsList>;
   /**
-   * Create an org, free unless `plan` is `paid`. The caller's states (the free
-   * slot taken, a paid org awaiting checkout) are outcomes, never throws. NOT
-   * idempotent — reconcile with `listOrgs`.
+   * Create an org, free unless `plan` is `paid`; a paid one bills monthly
+   * unless `interval` says `year`. The caller's states (the free slot taken, a
+   * paid org awaiting checkout) are outcomes, never throws. NOT idempotent —
+   * reconcile with `listOrgs`.
    */
-  createOrg(input: { name: string; plan?: OrgPlan }): Promise<CreateOrgOutcome>;
+  createOrg(input: {
+    name: string;
+    plan?: OrgPlan;
+    interval?: BillingInterval;
+  }): Promise<CreateOrgOutcome>;
   /** Delete a team space the caller owns, and everything inside it. */
   deleteOrg(slug: string): Promise<void>;
   /** Accept a pending invite; answers the space that was joined. */
@@ -89,7 +97,14 @@ export function createSpacesModule(ctx: ModuleContext): SpacesModule {
 
   const module: SpacesModule = {
     listOrgs: () => listOrgs(scope),
-    createOrg: ({ name, plan }) => createOrg(scope, name, plan ?? "free"),
+    createOrg: ({ name, plan = "free", interval }) =>
+      createOrg(
+        scope,
+        name,
+        plan,
+        // A free create starts no checkout, so it names no interval.
+        plan === "paid" ? checkoutIntervalField(interval) : undefined,
+      ),
     deleteOrg: (slug) => deleteOrg(scope, slug),
     acceptOrgInvite: (inviteId) => acceptOrgInvite(scope, inviteId),
     declineOrgInvite: (inviteId) => declineOrgInvite(scope, inviteId),
@@ -104,6 +119,7 @@ export function createSpacesModule(ctx: ModuleContext): SpacesModule {
     module.createOrg({
       name: requireString(p, "name"),
       plan: field(p, "plan") === "paid" ? "paid" : "free",
+      interval: optionalInterval(p),
     }),
   );
   ctx.registerCommand(SpacesCommand.Delete, (p) =>

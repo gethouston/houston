@@ -25,12 +25,15 @@ const paidUp = {
 } as unknown as OrgsList;
 
 const ports = {
-  create: async () => ({ url: "https://checkout.stripe.test/s" }),
+  create: async () => ({
+    kind: "checkout" as const,
+    url: "https://checkout.stripe.test/s",
+  }),
   open: async () => true,
 };
 
 test("an identity change drops the outgoing account's open checkout", async () => {
-  assert.equal(await billingCheckout.start(ORG, ports), true);
+  assert.equal(await billingCheckout.start(ORG, ports), "started");
   assert.equal(billingCheckout.getSnapshot().phase, "open");
   resetPlanSessionForIdentityChange();
   assert.equal(billingCheckout.getSnapshot().phase, "idle");

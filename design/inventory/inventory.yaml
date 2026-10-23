@@ -36,7 +36,7 @@
 #   a11y     roles / labels / focus expectations the surface must honor
 #   since    inventory version this component first appeared in
 
-version: 140
+version: 141
 
 components:
   - id: agent-delegation-settings
@@ -2435,17 +2435,30 @@ components:
   - id: org-billing-tab
     title: Organization billing tab
     purpose: Show what an org costs and who pays, and let its billing owner upgrade or manage it.
-    anatomy: [plan-card, plan-title, seats-and-total, status-badge, seat-grace-line, lock-date, benefits, price-line, upgrade-button, manage-button, ask-owner-line, usage-card, usage-progress, reset-line]
-    states: [free, paid, seat-grace, past-due, scheduled-lock, locked, checkout-open, checkout-succeeded, loading, unavailable]
-    variants: [billing-owner, other-owner-or-admin, store-app, phone, desktop]
+    anatomy: [plan-card, plan-title, seats-and-total, status-badge, seat-grace-line, lock-date, benefits, interval-choice, price-line, upgrade-button, manage-button, ask-owner-line, usage-card, usage-progress, reset-line]
+    states: [free, paid, paid-yearly, seat-grace, past-due, scheduled-lock, locked, checkout-open, checkout-succeeded, loading, unavailable]
+    variants: [billing-owner, other-owner-or-admin, store-app, monthly-only, phone, desktop]
     behavior: >-
       Admin's Billing section on every cloud org, the Personal row included,
       read off the org's billing on the orgs list. The billing owner upgrades
-      a free org (checkout, monthly, per seat) or manages a paid one (the
-      Stripe portal); a checkout is tracked until the org is paid and active
-      with no lock. Other owners and admins see the state and seats with a
+      a free org (checkout, per seat) or manages a paid one (the Stripe
+      portal); a checkout is tracked until the org is paid and active with
+      no lock. Where the gateway sells a yearly seat, Upgrade sits under a
+      Monthly or Yearly radio pair (each row with its price per member from
+      the org's seatPrices, Yearly preselected and tagged with what it saves,
+      worked out from the two prices) and the price line says the
+      picked interval's total for the members; where it sells monthly only,
+      there is no choice and the line says the price per member and the
+      total. A paid org's header reads its seats and what they bill per its
+      subscription's interval ("3 seats, $540 a year"), at the price the org
+      is billed; with no interval on the wire (a comp grant, an ended
+      subscription) it reads the seats alone. A refused yearly checkout
+      stays on the card, moves the choice to Monthly, refetches the prices
+      and says yearly billing isn't available right now. Other owners and
+      admins see the state and seats with a
       line telling them to ask the owner; plain members never reach it. A
-      seat grace reads "$15 a month until <date>, then $45 a month". A free
+      seat grace reads "$20 a month until <date>, then $60 a month" (a year
+      for a yearly org). Every figure comes from the wire. A free
       org's weekly pool shows as a share of the week and its reset time,
       never a message count. The store apps show no price and no button.
     a11y: Labeled progress, status text beside its color, and visible actions.
@@ -2485,9 +2498,12 @@ components:
       choiceIntroPages and Next and Back from nextChoicePage /
       previousChoicePage, under a row of progress dots spanning every page
       through the success step (SDK pickFlowProgress): first one free org
-      per account, free for everyone in it, and the rest at the SDK's seat
-      price per member a month (a Plus or comp payer: the subscription
-      covers one org they choose next); then "Nothing gets deleted": the
+      per account, free for everyone in it, and the rest at the monthly list
+      price per member, plus the yearly price per member a month where it is
+      sold (off the orgs list's seatPrices; no figure while none is known or
+      in a store app) (a Plus or comp payer: the subscription covers one org
+      they choose next, at the payer's own price per member read off the
+      pick's monthly totals); then "Nothing gets deleted": the
       orgs not kept free still open, their agents can move to the free org,
       and new conversations wait for a plan. The second page's action
       ("Choose my free organization", a payer's Next) opens the free-org
@@ -2535,7 +2551,9 @@ components:
       truncated so the pill stays one line; the free step's subtitle says
       everyone in it uses Houston free. A Plus or comp payer first picks the
       org the subscription covers ("You already pay for Houston", "Use it
-      for {org}", each row's members and the SDK seat price, the busiest
+      for {org}", each row's members and what one member costs the payer
+      today from the pick's monthly totals (members alone without a total
+      or in a store app), the busiest
       tagged), then the free org, where the subscription's org stays listed
       in place, disabled and tagged Your subscription, with Back under the
       pill; SDK startPick, toFreeStep and reconcilePick hold the order and
@@ -2564,7 +2582,7 @@ components:
   - id: org-status-banner
     title: Organization status strip
     purpose: Tell everyone in an org that it is locked, past due or about to lock, and give the billing owner the way out.
-    anatomy: [status-icon, lead-sentence, read-and-move-out-line, ask-owner-line, waiting-line, primary-action, secondary-action, more-menu, claim-free-confirmation]
+    anatomy: [status-icon, lead-sentence, read-and-move-out-line, ask-owner-line, waiting-line, primary-action, secondary-action, more-menu, claim-free-confirmation, interval-dialog]
     states: [hidden, scheduled-lock, past-due, locked, checkout-outstanding]
     variants: [billing-owner, other-owner-or-admin, member, store-app, phone, desktop]
     behavior: >-
@@ -2574,7 +2592,10 @@ components:
       due names the lock date unless the payment is fixed; locked says nobody
       can send or change anything and that everyone can still read and move
       agents out. The billing owner gets Unlock (checkout) for an unpaid lock
-      or Fix payment (the Stripe portal) for a live subscription, Change pick
+      or Fix payment (the Stripe portal) for a live subscription; where the
+      gateway sells a yearly seat, Unlock and Upgrade first open a dialog to
+      pick Monthly or Yearly (Yearly preselected) with the org's total, then Continue to payment
+      opens checkout, and where it sells monthly only they open it at once. Change pick
       while the change window is open, Use as free org behind a confirmation
       naming the org that locks instead, and Delete org; at most two buttons
       show and the rest sit in an always-visible More menu. Everyone else
@@ -2588,13 +2609,14 @@ components:
   - id: org-locked-composer
     title: Locked organization composer
     purpose: Take the composer's place on a locked org and say why sending is off.
-    anatomy: [lock-icon, title, reason, primary-action]
+    anatomy: [lock-icon, title, reason, primary-action, interval-dialog]
     states: [owner-unlock, owner-fix-payment, ask-owner, store-app]
     variants: [phone, desktop]
     behavior: >-
       Replaces the composer of every chat in a locked org, the AI Manager
       included, with the same reason the strip gives and the billing owner's
-      way out. The same lock turns off creating employees and tasks, file
+      way out; Unlock opens the strip's Monthly or Yearly dialog where a
+      yearly seat is sold. The same lock turns off creating employees and tasks, file
       uploads and edits, instructions and company context, employee settings,
       skills (creating, adding, editing, deleting) and routines, new API keys,
       new channel connections, the morning briefing, and invites, each with

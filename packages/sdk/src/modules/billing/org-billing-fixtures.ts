@@ -20,7 +20,9 @@ export function freeOrgBilling(patch: Partial<OrgBilling> = {}): OrgBilling {
     freeSlot: true,
     isBillingOwner: true,
     seats: 3,
-    seatPriceCents: 1500,
+    interval: null,
+    seatPriceCents: 2000,
+    seatPrices: { monthlyCents: 2000, annualCents: 18000 },
     seatGraceEndsAt: null,
     usage: {
       scope: "org",

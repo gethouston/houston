@@ -69,8 +69,9 @@ export * from "./modules/billing/choice-modal-pages";
 export * from "./modules/billing/choice-model";
 export * from "./modules/billing/choice-pick-settle";
 export * from "./modules/billing/choice-picker";
-export * from "./modules/billing/choice-price";
 export * from "./modules/billing/schedule-floor";
+export * from "./modules/billing/seat-price";
+export * from "./modules/billing/seat-refusal";
 export * from "./modules/billing/trigger-skip-notice";
 export * from "./modules/billing/upgrade-model";
 export {
