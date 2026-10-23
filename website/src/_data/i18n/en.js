@@ -22,15 +22,15 @@ export default {
   meta: {
     title: "Houston: AI agents that actually do the work",
     description:
-      "Houston is the shared workspace where people and AI agents work together. Shared agents, one mission board, roles for your whole team. Free to start.",
+      "Houston is the shared workspace where people and AI agents work together. Shared agents, one mission board, roles for your whole team. Start on the free tier.",
     ogTitle: "Houston: AI agents that actually do the work",
     ogDescription:
-      "Houston is the shared workspace where people and AI agents work together. Shared agents, one mission board, roles for your whole team. Free to start.",
+      "Houston is the shared workspace where people and AI agents work together. Shared agents, one mission board, roles for your whole team. Start on the free tier.",
     twTitle: "Houston: AI agents that actually do the work",
     twDescription:
-      "Houston is the shared workspace where people and AI agents work together. Shared agents, one mission board, roles for your whole team. Free to start.",
+      "Houston is the shared workspace where people and AI agents work together. Shared agents, one mission board, roles for your whole team. Start on the free tier.",
     jsonLdDescription:
-      "Free desktop app that runs AI agents which do real work for you, on your existing ChatGPT or Claude subscription, with over 1,500 integrations.",
+      "Desktop app with a free tier that runs AI agents which do real work for you, on your existing ChatGPT or Claude subscription, with over 1,500 integrations.",
     ogImageAlt: "Houston: AI agents that actually do the work.",
   },
 
@@ -364,10 +364,10 @@ export default {
 
   pricing: {
     title: "Ready to 10x your team overnight?",
-    lead: "Start free with your whole team. Upgrade for unlimited usage.",
+    lead: "Start on the free tier with your whole team. Upgrade for unlimited usage.",
     free: {
-      name: "Free",
-      note: "one free organization per account",
+      name: "Free tier",
+      note: "one organization per account",
       items: [
         "Invite your whole team",
         "One weekly message allowance, shared by everyone",
@@ -384,7 +384,7 @@ export default {
       unit: "per seat per month",
       note: "billed monthly to the owner",
       items: [
-        "Everything in Free",
+        "Everything in the free tier",
         "Unlimited usage for every seat",
         "Unlimited routines, agents around the clock",
         "Seats follow your members, prorated",
@@ -439,7 +439,7 @@ export default {
           {
             q: "What is an organization?",
             aHtml:
-              "It is where your team works: its people, agents, and missions. You can own one free organization at a time and invite anyone to it, and you switch between organizations in a click.",
+              "It is where your team works: its people, agents, and missions. You can invite anyone to it and switch between organizations in a click. Each account gets one organization on the free tier.",
           },
           {
             q: "Can I set guardrails on a shared agent?",
@@ -497,9 +497,9 @@ export default {
         title: "Pricing and billing",
         items: [
           {
-            q: "What is free?",
+            q: "What is the free tier?",
             aHtml:
-              "One free organization per account, with no credit card. Invite anyone you like. Everyone in it shares one weekly message allowance, and Team takes the limit off.",
+              "Each account gets one organization on the free tier, with no credit card. Invite anyone you like. Everyone in it shares one weekly message allowance, and Team takes the limit off.",
           },
           {
             q: "Who pays for a team?",
@@ -509,12 +509,12 @@ export default {
           {
             q: "What counts as a seat?",
             aHtml:
-              "Every member of a Team organization, the owner included. Pending invites are free, and seats are prorated when people join or leave.",
+              "Every member of a Team organization, the owner included. Pending invites are not charged, and seats are prorated when people join or leave.",
           },
           {
             q: "Can I own more than one organization?",
             aHtml:
-              "Yes. One of the organizations you own can be free, and every other one is on Team from the start. Upgrade or delete your free one and you can start a new free one.",
+              "Yes. One of the organizations you own can be on the free tier, and every other one is on Team from the start. Upgrade or delete that one and you can start a new one on the free tier.",
           },
           {
             q: "What happens when the weekly allowance runs out?",
@@ -553,7 +553,7 @@ export default {
 
   footer: {
     blurb:
-      "The workspace where people and AI agents work together. Free to start with your whole team.",
+      "The workspace where people and AI agents work together. Start on the free tier with your whole team.",
     download: "Download",
     mac: "macOS",
     windows: "Windows",

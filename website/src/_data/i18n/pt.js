@@ -23,15 +23,15 @@ export default {
   meta: {
     title: "Houston: agentes de IA que fazem o trabalho de verdade",
     description:
-      "O Houston é o espaço de trabalho compartilhado onde pessoas e agentes de IA trabalham juntos. Agentes compartilhados, um único quadro de missões e papéis para o time inteiro. Grátis para começar.",
+      "O Houston é o espaço de trabalho compartilhado onde pessoas e agentes de IA trabalham juntos. Agentes compartilhados, um único quadro de missões e papéis para o time inteiro. Comece no nível gratuito.",
     ogTitle: "Houston: agentes de IA que fazem o trabalho de verdade",
     ogDescription:
-      "O Houston é o espaço de trabalho compartilhado onde pessoas e agentes de IA trabalham juntos. Agentes compartilhados, um único quadro de missões e papéis para o time inteiro. Grátis para começar.",
+      "O Houston é o espaço de trabalho compartilhado onde pessoas e agentes de IA trabalham juntos. Agentes compartilhados, um único quadro de missões e papéis para o time inteiro. Comece no nível gratuito.",
     twTitle: "Houston: agentes de IA que fazem o trabalho de verdade",
     twDescription:
-      "O Houston é o espaço de trabalho compartilhado onde pessoas e agentes de IA trabalham juntos. Agentes compartilhados, um único quadro de missões e papéis para o time inteiro. Grátis para começar.",
+      "O Houston é o espaço de trabalho compartilhado onde pessoas e agentes de IA trabalham juntos. Agentes compartilhados, um único quadro de missões e papéis para o time inteiro. Comece no nível gratuito.",
     jsonLdDescription:
-      "App de computador gratuito que coloca agentes de IA para fazer trabalho de verdade por você, com a assinatura de ChatGPT ou Claude que você já tem e mais de 1.500 integrações.",
+      "App de computador com nível gratuito que coloca agentes de IA para fazer trabalho de verdade por você, com a assinatura de ChatGPT ou Claude que você já tem e mais de 1.500 integrações.",
     ogImageAlt: "Houston: agentes de IA que fazem o trabalho de verdade.",
   },
 
@@ -377,10 +377,10 @@ export default {
 
   pricing: {
     title: "Pronto para multiplicar seu time por 10 da noite para o dia?",
-    lead: "Comece grátis com o time inteiro. Assine o Time para uso ilimitado.",
+    lead: "Comece no nível gratuito com o time inteiro. Assine o Time para uso ilimitado.",
     free: {
-      name: "Grátis",
-      note: "uma organização grátis por conta",
+      name: "Nível gratuito",
+      note: "uma organização por conta",
       items: [
         "Convide o time inteiro",
         "Uma cota semanal de mensagens, compartilhada por todos",
@@ -396,7 +396,7 @@ export default {
       unit: "por pessoa por mês",
       note: "cobrado todo mês do dono",
       items: [
-        "Tudo do plano Grátis",
+        "Tudo do nível gratuito",
         "Uso ilimitado para cada pessoa",
         "Rotinas ilimitadas, agentes a qualquer hora",
         "Você paga por cada membro, de forma proporcional",
@@ -451,7 +451,7 @@ export default {
           {
             q: "O que é uma organização?",
             aHtml:
-              "É onde o seu time trabalha: as pessoas, os agentes e as missões. Você pode ser dono de uma organização grátis por vez e convidar quem quiser, e troca entre organizações em um clique.",
+              "É onde o seu time trabalha: as pessoas, os agentes e as missões. Você pode convidar quem quiser e trocar entre organizações em um clique. Cada conta pode ter uma organização no nível gratuito.",
           },
           {
             q: "Dá para colocar limites em um agente compartilhado?",
@@ -509,9 +509,9 @@ export default {
         title: "Preços e cobrança",
         items: [
           {
-            q: "O que é grátis?",
+            q: "O que é o nível gratuito?",
             aHtml:
-              "Uma organização grátis por conta, sem cartão. Convide quem você quiser. Todo mundo divide uma cota semanal de mensagens, e o plano Time tira o limite.",
+              "Cada conta pode ter uma organização no nível gratuito, sem cartão. Convide quem você quiser. Todo mundo divide uma cota semanal de mensagens, e o plano Time tira o limite.",
           },
           {
             q: "Quem paga por um time?",
@@ -526,7 +526,7 @@ export default {
           {
             q: "Posso ser dono de mais de uma organização?",
             aHtml:
-              "Pode. Uma das organizações das quais você é dono pode ser grátis, e todas as outras ficam no plano Time desde o início. Se você mudar a organização grátis para o plano Time ou apagá-la, pode criar outra grátis.",
+              "Pode. Uma das organizações das quais você é dono pode estar no nível gratuito, e todas as outras ficam no plano Time desde o início. Se você mudar essa organização para o plano Time ou apagá-la, pode criar outra no nível gratuito.",
           },
           {
             q: "O que acontece quando a cota semanal acaba?",
@@ -565,7 +565,7 @@ export default {
 
   footer: {
     blurb:
-      "O espaço de trabalho onde pessoas e agentes de IA trabalham juntos. Grátis para começar com o time inteiro.",
+      "O espaço de trabalho onde pessoas e agentes de IA trabalham juntos. Comece no nível gratuito com o time inteiro.",
     download: "Baixar",
     mac: "macOS",
     windows: "Windows",

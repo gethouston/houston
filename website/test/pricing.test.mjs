@@ -44,6 +44,14 @@ const render = (code, file) =>
 
 const escapeRegExp = (text) => text.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
 
+// A bare "free" reads as unlimited forever. The plan is always the free tier,
+// worded as the app words it (app/tests/free-tier-copy.test.ts).
+const BARE_FREE = {
+  en: /\bfree\b(?! tier)/i,
+  es: /\bgratis\b|\bgratuit[oa]s?\b(?<!nivel gratuito)/i,
+  pt: /\bgrátis\b|\bgratuit[oa]s?\b(?<!nível gratuito)/i,
+};
+
 test("the team plan is 15 per seat per month and nothing else", () => {
   const data = pricing();
   assert.equal(data.teamMonthly, 15);
@@ -103,6 +111,13 @@ for (const code of locales.order) {
         assert.doesNotMatch(line, /\d+\s*(messages|mensajes|mensagens)/i, path);
       }
     }
+  });
+
+  test(`${code}: never says free without the tier`, () => {
+    const bare = leaves(t)
+      .filter(([, line]) => BARE_FREE[code].test(line))
+      .map(([path, line]) => `${path}: ${line}`);
+    assert.deepEqual(bare, []);
   });
 
   test(`${code}: {price} appears only in FAQ answers, which substitute it`, () => {

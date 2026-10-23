@@ -24,15 +24,15 @@ export default {
   meta: {
     title: "Houston: agentes de IA que sí hacen el trabajo",
     description:
-      "Houston es el espacio de trabajo compartido donde las personas y los agentes de IA trabajan juntos. Agentes compartidos, un solo tablero de misiones y roles para todo tu equipo. Gratis para empezar.",
+      "Houston es el espacio de trabajo compartido donde las personas y los agentes de IA trabajan juntos. Agentes compartidos, un solo tablero de misiones y roles para todo tu equipo. Empieza en el nivel gratuito.",
     ogTitle: "Houston: agentes de IA que sí hacen el trabajo",
     ogDescription:
-      "Houston es el espacio de trabajo compartido donde las personas y los agentes de IA trabajan juntos. Agentes compartidos, un solo tablero de misiones y roles para todo tu equipo. Gratis para empezar.",
+      "Houston es el espacio de trabajo compartido donde las personas y los agentes de IA trabajan juntos. Agentes compartidos, un solo tablero de misiones y roles para todo tu equipo. Empieza en el nivel gratuito.",
     twTitle: "Houston: agentes de IA que sí hacen el trabajo",
     twDescription:
-      "Houston es el espacio de trabajo compartido donde las personas y los agentes de IA trabajan juntos. Agentes compartidos, un solo tablero de misiones y roles para todo tu equipo. Gratis para empezar.",
+      "Houston es el espacio de trabajo compartido donde las personas y los agentes de IA trabajan juntos. Agentes compartidos, un solo tablero de misiones y roles para todo tu equipo. Empieza en el nivel gratuito.",
     jsonLdDescription:
-      "App de escritorio gratuita que pone agentes de IA a hacer trabajo real por ti, con la suscripción de ChatGPT o Claude que ya tienes y más de 1.500 integraciones.",
+      "App de escritorio con nivel gratuito que pone agentes de IA a hacer trabajo real por ti, con la suscripción de ChatGPT o Claude que ya tienes y más de 1.500 integraciones.",
     ogImageAlt: "Houston: agentes de IA que sí hacen el trabajo.",
   },
 
@@ -378,10 +378,10 @@ export default {
 
   pricing: {
     title: "¿Listo para multiplicar por 10 a tu equipo de un día para otro?",
-    lead: "Empieza gratis con todo tu equipo. Pásate a Equipo para uso ilimitado.",
+    lead: "Empieza en el nivel gratuito con todo tu equipo. Pásate a Equipo para uso ilimitado.",
     free: {
-      name: "Gratis",
-      note: "una organización gratis por cuenta",
+      name: "Nivel gratuito",
+      note: "una organización por cuenta",
       items: [
         "Invita a todo tu equipo",
         "Un cupo semanal de mensajes, compartido por todos",
@@ -397,7 +397,7 @@ export default {
       unit: "por persona al mes",
       note: "facturado cada mes al dueño",
       items: [
-        "Todo lo del plan Gratis",
+        "Todo lo del nivel gratuito",
         "Uso ilimitado para cada persona",
         "Rutinas ilimitadas, agentes a toda hora",
         "Pagas por cada miembro, con prorrateo",
@@ -456,7 +456,7 @@ export default {
           {
             q: "¿Qué es una organización?",
             aHtml:
-              "Es donde trabaja tu equipo: sus personas, agentes y misiones. Puedes ser dueño de una organización gratis a la vez e invitar a quien quieras, y cambias entre organizaciones con un clic.",
+              "Es donde trabaja tu equipo: sus personas, agentes y misiones. Puedes invitar a quien quieras y cambiar entre organizaciones con un clic. Cada cuenta puede tener una organización en el nivel gratuito.",
           },
           {
             q: "¿Puedo ponerle límites a un agente compartido?",
@@ -514,9 +514,9 @@ export default {
         title: "Precios y facturación",
         items: [
           {
-            q: "¿Qué es gratis?",
+            q: "¿Qué es el nivel gratuito?",
             aHtml:
-              "Una organización gratis por cuenta, sin tarjeta. Invita a quien quieras. Todos comparten un cupo semanal de mensajes, y el plan Equipo quita el límite.",
+              "Cada cuenta puede tener una organización en el nivel gratuito, sin tarjeta. Invita a quien quieras. Todos comparten un cupo semanal de mensajes, y el plan Equipo quita el límite.",
           },
           {
             q: "¿Quién paga por un equipo?",
@@ -531,7 +531,7 @@ export default {
           {
             q: "¿Puedo ser dueño de más de una organización?",
             aHtml:
-              "Sí. Una de las organizaciones de las que eres dueño puede ser gratis, y todas las demás van con el plan Equipo desde el inicio. Si pasas la gratis al plan Equipo o la borras, puedes crear otra gratis.",
+              "Sí. Una de las organizaciones de las que eres dueño puede estar en el nivel gratuito, y todas las demás van con el plan Equipo desde el inicio. Si pasas esa al plan Equipo o la borras, puedes crear otra en el nivel gratuito.",
           },
           {
             q: "¿Qué pasa cuando se acaba el cupo semanal?",
@@ -570,7 +570,7 @@ export default {
 
   footer: {
     blurb:
-      "El espacio de trabajo donde las personas y los agentes de IA trabajan juntos. Gratis para empezar con todo tu equipo.",
+      "El espacio de trabajo donde las personas y los agentes de IA trabajan juntos. Empieza en el nivel gratuito con todo tu equipo.",
     download: "Descargar",
     mac: "macOS",
     windows: "Windows",
