@@ -1,4 +1,5 @@
 import { z } from "zod";
+import { seatPricesSchema } from "./seat-prices";
 
 /**
  * The free-org pick an owner makes before plans move to organizations
@@ -61,6 +62,11 @@ export const billingChoiceSchema = z.object({
   paidOrgSlug: z.string().nullable(),
   /** Every org the caller owns. Empty for an account that owns none. */
   orgs: z.array(billingChoiceOrgSchema),
+  /**
+   * A new checkout's list prices, for an account whose orgs carry no billing
+   * yet. An older gateway omits them, and an unreadable shape reads as none.
+   */
+  seatPrices: seatPricesSchema.nullable().optional().catch(null),
 });
 export type BillingChoice = z.infer<typeof billingChoiceSchema>;
 

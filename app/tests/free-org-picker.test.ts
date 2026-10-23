@@ -414,8 +414,8 @@ describe("the announcement", () => {
         ],
         ONE_FREE_ALL,
         [
-          "The rest are $20 per member a month",
-          "Or $15 per member a month, billed yearly. Only for organizations you want to keep working.",
+          "The rest are $20 per member a month, or $15 a month billed yearly",
+          "Only for organizations you want to keep working.",
         ],
       ],
       buttons: ["Next", "Maybe later"],
@@ -555,8 +555,8 @@ describe("the announcement", () => {
         "Los equipos salieron de beta",
       ]);
       deepStrictEqual(shown.points[2], [
-        "Las demás cuestan 20\u00a0US$ por miembro al mes",
-        "O 15\u00a0US$ por miembro al mes, facturado una vez al año. Solo para las organizaciones que quieras que sigan funcionando.",
+        "Las demás cuestan 20\u00a0US$ por miembro al mes, o 15\u00a0US$ al mes facturado una vez al año",
+        "Solo para las organizaciones que quieras que sigan funcionando.",
       ]);
     } finally {
       await i18next.changeLanguage("en");

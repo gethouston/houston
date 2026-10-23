@@ -85,8 +85,8 @@
       },
       "rest": {
         "title": "As outras custam {{price}} por membro por mês",
+        "titleBoth": "As outras custam {{monthly}} por membro por mês, ou {{yearly}} por mês cobrado uma vez por ano",
         "body": "Só para as organizações que você quer que continuem funcionando.",
-        "bodyYearly": "Ou {{price}} por membro por mês, cobrado uma vez por ano. Só para as organizações que você quer que continuem funcionando.",
         "titleNoPrice": "As outras precisam do nível pago"
       },
       "covers": {

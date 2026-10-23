@@ -2,6 +2,7 @@ import { layout } from "@houston/design-tokens";
 import type { BillingChoiceSave } from "@houston/engine-adapter";
 import type { ChoiceIntroPage } from "@houston/sdk";
 import {
+  announcedSeatPrices,
   CLOSED_CHOICE_FRAME,
   choiceDone,
   choiceFrameFlow,
@@ -12,7 +13,6 @@ import {
   closeDismisses,
   finishConfirming,
   finishPicking,
-  listSeatPrices,
   nextChoiceModalFrame,
   nextChoicePage,
   pickFlowProgress,
@@ -115,7 +115,7 @@ export function BillingChangeModal({
           <BillingChangeIntro
             notice={notice}
             choice={choice}
-            listPrices={listSeatPrices(orgs)}
+            listPrices={announcedSeatPrices(orgs, choice)}
             page={page}
             progress={choiceIntroProgress(frame, choice, page)}
             onNext={next}

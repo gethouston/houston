@@ -85,8 +85,8 @@
       },
       "rest": {
         "title": "Las demás cuestan {{price}} por miembro al mes",
+        "titleBoth": "Las demás cuestan {{monthly}} por miembro al mes, o {{yearly}} al mes facturado una vez al año",
         "body": "Solo para las organizaciones que quieras que sigan funcionando.",
-        "bodyYearly": "O {{price}} por miembro al mes, facturado una vez al año. Solo para las organizaciones que quieras que sigan funcionando.",
         "titleNoPrice": "Las demás necesitan el nivel de pago"
       },
       "covers": {

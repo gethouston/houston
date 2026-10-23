@@ -33,7 +33,7 @@ export function BillingChangeIntro({
 }: {
   notice: IntroNotice;
   choice: BillingChoice;
-  /** A new checkout's list prices, off the orgs list; null while unknown. */
+  /** A new checkout's list prices (SDK `announcedSeatPrices`); null while unknown. */
   listPrices: SeatPrices | null;
   page: ChoiceIntroPage;
   progress: FlowProgress | null;

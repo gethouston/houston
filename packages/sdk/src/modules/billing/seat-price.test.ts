@@ -2,6 +2,7 @@ import type { BillingChoice, OrgsList } from "@houston/wire-types";
 import { describe, expect, it } from "vitest";
 import { freeOrgBilling, paidOrgBilling } from "./org-billing-fixtures";
 import {
+  announcedSeatPrices,
   checkoutIntervalField,
   checkoutTotal,
   DEFAULT_CHECKOUT_INTERVAL,
@@ -109,6 +110,42 @@ describe("listSeatPrices", () => {
     expect(
       listSeatPrices({ orgs: [org(null)], invites: [], freeOrg: null }),
     ).toBeNull();
+  });
+});
+
+describe("announcedSeatPrices", () => {
+  const org = (billing: OrgsList["orgs"][number]["billing"]) => ({
+    id: "o",
+    slug: "acme",
+    name: "Acme",
+    kind: "team" as const,
+    role: "owner" as const,
+    memberCount: 1,
+    degraded: false,
+    billing,
+  });
+  const list = (billing: OrgsList["orgs"][number]["billing"]): OrgsList => ({
+    orgs: [org(billing)],
+    invites: [],
+    freeOrg: null,
+  });
+  const choice = (seatPrices: BillingChoice["seatPrices"]) =>
+    ({ orgs: [], seatPrices }) as unknown as BillingChoice;
+
+  it("prefers the orgs list's prices, else the billing choice's", () => {
+    expect(
+      announcedSeatPrices(
+        list(freeOrgBilling({ seatPrices: MONTHLY_ONLY })),
+        choice(BOTH),
+      ),
+    ).toEqual(MONTHLY_ONLY);
+    expect(announcedSeatPrices(list(null), choice(BOTH))).toEqual(BOTH);
+  });
+
+  it("is null when neither carries a price", () => {
+    expect(announcedSeatPrices(list(null), choice(null))).toBeNull();
+    expect(announcedSeatPrices(undefined, choice(undefined))).toBeNull();
+    expect(announcedSeatPrices(undefined, undefined)).toBeNull();
   });
 });
 

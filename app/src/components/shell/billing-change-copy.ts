@@ -38,7 +38,8 @@ export interface NoticePoint {
  * announces. Only a pick names a price, and every figure is the gateway's: a
  * payer's own price per member off the pick's monthly totals (a payer keeps
  * the price they signed up at), everyone else's a new checkout's list prices
- * (`listPrices`, off the orgs list). A price the wire has not sent is left
+ * (`listPrices`: the orgs list's, else the billing choice's, SDK
+ * `announcedSeatPrices`). A price the wire has not sent is left
  * unsaid, and so is every price inside the store apps, which never sell.
  */
 export function useNoticePoints(
@@ -145,13 +146,16 @@ function restPoint(
   const [monthly, yearly] = prices ? seatPlans(prices) : [];
   return {
     icon: CreditCard,
-    title: monthly
-      ? t("choice.notice.rest.title", { price: money(monthly.perMonthCents) })
-      : t("choice.notice.rest.titleNoPrice"),
-    body: yearly
-      ? t("choice.notice.rest.bodyYearly", {
-          price: money(yearly.perMonthCents),
-        })
-      : t("choice.notice.rest.body"),
+    title: !monthly
+      ? t("choice.notice.rest.titleNoPrice")
+      : yearly
+        ? t("choice.notice.rest.titleBoth", {
+            monthly: money(monthly.perMonthCents),
+            yearly: money(yearly.perMonthCents),
+          })
+        : t("choice.notice.rest.title", {
+            price: money(monthly.perMonthCents),
+          }),
+    body: t("choice.notice.rest.body"),
   };
 }

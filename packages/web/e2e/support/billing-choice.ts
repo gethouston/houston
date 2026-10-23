@@ -64,6 +64,9 @@ export function ownerChoice(patch: Partial<BillingChoice> = {}): BillingChoice {
     freeOrgSlug: null,
     paidOrgSlug: null,
     orgs: [PERSONAL, INNOVA, LA_FILA],
+    // Before the cutover no org carries billing, so the announcement's list
+    // prices come from the billing choice itself.
+    seatPrices: { monthlyCents: 2000, annualCents: 18000 },
     ...patch,
   };
 }

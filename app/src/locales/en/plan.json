@@ -85,8 +85,8 @@
       },
       "rest": {
         "title": "The rest are {{price}} per member a month",
+        "titleBoth": "The rest are {{monthly}} per member a month, or {{yearly}} a month billed yearly",
         "body": "Only for organizations you want to keep working.",
-        "bodyYearly": "Or {{price}} per member a month, billed yearly. Only for organizations you want to keep working.",
         "titleNoPrice": "The rest need the paid tier"
       },
       "covers": {

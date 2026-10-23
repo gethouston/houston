@@ -108,6 +108,18 @@ export function listSeatPrices(orgs: OrgsList | undefined): SeatPrices | null {
 }
 
 /**
+ * The list prices the pricing-change announcement names: the orgs list's,
+ * else the ones the billing choice carries for an account whose orgs carry
+ * no billing yet; null when neither has any.
+ */
+export function announcedSeatPrices(
+  orgs: OrgsList | undefined,
+  choice: BillingChoice | undefined,
+): SeatPrices | null {
+  return listSeatPrices(orgs) ?? choice?.seatPrices ?? null;
+}
+
+/**
  * What an org's subscription bills, in Stripe minor units, per its
  * `interval`. Every member is a seat, and an org always bills at least one.
  * During a seat grace the subscription still bills one seat, so `today` is
