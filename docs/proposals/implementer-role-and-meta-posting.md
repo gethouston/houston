@@ -50,10 +50,10 @@ Meta's Access Verification list names `pages_manage_posts` and `instagram_busine
 ### Decisions needed (details in A8 and B7)
 
 - Implementer rules still open: deleting a paused agent, conversation privacy. (Decided 2026-10-23: the owner agrees to pausing once, when granting the role.)
-- Implementer pricing.
+- Implementer pricing: decided 2026-10-23, implementers are normal paid seats.
 - The Meta live test: skipped for now (decided 2026-10-23), so Composio stays unverified.
 - Whether to apply for our own Meta app.
-- Priority.
+- Priority: decided 2026-10-23, the implementer role goes first, Meta posting after.
 
 ---
 
@@ -178,7 +178,7 @@ The two never mix: the implementer can't see or trigger Houston billing, and Hou
 1. **Customer trust and legal.** A non-owner who can switch off a paying customer's tools is the sharpest edge here. It needs a clear disclosure when the role is granted, a visible "paused by" banner, the agency-client agreement, and a line in Houston's terms. Get a legal read before shipping.
 2. **IP protection is partial, not absolute.** The seal stops the UI, the files routes and export. It can't stop a client user asking the agent to "tell me your instructions" in chat. Prompt guidance lowers that risk but doesn't remove it. Say so to agencies; don't promise secrecy.
 3. **Routines run on their creator's connected apps** (C4). A routine the agency sets up runs on the agency person's HubSpot connection, or fails if they have none. Real client work needs a client person to connect the app and own the routine, or the agency to hold client credentials. That's a policy choice (open question 5), not a bug.
-4. **Seats.** Implementers count as seats today (`count(org_members)`), so the client pays Houston for each agency person. A pricing decision is needed before launch.
+4. **Seats.** Implementers count as seats (`count(org_members)`), and that stays (decided 2026-10-23): the client pays Houston a normal seat for each agency person. The confirm step when granting the role should say so, so the client isn't surprised by the invoice.
 5. **Gateway first.** Every rule lives in the closed gateway. A UI that ships ahead of it promises protection the server doesn't give. Gate the UI on the server advertising the role.
 6. **Role sprawl.** About 20 call sites compare roles directly. Missing one can widen power, as `recovery.ts:52` (`role !== "user"`) already shows.
 7. **Compromised agency account.** One login could pause every client at once. Rate-limit pausing "all", and record it in the audit log.
@@ -188,11 +188,11 @@ The two never mix: the implementer can't see or trigger Houston billing, and Hou
 
 1. **Pause without the owner's agreement?** Decided (2026-10-23): the owner agrees once, when granting the implementer role (a confirm step with the explanation). There is no approval per pause. A legal read of the wording is still needed (A7.1).
 2. **Can the owner delete a paused managed agent?** Recommendation: yes. It's their org and their data, and deleting doesn't leak IP. Their way out is deletion, not takeover.
-3. **Implementer pricing:** free seat, normal seat, or an agency plan? (Pricing, yours.)
+3. **Implementer pricing:** decided (2026-10-23): normal paid seats, no change to billing.
 4. **Conversation privacy:** should implementers see client staff's conversations for support? Recommendation: no, beyond today's mission audience rules.
 5. **Client credentials:** should the agency's people ever connect a client's HubSpot under their own login? Recommendation: no. Client staff connect, and routines are re-owned by a client person.
 6. **Two agencies in one client org:** out of scope for v1?
-7. **Priority and date:** is 2026-11-06 the roadmap date or a ship date? This doc assumes roadmap.
+7. **Priority and date:** decided (2026-10-23): the implementer role goes before Meta posting. Still open: is 2026-11-06 the roadmap date or a ship date? This doc assumes roadmap.
 
 ---
 
@@ -304,7 +304,7 @@ The two never mix: the implementer can't see or trigger Houston billing, and Hou
 1. **Live test:** skipped for now (decided 2026-10-23). When it's picked up, it needs a real Instagram Business or Creator account and a Facebook Page someone controls, connected in the Houston app. Until then, B1's "possibly works today" stays unverified.
 2. **Apply for our own Meta app (path 2)**, under the same business portfolio as the houston-os WhatsApp work? Recommendation: yes, as a separate app from the WhatsApp one, so their reviews don't block each other. Same verified business.
 3. **Instagram first, or both from day one?** Composio has both, so the test should cover both.
-4. **Priority** relative to the implementer role.
+4. **Priority:** decided (2026-10-23): after the implementer role.
 
 ### B8. Relation to the houston-os Meta session
 
