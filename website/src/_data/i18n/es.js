@@ -32,7 +32,7 @@ export default {
     twDescription:
       "Houston es el espacio de trabajo compartido donde las personas y los agentes de IA trabajan juntos. Agentes compartidos, un solo tablero de misiones y roles para todo tu equipo. Empieza en el nivel gratuito.",
     jsonLdDescription:
-      "App de escritorio con nivel gratuito que pone agentes de IA a hacer trabajo real por ti, con la suscripción de ChatGPT o Claude que ya tienes y más de 1.500 integraciones.",
+      "App de escritorio con un nivel gratuito que pone agentes de IA a hacer trabajo real por ti, con la suscripción de ChatGPT o Claude que ya tienes y más de 1.500 integraciones.",
     ogImageAlt: "Houston: agentes de IA que sí hacen el trabajo.",
   },
 
@@ -381,7 +381,7 @@ export default {
     lead: "Empieza en el nivel gratuito con todo tu equipo. Pásate a Equipo para uso ilimitado.",
     free: {
       name: "Nivel gratuito",
-      note: "una organización por cuenta",
+      note: "para una organización por cuenta",
       items: [
         "Invita a todo tu equipo",
         "Un cupo semanal de mensajes, compartido por todos",
@@ -456,7 +456,7 @@ export default {
           {
             q: "¿Qué es una organización?",
             aHtml:
-              "Es donde trabaja tu equipo: sus personas, agentes y misiones. Puedes invitar a quien quieras y cambiar entre organizaciones con un clic. Cada cuenta puede tener una organización en el nivel gratuito.",
+              "Es donde trabaja tu equipo: sus personas, agentes y misiones. Puedes invitar a quien quieras y cambiar entre organizaciones con un clic. Puedes ser dueño de una organización en el nivel gratuito a la vez.",
           },
           {
             q: "¿Puedo ponerle límites a un agente compartido?",
@@ -516,7 +516,7 @@ export default {
           {
             q: "¿Qué es el nivel gratuito?",
             aHtml:
-              "Cada cuenta puede tener una organización en el nivel gratuito, sin tarjeta. Invita a quien quieras. Todos comparten un cupo semanal de mensajes, y el plan Equipo quita el límite.",
+              "Puedes ser dueño de una organización en el nivel gratuito a la vez, sin tarjeta. Invita a quien quieras. Todos comparten un cupo semanal de mensajes, y el plan Equipo quita el límite.",
           },
           {
             q: "¿Quién paga por un equipo?",
@@ -531,7 +531,7 @@ export default {
           {
             q: "¿Puedo ser dueño de más de una organización?",
             aHtml:
-              "Sí. Una de las organizaciones de las que eres dueño puede estar en el nivel gratuito, y todas las demás van con el plan Equipo desde el inicio. Si pasas esa al plan Equipo o la borras, puedes crear otra en el nivel gratuito.",
+              "Sí. Una de las organizaciones de las que eres dueño puede estar en el nivel gratuito, y todas las demás van con el plan Equipo desde el inicio. Si la pasas al plan Equipo o la borras, puedes crear otra en el nivel gratuito.",
           },
           {
             q: "¿Qué pasa cuando se acaba el cupo semanal?",

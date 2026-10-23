@@ -30,7 +30,7 @@ export default {
     twDescription:
       "Houston is the shared workspace where people and AI agents work together. Shared agents, one mission board, roles for your whole team. Start on the free tier.",
     jsonLdDescription:
-      "Desktop app with a free tier that runs AI agents which do real work for you, on your existing ChatGPT or Claude subscription, with over 1,500 integrations.",
+      "Desktop app that runs AI agents which do real work for you, on your existing ChatGPT or Claude subscription, with over 1,500 integrations and a free tier.",
     ogImageAlt: "Houston: AI agents that actually do the work.",
   },
 
@@ -367,7 +367,7 @@ export default {
     lead: "Start on the free tier with your whole team. Upgrade for unlimited usage.",
     free: {
       name: "Free tier",
-      note: "one organization per account",
+      note: "for one organization per account",
       items: [
         "Invite your whole team",
         "One weekly message allowance, shared by everyone",
@@ -439,7 +439,7 @@ export default {
           {
             q: "What is an organization?",
             aHtml:
-              "It is where your team works: its people, agents, and missions. You can invite anyone to it and switch between organizations in a click. Each account gets one organization on the free tier.",
+              "It is where your team works: its people, agents, and missions. You can invite anyone to it and switch between organizations in a click. You can own one organization on the free tier at a time.",
           },
           {
             q: "Can I set guardrails on a shared agent?",
@@ -499,7 +499,7 @@ export default {
           {
             q: "What is the free tier?",
             aHtml:
-              "Each account gets one organization on the free tier, with no credit card. Invite anyone you like. Everyone in it shares one weekly message allowance, and Team takes the limit off.",
+              "You can own one organization on the free tier at a time, with no credit card. Invite anyone you like. Everyone in it shares one weekly message allowance, and Team takes the limit off.",
           },
           {
             q: "Who pays for a team?",

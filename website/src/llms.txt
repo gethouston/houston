@@ -1,6 +1,6 @@
 # Houston
 
-> Houston is a free desktop app that runs AI agents which do real work for you. It runs on your existing ChatGPT or Claude subscription, connects to over 1,000 tools, and works on Mac and Windows. Open source.
+> Houston is a desktop app that runs AI agents which do real work for you, with a free tier. It runs on your existing ChatGPT or Claude subscription, connects to over 1,500 tools, and works on Mac and Windows. Open source.
 
 Houston lets anyone hire AI agents that actually complete tasks across the apps they already use, from bookkeeping to inbox to expense reports. Bring your own model, connect your tools once, and let agents do the work.
 

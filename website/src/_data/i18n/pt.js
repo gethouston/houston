@@ -31,7 +31,7 @@ export default {
     twDescription:
       "O Houston é o espaço de trabalho compartilhado onde pessoas e agentes de IA trabalham juntos. Agentes compartilhados, um único quadro de missões e papéis para o time inteiro. Comece no nível gratuito.",
     jsonLdDescription:
-      "App de computador com nível gratuito que coloca agentes de IA para fazer trabalho de verdade por você, com a assinatura de ChatGPT ou Claude que você já tem e mais de 1.500 integrações.",
+      "App de computador com um nível gratuito que coloca agentes de IA para fazer trabalho de verdade por você, com a assinatura de ChatGPT ou Claude que você já tem e mais de 1.500 integrações.",
     ogImageAlt: "Houston: agentes de IA que fazem o trabalho de verdade.",
   },
 
@@ -380,7 +380,7 @@ export default {
     lead: "Comece no nível gratuito com o time inteiro. Assine o Time para uso ilimitado.",
     free: {
       name: "Nível gratuito",
-      note: "uma organização por conta",
+      note: "para uma organização por conta",
       items: [
         "Convide o time inteiro",
         "Uma cota semanal de mensagens, compartilhada por todos",
@@ -394,7 +394,7 @@ export default {
       name: "Time",
       per: "/pessoa/mês",
       unit: "por pessoa por mês",
-      note: "cobrado todo mês do dono",
+      note: "cobrado do dono todo mês",
       items: [
         "Tudo do nível gratuito",
         "Uso ilimitado para cada pessoa",
@@ -451,7 +451,7 @@ export default {
           {
             q: "O que é uma organização?",
             aHtml:
-              "É onde o seu time trabalha: as pessoas, os agentes e as missões. Você pode convidar quem quiser e trocar entre organizações em um clique. Cada conta pode ter uma organização no nível gratuito.",
+              "É onde o seu time trabalha: as pessoas, os agentes e as missões. Você pode convidar quem quiser e trocar entre organizações em um clique. Você pode ser dono de uma organização no nível gratuito por vez.",
           },
           {
             q: "Dá para colocar limites em um agente compartilhado?",
@@ -511,7 +511,7 @@ export default {
           {
             q: "O que é o nível gratuito?",
             aHtml:
-              "Cada conta pode ter uma organização no nível gratuito, sem cartão. Convide quem você quiser. Todo mundo divide uma cota semanal de mensagens, e o plano Time tira o limite.",
+              "Você pode ser dono de uma organização no nível gratuito por vez, sem cartão. Convide quem você quiser. Todo mundo divide uma cota semanal de mensagens, e o plano Time tira o limite.",
           },
           {
             q: "Quem paga por um time?",
