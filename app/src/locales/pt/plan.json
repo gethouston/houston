@@ -217,8 +217,8 @@
     "body": "{{org}} paga um preço promocional de {{promo}} por membro ao mês. A partir da sua próxima cobrança, em {{date}}, passa a {{monthly}}. Mude para o plano anual para continuar pagando {{promo}} ao mês.",
     "bodyMonthly": "{{org}} paga um preço promocional de {{promo}} por membro ao mês. A partir da sua próxima cobrança, em {{date}}, passa a {{monthly}}.",
     "total": {
-      "year_one": "<b>{{total}} por ano</b> para {{count}} membro, cobrado hoje, menos um crédito pela parte não usada deste mês.",
-      "year_other": "<b>{{total}} por ano</b> para {{count}} membros, cobrado hoje, menos um crédito pela parte não usada deste mês.",
+      "year_one": "<b>{{total}} por ano</b> para {{count}} membro, cobrado hoje. A parte não usada deste mês é descontada.",
+      "year_other": "<b>{{total}} por ano</b> para {{count}} membros, cobrado hoje. A parte não usada deste mês é descontada.",
       "month_one": "<b>{{total}} por mês</b> para {{count}} membro, a partir de {{date}}.",
       "month_other": "<b>{{total}} por mês</b> para {{count}} membros, a partir de {{date}}."
     },

@@ -71,7 +71,7 @@ describe("the promo-ended offer", () => {
     ok(body.indexOf("Yearly") < body.indexOf("Monthly"), "yearly comes first");
     ok(
       body.includes(
-        "$540 a year for 3 members, charged today, less a credit for the unused part of this month.",
+        "$540 a year for 3 members, charged today. The unused part of this month is credited.",
       ),
       body,
     );

@@ -30,7 +30,7 @@ test("switching to yearly shows what the org pays now, and the notice is gone", 
   ).toBeVisible({ timeout: 15_000 });
   await expect(modal.getByRole("radio", { name: /^Yearly/ })).toBeChecked();
   await expect(modal).toContainText(
-    "$540 a year for 3 members, charged today, less a credit for the unused part of this month.",
+    "$540 a year for 3 members, charged today. The unused part of this month is credited.",
   );
 
   await modal.getByRole("button", { name: "Switch to yearly" }).click();

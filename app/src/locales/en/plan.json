@@ -217,8 +217,8 @@
     "body": "{{org}} pays a promotional {{promo}} per member a month. From your next charge on {{date}}, it's {{monthly}}. Switch to yearly to keep paying {{promo}} a month.",
     "bodyMonthly": "{{org}} pays a promotional {{promo}} per member a month. From your next charge on {{date}}, it's {{monthly}}.",
     "total": {
-      "year_one": "<b>{{total}} a year</b> for {{count}} member, charged today, less a credit for the unused part of this month.",
-      "year_other": "<b>{{total}} a year</b> for {{count}} members, charged today, less a credit for the unused part of this month.",
+      "year_one": "<b>{{total}} a year</b> for {{count}} member, charged today. The unused part of this month is credited.",
+      "year_other": "<b>{{total}} a year</b> for {{count}} members, charged today. The unused part of this month is credited.",
       "month_one": "<b>{{total}} a month</b> for {{count}} member, from {{date}}.",
       "month_other": "<b>{{total}} a month</b> for {{count}} members, from {{date}}."
     },
