@@ -95,7 +95,7 @@ concurrency:
 
 env:
   # Same values as release.yml's workflow env.
-  BUN_VERSION: "1.3.10"
+  BUN_VERSION: "1.4.4"
   NODE_OPTIONS: --max-old-space-size=4096
 
 jobs:
