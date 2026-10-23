@@ -1,18 +1,29 @@
-<section id="pricing" class="section">
+{%- set cur = pricing.currency[locale.code] %}
+{#- data-period picks which Team price shows: "month" until the switch below
+    says otherwise, so without JS the card keeps the monthly price. #}
+<section id="pricing" class="section" data-period="month">
   {# Hidden alias so cross-site links to #download land on the pricing + download
      CTAs rather than 404ing. #}
   <span id="download" class="anchor-alias" aria-hidden="true"></span>
   <div class="pricing-head reveal">
     <h2 class="sec-title pricing-title">{{ t.pricing.title }}</h2>
     <p class="sec-lead">{{ t.pricing.lead }}</p>
+    {# Hidden until html.js is set (before first paint), so a visitor without
+       JS never sees a switch that does nothing, and nothing shifts. #}
+    <div class="price-period" role="group" aria-label="{{ t.pricing.period.label }}">
+      <button type="button" data-period-choice="month" aria-pressed="true">{{ t.pricing.period.month }}</button>
+      <button type="button" data-period-choice="year" aria-pressed="false">{{ t.pricing.period.year }}</button>
+    </div>
   </div>
 
   {# The Team card inverts to ink, the one loud object on the band. Every price
-     renders from _data/pricing.js, so no translation ever carries a number. #}
+     renders from _data/pricing.js, so no translation ever carries a number.
+     Both Team prices and notes are in the page, stacked in one grid cell
+     (.price-swap) so the card keeps the size of the larger one whichever shows. #}
   <div class="pricing-grid reveal reveal-d1">
     <div class="price-col">
       <div class="price-name">{{ t.pricing.free.name }}</div>
-      <div class="price-amt"><span class="amount">{{ pricing.currency[locale.code] }}0</span></div>
+      <div class="price-amt"><span class="amount">{{ cur }}0</span></div>
       <div class="price-note">{{ t.pricing.free.note }}</div>
       <ul class="price-list">
 {%- for item in t.pricing.free.items %}
@@ -25,8 +36,8 @@
     <div class="price-col featured">
       <span class="price-chip">{{ t.pricing.team.chip }}</span>
       <div class="price-name">{{ t.pricing.team.name }}</div>
-      <div class="price-amt"><span class="amount">{{ pricing.currency[locale.code] }}{{ pricing.teamMonthly }}</span><span class="per">{{ t.pricing.team.per }}</span></div>
-      <div class="price-note">{{ t.pricing.team.note }}</div>
+      <div class="price-amt"><span class="amount price-swap"><span data-show="month">{{ cur }}{{ pricing.teamMonthly }}</span><span data-show="year">{{ cur }}{{ pricing.teamYearlyPerMonth }}</span></span><span class="per">{{ t.pricing.team.per }}</span></div>
+      <div class="price-note price-swap"><span data-show="month">{{ t.pricing.team.note }}</span><span data-show="year">{{ t.pricing.team.noteYearly | replace("{yearlyTotal}", cur + pricing.teamYearly) }}</span></div>
       <ul class="price-list">
 {%- for item in t.pricing.team.items %}
         <li>{{ item }}</li>
@@ -48,3 +59,20 @@
     </div>
   </div>
 </section>
+<script>
+  // The Monthly / Yearly switch: one attribute on the section, which the CSS
+  // reads to show the matching Team price and note.
+  (function () {
+    var section = document.getElementById("pricing");
+    if (!section) return;
+    var buttons = section.querySelectorAll("[data-period-choice]");
+    Array.prototype.forEach.call(buttons, function (button) {
+      button.addEventListener("click", function () {
+        section.setAttribute("data-period", button.getAttribute("data-period-choice"));
+        Array.prototype.forEach.call(buttons, function (other) {
+          other.setAttribute("aria-pressed", other === button ? "true" : "false");
+        });
+      });
+    });
+  })();
+</script>

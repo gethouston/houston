@@ -6,7 +6,9 @@
 // - Chaves terminadas em `Html` podem trazer marcação e são renderizadas com
 //   `| safe`. Todo o resto é texto puro e o template escapa.
 // - Nada de travessão longo. Use vírgula, dois-pontos ou uma frase nova.
-// - `{price}` é o único marcador. Os templates o substituem a partir de
+// - `{price}` (o preço mensal por pessoa), `{yearlyPrice}` (o preço anual por
+//   pessoa expresso por mês) e `{yearlyTotal}` (o preço anual por pessoa) são
+//   os únicos marcadores. Os templates os substituem a partir de
 //   _data/pricing.js, então nenhum preço fica escrito na mão dentro de uma
 //   tradução.
 // - A estrutura (tons de avatar, elencos de rostos, caminhos de logo, selos)
@@ -389,12 +391,19 @@ export default {
       ],
       cta: "Baixar o app",
     },
+    period: {
+      label: "Período de cobrança",
+      month: "Mensal",
+      year: "Anual",
+    },
     team: {
       chip: "Mais popular",
       name: "Time",
       per: "/pessoa/mês",
       unit: "por pessoa por mês",
+      unitYearly: "por pessoa por ano",
       note: "cobrado do dono todo mês",
+      noteYearly: "cobrado do dono todo ano ({yearlyTotal} por ano)",
       items: [
         "Tudo do nível gratuito",
         "Uso ilimitado para cada pessoa",
@@ -516,7 +525,7 @@ export default {
           {
             q: "Quem paga por um time?",
             aHtml:
-              "O dono, a {price} por pessoa por mês. Cada pessoa da organização ocupa um lugar no plano do dono, então os membros nunca colocam um cartão próprio.",
+              "O dono, a {price} por pessoa por mês, ou {yearlyPrice} por pessoa por mês com cobrança anual ({yearlyTotal} por ano). Cada pessoa da organização ocupa um lugar no plano do dono, então os membros nunca colocam um cartão próprio.",
           },
           {
             q: "O que conta como uma pessoa?",

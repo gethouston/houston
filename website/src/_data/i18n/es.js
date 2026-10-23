@@ -6,7 +6,9 @@
 // - Las claves que terminan en `Html` pueden traer marcado y se renderizan con
 //   `| safe`. Todo lo demás es texto plano y la plantilla lo escapa.
 // - Nada de rayas largas. Usa una coma, dos puntos o un punto seguido.
-// - `{price}` es el único marcador. Las plantillas lo sustituyen desde
+// - `{price}` (el precio mensual por persona), `{yearlyPrice}` (el precio anual
+//   por persona expresado por mes) y `{yearlyTotal}` (el precio anual por
+//   persona) son los únicos marcadores. Las plantillas los sustituyen desde
 //   _data/pricing.js, así ningún precio queda escrito a mano dentro de una
 //   traducción.
 // - La estructura (tonos de avatar, elencos de caras, rutas de logos, insignias)
@@ -390,12 +392,19 @@ export default {
       ],
       cta: "Descargar la app",
     },
+    period: {
+      label: "Periodo de facturación",
+      month: "Mensual",
+      year: "Anual",
+    },
     team: {
       chip: "El más popular",
       name: "Equipo",
       per: "/persona/mes",
       unit: "por persona al mes",
+      unitYearly: "por persona al año",
       note: "facturado cada mes al dueño",
+      noteYearly: "facturado cada año al dueño ({yearlyTotal} al año)",
       items: [
         "Todo lo del nivel gratuito",
         "Uso ilimitado para cada persona",
@@ -521,7 +530,7 @@ export default {
           {
             q: "¿Quién paga por un equipo?",
             aHtml:
-              "El dueño, a {price} por persona al mes. Cada persona de la organización ocupa un lugar en el plan del dueño, así que los miembros nunca ponen una tarjeta propia.",
+              "El dueño, a {price} por persona al mes, o a {yearlyPrice} por persona al mes con facturación anual ({yearlyTotal} al año). Cada persona de la organización ocupa un lugar en el plan del dueño, así que los miembros nunca ponen una tarjeta propia.",
           },
           {
             q: "¿Qué cuenta como una persona?",

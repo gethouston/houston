@@ -6,8 +6,10 @@
 // - Keys ending in `Html` may contain markup and are rendered with `| safe`.
 //   Everything else is plain text and must be escaped by the template.
 // - No em dashes anywhere. Use a comma, a colon, or a sentence break.
-// - `{price}` is the only placeholder. Templates substitute it from
-//   _data/pricing.js, so a price never gets hardcoded into a translation.
+// - `{price}` (the monthly seat price), `{yearlyPrice}` (the yearly seat price
+//   as a monthly rate) and `{yearlyTotal}` (the yearly seat price) are the only
+//   placeholders. Templates substitute them from _data/pricing.js, so a price
+//   never gets hardcoded into a translation.
 // - Structure (avatar tones, face rosters, logo paths, badges) lives in
 //   _data/landing.js. Arrays here zip by index with the arrays there.
 // - The `js` subtree is serialized into the page as window.HOUSTON_I18N by
@@ -376,13 +378,21 @@ export default {
       ],
       cta: "Download the app",
     },
+    // The Monthly / Yearly switch above the cards.
+    period: {
+      label: "Billing period",
+      month: "Monthly",
+      year: "Yearly",
+    },
     team: {
       chip: "Most popular",
       name: "Team",
       per: "/seat/mo",
       // Structured-data unit for the price, read by search engines.
       unit: "per seat per month",
+      unitYearly: "per seat per year",
       note: "billed monthly to the owner",
+      noteYearly: "billed yearly ({yearlyTotal} a year) to the owner",
       items: [
         "Everything in the free tier",
         "Unlimited usage for every seat",
@@ -504,7 +514,7 @@ export default {
           {
             q: "Who pays for a team?",
             aHtml:
-              "The owner, at {price} per seat per month. Everyone in the organization takes a seat on the owner's plan, so members never enter a card of their own.",
+              "The owner, at {price} per seat per month, or {yearlyPrice} per seat per month billed yearly ({yearlyTotal} a year). Everyone in the organization takes a seat on the owner's plan, so members never enter a card of their own.",
           },
           {
             q: "What counts as a seat?",

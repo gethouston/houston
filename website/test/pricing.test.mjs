@@ -1,8 +1,8 @@
 // The published price and the copy around it (src/_data/pricing.js, the
-// landing translations, and the partials that render them). Teams pay one
-// monthly price per seat, with no annual plan and no free trial, so neither may
-// come back through the data or a translation, and the free allowance is never
-// given a number.
+// landing translations, and the partials that render them). A Team seat is
+// one price billed monthly, or a lower one billed yearly, with no free trial,
+// so a trial may never come back through the data or a translation, and the
+// free allowance is never given a number.
 //
 // The partials render through Nunjucks directly rather than a full Eleventy
 // build, which would fetch GitHub releases for the changelog.
@@ -52,9 +52,12 @@ const BARE_FREE = {
   pt: /\bgrátis\b|\bgratuit[oa]s?\b(?<!nível gratuito)/i,
 };
 
-test("the team plan is 15 per seat per month and nothing else", () => {
+test("a team seat is 20 a month, or 180 a year (15 a month) billed yearly", () => {
   const data = pricing();
-  assert.equal(data.teamMonthly, 15);
+  assert.equal(data.teamMonthly, 20);
+  assert.equal(data.teamYearly, 180);
+  assert.equal(data.teamYearlyPerMonth, 15);
+  assert.equal(data.teamYearlyPerMonth * 12, data.teamYearly);
   assert.equal(data.currencyCode, "USD");
   assert.equal("teamAnnual" in data, false);
   assert.equal("trialDays" in data, false);
@@ -93,15 +96,13 @@ for (const code of locales.order) {
   const t = translations[code];
   const currency = pricing().currency[code];
 
-  test(`${code}: no trial, annual price, personal space or free allowance size`, () => {
+  test(`${code}: no trial, hardcoded price, personal space or free allowance size`, () => {
     for (const section of ["meta", "pricing", "faq", "footer"]) {
       for (const [path, line] of leaves(t[section], section)) {
         assert.doesNotMatch(line, /\{days\}/, path);
-        assert.doesNotMatch(
-          line,
-          /trial|prueba|teste|annual|anual|por año|por ano/i,
-          path,
-        );
+        assert.doesNotMatch(line, /trial|prueba|teste/i, path);
+        // Prices come from _data/pricing.js through placeholders.
+        assert.doesNotMatch(line, /\$\s*\d/, path);
         assert.doesNotMatch(
           line,
           /personal space|espacio personal|espaço pessoal/i,
@@ -120,40 +121,103 @@ for (const code of locales.order) {
     assert.deepEqual(bare, []);
   });
 
-  test(`${code}: {price} appears only in FAQ answers, which substitute it`, () => {
+  test(`${code}: price placeholders appear only where a template fills them`, () => {
     const holders = leaves(t)
-      .filter(([, line]) => line.includes("{price}"))
+      .filter(([, line]) => /\{(price|yearlyPrice|yearlyTotal)\}/.test(line))
       .map(([path]) => path);
     assert.ok(holders.length > 0);
     for (const path of holders) {
-      assert.match(path, /^faq\.groups\[\d+\]\.items\[\d+\]\.aHtml$/, path);
+      assert.match(
+        path,
+        /^(faq\.groups\[\d+\]\.items\[\d+\]\.aHtml|pricing\.team\.noteYearly)$/,
+        path,
+      );
     }
+    assert.match(t.pricing.team.noteYearly, /\{yearlyTotal\}/);
   });
 
-  test(`${code}: the pricing cards show the monthly seat price`, () => {
+  test(`${code}: the Team card carries both prices, monthly showing by default`, () => {
     const html = render(code, "landing/pricing.njk");
-    assert.ok(html.includes(`class="amount">${currency}15<`), "team price");
+    // Monthly until the switch says otherwise, which is also the no-JS view.
+    assert.match(
+      html,
+      /<section id="pricing" class="section" data-period="month">/,
+    );
+    const show = (period) =>
+      [...html.matchAll(new RegExp(`data-show="${period}">([^<]*)<`, "g"))].map(
+        ([, text]) => text,
+      );
+    assert.deepEqual(show("month"), [`${currency}20`, t.pricing.team.note]);
+    assert.deepEqual(show("year"), [
+      `${currency}15`,
+      t.pricing.team.noteYearly.replace("{yearlyTotal}", `${currency}180`),
+    ]);
     assert.ok(html.includes(`class="amount">${currency}0<`), "free price");
-    assert.doesNotMatch(html, /\{(price|days)\}/);
+    assert.doesNotMatch(html, /\{(price|yearlyPrice|yearlyTotal|days)\}/);
     assert.ok(html.includes(t.pricing.team.cta));
   });
 
-  test(`${code}: the FAQ renders the seat price`, () => {
-    const html = render(code, "landing/faq.njk");
-    assert.match(html, new RegExp(`[\\s>]${escapeRegExp(currency)}15 `));
-    assert.doesNotMatch(html, /\{(price|days)\}/);
+  test(`${code}: the Monthly / Yearly switch is two pressable buttons`, () => {
+    const html = render(code, "landing/pricing.njk");
+    const group = html.match(
+      /<div class="price-period" role="group" aria-label="([^"]+)">([\s\S]*?)<\/div>/,
+    );
+    assert.ok(group, "switch group");
+    assert.equal(group[1], t.pricing.period.label);
+    const buttons = [
+      ...group[2].matchAll(
+        /<button type="button" data-period-choice="(\w+)" aria-pressed="(true|false)">([^<]+)<\/button>/g,
+      ),
+    ].map(([, period, pressed, label]) => ({ period, pressed, label }));
+    assert.deepEqual(buttons, [
+      { period: "month", pressed: "true", label: t.pricing.period.month },
+      { period: "year", pressed: "false", label: t.pricing.period.year },
+    ]);
+    // The script flips data-period on the section and aria-pressed on both.
+    assert.match(html, /setAttribute\("data-period"/);
+    assert.match(html, /setAttribute\("aria-pressed"/);
   });
 
-  test(`${code}: the JSON-LD lists a free offer and a monthly seat offer`, () => {
+  test(`${code}: the FAQ renders both seat prices`, () => {
+    const html = render(code, "landing/faq.njk");
+    for (const amount of [20, 15, 180]) {
+      assert.match(
+        html,
+        new RegExp(`[\\s>(]${escapeRegExp(currency)}${amount}[ )]`),
+        String(amount),
+      );
+    }
+    assert.doesNotMatch(html, /\{(price|yearlyPrice|yearlyTotal|days)\}/);
+  });
+
+  test(`${code}: the JSON-LD lists the free tier and a monthly and a yearly seat offer`, () => {
     const html = render(code, "landing/json-ld.njk");
     const json = html.slice(html.indexOf("{ "), html.lastIndexOf("}") + 1);
-    const [free, team] = JSON.parse(json).offers;
+    const offers = JSON.parse(json).offers;
+    assert.equal(offers.length, 3);
+    const [free, monthly, yearly] = offers;
     assert.equal(free.price, "0");
     assert.equal(free.priceCurrency, "USD");
-    assert.equal(team.price, "15");
-    assert.equal(team.priceSpecification.price, "15");
-    assert.equal(team.priceSpecification.referenceQuantity.unitCode, "MON");
-    assert.ok(t.pricing.team.unit, "pricing.team.unit");
-    assert.equal(team.priceSpecification.unitText, t.pricing.team.unit);
+    const expect = [
+      [monthly, "20", "MON", t.pricing.team.unit, t.pricing.period.month],
+      [yearly, "180", "ANN", t.pricing.team.unitYearly, t.pricing.period.year],
+    ];
+    for (const [offer, price, unitCode, unitText, period] of expect) {
+      assert.equal(offer["@type"], "Offer");
+      assert.equal(offer.name, `${t.pricing.team.name} (${period})`);
+      assert.equal(offer.price, price);
+      assert.equal(offer.priceCurrency, "USD");
+      const spec = offer.priceSpecification;
+      assert.equal(spec["@type"], "UnitPriceSpecification");
+      assert.equal(spec.price, price);
+      assert.equal(spec.priceCurrency, "USD");
+      assert.ok(unitText, unitCode);
+      assert.equal(spec.unitText, unitText);
+      assert.deepEqual(spec.referenceQuantity, {
+        "@type": "QuantitativeValue",
+        value: 1,
+        unitCode,
+      });
+    }
   });
 }
