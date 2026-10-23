@@ -76,7 +76,9 @@ function free(patch: Partial<OrgBilling> = {}): OrgBilling {
     freeSlot: true,
     isBillingOwner: true,
     seats: 3,
-    seatPriceCents: 1500,
+    interval: null,
+    seatPriceCents: 2000,
+    seatPrices: { monthlyCents: 2000, annualCents: 18000 },
     seatGraceEndsAt: null,
     usage: { scope: "org", used: 12, limit: 40, resetsAt: "" },
     routines: null,
@@ -151,26 +153,67 @@ const hasButton = (element: ReactElement) =>
   markup(element).includes("<button");
 
 describe("BillingPlanCard", () => {
-  it("offers the billing owner of a free org the monthly price and Upgrade", () => {
-    const html = planCard(free());
+  it("offers the billing owner of a free org monthly or yearly, then Upgrade", () => {
+    const element = h(surfaces.BillingPlanCard, {
+      billing: free(),
+      orgSlug: "acme",
+    });
+    const html = text(markup(element));
     ok(html.includes(enTeams.billing.planFree), html);
+    ok(html.includes("Monthly $20 per member a month"), html);
     ok(
-      html.includes("$15 per member a month, $45 a month for 3 members"),
+      html.includes(
+        "Yearly $15 per member a month, billed yearly, $180 a year",
+      ),
       html,
     );
+    // Monthly is preselected, so the total under the choice is a month's.
+    ok(html.includes("$60 a month for 3 members"), html);
+    ok(/checked="" value="month"/.test(markup(element)), markup(element));
     ok(html.includes(enTeams.billing.upgrade), html);
   });
 
+  it("offers monthly alone, with the price per member, where yearly is not sold", () => {
+    const element = h(surfaces.BillingPlanCard, {
+      billing: free({ seatPrices: { monthlyCents: 2000, annualCents: null } }),
+      orgSlug: "acme",
+    });
+    const html = text(markup(element));
+    ok(
+      html.includes("$20 per member a month, $60 a month for 3 members"),
+      html,
+    );
+    equal(markup(element).includes('role="radiogroup"'), false, html);
+  });
+
   it("shows the billing owner of a paid org its seats, total and Manage billing", () => {
-    const html = planCard(paid());
+    const html = planCard(paid({ interval: "month" }));
     ok(html.includes(enTeams.billing.planPaid), html);
-    ok(html.includes("3 seats, $45 a month"), html);
+    ok(html.includes("3 seats, $60 a month"), html);
     ok(html.includes(enTeams.billing.manage), html);
   });
 
-  it("shows a seat grace's price today and the later total", () => {
-    const html = planCard(paid({ seatGraceEndsAt: "2099-11-20T12:00:00Z" }));
-    ok(/\$15 a month until .+2099, then \$45 a month/.test(html), html);
+  it("bills a yearly org per year and a moved payer at their own price", () => {
+    ok(
+      planCard(paid({ interval: "year", seatPriceCents: 18000 })).includes(
+        "3 seats, $540 a year",
+      ),
+    );
+    ok(
+      planCard(paid({ interval: "month", seatPriceCents: 1500 })).includes(
+        "3 seats, $45 a month",
+      ),
+    );
+  });
+
+  it("shows a seat grace's price today and the later total, per interval", () => {
+    const grace = "2099-11-20T12:00:00Z";
+    const html = planCard(paid({ interval: "month", seatGraceEndsAt: grace }));
+    ok(/\$20 a month until .+2099, then \$60 a month/.test(html), html);
+    const yearly = planCard(
+      paid({ interval: "year", seatPriceCents: 18000, seatGraceEndsAt: grace }),
+    );
+    ok(/\$180 a year until .+2099, then \$540 a year/.test(yearly), yearly);
   });
 
   it("shows another owner or admin the state and seats, and who to ask", () => {

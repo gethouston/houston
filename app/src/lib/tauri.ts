@@ -1945,12 +1945,14 @@ export const tauriOrg = {
   /** C8 spaces: the caller's spaces + pending invites. Degrades to an empty
    *  result off-spaces (the switcher then shows only the personal workspace). */
   listOrgs: () => call("list_orgs", () => getEngine().listOrgs()),
-  /** Create an org, free unless `plan` is `paid`; a taken free slot is an
-   *  outcome, not a failure. NOT idempotent — on a lost response the caller
-   *  reconciles via `listOrgs` and reuses the slug, never blind-retries. */
+  /** Create an org, free unless `plan` is `paid` (billed per `interval`,
+   *  monthly by default); a taken free slot is an outcome, not a failure. NOT
+   *  idempotent — on a lost response the caller reconciles via `listOrgs` and
+   *  reuses the slug, never blind-retries. */
   createOrg: (input: {
     name: string;
     plan?: import("@houston/engine-adapter").OrgPlan;
+    interval?: import("@houston/engine-adapter").BillingInterval;
   }) => call("create_org", () => getEngine().createOrg(input)),
   /** C8 spaces: start an agent move into a team; poll `moveStatus` to terminal
    *  `done` before inviting (share pipeline order is a contract rule). */
@@ -1980,11 +1982,12 @@ export const tauriOrg = {
   /** C8 billing: the active org's billing summary (owner/admin).
    *  Degrades to null off-entitlement so the billing UI renders nothing. */
   getBilling: () => call("get_billing", () => getEngine().getBilling()),
-  /** Start a monthly per-seat Stripe Checkout for the active org (billing
-   *  owner only); returns `{url}` to open externally. A failure surfaces via
-   *  `call` (red bug toast + report). */
-  createCheckout: () =>
-    call("create_checkout", () => getEngine().createCheckout()),
+  /** Start a per-seat Stripe Checkout for the active org, monthly or yearly
+   *  (billing owner only); returns `{url}` to open externally. A failure
+   *  surfaces via `call` (red bug toast + report). */
+  createCheckout: (
+    interval: import("@houston/engine-adapter").BillingInterval,
+  ) => call("create_checkout", () => getEngine().createCheckout({ interval })),
   /** C8 billing: open the Stripe customer portal (owner only); returns `{url}`. */
   createPortal: () => call("create_portal", () => getEngine().createPortal()),
   /** Make the active org the free one; the refusals come back as outcomes. */

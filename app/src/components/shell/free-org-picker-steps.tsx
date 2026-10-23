@@ -1,5 +1,5 @@
 import type { BillingChoice } from "@houston/engine-adapter";
-import { type FlowProgress, orgSeatPrice, pickerRows } from "@houston/sdk";
+import { type FlowProgress, pickerRows } from "@houston/sdk";
 import { type ReactNode, useId } from "react";
 import { Trans, useTranslation } from "react-i18next";
 import {
@@ -7,6 +7,7 @@ import {
   PickerProgress,
   useOrgMeta,
   useOrgName,
+  usePayerMeta,
 } from "./free-org-picker-rows";
 import { PlanBriefingCta, PlanBriefingQuietButton } from "./plan-briefing-cta";
 
@@ -141,12 +142,12 @@ export function FreeStep(props: StepProps & { paidSlug: string | null }) {
 
 /** The org a payer's subscription covers, priced per member. Comes first. */
 export function PaidStep(props: StepProps) {
-  const { t, i18n } = useTranslation("plan");
+  const { t } = useTranslation("plan");
   const titleId = useId();
   const orgName = useOrgName();
   const rows = pickerRows(props.choice);
   const picked = rows.find((row) => row.org.slug === props.selected)?.org;
-  const price = orgSeatPrice(i18n.language);
+  const payerMeta = usePayerMeta(props.choice);
   return (
     <>
       <PickerProgress progress={props.progress} />
@@ -168,10 +169,7 @@ export function PaidStep(props: StepProps) {
             checked={org.slug === props.selected}
             onSelect={props.onSelect}
             tag={mostActive ? t("choice.picker.mostActive") : undefined}
-            meta={t("choice.picker.meta", {
-              first: t("choice.picker.members", { count: org.memberCount }),
-              second: t("choice.payer.each", { price }),
-            })}
+            meta={payerMeta(org)}
           />
         ))}
       </div>

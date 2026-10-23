@@ -320,7 +320,7 @@
     "freeTaken": "Each person gets one organization on the free tier, and yours is {{freeOrg}}.",
     "freeTakenUnknown": "Each person gets one organization on the free tier, and you already have yours.",
     "paidPrice": "{{name}} costs {{price}} per member a month. You'll pay in your browser, and it unlocks once the payment goes through.",
-    "paidPriceUnknown": "You'll pay for {{name}} in your browser, and it unlocks once the payment goes through.",
+    "paidInBrowser": "You'll pay for {{name}} in your browser, and it unlocks once the payment goes through.",
     "paidSubmit": "Continue to payment",
     "paidSuccessTitle": "Finish paying for \"{{name}}\"",
     "paidSuccessBody": "Checkout is open in your browser. The organization unlocks once the payment goes through.",
@@ -453,13 +453,29 @@
     "planPaid": "Paid tier",
     "seatsTotal_one": "{{count}} seat, {{total}} a month",
     "seatsTotal_other": "{{count}} seats, {{total}} a month",
+    "seatsTotalYear_one": "{{count}} seat, {{total}} a year",
+    "seatsTotalYear_other": "{{count}} seats, {{total}} a year",
     "grace": "{{today}} a month until {{date}}, then {{total}} a month",
+    "graceYear": "{{today}} a year until {{date}}, then {{total}} a year",
     "locksOn": "Locks on {{date}}",
     "benefitUsage": "Everyone gets their own usage, with no weekly limit",
     "benefitRoutines": "Run all your routines, as often as you need",
     "benefitAway": "Routines keep running while you're away",
     "upgradePrice_one": "{{price}} a month for {{count}} member",
     "upgradePrice_other": "{{price}} per member a month, {{total}} a month for {{count}} members",
+    "interval": {
+      "label": "How to pay",
+      "month": "Monthly",
+      "year": "Yearly",
+      "monthMeta": "{{price}} per member a month",
+      "yearMeta": "{{price}} per member a month, billed yearly, {{yearly}} a year"
+    },
+    "checkoutTotal": {
+      "month_one": "{{total}} a month for {{count}} member",
+      "month_other": "{{total}} a month for {{count}} members",
+      "year_one": "{{total}} a year for {{count}} member",
+      "year_other": "{{total}} a year for {{count}} members"
+    },
     "upgrade": "Upgrade",
     "openCheckout": "Open checkout",
     "openPortal": "Open billing portal",
@@ -783,6 +799,14 @@
       "fixPayment": "{{org}} is locked. Fix the payment to send messages and make changes.",
       "askOwner": "{{org}} is locked. Ask the owner who pays for it to unlock it.",
       "store": "{{org}} is locked, so messages and changes are off for now."
+    },
+    "checkout": {
+      "unlockTitle": "Unlock {{org}}",
+      "upgradeTitle": "Upgrade {{org}}",
+      "unlockBody": "You'll pay in your browser, and {{org}} unlocks once the payment goes through.",
+      "upgradeBody": "You'll pay in your browser, and {{org}} keeps working once the payment goes through.",
+      "submit": "Continue to payment",
+      "cancel": "Cancel"
     }
   },
   "moveOut": {

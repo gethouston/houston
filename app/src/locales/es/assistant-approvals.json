@@ -72,6 +72,7 @@
     "githubUrl": "enlace de GitHub",
     "id": "id",
     "input": "detalles",
+    "interval": "se factura cada",
     "inviteId": "invitación",
     "kind": "tipo",
     "manifest": "habilidades",

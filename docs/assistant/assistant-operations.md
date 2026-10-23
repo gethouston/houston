@@ -30,7 +30,7 @@ A person's message can grant one `createAgent` call with the constrained name, c
 | `revokeApiKey` | DELETE | confirmed: host approval required | revoking a key is the person's own to do, on the screen that lists their keys. | id: open: API keys are secrets the directory never lists. |
 | `saveAttachments` | POST | unconfirmed: withheld from dispatch | the composer owns this; it frames the files a person dropped on a message, and writeAgentFile is how the assistant puts content into a workspace. | agentId: resolved:agents; scopeId: free text; files: free text |
 | `claimFreeSlot` | POST | confirmed: host approval required | visible | none |
-| `createCheckout` | POST | confirmed: host approval required | visible | none |
+| `createCheckout` | POST | confirmed: host approval required | visible | interval: enum |
 | `createPlusCheckout` | POST | confirmed: host approval required | visible | none |
 | `createPlusPortal` | POST | unconfirmed: withheld from dispatch | the URL grants access to a signed-in billing session. | none |
 | `createPortal` | POST | unconfirmed: withheld from dispatch | answers with a live Stripe portal session URL, which is a signed-in billing session for anyone who holds it; the person opens billing from the app instead of being handed a link through a model. | none |
@@ -189,7 +189,7 @@ A person's message can grant one `createAgent` call with the constrained name, c
 | `saveSkill` | PUT | confirmed: host approval required | visible | agentId: resolved:agents; slug: resolved:skills; content: free text |
 | `setSkillEnabled` | unroutable | unconfirmed: withheld from dispatch | the one-entry primitive behind putSkillsManifest, which is the one to dispatch; both write the same manifest, and this one reads it first so two switches started together cannot drop each other. | agentId: resolved:agents; slug: free text; enabled: free text |
 | `acceptOrgInvite` | POST | confirmed: host approval required | visible | inviteId: resolved:invites |
-| `createOrg` | POST | confirmed: host approval required | visible | name: free text; plan: enum |
+| `createOrg` | POST | confirmed: host approval required | visible | name: free text; plan: enum; interval: enum |
 | `declineOrgInvite` | DELETE | confirmed: host approval required | visible | inviteId: resolved:invites |
 | `deleteOrg` | DELETE | confirmed: host approval required | deleting a space is the person's own to do, from the space's own settings. | slug: open: The directory covers one organization, so read another one's slug from listOrgs. |
 | `getMoveStatus` | GET | unconfirmed: read-only HTTP GET | visible | agentSlugOrId: resolved:agents; moveId: open: A move receipt exists only in the answer moveAgent returned. |

@@ -7,7 +7,10 @@
  * spec can prove a past-due owner reached the portal and never a checkout.
  */
 
-import { CLAIM_FREE_REFUSALS } from "@houston/wire-types";
+import {
+  CLAIM_FREE_REFUSALS,
+  seatCheckoutRequestSchema,
+} from "@houston/wire-types";
 import { json, noContent } from "./http";
 import { isFilesWrite } from "./routes-files";
 import * as state from "./state";
@@ -23,6 +26,7 @@ export function handleOrgBillingRoutes(
   method: string,
   segs: string[],
   req: Request,
+  body?: Record<string, unknown>,
 ): Response | undefined {
   if (segs[0] !== "v1" || segs[1] !== "org" || segs[2] !== "billing")
     return undefined;
@@ -31,10 +35,18 @@ export function handleOrgBillingRoutes(
   const owner = state.orgBillingOf(slug)?.isBillingOwner === true;
   const seed = state.planSeed();
   switch (segs[3]) {
-    case "checkout":
-      state.recordPlanCall("checkout", { orgSlug: slug });
+    case "checkout": {
+      const asked = seatCheckoutRequestSchema.safeParse(body ?? {});
+      if (!asked.success)
+        return refuse(
+          400,
+          "invalid_interval",
+          "interval must be month or year",
+        );
+      state.recordPlanCall("checkout", { orgSlug: slug, ...asked.data });
       if (!owner) return notBillingOwner();
       return json({ url: seed?.checkoutUrl ?? state.FAKE_CHECKOUT_URL });
+    }
     case "portal":
       state.recordPlanCall("portal", { orgSlug: slug });
       if (!owner) return notBillingOwner();

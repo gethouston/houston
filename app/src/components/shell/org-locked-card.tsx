@@ -6,6 +6,7 @@ import { useTeamStatusActions } from "../../hooks/use-team-status-actions";
 import { canPurchaseInApp } from "../../lib/purchase-policy";
 import { RowCard } from "../cards/row-card";
 import { RowCardButton } from "../cards/row-card-button";
+import { TeamStatusCheckoutDialog } from "./team-status-checkout-dialog";
 
 /**
  * What a chat shows in place of its composer while the org is locked: the
@@ -16,8 +17,12 @@ import { RowCardButton } from "../cards/row-card-button";
 export function OrgLockedCard() {
   const { t } = useTranslation("teams");
   const { reason } = useOrgWriteLock();
-  const { view, org, checkout } = useTeamStatus(canPurchaseInApp());
-  const actions = useTeamStatusActions(org?.slug ?? null, checkout);
+  const { view, org, billing, checkout } = useTeamStatus(canPurchaseInApp());
+  const actions = useTeamStatusActions(
+    org?.slug ?? null,
+    checkout,
+    billing?.seatPrices ?? null,
+  );
   const pay =
     view.kind === "locked"
       ? view.buttons.find((a) => a === "checkout" || a === "portal")
@@ -42,6 +47,16 @@ export function OrgLockedCard() {
           ) : undefined
         }
       />
+      {org && billing && (
+        <TeamStatusCheckoutDialog
+          open={actions.checkoutOpen}
+          onOpenChange={actions.setCheckoutOpen}
+          org={org}
+          billing={billing}
+          locked
+          onStart={actions.startCheckout}
+        />
+      )}
     </div>
   );
 }

@@ -1,4 +1,5 @@
 import type {
+  BillingInterval,
   CreateOrgOutcome,
   OrgPlan,
   OrgSummary,
@@ -26,8 +27,11 @@ export function useCreateTeam() {
   const qc = useQueryClient();
   const loadWorkspaces = useWorkspaceStore((s) => s.loadWorkspaces);
   return useMutation({
-    mutationFn: (input: { name: string; plan?: OrgPlan }) =>
-      tauriOrg.createOrg(input),
+    mutationFn: (input: {
+      name: string;
+      plan?: OrgPlan;
+      interval?: BillingInterval;
+    }) => tauriOrg.createOrg(input),
     onSuccess: async (outcome) => {
       qc.invalidateQueries({ queryKey: queryKeys.orgs() });
       if (outcome.kind !== "free_org_taken") await loadWorkspaces();

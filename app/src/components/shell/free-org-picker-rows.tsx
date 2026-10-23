@@ -1,8 +1,14 @@
-import type { BillingChoiceOrg } from "@houston/engine-adapter";
-import type { FlowProgress } from "@houston/sdk";
+import type { BillingChoice, BillingChoiceOrg } from "@houston/engine-adapter";
+import {
+  type FlowProgress,
+  formatPlanAmount,
+  payerSeatCents,
+} from "@houston/sdk";
 import { cn } from "@houston-ai/core";
 import { Check } from "lucide-react";
 import { useTranslation } from "react-i18next";
+import { canPurchaseInApp } from "../../lib/purchase-policy";
+import { BILLING_CURRENCY } from "../organization/billing-tab-model";
 import { OrgAvatar } from "./org-avatar";
 
 /** The name an owned org shows: the personal org keeps today's label. */
@@ -22,6 +28,28 @@ export function useOrgMeta(): (org: BillingChoiceOrg) => string {
           ? t("choice.picker.messages", { count: org.messages30d })
           : t("choice.picker.noMessages"),
     });
+}
+
+/**
+ * An org's members and what each costs the payer today ("3 members · $15
+ * each"), the price off the pick's own monthly totals: a payer keeps the
+ * price they signed up at. Members alone when the wire sent no total, and
+ * inside the store apps, which never name a price.
+ */
+export function usePayerMeta(
+  choice: BillingChoice,
+): (org: BillingChoiceOrg) => string {
+  const { t, i18n } = useTranslation("plan");
+  const cents = canPurchaseInApp() ? payerSeatCents(choice) : null;
+  return (org) => {
+    const members = t("choice.picker.members", { count: org.memberCount });
+    if (cents === null) return members;
+    const price = formatPlanAmount(cents, BILLING_CURRENCY, i18n.language);
+    return t("choice.picker.meta", {
+      first: members,
+      second: t("choice.payer.each", { price }),
+    });
+  };
 }
 
 export interface OrgRadioProps {

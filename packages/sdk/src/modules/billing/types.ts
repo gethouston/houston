@@ -12,8 +12,13 @@
  * the one shape every surface reads; `getBilling` answers the C8 team summary.
  */
 
-import type { BillingChoicePick, PlanRoutineKey } from "@houston/wire-types";
-import { requireString } from "../payload";
+import {
+  BILLING_INTERVALS,
+  type BillingChoicePick,
+  type BillingInterval,
+  type PlanRoutineKey,
+} from "@houston/wire-types";
+import { field, requireString } from "../payload";
 
 /** The write vocabulary — the same handlers back the facade and `dispatch`. */
 export const BillingCommand = {
@@ -49,6 +54,20 @@ export function requireChoicePick(payload: unknown): BillingChoicePick {
   const paid = (payload as { paidOrgSlug?: unknown }).paidOrgSlug;
   if (paid === undefined || paid === null) return { freeOrgSlug };
   return { freeOrgSlug, paidOrgSlug: requireString(payload, "paidOrgSlug") };
+}
+
+/**
+ * A checkout interval off an untrusted command payload: absent is the
+ * default, anything but `month` or `year` is refused.
+ */
+export function optionalInterval(
+  payload: unknown,
+): BillingInterval | undefined {
+  const raw = field(payload, "interval");
+  if (raw === undefined || raw === null) return undefined;
+  if (BILLING_INTERVALS.some((interval) => interval === raw))
+    return raw as BillingInterval;
+  throw new Error("interval must be 'month' or 'year'");
 }
 
 /** A routine key off an untrusted command payload. */

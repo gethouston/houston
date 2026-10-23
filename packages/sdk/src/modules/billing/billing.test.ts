@@ -74,13 +74,25 @@ describe("the billing requests", () => {
     expect(await sdk.billing.createCheckout()).toEqual({
       url: "https://checkout.stripe.test/c/1",
     });
+    await sdk.billing.createCheckout({ interval: "month" });
     expect(calls).toEqual([
       {
         method: "POST",
         url: `${BASE}/v1/org/billing/checkout`,
         body: "{}",
       },
+      {
+        method: "POST",
+        url: `${BASE}/v1/org/billing/checkout`,
+        body: "{}",
+      },
     ]);
+  });
+
+  it("starts a yearly checkout by naming the interval", async () => {
+    const { sdk, calls } = ok({ url: "https://checkout.stripe.test/c/2" });
+    await sdk.billing.createCheckout({ interval: "year" });
+    expect(calls[0].body).toBe(JSON.stringify({ interval: "year" }));
   });
 
   it("opens the customer portal with a bodyless POST", async () => {
@@ -209,6 +221,24 @@ describe("the dispatch path", () => {
     });
     expect(result.ok).toBe(true);
     expect(calls[0].body).toBe("{}");
+  });
+
+  it("dispatches a yearly checkout and refuses an interval it does not sell", async () => {
+    const { sdk, calls } = ok({ url: "https://checkout.stripe.test/c/1" });
+    const yearly = await sdk.dispatch({
+      id: "1",
+      type: BillingCommand.CreateCheckout,
+      payload: { interval: "year" },
+    });
+    expect(yearly.ok).toBe(true);
+    expect(calls[0].body).toBe(JSON.stringify({ interval: "year" }));
+    const weekly = await sdk.dispatch({
+      id: "2",
+      type: BillingCommand.CreateCheckout,
+      payload: { interval: "week" },
+    });
+    expect(weekly.ok).toBe(false);
+    expect(calls).toHaveLength(1);
   });
 
   it("reads the summary through dispatch with no payload at all", async () => {

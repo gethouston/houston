@@ -64,7 +64,7 @@ test("Admin > Billing on a free org: the share of the week and Upgrade", async (
   await expect(
     billing.getByRole("progressbar", { name: "25% used" }),
   ).toBeVisible();
-  await expect(billing.getByText("$15 a month for 1 member")).toBeVisible();
+  await expect(billing.getByText("$20 a month for 1 member")).toBeVisible();
   await expect(billing.getByRole("button", { name: "Upgrade" })).toBeEnabled();
   // The pool is a share of the week, never a message count.
   await expect(billing).not.toContainText(/\b10\b|\b40\b|messages/);

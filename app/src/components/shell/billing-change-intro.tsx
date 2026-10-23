@@ -1,4 +1,4 @@
-import type { BillingChoice } from "@houston/engine-adapter";
+import type { BillingChoice, SeatPrices } from "@houston/engine-adapter";
 import type { ChoiceIntroPage, FlowProgress } from "@houston/sdk";
 import { DialogDescription, DialogTitle } from "@houston-ai/core";
 import { Calendar } from "lucide-react";
@@ -24,6 +24,7 @@ const TITLE_CLASS =
 export function BillingChangeIntro({
   notice,
   choice,
+  listPrices,
   page,
   progress,
   onNext,
@@ -32,6 +33,8 @@ export function BillingChangeIntro({
 }: {
   notice: IntroNotice;
   choice: BillingChoice;
+  /** A new checkout's list prices, off the orgs list; null while unknown. */
+  listPrices: SeatPrices | null;
   page: ChoiceIntroPage;
   progress: FlowProgress | null;
   onNext: () => void;
@@ -39,7 +42,7 @@ export function BillingChangeIntro({
   onClose: () => void;
 }) {
   const { t } = useTranslation("plan");
-  const points = useNoticePoints(notice, choice);
+  const points = useNoticePoints(notice, choice, listPrices);
   const notKept = useNotKeptPoints();
   const pick = notice.kind === "pick";
   if (page === "not_kept")

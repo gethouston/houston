@@ -8,6 +8,7 @@ import { canPurchaseInApp } from "../../lib/purchase-policy";
 import type { TeamStatusView } from "../../lib/team-status-model";
 import { PlanWebNote } from "./plan-web-note";
 import { TeamStatusButtons } from "./team-status-buttons";
+import { TeamStatusCheckoutDialog } from "./team-status-checkout-dialog";
 import { TeamStatusClaimDialog } from "./team-status-claim-dialog";
 
 type Shown = Exclude<TeamStatusView, { kind: "none" }>;
@@ -46,8 +47,14 @@ const ASK_OWNER = {
  */
 export function TeamStatusBanner() {
   const { t, i18n } = useTranslation("teams");
-  const { view, org, orgs, checkout } = useTeamStatus(canPurchaseInApp());
-  const actions = useTeamStatusActions(org?.slug ?? null, checkout);
+  const { view, org, orgs, billing, checkout } = useTeamStatus(
+    canPurchaseInApp(),
+  );
+  const actions = useTeamStatusActions(
+    org?.slug ?? null,
+    checkout,
+    billing?.seatPrices ?? null,
+  );
   if (view.kind === "none" || !org) return null;
 
   const locked = view.kind === "locked";
@@ -107,6 +114,16 @@ export function TeamStatusBanner() {
         org={org}
         orgs={orgs}
       />
+      {billing && (
+        <TeamStatusCheckoutDialog
+          open={actions.checkoutOpen}
+          onOpenChange={actions.setCheckoutOpen}
+          org={org}
+          billing={billing}
+          locked={locked}
+          onStart={actions.startCheckout}
+        />
+      )}
     </div>
   );
 }

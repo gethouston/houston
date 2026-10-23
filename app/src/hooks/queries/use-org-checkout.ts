@@ -1,4 +1,4 @@
-import type { OrgsList } from "@houston/engine-adapter";
+import type { BillingInterval, OrgsList } from "@houston/engine-adapter";
 import { billingCheckoutOutstanding } from "@houston/sdk";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { useCallback, useEffect, useSyncExternalStore } from "react";
@@ -37,8 +37,9 @@ function reserveCheckoutTab(): ReservedTab | null {
 }
 
 /**
- * An org checkout's view. `start(orgSlug)` opens Stripe for the active org,
- * `resume(orgSlug, url, tab)` opens a session the gateway already made (a
+ * An org checkout's view. `start(orgSlug, interval)` opens Stripe for the
+ * active org, billed monthly or yearly, `resume(orgSlug, url, tab)` opens a
+ * session the gateway already made (a
  * paid create answers one) in a tab the caller reserved inside its click, and
  * `recover(orgSlug)` opens the portal to fix a failed payment, watched the
  * same way so a webhook that lands late still clears the lock unprompted.
@@ -77,11 +78,11 @@ export function useOrgCheckout() {
     [queryClient],
   );
   const start = useCallback(
-    (orgSlug: string) => {
+    (orgSlug: string, interval: BillingInterval) => {
       if (refuseNativePurchase("billing_checkout", reportError)) return;
       void begin(
         orgSlug,
-        () => tauriOrg.createCheckout(),
+        () => tauriOrg.createCheckout(interval),
         reserveCheckoutTab(),
       );
     },

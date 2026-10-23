@@ -1,5 +1,9 @@
 import type { OrgBilling } from "@houston/engine-adapter";
-import { formatLocalDate, formatPlanAmount } from "@houston/sdk";
+import {
+  formatLocalDate,
+  formatPlanAmount,
+  orgBillingPrice,
+} from "@houston/sdk";
 import { Card, StatusBadge, type StatusKind } from "@houston-ai/core";
 import { useTranslation } from "react-i18next";
 import { canPurchaseInApp } from "../../lib/purchase-policy.ts";
@@ -8,7 +12,6 @@ import {
   BILLING_CURRENCY,
   type BillingTabStatus,
   billingAction,
-  billingPrice,
   billingStatus,
   scheduledLock,
 } from "./billing-tab-model.ts";
@@ -21,8 +24,9 @@ const BADGE: Record<BillingTabStatus, StatusKind | null> = {
 };
 
 /**
- * The org's plan: Free or Paid, its seats and monthly price, a seat grace's
- * two prices, a scheduled lock, and the one action the caller has.
+ * The org's plan: Free or Paid, its seats and what they bill per the
+ * subscription's interval (a month or a year), a seat grace's two prices, a
+ * scheduled lock, and the one action the caller has.
  */
 export function BillingPlanCard({
   billing,
@@ -35,7 +39,8 @@ export function BillingPlanCard({
   const now = Date.now();
   const status = billingStatus(billing);
   const badge = BADGE[status];
-  const price = billingPrice(billing, now);
+  const price = orgBillingPrice(billing, now);
+  const yearly = price.interval === "year";
   const lockAt = scheduledLock(billing, now);
   const money = (cents: number) =>
     formatPlanAmount(cents, BILLING_CURRENCY, i18n.language);
@@ -56,9 +61,9 @@ export function BillingPlanCard({
             {!paid
               ? t("billing.freeSummary", { count: seats })
               : purchasable && price.today === null
-                ? t("billing.seatsTotal", {
+                ? t(yearly ? "billing.seatsTotalYear" : "billing.seatsTotal", {
                     count: seats,
-                    total: money(price.monthly),
+                    total: money(price.total),
                   })
                 : t("billing.seats", { count: seats })}
           </p>
@@ -73,10 +78,10 @@ export function BillingPlanCard({
       </div>
       {purchasable && price.today !== null && price.graceEndsAt && (
         <p className="text-sm tabular-nums">
-          {t("billing.grace", {
+          {t(yearly ? "billing.graceYear" : "billing.grace", {
             today: money(price.today),
             date: day(price.graceEndsAt),
-            total: money(price.monthly),
+            total: money(price.total),
           })}
         </p>
       )}
@@ -88,8 +93,7 @@ export function BillingPlanCard({
       <BillingPlanAction
         action={billingAction(billing, purchasable)}
         orgSlug={orgSlug}
-        seatPrice={money(billing.seatPriceCents)}
-        total={money(price.monthly)}
+        prices={billing.seatPrices}
         seats={seats}
       />
     </Card>

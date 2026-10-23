@@ -65,6 +65,25 @@ describe("org billing on the fake gateway", () => {
     ]);
   });
 
+  it("records a yearly checkout and refuses an interval it does not sell", async () => {
+    await send("POST", "/__test__/plan", { summary: FREE });
+    const yearly = await send("POST", "/v1/org/billing/checkout", {
+      interval: "year",
+    });
+    expect(yearly.status).toBe(200);
+    const weekly = await send("POST", "/v1/org/billing/checkout", {
+      interval: "week",
+    });
+    expect(weekly.status).toBe(400);
+    const calls = await (await send("GET", "/__test__/plan-calls")).json();
+    expect(calls.calls).toEqual([
+      {
+        route: "checkout",
+        body: { orgSlug: PERSONAL_ORG_SLUG, interval: "year" },
+      },
+    ]);
+  });
+
   it("serves the armed plan as the personal org's billing", async () => {
     await send("POST", "/__test__/plan", { summary: FREE });
     const list = await orgs();

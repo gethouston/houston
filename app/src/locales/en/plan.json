@@ -85,11 +85,14 @@
       },
       "rest": {
         "title": "The rest are {{price}} per member a month",
-        "body": "Only for organizations you want to keep working."
+        "body": "Only for organizations you want to keep working.",
+        "bodyYearly": "Or {{price}} per member a month, billed yearly. Only for organizations you want to keep working.",
+        "titleNoPrice": "The rest need the paid tier"
       },
       "covers": {
         "title": "Your subscription covers one organization",
-        "body": "{{price}} per member a month. You pick it in a moment."
+        "body": "{{price}} per member a month. You pick it in a moment.",
+        "bodyNoPrice": "You pick it in a moment."
       },
       "staysFree": "{{name}} stays on the free tier",
       "paysFor": "Your subscription pays for {{name}}",

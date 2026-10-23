@@ -89,6 +89,24 @@ describe("the delegated billing requests", () => {
     expect(call.body).toBe("{}");
   });
 
+  // Monthly stays the absent field (every gateway bills it); yearly is named.
+  test("createCheckout names a yearly interval and leaves monthly unsaid", async () => {
+    stubFetch(() => json(200, CHECKOUT));
+    expect(await client().createCheckout({ interval: "year" })).toEqual(
+      CHECKOUT,
+    );
+    const call = soleCall();
+    expect(call.method).toBe("POST");
+    expect(call.url).toBe(`${BASE}/v1/org/billing/checkout`);
+    expect(call.body).toBe(JSON.stringify({ interval: "year" }));
+  });
+
+  test("createCheckout sends no interval for an explicit monthly", async () => {
+    stubFetch(() => json(200, CHECKOUT));
+    await client().createCheckout({ interval: "month" });
+    expect(soleCall().body).toBe("{}");
+  });
+
   test("createPortal POSTs the portal route with no body", async () => {
     stubFetch(() => json(200, { url: "https://billing.stripe.test/p/1" }));
     expect(await client().createPortal()).toEqual({

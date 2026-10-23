@@ -3,6 +3,20 @@
 Every `version` bump in `inventory.yaml` needs a matching entry here (enforced by
 `pnpm check:parity`). Newest first. Use `## vN` headings.
 
+## v141 - 2026-10-23
+
+A seat is sold monthly or yearly, and every price comes from the wire. The
+Billing tab's Upgrade, the strip's and the locked composer's Unlock, and the
+paid offer of a second organization let the billing owner pick Monthly
+($20 per member a month) or Yearly ($15 per member a month, billed yearly,
+$180 a year), Monthly preselected, with the total for the members under the
+choice; where the gateway sells monthly only there is no choice. A paid
+organization's card reads its seats and what they bill per its
+subscription's interval at the price it is billed, and a seat grace reads
+per that interval. The pricing-change modal prices the rest at the list
+prices and a payer's organizations at the payer's own price, and names no
+price where none is known or inside a store app.
+
 ## v140 - 2026-10-22
 
 The pricing-change modal splits its intro into short pages with progress

@@ -148,6 +148,17 @@ describe("the spaces requests", () => {
       checkoutUrl: "https://checkout.stripe.test/c/9",
     });
     expect(calls[0].body).toBe(JSON.stringify({ name: "Acme", plan: "paid" }));
+    await sdk.spaces.createOrg({
+      name: "Acme",
+      plan: "paid",
+      interval: "year",
+    });
+    expect(calls[1].body).toBe(
+      JSON.stringify({ name: "Acme", plan: "paid", interval: "year" }),
+    );
+    // A free create starts no checkout, so it never names an interval.
+    await sdk.spaces.createOrg({ name: "Acme", interval: "year" });
+    expect(calls[2].body).toBe(JSON.stringify({ name: "Acme", plan: "free" }));
   });
 
   it("still throws a 409 that is not the free slot", async () => {
@@ -265,6 +276,14 @@ describe("the dispatch path", () => {
       payload: { name: "Acme", plan: "paid" },
     });
     expect(calls[1].body).toBe(JSON.stringify({ name: "Acme", plan: "paid" }));
+    await sdk.dispatch({
+      id: "1c",
+      type: SpacesCommand.Create,
+      payload: { name: "Acme", plan: "paid", interval: "year" },
+    });
+    expect(calls[2].body).toBe(
+      JSON.stringify({ name: "Acme", plan: "paid", interval: "year" }),
+    );
   });
 
   it("rejects a move with no agent named, without touching the wire", async () => {

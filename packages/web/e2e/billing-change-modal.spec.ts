@@ -56,10 +56,12 @@ test("an owner picks the org that stays free from the modal, and it stays gone",
   });
   await expect(modal).toContainText("From Friday, October 23");
   await expect(modal).toContainText("Step 1 of 4");
+  // Before the cutover no org carries billing yet, so no list price is on
+  // the wire and the price is left unsaid rather than made up.
   await expect(modal.getByRole("listitem")).toHaveText([
     "Every space works like a teamYou can invite people to any of them.",
     "Each account gets one organization on the free tierEveryone in it shares the free tier's weekly limit.",
-    "The rest are $15 per member a monthOnly for organizations you want to keep working.",
+    "The rest need the paid tierOnly for organizations you want to keep working.",
   ]);
   await expect(modal).not.toContainText(/\d+ messages a week/);
   await modal.getByRole("button", { name: "Next", exact: true }).click();

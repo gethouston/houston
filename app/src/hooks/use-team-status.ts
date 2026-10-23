@@ -27,5 +27,5 @@ export function useTeamStatus(purchasable: boolean) {
     canDelete: showWorkspaceDanger,
     now,
   });
-  return { view, org, orgs, checkout };
+  return { view, org, orgs, billing, checkout };
 }

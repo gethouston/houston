@@ -129,6 +129,19 @@ describe("the delegated spaces requests", () => {
     );
   });
 
+  test("a yearly paid createOrg names its interval", async () => {
+    stubFetch(() =>
+      json(201, { ...ORG, checkoutUrl: "https://checkout.stripe.test/c/9" }),
+    );
+    await client().createOrg({ name: "Acme", plan: "paid", interval: "year" });
+    const call = soleCall();
+    expect(call.method).toBe("POST");
+    expect(call.url).toBe(`${BASE}/v1/orgs`);
+    expect(call.body).toBe(
+      JSON.stringify({ name: "Acme", plan: "paid", interval: "year" }),
+    );
+  });
+
   test("deleteWorkspace DELETEs /v1/orgs/:slug", async () => {
     stubFetch(() => json(204));
     await client().deleteWorkspace(`org:${ORG_SLUG}`);

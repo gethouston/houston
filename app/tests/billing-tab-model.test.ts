@@ -1,9 +1,8 @@
-import { deepStrictEqual, strictEqual } from "node:assert";
+import { strictEqual } from "node:assert";
 import { describe, it } from "node:test";
 import type { OrgBilling } from "@houston/engine-adapter";
 import {
   billingAction,
-  billingPrice,
   billingStatus,
   scheduledLock,
 } from "../src/components/organization/billing-tab-model.ts";
@@ -19,7 +18,9 @@ function free(patch: Partial<OrgBilling> = {}): OrgBilling {
     freeSlot: true,
     isBillingOwner: true,
     seats: 3,
-    seatPriceCents: 1500,
+    interval: null,
+    seatPriceCents: 2000,
+    seatPrices: { monthlyCents: 2000, annualCents: 18000 },
     seatGraceEndsAt: null,
     usage: {
       scope: "org",
@@ -122,42 +123,6 @@ describe("scheduledLock", () => {
         free({ status: "locked", lockAt: "2026-11-04T00:00:00Z" }),
         NOW,
       ),
-      null,
-    );
-  });
-});
-
-describe("billingPrice", () => {
-  it("bills every member as a seat", () => {
-    deepStrictEqual(billingPrice(free(), NOW), {
-      monthly: 4500,
-      today: null,
-      graceEndsAt: null,
-    });
-  });
-
-  it("bills at least one seat", () => {
-    strictEqual(billingPrice(free({ seats: 0 }), NOW).monthly, 1500);
-  });
-
-  it("bills one seat until a seat grace ends, then every member", () => {
-    deepStrictEqual(
-      billingPrice(paid({ seatGraceEndsAt: "2026-11-20T00:00:00Z" }), NOW),
-      { monthly: 4500, today: 1500, graceEndsAt: "2026-11-20T00:00:00Z" },
-    );
-  });
-
-  it("drops a grace that ended, and one a single member never needed", () => {
-    strictEqual(
-      billingPrice(paid({ seatGraceEndsAt: "2026-10-01T00:00:00Z" }), NOW)
-        .today,
-      null,
-    );
-    strictEqual(
-      billingPrice(
-        paid({ seats: 1, seatGraceEndsAt: "2026-11-20T00:00:00Z" }),
-        NOW,
-      ).today,
       null,
     );
   });

@@ -1,4 +1,5 @@
 import { z } from "zod";
+import { BILLING_INTERVALS, seatPricesSchema } from "./seat-prices";
 import type { OrgSummary, OrgsList } from "./types";
 
 /**
@@ -43,7 +44,7 @@ export const orgRoutinesSchema = z.object({
 });
 export type OrgRoutines = z.infer<typeof orgRoutinesSchema>;
 
-export const orgBillingSchema = z.object({
+const orgBillingWire = z.object({
   tier: z.enum(["free", "paid"]),
   status: z.enum(["active", "past_due", "locked"]),
   /** A future instant is a scheduled lock, a past one means locked. */
@@ -54,11 +55,38 @@ export const orgBillingSchema = z.object({
   freeSlot: z.boolean(),
   isBillingOwner: z.boolean(),
   seats: count,
+  /**
+   * How often the org's subscription bills; null with no subscription. A
+   * gateway that predates intervals, or an interval it adds later, reads null.
+   */
+  interval: z.enum(BILLING_INTERVALS).nullable().catch(null),
+  /**
+   * One seat per `interval`, as this org is actually billed (a payer moved
+   * from an older plan keeps that price). With no subscription, the monthly
+   * list price.
+   */
   seatPriceCents: count,
+  /** A new checkout's list prices. An older gateway sends none (see below). */
+  seatPrices: seatPricesSchema.optional(),
   seatGraceEndsAt: instant.nullable(),
   usage: orgUsageSchema.nullable(),
   routines: orgRoutinesSchema.nullable(),
 });
+
+/**
+ * A gateway that predates yearly seats sends no `seatPrices`; its
+ * `seatPriceCents` is then the one monthly price it sells, and nothing is
+ * sold yearly.
+ */
+export const orgBillingSchema = orgBillingWire.transform(
+  ({ seatPrices, ...billing }) => ({
+    ...billing,
+    seatPrices: seatPrices ?? {
+      monthlyCents: billing.seatPriceCents,
+      annualCents: null,
+    },
+  }),
+);
 export type OrgBilling = z.infer<typeof orgBillingSchema>;
 
 /** Whether the caller can create a free org, and which org holds the slot. */

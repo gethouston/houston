@@ -68,7 +68,7 @@ export function ownerChoice(patch: Partial<BillingChoice> = {}): BillingChoice {
   };
 }
 
-/** A Plus payer: every org priced at $15 a member, grace on the bigger one. */
+/** A Plus payer kept on the $15 Plus price per member, grace on the bigger one. */
 export function payerChoice(): BillingChoice {
   return ownerChoice({
     payer: "plus",

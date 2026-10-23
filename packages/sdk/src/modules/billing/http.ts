@@ -15,6 +15,7 @@
  */
 
 import {
+  type BillingInterval,
   CLAIM_FREE_REFUSALS,
   type ClaimFreeRefusal,
 } from "@houston/wire-types";
@@ -42,19 +43,24 @@ export async function getBilling(scope: HttpScope): Promise<BillingSummary> {
 /**
  * Starts the checkout that puts the organization on a paid plan.
  *
- * Start a Stripe Checkout session for the active org, billed monthly per seat
- * (billing owner only; anyone else gets 403 `not_billing_owner`). Returns the
- * hosted `{url}`. Never degrades: a failure throws so the UI surfaces the real
- * reason.
+ * Start a Stripe Checkout session for the active org, billed per seat every
+ * month or once a year (billing owner only; anyone else gets 403
+ * `not_billing_owner`). Yearly is sold only where the org's
+ * `billing.seatPrices.annualCents` is set; elsewhere it answers 409
+ * `interval_unavailable`. Returns the hosted `{url}`. Never degrades: a
+ * failure throws so the UI surfaces the real reason.
+ *
+ * @param interval `year` when the user asked to pay yearly; monthly otherwise.
  * @assistant group:billing
  * @assistant confirm: money. It starts a real subscription, and the card it charges is the user's own.
  */
 export async function createCheckout(
   scope: HttpScope,
+  interval?: BillingInterval,
 ): Promise<BillingCheckout> {
   const res = await httpRequest(scope, "/v1/org/billing/checkout", {
     method: "POST",
-    body: JSON.stringify({}),
+    body: JSON.stringify({ interval }),
   });
   return (await res.json()) as BillingCheckout;
 }

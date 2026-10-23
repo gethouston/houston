@@ -1,3 +1,5 @@
+import type { BillingInterval, SeatPrices } from "@houston/engine-adapter";
+import { sellsYearly } from "@houston/sdk";
 import { useState } from "react";
 import type { TeamStatusAction } from "../lib/team-status-model.ts";
 import { useUIStore } from "../stores/ui.ts";
@@ -7,7 +9,9 @@ import type { useOrgCheckout } from "./queries/use-org-checkout.ts";
  * What each strip button does. Paying opens Stripe (checkout for an org with
  * no subscription, the portal for one whose payment failed), both through the
  * app's one checkout tracker, so the lock clears once the orgs list says the
- * org is paid up, with no focus needed. Change pick opens Settings > Billing
+ * org is paid up, with no focus needed. Where the gateway sells a yearly seat,
+ * checkout first opens the monthly-or-yearly dialog (`checkoutOpen`), whose
+ * continue calls `startCheckout`; elsewhere it starts monthly at once. Change pick opens Settings > Billing
  * where the free-org row lives, Delete opens Settings where the Danger zone
  * deletes the org, and Use as free org asks first, so it only opens its
  * confirmation.
@@ -15,13 +19,19 @@ import type { useOrgCheckout } from "./queries/use-org-checkout.ts";
 export function useTeamStatusActions(
   orgSlug: string | null,
   checkout: ReturnType<typeof useOrgCheckout>,
+  prices: SeatPrices | null,
 ) {
   const openSettings = useUIStore((s) => s.openSettings);
   const [claimOpen, setClaimOpen] = useState(false);
+  const [checkoutOpen, setCheckoutOpen] = useState(false);
+  const startCheckout = (interval: BillingInterval) => {
+    if (orgSlug) checkout.start(orgSlug, interval);
+  };
   const run = (action: TeamStatusAction) => {
     switch (action) {
       case "checkout":
-        if (orgSlug) checkout.start(orgSlug);
+        if (sellsYearly(prices)) setCheckoutOpen(true);
+        else startCheckout("month");
         return;
       case "portal":
         if (orgSlug) checkout.recover(orgSlug);
@@ -41,6 +51,9 @@ export function useTeamStatusActions(
     run,
     claimOpen,
     setClaimOpen,
+    checkoutOpen,
+    setCheckoutOpen,
+    startCheckout,
     paying: checkout.outstanding,
     fallbackUrl: checkout.fallbackUrl,
   };

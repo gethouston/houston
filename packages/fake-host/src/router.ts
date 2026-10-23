@@ -460,7 +460,7 @@ export async function handle(req: Request): Promise<Response> {
   const moveRoute = handleAgentMoveRoutes(method, segs, body);
   if (moveRoute) return moveRoute;
 
-  const orgBillingRoute = handleOrgBillingRoutes(method, segs, req);
+  const orgBillingRoute = handleOrgBillingRoutes(method, segs, req, body);
   if (orgBillingRoute) return orgBillingRoute;
 
   // --- C19 personal plan (per person, across spaces) ---

@@ -72,6 +72,7 @@
     "githubUrl": "GitHub link",
     "id": "id",
     "input": "details",
+    "interval": "billed every",
     "inviteId": "invitation",
     "kind": "kind",
     "manifest": "skills",
