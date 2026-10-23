@@ -53,7 +53,18 @@ test("without the plan capability there is no Billing row", async ({
 test("Admin > Billing on a free org: the share of the week and Upgrade", async ({
   page,
 }) => {
-  await armOrgPlan({ summary: freePlan() });
+  // A fixed reset: the fake host's fallback is a week from the real clock,
+  // whose "10:32 PM" would trip the no-message-count check below.
+  await armOrgPlan({
+    summary: freePlan({
+      usage: {
+        percent: 25,
+        used: 10,
+        limit: 40,
+        resetsAt: "2026-10-12T17:00:00.000Z",
+      },
+    }),
+  });
   await page.goto("/");
   const billing = await openOrgBilling(page);
 
