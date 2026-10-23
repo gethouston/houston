@@ -392,7 +392,7 @@ export default {
       unit: "per seat per month",
       unitYearly: "per seat per year",
       note: "billed monthly to the owner",
-      noteYearly: "billed yearly ({yearlyTotal} a year) to the owner",
+      noteYearly: "billed yearly to the owner ({yearlyTotal})",
       items: [
         "Everything in the free tier",
         "Unlimited usage for every seat",

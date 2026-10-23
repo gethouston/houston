@@ -403,7 +403,7 @@ export default {
       unit: "por pessoa por mês",
       unitYearly: "por pessoa por ano",
       note: "cobrado do dono todo mês",
-      noteYearly: "cobrado do dono todo ano ({yearlyTotal} por ano)",
+      noteYearly: "cobrado do dono uma vez por ano ({yearlyTotal})",
       items: [
         "Tudo do nível gratuito",
         "Uso ilimitado para cada pessoa",

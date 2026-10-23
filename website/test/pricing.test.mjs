@@ -221,3 +221,12 @@ for (const code of locales.order) {
     }
   });
 }
+
+test("the CSS hides the inactive price for the attributes the template uses", async () => {
+  const css = await readFile(new URL("../src/assets/css/landing-marketing.css", import.meta.url), "utf8");
+  const tpl = await readFile(new URL("../src/_includes/landing/pricing.njk", import.meta.url), "utf8");
+  assert.match(tpl, /data-show="month"/);
+  assert.match(tpl, /data-show="year"/);
+  assert.ok(css.includes('#pricing[data-period="month"] .price-swap > [data-show="year"]'));
+  assert.ok(css.includes('#pricing[data-period="year"] .price-swap > [data-show="month"]'));
+});

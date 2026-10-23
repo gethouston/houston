@@ -404,7 +404,7 @@ export default {
       unit: "por persona al mes",
       unitYearly: "por persona al año",
       note: "facturado cada mes al dueño",
-      noteYearly: "facturado cada año al dueño ({yearlyTotal} al año)",
+      noteYearly: "facturado al dueño una vez al año ({yearlyTotal})",
       items: [
         "Todo lo del nivel gratuito",
         "Uso ilimitado para cada persona",

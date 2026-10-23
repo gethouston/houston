@@ -36,7 +36,7 @@
     <div class="price-col featured">
       <span class="price-chip">{{ t.pricing.team.chip }}</span>
       <div class="price-name">{{ t.pricing.team.name }}</div>
-      <div class="price-amt"><span class="amount price-swap"><span data-show="month">{{ cur }}{{ pricing.teamMonthly }}</span><span data-show="year">{{ cur }}{{ pricing.teamYearlyPerMonth }}</span></span><span class="per">{{ t.pricing.team.per }}</span></div>
+      <div class="price-amt" aria-live="polite"><span class="amount price-swap"><span data-show="month">{{ cur }}{{ pricing.teamMonthly }}</span><span data-show="year">{{ cur }}{{ pricing.teamYearlyPerMonth }}</span></span><span class="per">{{ t.pricing.team.per }}</span></div>
       <div class="price-note price-swap"><span data-show="month">{{ t.pricing.team.note }}</span><span data-show="year">{{ t.pricing.team.noteYearly | replace("{yearlyTotal}", cur + pricing.teamYearly) }}</span></div>
       <ul class="price-list">
 {%- for item in t.pricing.team.items %}
