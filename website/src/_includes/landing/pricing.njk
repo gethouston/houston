@@ -1,18 +1,20 @@
 {%- set cur = pricing.currency[locale.code] %}
-{#- data-period picks which Team price shows: "month" until the switch below
-    says otherwise, so without JS the card keeps the monthly price. #}
-<section id="pricing" class="section" data-period="month">
+{%- set save = pricing.teamYearlySavePercent %}
+{#- data-period picks which Team price shows: "year" until the switch below
+    says otherwise, so a visitor without JS sees the yearly price too. #}
+<section id="pricing" class="section" data-period="year">
   {# Hidden alias so cross-site links to #download land on the pricing + download
      CTAs rather than 404ing. #}
   <span id="download" class="anchor-alias" aria-hidden="true"></span>
   <div class="pricing-head reveal">
     <h2 class="sec-title pricing-title">{{ t.pricing.title }}</h2>
-    <p class="sec-lead">{{ t.pricing.lead }}</p>
     {# Hidden until html.js is set (before first paint), so a visitor without
-       JS never sees a switch that does nothing, and nothing shifts. #}
+       JS never sees a switch that does nothing, and nothing shifts. The
+       Yearly button's aria-label reads its badge as one phrase ("Yearly,
+       save 25%") instead of two run-together labels. #}
     <div class="price-period" role="group" aria-label="{{ t.pricing.period.label }}">
-      <button type="button" data-period-choice="month" aria-pressed="true">{{ t.pricing.period.month }}</button>
-      <button type="button" data-period-choice="year" aria-pressed="false">{{ t.pricing.period.year }}</button>
+      <button type="button" data-period-choice="month" aria-pressed="false">{{ t.pricing.period.month }}</button>
+      <button type="button" data-period-choice="year" aria-pressed="true" aria-label="{{ t.pricing.period.yearName | replace("{save}", save) }}">{{ t.pricing.period.year }}<span class="price-save">{{ t.pricing.period.save | replace("{save}", save) }}</span></button>
     </div>
   </div>
 

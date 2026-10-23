@@ -366,7 +366,6 @@ export default {
 
   pricing: {
     title: "Ready to 10x your team overnight?",
-    lead: "Start on the free tier with your whole team. Upgrade for unlimited usage.",
     free: {
       name: "Free tier",
       note: "for one organization per account",
@@ -383,6 +382,10 @@ export default {
       label: "Billing period",
       month: "Monthly",
       year: "Yearly",
+      // The badge on the Yearly option and that button's spoken name; {save}
+      // is the yearly discount, computed in _data/pricing.js.
+      save: "Save {save}%",
+      yearName: "Yearly, save {save}%",
     },
     team: {
       chip: "Most popular",

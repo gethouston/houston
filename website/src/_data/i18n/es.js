@@ -380,7 +380,6 @@ export default {
 
   pricing: {
     title: "¿Listo para multiplicar por 10 a tu equipo de un día para otro?",
-    lead: "Empieza en el nivel gratuito con todo tu equipo. Pásate a Equipo para uso ilimitado.",
     free: {
       name: "Nivel gratuito",
       note: "para una organización por cuenta",
@@ -396,6 +395,8 @@ export default {
       label: "Periodo de facturación",
       month: "Mensual",
       year: "Anual",
+      save: "Ahorra {save}%",
+      yearName: "Anual, ahorra {save}%",
     },
     team: {
       chip: "El más popular",

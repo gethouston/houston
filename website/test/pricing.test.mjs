@@ -58,6 +58,12 @@ test("a team seat is 20 a month, or 180 a year (15 a month) billed yearly", () =
   assert.equal(data.teamYearly, 180);
   assert.equal(data.teamYearlyPerMonth, 15);
   assert.equal(data.teamYearlyPerMonth * 12, data.teamYearly);
+  // Computed from the two prices, never typed: 1 - 15 / 20.
+  assert.equal(data.teamYearlySavePercent, 25);
+  assert.equal(
+    data.teamYearlySavePercent,
+    Math.round((1 - data.teamYearly / 12 / data.teamMonthly) * 100),
+  );
   assert.equal(data.currencyCode, "USD");
   assert.equal("teamAnnual" in data, false);
   assert.equal("trialDays" in data, false);
@@ -123,25 +129,34 @@ for (const code of locales.order) {
 
   test(`${code}: price placeholders appear only where a template fills them`, () => {
     const holders = leaves(t)
-      .filter(([, line]) => /\{(price|yearlyPrice|yearlyTotal)\}/.test(line))
+      .filter(([, line]) =>
+        /\{(price|yearlyPrice|yearlyTotal|save)\}/.test(line),
+      )
       .map(([path]) => path);
     assert.ok(holders.length > 0);
     for (const path of holders) {
       assert.match(
         path,
-        /^(faq\.groups\[\d+\]\.items\[\d+\]\.aHtml|pricing\.team\.noteYearly)$/,
+        /^(faq\.groups\[\d+\]\.items\[\d+\]\.aHtml|pricing\.team\.noteYearly|pricing\.period\.(save|yearName))$/,
         path,
       );
     }
     assert.match(t.pricing.team.noteYearly, /\{yearlyTotal\}/);
+    assert.match(t.pricing.period.save, /\{save\}%/);
+    assert.match(t.pricing.period.yearName, /\{save\}%/);
+    // The percent is data, never copy.
+    for (const [path, line] of leaves(t.pricing, "pricing")) {
+      assert.doesNotMatch(line, /\d+\s*%/, path);
+    }
   });
 
-  test(`${code}: the Team card carries both prices, monthly showing by default`, () => {
+  test(`${code}: the Team card carries both prices, yearly showing by default`, () => {
     const html = render(code, "landing/pricing.njk");
-    // Monthly until the switch says otherwise, which is also the no-JS view.
+    // Yearly until the switch says otherwise. The switch is hidden without
+    // JS, so the server-rendered attribute is also the no-JS view.
     assert.match(
       html,
-      /<section id="pricing" class="section" data-period="month">/,
+      /<section id="pricing" class="section" data-period="year">/,
     );
     const show = (period) =>
       [...html.matchAll(new RegExp(`data-show="${period}">([^<]*)<`, "g"))].map(
@@ -166,16 +181,53 @@ for (const code of locales.order) {
     assert.equal(group[1], t.pricing.period.label);
     const buttons = [
       ...group[2].matchAll(
-        /<button type="button" data-period-choice="(\w+)" aria-pressed="(true|false)">([^<]+)<\/button>/g,
+        /<button type="button" data-period-choice="(\w+)" aria-pressed="(true|false)"(?: aria-label="([^"]+)")?>([^<]+)(?:<span class="price-save">([^<]+)<\/span>)?<\/button>/g,
       ),
-    ].map(([, period, pressed, label]) => ({ period, pressed, label }));
+    ].map(([, period, pressed, name, label, badge]) => ({
+      period,
+      pressed,
+      name,
+      label,
+      badge,
+    }));
+    // Yearly is pressed by default and carries the save badge, which its
+    // accessible name reads as one phrase.
     assert.deepEqual(buttons, [
-      { period: "month", pressed: "true", label: t.pricing.period.month },
-      { period: "year", pressed: "false", label: t.pricing.period.year },
+      {
+        period: "month",
+        pressed: "false",
+        name: undefined,
+        label: t.pricing.period.month,
+        badge: undefined,
+      },
+      {
+        period: "year",
+        pressed: "true",
+        name: t.pricing.period.yearName.replace("{save}", "25"),
+        label: t.pricing.period.year,
+        badge: t.pricing.period.save.replace("{save}", "25"),
+      },
     ]);
+    assert.ok(
+      buttons[1].name.startsWith(t.pricing.period.year),
+      "label in name",
+    );
     // The script flips data-period on the section and aria-pressed on both.
     assert.match(html, /setAttribute\("data-period"/);
     assert.match(html, /setAttribute\("aria-pressed"/);
+  });
+
+  test(`${code}: the pricing head has no lead line`, () => {
+    assert.equal("lead" in t.pricing, false);
+    const html = render(code, "landing/pricing.njk");
+    assert.doesNotMatch(html, /sec-lead/);
+    for (const removed of [
+      "Upgrade for unlimited usage",
+      "Pásate a Equipo para uso ilimitado",
+      "Assine o Time para uso ilimitado",
+    ]) {
+      assert.ok(!html.includes(removed), removed);
+    }
   });
 
   test(`${code}: the FAQ renders both seat prices`, () => {
@@ -221,6 +273,17 @@ for (const code of locales.order) {
     }
   });
 }
+
+test("the Yearly badge reads Save 25% in every locale", () => {
+  const save = (code) =>
+    translations[code].pricing.period.save.replace(
+      "{save}",
+      String(pricing().teamYearlySavePercent),
+    );
+  assert.equal(save("en"), "Save 25%");
+  assert.equal(save("es"), "Ahorra 25%");
+  assert.equal(save("pt"), "Economize 25%");
+});
 
 test("the CSS hides the inactive price for the attributes the template uses", async () => {
   const css = await readFile(

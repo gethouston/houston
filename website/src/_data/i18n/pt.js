@@ -379,7 +379,6 @@ export default {
 
   pricing: {
     title: "Pronto para multiplicar seu time por 10 da noite para o dia?",
-    lead: "Comece no nível gratuito com o time inteiro. Assine o Time para uso ilimitado.",
     free: {
       name: "Nível gratuito",
       note: "para uma organização por conta",
@@ -395,6 +394,8 @@ export default {
       label: "Período de cobrança",
       month: "Mensal",
       year: "Anual",
+      save: "Economize {save}%",
+      yearName: "Anual, economize {save}%",
     },
     team: {
       chip: "Mais popular",
