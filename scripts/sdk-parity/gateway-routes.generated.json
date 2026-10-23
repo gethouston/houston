@@ -710,6 +710,13 @@
     "classification": "sdk"
   },
   {
+    "pattern": "/v1/org/members/{userId}/routines",
+    "methods": [
+      "GET"
+    ],
+    "classification": "sdk"
+  },
+  {
     "pattern": "/v1/org/people",
     "methods": [
       "GET"

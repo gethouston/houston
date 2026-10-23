@@ -250,7 +250,14 @@
     },
     "removeConfirm": {
       "title": "¿Quitar a {{name}}?",
-      "description": "Perderá el acceso a todos los empleados de IA que se le compartieron. Puedes volver a agregarla más tarde.",
+      "description": "Perderá el acceso a todos los empleados de IA que se le compartieron, y las apps que conectó se van con esa persona. Puedes volver a agregarla más tarde.",
+      "routinesLoading": "Revisando las rutinas que configuró...",
+      "routinesFailed": "No pudimos revisar las rutinas que configuró. Cualquier rutina que haya creado se detiene cuando se va.",
+      "routinesTitle_one": "Esta rutina que configuró se detendrá:",
+      "routinesTitle_other": "Estas {{count}} rutinas que configuró se detendrán:",
+      "routinesHint": "Las rutinas usan las apps de quien las configuró. Para que una siga funcionando, pídele a alguien que se queda que la vuelva a configurar.",
+      "untitledRoutine": "Rutina sin título",
+      "paused": "En pausa",
       "confirm": "Quitar",
       "cancel": "Cancelar"
     },

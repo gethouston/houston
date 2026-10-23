@@ -84,6 +84,18 @@ export function OrgsMixin<TBase extends BaseCtor>(Base: TBase) {
         this.ctx.sdk.org.removeOrgMember(userId),
       );
     }
+    // What removing this member would stop: the routines that run as them.
+    // Owner only; the remove confirmation reads it before asking.
+    async listMemberRoutines(
+      userId: string,
+    ): Promise<controlPlane.MemberRoutines> {
+      if (!this.ctx.cp)
+        throw new Error("multiplayer requires the hosted gateway");
+      return viaSdk(
+        `/v1/org/members/${encodeURIComponent(userId)}/routines`,
+        () => this.ctx.sdk.org.listMemberRoutines(userId),
+      );
+    }
     async setOrgMemberRole(
       userId: string,
       role: controlPlane.OrgRole,

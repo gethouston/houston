@@ -43,6 +43,7 @@ export const CLOUD_ONLY_PROBES: readonly CloudOnlyProbe[] = [
   }),
   cloudOnly("setOrgMemberRole", SPACES, { ...NO_USER, role: "user" }),
   cloudOnly("removeOrgMember", SPACES, NO_USER),
+  cloudOnly("listMemberRoutines", SPACES, NO_USER),
   cloudOnly("deleteOrgInvite", SPACES, NO_INVITE),
   cloudOnly("acceptOrgInvite", SPACES, NO_INVITE),
   cloudOnly("declineOrgInvite", SPACES, NO_INVITE),

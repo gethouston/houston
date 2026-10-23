@@ -117,6 +117,7 @@ A person's message can grant one `createAgent` call with the constrained name, c
 | `getOrg` | GET | unconfirmed: read-only HTTP GET | visible | none |
 | `getOrgPeople` | GET | unconfirmed: read-only HTTP GET | visible | none |
 | `getOrgProfiles` | unroutable | unconfirmed: withheld from dispatch | UI plumbing; resolves member ids to the names and photos the app's avatars render. | ids: free text |
+| `listMemberRoutines` | GET | unconfirmed: read-only HTTP GET | visible | userId: resolved:members |
 | `orgAudit` | GET | unconfirmed: read-only HTTP GET | visible | before: free text; limit: free text |
 | `orgUsage` | GET | unconfirmed: read-only HTTP GET | visible | days: free text |
 | `postLinkedInImage` | POST | unconfirmed: withheld from dispatch | the share dialog draws the picture on the person's device and the person must press Post on words they can see and edit; the assistant has no picture to send. | upload: free text |

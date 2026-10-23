@@ -116,6 +116,41 @@ describe("the delegated org reads", () => {
   });
 });
 
+describe("what removing a member stops", () => {
+  test("listMemberRoutines asks GET the escaped member's routines, no body", async () => {
+    const body = {
+      routines: [
+        {
+          routineId: "daily",
+          name: "Daily summary",
+          agentSlug: "a",
+          agentName: "Sales",
+          kind: "schedule",
+          enabled: true,
+        },
+      ],
+    };
+    stubFetch(() => json(200, body));
+
+    await expect(client().listMemberRoutines("u/1")).resolves.toEqual(body);
+    const call = onlyCall();
+    expect(call.url).toBe(`${BASE}/v1/org/members/u%2F1/routines`);
+    expect(call.method).toBe("GET");
+    expect(call.body).toBeNull();
+    expect(call.headers.get("Content-Type")).toBe("application/json");
+    expect(call.auth).toBe("Bearer t");
+    expect(call.org).toBe(ORG);
+  });
+
+  test("a refusal is never degraded to an empty list", async () => {
+    stubFetch(() => json(403, { error: "not allowed" }));
+
+    await expect(client().listMemberRoutines("u1")).rejects.toThrow(
+      "not allowed (engine error 403)",
+    );
+  });
+});
+
 describe("the delegated org writes", () => {
   test("addOrgMember POSTs exactly {email, role}", async () => {
     stubFetch(() => json(202, { role: "user", invited: true }));

@@ -22,6 +22,7 @@ export const OrgCommand = {
   AddMember: "org/addMember",
   DeleteInvite: "org/deleteInvite",
   RemoveMember: "org/removeMember",
+  MemberRoutines: "org/memberRoutines",
   SetMemberRole: "org/setMemberRole",
   Audit: "org/audit",
   Usage: "org/usage",

@@ -41,6 +41,7 @@ export {
 } from "./use-integrations";
 export { useAcceptInvite, useDeclineInvite } from "./use-invites";
 export { useLearnings, useLearningWrites } from "./use-learnings";
+export { useMemberRoutines } from "./use-member-routines";
 export {
   MY_EDITABLE_PROFILE_KEY,
   useMyEditableProfile,

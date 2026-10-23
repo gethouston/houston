@@ -79,6 +79,7 @@ import { isUploadTooLargeError } from "./files-upload-limits";
 import i18n from "./i18n";
 import { isIntegrationConnectionGoneError } from "./integration-connection-gone";
 import { logger } from "./logger";
+import { isExpectedMemberRoutinesRefusal } from "./member-routines-refusal";
 import { isMissingSkillError } from "./missing-skill";
 import { isModelNotAllowedError } from "./model-not-allowed";
 import { isNetworkTransportError } from "./network-transport-error";
@@ -1914,6 +1915,14 @@ export const tauriOrg = {
     ),
   removeMember: (userId: string) =>
     call("remove_org_member", () => getEngine().removeOrgMember(userId)),
+  /** The routines removing this member would stop (owner only). */
+  memberRoutines: (userId: string) =>
+    call(
+      "list_member_routines",
+      () => getEngine().listMemberRoutines(userId),
+      undefined,
+      { silence: isExpectedMemberRoutinesRefusal },
+    ),
   setMemberRole: (
     userId: string,
     role: import("@houston/engine-adapter").OrgRole,

@@ -59,6 +59,8 @@ export interface ConnectedAccount {
   id: string;
   /** The human identity, when known — see Connection.accountLabel. */
   label?: string;
+  /** Connection creation time, for describing accounts without an identity. */
+  createdAt?: string;
 }
 
 /** The OAuth hand-off to authorize a toolkit (returned by connect()). */

@@ -250,7 +250,14 @@
     },
     "removeConfirm": {
       "title": "Remove {{name}}?",
-      "description": "They'll lose access to every AI Employee shared with them. You can add them again later.",
+      "description": "They'll lose access to every AI Employee shared with them, and the apps they connected leave with them. You can add them again later.",
+      "routinesLoading": "Checking for routines they set up...",
+      "routinesFailed": "We couldn't check for routines they set up. Any routine they created stops when they leave.",
+      "routinesTitle_one": "This routine they set up will stop:",
+      "routinesTitle_other": "These {{count}} routines they set up will stop:",
+      "routinesHint": "Routines run on the apps of the person who set them up. To keep one going, ask someone who stays to set it up again.",
+      "untitledRoutine": "Untitled routine",
+      "paused": "Paused",
       "confirm": "Remove",
       "cancel": "Cancel"
     },

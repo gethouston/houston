@@ -147,6 +147,12 @@ export const queryKeys = {
   // Multiplayer (org). The current user's org + roster is app-scoped (one org
   // per user).
   org: () => ["org"] as const,
+  /** The routines removing a member would stop, read by the remove
+   *  confirmation. The bare prefix refreshes every member's at once. */
+  memberRoutines: (userId?: string) =>
+    userId === undefined
+      ? (["member-routines"] as const)
+      : (["member-routines", userId] as const),
   /** C8 spaces: the caller's spaces + pending invites (`GET /v1/orgs`).
    *  App-scoped — the switcher/team-picker needs the full list in one call. */
   orgs: () => ["orgs"] as const,
