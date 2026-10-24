@@ -1,7 +1,12 @@
 import type { SDKMessage } from "@anthropic-ai/claude-agent-sdk";
 import type { WireEvent } from "@houston/runtime-client";
-import { beforeEach, expect, test, vi } from "vitest";
+import { afterEach, beforeEach, expect, test, vi } from "vitest";
 import { createStreamTranslator, normalizeUsage } from "./translate";
+
+// vitest 4 hands back the existing spy when a method is spied again, so calls would pile up across tests.
+afterEach(() => {
+  vi.restoreAllMocks();
+});
 
 beforeEach(() => {
   vi.spyOn(console, "error").mockImplementation(() => {});

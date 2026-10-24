@@ -14,11 +14,16 @@ import {
   type ObjectStore,
   underObjectPrefix,
 } from "@houston/runtime-client/object-sync";
-import { beforeEach, expect, test, vi } from "vitest";
+import { afterEach, beforeEach, expect, test, vi } from "vitest";
 import {
   snapshotTurnSharedSkills,
   turnSharedSkillsStore,
 } from "./turn-shared-skills";
+
+// vitest 4 hands back the existing spy when a method is spied again, so calls would pile up across tests.
+afterEach(() => {
+  vi.restoreAllMocks();
+});
 
 /**
  * A pooled turn's org-shared skills: read from the org's shared store prefix

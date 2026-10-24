@@ -160,7 +160,7 @@ test("a failure, no call, or invalid arguments log and record nothing", async ()
     );
     expect(interaction.pending).toBeUndefined();
   }
-  const logged = warn.mock.calls.map((call) => String(call[0]));
+  const logged = warn.mock.calls.map((call: unknown[]) => String(call[0]));
   expect(logged[0]).toContain("failed: 429 rate limited");
   expect(logged[1]).toContain("did not call suggest_actions");
   expect(logged[2]).toContain("arguments were invalid");

@@ -34,10 +34,11 @@
     "typecheck": "tsgo -p tsconfig.json --noEmit"
   },
   "devDependencies": {
+    "@types/node": "22.20.0",
     "@typescript/native-preview": "7.0.0-dev.20260607.1",
     "esbuild": "0.25.12",
     "typescript": "6.0.3",
-    "vitest": "3.2.6"
+    "vitest": "4.1.12"
   },
   "dependencies": {
     "@houston/protocol": "workspace:*",

@@ -1,6 +1,11 @@
-import { beforeEach, expect, test, vi } from "vitest";
+import { afterEach, beforeEach, expect, test, vi } from "vitest";
 import { reportRevokedServedToken } from "../../auth/report-revoked";
 import { classifyText, mapSdkError } from "./errors";
+
+// vitest 4 hands back the existing spy when a method is spied again, so calls would pile up across tests.
+afterEach(() => {
+  vi.restoreAllMocks();
+});
 
 vi.mock("../../auth/report-revoked", () => ({
   reportRevokedServedToken: vi.fn(),

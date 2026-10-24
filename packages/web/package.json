@@ -44,8 +44,8 @@
     "@tanstack/query-async-storage-persister": "5.101.2",
     "@tanstack/react-query": "5.101.2",
     "@tanstack/react-query-persist-client": "5.101.2",
-    "@tiptap/react": "3.29.1",
-    "@tiptap/starter-kit": "3.29.1",
+    "@tiptap/react": "3.32.0",
+    "@tiptap/starter-kit": "3.32.0",
     "ajv": "8.20.0",
     "firebase": "12.19.0",
     "i18next": "26.3.4",
@@ -72,6 +72,6 @@
     "tsx": "4.23.0",
     "typescript": "6.0.3",
     "vite": "6.4.4",
-    "vitest": "3.2.6"
+    "vitest": "4.1.12"
   }
 }

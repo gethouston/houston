@@ -69,9 +69,10 @@
     "surfaces": [
       "Activity",
       "App shell",
+      "Organization",
       "ui/board (internal)"
     ],
-    "fileCount": 6
+    "fileCount": 7
   },
   "chat-attachment-message": {
     "surfaces": [
@@ -161,11 +162,10 @@
       "Import & export",
       "Integrations",
       "Onboarding",
-      "Organization",
       "Skills",
       "app/src/components"
     ],
-    "fileCount": 17
+    "fileCount": 16
   },
   "core-avatar": {
     "surfaces": [
@@ -184,6 +184,7 @@
     "surfaces": [
       "AI Models",
       "Integrations",
+      "Organization",
       "Routines",
       "Settings",
       "Store website",
@@ -193,7 +194,7 @@
       "ui/events (library)",
       "ui/store (library)"
     ],
-    "fileCount": 12
+    "fileCount": 13
   },
   "core-button": {
     "surfaces": [
@@ -213,7 +214,6 @@
       "Skills",
       "Store website",
       "Store website (admin)",
-      "Web app",
       "Your AI Employees",
       "Your Agents",
       "Your account",
@@ -225,7 +225,7 @@
       "ui/routines (library)",
       "ui/store (library)"
     ],
-    "fileCount": 155
+    "fileCount": 161
   },
   "core-button-group": {
     "surfaces": [
@@ -235,11 +235,12 @@
   },
   "core-card": {
     "surfaces": [
+      "Settings",
       "Store website (admin)",
       "Web app",
       "ui/board (library)"
     ],
-    "fileCount": 3
+    "fileCount": 5
   },
   "core-catalog": {
     "surfaces": [
@@ -314,6 +315,7 @@
       "Chat",
       "Files",
       "Integrations",
+      "Organization",
       "Permissions",
       "Routines",
       "Settings",
@@ -324,7 +326,7 @@
       "app/src/components",
       "ui/store (library)"
     ],
-    "fileCount": 31
+    "fileCount": 35
   },
   "core-dropdown-menu": {
     "surfaces": [
@@ -385,7 +387,7 @@
       "Settings",
       "app/src/components"
     ],
-    "fileCount": 8
+    "fileCount": 7
   },
   "core-highlighted-text": {
     "surfaces": [
@@ -410,7 +412,7 @@
       "ui/chat (library)",
       "ui/store (library)"
     ],
-    "fileCount": 38
+    "fileCount": 39
   },
   "core-hover-card": {
     "surfaces": [
@@ -492,7 +494,7 @@
       "ui/chat (library)",
       "ui/store (library)"
     ],
-    "fileCount": 7
+    "fileCount": 8
   },
   "core-separator": {
     "surfaces": [
@@ -506,7 +508,7 @@
       "Organization",
       "app/src/components"
     ],
-    "fileCount": 4
+    "fileCount": 5
   },
   "core-skeleton": {
     "surfaces": [
@@ -519,9 +521,10 @@
       "Store website",
       "app/src/components",
       "ui/agent (library)",
+      "ui/chat (library)",
       "ui/store (library)"
     ],
-    "fileCount": 21
+    "fileCount": 23
   },
   "core-spinner": {
     "surfaces": [
@@ -541,9 +544,10 @@
       "Your Agents",
       "Your account",
       "app/src/components",
+      "ui/chat (library)",
       "ui/store (library)"
     ],
-    "fileCount": 46
+    "fileCount": 49
   },
   "core-status-badge": {
     "surfaces": [
@@ -562,7 +566,7 @@
       "app/src/components",
       "ui/routines (library)"
     ],
-    "fileCount": 8
+    "fileCount": 9
   },
   "core-tabs": {
     "surfaces": [
@@ -573,12 +577,13 @@
   },
   "core-textarea": {
     "surfaces": [
+      "Organization",
       "Skills",
       "Store website",
       "app/src/components",
       "ui/store (library)"
     ],
-    "fileCount": 6
+    "fileCount": 7
   },
   "core-toast-container": {
     "surfaces": [

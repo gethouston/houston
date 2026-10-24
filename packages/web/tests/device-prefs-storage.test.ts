@@ -73,6 +73,8 @@ beforeEach(() => {
 
 afterEach(() => {
   globalThis.fetch = originalFetch;
+  // vitest 4's restoreAllMocks leaves vi.fn() mocks alone; reset them so calls never carry over.
+  vi.resetAllMocks();
   vi.restoreAllMocks();
 });
 

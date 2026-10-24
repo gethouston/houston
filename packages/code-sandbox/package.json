@@ -14,7 +14,7 @@
   "devDependencies": {
     "@types/node": "22.20.0",
     "@typescript/native-preview": "7.0.0-dev.20260607.1",
-    "vitest": "3.2.6"
+    "vitest": "4.1.12"
   },
   "dependencies": {
     "tsx": "4.23.0"

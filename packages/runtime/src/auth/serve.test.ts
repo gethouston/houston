@@ -1580,8 +1580,10 @@ test("a served azure credential lands its endpoint file beside auth.json (PRODUC
  */
 const removalLines = (logs: ReturnType<typeof vi.spyOn>) =>
   logs.mock.calls
-    .map((c) => String(c[0]))
-    .filter((line) => line.startsWith("[serve] removed central credentials:"));
+    .map((c: unknown[]) => String(c[0]))
+    .filter((line: string) =>
+      line.startsWith("[serve] removed central credentials:"),
+    );
 
 test("a sync that removes a credential logs it with the reason", async () => {
   const logs = vi.spyOn(console, "log").mockImplementation(() => {});

@@ -13,7 +13,7 @@ const clock: Clock = {
   clearTimeout: () => {},
 };
 
-function logger(debug: ReturnType<typeof vi.fn>): SdkLogger {
+function logger(debug: SdkLogger["debug"]): SdkLogger {
   return {
     debug,
     info: () => {},

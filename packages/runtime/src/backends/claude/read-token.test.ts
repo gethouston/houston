@@ -9,7 +9,15 @@ import { tmpdir } from "node:os";
 import { join } from "node:path";
 import type { Credential } from "@earendil-works/pi-ai";
 import { accessDigest } from "@houston/protocol/access-digest";
-import { afterAll, beforeAll, beforeEach, expect, test, vi } from "vitest";
+import {
+  afterAll,
+  afterEach,
+  beforeAll,
+  beforeEach,
+  expect,
+  test,
+  vi,
+} from "vitest";
 
 // The shared login file is re-parsed only when it CHANGED, and "how many times
 // did we open it" is the whole claim — so the real `readFileSync` is wrapped
@@ -33,6 +41,11 @@ import {
 import { claudeCredentialsFile, claudeLoginConfigDir } from "./paths";
 import { readAnthropicToken } from "./read-token";
 import { forgetSharedLoginCacheForTest } from "./shared-login-file";
+
+// vitest 4 hands back the existing spy when a method is spied again, so calls would pile up across tests.
+afterEach(() => {
+  vi.restoreAllMocks();
+});
 
 /**
  * A minimal credential-store stub over ONE entry, honouring both halves of the

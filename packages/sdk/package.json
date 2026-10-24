@@ -146,6 +146,7 @@
   },
   "devDependencies": {
     "@houston/fake-host": "workspace:*",
+    "@types/node": "22.20.0",
     "@types/react": "19.2.17",
     "@types/react-dom": "19.2.3",
     "@typescript/native-preview": "7.0.0-dev.20260607.1",
@@ -153,7 +154,7 @@
     "react": "19.2.7",
     "react-dom": "19.2.7",
     "typescript": "6.0.3",
-    "vitest": "3.2.6"
+    "vitest": "4.1.12"
   },
   "dependencies": {
     "@houston/design-tokens": "workspace:*",

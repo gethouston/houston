@@ -25,7 +25,7 @@
     "motion": "12.42.2",
     "nanoid": "5.1.16",
     "shiki": "4.3.1",
-    "streamdown": "2.5.0",
+    "streamdown": "2.7.1",
     "use-stick-to-bottom": "1.1.6"
   },
   "devDependencies": {

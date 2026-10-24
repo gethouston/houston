@@ -10,7 +10,7 @@ import {
   type BrowserLiveInputRequest,
   type BrowserLiveWindow,
 } from "@houston/wire-types";
-import { vi } from "vitest";
+import { type Mock, vi } from "vitest";
 import type { Clock } from "../../ports";
 import {
   type BrowserLiveConnectionDeps,
@@ -86,7 +86,7 @@ export function liveHarness() {
     request: BrowserLiveInputRequest;
   })[] = [];
   const states: BrowserLiveConnectionState[] = [];
-  const handlers = {
+  const handlers: Record<keyof BrowserLiveHandlers, Mock> = {
     onFrame: vi.fn(),
     onPage: vi.fn(),
     onStatus: vi.fn(),
