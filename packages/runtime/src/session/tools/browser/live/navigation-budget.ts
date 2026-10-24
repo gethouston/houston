@@ -10,6 +10,13 @@ export const NAVIGATE_TIMEOUT_MS = 15_000;
  */
 export const BATCH_NAVIGATION_MS = 10_000;
 
+/**
+ * Less time than this can't commit a navigation. A timer can fire a millisecond
+ * early by Date.now(), so a hung Back would otherwise leave 1 ms and start
+ * another Back that only times out.
+ */
+export const MIN_NAVIGATION_MS = 50;
+
 export function isNavigation(event: BrowserLiveInput): boolean {
   return event.type === "navigate" || event.type === "back";
 }
@@ -29,7 +36,7 @@ export class NavigationBudget {
   }
 
   spent(): boolean {
-    return this.until - this.now() <= 0;
+    return this.until - this.now() < MIN_NAVIGATION_MS;
   }
 
   /**

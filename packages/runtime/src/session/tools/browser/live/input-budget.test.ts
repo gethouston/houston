@@ -64,6 +64,9 @@ test("a navigation's timeout is what the batch has left, never 0 (Playwright's '
   now = 14_000;
   expect(budget.timeout()).toBe(1_000);
   expect(budget.spent()).toBe(false);
+  // A millisecond left (a timer that fired early) can't commit a navigation.
+  now = 14_999;
+  expect(budget.spent()).toBe(true);
   now = 15_000;
   expect(budget.spent()).toBe(true);
   expect(budget.timeout()).toBe(1);
