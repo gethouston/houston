@@ -222,7 +222,9 @@ export const ReasoningContent = memo(
           <div className="whitespace-pre-wrap break-words">{children}</div>
         }
       >
-        <Streamdown plugins={streamdownPlugins}>{children}</Streamdown>
+        <Streamdown plugins={streamdownPlugins} tableMaxHeight={0}>
+          {children}
+        </Streamdown>
       </ErrorBoundary>
     </CollapsibleContent>
   ),

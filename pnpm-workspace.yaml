@@ -44,6 +44,8 @@ overrides:
   "@executor-js/fumadb>zod": "4.6.7"
   "@executor-js/plugin-mcp>zod": "4.6.7"
   "sharp@<0.35.5": "0.35.5"
+  # @capacitor/assets lists @capacitor/cli 5.7.8, whose template extraction expects tar 6's default
+  # export; assets never calls it, and the `cap` binary we run is cli 8, already on tar 7.
   "tar@<7.5.22": "7.5.22"
   "uuid@<11.1.1": "11.1.1"
   "@grpc/grpc-js@<1.13.6": "^1.14.6"

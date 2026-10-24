@@ -610,6 +610,8 @@ export const MessageResponse = memo(
           plugins={streamdownPlugins}
           components={components}
           rehypePlugins={rehypePlugins}
+          // streamdown 2.7 boxes tables at 300px with their own scroll; replies keep full-height tables.
+          tableMaxHeight={0}
           {...props}
         />
       </ErrorBoundary>
