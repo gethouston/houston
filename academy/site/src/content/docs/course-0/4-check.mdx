@@ -1,0 +1,57 @@
+---
+title: 4 · Check it
+description: Prove your page works, let the tutor check it, and explain what you did in your own words.
+sidebar:
+  order: 4
+---
+
+import PromptCard from '../../../components/PromptCard.astro';
+import Checklist from '../../../components/Checklist.astro';
+import ExplainBack from '../../../components/ExplainBack.astro';
+
+You don't prove you're done by reading code. You prove it by **looking at the real thing**.
+
+## Let the tutor check
+
+In your `my-corner` session, send:
+
+<PromptCard>
+/academy:check 0
+</PromptCard>
+
+The tutor asks for your page's address, opens it, compares it with the file in your folder, and tells you what passed. It also saves a short report in your folder.
+
+## Done when
+
+<Checklist
+	id="course-0"
+	items={[
+		{ text: 'My page opens on my phone.', proof: 'The address starts with https:// and ends in .vercel.app' },
+		{ text: 'I can find index.html in my my-corner folder.', proof: 'Open the folder in Finder or File Explorer' },
+		{ text: 'I made at least two changes, one at a time.', proof: 'Each one checked in the preview before the next' },
+		{ text: 'I read every request before clicking Allow.' },
+		{ text: '/academy:check 0 passed.', proof: 'Or: you checked the first three items yourself' },
+	]}
+/>
+
+<ExplainBack
+	id="course-0"
+	questions={[
+		{
+			q: 'What does "publishing" mean?',
+			covers: ['copying your files to another computer', 'that computer is always on and connected (a server)', 'then anyone with the address can open it'],
+		},
+		{
+			q: 'Why could nobody else see your page before you published it?',
+			covers: ['it only existed on your computer', 'the preview (or localhost) is only for you'],
+		},
+		{
+			q: 'Why change one thing at a time?',
+			covers: ['if something breaks, you know which change did it', 'you check each step before the next'],
+		},
+	]}
+/>
+
+## What's next
+
+You just did, in miniature, what every project in this program does: **ask, approve, check, publish.** Next, in Course 1, you'll learn how software actually works, starting with the word you'll hear the most: [**API**](/course-1/apis/).

@@ -1,0 +1,56 @@
+---
+title: 1 · Prepara tu mesa de trabajo
+description: Instala la app de escritorio de Claude, abre la pestaña Code, elige una carpeta y agrega tu tutor de la Academy.
+sidebar:
+  order: 1
+---
+
+import { Steps } from '@astrojs/starlight/components';
+import PromptCard from '../../../../components/PromptCard.astro';
+import RedFlag from '../../../../components/RedFlag.astro';
+
+Tu mesa de trabajo es la **app de escritorio de Claude**. Su pestaña **Code** deja que Claude trabaje con los archivos de una carpeta de tu computador: crearlos, cambiarlos y mostrarte el resultado.
+
+## Un proyecto es solo una carpeta
+
+Todo lo que Claude construye para ti va en **una carpeta**. Eso es "un proyecto": una carpeta con archivos adentro. Nada mágico, nada escondido. La puedes abrir cuando quieras y mirar.
+
+## Instala y abre
+
+<Steps>
+
+1. **Descarga la app** desde [claude.com/download](https://claude.com/download), instálala, ábrela e inicia sesión.
+
+2. **Crea una carpeta** para tu proyecto. En el Finder (Mac) o el Explorador de archivos (Windows), crea una carpeta nueva en Documentos llamada `mi-rincon`.
+
+3. **Abre la pestaña Code**, arriba en la app de Claude.
+
+4. **Elige tu carpeta.** Debajo del cuadro de mensaje hay una fila de controles. En el primero, el entorno, elige tu computador (local). En el siguiente, la carpeta del proyecto, elige `mi-rincon`.
+
+5. **Elige el modo "Manual".** En la misma fila, el selector de modo decide cuánto puede hacer Claude sin preguntarte. Elige **Manual**: Claude pregunta antes de crear o cambiar un archivo, o de ejecutar cualquier cosa. Es lo que quieres mientras aprendes.
+
+</Steps>
+
+## Agrega tu tutor
+
+Copia esto en el cuadro de mensaje y envíalo. Claude va a instalar el plugin de la Academy por ti:
+
+<PromptCard>
+Por favor instálame el tutor de Houston Academy. Es un plugin de Claude Code llamado "academy", en el marketplace de plugins de GitHub gethouston/houston. Una forma es el comando "/plugin install academy --marketplace gethouston/houston". Usa la forma que funcione en esta app, y dime en palabras sencillas si tengo que hacer clic en algo o reiniciar.
+</PromptCard>
+
+Cuando esté instalado, abre una sesión nueva en la misma carpeta y envía:
+
+<PromptCard>
+/academy:start 0
+</PromptCard>
+
+El tutor te pregunta en qué idioma quieres trabajar (español o inglés) y prepara tu carpeta para el Curso 0.
+
+:::tip[Si la instalación no funciona]
+Sigue adelante, porque las próximas lecciones funcionan sin el tutor. Avísale a la persona que acompaña el piloto, o vuelve a este paso después.
+:::
+
+<RedFlag title='hacer clic en "Allow" sin leer'>
+	En modo Manual, Claude pregunta antes de hacer cosas. **Leer esas solicitudes es tu primer trabajo como la persona a cargo.** Por ahora van a ser sencillas, como "crear un archivo en mi-rincon". Si alguna vez una solicitud te confunde, no hagas clic. Pregunta: *"¿Qué hace esto, en palabras sencillas? ¿Es seguro?"*
+</RedFlag>

@@ -1,0 +1,92 @@
+---
+title: 6 · APIs
+description: Una API es un mesero entre programas. Aprende qué son las solicitudes, las respuestas y la documentación de una API, y agrega el clima en vivo a tu página.
+sidebar:
+  order: 6
+---
+
+import ApiWaiter from '../../../../components/ApiWaiter.astro';
+import PromptCard from '../../../../components/PromptCard.astro';
+import Replay from '../../../../components/Replay.astro';
+import RedFlag from '../../../../components/RedFlag.astro';
+import Checklist from '../../../../components/Checklist.astro';
+import ExplainBack from '../../../../components/ExplainBack.astro';
+
+Vas a oír "API" en casi cualquier conversación sobre software. Suena técnico, pero la idea viene de la vida diaria.
+
+## La imagen
+
+<ApiWaiter />
+
+**Una API es un mesero entre programas.** Tu app no entra a la cocina de otra empresa. Pide de un menú, el mesero lleva el pedido y el plato vuelve.
+
+| Palabra | En el restaurante | En el software |
+|---|---|---|
+| **API** | el mesero | la forma en que un programa le pide algo a otro |
+| **Documentación de la API** | el menú | la página que dice qué puedes pedir y cómo |
+| **Solicitud** (*request*) | tu pedido | lo que tu app pide |
+| **Respuesta** (*response*) | el plato | lo que vuelve (datos, o un error) |
+| **Endpoint** | un plato del menú | una cosa específica que puedes pedir, como "el clima actual" |
+
+API quiere decir *Application Programming Interface* (interfaz de programación de aplicaciones). Lo puedes olvidar ya mismo: nadie usa el nombre largo.
+
+## Encuéntralas en la vida real
+
+Hay APIs detrás de casi todo lo que hace tu celular. Piensa en tres apps que usaste hoy y adivina a qué APIs llaman. Algunas pistas:
+
+- Un widget del clima le pregunta a una **API del clima**.
+- "Iniciar sesión con Google" le pregunta a la **API de inicio de sesión de Google**: *"¿de verdad es esta persona?"*
+- Una app de domicilios muestra un mapa de una **API de mapas** y cobra a tu tarjeta con una **API de pagos**.
+- Una app con un asistente de IA envía tu mensaje a una **API de IA**, como la de Claude.
+
+## Pide: agrega el clima en vivo a tu página
+
+Abre tu sesión de `mi-rincon` y envía esto (cambia la ciudad):
+
+<PromptCard>
+Agrega a mi página una sección pequeña que muestre la temperatura actual en [tu ciudad], usando la API gratuita de Open-Meteo (no necesita clave). Antes de construir nada, dime en palabras sencillas: qué API vas a usar, qué pide la solicitud y cómo es la respuesta. Después constrúyelo y muéstrame la vista previa.
+</PromptCard>
+
+## Observa
+
+<Replay
+	steps={[
+		{ kind: 'you', text: 'Agrega una sección pequeña que muestre la temperatura actual en Medellín, usando Open-Meteo…' },
+		{ kind: 'action', text: 'Leyendo open-meteo.com/en/docs' },
+		{ kind: 'callout', text: 'Claude está leyendo el menú: la documentación de la API. Así sabe qué puede pedir.' },
+		{ kind: 'claude', text: 'La solicitud le pide a Open-Meteo la "temperatura actual" en la ubicación de Medellín. La respuesta es un paquete pequeño de datos con la temperatura en °C.' },
+		{ kind: 'permission', text: 'Claude quiere editar index.html. ¿Permitir?' },
+		{ kind: 'action', text: 'Editado index.html' },
+		{ kind: 'claude', text: 'Listo. La página ahora muestra "Ahora en Medellín: 24 °C". Cada vez que alguien la abre, le vuelve a preguntar a la API.' },
+		{ kind: 'callout', text: 'El número llega en vivo de la API cada vez que se abre la página, no de tu archivo. Si recargas más tarde, puede cambiar.' },
+	]}
+/>
+
+Después publícala otra vez arrastrando la carpeta a [vercel.com/drop](https://vercel.com/drop), como en el Curso 0, y ábrela en tu celular.
+
+<RedFlag title='"la API no funciona, así que puse datos de ejemplo"'>
+	A veces una API no responde, y un agente lo "resuelve" mostrando números inventados sin decírtelo claramente. Tu página se ve bien, pero es falsa. Cuando Claude diga que usó datos *de ejemplo*, *de prueba*, *simulados* o *falsos* (en inglés *sample*, *mock*, *placeholder*), detente y pregunta: *"¿Este número viene de la API real en este momento? ¿Cómo lo puedo comprobar?"*
+</RedFlag>
+
+## Listo cuando
+
+<Checklist
+	id="course-1-apis"
+	items={[
+		{ text: 'Mi página muestra la temperatura actual en mi ciudad.', proof: 'Compárala con una app del clima en tu celular' },
+		{ text: 'Antes de construir, Claude me dijo qué API, qué pide la solicitud y qué trae la respuesta.' },
+		{ text: 'Volví a publicar, y la página en vivo también muestra el clima.' },
+		{ text: 'Encontré tres APIs en apps que uso.' },
+	]}
+/>
+
+<ExplainBack
+	id="course-1-apis"
+	questions={[
+		{ q: '¿Qué es una API, con tus palabras?', covers: ['una forma de que un programa le pida algo a otro', 'como un mesero que lleva un pedido a la cocina'] },
+		{ q: '¿Qué son una solicitud y una respuesta?', covers: ['la solicitud es lo que pides', 'la respuesta es lo que vuelve'] },
+		{ q: '¿Para qué tienen documentación las APIs?', covers: ['son el menú', 'dicen qué puedes pedir y cómo'] },
+	]}
+/>
+
+La API del clima es gratuita y abierta a cualquiera. Muchas APIs no: necesitan saber quién pregunta, para ponerte límites o cobrarte. Lo hacen con una **clave**. Eso es [la próxima lección](/es/course-1/api-keys/).

@@ -1,0 +1,53 @@
+---
+title: How the Academy works
+description: The three beats of every lesson, the Builder's Loop, your tutor, and how you know you're done.
+sidebar:
+  order: 1
+---
+
+import { Steps } from '@astrojs/starlight/components';
+import RedFlag from '../../../components/RedFlag.astro';
+
+Houston Academy is a **program**: a path of short courses, each one ending with something real that you ship. You don't need any technical background. You need an idea, a computer, and the patience to build one small piece at a time.
+
+## Every lesson has three beats
+
+<Steps>
+
+1. **Tell.** What to ask Claude. You'll get prompt cards you can copy.
+
+2. **Watch.** What Claude will do, step by step, with notes on what's normal and what's a 🚩 red flag.
+
+3. **Check.** How you know it worked. Not by reading code: by looking at the real thing (a page that loads, a login that works).
+
+</Steps>
+
+## Your workbench: the Claude desktop app
+
+You'll work in the **Code** tab of the Claude desktop app. It's a chat, with a preview of what Claude builds and buttons for anything it wants to do. No terminal. Later in the program you'll learn to *read* what Claude runs, and at the very end, if you want, the terminal itself.
+
+You need a paid Claude plan (Pro or higher) to use the Code tab. Everything else in the program uses free tiers.
+
+## Your tutor: the Academy plugin
+
+In Course 0 you'll install a small add-on for Claude called **academy**. Once it's in, Claude also acts as your tutor inside your own project:
+
+- after each important step it adds a short **"What just happened"** note in plain words;
+- `/academy:brief` helps you plan a slice before building it;
+- `/academy:explain` explains the last thing Claude did, or any error;
+- `/academy:check` checks whether you finished a course, by looking at your live project;
+- it **stops Claude** before risky moves, like writing a secret key where anyone can see it.
+
+<RedFlag title="the red flags">
+	Every course has at least one red flag: a moment where something that looks fine is actually a problem. They come from real incidents where real apps leaked data or ran up bills. When the tutor stops something, it will say why.
+</RedFlag>
+
+## The Builder's Loop
+
+The thread through the whole program. You'll learn it properly in Course 2, and use it in every project after that:
+
+> **Idea → problem → smallest useful version → slices → for each slice: "done when" → Claude plans → you approve → Claude builds → you test → real people try it → you decide what's next.**
+
+## How you know you're done
+
+Each course ends with a **done when** checklist. Some items you tick yourself, and `/academy:check` checks the rest on your real project. Your ticks are saved in this browser only. No account needed.

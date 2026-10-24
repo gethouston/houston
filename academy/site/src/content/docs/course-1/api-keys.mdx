@@ -1,0 +1,82 @@
+---
+title: 7 · API keys
+description: An API key is like a hotel key card. Learn where keys must live, why they leak, and what to do if one does.
+sidebar:
+  order: 7
+---
+
+import KeyCard from '../../../components/KeyCard.astro';
+import PromptCard from '../../../components/PromptCard.astro';
+import RedFlag from '../../../components/RedFlag.astro';
+import Checklist from '../../../components/Checklist.astro';
+import ExplainBack from '../../../components/ExplainBack.astro';
+
+Most useful APIs, like AI, email, payments and maps, ask **who's calling** before they answer. You prove it with an **API key**: a long string of letters and numbers that the company gives you.
+
+## The picture
+
+<KeyCard />
+
+**An API key is like a hotel key card.** It opens the door for whoever holds it, and the hotel charges the room it belongs to. The API doesn't know *who* is holding your key. It only knows *whose* key it is.
+
+## Where keys come from
+
+1. You create an account with the company (an AI company, an email service…).
+2. In their dashboard there's a section called **API keys**. You click **Create key**.
+3. They show you the key, often **only once**. You copy it somewhere safe.
+
+## The one rule: keys never go in the page
+
+Anything inside a web page reaches every visitor's browser, and anyone can read it with "View page source". So:
+
+| ✅ Safe places for a key | ❌ Never |
+|---|---|
+| On a **server**, in its private settings | Inside `index.html` or any file of the page |
+| In a special secrets file that's never published or shared (you'll learn how in Course 4) | In a chat message, a screenshot, an email or a document |
+| A password manager, for you to keep a copy | In a public folder, or anywhere on GitHub |
+
+This is why "real" apps have a **backend**: a part that runs on a server, out of sight. The page asks your server, your server adds the key, and only the answer travels back. (That's module 4, and you'll build one later in this course.)
+
+## If a key leaks
+
+Don't panic, act fast:
+
+1. **Revoke it.** In the company's dashboard, delete the key (sometimes this is called "rotate"). The old key stops working right away.
+2. **Create a new one** and put it in the safe place.
+3. **Check your bill and usage** for anything you didn't do.
+4. **Set a spending limit**, if the company offers one. Do this for every key, before anything goes wrong.
+
+Bots scan public pages and public code for keys all the time. A leaked AI key can turn into a big bill in a few hours.
+
+## Tell: ask before you put a key anywhere
+
+You don't need a key yet. When you do, start with this:
+
+<PromptCard>
+I have an API key from [company] for [what it's for]. Before you do anything: where in my project should this key go so it stays secret, and why? Explain in plain words. Don't put the key in any file of my page.
+</PromptCard>
+
+<RedFlag title='"I’ll put your API key in the page so it works"'>
+	It *will* work, for you and for everyone who copies your key. If Claude ever suggests putting a key inside the page or "in the frontend", stop and ask for a server-side way. The Academy tutor watches for this: if Claude tries to write something that looks like a key into a file, the tutor blocks it and explains why.
+</RedFlag>
+
+## Done when
+
+<Checklist
+	id="course-1-api-keys"
+	items={[
+		{ text: 'I can explain why an API key is like a hotel key card.' },
+		{ text: 'I know the one rule: keys never go in the page.' },
+		{ text: 'I know the four steps if a key leaks: revoke, replace, check the bill, set a limit.' },
+		{ text: 'I saved the prompt above for the day I get my first key.' },
+	]}
+/>
+
+<ExplainBack
+	id="course-1-api-keys"
+	questions={[
+		{ q: 'Why is a key inside a web page a problem, even if nobody "hacks" anything?', covers: ['everything in the page reaches every visitor', 'anyone can read the page source and copy the key', 'the bill goes to you'] },
+		{ q: 'Where should a key live instead?', covers: ['on a server, in its private settings', 'never in the page, a chat or a public place'] },
+		{ q: 'A friend tells you their key leaked. What do they do first?', covers: ['revoke it in the dashboard', 'create a new one', 'check the bill', 'set a spending limit'] },
+	]}
+/>

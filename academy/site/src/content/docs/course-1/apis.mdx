@@ -1,0 +1,92 @@
+---
+title: 6 · APIs
+description: An API is a waiter between programs. Learn what requests, responses and API docs are, and add live weather to your page.
+sidebar:
+  order: 6
+---
+
+import ApiWaiter from '../../../components/ApiWaiter.astro';
+import PromptCard from '../../../components/PromptCard.astro';
+import Replay from '../../../components/Replay.astro';
+import RedFlag from '../../../components/RedFlag.astro';
+import Checklist from '../../../components/Checklist.astro';
+import ExplainBack from '../../../components/ExplainBack.astro';
+
+You'll hear "API" in almost every conversation about software. It sounds technical, but the idea is from everyday life.
+
+## The picture
+
+<ApiWaiter />
+
+**An API is a waiter between programs.** Your app doesn't walk into another company's kitchen. It orders from a menu, the waiter takes the order in, and the dish comes back out.
+
+| Word | In the restaurant | In software |
+|---|---|---|
+| **API** | the waiter | the way one program asks another for something |
+| **API docs** | the menu | the page that lists what you can ask for, and how |
+| **Request** | your order | what your app asks for |
+| **Response** | the dish | what comes back (data, or an error) |
+| **Endpoint** | one item on the menu | one specific thing you can ask for, like "current weather" |
+
+API stands for *Application Programming Interface*. You can forget that right away; nobody uses the long name.
+
+## Spot it in the wild
+
+APIs are behind most of what your phone does. Think of three apps you used today and guess which APIs they call. A few hints:
+
+- A weather widget asks a **weather API**.
+- "Log in with Google" asks **Google's login API**: *"is this really them?"*
+- A delivery app shows a map from a **maps API** and charges your card through a **payments API**.
+- An app with an AI assistant sends your message to an **AI API**, such as Claude's.
+
+## Tell: add live weather to your page
+
+Open your `my-corner` session and send this (change the city):
+
+<PromptCard>
+Add a small section to my page that shows the current temperature in [your city], using the free Open-Meteo API (no key needed). Before you build anything, tell me in plain words: which API you'll use, what the request asks for, and what the response looks like. Then build it and show me the preview.
+</PromptCard>
+
+## Watch
+
+<Replay
+	steps={[
+		{ kind: 'you', text: 'Add a small section that shows the current temperature in Medellín, using Open-Meteo…' },
+		{ kind: 'action', text: 'Reading open-meteo.com/en/docs' },
+		{ kind: 'callout', text: 'Claude is reading the menu: the API docs. That is how it knows what it can ask for.' },
+		{ kind: 'claude', text: 'The request asks Open-Meteo for the "current temperature" at Medellín’s location. The response is a small bundle of data with the temperature in °C.' },
+		{ kind: 'permission', text: 'Claude wants to edit index.html. Allow?' },
+		{ kind: 'action', text: 'Edited index.html' },
+		{ kind: 'claude', text: 'Done. The page now shows "Now in Medellín: 24°C". Every time someone opens it, it asks the API again.' },
+		{ kind: 'callout', text: 'The number comes live from the API each time the page opens, not from your file. Refresh later and it can change.' },
+	]}
+/>
+
+Then publish it again by dragging the folder to [vercel.com/drop](https://vercel.com/drop), as in Course 0, and open it on your phone.
+
+<RedFlag title='"the API isn’t working, so I added sample data"'>
+	Sometimes an API doesn't answer, and an agent "solves" it by quietly showing made-up numbers. Your page looks fine, but it's fake. When Claude says it used *sample*, *mock*, *placeholder* or *fake* data, stop and ask: *"Is this number coming from the real API right now? How can I tell?"*
+</RedFlag>
+
+## Done when
+
+<Checklist
+	id="course-1-apis"
+	items={[
+		{ text: 'My page shows the current temperature in my city.', proof: 'Check it against a weather app on your phone' },
+		{ text: 'Claude told me which API, what the request asks for and what the response contains, before building.' },
+		{ text: 'I published again, and the live page shows the weather too.' },
+		{ text: 'I spotted three APIs in apps I use.' },
+	]}
+/>
+
+<ExplainBack
+	id="course-1-apis"
+	questions={[
+		{ q: 'What is an API, in your own words?', covers: ['a way for one program to ask another for something', 'like a waiter taking an order to a kitchen'] },
+		{ q: 'What are a request and a response?', covers: ['the request is what you ask for', 'the response is what comes back'] },
+		{ q: 'Why do APIs have docs?', covers: ['they are the menu', 'they say what you can ask for, and how'] },
+	]}
+/>
+
+The weather API is free and open to anyone. Many APIs aren't: they need to know who's asking, so they can limit you or bill you. They do that with a **key**. That's [the next lesson](/course-1/api-keys/).

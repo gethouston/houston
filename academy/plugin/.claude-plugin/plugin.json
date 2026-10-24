@@ -1,0 +1,14 @@
+{
+  "name": "academy",
+  "displayName": "Houston Academy tutor",
+  "version": "0.1.0",
+  "description": "Turns Claude into a Houston Academy tutor inside your own project: explains what just happened in plain words, helps you plan one slice at a time, checks your course projects, and stops risky moves before they happen.",
+  "author": {
+    "name": "Houston",
+    "url": "https://gethouston.ai"
+  },
+  "homepage": "https://academy.gethouston.ai",
+  "repository": "https://github.com/gethouston/houston/tree/main/academy",
+  "license": "MIT",
+  "keywords": ["learning", "education", "non-technical", "tutor"]
+}

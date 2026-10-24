@@ -1,0 +1,11 @@
+---
+// 🚩 A moment to stop and ask why. Every lesson that has a risk gets one, drawn from real incidents.
+import { langOf, ui } from "./ui";
+
+const t = ui[langOf(Astro.currentLocale)];
+const { title } = Astro.props as { title: string };
+---
+<aside class="ha-redflag" aria-label={t.redFlag}>
+	<p class="ha-redflag-title">🚩 {t.redFlag}: {title}</p>
+	<slot />
+</aside>

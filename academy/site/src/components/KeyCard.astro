@@ -1,0 +1,100 @@
+---
+// Course 1, module 7: where an API key lives decides whether it leaks.
+import StepControls from "./StepControls.astro";
+import { langOf } from "./ui";
+
+const lang = langOf(Astro.currentLocale);
+const t = {
+  en: {
+    visitor: ["A visitor’s", "browser"],
+    page: "your page",
+    server: "Your server",
+    ai: "The AI company",
+    stranger: "A stranger",
+    safe: "✅ Safe",
+    leaked: "❌ Leaked",
+    answer: '"Here’s your summary"',
+    viewSource: '👁 "View page source"',
+    bill: "💸 Bill: $2,340",
+    captions: [
+      "An API key is like a hotel key card. It proves a request comes from you, and the bill goes to you.",
+      "Safe setup: the key stays on your server. Browsers ask your server, and your server adds the key and calls the AI company.",
+      "Visitors only ever see the answer, never the key.",
+      "Leaked setup: now the key is written inside the page itself.",
+      "Anyone can open the page’s source and copy the key. It takes seconds and no hacking skills.",
+      "They use your key from anywhere. The AI company sees your key, and sends you the bill.",
+    ],
+  },
+  es: {
+    visitor: ["El navegador de", "un visitante"],
+    page: "tu página",
+    server: "Tu servidor",
+    ai: "La empresa de IA",
+    stranger: "Un desconocido",
+    safe: "✅ Seguro",
+    leaked: "❌ Filtrada",
+    answer: '"Aquí está tu resumen"',
+    viewSource: '👁 "Ver código fuente"',
+    bill: "💸 Cuenta: USD 2.340",
+    captions: [
+      "Una clave de API es como la tarjeta-llave de un hotel. Prueba que la solicitud viene de ti, y la cuenta te llega a ti.",
+      "Versión segura: la clave se queda en tu servidor. Los navegadores le piden a tu servidor, y tu servidor agrega la clave y llama a la empresa de IA.",
+      "Los visitantes solo ven la respuesta, nunca la clave.",
+      "Versión filtrada: ahora la clave está escrita dentro de la página.",
+      "Cualquiera puede abrir el código fuente de la página y copiar la clave. Toma segundos y no requiere saber hackear.",
+      "La usan desde cualquier lugar. La empresa de IA ve tu clave, y te manda la cuenta a ti.",
+    ],
+  },
+}[lang];
+---
+<figure class="ha-figure not-content" data-stepper data-captions={JSON.stringify(t.captions)}>
+	<div class="ha-svg"><svg viewBox="0 0 720 320" role="img" aria-label={t.captions.join(' ')}>
+		<defs>
+			<g id="ha-key">
+				<circle cx="10" cy="10" r="9" fill="none" stroke="#f59e0b" stroke-width="5" />
+				<rect x="18" y="7" width="26" height="6" rx="2" fill="#f59e0b" />
+				<rect x="34" y="12" width="5" height="8" rx="1" fill="#f59e0b" />
+				<rect x="40" y="12" width="4" height="6" rx="1" fill="#f59e0b" />
+			</g>
+		</defs>
+		<text data-on="2,3" class="label" x="20" y="24" style="fill:var(--ha-green)">{t.safe}</text>
+		<text data-on="4,5,6" class="label" x="20" y="24" style="fill:var(--ha-red)">{t.leaked}</text>
+
+		<g data-on="1">
+			<rect class="box hl" x="250" y="80" width="220" height="130" rx="16" />
+			<use href="#ha-key" transform="translate(316 128) scale(1.9)" />
+		</g>
+
+		<g data-on="2,3,4,5,6">
+			<rect class="box" data-hl="3,4,5" x="20" y="50" width="190" height="120" rx="14" />
+			<text class="label" x="36" y="78">{t.visitor[0]}</text>
+			<text class="label" x="36" y="97">{t.visitor[1]}</text>
+			<text class="sub" x="36" y="117">{t.page}</text>
+			<use data-on="4,5,6" href="#ha-key" x="140" y="132" />
+			<text data-on="3" class="sub" x="36" y="150" style="fill:var(--ha-green);font-weight:600">{t.answer}</text>
+
+			<rect class="box" data-hl="2" x="265" y="50" width="190" height="120" rx="14" />
+			<text class="label" x="281" y="80">{t.server}</text>
+			<use data-on="2,3" href="#ha-key" x="385" y="132" />
+
+			<rect class="box" data-hl="2,6" x="510" y="50" width="190" height="120" rx="14" />
+			<text class="label" x="526" y="80">{t.ai}</text>
+
+			<path class="wire" data-hl="2,3" d="M210 110 L 265 110" />
+			<path class="wire" data-hl="2,3" d="M455 110 L 510 110" />
+		</g>
+
+		<g data-on="5,6">
+			<rect class="box" x="20" y="220" width="190" height="80" rx="14" style="stroke:var(--ha-red)" />
+			<text class="label" x="36" y="252">{t.stranger}</text>
+			<text class="sub" x="36" y="276">{t.viewSource}</text>
+			<path class="wire on" d="M115 220 L 115 170" style="stroke:var(--ha-red)" />
+		</g>
+		<g data-on="6">
+			<path class="wire on" d="M210 260 C 400 260, 560 240, 600 170" style="stroke:var(--ha-red)" />
+			<use href="#ha-key" x="236" y="232" />
+			<text class="label" x="520" y="210" style="fill:var(--ha-red)">{t.bill}</text>
+		</g>
+	</svg></div>
+	<StepControls />
+</figure>
