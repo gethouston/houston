@@ -1,0 +1,57 @@
+---
+title: 3 · Put it on the internet
+description: Publishing means copying your files to a computer that never sleeps. Do it by dragging your folder to Vercel.
+sidebar:
+  order: 3
+---
+
+import { Steps } from '@astrojs/starlight/components';
+import TwoComputers from '../../../components/TwoComputers.astro';
+import PromptCard from '../../../components/PromptCard.astro';
+import RedFlag from '../../../components/RedFlag.astro';
+
+Your page works, but only on your computer. Let's see why, and fix it.
+
+## The picture
+
+<TwoComputers />
+
+**Publishing** (also called **deploying**) means copying your files to a computer that never sleeps and is connected to the internet all the time. That computer is called a **server**, and companies that rent them are called **hosting** companies. Today you'll use one called Vercel. It's free for projects like this.
+
+## Before you publish: check the folder
+
+Everything in the folder becomes public. Ask Claude to look first:
+
+<PromptCard>
+I'm about to publish this folder to the internet. Look at every file in it: is there anything I shouldn't make public? Don't change anything, just tell me.
+</PromptCard>
+
+If you installed the tutor, you'll also see `CLAUDE.md` and a `.academy` folder. They're notes for your tutor (your language, your course), with nothing private in them, so it's fine to publish them.
+
+## Publish
+
+<Steps>
+
+1. Go to [vercel.com/drop](https://vercel.com/drop) and create a free account if you don't have one (with your email or Google).
+
+2. **Drag your `my-corner` folder** onto the page.
+
+3. Choose a project name, for example `my-corner`, and click **Deploy**.
+
+4. Wait a few seconds. Vercel gives you an address ending in `.vercel.app`. Click it: that's your page, on the internet.
+
+5. **Open the same address on your phone.** Send it to a friend too.
+
+</Steps>
+
+:::note[Changing it later]
+If you change your page now, drag the folder again. It goes up as a new copy with a new address. In Course 4 you'll connect your project so every change is published automatically.
+:::
+
+## What just happened
+
+You copied one file, `index.html`, from your computer to Vercel's computer. When someone opens your address, their phone asks Vercel's computer for the file, and Vercel sends it. Your laptop isn't involved anymore: close it, and the page stays up.
+
+<RedFlag title="publishing something private">
+	Everything in a published folder can be seen by anyone. Never publish a folder with passwords, keys, personal documents or customer data in it. That's why you asked Claude to check first. Later in the program, private things get a safe place of their own.
+</RedFlag>

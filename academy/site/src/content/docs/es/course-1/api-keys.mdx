@@ -1,0 +1,82 @@
+---
+title: 7 · Claves de API
+description: Una clave de API es como la tarjeta-llave de un hotel. Aprende dónde deben vivir las claves, por qué se filtran y qué hacer si pasa.
+sidebar:
+  order: 7
+---
+
+import KeyCard from '../../../../components/KeyCard.astro';
+import PromptCard from '../../../../components/PromptCard.astro';
+import RedFlag from '../../../../components/RedFlag.astro';
+import Checklist from '../../../../components/Checklist.astro';
+import ExplainBack from '../../../../components/ExplainBack.astro';
+
+Las APIs más útiles, como las de IA, correo, pagos y mapas, preguntan **quién llama** antes de responder. Lo demuestras con una **clave de API** (*API key*): una cadena larga de letras y números que la empresa te da.
+
+## La imagen
+
+<KeyCard />
+
+**Una clave de API es como la tarjeta-llave de un hotel.** Abre la puerta para quien la tenga, y el hotel le cobra a la habitación a la que pertenece. La API no sabe *quién* tiene tu clave. Solo sabe *de quién* es.
+
+## De dónde salen las claves
+
+1. Creas una cuenta en la empresa (una empresa de IA, un servicio de correo…).
+2. En su panel hay una sección llamada **API keys**. Haces clic en **Create key** (crear clave).
+3. Te muestran la clave, muchas veces **una sola vez**. La copias en un lugar seguro.
+
+## La regla: las claves nunca van en la página
+
+Todo lo que está dentro de una página web llega al navegador de cada visitante, y cualquiera lo puede leer con "Ver código fuente". Entonces:
+
+| ✅ Lugares seguros para una clave | ❌ Nunca |
+|---|---|
+| En un **servidor**, en su configuración privada | Dentro de `index.html` o de cualquier archivo de la página |
+| En un archivo especial de secretos que nunca se publica ni se comparte (aprendes cómo en el Curso 4) | En un mensaje de chat, un pantallazo, un correo o un documento |
+| En un gestor de contraseñas, para que guardes una copia | En una carpeta pública, o en cualquier parte de GitHub |
+
+Por eso las apps "de verdad" tienen un **backend**: una parte que corre en un servidor, fuera de la vista. La página le pide a tu servidor, tu servidor agrega la clave y solo vuelve la respuesta. (Eso es el módulo 4, y vas a construir uno más adelante en este curso.)
+
+## Si se filtra una clave
+
+No entres en pánico, actúa rápido:
+
+1. **Revócala.** En el panel de la empresa, borra la clave (a veces se dice "rotarla"). La clave vieja deja de funcionar de inmediato.
+2. **Crea una nueva** y ponla en el lugar seguro.
+3. **Revisa tu cuenta y tu consumo**, por si hay algo que no hiciste tú.
+4. **Pon un límite de gasto**, si la empresa lo permite. Hazlo con todas tus claves, antes de que algo salga mal.
+
+Hay bots que revisan páginas y código públicos buscando claves todo el tiempo. Una clave de IA filtrada puede volverse una cuenta enorme en pocas horas.
+
+## Pide: pregunta antes de poner una clave en cualquier parte
+
+Todavía no necesitas una clave. Cuando la necesites, empieza con esto:
+
+<PromptCard>
+Tengo una clave de API de [empresa] para [para qué es]. Antes de hacer nada: ¿en qué parte de mi proyecto debe ir esta clave para que siga siendo secreta, y por qué? Explícamelo en palabras sencillas. No pongas la clave en ningún archivo de mi página.
+</PromptCard>
+
+<RedFlag title='"voy a poner tu clave de API en la página para que funcione"'>
+	*Va* a funcionar, para ti y para cualquiera que copie tu clave. Si Claude alguna vez sugiere poner una clave dentro de la página o "en el frontend", detente y pide una forma del lado del servidor. El tutor de la Academy está pendiente de esto: si Claude intenta escribir en un archivo algo que parece una clave, el tutor lo bloquea y explica por qué.
+</RedFlag>
+
+## Listo cuando
+
+<Checklist
+	id="course-1-api-keys"
+	items={[
+		{ text: 'Puedo explicar por qué una clave de API es como la tarjeta-llave de un hotel.' },
+		{ text: 'Me sé la regla: las claves nunca van en la página.' },
+		{ text: 'Sé los cuatro pasos si se filtra una clave: revocar, reemplazar, revisar la cuenta, poner un límite.' },
+		{ text: 'Guardé el prompt de arriba para el día en que tenga mi primera clave.' },
+	]}
+/>
+
+<ExplainBack
+	id="course-1-api-keys"
+	questions={[
+		{ q: '¿Por qué es un problema tener una clave dentro de una página, aunque nadie "hackee" nada?', covers: ['todo lo que está en la página le llega a cada visitante', 'cualquiera puede leer el código fuente y copiar la clave', 'la cuenta te llega a ti'] },
+		{ q: '¿Dónde debe vivir una clave?', covers: ['en un servidor, en su configuración privada', 'nunca en la página, en un chat ni en un lugar público'] },
+		{ q: 'Alguien te cuenta que se le filtró una clave. ¿Qué hace primero?', covers: ['revocarla en el panel', 'crear una nueva', 'revisar la cuenta', 'poner un límite de gasto'] },
+	]}
+/>

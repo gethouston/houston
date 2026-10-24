@@ -1,0 +1,16 @@
+---
+import { langOf, ui } from "./ui";
+
+const t = ui[langOf(Astro.currentLocale)];
+---
+<p class="ha-caption" data-caption aria-live="polite"></p>
+<div class="ha-controls">
+	<button type="button" class="ha-btn" data-act="back">← {t.back}</button>
+	<button type="button" class="ha-btn primary" data-act="next">{t.next} →</button>
+	<button type="button" class="ha-btn" data-act="restart">↺ {t.restart}</button>
+	<span class="ha-step-count" data-count></span>
+</div>
+<script>
+	import { initSteppers } from './stepper';
+	initSteppers();
+</script>

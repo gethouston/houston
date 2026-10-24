@@ -1,0 +1,56 @@
+---
+title: 1 · Set up your workbench
+description: Install the Claude desktop app, open the Code tab, choose a folder, and add your Academy tutor.
+sidebar:
+  order: 1
+---
+
+import { Steps } from '@astrojs/starlight/components';
+import PromptCard from '../../../components/PromptCard.astro';
+import RedFlag from '../../../components/RedFlag.astro';
+
+Your workbench is the **Claude desktop app**. Its **Code** tab lets Claude work on files in a folder on your computer: create them, change them, and show you the result.
+
+## A project is just a folder
+
+Everything Claude builds for you goes in **one folder**. That's what "a project" means: a folder with files in it. Nothing magic, nothing hidden. You can open it any time and look.
+
+## Install and open
+
+<Steps>
+
+1. **Download the app** from [claude.com/download](https://claude.com/download), install it, open it, and sign in.
+
+2. **Make a folder** for your project. In Finder (Mac) or File Explorer (Windows), create a new folder in Documents called `my-corner`.
+
+3. **Open the Code tab** at the top of the Claude app.
+
+4. **Choose your folder.** Under the message box there's a row of controls. In the first one, the environment, choose your computer (local). In the next one, the project folder, choose `my-corner`.
+
+5. **Pick the "Manual" mode.** In the same row, the mode selector decides how much Claude can do without asking you. Choose **Manual**: Claude asks before it creates or changes a file, or runs anything. That's what you want while you learn.
+
+</Steps>
+
+## Add your tutor
+
+Copy this into the message box and send it. Claude will install the Academy plugin for you:
+
+<PromptCard>
+Please install the Houston Academy tutor for me. It's a Claude Code plugin called "academy", in the plugin marketplace on GitHub at gethouston/houston. One way is the command "/plugin install academy --marketplace gethouston/houston". Use whatever way works in this app, and tell me in plain words if I need to click anything or restart.
+</PromptCard>
+
+When it's in, start a new session in the same folder and send:
+
+<PromptCard>
+/academy:start 0
+</PromptCard>
+
+The tutor will ask which language you want (English or Spanish), and get your folder ready for Course 0.
+
+:::tip[If the install doesn't work]
+Keep going, because the next lessons work without the tutor. Tell your pilot facilitator, or come back to this step later.
+:::
+
+<RedFlag title='clicking "Allow" without reading'>
+	In Manual mode Claude asks before doing things. **Reading those requests is your first job as the person in charge.** Right now they'll be simple, like "create a file in my-corner". If a request ever confuses you, don't click. Ask: *"What does this do, in plain words? Is it safe?"*
+</RedFlag>

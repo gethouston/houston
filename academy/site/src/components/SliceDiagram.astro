@@ -1,0 +1,95 @@
+---
+// Course 2, module 3: the GTA 6 problem. Everything at once vs one slice at a time.
+import StepControls from "./StepControls.astro";
+import { langOf } from "./ui";
+
+const lang = langOf(Astro.currentLocale);
+const t = {
+  en: {
+    big: '"GTA 6, but multiplayer"',
+    bigSub: "one giant request",
+    which: "Which part broke?",
+    slicesTitle: "One slice at a time",
+    s1: "1 · One character walks down one street",
+    s2: "2 · A second player shows up on that street",
+    s3: "3 · They can wave at each other",
+    work: 'At work: "an app that does everything" →',
+    w1: "1 · Log one customer request",
+    captions: [
+      'The ask: "GTA 6, but multiplayer." One giant request.',
+      "The agent tries to build everything at once: thousands of pieces, all together.",
+      "Something is broken. But which piece? Nobody can tell, not you and not the agent.",
+      "Now slice it. Slice 1: one character walks down one street. Test it. ✅",
+      "Slice 2: a second player shows up on the same street. Test it. ✅",
+      "Slice 3: they can wave at each other. Test it. ✅ Each slice is small enough to build, test and understand.",
+      'The same goes for real work: "an app that does everything" starts as "slice 1: log one customer request".',
+    ],
+  },
+  es: {
+    big: '"GTA 6, pero multijugador"',
+    bigSub: "un pedido gigante",
+    which: "¿Qué parte falló?",
+    slicesTitle: "Una rebanada a la vez",
+    s1: "1 · Un personaje camina por una calle",
+    s2: "2 · Un segundo jugador aparece en esa calle",
+    s3: "3 · Se pueden saludar",
+    work: 'En el trabajo: "una app que lo haga todo" →',
+    w1: "1 · Registrar una solicitud de un cliente",
+    captions: [
+      'El pedido: "GTA 6, pero multijugador". Un pedido gigante.',
+      "El agente intenta construirlo todo a la vez: miles de piezas, todas juntas.",
+      "Algo está roto. ¿Pero qué pieza? Nadie lo sabe, ni tú ni el agente.",
+      "Ahora divídelo en rebanadas. Rebanada 1: un personaje camina por una calle. Pruébala. ✅",
+      "Rebanada 2: un segundo jugador aparece en esa misma calle. Pruébala. ✅",
+      "Rebanada 3: se pueden saludar. Pruébala. ✅ Cada rebanada es tan pequeña que se puede construir, probar y entender.",
+      'Lo mismo pasa en el trabajo: "una app que lo haga todo" empieza como "rebanada 1: registrar una solicitud de un cliente".',
+    ],
+  },
+}[lang];
+const pieces = Array.from({ length: 24 }, (_, i) => ({
+  x: 30 + (i % 6) * 48,
+  y: 120 + Math.floor(i / 6) * 40,
+  bad: [2, 7, 11, 15, 20].includes(i),
+}));
+---
+<figure class="ha-figure not-content" data-stepper data-captions={JSON.stringify(t.captions)}>
+	<div class="ha-svg"><svg viewBox="0 0 720 300" role="img" aria-label={t.captions.join(' ')}>
+		<g data-on="1,2,3">
+			<rect class="box hl" x="20" y="20" width="300" height="80" rx="14" />
+			<text class="label" x="36" y="54">🎮 {t.big}</text>
+			<text class="sub" x="36" y="80">{t.bigSub}</text>
+		</g>
+		<g data-on="2,3">
+			{pieces.map((p) => <rect class="box" x={p.x} y={p.y} width="40" height="30" rx="5" />)}
+		</g>
+		<g data-on="3">
+			{pieces.filter((p) => p.bad).map((p) => <text x={p.x + 12} y={p.y + 21} class="bad" style="font-size:16px;font-weight:700">✕</text>)}
+			<text class="label" x="110" y="292" style="fill:var(--ha-red)">❓ {t.which}</text>
+		</g>
+
+		<g data-on="4,5,6,7">
+			<text class="label" x="370" y="40">🍰 {t.slicesTitle}</text>
+		</g>
+		<g data-on="4,5,6,7">
+			<rect class="box" data-hl="4" x="370" y="55" width="330" height="44" rx="10" />
+			<text class="sub" x="384" y="82">{t.s1}</text>
+			<text class="ok" x="676" y="83" style="font-size:16px">✓</text>
+		</g>
+		<g data-on="5,6,7">
+			<rect class="box" data-hl="5" x="370" y="107" width="330" height="44" rx="10" />
+			<text class="sub" x="384" y="134">{t.s2}</text>
+			<text class="ok" x="676" y="135" style="font-size:16px">✓</text>
+		</g>
+		<g data-on="6,7">
+			<rect class="box" data-hl="6" x="370" y="159" width="330" height="44" rx="10" />
+			<text class="sub" x="384" y="186">{t.s3}</text>
+			<text class="ok" x="676" y="187" style="font-size:16px">✓</text>
+		</g>
+		<g data-on="7">
+			<text class="sub" x="370" y="232" style="font-weight:600">💼 {t.work}</text>
+			<rect class="box hl" x="370" y="242" width="330" height="44" rx="10" />
+			<text class="sub" x="384" y="269">{t.w1}</text>
+		</g>
+	</svg></div>
+	<StepControls />
+</figure>

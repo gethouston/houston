@@ -1,0 +1,323 @@
+/* Houston look for Starlight: General Sans, near-black ink, the blue → indigo → orange gradient. */
+
+:root {
+	--sl-font: 'General Sans', ui-sans-serif, -apple-system, system-ui, sans-serif;
+	--ha-grad: linear-gradient(100deg, #3b82f6 0%, #818cf8 42%, #f97316 100%);
+	--ha-blue: #3b82f6;
+	--ha-indigo: #818cf8;
+	--ha-orange: #f97316;
+	--ha-green: #16a34a;
+	--ha-red: #dc2626;
+
+	/* Dark theme (Starlight default) */
+	--sl-color-accent-low: #1e2a4a;
+	--sl-color-accent: #6d8ff8;
+	--sl-color-accent-high: #c7d4ff;
+	--sl-color-black: #0d0d0d;
+
+	--ha-surface: #17181c;
+	--ha-surface-2: #202227;
+	--ha-border: #33353c;
+	--ha-ink: #f4f4f5;
+	--ha-muted: #a1a1aa;
+	--ha-ok-bg: #0f2a1a;
+	--ha-bad-bg: #2d1212;
+}
+
+:root[data-theme='light'] {
+	--sl-color-black: #ffffff;
+	--sl-color-accent-low: #dfe8ff;
+	--sl-color-accent: #2f63e0;
+	--sl-color-accent-high: #1b347a;
+	--sl-color-white: #0d0d0d;
+	--sl-color-gray-1: #262626;
+	--sl-color-gray-2: #424242;
+	--sl-color-gray-3: #5d5d5d;
+	--sl-color-gray-5: #e5e5e5;
+	--sl-color-gray-6: #f4f4f4;
+	--sl-color-gray-7: #f9f9f9;
+
+	--ha-surface: #f9f9f9;
+	--ha-surface-2: #ffffff;
+	--ha-border: #e5e5e5;
+	--ha-ink: #0d0d0d;
+	--ha-muted: #5d5d5d;
+	--ha-ok-bg: #e9f8ef;
+	--ha-bad-bg: #fdecec;
+}
+
+h1,
+h2,
+h3 {
+	letter-spacing: -0.02em;
+}
+
+.ha-grad-text {
+	background: var(--ha-grad);
+	-webkit-background-clip: text;
+	background-clip: text;
+	-webkit-text-fill-color: transparent;
+	color: transparent;
+}
+
+/* Shared shell for every interactive diagram */
+.ha-figure {
+	border: 1px solid var(--ha-border);
+	background: var(--ha-surface);
+	border-radius: 14px;
+	padding: 1rem;
+	margin-block: 1.5rem;
+}
+.ha-figure .ha-svg {
+	overflow-x: auto;
+}
+.ha-figure svg {
+	min-width: 560px;
+	width: 100%;
+	height: auto;
+	display: block;
+}
+.ha-figure .ha-caption {
+	font-size: 0.95rem;
+	color: var(--ha-ink);
+	min-height: 3em;
+	margin-top: 0.75rem;
+}
+.ha-figure .ha-controls {
+	display: flex;
+	flex-wrap: wrap;
+	gap: 0.5rem;
+	margin-top: 0.75rem;
+	align-items: center;
+}
+.ha-btn {
+	font: inherit;
+	font-size: 0.9rem;
+	font-weight: 500;
+	border: 1px solid var(--ha-border);
+	background: var(--ha-surface-2);
+	color: var(--ha-ink);
+	border-radius: 999px;
+	padding: 0.35rem 0.9rem;
+	cursor: pointer;
+}
+.ha-btn:hover {
+	border-color: var(--sl-color-accent);
+}
+.ha-btn[aria-pressed='true'],
+.ha-btn.primary {
+	background: var(--sl-color-accent);
+	border-color: var(--sl-color-accent);
+	color: #fff;
+}
+.ha-btn:disabled {
+	opacity: 0.45;
+	cursor: default;
+}
+.ha-step-count {
+	font-size: 0.85rem;
+	color: var(--ha-muted);
+	margin-left: auto;
+}
+
+/* SVG palette, so diagrams follow the theme */
+.ha-figure .box {
+	fill: var(--ha-surface-2);
+	stroke: var(--ha-border);
+	stroke-width: 2;
+}
+.ha-figure .box.hl {
+	stroke: var(--sl-color-accent);
+	stroke-width: 3;
+}
+.ha-figure .label {
+	fill: var(--ha-ink);
+	font-family: var(--sl-font);
+	font-size: 15px;
+	font-weight: 600;
+}
+.ha-figure .sub {
+	fill: var(--ha-muted);
+	font-family: var(--sl-font);
+	font-size: 12.5px;
+}
+.ha-figure .wire {
+	stroke: var(--ha-muted);
+	stroke-width: 2;
+	fill: none;
+	stroke-dasharray: 5 5;
+}
+.ha-figure .wire.on {
+	stroke: var(--sl-color-accent);
+	stroke-dasharray: none;
+}
+.ha-figure .dot {
+	fill: var(--ha-orange);
+	transition: transform 0.6s ease;
+}
+.ha-figure .ok {
+	fill: var(--ha-green);
+}
+.ha-figure .bad {
+	fill: var(--ha-red);
+}
+.ha-figure [hidden] {
+	display: none;
+}
+@media (prefers-reduced-motion: reduce) {
+	.ha-figure * {
+		transition: none !important;
+	}
+}
+
+/* Lesson building blocks */
+.ha-prompt {
+	border: 1px solid var(--ha-border);
+	border-left: 4px solid var(--ha-blue);
+	background: var(--ha-surface);
+	border-radius: 10px;
+	padding: 0.75rem 1rem;
+	margin-block: 1rem;
+}
+.ha-prompt-head {
+	display: flex;
+	justify-content: space-between;
+	align-items: center;
+	font-size: 0.8rem;
+	text-transform: uppercase;
+	letter-spacing: 0.08em;
+	color: var(--ha-muted);
+	font-weight: 600;
+}
+.ha-prompt-text {
+	white-space: pre-wrap;
+	font-size: 1rem;
+	margin-top: 0.4rem;
+	color: var(--ha-ink);
+}
+
+.ha-redflag {
+	border: 1px solid var(--ha-border);
+	border-left: 4px solid var(--ha-red);
+	background: var(--ha-bad-bg);
+	border-radius: 10px;
+	padding: 0.75rem 1rem;
+	margin-block: 1.25rem;
+}
+.ha-redflag-title {
+	font-weight: 600;
+	margin: 0;
+}
+
+.ha-checklist {
+	list-style: none;
+	padding: 0;
+	margin-block: 1rem;
+}
+.ha-checklist li {
+	display: flex;
+	gap: 0.6rem;
+	align-items: flex-start;
+	padding: 0.5rem 0;
+	border-bottom: 1px solid var(--ha-border);
+	margin: 0;
+}
+.ha-checklist input {
+	margin-top: 0.3rem;
+	width: 1.1rem;
+	height: 1.1rem;
+	accent-color: var(--ha-green);
+	flex: none;
+}
+.ha-checklist .proof {
+	display: block;
+	font-size: 0.88rem;
+	color: var(--ha-muted);
+}
+.ha-checklist-status {
+	font-size: 0.9rem;
+	color: var(--ha-muted);
+}
+
+/* Illustrative agent session */
+.ha-replay {
+	border: 1px solid var(--ha-border);
+	border-radius: 14px;
+	overflow: hidden;
+	margin-block: 1.5rem;
+	background: var(--ha-surface);
+}
+.ha-replay-bar {
+	display: flex;
+	justify-content: space-between;
+	align-items: center;
+	padding: 0.5rem 0.9rem;
+	border-bottom: 1px solid var(--ha-border);
+	font-size: 0.8rem;
+	color: var(--ha-muted);
+}
+.ha-replay-body {
+	padding: 0.9rem;
+	display: flex;
+	flex-direction: column;
+	gap: 0.6rem;
+	min-height: 12rem;
+}
+.ha-msg {
+	border-radius: 12px;
+	padding: 0.55rem 0.8rem;
+	max-width: 88%;
+	font-size: 0.95rem;
+	margin: 0 !important;
+}
+.ha-msg.you {
+	align-self: flex-end;
+	background: var(--sl-color-accent);
+	color: #fff;
+}
+.ha-msg.claude {
+	align-self: flex-start;
+	background: var(--ha-surface-2);
+	border: 1px solid var(--ha-border);
+	color: var(--ha-ink);
+}
+.ha-msg.action {
+	align-self: flex-start;
+	font-family: var(--sl-font-mono);
+	font-size: 0.82rem;
+	background: transparent;
+	border: 1px dashed var(--ha-border);
+	color: var(--ha-muted);
+}
+.ha-msg.permission {
+	align-self: flex-start;
+	background: var(--ha-surface-2);
+	border: 2px solid var(--ha-orange);
+	color: var(--ha-ink);
+}
+.ha-callout {
+	align-self: stretch;
+	font-size: 0.88rem;
+	border-left: 3px solid var(--ha-orange);
+	padding: 0.3rem 0.7rem;
+	color: var(--ha-ink);
+	background: color-mix(in srgb, var(--ha-orange) 10%, transparent);
+	border-radius: 6px;
+	margin: 0 !important;
+}
+.ha-callout.flag {
+	border-left-color: var(--ha-red);
+	background: var(--ha-bad-bg);
+}
+
+.ha-explain details {
+	border: 1px solid var(--ha-border);
+	border-radius: 10px;
+	padding: 0.6rem 0.9rem;
+	margin-block: 0.6rem;
+	background: var(--ha-surface);
+}
+.ha-explain summary {
+	font-weight: 600;
+	cursor: pointer;
+}

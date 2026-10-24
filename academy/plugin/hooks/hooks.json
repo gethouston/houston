@@ -1,0 +1,27 @@
+{
+  "description": "Houston Academy red flags: stop secrets from landing in project files or git, and ask before rewriting history. Active only in Academy projects (folders with an .academy/ directory).",
+  "hooks": {
+    "PreToolUse": [
+      {
+        "matcher": "Write|Edit|MultiEdit|NotebookEdit",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "\"${CLAUDE_PLUGIN_ROOT}\"/scripts/guard-secrets.sh",
+            "timeout": 10
+          }
+        ]
+      },
+      {
+        "matcher": "Bash",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "\"${CLAUDE_PLUGIN_ROOT}\"/scripts/guard-git.sh",
+            "timeout": 10
+          }
+        ]
+      }
+    ]
+  }
+}

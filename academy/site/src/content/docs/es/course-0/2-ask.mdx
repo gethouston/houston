@@ -1,0 +1,62 @@
+---
+title: 2 · Pide tu página
+description: Tu primera conversación con Claude. Pide, lee las solicitudes, mira la vista previa y cambia una cosa a la vez.
+sidebar:
+  order: 2
+---
+
+import PromptCard from '../../../../components/PromptCard.astro';
+import Replay from '../../../../components/Replay.astro';
+import RedFlag from '../../../../components/RedFlag.astro';
+
+Ahora le vas a pedir tu página a Claude. Vas a ver tres cosas que usarás en todos los proyectos: **pedir**, **aprobar** y **ver la vista previa**.
+
+## Pide
+
+Cambia lo que está entre [corchetes] y envíalo:
+
+<PromptCard>
+Hazme una página web personal sencilla en esta carpeta, en un solo archivo llamado index.html. Debe decir: me llamo [tu nombre], trabajo como [tu cargo], y algo que quiero construir es [tu idea]. Que se vea limpia y moderna, y que se lea bien en un celular. Cuando esté lista, muéstramela en la vista previa.
+</PromptCard>
+
+## Observa
+
+Esto es lo que suele pasar. Avanza paso a paso:
+
+<Replay
+	steps={[
+		{ kind: 'you', text: 'Hazme una página web personal sencilla en esta carpeta…' },
+		{ kind: 'claude', text: 'Voy a crear un solo index.html con tu nombre, tu cargo y tu idea, con un estilo sencillo que funcione en celulares.' },
+		{ kind: 'permission', text: 'Claude quiere crear index.html en mi-rincon. ¿Permitir?' },
+		{ kind: 'callout', text: 'Léelo: quiere crear un archivo, dentro de tu carpeta. Es justo lo que pediste, así que permítelo.' },
+		{ kind: 'action', text: 'Creado index.html' },
+		{ kind: 'claude', text: '¡Listo! La abrí en el panel del navegador para que la veas.' },
+		{ kind: 'callout', text: 'La vista previa muestra el archivo de tu carpeta. Solo tú la puedes ver, porque todavía está únicamente en tu computador.' },
+	]}
+/>
+
+:::note[Sobre "localhost"]
+A veces Claude inicia un pequeño "servidor local" para mostrar la vista previa, y la dirección empieza con `localhost`. **Localhost significa "este computador".** Es tu máquina haciéndose pasar por un sitio web, solo para ti. Nadie más puede abrir una dirección localhost.
+:::
+
+## Cambia una cosa a la vez
+
+Mira tu página. Escoge **una** cosa para cambiar, pídela y revisa la vista previa. Después escoge la siguiente. Por ejemplo:
+
+<PromptCard>
+Haz el título más grande y usa un color cálido para el fondo.
+</PromptCard>
+
+<PromptCard>
+Agrega una línea al final: "Hecho con Claude, en Houston Academy."
+</PromptCard>
+
+¿Por qué una a la vez? Si pides diez cambios y algo se ve mal, no vas a saber cuál cambio lo dañó. Con un solo cambio, siempre lo sabes. Es la primera lección del Ciclo del Constructor, y la vas a volver a ver en el Curso 2.
+
+## ¿Dónde está?
+
+Abre tu carpeta `mi-rincon` en el Finder o el Explorador de archivos. Vas a ver `index.html`. **Ese archivo es tu página.** Haz doble clic y se abre en tu navegador.
+
+<RedFlag title="una solicitud que no entiendes">
+	Si Claude pide ejecutar algo que no parece crear o cambiar un archivo de tu carpeta (instalar cosas, borrar cosas, cualquier cosa con "sudo" o "admin"), no lo permitas todavía. Pregunta: *"¿Por qué necesitas hacer eso? ¿Hay una forma más sencilla?"* Para este proyecto, Claude solo debería necesitar crear y editar archivos.
+</RedFlag>

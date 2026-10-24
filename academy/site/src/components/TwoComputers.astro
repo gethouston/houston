@@ -1,0 +1,96 @@
+---
+// Course 0: where your page lives before and after publishing.
+import StepControls from "./StepControls.astro";
+import { langOf } from "./ui";
+
+const lang = langOf(Astro.currentLocale);
+const t = {
+  en: {
+    you: "Your computer",
+    folder: "📁 my-corner",
+    file: "index.html",
+    preview: "Preview: only you",
+    closed: "💤 Laptop closed",
+    server: ["A computer that", "never sleeps"],
+    vercel: "Vercel, a hosting company",
+    copy: "📁 copy of my-corner",
+    url: "my-corner.vercel.app",
+    phone: "📱 Your phone",
+    friend: "🧑 A friend, anywhere",
+    captions: [
+      "Your page lives in a folder on your computer. The preview pane shows it, but only to you.",
+      "It's like a drawing on your desk: nobody else can see it.",
+      "Close your laptop and the preview is gone.",
+      "Publishing copies your files to a computer that never sleeps, at a hosting company like Vercel.",
+      "Now your page has an address, a URL. Your phone can open it.",
+      "Anyone with the address can open it, even while your laptop is closed.",
+    ],
+  },
+  es: {
+    you: "Tu computador",
+    folder: "📁 mi-rincon",
+    file: "index.html",
+    preview: "Vista previa: solo tú",
+    closed: "💤 Portátil cerrado",
+    server: ["Un computador que", "nunca duerme"],
+    vercel: "Vercel, una empresa de hosting",
+    copy: "📁 copia de mi-rincon",
+    url: "mi-rincon.vercel.app",
+    phone: "📱 Tu celular",
+    friend: "🧑 Alguien, en cualquier lugar",
+    captions: [
+      "Tu página vive en una carpeta de tu computador. El panel de vista previa la muestra, pero solo a ti.",
+      "Es como un dibujo sobre tu escritorio: nadie más lo puede ver.",
+      "Cierra el portátil y la vista previa desaparece.",
+      "Publicar es copiar tus archivos a un computador que nunca duerme, en una empresa de hosting como Vercel.",
+      "Ahora tu página tiene una dirección, una URL. Tu celular la puede abrir.",
+      "Cualquiera con la dirección la puede abrir, incluso con tu portátil cerrado.",
+    ],
+  },
+}[lang];
+---
+<figure class="ha-figure not-content" data-stepper data-captions={JSON.stringify(t.captions)}>
+	<div class="ha-svg"><svg viewBox="0 0 720 330" role="img" aria-label={t.captions.join(' ')}>
+		<!-- your computer -->
+		<rect class="box" data-hl="1,2,3" x="20" y="40" width="250" height="170" rx="14" />
+		<text class="label" x="40" y="70">{t.you}</text>
+		<text class="sub" x="40" y="100">{t.folder}</text>
+		<text class="sub" x="56" y="120">└ {t.file}</text>
+		<g data-on="1,2,4,5">
+			<rect x="40" y="135" width="210" height="58" rx="8" fill="none" stroke="var(--ha-blue)" stroke-width="2" />
+			<text class="sub" x="54" y="169">👀 {t.preview}</text>
+		</g>
+		<g data-on="3,6">
+			<rect x="20" y="40" width="250" height="170" rx="14" fill="var(--ha-surface)" opacity="0.85" />
+			<text class="label" x="82" y="132">{t.closed}</text>
+		</g>
+		<text data-on="2" x="200" y="248" class="sub">🖼️ …</text>
+
+		<!-- the copy across -->
+		<path class="wire" data-hl="4" d="M270 125 C 340 125, 380 125, 450 125" />
+		<circle class="dot" data-on="4" cx="360" cy="125" r="8" />
+
+		<!-- the server -->
+		<rect class="box" data-hl="4,5,6" x="450" y="40" width="250" height="170" rx="14" />
+		<text class="label" x="470" y="66">{t.server[0]}</text>
+		<text class="label" x="470" y="86">{t.server[1]}</text>
+		<text class="sub" x="470" y="106">{t.vercel}</text>
+		<g data-on="4,5,6">
+			<text class="sub" x="470" y="138">{t.copy}</text>
+			<text class="label" x="470" y="180" style="fill:var(--sl-color-accent)">🌐 {t.url}</text>
+		</g>
+
+		<!-- visitors -->
+		<path class="wire" data-hl="5,6" data-on="5,6" d="M575 210 L 575 255" />
+		<g data-on="5,6">
+			<rect class="box" x="500" y="255" width="150" height="50" rx="10" />
+			<text class="label" x="520" y="286">{t.phone}</text>
+		</g>
+		<path class="wire" data-hl="6" data-on="6" d="M450 190 C 420 240, 400 260, 380 270" />
+		<g data-on="6">
+			<rect class="box" x="200" y="255" width="185" height="50" rx="10" />
+			<text class="label" x="214" y="286">{t.friend}</text>
+		</g>
+	</svg></div>
+	<StepControls />
+</figure>

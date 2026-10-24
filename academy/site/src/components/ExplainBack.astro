@@ -1,0 +1,51 @@
+---
+// Explain-back questions: learners answer in their own words, then compare with what a good
+// answer covers. Nothing is graded; drafts stay in this browser.
+import { langOf, ui } from "./ui";
+
+const t = ui[langOf(Astro.currentLocale)];
+const { id, questions } = Astro.props as {
+  id: string;
+  questions: { q: string; covers: string[] }[];
+};
+---
+<div class="ha-explain not-content" data-explain={id}>
+	<p><strong>✍️ {t.explainBack}</strong></p>
+	{
+		questions.map((item, i) => (
+			<details>
+				<summary>{item.q}</summary>
+				<textarea
+					rows="3"
+					data-i={i}
+					placeholder={t.yourAnswer}
+					style="width:100%;margin-top:0.6rem;font:inherit;padding:0.5rem;border-radius:8px;border:1px solid var(--ha-border);background:var(--ha-surface-2);color:var(--ha-ink)"
+				/>
+				<p style="margin-top:0.5rem;font-size:0.9rem">
+					<strong>{t.goodAnswer}:</strong> {item.covers.join(' · ')}
+				</p>
+			</details>
+		))
+	}
+</div>
+<script>
+	document.querySelectorAll<HTMLElement>('[data-explain]').forEach((box) => {
+		if (box.dataset.ready) return;
+		box.dataset.ready = '1';
+		box.querySelectorAll<HTMLTextAreaElement>('textarea').forEach((ta) => {
+			const key = `ha:explain:${box.dataset.explain}:${ta.dataset.i}`;
+			try {
+				ta.value = localStorage.getItem(key) ?? '';
+			} catch {
+				/* storage blocked */
+			}
+			ta.addEventListener('input', () => {
+				try {
+					localStorage.setItem(key, ta.value);
+				} catch {
+					/* storage blocked */
+				}
+			});
+		});
+	});
+</script>

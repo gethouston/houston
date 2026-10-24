@@ -1,0 +1,17 @@
+{
+  "name": "houston-academy-site",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "dev": "astro dev",
+    "build": "astro build",
+    "preview": "astro preview",
+    "check:locales": "node scripts/check-locales.mjs"
+  },
+  "dependencies": {
+    "@astrojs/markdown-remark": "7.3.2",
+    "@astrojs/starlight": "0.42.6",
+    "astro": "7.3.8",
+    "sharp": "0.34.5"
+  }
+}

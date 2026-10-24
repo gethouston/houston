@@ -1,0 +1,52 @@
+---
+// A step-by-step, illustrative agent session with callouts. Not a real recording: real
+// recorded replays come with the visual kit (M2).
+import { langOf, ui } from "./ui";
+
+const t = ui[langOf(Astro.currentLocale)];
+type Kind = "you" | "claude" | "action" | "permission" | "callout" | "flag";
+const { steps, title } = Astro.props as {
+  steps: { kind: Kind; text: string }[];
+  title?: string;
+};
+const captions = steps.map(() => "");
+const prefix: Record<Kind, string> = {
+  you: "",
+  claude: "",
+  action: "⚙ ",
+  permission: "🔐 ",
+  callout: "💡 ",
+  flag: "🚩 ",
+};
+---
+<div class="ha-replay not-content ha-figure" style="padding:0" data-stepper data-captions={JSON.stringify(captions)}>
+	<div class="ha-replay-bar">
+		<span>▶ {title ?? t.replay}</span>
+		<span>{t.replayNote}</span>
+	</div>
+	<div class="ha-replay-body">
+		{
+			steps.map((s, i) => (
+				<p
+					class={`${s.kind === 'flag' ? 'ha-callout flag' : s.kind === 'callout' ? 'ha-callout' : `ha-msg ${s.kind}`}`}
+					data-on={Array.from({ length: steps.length - i }, (_, k) => i + 1 + k).join(',')}
+				>
+					{prefix[s.kind]}
+					{s.text}
+				</p>
+			))
+		}
+	</div>
+	<div style="padding:0 0.9rem 0.9rem">
+		<div class="ha-controls">
+			<button type="button" class="ha-btn" data-act="back">← {t.back}</button>
+			<button type="button" class="ha-btn primary" data-act="next">{t.next} →</button>
+			<button type="button" class="ha-btn" data-act="restart">↺ {t.restart}</button>
+			<span class="ha-step-count" data-count></span>
+		</div>
+	</div>
+</div>
+<script>
+	import { initSteppers } from './stepper';
+	initSteppers();
+</script>

@@ -1,0 +1,83 @@
+---
+title: 3 · El problema GTA 6
+description: Por qué los pedidos gigantes fallan, para personas y para agentes, y cómo dividir cualquier idea en piezas que puedes construir y probar.
+sidebar:
+  order: 3
+---
+
+import SliceDiagram from '../../../../components/SliceDiagram.astro';
+import PromptCard from '../../../../components/PromptCard.astro';
+import RedFlag from '../../../../components/RedFlag.astro';
+import Checklist from '../../../../components/Checklist.astro';
+import ExplainBack from '../../../../components/ExplainBack.astro';
+
+Es el primer mensaje más común a un agente de IA: una frase con un sueño completo adentro. *"GTA 6 pero multijugador." "Una app que maneje toda mi empresa." "Airbnb para perros, con pagos y chat."*
+
+El agente lo va a intentar. Hasta puede que produzca algo. Pero casi nunca es lo que querías, y cuando se daña, nadie sabe por qué.
+
+## La imagen
+
+<SliceDiagram />
+
+## Por qué fallan los pedidos gigantes
+
+No es que la IA sea tonta. Los pedidos gigantes le fallan a **cualquiera**, incluso a un equipo de ingenieros experimentados:
+
+- **No lo puedes probar.** Si cambiaron mil cosas, no las puedes revisar todas, así que en realidad no sabes qué funciona.
+- **No sabes qué se dañó.** Cuando algo sale mal, la causa queda escondida entre mil piezas.
+- **El agente tiene que adivinar.** Un sueño de una línea deja cientos de decisiones abiertas. Cada suposición puede estar mal, y las malas se acumulan.
+- **Dejas de entender tu propio producto.** Si no lo viste crecer, no lo puedes dirigir.
+
+## Una rebanada
+
+Una **rebanada** es una pieza pequeña de tu producto que:
+
+1. **funciona de principio a fin.** Una persona la puede usar de verdad, aunque haga muy poco;
+2. **es pequeña**, así que Claude la puede construir de una vez y tú la puedes revisar en unos cinco minutos;
+3. **tiene un "listo cuando":** una frase que cualquiera puede verificar, sin leer código.
+
+| ❌ No es una rebanada | ✅ Es una rebanada |
+|---|---|
+| "El sistema multijugador" | "Un segundo jugador aparece en la misma calle" |
+| "El backend" | "Una solicitud de un cliente que escribo sigue ahí después de recargar" |
+| "Que la app se vea bonita" | "El formulario de solicitud cabe en la pantalla del celular, sin hacer zoom" |
+| "Pagos, chat y reseñas" | "Alguien con un perro ve una lista de tres cuidadores (con datos de prueba está bien)" |
+
+Fíjate que las rebanadas se escriben como **lo que una persona puede hacer**, no como partes técnicas. Es a propósito: así las vas a probar.
+
+## Pide: divide tu propia idea
+
+Escribe tu idea en una frase, así de grande como es. Después envíale esto a Claude en una sesión nueva:
+
+<PromptCard>
+Esta es mi idea: [tu idea, en una frase]. Todavía no construyas nada. Ayúdame a dividirla en rebanadas. Primero hazme hasta 5 preguntas sobre para quién es y qué problema resuelve. Después propón: la versión útil más pequeña, en una frase, y de 3 a 6 rebanadas en orden, cada una algo que una persona puede hacer, con un "listo cuando" que yo pueda verificar en cinco minutos, sin leer código.
+</PromptCard>
+
+Si instalaste el tutor, `/academy:brief` hace lo mismo y guarda el resultado como un brief de una página en tu proyecto.
+
+¿Todavía no tienes idea? Usa una de estas: *una página de reservas para un negocio pequeño*, *un portal donde los clientes ven el estado de su pedido*, *un registro de solicitudes para tu equipo*.
+
+<RedFlag title="el agente construye 15 funciones de una vez">
+	Pediste la rebanada 1 y Claude te entregó un panel, configuración, inicio de sesión, notificaciones y modo oscuro, y la mitad no funciona. No intentes arreglarlo todo. Di: *"Volvamos solo a la rebanada 1. Quita todo lo demás y dime cómo verifico que la rebanada 1 funciona."* Pequeño y funcionando le gana siempre a grande y dañado.
+</RedFlag>
+
+## Listo cuando
+
+<Checklist
+	id="course-2-gta"
+	items={[
+		{ text: 'Mi idea está escrita en una frase.' },
+		{ text: 'Tengo la versión útil más pequeña, en una frase.' },
+		{ text: 'Tengo de 3 a 6 rebanadas, y cada una es algo que una persona puede hacer.' },
+		{ text: 'La rebanada 1 tiene un "listo cuando" que puedo verificar en cinco minutos, sin código.' },
+	]}
+/>
+
+<ExplainBack
+	id="course-2-gta"
+	questions={[
+		{ q: '¿Por qué falla "GTA 6 pero multijugador", incluso con un gran equipo?', covers: ['no se puede probar todo de una vez', 'no sabes qué se dañó', 'demasiadas decisiones quedan a la adivinanza'] },
+		{ q: '¿Qué hace que algo sea una rebanada?', covers: ['funciona de principio a fin', 'es pequeña', 'tiene un "listo cuando" que cualquiera puede verificar'] },
+		{ q: 'Claude construyó mucho más de lo que pediste. ¿Qué haces?', covers: ['volver a una sola rebanada', 'quitar el resto', 'preguntar cómo verificar esa rebanada'] },
+	]}
+/>

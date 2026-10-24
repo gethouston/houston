@@ -1,0 +1,55 @@
+---
+// "Done when" checklist. Ticks are remembered in this browser only.
+import { langOf, ui } from "./ui";
+
+const t = ui[langOf(Astro.currentLocale)];
+const { id, items } = Astro.props as {
+  id: string;
+  items: { text: string; proof?: string }[];
+};
+---
+<div class="not-content" data-checklist={id} data-done={t.checklistDone} data-progress={t.checklistProgress}>
+	<ul class="ha-checklist">
+		{
+			items.map((item, i) => (
+				<li>
+					<input type="checkbox" id={`${id}-${i}`} data-i={i} />
+					<label for={`${id}-${i}`}>
+						{item.text}
+						{item.proof && <span class="proof">{item.proof}</span>}
+					</label>
+				</li>
+			))
+		}
+	</ul>
+	<p class="ha-checklist-status" data-status aria-live="polite"></p>
+</div>
+<script>
+	document.querySelectorAll<HTMLElement>('[data-checklist]').forEach((list) => {
+		if (list.dataset.ready) return;
+		list.dataset.ready = '1';
+		const key = `ha:checklist:${list.dataset.checklist}`;
+		const boxes = [...list.querySelectorAll<HTMLInputElement>('input[type=checkbox]')];
+		const status = list.querySelector('[data-status]');
+		let saved: number[] = [];
+		try {
+			saved = JSON.parse(localStorage.getItem(key) ?? '[]');
+		} catch {
+			saved = [];
+		}
+		boxes.forEach((b, i) => (b.checked = saved.includes(i)));
+		const update = () => {
+			const done = boxes.filter((b) => b.checked).length;
+			if (status)
+				status.textContent =
+					done === boxes.length ? (list.dataset.done ?? '') : `${done} / ${boxes.length} ${list.dataset.progress}`;
+			try {
+				localStorage.setItem(key, JSON.stringify(boxes.flatMap((b, i) => (b.checked ? [i] : []))));
+			} catch {
+				/* storage blocked: the checklist still works for this visit */
+			}
+		};
+		boxes.forEach((b) => b.addEventListener('change', update));
+		update();
+	});
+</script>

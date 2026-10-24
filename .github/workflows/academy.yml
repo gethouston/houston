@@ -1,0 +1,97 @@
+name: Academy
+
+# Houston Academy (academy/): checks every PR that touches it, and deploys the
+# course site to Firebase Hosting (project: gethouston, site: gethouston-academy)
+# when it lands on main.
+#
+# One-time setup (human): create the site, then connect the domain:
+#   firebase hosting:sites:create gethouston-academy --project gethouston
+#   Firebase console → Hosting → gethouston-academy → Add custom domain →
+#   academy.gethouston.ai, then add the DNS record it shows.
+#
+# GCP auth: same Workload Identity Federation binding as website-deploy.yml
+# (SA github-deploy-web@gethouston.iam.gserviceaccount.com, Firebase Hosting
+# deploy only, restricted to gethouston/houston).
+
+on:
+  pull_request:
+    paths:
+      - 'academy/**'
+      - '.claude-plugin/**'
+      - '.github/workflows/academy.yml'
+  push:
+    branches: [main]
+    paths:
+      - 'academy/**'
+      - '.claude-plugin/**'
+      - '.github/workflows/academy.yml'
+  workflow_dispatch:
+
+concurrency:
+  group: academy-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  check:
+    name: Build, locales, tutor hooks
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v6
+
+      - uses: actions/setup-node@v5
+        with:
+          node-version: '22'
+          cache: 'npm'
+          cache-dependency-path: academy/site/package-lock.json
+
+      - name: Install dependencies
+        working-directory: academy/site
+        run: npm ci
+
+      - name: Every page in English and Spanish
+        working-directory: academy/site
+        run: npm run check:locales
+
+      - name: Build site
+        working-directory: academy/site
+        run: npm run build
+
+      - name: Tutor hook tests
+        run: academy/plugin/tests/test-hooks.sh
+
+      - uses: actions/upload-artifact@v7
+        if: github.event_name != 'pull_request'
+        with:
+          name: academy-site
+          path: academy/site/dist
+
+  deploy:
+    name: Deploy to Firebase Hosting
+    needs: check
+    if: github.event_name != 'pull_request' && github.ref == 'refs/heads/main'
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      id-token: write # Workload Identity Federation
+    steps:
+      - uses: actions/checkout@v6
+
+      - uses: actions/download-artifact@v8
+        with:
+          name: academy-site
+          path: academy/site/dist
+
+      - name: Auth to GCP
+        uses: google-github-actions/auth@v3
+        with:
+          workload_identity_provider: projects/1056698080170/locations/global/workloadIdentityPools/github/providers/houston
+          service_account: github-deploy-web@gethouston.iam.gserviceaccount.com
+
+      - name: Deploy to Firebase Hosting
+        working-directory: academy/site
+        run: >-
+          npx --yes firebase-tools@15 deploy
+          --only hosting:gethouston-academy
+          --project gethouston
+          --non-interactive
+          --message "${{ github.sha }}"

@@ -1,0 +1,57 @@
+---
+title: 4 · Verifícala
+description: Demuestra que tu página funciona, deja que el tutor la revise y explica con tus palabras lo que hiciste.
+sidebar:
+  order: 4
+---
+
+import PromptCard from '../../../../components/PromptCard.astro';
+import Checklist from '../../../../components/Checklist.astro';
+import ExplainBack from '../../../../components/ExplainBack.astro';
+
+No demuestras que terminaste leyendo código. Lo demuestras **mirando la cosa real**.
+
+## Deja que el tutor revise
+
+En tu sesión de `mi-rincon`, envía:
+
+<PromptCard>
+/academy:check 0
+</PromptCard>
+
+El tutor te pide la dirección de tu página, la abre, la compara con el archivo de tu carpeta y te dice qué pasó la revisión. También guarda un reporte corto en tu carpeta.
+
+## Listo cuando
+
+<Checklist
+	id="course-0"
+	items={[
+		{ text: 'Mi página abre en mi celular.', proof: 'La dirección empieza con https:// y termina en .vercel.app' },
+		{ text: 'Sé dónde está index.html en mi carpeta mi-rincon.', proof: 'Abre la carpeta en el Finder o el Explorador de archivos' },
+		{ text: 'Hice al menos dos cambios, uno a la vez.', proof: 'Cada uno revisado en la vista previa antes del siguiente' },
+		{ text: 'Leí cada solicitud antes de hacer clic en "Allow".' },
+		{ text: '/academy:check 0 pasó la revisión.', proof: 'O: verificaste tú los tres primeros puntos' },
+	]}
+/>
+
+<ExplainBack
+	id="course-0"
+	questions={[
+		{
+			q: '¿Qué significa "publicar"?',
+			covers: ['copiar tus archivos a otro computador', 'ese computador siempre está encendido y conectado (un servidor)', 'así cualquiera con la dirección la puede abrir'],
+		},
+		{
+			q: '¿Por qué nadie más podía ver tu página antes de publicarla?',
+			covers: ['solo existía en tu computador', 'la vista previa (o localhost) es solo para ti'],
+		},
+		{
+			q: '¿Por qué cambiar una cosa a la vez?',
+			covers: ['si algo se daña, sabes qué cambio fue', 'revisas cada paso antes del siguiente'],
+		},
+	]}
+/>
+
+## Lo que sigue
+
+Acabas de hacer, en miniatura, lo que hace cada proyecto de este programa: **pedir, aprobar, verificar, publicar.** Ahora, en el Curso 1, vas a aprender cómo funciona de verdad el software, empezando por la palabra que más vas a oír: [**API**](/es/course-1/apis/).

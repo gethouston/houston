@@ -1,0 +1,53 @@
+---
+title: Cómo funciona la Academy
+description: Los tres tiempos de cada lección, el Ciclo del Constructor, tu tutor y cómo sabes que terminaste.
+sidebar:
+  order: 1
+---
+
+import { Steps } from '@astrojs/starlight/components';
+import RedFlag from '../../../../components/RedFlag.astro';
+
+Houston Academy es un **programa**: un camino de cursos cortos, y cada uno termina con algo real que publicas. No necesitas formación técnica. Necesitas una idea, un computador y la paciencia de construir una pieza pequeña a la vez.
+
+## Cada lección tiene tres tiempos
+
+<Steps>
+
+1. **Pide.** Qué decirle a Claude. Vas a tener tarjetas con instrucciones que puedes copiar.
+
+2. **Observa.** Qué va a hacer Claude, paso a paso, con notas sobre qué es normal y qué es una 🚩 alerta.
+
+3. **Verifica.** Cómo sabes que funcionó. No leyendo código, sino mirando la cosa real (una página que carga, un inicio de sesión que funciona).
+
+</Steps>
+
+## Tu mesa de trabajo: la app de escritorio de Claude
+
+Vas a trabajar en la pestaña **Code** de la app de escritorio de Claude. Es un chat, con una vista previa de lo que Claude construye y botones para todo lo que quiera hacer. Sin terminal. Más adelante vas a aprender a *leer* lo que Claude ejecuta y, al final, si quieres, la terminal misma.
+
+Para usar la pestaña Code necesitas un plan pago de Claude (Pro o superior). Todo lo demás en el programa usa planes gratuitos.
+
+## Tu tutor: el plugin de la Academy
+
+En el Curso 0 vas a instalar un pequeño complemento para Claude llamado **academy**. Con eso, Claude también actúa como tu tutor, dentro de tu propio proyecto:
+
+- después de cada paso importante agrega una nota corta, **"Qué acaba de pasar"**, en palabras sencillas;
+- `/academy:brief` te ayuda a planear una rebanada antes de construirla;
+- `/academy:explain` te explica lo último que hizo Claude, o cualquier error;
+- `/academy:check` revisa si terminaste un curso, mirando tu proyecto real;
+- **frena a Claude** antes de un paso riesgoso, como escribir una clave secreta donde cualquiera la puede ver.
+
+<RedFlag title="las alertas">
+	Cada curso tiene al menos una alerta: un momento en que algo que parece bien es en realidad un problema. Vienen de incidentes reales, de apps reales que filtraron datos o generaron cuentas enormes. Cuando el tutor frena algo, te dice por qué.
+</RedFlag>
+
+## El Ciclo del Constructor
+
+El hilo de todo el programa. Lo aprendes a fondo en el Curso 2 y lo usas en todos los proyectos después:
+
+> **Idea → problema → la versión útil más pequeña → rebanadas → para cada rebanada: "listo cuando" → Claude planea → tú apruebas → Claude construye → tú pruebas → gente real lo usa → tú decides qué sigue.**
+
+## Cómo sabes que terminaste
+
+Cada curso termina con una lista **"listo cuando"**. Unas casillas las marcas tú, y `/academy:check` verifica el resto en tu proyecto real. Lo que marques se guarda solo en este navegador. No necesitas cuenta.

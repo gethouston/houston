@@ -1,0 +1,83 @@
+---
+title: 3 · The GTA 6 problem
+description: Why giant requests fail for humans and agents alike, and how to slice any idea into pieces you can build and test.
+sidebar:
+  order: 3
+---
+
+import SliceDiagram from '../../../components/SliceDiagram.astro';
+import PromptCard from '../../../components/PromptCard.astro';
+import RedFlag from '../../../components/RedFlag.astro';
+import Checklist from '../../../components/Checklist.astro';
+import ExplainBack from '../../../components/ExplainBack.astro';
+
+It's the most common first message to an AI agent: one sentence holding a whole dream. *"GTA 6 but multiplayer." "An app that runs my whole company." "Airbnb for dogs, with payments and chat."*
+
+The agent will try. It might even produce something. But it's almost never what you wanted, and when it breaks, nobody can tell why.
+
+## The picture
+
+<SliceDiagram />
+
+## Why giant requests fail
+
+It isn't that the AI is dumb. Giant requests fail for **anyone**, including a team of senior engineers:
+
+- **You can't test it.** If a thousand things changed, you can't check them all, so you don't really know what works.
+- **You can't tell what broke.** When something goes wrong, the cause is hidden among a thousand pieces.
+- **The agent has to guess.** A one-line dream leaves hundreds of decisions open. Each guess can be wrong, and the wrong guesses pile up.
+- **You stop understanding your own product.** If you didn't watch it grow, you can't steer it.
+
+## A slice
+
+A **slice** is a small piece of your product that:
+
+1. **works from start to finish.** A person can actually use it, even if it does very little;
+2. **is small**, so Claude can build it in one go and you can check it in about five minutes;
+3. **has a "done when":** a sentence anyone can check, without reading code.
+
+| ❌ Not a slice | ✅ A slice |
+|---|---|
+| "The multiplayer system" | "A second player appears on the same street" |
+| "The backend" | "A customer request I type in is still there after I refresh" |
+| "Make the app nice" | "The request form fits on a phone screen, without zooming" |
+| "Payments, chat and reviews" | "A dog owner can see a list of three sitters (fake data is fine)" |
+
+Notice that slices are written as **what a person can do**, not as technical parts. That's on purpose: it's how you'll test them.
+
+## Tell: slice your own idea
+
+Write your idea in one sentence, big as it is. Then send this to Claude in a new session:
+
+<PromptCard>
+Here's my idea: [your idea, in one sentence]. Don't build anything yet. Help me slice it. First ask me up to 5 questions about who it's for and what problem it solves. Then propose: the smallest useful version, in one sentence, and 3 to 6 slices in order, each one something a person can do, with a "done when" I can check myself in five minutes, without reading code.
+</PromptCard>
+
+If you installed the tutor, `/academy:brief` does the same and saves the result as a one-page brief in your project.
+
+No idea yet? Use one of these: *a booking page for a small business*, *a client portal where customers see the status of their order*, *a request tracker for your team*.
+
+<RedFlag title="the agent builds 15 features in one go">
+	You asked for slice 1 and Claude delivered a dashboard, settings, login, notifications and a dark mode, and half of them don't work. Don't try to fix it all. Say: *"Let's go back to just slice 1. Remove everything else, and tell me how to check that slice 1 works."* Small and working beats big and broken, every time.
+</RedFlag>
+
+## Done when
+
+<Checklist
+	id="course-2-gta"
+	items={[
+		{ text: 'My idea is written down in one sentence.' },
+		{ text: 'I have the smallest useful version, in one sentence.' },
+		{ text: 'I have 3 to 6 slices, each one something a person can do.' },
+		{ text: 'Slice 1 has a "done when" I can check in five minutes without code.' },
+	]}
+/>
+
+<ExplainBack
+	id="course-2-gta"
+	questions={[
+		{ q: 'Why does "GTA 6 but multiplayer" fail, even for a great team?', covers: ['it can’t be tested all at once', 'you can’t tell what broke', 'too many decisions are left to guesses'] },
+		{ q: 'What makes something a slice?', covers: ['it works from start to finish', 'it is small', 'it has a "done when" anyone can check'] },
+		{ q: 'Claude built much more than you asked. What do you do?', covers: ['go back to one slice', 'remove the rest', 'ask how to check that slice'] },
+	]}
+/>

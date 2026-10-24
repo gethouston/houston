@@ -1,0 +1,62 @@
+---
+title: 2 · Ask for your page
+description: Your first conversation with Claude. Ask, read the requests, see the preview, change one thing at a time.
+sidebar:
+  order: 2
+---
+
+import PromptCard from '../../../components/PromptCard.astro';
+import Replay from '../../../components/Replay.astro';
+import RedFlag from '../../../components/RedFlag.astro';
+
+Now you'll ask Claude for your page. You'll see three things you'll use in every project: **asking**, **approving**, and **previewing**.
+
+## Tell
+
+Change the parts in [brackets] and send:
+
+<PromptCard>
+Make me a simple personal web page in this folder, as one file called index.html. It should say: my name is [your name], I work as [your role], and one thing I want to build is [your idea]. Make it look clean and modern, and readable on a phone. When it's ready, show it to me in the preview.
+</PromptCard>
+
+## Watch
+
+Here's what usually happens. Step through it:
+
+<Replay
+	steps={[
+		{ kind: 'you', text: 'Make me a simple personal web page in this folder…' },
+		{ kind: 'claude', text: "I'll create a single index.html with your name, role and idea, with simple styling that works on phones." },
+		{ kind: 'permission', text: 'Claude wants to create index.html in my-corner. Allow?' },
+		{ kind: 'callout', text: "Read it: it wants to create one file, inside your folder. That's exactly what you asked for, so allow it." },
+		{ kind: 'action', text: 'Created index.html' },
+		{ kind: 'claude', text: "Done! I've opened it in the Browser pane so you can see it." },
+		{ kind: 'callout', text: 'The preview shows the file from your folder. Only you can see it, because it is still only on your computer.' },
+	]}
+/>
+
+:::note[About "localhost"]
+Sometimes Claude starts a small "local server" to show the preview, and the address begins with `localhost`. **Localhost means "this computer".** It's your machine pretending to be a website, just for you. Nobody else can open a localhost address.
+:::
+
+## Change one thing at a time
+
+Look at your page. Pick **one** thing to change, ask for it, and check the preview. Then pick the next one. For example:
+
+<PromptCard>
+Make the title bigger, and use a warm color for the background.
+</PromptCard>
+
+<PromptCard>
+Add a line at the bottom: "Built with Claude, at Houston Academy."
+</PromptCard>
+
+Why one at a time? If you ask for ten changes and something looks wrong, you won't know which change broke it. With one change, you always know. That's the first lesson of the Builder's Loop, and you'll meet it again in Course 2.
+
+## Where is it?
+
+Open your `my-corner` folder in Finder or File Explorer. You'll see `index.html`. **That file is your page.** Double-click it and it opens in your browser.
+
+<RedFlag title="a request you don't understand">
+	If Claude asks to run something that doesn't look like creating or changing a file in your folder (installing things, deleting things, anything with "sudo" or "admin"), don't allow it yet. Ask: *"Why do you need to do that? Is there a simpler way?"* For this project, Claude should only need to create and edit files.
+</RedFlag>

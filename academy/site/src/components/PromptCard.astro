@@ -1,0 +1,31 @@
+---
+// A prompt the learner copies into Claude. Put the prompt text as the slot.
+import { langOf, ui } from "./ui";
+
+const t = ui[langOf(Astro.currentLocale)];
+const { label } = Astro.props as { label?: string };
+---
+<div class="ha-prompt not-content">
+	<div class="ha-prompt-head">
+		<span>💬 {label ?? t.prompt}</span>
+		<button type="button" class="ha-btn" data-copy data-copied={t.copied}>{t.copy}</button>
+	</div>
+	<div class="ha-prompt-text" data-prompt><slot /></div>
+</div>
+<script>
+	document.querySelectorAll<HTMLButtonElement>('[data-copy]').forEach((b) => {
+		if (b.dataset.ready) return;
+		b.dataset.ready = '1';
+		const label = b.textContent;
+		b.addEventListener('click', async () => {
+			const text = b.closest('.ha-prompt')?.querySelector('[data-prompt]')?.textContent?.trim() ?? '';
+			try {
+				await navigator.clipboard.writeText(text);
+				b.textContent = b.dataset.copied ?? label;
+				setTimeout(() => (b.textContent = label), 1500);
+			} catch {
+				/* clipboard blocked: the text is still selectable */
+			}
+		});
+	});
+</script>

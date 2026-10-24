@@ -1,0 +1,89 @@
+---
+// Course 1, module 6: an API is a waiter between programs.
+import StepControls from "./StepControls.astro";
+import { langOf } from "./ui";
+
+const lang = langOf(Astro.currentLocale);
+const t = {
+  en: {
+    app: "Your app",
+    appSub: "the customer",
+    api: "The API",
+    apiSub: "the waiter",
+    server: "The weather company's server",
+    serverSub: "the kitchen",
+    menu: "📜 Menu = API docs",
+    menuSub: '"weather for {city}"',
+    req: '"Weather for Medellín, please"',
+    res: '"24°C, cloudy"',
+    screen: "☁️ 24°C",
+    captions: [
+      "Your app wants today's weather, but the weather data lives on another company's computer.",
+      "That company publishes a menu: the API documentation. It lists exactly what you can ask for, and how.",
+      'Your app places an order through the API: "weather for Medellín, please." That order is a request.',
+      "The API takes the order to the company's server, which finds the answer. You never see their kitchen, and you don't need to.",
+      'The answer comes back: "24°C, cloudy." That answer is a response.',
+      "Your app shows it. The apps you use do this all day: maps, payments, logins, AI.",
+    ],
+  },
+  es: {
+    app: "Tu app",
+    appSub: "el cliente",
+    api: "La API",
+    apiSub: "el mesero",
+    server: "El servidor de la empresa del clima",
+    serverSub: "la cocina",
+    menu: "📜 Menú = docs de la API",
+    menuSub: '"clima para {ciudad}"',
+    req: '"El clima de Medellín, por favor"',
+    res: '"24 °C, nublado"',
+    screen: "☁️ 24 °C",
+    captions: [
+      "Tu app quiere el clima de hoy, pero los datos del clima viven en el computador de otra empresa.",
+      "Esa empresa publica un menú: la documentación de la API. Dice exactamente qué puedes pedir y cómo.",
+      'Tu app hace un pedido a través de la API: "el clima de Medellín, por favor". Ese pedido es una solicitud (request).',
+      "La API lleva el pedido al servidor de la empresa, que busca la respuesta. Nunca ves su cocina, y no lo necesitas.",
+      'La respuesta vuelve: "24 °C, nublado". Esa respuesta es la respuesta (response).',
+      "Tu app la muestra. Las apps que usas hacen esto todo el día: mapas, pagos, inicios de sesión, IA.",
+    ],
+  },
+}[lang];
+---
+<figure class="ha-figure not-content" data-stepper data-captions={JSON.stringify(t.captions)}>
+	<div class="ha-svg"><svg viewBox="0 0 720 300" role="img" aria-label={t.captions.join(' ')}>
+		<rect class="box" data-hl="1,3,6" x="20" y="50" width="170" height="130" rx="14" />
+		<text class="label" x="40" y="82">📱 {t.app}</text>
+		<text class="sub" x="40" y="104">{t.appSub}</text>
+		<g data-on="6">
+			<text class="label" x="48" y="150" style="font-size:24px">{t.screen}</text>
+		</g>
+
+		<rect class="box" data-hl="3,4,5" x="275" y="50" width="170" height="130" rx="14" />
+		<text class="label" x="295" y="82">🤵 {t.api}</text>
+		<text class="sub" x="295" y="104">{t.apiSub}</text>
+
+		<rect class="box" data-hl="1,4" x="530" y="50" width="170" height="130" rx="14" />
+		<text class="label" x="546" y="82">🍳 {t.serverSub}</text>
+		<foreignObject x="546" y="92" width="145" height="70">
+			<div style="font-size:12.5px;color:var(--ha-muted);font-family:var(--sl-font)">{t.server}</div>
+		</foreignObject>
+
+		<g data-on="2,3">
+			<rect class="box hl" x="275" y="200" width="170" height="70" rx="10" />
+			<text class="label" x="288" y="228" style="font-size:13px">{t.menu}</text>
+			<text class="sub" x="288" y="252">{t.menuSub}</text>
+		</g>
+
+		<path class="wire" data-hl="3" d="M190 100 L 275 100" />
+		<path class="wire" data-hl="4" d="M445 100 L 530 100" />
+		<path class="wire" data-hl="5" d="M445 140 L 190 140" />
+
+		<g data-on="3,4">
+			<text class="sub" x="150" y="36" style="fill:var(--ha-orange);font-weight:600">→ {t.req}</text>
+		</g>
+		<g data-on="5">
+			<text class="sub" x="200" y="290" style="fill:var(--ha-green);font-weight:600">← {t.res}</text>
+		</g>
+	</svg></div>
+	<StepControls />
+</figure>

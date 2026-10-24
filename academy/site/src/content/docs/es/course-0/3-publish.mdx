@@ -1,0 +1,57 @@
+---
+title: 3 · Ponla en internet
+description: Publicar es copiar tus archivos a un computador que nunca duerme. Hazlo arrastrando tu carpeta a Vercel.
+sidebar:
+  order: 3
+---
+
+import { Steps } from '@astrojs/starlight/components';
+import TwoComputers from '../../../../components/TwoComputers.astro';
+import PromptCard from '../../../../components/PromptCard.astro';
+import RedFlag from '../../../../components/RedFlag.astro';
+
+Tu página funciona, pero solo en tu computador. Veamos por qué, y arreglémoslo.
+
+## La imagen
+
+<TwoComputers />
+
+**Publicar** (también se dice **desplegar**, en inglés *deploy*) es copiar tus archivos a un computador que nunca duerme y que está conectado a internet todo el tiempo. A ese computador se le llama **servidor**, y a las empresas que los alquilan, empresas de **hosting**. Hoy vas a usar una que se llama Vercel. Es gratis para proyectos como este.
+
+## Antes de publicar: revisa la carpeta
+
+Todo lo que hay en la carpeta se vuelve público. Pídele a Claude que mire primero:
+
+<PromptCard>
+Voy a publicar esta carpeta en internet. Revisa todos los archivos que tiene: ¿hay algo que no debería hacer público? No cambies nada, solo dime.
+</PromptCard>
+
+Si instalaste el tutor, también vas a ver `CLAUDE.md` y una carpeta `.academy`. Son notas para tu tutor (tu idioma, tu curso), sin nada privado, así que puedes publicarlas.
+
+## Publica
+
+<Steps>
+
+1. Ve a [vercel.com/drop](https://vercel.com/drop) y crea una cuenta gratuita si no tienes (con tu correo o con Google).
+
+2. **Arrastra tu carpeta `mi-rincon`** a la página.
+
+3. Escoge un nombre para el proyecto, por ejemplo `mi-rincon`, y haz clic en **Deploy**.
+
+4. Espera unos segundos. Vercel te da una dirección que termina en `.vercel.app`. Haz clic: esa es tu página, en internet.
+
+5. **Abre la misma dirección en tu celular.** Mándasela también a alguien.
+
+</Steps>
+
+:::note[Si la cambias después]
+Si cambias tu página ahora, vuelve a arrastrar la carpeta. Sube como una copia nueva, con una dirección nueva. En el Curso 4 vas a conectar tu proyecto para que cada cambio se publique solo.
+:::
+
+## Qué acaba de pasar
+
+Copiaste un archivo, `index.html`, de tu computador al computador de Vercel. Cuando alguien abre tu dirección, su celular le pide el archivo al computador de Vercel, y Vercel se lo envía. Tu portátil ya no participa: ciérralo y la página sigue en línea.
+
+<RedFlag title="publicar algo privado">
+	Todo lo que hay en una carpeta publicada lo puede ver cualquiera. Nunca publiques una carpeta con contraseñas, claves, documentos personales o datos de clientes. Por eso le pediste a Claude que revisara primero. Más adelante en el programa, las cosas privadas tienen su propio lugar seguro.
+</RedFlag>
