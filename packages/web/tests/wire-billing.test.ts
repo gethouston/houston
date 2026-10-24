@@ -185,6 +185,60 @@ describe("the delegated billing requests", () => {
   });
 });
 
+describe("a yearly org's next adjustment", () => {
+  const BILLING = {
+    tier: "paid",
+    status: "active",
+    lockAt: null,
+    lockReason: null,
+    freeSlot: false,
+    isBillingOwner: true,
+    seats: 2,
+    interval: "year",
+    seatPriceCents: 18000,
+    seatPrices: { monthlyCents: 2000, annualCents: 18000 },
+    seatGraceEndsAt: null,
+    renewsAt: "2027-10-24T14:19:10Z",
+    priceNotice: null,
+    nextAdjustment: {
+      kind: "charge",
+      amountCents: 18000,
+      at: "2026-11-24T14:19:10Z",
+    },
+    usage: null,
+    routines: null,
+  };
+
+  // The adjustment rides each org's billing on the one orgs read: no route
+  // of its own, nothing else on the wire.
+  test("listOrgs reads it off GET /v1/orgs", async () => {
+    const org = { id: "org-1", slug: "acme", name: "Acme", billing: BILLING };
+    stubFetch(() => json(200, { orgs: [org], invites: [], freeOrg: null }));
+    const list = await client().listOrgs();
+    expect(list.orgs[0]?.billing?.nextAdjustment).toEqual(
+      BILLING.nextAdjustment,
+    );
+    const call = soleCall();
+    expect(call.method).toBe("GET");
+    expect(call.url).toBe(`${BASE}/v1/orgs`);
+    expect(call.body).toBeNull();
+  });
+
+  // Both spellings of the interval reach the app untouched: the summary's
+  // older one for apps up to 1.0.10, the billing's for everything else.
+  test("getBilling passes both interval spellings through", async () => {
+    const summary = {
+      plan: "team",
+      status: "active",
+      seats: 2,
+      interval: "annual",
+      billing: BILLING,
+    };
+    stubFetch(() => json(200, summary));
+    expect(await client().getBilling()).toEqual(summary);
+  });
+});
+
 describe("what the mixin softens, and what it must not", () => {
   for (const status of NOT_ENTITLED) {
     test(`a ${status} on getBilling is a team with no billing to show`, async () => {

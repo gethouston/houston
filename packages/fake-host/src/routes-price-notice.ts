@@ -60,6 +60,7 @@ export function handlePriceNoticeRoutes(
     seatPriceCents: annual,
     renewsAt: new Date(Date.now() + YEAR_MS).toISOString(),
     priceNotice: null,
+    nextAdjustment: null,
   };
   state.setOrgBilling(slug, next);
   return json({ billing: next });

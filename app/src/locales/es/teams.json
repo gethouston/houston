@@ -458,6 +458,16 @@
     "grace": "{{today}} al mes hasta el {{date}}, luego {{total}} al mes",
     "graceYear": "{{today}} al año hasta el {{date}}, luego {{total}} al año",
     "locksOn": "Se bloquea el {{date}}",
+    "nextAdjustment": {
+      "charge": {
+        "line": "Próximo ajuste: {{amount}} el {{date}}",
+        "hint": "Los miembros que agregas a mitad de año se cobran por el tiempo que falta hasta tu renovación."
+      },
+      "credit": {
+        "line": "Crédito de {{amount}} en tu próxima factura ({{date}})",
+        "hint": "Los miembros que quitas a mitad de año se acreditan por el tiempo que falta hasta tu renovación."
+      }
+    },
     "benefitUsage": "Cada persona tiene su propio uso, sin límite semanal",
     "benefitRoutines": "Ejecuta todas tus rutinas, tan seguido como necesites",
     "benefitAway": "Las rutinas siguen activas mientras no estás",

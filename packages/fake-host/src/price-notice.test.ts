@@ -22,6 +22,7 @@ const PROMO = {
     nextCents: 2000,
     renewsAt: "2026-11-14T17:00:00.000Z",
   },
+  nextAdjustment: null,
   usage: null,
   routines: null,
 };
@@ -59,6 +60,7 @@ describe("the promo-ended routes on the fake gateway", () => {
       interval: "year",
       seatPriceCents: 18000,
       priceNotice: null,
+      nextAdjustment: null,
     });
     expect((await team())?.priceNotice).toBeNull();
     const again = await send("POST", "/v1/org/billing/switch-to-yearly", {});

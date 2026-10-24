@@ -33,7 +33,9 @@ import type { BillingCheckout } from "./types";
  * it refuses billing detail (403 plain member), and a billing-off deployment
  * (503 `billing not configured`). It is the SURFACE that reads those three as
  * "nothing to show". Usage, routine state and locks ride every org's
- * `billing` on `listOrgs`, which every member can read.
+ * `billing` on `listOrgs`, which every member can read. Its top-level
+ * `interval` keeps the older spelling (`monthly` / `annual`) for older apps;
+ * read `billing.interval` (`month` / `year`).
  * @assistant group:billing
  */
 export async function getBilling(scope: HttpScope): Promise<BillingSummary> {

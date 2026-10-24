@@ -34,6 +34,7 @@ export function orgBilling(patch: Partial<OrgBilling> = {}): OrgBilling {
     seatGraceEndsAt: null,
     renewsAt: null,
     priceNotice: null,
+    nextAdjustment: null,
     usage: null,
     routines: null,
     ...patch,

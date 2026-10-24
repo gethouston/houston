@@ -438,7 +438,13 @@ export interface BillingSummary {
   /** ISO-8601; present once the trial clock exists. */
   trialEndsAt?: string;
   seats: number;
-  /** Present once subscribed. */
+  /**
+   * The older C8 spelling, present whenever the gateway stores an interval
+   * (an ended subscription's too). It stays this way because apps up to
+   * 1.0.10 render the value; read it for its presence alone. How an org
+   * bills is `OrgBilling.interval` (`"month"` / `"year"`), the one spelling
+   * every surface reads.
+   */
   interval?: "monthly" | "annual";
 }
 

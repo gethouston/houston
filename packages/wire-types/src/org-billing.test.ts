@@ -15,6 +15,7 @@ const BILLING = {
   seatGraceEndsAt: null,
   renewsAt: null,
   priceNotice: null,
+  nextAdjustment: null,
   usage: {
     scope: "org",
     used: 12,
@@ -108,6 +109,46 @@ describe("parseOrgBilling", () => {
       parseOrgBilling({ ...promo, priceNotice: { ...notice, kind: "other" } })
         ?.priceNotice,
     ).toBeNull();
+  });
+
+  it("reads a yearly org's next adjustment, a charge or a credit", () => {
+    const yearly = {
+      ...BILLING,
+      tier: "paid",
+      interval: "year",
+      seatPriceCents: 18000,
+      isBillingOwner: true,
+      renewsAt: "2027-10-24T14:19:10Z",
+      nextAdjustment: {
+        kind: "charge",
+        amountCents: 18000,
+        at: "2026-11-24T14:19:10Z",
+      },
+    };
+    expect(parseOrgBilling(yearly)).toEqual(yearly);
+    const credit = {
+      ...yearly,
+      nextAdjustment: {
+        kind: "credit",
+        amountCents: 4500,
+        at: "2026-11-24T14:19:10Z",
+      },
+    };
+    expect(parseOrgBilling(credit)).toEqual(credit);
+    // An older gateway omits it; a kind added later, or a zero or signed
+    // amount, reads as none and keeps the rest of the billing.
+    const { nextAdjustment: _, ...older } = yearly;
+    expect(parseOrgBilling(older)?.nextAdjustment).toBeNull();
+    for (const odd of [
+      { ...yearly.nextAdjustment, kind: "refund" },
+      { ...yearly.nextAdjustment, amountCents: 0 },
+      { ...yearly.nextAdjustment, amountCents: -4500 },
+      { ...yearly.nextAdjustment, at: "soon" },
+    ]) {
+      const parsed = parseOrgBilling({ ...yearly, nextAdjustment: odd });
+      expect(parsed?.nextAdjustment).toBeNull();
+      expect(parsed?.interval).toBe("year");
+    }
   });
 
   it("reads malformed list prices as monthly only, keeping the billing", () => {

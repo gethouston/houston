@@ -3,6 +3,16 @@
 Every `version` bump in `inventory.yaml` needs a matching entry here (enforced by
 `pnpm check:parity`). Newest first. Use `## vN` headings.
 
+## v143 - 2026-10-24
+
+The organization billing tab (`org-billing-tab`) tells the billing owner of a
+yearly organization its next true-up before it happens. A member added
+mid-year is billed for the rest of the year on the next monthly invoice, so
+the card reads "Next adjustment: $180 on Nov 24, 2026"; a member removed
+reads "Credit of $45 on your next invoice (Nov 24, 2026)". Each carries a line
+saying why. Nothing shows while nothing is pending, for a monthly
+organization, for anyone who does not pay, or inside a store app.
+
 ## v142 - 2026-10-23
 
 A new promo-ended modal (`promo-ended-modal`) tells the billing owner whose

@@ -7,6 +7,7 @@ import {
 import { Card, StatusBadge, type StatusKind } from "@houston-ai/core";
 import { useTranslation } from "react-i18next";
 import { canPurchaseInApp } from "../../lib/purchase-policy.ts";
+import { BillingNextAdjustment } from "./billing-next-adjustment.tsx";
 import { BillingPlanAction } from "./billing-plan-action.tsx";
 import {
   BILLING_CURRENCY,
@@ -26,7 +27,8 @@ const BADGE: Record<BillingTabStatus, StatusKind | null> = {
 /**
  * The org's plan: Free or Paid, its seats and what they bill per the
  * subscription's interval (a month or a year), a seat grace's two prices, a
- * scheduled lock, and the one action the caller has.
+ * yearly org's next true-up, a scheduled lock, and the one action the caller
+ * has.
  */
 export function BillingPlanCard({
   billing,
@@ -88,6 +90,7 @@ export function BillingPlanCard({
           })}
         </p>
       )}
+      {purchasable && <BillingNextAdjustment billing={billing} now={now} />}
       {lockAt && (
         <p className="text-sm text-warning-ink">
           {t("billing.locksOn", { date: day(lockAt) })}

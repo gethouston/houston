@@ -26,6 +26,7 @@ export function promoBilling(patch: Partial<OrgBilling> = {}): OrgBilling {
       nextCents: 2000,
       renewsAt: "2026-11-14T17:00:00.000Z",
     },
+    nextAdjustment: null,
     usage: null,
     routines: null,
     ...patch,

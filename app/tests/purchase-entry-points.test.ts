@@ -30,6 +30,10 @@ const GATED_BY: Record<string, string> = {
     "components/organization/billing-plan-card.tsx",
   "components/organization/billing-plan-card.tsx":
     "components/organization/billing-plan-card.tsx",
+  // A yearly org's next true-up is drawn only by the plan card, behind the
+  // policy's answer.
+  "components/organization/billing-next-adjustment.tsx":
+    "components/organization/billing-plan-card.tsx",
   // The monthly-or-yearly rows and the bill under them are drawn only by
   // the plan card, the paid-org offer and the strip's checkout dialog, each
   // behind the policy's answer.

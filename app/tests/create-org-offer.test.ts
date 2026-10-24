@@ -17,6 +17,7 @@ const billing = (monthlyCents: number): OrgBilling => ({
   seatGraceEndsAt: null,
   renewsAt: null,
   priceNotice: null,
+  nextAdjustment: null,
   usage: null,
   routines: null,
 });

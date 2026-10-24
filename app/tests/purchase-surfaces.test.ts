@@ -82,6 +82,7 @@ function free(patch: Partial<OrgBilling> = {}): OrgBilling {
     seatGraceEndsAt: null,
     renewsAt: null,
     priceNotice: null,
+    nextAdjustment: null,
     usage: { scope: "org", used: 12, limit: 40, resetsAt: "" },
     routines: null,
     ...patch,

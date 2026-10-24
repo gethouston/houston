@@ -458,6 +458,16 @@
     "grace": "{{today}} a month until {{date}}, then {{total}} a month",
     "graceYear": "{{today}} a year until {{date}}, then {{total}} a year",
     "locksOn": "Locks on {{date}}",
+    "nextAdjustment": {
+      "charge": {
+        "line": "Next adjustment: {{amount}} on {{date}}",
+        "hint": "Members added mid-year are billed for the time left until your renewal."
+      },
+      "credit": {
+        "line": "Credit of {{amount}} on your next invoice ({{date}})",
+        "hint": "Members removed mid-year are credited for the time left until your renewal."
+      }
+    },
     "benefitUsage": "Everyone gets their own usage, with no weekly limit",
     "benefitRoutines": "Run all your routines, as often as you need",
     "benefitAway": "Routines keep running while you're away",

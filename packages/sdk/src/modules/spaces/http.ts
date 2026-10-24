@@ -27,8 +27,11 @@ import type {
  * Lists the spaces the user belongs to and any invitations waiting for them.
  *
  * The caller's spaces + pending invites, each space with its billing (tier,
- * the weekly message pool, routine state, any lock) and whether the caller
- * still has a free organization to create. Throws on every failure, 404
+ * the weekly message pool, routine state, any lock, how often it bills in
+ * `billing.interval`) and whether the caller still has a free organization
+ * to create. For the person who pays a yearly organization, its billing also
+ * carries `nextAdjustment`: the prorated charge (or credit) for members added
+ * (or removed) since the last bill, and the day it is billed. Throws on every failure, 404
  * included: a gateway that predates spaces answers 404, and it is the SURFACE
  * that turns that into an empty result (the web switcher then shows only the
  * personal workspace, byte-identical to a pre-C8 deployment).

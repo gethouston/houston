@@ -43,6 +43,10 @@ export {
   usagePercent,
 } from "./modules/billing/model";
 export {
+  type NextAdjustmentView,
+  nextAdjustmentView,
+} from "./modules/billing/next-adjustment";
+export {
   plusCheckoutOrgSlug,
   plusOfferApplies,
 } from "./modules/billing/plus-org";

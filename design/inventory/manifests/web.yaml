@@ -352,7 +352,7 @@ components:
     notes: The plan dialogs render in app and are not extracted as reusable ui components.
   org-billing-tab:
     status: partial
-    ref: "app/src/components/organization/billing-tab.tsx (billing-plan-card.tsx, billing-plan-action.tsx, billing-usage-card.tsx over billing-tab-model.ts), checkout via hooks/queries/use-org-checkout.ts over SDK BillingCheckoutTracker"
+    ref: "app/src/components/organization/billing-tab.tsx (billing-plan-card.tsx, billing-plan-action.tsx, billing-next-adjustment.tsx, billing-usage-card.tsx over billing-tab-model.ts), checkout via hooks/queries/use-org-checkout.ts over SDK BillingCheckoutTracker"
     notes: Renders in app and is not extracted as a reusable ui component.
 
   org-plan-upgrade-row:
