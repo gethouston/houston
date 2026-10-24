@@ -383,14 +383,14 @@ Sizes assume Julian plus parallel agents, part-time: **S** ≈ 1–3 days · **M
 | Locale parity check | ✅ `npm run check:locales`, in CI |
 | `academy` plugin v0: `start`, `brief`, `explain`, `check 0`; hooks for secrets in files, `.env` in git, force-push | ✅ validated; hooks unit-tested (14 cases) and tested end to end in a real session |
 | Marketplace in the Houston repo (`/plugin install academy --marketplace gethouston/houston`) | ✅ public |
-| Deploy workflow to Firebase Hosting on GCP (`.github/workflows/academy.yml`) | ✅ written; needs the one-time site creation |
+| Deploy workflow to Firebase Hosting on GCP (`.github/workflows/academy.yml`) | ✅ site `gethouston-academy` created; deploys on merge |
 | Episode 0 script | ✅ draft, en + es, in `series/` |
 | Pilot kit: test plan, observation sheet, invite drafts | ✅ in `pilot/` (invites not sent) |
 | Dry-run on a clean Mac and Windows machine with the desktop app | ⏳ needs Julian |
-| Site live at `academy.gethouston.ai` | ⏳ one-time setup (below), then every merge deploys |
+| Site live at `academy.gethouston.ai` | ⏳ merge the PR, then connect the domain |
 | 5 pilot sessions | ⏳ |
 
 **Still open (Julian):**
-1. **One-time Firebase setup:** create the site with `firebase hosting:sites:create gethouston-academy --project gethouston`, then in the Firebase console add the custom domain `academy.gethouston.ai` and its DNS record. Until the domain is connected, the site will be at `gethouston-academy.web.app`.
+1. **Custom domain:** the Firebase site `gethouston-academy` exists (created 2026-10-23), and merging deploys it to `gethouston-academy.web.app`. To serve it at `academy.gethouston.ai`, add the custom domain in the Firebase console, along with its DNS record.
 2. **Review:** read both languages of every lesson before the pilot.
 3. **Dry run:** Course 0 on a clean Mac and a clean Windows machine with the Claude desktop app.
