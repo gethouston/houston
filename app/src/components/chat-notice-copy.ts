@@ -10,6 +10,8 @@ import type { SystemNoticeKind } from "@houston-ai/chat";
 export const NOTICE_COPY = {
   engine_restart: "chat:engineRestart.sayContinue",
   engine_resumed: "chat:engineRestart.resuming",
+  turn_time_limit: "chat:replyTimeLimit",
+  turn_time_limit_unsaved: "chat:replyTimeLimitUnsaved",
   send_busy: "chat:sendBusy",
   compute_busy: "chat:computeBusy",
   agent_too_large: "chat:agentSetup.tooLarge",

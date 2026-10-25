@@ -27,6 +27,7 @@ export type AnalyticsProperty =
   // whose turn it was (`sent` by this client / `observed`); `error_kind` is
   // the legacy copy-derived bucket kept for continuity (session_failed,
   // app_error_shown).
+  | "stop_reason"
   | "error_class"
   | "origin"
   | "workspace_count"
@@ -106,6 +107,7 @@ export const ALLOWED_PROPS = new Set<AnalyticsProperty>([
   "mission",
   "source",
   "error_kind",
+  "stop_reason",
   "error_class",
   "origin",
   "workspace_count",

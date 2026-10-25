@@ -1,4 +1,4 @@
-import { parseTurnSetupFailure } from "@houston/wire-types";
+import { parseTurnSetupFailure, TurnErrorCode } from "@houston/wire-types";
 import type { EngineNoticeKind } from "./turn-errors";
 import { finishErr, type TurnState } from "./turn-settle";
 
@@ -32,6 +32,24 @@ export const AGENT_SETUP_FAILED_MESSAGE =
  */
 export const TURN_UNCONFIRMED_MESSAGE =
   "We couldn't confirm your agent got this message. Check back in a few minutes, and if there's still no reply, send it again.";
+
+/** Saved work at the gateway's reply ceiling, an expected end. */
+export const TURN_TIME_LIMIT_MESSAGE =
+  'Your agent worked for 4 hours, the limit for one reply. Its progress is saved. Say "continue" and it will pick up where it left off.';
+
+/** The forced fallback cannot promise that the last steps were saved. */
+export const TURN_TIME_LIMIT_UNSAVED_MESSAGE =
+  'Your agent reached the 4-hour limit for one reply and stopped before it could save its last steps. Say "continue" to pick up from the last saved point.';
+
+export function timeLimitNotice(
+  code: unknown,
+): { kind: TurnErrorCode; message: string } | undefined {
+  if (code === TurnErrorCode.TimeLimit)
+    return { kind: code, message: TURN_TIME_LIMIT_MESSAGE };
+  if (code === TurnErrorCode.TimeLimitUnsaved)
+    return { kind: code, message: TURN_TIME_LIMIT_UNSAVED_MESSAGE };
+  return undefined;
+}
 
 const MESSAGES: Record<TurnSetupNotice, string> = {
   agent_too_large: AGENT_TOO_LARGE_MESSAGE,

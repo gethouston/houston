@@ -168,6 +168,7 @@ export async function runTurn(
     );
     return {
       ...outcome,
+      ...(frames.stopReason ? { stopReason: frames.stopReason } : {}),
       ...(missionTitle ? { missionTitle } : {}),
       ...modelCallsOutcome(frames, turnId),
     };
@@ -190,7 +191,12 @@ export async function runTurn(
       usedTokens,
       emit,
     });
-    return { ...failed, ...modelCallsOutcome(frames, turnId) };
+    const stopReason = frames.stopReason ?? turn.stopReason?.();
+    return {
+      ...failed,
+      ...(stopReason ? { stopReason } : {}),
+      ...modelCallsOutcome(frames, turnId),
+    };
   } finally {
     // A routine run records what it left its session holding, before the
     // caller's sync-back ships the conversation file (turn-routine-context.ts).

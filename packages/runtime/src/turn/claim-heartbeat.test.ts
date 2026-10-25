@@ -94,3 +94,35 @@ test("claim mode changes update the same live ref and ignore unknown or fenced r
   });
   await heartbeat.stop();
 });
+
+test("a time-limit stop aborts once, keeps heartbeating and still observes a later fence", async () => {
+  const { startTurnClaimHeartbeat } = await import("./claim-heartbeat");
+  const abort = new AbortController();
+  const onAbort = vi.fn();
+  abort.signal.addEventListener("abort", onAbort);
+  let response = Response.json({ stop: "unknown" });
+  const heartbeat = startTurnClaimHeartbeat(
+    { claim, hostToken: "h" } as import("./types").TurnRequest,
+    abort,
+    {
+      fetchImpl: async () => response.clone(),
+      heartbeatIntervalMs: 60_000,
+    },
+  );
+  if (!heartbeat) throw new Error("missing heartbeat");
+  try {
+    await heartbeat.ready;
+    expect(abort.signal.aborted).toBe(false);
+    response = Response.json({ stop: "turn_time_limit" });
+    await heartbeat.checkpoint();
+    expect(abort.signal.aborted).toBe(true);
+    expect(heartbeat.fenced).toBe(false);
+    await heartbeat.checkpoint();
+    expect(onAbort).toHaveBeenCalledOnce();
+    response = new Response(null, { status: 409 });
+    await heartbeat.checkpoint();
+    expect(heartbeat.fenced).toBe(true);
+  } finally {
+    await heartbeat.stop();
+  }
+});

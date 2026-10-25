@@ -98,6 +98,7 @@ export function useSessionEvents() {
                 workspaceName: h.getWorkspace()?.name ?? "Personal",
                 fallbackAgentName: h.getAgent()?.name ?? "Agent",
                 t: () => handlersRef.current.t,
+                stopReason: payload.data.stop_reason,
               },
             );
           }

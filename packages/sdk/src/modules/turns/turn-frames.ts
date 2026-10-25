@@ -1,6 +1,6 @@
 import type { WireFrame } from "@houston/runtime-client";
 import { noteReplyPhase } from "./reply-phase";
-import { finishSetupError } from "./turn-notices";
+import { finishSetupError, timeLimitNotice } from "./turn-notices";
 import {
   finishErr,
   finishOk,
@@ -92,10 +92,13 @@ export function applyTurnFrame(
       settleProviderErrorCard(s, ev.data);
       stop();
       break;
-    case "error":
-      if (!finishSetupError(s, ev.data)) finishErr(s, ev.data.message);
+    case "error": {
+      const notice = timeLimitNotice(ev.data.code);
+      if (notice) finishOk(s, notice);
+      else if (!finishSetupError(s, ev.data)) finishErr(s, ev.data.message);
       stop();
       break;
+    }
     case "done":
       // A clean terminal frame carries whatever the turn ended on: a blocking
       // ask_user / request_connection / plan_ready, or a pure suggest_actions /

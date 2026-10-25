@@ -4,6 +4,7 @@ import { finishAccountBlocked } from "./account-blocked-refusal";
 import type { TerminalBoardStatus } from "./feed-output";
 import { PreAcceptTurn } from "./pre-accept-turn";
 import type { PresettlePoll } from "./presettle-poll";
+import { turnProgressAt } from "./send-hold-clock";
 import { SendHoldState } from "./send-hold-state";
 import { reloadAndSettle } from "./settle-from-history";
 import { sinkPresettlePoll } from "./sink-presettle";
@@ -49,6 +50,7 @@ export class TurnSink {
   private readonly s: TurnState;
   /** Evidence a turn was in flight on our watch (frames or a running sync). */
   private sawRunning = false;
+  lastProgressAt?: number;
   private sawSync = false;
   private settling = false;
   /** Turn mode: the send was accepted — gates resync turn-id adoption, and is
@@ -190,6 +192,7 @@ export class TurnSink {
 
   onFrame(ev: WireFrame): void {
     if (this.muted) return;
+    this.lastProgressAt = turnProgressAt(ev) ?? this.lastProgressAt;
     // Another turn's terminal frame: the conversation is (about to be) free.
     // An idle sync is NOT counted: the cloud pool's turnlog tail reports
     // `running: false` mid-turn.

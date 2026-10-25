@@ -26,6 +26,8 @@ export type HoustonEvent =
         error_class?: string;
         /** `sent` by this client or `observed` (SDK `SessionStatusOrigin`); additive. */
         origin?: string;
+        /** Reply ceiling reached; distinct notification copy. */
+        stop_reason?: "turn_time_limit" | "turn_time_limit_unsaved";
       };
     }
   | {

@@ -50,7 +50,9 @@ export async function promptTurnSession(input: {
     input.interaction,
     turn.timings,
     emit,
-    stall.admit,
+    (wire) =>
+      !(wire.type === "provider_error" && turn.stopReason?.()) &&
+      stall.admit(wire),
   );
   const modelCalls = collectModelCalls(session, input.backendId);
   frames.modelCalls = modelCalls;
@@ -70,6 +72,7 @@ export async function promptTurnSession(input: {
       // echo: the turn settles on the stall card below instead.
       if (!stall.stalled()) throw error;
     });
+    frames.stopReason = turn.stopReason?.();
     stall.disarm();
     // Inside the try so the call report still collects the pass's request.
     await recoverFollowUpActions({
