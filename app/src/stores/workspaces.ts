@@ -1,6 +1,6 @@
 import { create } from "zustand";
 import { analytics } from "../lib/analytics";
-import { setActiveOrg } from "../lib/engine";
+import { setActiveOrg, setPreferenceErrorReporter } from "../lib/engine";
 import { queryClient } from "../lib/query-client";
 import { resetCacheForSpaceChange } from "../lib/space-cache";
 import { orgSlugFromWorkspaceId } from "../lib/space-id";
@@ -73,6 +73,8 @@ interface WorkspaceState {
 }
 
 let loadGeneration = 0;
+
+setPreferenceErrorReporter(reportWorkspacePreferenceError);
 
 export const useWorkspaceStore = create<WorkspaceState>((set, get) => ({
   setLocale: workspaceLocaleWrites({
