@@ -1,7 +1,6 @@
 import { FAKE_HOST_URL } from "@houston/fake-host";
 import type { OrgBilling } from "@houston/wire-types";
 import { expect, type Locator, type Page } from "@playwright/test";
-import { workspaceMenuTrigger } from "./workspace-menu";
 
 /** A team whose billing owner still pays the $15 promotional monthly price. */
 const TEAM = { slug: "00000000000000ab", name: "Acme" };
@@ -52,10 +51,14 @@ export async function enterPromoTeam(
     role: "owner",
   });
   await armFake("workspaces", { teams: [{ ...TEAM, billing }] });
+  // The team is the space this person last used, so the app opens on it.
+  const res = await fetch(`${FAKE_HOST_URL}/v1/preferences/last_workspace_id`, {
+    method: "PUT",
+    headers: { "content-type": "application/json" },
+    body: JSON.stringify({ value: `org:${TEAM.slug}` }),
+  });
+  expect(res.ok).toBe(true);
   await page.goto("/");
-  const trigger = workspaceMenuTrigger(page);
-  await trigger.click();
-  await page.getByRole("menuitemcheckbox", { name: TEAM.name }).click();
 }
 
 export const promoModal = (page: Page) => page.getByTestId("promo-ended-modal");

@@ -2,8 +2,10 @@ import {
   FAKE_HOST_URL,
   SEED_AGENT_ID,
   SEED_AGENT_NAME,
+  SEED_WORKSPACE_ID,
 } from "@houston/fake-host";
 import { expect, test } from "./support/fixtures";
+import { setAccountPreference } from "./support/onboarding";
 import { createTeam, openCreateDialog } from "./support/sidebar-create";
 import { readSidebarLayout, seedSidebarLayout } from "./support/sidebar-layout";
 import { workspaceMenuTrigger } from "./support/workspace-menu";
@@ -163,6 +165,8 @@ test("folder menu launches Move to another space when spaces are available", asy
   await request.post(`${FAKE_HOST_URL}/__test__/workspaces`, {
     data: { teams: [{ slug: "00000000000000ab", name: "Acme Team" }] },
   });
+  // The folder lives in the personal space, the one this person last used.
+  await setAccountPreference(request, "last_workspace_id", SEED_WORKSPACE_ID);
   await seedSidebarLayout(request, {
     groups: [{ id: "design", name: "Design", collapsed: false, agentIds: [] }],
     order: [{ kind: "agent", id: SEED_AGENT_ID }],
