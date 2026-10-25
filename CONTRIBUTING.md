@@ -24,7 +24,7 @@ pnpm install
 cargo check --workspace
 ```
 
-Before changing architecture or shared behavior, read [`CLAUDE.md`](CLAUDE.md), [`CONTEXT.md`](CONTEXT.md), and [`BOUNDARY.md`](BOUNDARY.md). They describe the current host/runtime design, package boundaries, and repository conventions; the code and its tests are the source of truth beyond that.
+Before changing architecture or shared behavior, read [`AGENTS.md`](AGENTS.md), [`CONTEXT.md`](CONTEXT.md), and [`BOUNDARY.md`](BOUNDARY.md). They describe the current host/runtime design, package boundaries, and repository conventions; the code and its tests are the source of truth beyond that.
 
 ## Development
 
@@ -33,8 +33,8 @@ Before changing architecture or shared behavior, read [`CLAUDE.md`](CLAUDE.md), 
 # mprocs (desktop app, web app, host, local cloud).
 pnpm dev
 
-# Run just the TypeScript host local profile (the engine)
-cd packages/host && pnpm dev
+# Run just the TypeScript host local profile (the engine), on ~/.dev-houston
+pnpm dev:host
 
 # TypeScript check
 pnpm typecheck

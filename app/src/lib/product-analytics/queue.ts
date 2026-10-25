@@ -172,7 +172,7 @@ export class ProductAnalyticsQueue {
     if (result.status === "failed") {
       for (const event of batch) event.attempts += 1;
       // A batch that died twice on the wire is dropped without a report: the
-      // device being offline is an expected state, never a bug (CLAUDE.md).
+      // device being offline is an expected state, never a bug (AGENTS.md).
       this.backlog.putBack(batch.filter((e) => e.attempts < MAX_ATTEMPTS));
       if (this.backlog.size > 0) this.scheduleFlush();
       return;

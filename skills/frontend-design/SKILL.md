@@ -13,7 +13,7 @@ Before any pixel:
 
 1. Read **`/DESIGN.md`** (repo root) FIRST — the agent-facing spec you hold in context (identity, hard rules, token quick-reference, motion, banned defaults, polish checklist, component inventory). Then read the existing components of the surface you touch.
 2. Token VALUES are authoritative in **`packages/design-tokens/tokens/*.json`** (semantic `--ht-*` alias layer, light + dark). Never a hardcoded hex/spacing literal — a visual change is a token edit.
-3. Search before building: `@houston-ai/*` showcase, existing `app/src` components, shadcn/ui registry. Reuse beats invention (`houston/CLAUDE.md` → Search before building).
+3. Search before building: `@houston-ai/*` showcase, existing `app/src` components, shadcn/ui registry. Reuse beats invention (`houston/AGENTS.md` → Code).
 
 **The design system wins on any conflict.** This skill adds *process*; it never overrides a documented token, rule, or pattern.
 
@@ -58,7 +58,7 @@ A **new screen, new website section, or new major component** gets 3–5 genuine
 
 ## Copy rules
 
-Words are design material (design-system.md → Non-technical labels; `houston/CLAUDE.md` → Internationalization). Every user-facing string:
+Words are design material (design-system.md → Non-technical labels; `houston/AGENTS.md` → Internationalization). Every user-facing string:
 
 - **Sentence case.** Never uppercase / `tracking-wider` headers.
 - **Verbs that name the action** — "Save changes", not "Submit". "Start", "Approve", "Delete".
@@ -69,7 +69,7 @@ Words are design material (design-system.md → Non-technical labels; `houston/C
 
 ## When you touch shared surface
 
-- New/changed cross-surface component → bump `design/inventory/inventory.yaml` + CHANGELOG in the SAME change and run `pnpm check:parity` (`houston/CLAUDE.md` → "SDK is the single source of truth").
+- New/changed cross-surface component → bump `design/inventory/inventory.yaml` + CHANGELOG in the SAME change and run `pnpm check:parity` (`houston/AGENTS.md` → "The SDK is the single source of truth").
 - Generic reusable → `ui/`. App-specific → `app/`. Props over stores; no `@/` aliases and no app types in `ui/`.
 
 ## Gate

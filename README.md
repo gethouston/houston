@@ -229,7 +229,7 @@ houston/
 └── ui/                      Houston UI — @houston-ai/* React packages
 ```
 
-See `CLAUDE.md` for the repo map and conventions.
+See `AGENTS.md` for the repo map and conventions.
 
 ---
 

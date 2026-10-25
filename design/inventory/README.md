@@ -15,7 +15,7 @@ exist, with the parts, states, and semantics it is specified to have?* It is a
 versioned engineering contract, CI-checked, not remembered.
 
 How a structural change flows relative to behavior (SDK) and look (tokens)
-changes is in the root `CLAUDE.md` → "SDK is the single source of truth".
+changes is in the root `AGENTS.md` → "The SDK is the single source of truth".
 
 ## Files
 

@@ -21,7 +21,7 @@ Closes #
 ## Surface impact
 
 <!-- A UI/UX change must not silently skip a surface. Tick what this PR touches.
-     Procedure: CLAUDE.md → "SDK is the single source of truth" -->
+     Procedure: AGENTS.md → "The SDK is the single source of truth" -->
 
 Change type:
 

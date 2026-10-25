@@ -17,7 +17,7 @@ and `pnpm check:sdk-parity` fails on a gateway route the app calls with no
 method here.
 
 > **Changing client behavior?** Follow the layers of the SDK contract (root
-> `CLAUDE.md` → "SDK is the single source of truth"). A VM-snapshot change is a
+> `AGENTS.md` → "The SDK is the single source of truth"). A VM-snapshot change is a
 > contract change — additive only, same discipline as protocol v3.
 
 ## Ports (injected capabilities)

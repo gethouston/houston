@@ -49,8 +49,8 @@
  * `HoustonEngineError.retryAfterMs` (`packages/wire-types/src/retry-after.ts`).
  *
  * ── Why suppressing the wake toast is not a silent failure ──────────────────
- * The no-silent-failures policy (`CLAUDE.md`) requires every failure a
- * user-initiated action produces to reach the user. A wake 503 that this layer
+ * The no-silent-failures policy (`AGENTS.md` → Errors) requires every failure
+ * a user-initiated action produces to be reported. A wake 503 that this layer
  * retries to success is not a failure the action produced — the action
  * SUCCEEDED, a little later. Toasting it would report a non-problem and train
  * users to ignore the red toast. When the budget below is exhausted the error

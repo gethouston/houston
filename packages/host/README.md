@@ -85,15 +85,14 @@ modules registered.
 
 ```bash
 pnpm install
-cd packages/host
-pnpm dev          # local desktop/web host, src/local/main.ts, serves :4318
+pnpm dev:host     # local desktop/web host, src/local/main.ts, serves :4318 on ~/.dev-houston
 ```
 
 The cloud profile is this same server wired by the private gateway repo's
 deployment (one engine pod per agent); there is no in-repo cloud entry point.
 
 The full desktop/web + host dev loop is `pnpm dev` from the repo root (root
-`CLAUDE.md` → Dev loop); this pane logs to `~/.dev-houston/logs/dev-host.log`.
+`AGENTS.md` → Dev loop); this pane logs to `~/.dev-houston/logs/dev-host.log`.
 
 ## Test
 

@@ -12,9 +12,9 @@ import type { TokenVerifier } from "../ports";
  * future closed verifier would implement `TokenVerifier` behind the port and
  * can reuse `stripBearer` exported from here.
  *
- * Failure policy (CLAUDE.md "no silent failures"): only *authentication*
- * failures resolve to `null`; everything else is re-thrown so it surfaces rather
- * than masquerading as a mere "invalid token".
+ * Failure policy (AGENTS.md "Errors: silent to the user, never silent to
+ * us"): only *authentication* failures resolve to `null`; everything else is
+ * re-thrown so it surfaces rather than masquerading as a mere "invalid token".
  */
 
 /** A bearer may arrive with or without the "Bearer " scheme prefix. */
