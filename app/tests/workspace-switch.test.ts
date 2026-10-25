@@ -1,10 +1,8 @@
 import assert from "node:assert/strict";
 import test from "node:test";
+import { resolveActiveWorkspace } from "@houston/sdk";
 import type { Workspace } from "../src/lib/types.ts";
-import {
-  resolveActiveWorkspace,
-  workspaceGateState,
-} from "../src/lib/workspace-switch.ts";
+import { workspaceGateState } from "../src/lib/workspace-switch.ts";
 
 const ws = (id: string, isDefault = false): Workspace => ({
   id,
@@ -22,14 +20,14 @@ test("restores the last-selected workspace when still present", () => {
   assert.equal(resolveActiveWorkspace(list, "org:fedcba9876543210"), TEAM_B);
 });
 
-test("falls back to the default when the persisted id is gone", () => {
+test("falls back to a team when the persisted id is gone", () => {
   const list = [PERSONAL, TEAM_A];
   // The user last used a team they were removed from since.
-  assert.equal(resolveActiveWorkspace(list, "org:deadbeefdeadbeef"), PERSONAL);
+  assert.equal(resolveActiveWorkspace(list, "org:deadbeefdeadbeef"), TEAM_A);
 });
 
-test("falls back to the default with no persisted id", () => {
-  assert.equal(resolveActiveWorkspace([PERSONAL, TEAM_A], null), PERSONAL);
+test("falls back to a team with no persisted id", () => {
+  assert.equal(resolveActiveWorkspace([PERSONAL, TEAM_A], null), TEAM_A);
 });
 
 test("falls back to the first when there is no default", () => {

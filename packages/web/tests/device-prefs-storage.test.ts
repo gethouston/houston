@@ -27,7 +27,12 @@ const appMocks = vi.hoisted(() => ({
 }));
 
 vi.mock("../../../app/src/lib/tauri", () => ({
-  tauriPreferences: { get: appMocks.prefGet, set: vi.fn() },
+  tauriPreferences: {
+    get: appMocks.prefGet,
+    set: vi.fn(),
+    resolveWorkspace: async (workspaces: Promise<unknown[]>) =>
+      (await workspaces)[0] ?? null,
+  },
   tauriWorkspaces: { list: appMocks.list },
 }));
 vi.mock("../../../app/src/lib/engine", () => ({ setActiveOrg: () => false }));
@@ -192,26 +197,6 @@ test("a boot preference read the store answers is passed through unreported", as
 
   await expect(readBootPreference("last_agent_id")).resolves.toBe("agent-7");
   expect(appMocks.report).not.toHaveBeenCalled();
-});
-
-test("loadWorkspaces keeps the list when the device store cannot answer", async () => {
-  appMocks.report.mockImplementation(() => {});
-  appMocks.list.mockResolvedValue([personal]);
-  appMocks.prefGet.mockRejectedValue(blockedRead());
-
-  const { useWorkspaceStore } = await import(
-    "../../../app/src/stores/workspaces"
-  );
-  await useWorkspaceStore.getState().loadWorkspaces();
-
-  const state = useWorkspaceStore.getState();
-  expect(state.workspaces).toEqual([personal]);
-  expect(state.current?.id).toBe(personal.id);
-  // The failure screen (workspaceGateState `failed`) is what this must never be.
-  expect(state.loadError).toBe(false);
-  expect(state.loaded).toBe(true);
-  expect(state.loading).toBe(false);
-  expect(appMocks.report).toHaveBeenCalledOnce();
 });
 
 test("loadWorkspaces still fails loudly when the LIST is what rejected", async () => {

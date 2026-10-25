@@ -13,7 +13,11 @@
  */
 
 import { HoustonEngineClient } from "@houston/runtime-client";
-import type { HoustonSdk } from "@houston/sdk";
+import {
+  type HoustonSdk,
+  type WorkspacePreferenceReporter,
+  WorkspaceSelectionState,
+} from "@houston/sdk";
 // Control-plane calls import from the barrel (`../control-plane`), never the
 // `cp/*` submodules directly: the web test suite mocks the barrel module
 // (`vi.mock("…/control-plane")`) and overrides `runtimeClientFor` /
@@ -37,6 +41,7 @@ export interface HoustonClientOptions {
   token: string;
   /** When true, route agents + chat through the Houston control plane (cloud). */
   controlPlane?: boolean;
+  onPreferenceError?: WorkspacePreferenceReporter;
 }
 
 /** The endpoint + auth state, mixed into the adapter context. */
@@ -50,6 +55,8 @@ export abstract class EngineEndpoint extends AgentSelection {
    *  with reactivity off (web owns its read model). Every mixin's domain call
    *  lands on one of its modules. */
   sdk: HoustonSdk;
+  private readonly workspaceSelection = new WorkspaceSelectionState();
+  private readonly preferenceErrors: HoustonClientOptions["onPreferenceError"];
   /** Live-token auth fetch (not a pinned `token`): hosted mode rotates the
    *  bearer mid-session and a 401 refreshes + replays (HOU-687). Shared by
    *  `engine` and the SDK, so `x-houston-org` has one live source
@@ -66,6 +73,7 @@ export abstract class EngineEndpoint extends AgentSelection {
 
   constructor(opts: HoustonClientOptions) {
     super();
+    this.preferenceErrors = opts.onPreferenceError;
     this.baseUrl = opts.baseUrl.replace(/\/+$/, "");
     this.token = opts.token;
     const useCp =
@@ -98,6 +106,8 @@ export abstract class EngineEndpoint extends AgentSelection {
     // under the SAME read retry (`createEngineSdk` wraps it).
     this.sdk = createEngineSdk({
       baseUrl: this.baseUrl,
+      workspaceSelection: this.workspaceSelection,
+      reportPreferenceError: this.preferenceErrors,
       fetch: authFetch,
       liveToken: () => liveToken(this.token),
     });
@@ -126,23 +136,14 @@ export abstract class EngineEndpoint extends AgentSelection {
     if (!this._cp) return this.sdk;
     return createEngineSdk({
       baseUrl: this.baseUrl,
+      workspaceSelection: this.workspaceSelection,
+      reportPreferenceError: this.preferenceErrors,
       fetch: gatewayAuthFetch(this.token, () => orgSlug),
       liveToken: () => liveToken(this.token),
     });
   }
 
-  /**
-   * Repoint this context at a new engine endpoint IN PLACE (HOU-432): the
-   * desktop shell calls `HoustonClient.setEndpoint` when the sidecar restarts
-   * on a fresh random port, and on every hosted bearer rotation
-   * (`setHostedEngineSessionToken`). The bearer needs no rework — every fetch
-   * reads it live per attempt (`liveToken` off `window.__HOUSTON_ENGINE__`,
-   * which the caller updates first). The pinned base URLs do: the shared
-   * `ControlPlaneConfig` is mutated in place (per-agent runtime clients and
-   * `cpFetch` re-read it per call), while `authFetch` + the direct runtime
-   * client + the SDK are rebuilt, because their requesters capture the base
-   * URL (and the fetch its fallback bearer) at construction.
-   */
+  /** Rebuild requesters on endpoint or bearer changes; retain same-user choice ordering. */
   setEndpoint(opts: { baseUrl: string; token: string }): void {
     this.baseUrl = opts.baseUrl.replace(/\/+$/, "");
     // A repoint may land on a different deployment; re-probe its flags.
@@ -169,26 +170,15 @@ export abstract class EngineEndpoint extends AgentSelection {
     const typing = this.sdk.turns.typingState();
     this.sdk = createEngineSdk({
       baseUrl: this.baseUrl,
+      workspaceSelection: this.workspaceSelection,
+      reportPreferenceError: this.preferenceErrors,
       fetch: this.authFetch,
       liveToken: () => liveToken(this.token),
     });
     this.sdk.turns.adoptTypingState(typing);
   }
 
-  /**
-   * Pin (or clear) the active hosted space (C8 §Workspaces bridge). Mutates the
-   * live `ControlPlaneConfig` in place — shared by every per-request fetch and
-   * the long-lived per-agent runtime clients (whose auth-fetch re-reads it per
-   * attempt) — so a switch takes effect at once. No-op off-cloud (`_cp === null`).
-   *
-   * A REAL space change also invalidates {@link agentList} (HOU-979): the ids it
-   * holds belong to the space being left, and every one of them 404s under the
-   * new `x-houston-org`. Without this the guard was first-boot-only — a Connect
-   * clicked mid-switch still routed at the previous space's agent. Back to
-   * `pending` means provider calls refuse (and the probe reports "checking")
-   * until the new space's `listAgents` lands. Re-pinning the SAME slug (the
-   * client rebuild in `lib/engine.ts`, a same-space reselect) changes nothing.
-   */
+  /** Re-pin hosted requests and invalidate the previous space's agent list. */
   setActiveOrg(slug: string | null): void {
     if (!this._cp) return;
     if ((this._cp.activeOrgSlug ?? null) === (slug ?? null)) return;

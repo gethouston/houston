@@ -85,7 +85,6 @@ import skillsPt from "../locales/pt/skills.json";
 import teamsPt from "../locales/pt/teams.json";
 import { bindDocumentLanguage } from "./document-language";
 import {
-  activeWorkspaceLocale,
   isSupported,
   LOCALE_PREF_KEY,
   localeGateIsLoading,
@@ -100,7 +99,6 @@ export type { SupportedLocale };
 // Pure locale value-logic lives in ./locale (DOM/JSON-free, unit-tested).
 // Re-exported here so existing `from "../lib/i18n"` imports keep working.
 export {
-  activeWorkspaceLocale,
   isSupported,
   LOCALE_PREF_KEY,
   localeGateIsLoading,

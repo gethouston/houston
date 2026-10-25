@@ -91,6 +91,31 @@ describe("the delegated account-preference read", () => {
     expect(calls[0].url).toBe(`${BASE}/v1/preferences/onboarding_completed`);
   });
 
+  test("the chosen space follows the account through GET and PUT", async () => {
+    const value = `org:${ORG}`;
+    stubFetch(() => json(200, { value }));
+    const c = client();
+    c.setActiveOrg(ORG);
+
+    expect(await c.getPreference("last_workspace_id")).toBe(value);
+    await c.setPreference("last_workspace_id", value);
+
+    expect(calls.map((call) => [call.method, call.url, call.body])).toEqual([
+      ["GET", `${BASE}/v1/preferences/last_workspace_id`, null],
+      [
+        "PUT",
+        `${BASE}/v1/preferences/last_workspace_id`,
+        JSON.stringify({ value }),
+      ],
+    ]);
+    for (const call of calls) {
+      expect(call.headers.get("Authorization")).toBe("Bearer t");
+      expect(call.headers.get("x-houston-org")).toBeNull();
+    }
+    expect(calls[0].headers.get("Content-Type")).toBeNull();
+    expect(calls[1].headers.get("Content-Type")).toBe("application/json");
+  });
+
   test("a transient 503 earns the same attempts cpFetch would", async () => {
     // A 5xx body the gateway vocabulary does not recognise reads as the
     // `handoff` reason: two brief blind retries, three attempts in all. The

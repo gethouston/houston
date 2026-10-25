@@ -10,6 +10,7 @@ import { pullEngineHandshakeWithRetry } from "./engine-handshake";
 import { isLoopbackHostUrl, resolveEngine } from "./engine-mode";
 import { installEngineLifecycleListeners } from "./engine-tauri-events";
 import { osIsTauri } from "./os-bridge";
+import { reportWorkspacePreferenceError } from "./workspace-preference-error";
 
 declare global {
   interface Window {
@@ -162,7 +163,10 @@ function applyConfig(config: { baseUrl: string; token: string }) {
     // client's own retry/backoff bridges the restart gap (HOU-432).
     _client.setEndpoint(config);
   } else {
-    _client = new HoustonClient(config);
+    _client = new HoustonClient({
+      ...config,
+      onPreferenceError: reportWorkspacePreferenceError,
+    });
   }
   // Re-apply the recorded active space (C8) to the (re)built/repointed client:
   // a freshly-built client starts personal, so without this the current space

@@ -53,16 +53,13 @@ describe("planSpacesRefresh", () => {
     );
   });
 
-  it("reselects the default space when the active one vanished", () => {
+  it("reselects a remaining team when the active one vanished", () => {
     const plan = planSpacesRefresh([personal, teamA, teamB], teamA, [
       personal,
       teamB,
     ]);
     assert.strictEqual(plan.kind, "reselect");
-    assert.strictEqual(
-      plan.kind === "reselect" && plan.current?.id,
-      personal.id,
-    );
+    assert.strictEqual(plan.kind === "reselect" && plan.current?.id, teamB.id);
   });
 
   it("keeps a null selection null while still updating the list", () => {

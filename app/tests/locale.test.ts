@@ -1,7 +1,6 @@
 import { ok, strictEqual } from "node:assert/strict";
 import { describe, it } from "node:test";
 import {
-  activeWorkspaceLocale,
   isSupported,
   localeGateIsLoading,
   localeToApply,
@@ -75,41 +74,6 @@ describe("localeToApply", () => {
     strictEqual(localeToApply(null, "en"), null); // unset
     strictEqual(localeToApply("fr", "en"), null); // unsupported
     strictEqual(localeToApply("", "en"), null); // empty
-  });
-});
-
-describe("activeWorkspaceLocale", () => {
-  const ws = (id: string, isDefault: boolean, locale?: string | null) => ({
-    id,
-    isDefault,
-    locale,
-  });
-
-  it("returns null when there are no workspaces", () => {
-    strictEqual(activeWorkspaceLocale([], null), null);
-    strictEqual(activeWorkspaceLocale([], "anything"), null);
-  });
-
-  it("prefers the last-used workspace's override", () => {
-    const list = [ws("a", true, "en"), ws("b", false, "pt")];
-    strictEqual(activeWorkspaceLocale(list, "b"), "pt");
-  });
-
-  it("falls back to the default workspace when last-used is unknown/absent", () => {
-    const list = [ws("a", false, "en"), ws("b", true, "pt")];
-    strictEqual(activeWorkspaceLocale(list, null), "pt"); // default wins
-    strictEqual(activeWorkspaceLocale(list, "ghost"), "pt"); // stale id -> default
-  });
-
-  it("falls back to the first workspace when none is default", () => {
-    const list = [ws("a", false, "es"), ws("b", false, "pt")];
-    strictEqual(activeWorkspaceLocale(list, null), "es");
-  });
-
-  it("returns null when the active workspace has no override (inherit global)", () => {
-    const list = [ws("a", true), ws("b", false, "pt")];
-    strictEqual(activeWorkspaceLocale(list, null), null); // default has no override
-    strictEqual(activeWorkspaceLocale(list, "a"), null);
   });
 });
 

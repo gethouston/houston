@@ -102,6 +102,14 @@ export {
   type UserProfile,
   type UserProfilesResult,
 } from "./modules/org";
+export {
+  WorkspacePreferenceUnavailable,
+  workspacePreferenceErrorKind,
+} from "./modules/preferences/workspace-selection-errors";
+export {
+  type WorkspacePreferenceReporter,
+  WorkspaceSelectionState,
+} from "./modules/preferences/workspace-selection-state";
 // ===== Session module contract =========================================
 // `createAuthFetch` + `SESSION_TOKEN_KEY` are host-facing: the host composes the
 // auth-fetch into `ports.fetch` before constructing the SDK (see the module).
@@ -167,3 +175,4 @@ export {
   WorkspacesHttpError,
   type WorkspacesModule,
 } from "./modules/workspaces";
+export { resolveActiveWorkspace } from "./modules/workspaces/selection";

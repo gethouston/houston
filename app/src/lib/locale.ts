@@ -61,43 +61,12 @@ export function localeToApply(
   return locale;
 }
 
-/** Minimal workspace shape needed to resolve the boot-time active locale. */
-export interface WorkspaceLocaleInput {
-  id: string;
-  isDefault: boolean;
-  locale?: string | null;
-}
-
-/**
- * Pick the boot-time active workspace's locale override. Mirrors how the app
- * restores the active workspace at startup (see `useHoustonInit`): the
- * last-used workspace wins, else the default, else the first. Returns that
- * workspace's override — which may be null (inherit the global default) — or
- * null when there are no workspaces.
- *
- * Lets the locale gate resolve the override on the FIRST paint, independently
- * of `<App/>` (which mounts below the gate and only then loads workspaces).
- */
-export function activeWorkspaceLocale(
-  workspaces: WorkspaceLocaleInput[],
-  lastWorkspaceId: string | null | undefined,
-): string | null {
-  if (workspaces.length === 0) return null;
-  const active =
-    (lastWorkspaceId
-      ? workspaces.find((w) => w.id === lastWorkspaceId)
-      : undefined) ??
-    workspaces.find((w) => w.isDefault) ??
-    workspaces[0];
-  return active.locale ?? null;
-}
-
 /**
  * Whether the first-run `LanguageGate` must keep blocking the first paint.
  *
  * ONLY the global locale preference gates the paint: it decides the language
  * (and whether to show the first-run picker) and is a tiny KV read. The
- * per-workspace override (`bootWorkspaceQuery`) is best-effort and applied on
+ * per-workspace override from the workspace store is applied on
  * arrival, so it MUST NOT be a factor here — it takes no parameter by design.
  *
  * Blocking the gate on that override is what hung the whole app on launch: a
