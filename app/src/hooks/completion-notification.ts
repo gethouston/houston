@@ -35,6 +35,7 @@ export interface CompletionNotificationContext {
   fallbackAgentName: string;
   /** Read at FIRE time, so the copy follows a language change mid-turn. */
   t: () => TFunction<["common"]>;
+  stopReason?: "turn_time_limit" | "turn_time_limit_unsaved";
 }
 
 /** The translated body for the interaction the turn settled on. */
@@ -42,7 +43,9 @@ function completionBody(
   t: TFunction<["common"]>,
   agentPath: string,
   sessionKey: string,
+  stopReason?: "turn_time_limit" | "turn_time_limit_unsaved",
 ): string {
+  if (stopReason) return t("common:notifications.sessionComplete.timeLimit");
   const interaction = getConversationInteraction(agentPath, sessionKey) ?? null;
   switch (interactionNotificationBodyKey(interaction)) {
     case "sessionComplete.question":
@@ -124,7 +127,12 @@ export function latchCompletionNotification(
         getConversationBoardStatus(agentPath, sessionKey),
       ),
     () => {
-      const body = completionBody(ctx.t(), agentPath, sessionKey);
+      const body = completionBody(
+        ctx.t(),
+        agentPath,
+        sessionKey,
+        ctx.stopReason,
+      );
       if (!isRelevantCompletion(agentPath, sessionKey)) {
         logger.debug(
           `[notification] completion suppressed, mission not relevant to the signed-in user: agent_path=${agentPath} session_key=${sessionKey}`,

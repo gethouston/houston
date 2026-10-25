@@ -325,6 +325,8 @@
     "failed": "Seu agente não conseguiu se preparar para esta mensagem. Envie de novo daqui a pouco.",
     "unconfirmed": "Não conseguimos confirmar que seu agente recebeu esta mensagem. Confira de novo em alguns minutos e, se ainda não houver resposta, envie de novo."
   },
+  "replyTimeLimit": "Seu agente trabalhou por 4 horas, o limite de uma resposta. O progresso está salvo. Diga \"continue\" e ele vai retomar de onde parou.",
+  "replyTimeLimitUnsaved": "Seu agente chegou ao limite de 4 horas de uma resposta e parou antes de salvar os últimos passos. Diga \"continue\" para retomar do último ponto salvo.",
   "engineRestart": {
     "sayContinue": "Seu agente precisou reiniciar. Diga para continuar e ele retomará de onde parou.",
     "resuming": "Seu agente foi interrompido por uma reinicialização e está retomando de onde parou."

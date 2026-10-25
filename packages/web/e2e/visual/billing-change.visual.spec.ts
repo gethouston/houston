@@ -41,8 +41,12 @@ async function boot(
   await armChoice(choice);
   await page.goto("/");
   const modal = choiceModal(page);
+  // The visual job serves from the vite dev server: a boot loads ~3,100
+  // modules, and the modal waits on the last read of the boot chain
+  // (`/v1/me/billing-choice`). With two workers booting at once on CI that
+  // lands around 15 s, so a 15 s budget flaked the run's first test.
   await expect(modal.getByRole("button").first()).toBeVisible({
-    timeout: 15_000,
+    timeout: 25_000,
   });
   return modal;
 }

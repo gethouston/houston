@@ -7,6 +7,7 @@
 import type { TokenUsage } from "./conversation";
 import type { PendingInteraction } from "./domain/interaction";
 import type { ProviderError } from "./provider-error";
+import type { TurnErrorData } from "./turn-error";
 
 /**
  * Live conversation events (SSE), one stream per conversation, strictly
@@ -225,7 +226,7 @@ export type WireEvent =
       data: null;
       pendingInteraction?: PendingInteraction;
     }
-  | { type: "error"; data: { message: string } };
+  | { type: "error"; data: TurnErrorData };
 
 export type WireEventType = WireEvent["type"];
 

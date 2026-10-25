@@ -37,5 +37,6 @@ export * from "./routine-refusal";
 export * from "./seat-prices";
 export * from "./trigger-plan-skip";
 export * from "./trigger-status";
+export * from "./turn-error";
 export * from "./turn-setup";
 export * from "./types";

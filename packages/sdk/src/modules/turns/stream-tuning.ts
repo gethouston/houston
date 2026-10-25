@@ -70,10 +70,11 @@ export const SEND_TURN_RUNNING_RETRY_DELAYS_MS: readonly number[] = [
   1_000, 2_000, 4_000, 8_000, 15_000,
 ];
 /**
- * The total hold behind a running turn before the send settles as refused —
- * past any real turn's tail, so only a stuck claim ever reaches it.
+ * Base hold for a silent running-turn refusal. Live progress may extend it,
+ * bounded by the four-hour ceiling plus five minutes for claim release.
  */
 export const SEND_TURN_RUNNING_HOLD_MS = 15 * 60_000;
+export const SEND_TURN_RUNNING_MAX_HOLD_MS = (4 * 60 + 5) * 60_000;
 
 /**
  * Consecutive frameless connection attempts before a subscription gives up:

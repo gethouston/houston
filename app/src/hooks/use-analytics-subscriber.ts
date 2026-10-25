@@ -104,7 +104,13 @@ export function useAnalyticsSubscriber() {
 
         case "SessionStatus": {
           if (p.data.status === "completed") {
-            analytics.track("session_completed");
+            // Reliability counts ended replies, not completed missions.
+            analytics.track(
+              "session_completed",
+              p.data.stop_reason
+                ? { stop_reason: p.data.stop_reason }
+                : undefined,
+            );
           }
           // The SDK's typed error class decides what a failure counts as
           // (`session-failure-analytics.ts`); the copy alone classified

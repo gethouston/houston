@@ -1,8 +1,8 @@
 import type { SendAccepted } from "@houston/runtime-client";
 import { computeBusyRefusal, SendBusyClock } from "./send-busy";
+import { SendHoldClock } from "./send-hold-clock";
 import {
   type ActiveStream,
-  SEND_TURN_RUNNING_HOLD_MS,
   SEND_TURN_RUNNING_RETRY_DELAYS_MS,
   SEND_WAKE_RETRY_DELAYS_MS,
   type StreamRegistry,
@@ -25,6 +25,8 @@ import { isTurnRunningRejection } from "./turn-running";
 export interface TurnEndEvidence {
   /** A counter that grows each time the stream shows a turn end. */
   readonly turnEnds: number;
+  /** Latest live agent frame or running sync, never a 409 refusal. */
+  readonly lastProgressAt?: number;
   /** Resolves once `turnEnds` exceeds `mark`, or `signal` aborts. */
   turnEndAfter(mark: number, signal: AbortSignal): Promise<void>;
 }
@@ -91,11 +93,10 @@ export async function sendHolding(
   // A refusal the first send already met is handled before anything is sent.
   let carried = hooks.firstRefusal;
   const wakeDelays = tuning?.sendWakeRetryDelaysMs ?? SEND_WAKE_RETRY_DELAYS_MS;
-  const holdBudget = tuning?.sendTurnRunningHoldMs ?? SEND_TURN_RUNNING_HOLD_MS;
   const busyClock = new SendBusyClock(tuning, hooks.busySince);
   let wakes = 0;
   let holds = 0;
-  let heldSince: number | undefined;
+  let holdClock: SendHoldClock | undefined;
   try {
     for (;;) {
       const mark = evidence.turnEnds;
@@ -129,14 +130,15 @@ export async function sendHolding(
         if (delay === undefined) throw refusal;
         await pause(delay, signal);
       } else if (isTurnRunningRejection(refusal)) {
-        heldSince ??= Date.now();
-        if (Date.now() - heldSince >= holdBudget) throw refusal;
+        holdClock ??= new SendHoldClock(tuning);
+        const left = holdClock.left(evidence.lastProgressAt);
+        if (left <= 0) throw refusal;
         onHold();
         const ac = new AbortController();
         const stop = () => ac.abort();
         signal.addEventListener("abort", stop, { once: true });
         await Promise.race([
-          pause(turnRunningDelay(tuning, holds++), ac.signal),
+          pause(Math.min(left, turnRunningDelay(tuning, holds++)), ac.signal),
           evidence.turnEndAfter(mark, ac.signal),
         ]);
         ac.abort();
@@ -166,13 +168,20 @@ export async function observerSettled(
   const end = () => ac.abort();
   stop?.addEventListener("abort", end, { once: true });
   if (stop?.aborted) ac.abort();
-  await Promise.race([
-    registry.left(key, observer, ac.signal),
-    pause(
-      tuning?.sendTurnRunningHoldMs ?? SEND_TURN_RUNNING_HOLD_MS,
-      ac.signal,
-    ),
-  ]);
+  const clock = new SendHoldClock(tuning);
+  while (!ac.signal.aborted && registry.get(key) === observer) {
+    const left = clock.left(observer.lastProgressAt);
+    if (left <= 0) break;
+    const wait = new AbortController();
+    const endWait = () => wait.abort();
+    ac.signal.addEventListener("abort", endWait, { once: true });
+    await Promise.race([
+      registry.left(key, observer, wait.signal),
+      pause(left, wait.signal),
+    ]);
+    wait.abort();
+    ac.signal.removeEventListener("abort", endWait);
+  }
   ac.abort();
   stop?.removeEventListener("abort", end);
   return registry.get(key) !== observer;

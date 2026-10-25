@@ -36,7 +36,7 @@
 #   a11y     roles / labels / focus expectations the surface must honor
 #   since    inventory version this component first appeared in
 
-version: 142
+version: 143
 
 components:
   - id: agent-delegation-settings
@@ -341,10 +341,13 @@ components:
     title: System message / boundary
     purpose: Non-message feed events -- system notes and context/provider boundaries.
     anatomy: [divider-rule, centered-italic-label]
-    states: [system-note, context-compacted, provider-switched, context-cleared]
+    states: [system-note, reply-time-limit, context-compacted, provider-switched, context-cleared]
     variants: [plain-note, divider-boundary]
     behavior: >-
-      system_message renders a centered note; context_compacted,
+      system_message renders a centered note. A typed reply-time-limit note says
+      the agent reached 4 hours and can continue when asked. Graceful stops say
+      progress is saved; forced stops say to resume from the last saved point.
+      context_compacted,
       provider_switched and context_cleared render subtle dividers that keep the
       full chat visible. A compaction divider names whether the user asked for
       it; the cleared divider says the agent starts fresh and keeps what it

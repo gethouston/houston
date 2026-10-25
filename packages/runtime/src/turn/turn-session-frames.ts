@@ -23,6 +23,8 @@ export interface TurnFrames {
    * so the inline card survives a reload of this cloud conversation.
    */
   providerError?: ProviderError;
+  /** Snapshot at loop completion: late durability stops cannot change it. */
+  stopReason?: TurnOutcome["stopReason"];
   /** The turn's per-call timings, attached when the prompt starts. */
   modelCalls?: ModelCallCollector;
 }

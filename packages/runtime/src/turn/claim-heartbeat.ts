@@ -1,4 +1,4 @@
-import type { TurnMode } from "@houston/protocol";
+import { TurnErrorCode, type TurnMode } from "@houston/protocol";
 import type { TurnRequest } from "./types";
 
 const REQUEST_TIMEOUT_MS = 5_000;
@@ -6,6 +6,8 @@ const REQUEST_TIMEOUT_MS = 5_000;
 /** Per-claim heartbeat state owned by one admitted turn. */
 export interface ClaimHeartbeat {
   readonly fenced: boolean;
+  readonly stopReason?: TurnErrorCode;
+  readonly stopReceivedAt?: number;
   /** Completion of the eager first heartbeat. */
   readonly ready: Promise<void>;
   /** Send and await a fresh heartbeat at a durability boundary. */
@@ -23,10 +25,13 @@ export function startClaimHeartbeat(opts: {
   /** Fired once, the moment a heartbeat learns the claim was adopted. */
   onFenced?: () => void;
   onMode?: (mode: TurnMode) => void;
+  onStop?: (reason: TurnErrorCode) => void;
 }): ClaimHeartbeat {
   const fetchImpl = opts.fetchImpl ?? fetch;
   const intervalMs = opts.intervalMs ?? 15_000;
   let fenced = false;
+  let stopReason: TurnErrorCode | undefined;
+  let stopReceivedAt: number | undefined;
   let stopped = false;
   let pending = Promise.resolve();
 
@@ -50,14 +55,25 @@ export function startClaimHeartbeat(opts: {
         fenced = true;
         clearInterval(timer);
         opts.onFenced?.();
-      } else if (response.ok && response.status !== 204 && opts.onMode) {
-        const body = (await response.json()) as { mode?: unknown };
+      } else if (response.ok && response.status !== 204) {
+        const body: unknown = await response.json();
+        if (!body || typeof body !== "object") return;
         if (
-          body.mode === "execute" ||
-          body.mode === "plan" ||
-          body.mode === "auto"
+          "mode" in body &&
+          (body.mode === "execute" ||
+            body.mode === "plan" ||
+            body.mode === "auto")
         )
-          opts.onMode(body.mode);
+          opts.onMode?.(body.mode);
+        if (
+          "stop" in body &&
+          body.stop === TurnErrorCode.TimeLimit &&
+          !stopReason
+        ) {
+          stopReason = body.stop;
+          stopReceivedAt = performance.now();
+          opts.onStop?.(stopReason);
+        }
       } else if (!response.ok) {
         console.warn(
           `[turn] claim heartbeat failed (${response.status}): ${(
@@ -85,6 +101,12 @@ export function startClaimHeartbeat(opts: {
     get fenced() {
       return fenced;
     },
+    get stopReason() {
+      return stopReason;
+    },
+    get stopReceivedAt() {
+      return stopReceivedAt;
+    },
     ready,
     checkpoint: runBeat,
     async stop() {
@@ -109,6 +131,7 @@ export function startTurnClaimHeartbeat(
     claim: turn.claim,
     hostToken: turn.hostToken,
     onFenced: () => abort.abort(),
+    onStop: (reason) => abort.abort(new DOMException(reason, "AbortError")),
     onMode: (mode) => {
       if (turn.liveMode) turn.liveMode.current = mode;
     },

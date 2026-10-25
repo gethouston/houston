@@ -43,6 +43,7 @@
     "sessionComplete": {
       "title": "{{workspace}} · {{agent}}",
       "body": "Tu empleado de IA terminó de trabajar.",
+      "timeLimit": "Tu empleado de IA llegó al límite de una respuesta y puede continuar.",
       "question_one": "Tu empleado de IA tiene una pregunta para ti.",
       "question_other": "Tu empleado de IA tiene preguntas para ti.",
       "signin": "Tu empleado de IA necesita que inicies sesión.",
