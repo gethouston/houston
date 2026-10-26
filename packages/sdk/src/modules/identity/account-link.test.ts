@@ -72,13 +72,10 @@ describe("account-exists link", () => {
       status: "needs_code",
       codeError: "otp_rate_limited",
     });
-    kit.answerVerify(
-      409,
-      '{"error":"unverified_account","code":"unverified_account"}',
-    );
+    kit.answerVerify(409, '{"error":"email_changed","code":"email_changed"}');
     expect(await kit.identity.verifyAccountLinkCode(GOOD_CODE)).toEqual({
       kind: "code_rejected",
-      error: "otp_unverified_account",
+      error: "otp_email_changed",
     });
     expect(kit.calls.reported).toEqual([]);
   });

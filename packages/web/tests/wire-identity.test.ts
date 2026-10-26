@@ -72,6 +72,7 @@ describe("email-code wire (pre-auth)", () => {
 
   test.each([
     [409, "password_account", "otp_password_account"],
+    [409, "email_changed", "otp_email_changed"],
     [409, "unverified_account", "otp_unverified_account"],
     [409, "account_deleting", "otp_account_deleting"],
     [403, "account_disabled", "otp_account_disabled"],
@@ -81,6 +82,45 @@ describe("email-code wire (pre-auth)", () => {
     await expect(
       identity().verifyEmailCode("p@example.com", "123456"),
     ).rejects.toMatchObject({ name: "EmailOtpError", code, status });
+  });
+
+  // fetch resolves once the headers arrive, so a dropped connection can
+  // still fail the body read.
+  const breaksOffMidBody = (status: number) =>
+    new Response(
+      new ReadableStream({
+        start: (c) => c.error(new TypeError("terminated")),
+      }),
+      { status },
+    );
+
+  test("a refusal whose body breaks off is offline, on both calls", async () => {
+    stubRouted(() => breaksOffMidBody(401));
+    await expect(
+      identity().sendEmailCode("p@example.com"),
+    ).rejects.toMatchObject({
+      name: "EmailOtpError",
+      code: "network",
+      status: 401,
+    });
+    await expect(
+      identity().verifyEmailCode("p@example.com", "123456"),
+    ).rejects.toMatchObject({
+      name: "EmailOtpError",
+      code: "network",
+      status: 401,
+    });
+  });
+
+  test("a custom token whose body breaks off is offline, not malformed", async () => {
+    stubRouted(() => breaksOffMidBody(200));
+    await expect(
+      identity().verifyEmailCode("p@example.com", "123456"),
+    ).rejects.toMatchObject({
+      name: "EmailOtpError",
+      code: "network",
+      status: 200,
+    });
   });
 
   test("a 200 without a custom token is malformed", async () => {

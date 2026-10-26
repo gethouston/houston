@@ -54,6 +54,9 @@ export interface IdentityModule {
   /** The person signed out: end an unfinished link, whatever step it is on,
    *  so it neither signs them back in nor signs out the next session. */
   abandonAccountLink(): void;
+  /** The platform's signed-in uid changed, from this tab or another. A link
+   *  whose session is gone or replaced ends as if the person signed out. */
+  sessionChanged(uid: string | null): void;
   getAccountLink(): AccountLinkView;
   /** The `accountLink` scope, in the shape `useSdkSnapshot` reads. */
   subscribe(scope: string, cb: (snapshot: unknown) => void): () => void;
@@ -82,6 +85,7 @@ export function createIdentityModule<S extends IdentitySession>(
     verifyAccountLinkCode: (code) => link.verify(code),
     cancelAccountLink: () => link.cancel(),
     abandonAccountLink: () => link.abandon(),
+    sessionChanged: (uid) => link.sessionChanged(uid),
     getAccountLink: () => link.view(),
     subscribe: (scope, cb) => store.subscribe(scope, cb),
     getSnapshot: (scope) => store.getSnapshot(scope),

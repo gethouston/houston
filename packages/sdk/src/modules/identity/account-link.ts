@@ -1,7 +1,7 @@
 import type { AccountLinkRefusal } from "@houston/wire-types";
 import type { ScopeStore } from "../../store";
 import {
-  EmailOtpError,
+  codeErrorOf,
   type EmailOtpTransport,
   startEmailOtp,
   verifyEmailOtp,
@@ -26,11 +26,8 @@ export const LINK_TTL_MS = 10 * 60_000;
 interface Flow {
   pending: PendingLink & { email: string };
   startedAt: number;
-}
-
-function codeErrorOf(error: unknown): AccountLinkCodeError {
-  if (!(error instanceof EmailOtpError)) return "unknown";
-  return error.code === "malformed_response" ? "unknown" : error.code;
+  /** The uid of the session the email code signed in to, once it has. */
+  minted?: string;
 }
 
 /**
@@ -111,6 +108,14 @@ export function createAccountLink<S extends IdentitySession>(deps: {
     flow = null;
   }
 
+  /** End an unfinished link. A finished link's notice stays, since the
+   *  flow's own cleanup signs out through here too. */
+  function abandon(): void {
+    if (!flow) return;
+    drop();
+    publish({ status: "idle" });
+  }
+
   return {
     /** Hold a provider sign-in that met an existing account and mail a code
      *  to its address. A pending link that is not mid-verify is replaced. */
@@ -157,6 +162,7 @@ export function createAccountLink<S extends IdentitySession>(deps: {
       } catch (error) {
         return rejectCode(f, error);
       }
+      f.minted = minted.session.uid;
       return linkOnto(
         {
           port,
@@ -180,13 +186,12 @@ export function createAccountLink<S extends IdentitySession>(deps: {
       publish({ status: "idle" });
     },
 
-    /** The person signed out: end an unfinished link so it never signs in
-     *  again or signs out whoever comes next. A finished link's notice
-     *  stays, since the flow's own cleanup signs out through here too. */
-    abandon(): void {
-      if (!flow) return;
-      drop();
-      publish({ status: "idle" });
+    abandon,
+
+    /** The platform's signed-in uid changed. Losing or replacing the session
+     *  the code minted is a sign-out this flow never saw (another tab). */
+    sessionChanged(uid: string | null): void {
+      if (flow?.minted !== undefined && uid !== flow.minted) abandon();
     },
 
     view: (): AccountLinkView => view,

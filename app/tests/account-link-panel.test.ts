@@ -112,7 +112,11 @@ describe("account link panel", () => {
       ).at(-1);
     strictEqual(
       shown("otp_unverified_account"),
-      "This email is linked to another sign-in method. Continue with that method, or contact support.",
+      "This email is waiting to be confirmed on another account. Sign in the way you usually do, or contact support.",
+    );
+    strictEqual(
+      shown("otp_email_changed"),
+      "This email isn't the one on that account anymore. Sign in with the account's current email, or contact support.",
     );
     strictEqual(
       shown("otp_account_merging"),

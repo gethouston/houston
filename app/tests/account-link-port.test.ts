@@ -45,7 +45,7 @@ const STUBS: Record<string, string> = {
   "./sign-in-establish":
     "export const establishDesktopSession = async () => {}; export const establishWebSession = () => {};",
   "./sign-out": `export const signOut = async () => { ${w}.signOuts++; };`,
-  "./web-identity": `const web = { webCurrentUid: () => ${w}.currentUid, webSignInWithCustomToken: () => ${w}.exchange() }; export const webIdentity = async () => web; export const loadedWebIdentity = () => web;`,
+  "./web-identity": `const web = { webCurrentUid: () => ${w}.currentUid, webOnIdTokenChanged: () => () => {}, webSignInWithCustomToken: () => ${w}.exchange() }; export const webIdentity = async () => web; export const loadedWebIdentity = () => web;`,
 };
 registerHooks({
   resolve(specifier, context, next) {

@@ -3,14 +3,21 @@ import { emailOtpRefusalOf } from "./identity";
 
 const refusal = (code: string) => JSON.stringify({ error: code, code });
 
+// Every refusal the gateway's verify sends after a correct code, and nothing
+// else.
+const GATEWAY_REFUSALS = [
+  [409, "password_account", "otp_password_account"],
+  [409, "email_changed", "otp_email_changed"],
+  [409, "unverified_account", "otp_unverified_account"],
+  [409, "account_deleting", "otp_account_deleting"],
+  [403, "account_disabled", "otp_account_disabled"],
+  [503, "account_merging", "otp_account_merging"],
+] as const;
+
 describe("emailOtpRefusalOf", () => {
-  it.each([
-    [409, "password_account", "otp_password_account"],
-    [409, "unverified_account", "otp_unverified_account"],
-    [409, "account_deleting", "otp_account_deleting"],
-    [403, "account_disabled", "otp_account_disabled"],
-    [503, "account_merging", "otp_account_merging"],
-  ])("reads the %i %s refusal by its code", (status, code, expected) => {
+  it.each(
+    GATEWAY_REFUSALS,
+  )("reads the %i %s refusal by its code", (status, code, expected) => {
     expect(emailOtpRefusalOf(status, refusal(code))).toBe(expected);
   });
 

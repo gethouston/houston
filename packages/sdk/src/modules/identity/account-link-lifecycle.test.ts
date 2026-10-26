@@ -1,29 +1,6 @@
 import { describe, expect, it } from "vitest";
 import { EmailOtpError } from "./email-otp";
-import { GOOD_CODE, identityKit, type TestSession } from "./test-kit";
-import type { LinkAttempt } from "./types";
-
-/** A link answer the test settles after the person signs out. */
-type LinkAnswer = (session: TestSession) => LinkAttempt<TestSession>;
-
-function deferredLink() {
-  let settle!: (answer: LinkAnswer) => void;
-  let started!: () => void;
-  const inFlight = new Promise<void>((resolve) => {
-    started = resolve;
-  });
-  const answer = new Promise<LinkAnswer>((resolve) => {
-    settle = resolve;
-  });
-  return {
-    inFlight,
-    settle,
-    attempt: async (session: TestSession) => {
-      started();
-      return (await answer)(session);
-    },
-  };
-}
+import { deferredLink, GOOD_CODE, identityKit } from "./test-kit";
 
 describe("signing out while a link is in flight", () => {
   it("never establishes a link that succeeds after the person left", async () => {

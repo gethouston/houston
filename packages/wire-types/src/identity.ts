@@ -14,8 +14,10 @@ import { z } from "zod";
  *  - 429 `otp_rate_limited`: too many starts or verifies for the address.
  *  - 409 `password_account`: the address belongs to a password account,
  *    which an email code never signs in to.
- *  - 409 `unverified_account`: another sign-in method holds the address
- *    without having proved it.
+ *  - 409 `email_changed`: the account on file for the address now signs in
+ *    with another email.
+ *  - 409 `unverified_account`: an account Houston knows under another,
+ *    verified address holds this one unconfirmed.
  *  - 409 `account_deleting`: the account is being deleted.
  *  - 403 `account_disabled`: the account is disabled.
  *  - 503 `account_merging`: the account is being merged into another one.
@@ -43,6 +45,7 @@ export type EmailOtpRefusal =
   | "otp_invalid_code"
   | "otp_rate_limited"
   | "otp_password_account"
+  | "otp_email_changed"
   | "otp_unverified_account"
   | "otp_account_deleting"
   | "otp_account_disabled"
@@ -55,6 +58,7 @@ const REFUSAL_BY_STATUS: ReadonlyMap<number, EmailOtpRefusal> = new Map([
 
 const REFUSAL_BY_CODE: ReadonlyMap<string, EmailOtpRefusal> = new Map([
   ["password_account", "otp_password_account"],
+  ["email_changed", "otp_email_changed"],
   ["unverified_account", "otp_unverified_account"],
   ["account_deleting", "otp_account_deleting"],
   ["account_disabled", "otp_account_disabled"],

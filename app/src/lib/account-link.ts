@@ -58,13 +58,23 @@ const EXCHANGE_FAILURE: Partial<Record<IdentityErrorCode, EmailOtpFailure>> = {
   user_disabled: "otp_account_disabled",
 };
 
+// Firebase shares one session across a browser's tabs, so another tab can
+// sign this one out, or in as someone else, without this tab's sign-out
+// running. Watched from before the first session a link mints.
+let watchingFirebase = false;
+
 const port: AccountLinkPort<Session> = {
   async signInWithCustomToken(customToken) {
     try {
       if (osIsTauri()) return await customTokenDesktopSession(customToken);
-      const outcome = await (await webIdentity()).webSignInWithCustomToken(
-        customToken,
-      );
+      const web = await webIdentity();
+      if (!watchingFirebase) {
+        watchingFirebase = true;
+        web.webOnIdTokenChanged((session) =>
+          identityClient.sessionChanged(session?.uid ?? null),
+        );
+      }
+      const outcome = await web.webSignInWithCustomToken(customToken);
       if (!outcome) throw new IdentityError("malformed_response");
       return outcome;
     } catch (error) {
@@ -94,8 +104,12 @@ const port: AccountLinkPort<Session> = {
   async establish(session, method) {
     const outcome = { session, isNewUser: false };
     if (osIsTauri())
-      await establishDesktopSession(outcome, ANALYTICS_PROVIDER[method]);
-    else establishWebSession(outcome, ANALYTICS_PROVIDER[method]);
+      return establishDesktopSession(outcome, ANALYTICS_PROVIDER[method]);
+    // Firebase owns the web session. One it no longer holds was signed out
+    // in another tab, and the app cache must not bring it back.
+    if (loadedWebIdentity()?.webCurrentUid() !== session.uid)
+      throw new Error("Firebase no longer holds the session to establish");
+    establishWebSession(outcome, ANALYTICS_PROVIDER[method]);
   },
   report({ quiet, reason, cause }) {
     const command = `account_link_${reason}`;

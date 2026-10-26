@@ -33,7 +33,8 @@ export type IdentityErrorCode =
   | "otp_invalid_code" // gateway 401: wrong / expired 6-digit code
   | "otp_rate_limited" // gateway 429: too many start/verify requests
   | "otp_password_account" // gateway 409: the address belongs to a password account
-  | "otp_unverified_account" // gateway 409: another sign-in method holds the address unproved
+  | "otp_email_changed" // gateway 409: the address's account now signs in with another email
+  | "otp_unverified_account" // gateway 409: another known account holds the address unconfirmed
   | "otp_account_deleting" // gateway 409: the account is being deleted
   | "otp_account_disabled" // gateway 403: the account is disabled
   | "otp_account_merging" // gateway 503: the account is being merged; request a new code

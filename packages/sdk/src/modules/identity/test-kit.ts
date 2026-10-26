@@ -170,3 +170,26 @@ export function identityKit(
     },
   };
 }
+
+/** A link answer the test settles once the person has left. */
+type LinkAnswer = (session: TestSession) => LinkAttempt<TestSession>;
+
+/** A link request held in flight until the test settles it. */
+export function deferredLink() {
+  let settle!: (answer: LinkAnswer) => void;
+  let started!: () => void;
+  const inFlight = new Promise<void>((resolve) => {
+    started = resolve;
+  });
+  const answer = new Promise<LinkAnswer>((resolve) => {
+    settle = resolve;
+  });
+  return {
+    inFlight,
+    settle,
+    attempt: async (session: TestSession) => {
+      started();
+      return (await answer)(session);
+    },
+  };
+}
