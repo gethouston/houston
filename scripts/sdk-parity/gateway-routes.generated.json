@@ -1369,6 +1369,13 @@
     "classification": "sdk"
   },
   {
+    "pattern": "/v1/org/members/quote",
+    "methods": [
+      "POST"
+    ],
+    "classification": "sdk"
+  },
+  {
     "pattern": "/v1/pod/local-model-bridges/{orgHash}/{agentHash}/{sessionId}/v1/chat/completions",
     "methods": [
       "POST"
