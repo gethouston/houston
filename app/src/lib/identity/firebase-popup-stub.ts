@@ -85,6 +85,10 @@ export function webOnIdTokenChanged(
   return notOnDesktop();
 }
 
+export function webCurrentUid(): string | null {
+  return notOnDesktop();
+}
+
 export function webRefreshIdToken(): Promise<string | null> {
   return notOnDesktop();
 }

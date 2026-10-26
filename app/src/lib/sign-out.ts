@@ -6,6 +6,7 @@
 
 import { nativeShell } from "../../../packages/web/src/shims/native-shell";
 import { cancelAllConnectFlows } from "../stores/connect-flow";
+import { identityClient } from "./account-link";
 import { analytics } from "./analytics";
 import { emitAuthError } from "./auth-error-bus";
 import { logAndReportError } from "./error-report";
@@ -86,6 +87,10 @@ export async function signOut(): Promise<void> {
   // are none left) and could still land a callback for the account being left.
   // Benign null, and a no-op when nothing is pending.
   cancelPendingAuthorize("signing out");
+  // Web shows the account-link's email-code session before the link lands,
+  // so a person can sign out mid-link. The link must not then sign them back
+  // in, or sign out whoever signs in next.
+  identityClient.abandonAccountLink();
 
   let sessionClearFailure: unknown;
   let localDataFailure: unknown;

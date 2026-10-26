@@ -37,6 +37,8 @@ export interface IdpSignInResult {
 export interface IdpNeedConfirmation {
   providerId: IdpProviderId;
   email: string | null;
+  /** The uid of the account that holds the address. */
+  localId: string | null;
   oauthIdToken: string | null;
   oauthAccessToken: string | null;
   /** Prod GCIP's replayable handle on the provider sign-in, when it sends one. */
@@ -47,11 +49,10 @@ export type IdpExchange =
   | { kind: "signed_in"; result: IdpSignInResult }
   | { kind: "need_confirmation"; confirmation: IdpNeedConfirmation };
 
-/** A provider credential `signInWithIdp` can replay. GCIP prefers the token. */
-export interface IdpCredential {
-  postBody: string | null;
-  pendingToken: string | null;
-}
+/** A provider credential `signInWithIdp` can replay: GCIP's pending token
+ *  alone when it sent one, as firebase-js-sdk does, else the provider's own
+ *  tokens. */
+export type IdpCredential = { pendingToken: string } | { postBody: string };
 
 const text = (body: Record<string, unknown>, key: string): string | null =>
   typeof body[key] === "string" && body[key] ? (body[key] as string) : null;
@@ -101,6 +102,7 @@ function exchangeFrom(
     confirmation: {
       providerId: confirmed as IdpProviderId,
       email: text(body, "email"),
+      localId: text(body, "localId"),
       oauthIdToken: text(body, "oauthIdToken"),
       oauthAccessToken: text(body, "oauthAccessToken"),
       pendingToken: text(body, "pendingToken"),
@@ -170,13 +172,9 @@ export async function linkIdpToSession(params: {
   providerId: IdpProviderId;
   credential: IdpCredential;
 }): Promise<IdpSignInResult> {
-  const { postBody, pendingToken } = params.credential;
-  if (!postBody && !pendingToken)
-    throw new IdentityError("invalid_idp_response");
   const body = await postGcipJson(signInWithIdpUrl(params.apiKey), {
     idToken: params.idToken,
-    ...(postBody ? { postBody } : {}),
-    ...(pendingToken ? { pendingToken } : {}),
+    ...params.credential,
     requestUri: "http://localhost",
     returnSecureToken: true,
     returnIdpCredential: true,

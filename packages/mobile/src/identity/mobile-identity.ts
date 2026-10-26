@@ -28,6 +28,7 @@ export {
   initWebAuth,
   toSession,
   webCurrentSession,
+  webCurrentUid,
   webOnIdTokenChanged,
   webRefreshIdToken,
   webSignInWithCustomToken,

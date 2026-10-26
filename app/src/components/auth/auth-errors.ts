@@ -25,6 +25,9 @@ type AuthErrorKey =
   | "auth.otpInvalid"
   | "auth.otpRateLimited"
   | "auth.otpPasswordAccount"
+  | "auth.otpUnverifiedAccount"
+  | "auth.otpAccountDeleting"
+  | "auth.otpAccountMerging"
   | "auth.network"
   | "auth.tooManyAttempts"
   | "auth.userDisabled"
@@ -44,6 +47,11 @@ const CODE_TO_KEY: Record<IdentityErrorCode, AuthErrorKey> = {
   token_expired: "auth.otpInvalid",
   otp_rate_limited: "auth.otpRateLimited",
   otp_password_account: "auth.otpPasswordAccount",
+  otp_unverified_account: "auth.otpUnverifiedAccount",
+  otp_account_deleting: "auth.otpAccountDeleting",
+  otp_account_disabled: "auth.userDisabled",
+  // The code is spent by the time the merge answers, so the remedy is a new one.
+  otp_account_merging: "auth.otpAccountMerging",
   network: "auth.network",
   too_many_attempts: "auth.tooManyAttempts",
   user_disabled: "auth.userDisabled",

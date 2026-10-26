@@ -51,6 +51,9 @@ export interface IdentityModule {
   verifyAccountLinkCode(code: string): Promise<VerifyLinkOutcome>;
   /** Drop the held provider sign-in and return to the sign-in screen. */
   cancelAccountLink(): void;
+  /** The person signed out: end an unfinished link, whatever step it is on,
+   *  so it neither signs them back in nor signs out the next session. */
+  abandonAccountLink(): void;
   getAccountLink(): AccountLinkView;
   /** The `accountLink` scope, in the shape `useSdkSnapshot` reads. */
   subscribe(scope: string, cb: (snapshot: unknown) => void): () => void;
@@ -78,6 +81,7 @@ export function createIdentityModule<S extends IdentitySession>(
     resendAccountLinkCode: () => link.resend(),
     verifyAccountLinkCode: (code) => link.verify(code),
     cancelAccountLink: () => link.cancel(),
+    abandonAccountLink: () => link.abandon(),
     getAccountLink: () => link.view(),
     subscribe: (scope, cb) => store.subscribe(scope, cb),
     getSnapshot: (scope) => store.getSnapshot(scope),

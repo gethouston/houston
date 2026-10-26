@@ -3,17 +3,17 @@ import { type FormEvent, useState } from "react";
 import { useTranslation } from "react-i18next";
 import { PROVIDER_NAME } from "../../lib/account-link";
 import { confirmAccountLink, identityClient } from "../../lib/auth";
-import { logAndReportError } from "../../lib/error-report";
+import { describeError } from "../../lib/describe-error";
+import { showErrorToast } from "../../lib/error-toast";
 import { authErrorKey } from "./auth-errors";
 import { EmailCodeEntry } from "./email-code-entry";
 import { EmailCodeFooter } from "./email-code-footer";
 
 /** The steps the panel replaces the sign-in options for. A `linked` flow has
  *  already handed the app its session, so the screen is on its way out. */
-type ActiveLink = Extract<
-  AccountLinkView,
-  { status: "sending_code" | "needs_code" | "verifying" | "linking" }
->;
+type ActiveLink = AccountLinkView & {
+  status: "sending_code" | "needs_code" | "verifying" | "linking";
+};
 
 export function isLinkActive(view: AccountLinkView): view is ActiveLink {
   return (
@@ -33,6 +33,7 @@ export function AccountLinkPanel({ view }: { view: ActiveLink }) {
   const { t: tErrors } = useTranslation("errors");
   const [code, setCode] = useState("");
   const pending = view.status !== "needs_code";
+  const linking = view.status === "verifying" || view.status === "linking";
   const provider = PROVIDER_NAME[view.provider];
   const codeError = view.status === "needs_code" ? view.codeError : null;
 
@@ -42,7 +43,7 @@ export function AccountLinkPanel({ view }: { view: ActiveLink }) {
       const outcome = await confirmAccountLink(value);
       if (outcome.kind === "code_rejected") setCode("");
     } catch (error) {
-      logAndReportError("account_link_verify", error);
+      showErrorToast("account_link_verify", describeError(error), error);
     }
   };
 
@@ -50,7 +51,7 @@ export function AccountLinkPanel({ view }: { view: ActiveLink }) {
     try {
       await identityClient.resendAccountLinkCode();
     } catch (error) {
-      logAndReportError("account_link_resend", error);
+      showErrorToast("account_link_resend", describeError(error), error);
     }
   };
 
@@ -79,6 +80,7 @@ export function AccountLinkPanel({ view }: { view: ActiveLink }) {
         <EmailCodeFooter
           email={view.email}
           pending={pending}
+          backPending={linking}
           error={codeError ? tErrors(authErrorKey(codeError)) : null}
           onResend={() => void resend()}
           backLabel={t("link.back")}
@@ -92,6 +94,7 @@ export function AccountLinkPanel({ view }: { view: ActiveLink }) {
 const REFUSAL_KEY = {
   link_email_unknown: "link.refused.emailUnknown",
   link_email_mismatch: "link.refused.failed",
+  link_wrong_account: "link.refused.failed",
   link_failed: "link.refused.failed",
   link_expired: "link.refused.expired",
 } as const;

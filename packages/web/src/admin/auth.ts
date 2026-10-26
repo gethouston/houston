@@ -1,7 +1,7 @@
 // Operator dashboard auth logic (GCIP / Firebase Auth, project `gethouston`).
 //
-// Replaces the retired Supabase admin login. Pure, framework-free helpers so the
-// session shaping, refresh scheduling, persistence parsing, and error copy are
+// Replaces the retired Supabase admin login. Framework-free helpers so the
+// session shaping, refresh scheduling, persistence, and error copy are
 // unit-testable; the React glue lives in `use-admin-auth.ts`.
 //
 // ADMIN PROVISIONING: operator accounts are created by the platform admin in
@@ -98,6 +98,21 @@ export function parseStoredSession(raw: string | null): AdminSession | null {
     };
   }
   return null;
+}
+
+/** Persist the session for reload survival, or clear it on sign-out. */
+export function persistSession(session: AdminSession | null): void {
+  try {
+    if (session) {
+      window.localStorage.setItem(ADMIN_SESSION_KEY, JSON.stringify(session));
+    } else {
+      window.localStorage.removeItem(ADMIN_SESSION_KEY);
+    }
+  } catch (e) {
+    // localStorage blocked (private mode): the in-memory session still works
+    // this tab; only reload-persistence is lost. Non-fatal, but never silent.
+    console.warn("[admin] could not persist session:", e);
+  }
 }
 
 /** User-facing copy for a sign-in / refresh failure. Branches on the stable

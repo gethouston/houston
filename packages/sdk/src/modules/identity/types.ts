@@ -4,6 +4,7 @@ import type {
   LinkProvider,
   LinkRequired,
 } from "@houston/wire-types";
+import type { QuietErrorClass } from "../../quiet-error-class";
 
 /**
  * The platform's in-memory reference to a held provider credential. The SDK
@@ -22,6 +23,8 @@ export function newPendingLinkHandle(): PendingLinkHandle {
 /** A provider sign-in that met an existing account, with its held credential. */
 export interface PendingLink extends LinkRequired {
   handle: PendingLinkHandle;
+  /** The uid Identity Platform named as the address's owner, when it named one. */
+  accountId: string | null;
 }
 
 /** The two fields the SDK reads from a session the flow minted. */
@@ -31,17 +34,27 @@ export interface IdentitySession {
   idToken: string;
 }
 
-/** What linking the held credential onto a session came to. */
+/** A session the gateway's custom token signed in to. */
+export interface MintedSession<S> {
+  session: S;
+  /** This sign-in created the account, so it is not the one that exists. */
+  isNewUser: boolean;
+}
+
+/** What linking the held credential onto a session came to. A provider that
+ *  refuses the credential is a failure, so the port throws. */
 export type LinkAttempt<S> =
   | { kind: "linked"; session: S }
   /** The provider identity already belongs to an account. */
   | { kind: "identity_taken" }
-  /** The platform no longer holds the credential, or the provider refused it. */
+  /** The platform no longer holds the credential: it was discarded. */
   | { kind: "expired" };
 
-/** How loudly a stopped link reaches the error reporting paths. */
+/** A stopped link, for the error reporting paths. */
 export interface AccountLinkProblem {
-  severity: "error" | "quiet";
+  /** The quiet class an expected state counts under, once per burst. Null
+   *  for a failure to triage. */
+  quiet: Extract<QuietErrorClass, "offline" | "link_identity_taken"> | null;
   reason: AccountLinkRefusal | "email_code_failed";
   cause: unknown;
 }
@@ -52,13 +65,18 @@ export interface AccountLinkProblem {
  * Every method translates; none decides.
  */
 export interface AccountLinkPort<S extends IdentitySession> {
-  /** Exchange the gateway's custom token for a session. Not yet the app's. */
-  signInWithCustomToken(customToken: string): Promise<S>;
+  /**
+   * Exchange the gateway's custom token for a session. Not yet the app's.
+   * Rejects with an `EmailOtpError` for a failure the person can act on
+   * (`network`, `otp_account_disabled`); any other rejection is unexpected.
+   */
+  signInWithCustomToken(customToken: string): Promise<MintedSession<S>>;
   /** Link the held credential onto `session`, the one this flow minted. */
   linkPending(handle: PendingLinkHandle, session: S): Promise<LinkAttempt<S>>;
   /** Drop the held credential. */
   discardPending(handle: PendingLinkHandle): void;
-  /** Undo a minted session that must not stay signed in. */
+  /** Undo a minted session that must not stay signed in. A session that has
+   *  replaced it since stays. */
   signOutProvisional(session: S): Promise<void>;
   /** Make `session` the app's signed-in session, through the normal path. */
   establish(session: S, method: LinkProvider | "email"): Promise<void>;
@@ -96,5 +114,6 @@ export type VerifyLinkOutcome =
   | { kind: "linked" }
   | { kind: "code_rejected"; error: AccountLinkCodeError }
   | { kind: "refused"; refusal: AccountLinkRefusal }
-  /** No code was awaited: cancelled, restarted, or already verifying. */
+  /** No code was awaited, or the flow ended while this one was checked:
+   *  cancelled, signed out, restarted, or already verifying. */
   | { kind: "not_waiting" };

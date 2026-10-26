@@ -36,10 +36,14 @@ export function isAccountExists(error: unknown): error is FirebaseError {
   );
 }
 
+const text = (value: unknown): string | null =>
+  typeof value === "string" && value ? value : null;
+
 /**
  * Hold the credential behind an account-exists refusal and name the address
- * the provider asserted. Without a credential there is nothing to link, so
- * the address is dropped too: the flow then asks for the email code instead.
+ * the provider asserted, and the account Identity Platform said holds it.
+ * Without a credential there is nothing to link, so the address is dropped
+ * too: the flow then asks for the email code instead.
  */
 export function holdAccountExists(
   error: FirebaseError,
@@ -47,24 +51,28 @@ export function holdAccountExists(
   credential: OAuthCredential | null,
 ): PendingLink {
   const handle = newPendingLinkHandle();
+  const data = error.customData as
+    | { email?: unknown; _tokenResponse?: { localId?: unknown } }
+    | undefined;
+  const accountId = text(data?._tokenResponse?.localId);
   if (!credential)
-    return { kind: "link_required", provider, email: null, handle };
+    return { kind: "link_required", provider, email: null, handle, accountId };
   held.set(handle, { provider, credential });
-  const asserted = (error.customData as { email?: unknown } | undefined)?.email;
   const email =
-    typeof asserted === "string" && asserted
-      ? asserted
-      : credential.idToken
-        ? (decodeIdTokenClaims(credential.idToken)?.email ?? null)
-        : null;
-  return { kind: "link_required", provider, email, handle };
+    text(data?.email) ??
+    (credential.idToken
+      ? (decodeIdTokenClaims(credential.idToken)?.email ?? null)
+      : null);
+  return { kind: "link_required", provider, email, handle, accountId };
 }
 
 export function webDiscardPending(handle: PendingLinkHandle): void {
   held.delete(handle);
 }
 
-/** Link the held credential onto `session`, the one the email code minted. */
+/** Link the held credential onto `session`, the one the email code minted.
+ *  A provider that refuses the credential throws: that is a failure to
+ *  report, not an expiry. */
 export async function webLinkPending(
   handle: PendingLinkHandle,
   session: Session,
@@ -83,7 +91,6 @@ export async function webLinkPending(
   } catch (error) {
     if (!(error instanceof FirebaseError)) throw mapFirebaseError(error);
     if (IDENTITY_TAKEN.has(error.code)) return { kind: "identity_taken" };
-    if (error.code === "auth/invalid-credential") return { kind: "expired" };
     throw mapFirebaseError(error);
   }
 }

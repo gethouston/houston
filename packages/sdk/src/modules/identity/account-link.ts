@@ -13,6 +13,7 @@ import type {
   AccountLinkPort,
   AccountLinkView,
   IdentitySession,
+  MintedSession,
   PendingLink,
   VerifyLinkOutcome,
 } from "./types";
@@ -58,8 +59,22 @@ export function createAccountLink<S extends IdentitySession>(deps: {
 
   function end(f: Flow, next: AccountLinkView): void {
     port.discardPending(f.pending.handle);
-    if (flow === f) flow = null;
+    if (flow !== f) return;
+    flow = null;
     publish(next);
+  }
+
+  /** A code that did not sign in. Offline counts quietly, the unexpected
+   *  reaches triage, and a refusal is the person's to act on. */
+  function failCode(error: unknown): AccountLinkCodeError {
+    const codeError = codeErrorOf(error);
+    if (codeError === "network" || codeError === "unknown")
+      port.report({
+        quiet: codeError === "network" ? "offline" : null,
+        reason: "email_code_failed",
+        cause: error,
+      });
+    return codeError;
   }
 
   function refuse(f: Flow, refusal: AccountLinkRefusal): VerifyLinkOutcome {
@@ -75,29 +90,25 @@ export function createAccountLink<S extends IdentitySession>(deps: {
     try {
       await startEmailOtp(transport, email);
     } catch (error) {
-      codeError = codeErrorOf(error);
-      if (codeError === "unknown")
-        port.report({
-          severity: "error",
-          reason: "email_code_failed",
-          cause: error,
-        });
+      codeError = failCode(error);
     }
     if (flow === f)
       publish({ status: "needs_code", provider, email, codeError });
   }
 
   function rejectCode(f: Flow, error: unknown): VerifyLinkOutcome {
-    const codeError = codeErrorOf(error);
-    if (codeError === "unknown")
-      port.report({
-        severity: "error",
-        reason: "email_code_failed",
-        cause: error,
-      });
+    const codeError = failCode(error);
+    if (flow !== f) return { kind: "not_waiting" };
     const { provider, email } = f.pending;
     publish({ status: "needs_code", provider, email, codeError });
     return { kind: "code_rejected", error: codeError };
+  }
+
+  /** End the active flow, if any. Work in flight sees the flow gone and
+   *  establishes nothing, signs nothing out and publishes nothing. */
+  function drop(): void {
+    if (flow) port.discardPending(flow.pending.handle);
+    flow = null;
   }
 
   return {
@@ -108,8 +119,7 @@ export function createAccountLink<S extends IdentitySession>(deps: {
         port.discardPending(pending.handle);
         return;
       }
-      if (flow) port.discardPending(flow.pending.handle);
-      flow = null;
+      drop();
       const email = normalizeAddress(pending.email ?? "");
       if (!email) {
         port.discardPending(pending.handle);
@@ -140,10 +150,10 @@ export function createAccountLink<S extends IdentitySession>(deps: {
       if (now() - f.startedAt > LINK_TTL_MS) return refuse(f, "link_expired");
       const { provider, email } = f.pending;
       publish({ status: "verifying", provider, email });
-      let session: S;
+      let minted: MintedSession<S>;
       try {
         const customToken = await verifyEmailOtp(transport, email, code.trim());
-        session = await port.signInWithCustomToken(customToken);
+        minted = await port.signInWithCustomToken(customToken);
       } catch (error) {
         return rejectCode(f, error);
       }
@@ -151,6 +161,7 @@ export function createAccountLink<S extends IdentitySession>(deps: {
         {
           port,
           pending: f.pending,
+          live: () => flow === f,
           publish,
           refuse: (refusal) => refuse(f, refusal),
           linked: () => {
@@ -158,16 +169,23 @@ export function createAccountLink<S extends IdentitySession>(deps: {
             return { kind: "linked" };
           },
         },
-        session,
+        minted,
       );
     },
 
-    /** Back to the sign-in screen. A code already sent stays valid on the
-     *  gateway; a verify or link in flight finishes first. */
+    /** Back to the sign-in screen, clearing the last link's notice. A code
+     *  already sent stays valid on the gateway. */
     cancel(): void {
-      if (busy()) return;
-      if (flow) port.discardPending(flow.pending.handle);
-      flow = null;
+      drop();
+      publish({ status: "idle" });
+    },
+
+    /** The person signed out: end an unfinished link so it never signs in
+     *  again or signs out whoever comes next. A finished link's notice
+     *  stays, since the flow's own cleanup signs out through here too. */
+    abandon(): void {
+      if (!flow) return;
+      drop();
       publish({ status: "idle" });
     },
 

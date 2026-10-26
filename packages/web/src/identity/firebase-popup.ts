@@ -117,6 +117,11 @@ export function webOnIdTokenChanged(
   });
 }
 
+/** The uid Firebase is signed in as right now, or null. */
+export function webCurrentUid(): string | null {
+  return requireAuth().currentUser?.uid ?? null;
+}
+
 /** Force-refresh the current id token (the `__HOUSTON_SESSION_REFRESH__` seam). */
 export async function webRefreshIdToken(): Promise<string | null> {
   const user = requireAuth().currentUser;

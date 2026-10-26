@@ -5,16 +5,23 @@
 // Firebase signs it in).
 
 import { createIdentityClient } from "@houston/engine-adapter";
-import type {
-  AccountLinkPort,
-  PendingLink,
-  VerifyLinkOutcome,
+import {
+  type AccountLinkPort,
+  EmailOtpError,
+  type EmailOtpFailure,
+  type PendingLink,
+  type VerifyLinkOutcome,
 } from "@houston/sdk/identity";
 import { gatewayUrl } from "./auth-gateway";
-import { logAndReportError } from "./error-report";
-import { showExpectedStateToast } from "./error-toast";
+import { describeError } from "./describe-error";
+import { showErrorToast, showExpectedStateToast } from "./error-toast";
 import i18n from "./i18n";
-import { IdentityError, type Session } from "./identity";
+import {
+  IdentityError,
+  type IdentityErrorCode,
+  isIdentityError,
+  type Session,
+} from "./identity";
 import {
   desktopLinkPending,
   discardDesktopCredential,
@@ -43,15 +50,28 @@ export const PROVIDER_NAME = {
   "apple.com": "Apple",
 } as const;
 
+// The SDK's code-error vocabulary: an unreachable Identity Platform is the
+// same offline state as an unreachable gateway, and a disabled account the
+// same refusal the gateway answers for one.
+const EXCHANGE_FAILURE: Partial<Record<IdentityErrorCode, EmailOtpFailure>> = {
+  network: "network",
+  user_disabled: "otp_account_disabled",
+};
+
 const port: AccountLinkPort<Session> = {
   async signInWithCustomToken(customToken) {
-    if (osIsTauri())
-      return (await customTokenDesktopSession(customToken)).session;
-    const outcome = await (await webIdentity()).webSignInWithCustomToken(
-      customToken,
-    );
-    if (!outcome) throw new IdentityError("malformed_response");
-    return outcome.session;
+    try {
+      if (osIsTauri()) return await customTokenDesktopSession(customToken);
+      const outcome = await (await webIdentity()).webSignInWithCustomToken(
+        customToken,
+      );
+      if (!outcome) throw new IdentityError("malformed_response");
+      return outcome;
+    } catch (error) {
+      const code = isIdentityError(error) ? EXCHANGE_FAILURE[error.code] : null;
+      if (!code) throw error;
+      throw new EmailOtpError(code, undefined, { cause: error });
+    }
   },
   async linkPending(handle, session) {
     if (osIsTauri()) return desktopLinkPending(handle, session);
@@ -62,11 +82,14 @@ const port: AccountLinkPort<Session> = {
     if (osIsTauri()) discardDesktopCredential(handle);
     else loadedWebIdentity()?.webDiscardPending(handle);
   },
-  async signOutProvisional() {
+  async signOutProvisional(session) {
     // Desktop never stored or published the email-code session. Web mirrored
     // it into the app the moment Firebase signed in, so it gets the full
-    // sign-out that wipes what loaded under it.
-    if (!osIsTauri()) await signOut();
+    // sign-out that wipes what loaded under it, unless another account has
+    // signed in since.
+    if (osIsTauri()) return;
+    if (loadedWebIdentity()?.webCurrentUid() !== session.uid) return;
+    await signOut();
   },
   async establish(session, method) {
     const outcome = { session, isNewUser: false };
@@ -74,10 +97,10 @@ const port: AccountLinkPort<Session> = {
       await establishDesktopSession(outcome, ANALYTICS_PROVIDER[method]);
     else establishWebSession(outcome, ANALYTICS_PROVIDER[method]);
   },
-  report({ severity, reason, cause }) {
-    if (severity === "quiet")
-      reportQuietError("link_identity_taken", "account_link", reason, cause);
-    else logAndReportError(`account_link_${reason}`, cause);
+  report({ quiet, reason, cause }) {
+    const command = `account_link_${reason}`;
+    if (quiet) reportQuietError(quiet, command, describeError(cause), cause);
+    else showErrorToast(command, describeError(cause), cause);
   },
 };
 

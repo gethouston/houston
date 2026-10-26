@@ -35,7 +35,7 @@ const NEED_CONFIRMATION = {
 };
 
 describe("GCIP needConfirmation on desktop sign-in", () => {
-  it("returns the collision for a direct id_token sign-in", async () => {
+  it("returns the collision and the account that holds the address", async () => {
     answer(200, NEED_CONFIRMATION);
     const exchange = await signInWithIdp({
       apiKey: "k",
@@ -47,6 +47,7 @@ describe("GCIP needConfirmation on desktop sign-in", () => {
       confirmation: {
         providerId: "microsoft.com",
         email: "p@example.com",
+        localId: "uid-a",
         oauthIdToken: "ms-id-token",
         oauthAccessToken: "ms-access",
         pendingToken: null,
@@ -67,6 +68,7 @@ describe("GCIP needConfirmation on desktop sign-in", () => {
       confirmation: {
         providerId: "microsoft.com",
         email: null,
+        localId: "uid-a",
         oauthIdToken: "ms-id-token",
         oauthAccessToken: "ms-access",
         pendingToken: "pending-1",

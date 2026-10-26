@@ -42,11 +42,15 @@ const EMAIL_SESSION: Session = {
 const jwt = (claims: object) =>
   `e30.${Buffer.from(JSON.stringify(claims)).toString("base64url")}.`;
 
+// firebase-js-sdk tags the refusal with GCIP's whole answer, `localId` included.
 const accountExists = (email?: string) =>
   new FirebaseError(
     "auth/account-exists-with-different-credential",
     "account exists",
-    email ? { email } : {},
+    {
+      ...(email ? { email } : {}),
+      _tokenResponse: { needConfirmation: true, localId: "uid-a" },
+    },
   );
 
 const credential = (idToken?: string) =>
@@ -69,7 +73,19 @@ test("an account-exists refusal becomes a link for the address Firebase names", 
     provider: "microsoft.com",
     email: "p@example.com",
     handle: "string",
+    accountId: "uid-a",
   });
+});
+
+test("names no owner when Firebase withheld GCIP's answer", () => {
+  const pending = holdAccountExists(
+    new FirebaseError("auth/account-exists-with-different-credential", "x", {
+      email: "p@example.com",
+    }),
+    "google.com",
+    credential(),
+  );
+  expect(pending.accountId).toBeNull();
 });
 
 test("the provider's own token names the address when Firebase withholds it", () => {
@@ -138,6 +154,20 @@ test("never links onto a user other than the email-code session", async () => {
     "the signed-in user is not the email-code session",
   );
   expect(fb.linkWithCredential).not.toHaveBeenCalled();
+});
+
+test("a provider refusing the held credential throws, so it is reported", async () => {
+  const pending = holdAccountExists(
+    accountExists("p@example.com"),
+    "microsoft.com",
+    credential(),
+  );
+  fb.linkWithCredential.mockRejectedValue(
+    new FirebaseError("auth/invalid-credential", "rejected"),
+  );
+  await expect(
+    webLinkPending(pending.handle, EMAIL_SESSION),
+  ).rejects.toMatchObject({ name: "IdentityError" });
 });
 
 test("a discarded credential is expired", async () => {

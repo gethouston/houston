@@ -46,9 +46,14 @@ export function holdNeedConfirmation(
   const postBody = googleIdToken
     ? idpPostBody(providerId, googleIdToken, null)
     : idpPostBody(providerId, oauthIdToken, oauthAccessToken);
-  if (!postBody && !pendingToken) throw new IdentityError("malformed_response");
+  const credential: IdpCredential | null = pendingToken
+    ? { pendingToken }
+    : postBody
+      ? { postBody }
+      : null;
+  if (!credential) throw new IdentityError("malformed_response");
   const handle = newPendingLinkHandle();
-  held.set(handle, { providerId, credential: { postBody, pendingToken } });
+  held.set(handle, { providerId, credential });
   return {
     kind: "link_required",
     provider: providerId,
@@ -57,6 +62,7 @@ export function holdNeedConfirmation(
       emailOf(oauthIdToken) ??
       emailOf(googleIdToken ?? null),
     handle,
+    accountId: confirmation.localId,
   };
 }
 
@@ -64,7 +70,9 @@ export function discardDesktopCredential(handle: PendingLinkHandle): void {
   held.delete(handle);
 }
 
-/** Link the held credential onto `session`, the one the email code minted. */
+/** Link the held credential onto `session`, the one the email code minted.
+ *  A provider that refuses the credential throws: that is a failure to
+ *  report, not an expiry. */
 export async function desktopLinkPending(
   handle: PendingLinkHandle,
   session: Session,
@@ -83,10 +91,8 @@ export async function desktopLinkPending(
       session: sessionFromIdp(result, entry.providerId),
     };
   } catch (error) {
-    if (!isIdentityError(error)) throw error;
-    if (error.code === "identity_already_linked")
+    if (isIdentityError(error) && error.code === "identity_already_linked")
       return { kind: "identity_taken" };
-    if (error.code === "invalid_idp_response") return { kind: "expired" };
     throw error;
   }
 }

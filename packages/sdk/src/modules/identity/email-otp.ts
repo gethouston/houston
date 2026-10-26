@@ -49,7 +49,7 @@ async function post(
   }
   if (res.ok) return res;
   throw new EmailOtpError(
-    emailOtpRefusalOf(res.status) ?? "unknown",
+    emailOtpRefusalOf(res.status, await res.text()) ?? "unknown",
     res.status,
   );
 }

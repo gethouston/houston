@@ -13,6 +13,7 @@ import {
 } from "@houston/app/lib/identity";
 import {
   initWebAuth,
+  webDiscardPending,
   webSignInWithGoogle,
   webSignOut,
 } from "@houston/web-identity";
@@ -23,25 +24,12 @@ import {
   adminAuthMessage,
   isTerminalRefreshError,
   parseStoredSession,
+  persistSession,
   REFRESH_RETRY_MS,
   refreshDelayMs,
   sessionFromIdentity,
   sessionFromPassword,
 } from "./auth";
-
-function persist(session: AdminSession | null): void {
-  try {
-    if (session) {
-      window.localStorage.setItem(ADMIN_SESSION_KEY, JSON.stringify(session));
-    } else {
-      window.localStorage.removeItem(ADMIN_SESSION_KEY);
-    }
-  } catch (e) {
-    // localStorage blocked (private mode): the in-memory session still works
-    // this tab; only reload-persistence is lost. Non-fatal, but never silent.
-    console.warn("[admin] could not persist session:", e);
-  }
-}
 
 export interface AdminAuth {
   /** Live Firebase ID token for the control-plane bearer, or null when out. */
@@ -62,7 +50,7 @@ export function useAdminAuth(): AdminAuth {
   const [error, setError] = useState<string | null>(null);
 
   const adopt = useCallback((next: AdminSession | null) => {
-    persist(next);
+    persistSession(next);
     setSession(next);
   }, []);
 
@@ -169,7 +157,11 @@ export function useAdminAuth(): AdminAuth {
     setError(null);
     try {
       const s = await webSignInWithGoogle();
-      if (s && "kind" in s) throw new IdentityError("identity_already_linked");
+      if (s && "kind" in s) {
+        // The console never runs the link: nothing else would drop this.
+        webDiscardPending(s.handle);
+        throw new IdentityError("identity_already_linked");
+      }
       if (s) adopt(sessionFromIdentity(s.session)); // null = popup cancelled (benign)
     } catch (e) {
       setError(adminAuthMessage(e));

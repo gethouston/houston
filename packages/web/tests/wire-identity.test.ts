@@ -60,11 +60,24 @@ describe("email-code wire (pre-auth)", () => {
 
   test.each([
     [401, "otp_invalid_code"],
-    [409, "otp_password_account"],
     [429, "otp_rate_limited"],
+    [409, "unknown"],
     [500, "unknown"],
-  ])("verify answering %i throws %s", async (status, code) => {
+  ])("verify answering a bare %i throws %s", async (status, code) => {
     stubRouted(() => json(status, {}));
+    await expect(
+      identity().verifyEmailCode("p@example.com", "123456"),
+    ).rejects.toMatchObject({ name: "EmailOtpError", code, status });
+  });
+
+  test.each([
+    [409, "password_account", "otp_password_account"],
+    [409, "unverified_account", "otp_unverified_account"],
+    [409, "account_deleting", "otp_account_deleting"],
+    [403, "account_disabled", "otp_account_disabled"],
+    [503, "account_merging", "otp_account_merging"],
+  ])("verify refused %i %s throws %s", async (status, refusal, code) => {
+    stubRouted(() => json(status, { error: refusal, code: refusal }));
     await expect(
       identity().verifyEmailCode("p@example.com", "123456"),
     ).rejects.toMatchObject({ name: "EmailOtpError", code, status });

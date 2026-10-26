@@ -1,126 +1,6 @@
-import type { LinkProvider } from "@houston/wire-types";
 import { describe, expect, it } from "vitest";
-import { createIdentityModule, LINK_TTL_MS } from "./index";
-import {
-  type AccountLinkProblem,
-  type IdentitySession,
-  type LinkAttempt,
-  newPendingLinkHandle,
-  type PendingLink,
-  type PendingLinkHandle,
-} from "./types";
-
-const GATEWAY = "https://gw.test";
-const GOOD_CODE = "123456";
-
-/** An unsigned JWT whose payload carries `claims`. */
-function jwt(claims: Record<string, unknown>): string {
-  const part = (value: unknown) =>
-    btoa(JSON.stringify(value))
-      .replace(/\+/g, "-")
-      .replace(/\//g, "_")
-      .replace(/=+$/, "");
-  return `${part({ alg: "none" })}.${part(claims)}.`;
-}
-
-interface TestSession extends IdentitySession {
-  label: string;
-}
-
-/**
- * A gateway that mails codes and mints a custom token naming the address the
- * code was verified for, plus a platform port that records every call. The
- * session a custom token signs in to names `sessionEmail` (the gateway's
- * account for that address), so a test can model a server that resolves an
- * address to a different account.
- */
-function identityKit(opts: { sessionEmail?: string } = {}) {
-  const requests: { url: string; body: unknown }[] = [];
-  let clock = 1_000_000;
-  let startStatus = 204;
-  let verifyStatus: number | null = null;
-  let attempt: (session: TestSession) => LinkAttempt<TestSession> = (s) => ({
-    kind: "linked",
-    session: { ...s, idToken: `${s.idToken}+linked`, label: "linked" },
-  });
-  const calls = {
-    minted: [] as TestSession[],
-    linked: [] as { handle: PendingLinkHandle; session: TestSession }[],
-    discarded: [] as PendingLinkHandle[],
-    signedOut: [] as TestSession[],
-    established: [] as {
-      session: TestSession;
-      method: LinkProvider | "email";
-    }[],
-    reported: [] as AccountLinkProblem[],
-  };
-
-  const fetch = (async (url: string, init?: RequestInit) => {
-    const body = JSON.parse(String(init?.body)) as Record<string, string>;
-    requests.push({ url: String(url), body });
-    if (String(url).endsWith("/start"))
-      return new Response(null, { status: startStatus });
-    if (verifyStatus) return new Response("", { status: verifyStatus });
-    if (body.code !== GOOD_CODE) return new Response("", { status: 401 });
-    return Response.json({ customToken: `custom-token:${body.email}` });
-  }) as typeof globalThis.fetch;
-
-  const identity = createIdentityModule<TestSession>({
-    baseUrl: () => `${GATEWAY}/`,
-    fetch,
-    now: () => clock,
-    port: {
-      async signInWithCustomToken(customToken) {
-        const address = opts.sessionEmail ?? customToken.split(":")[1];
-        const session = {
-          uid: "uid-a",
-          idToken: jwt({ email: address }),
-          label: "minted",
-        };
-        calls.minted.push(session);
-        return session;
-      },
-      async linkPending(handle, session) {
-        calls.linked.push({ handle, session });
-        return attempt(session);
-      },
-      discardPending: (handle) => calls.discarded.push(handle),
-      async signOutProvisional(session) {
-        calls.signedOut.push(session);
-      },
-      async establish(session, method) {
-        calls.established.push({ session, method });
-      },
-      report: (problem) => calls.reported.push(problem),
-    },
-  });
-
-  return {
-    identity,
-    requests,
-    calls,
-    pending(provider: LinkProvider, email: string | null): PendingLink {
-      return {
-        kind: "link_required",
-        provider,
-        email,
-        handle: newPendingLinkHandle(),
-      };
-    },
-    advance: (ms: number) => {
-      clock += ms;
-    },
-    answerStart: (status: number) => {
-      startStatus = status;
-    },
-    answerVerify: (status: number) => {
-      verifyStatus = status;
-    },
-    linkAnswers: (next: typeof attempt) => {
-      attempt = next;
-    },
-  };
-}
+import { LINK_TTL_MS } from "./index";
+import { GATEWAY, GOOD_CODE, identityKit } from "./test-kit";
 
 describe("account-exists link", () => {
   it("mails the provider's address, then links onto the session the code minted", async () => {
@@ -192,11 +72,15 @@ describe("account-exists link", () => {
       status: "needs_code",
       codeError: "otp_rate_limited",
     });
-    kit.answerVerify(409);
+    kit.answerVerify(
+      409,
+      '{"error":"unverified_account","code":"unverified_account"}',
+    );
     expect(await kit.identity.verifyAccountLinkCode(GOOD_CODE)).toEqual({
       kind: "code_rejected",
-      error: "otp_password_account",
+      error: "otp_unverified_account",
     });
+    expect(kit.calls.reported).toEqual([]);
   });
 
   it("asks for the email code instead when the provider named no address", async () => {
@@ -226,7 +110,7 @@ describe("account-exists link", () => {
     expect(kit.calls.discarded).toEqual([pending.handle]);
   });
 
-  it("signs out and refuses when the provider no longer accepts the held credential", async () => {
+  it("signs out and refuses quietly when the platform no longer holds the credential", async () => {
     const kit = identityKit();
     kit.linkAnswers(() => ({ kind: "expired" }));
     await kit.identity.beginAccountLink(
@@ -238,6 +122,30 @@ describe("account-exists link", () => {
     });
     expect(kit.calls.signedOut).toEqual([kit.calls.minted[0]]);
     expect(kit.calls.established).toEqual([]);
+    expect(kit.calls.reported).toEqual([]);
+  });
+
+  it("reports a provider that refuses the held credential, and signs out", async () => {
+    const kit = identityKit();
+    const rejection = new Error("INVALID_IDP_RESPONSE");
+    kit.linkAnswers(() => {
+      throw rejection;
+    });
+    await kit.identity.beginAccountLink(
+      kit.pending("microsoft.com", "p@example.com"),
+    );
+    expect(await kit.identity.verifyAccountLinkCode(GOOD_CODE)).toEqual({
+      kind: "refused",
+      refusal: "link_failed",
+    });
+    expect(kit.calls.reported).toEqual([
+      { quiet: null, reason: "link_failed", cause: rejection },
+    ]);
+    expect(kit.calls.signedOut).toEqual([kit.calls.minted[0]]);
+    expect(kit.identity.getAccountLink()).toMatchObject({
+      status: "refused",
+      refusal: "link_failed",
+    });
   });
 
   it("keeps the person signed in by email when the identity belongs to another account", async () => {
@@ -254,8 +162,8 @@ describe("account-exists link", () => {
       kit.calls.established.map((e) => [e.session.label, e.method]),
     ).toEqual([["minted", "email"]]);
     expect(kit.calls.signedOut).toEqual([]);
-    expect(kit.calls.reported.map((r) => [r.severity, r.reason])).toEqual([
-      ["quiet", "link_identity_taken"],
+    expect(kit.reports()).toEqual([
+      ["link_identity_taken", "link_identity_taken"],
     ]);
   });
 
@@ -322,9 +230,7 @@ describe("account-exists takeover rules", () => {
     expect(kit.calls.established).toEqual([]);
     expect(kit.calls.signedOut).toEqual([kit.calls.minted[0]]);
     expect(kit.calls.discarded).toEqual([pending.handle]);
-    expect(kit.calls.reported.map((r) => [r.severity, r.reason])).toEqual([
-      ["error", "link_email_mismatch"],
-    ]);
+    expect(kit.reports()).toEqual([["error", "link_email_mismatch"]]);
   });
 
   it("never links an Apple relay identity onto a real address", async () => {

@@ -33,6 +33,10 @@ export type IdentityErrorCode =
   | "otp_invalid_code" // gateway 401: wrong / expired 6-digit code
   | "otp_rate_limited" // gateway 429: too many start/verify requests
   | "otp_password_account" // gateway 409: the address belongs to a password account
+  | "otp_unverified_account" // gateway 409: another sign-in method holds the address unproved
+  | "otp_account_deleting" // gateway 409: the account is being deleted
+  | "otp_account_disabled" // gateway 403: the account is disabled
+  | "otp_account_merging" // gateway 503: the account is being merged; request a new code
   // transport
   | "network" // fetch threw (offline, DNS, TLS) — no HTTP response
   | "malformed_response" // 2xx but body is not the expected shape / non-JSON

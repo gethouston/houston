@@ -14,7 +14,7 @@ const STUBS: Record<string, string> = {
     "export const confirmAccountLink = async () => ({ kind: 'linked' }); export const identityClient = {};",
   "../../lib/account-link":
     "export const PROVIDER_NAME = { 'google.com': 'Google', 'microsoft.com': 'Microsoft', 'apple.com': 'Apple' };",
-  "../../lib/error-report": "export const logAndReportError = () => {};",
+  "../../lib/error-toast": "export const showErrorToast = () => false;",
 };
 registerHooks({
   resolve(specifier, context, next) {
@@ -75,6 +75,55 @@ describe("account link panel", () => {
     ]);
   });
 
+  it("lets the person go back while the code is still being sent, not while it is checked", () => {
+    const buttons = (status: "sending_code" | "verifying" | "linking") =>
+      [
+        ...new JSDOM(
+          render(
+            h(panel.AccountLinkPanel, {
+              view: { status, provider: "google.com", email: "p@example.com" },
+            }),
+          ),
+        ).window.document.querySelectorAll("button[type=button]"),
+      ].map((b) => [b.textContent, b.hasAttribute("disabled")]);
+    deepStrictEqual(buttons("sending_code"), [
+      ["Resend code", true],
+      ["Back to sign in", false],
+    ]);
+    for (const status of ["verifying", "linking"] as const)
+      deepStrictEqual(buttons(status), [
+        ["Resend code", true],
+        ["Back to sign in", true],
+      ]);
+  });
+
+  it("shows the gateway's account refusals as copy the person can act on", () => {
+    const shown = (codeError: string) =>
+      textsOf(
+        h(panel.AccountLinkPanel, {
+          view: {
+            status: "needs_code",
+            provider: "apple.com",
+            email: "p@example.com",
+            codeError,
+          } as AccountLinkView & { status: "needs_code" },
+        }),
+        "p",
+      ).at(-1);
+    strictEqual(
+      shown("otp_unverified_account"),
+      "This email is linked to another sign-in method. Continue with that method, or contact support.",
+    );
+    strictEqual(
+      shown("otp_account_merging"),
+      "We're updating this account. Request a new code in a couple of minutes.",
+    );
+    strictEqual(
+      shown("otp_account_disabled"),
+      "This account has been disabled. Contact support.",
+    );
+  });
+
   it("takes over the options only while the code step runs", () => {
     const at = (status: AccountLinkView["status"]) =>
       panel.isLinkActive({
@@ -120,6 +169,15 @@ describe("account link panel", () => {
         refusal: "link_email_unknown",
       }),
       "We couldn't confirm the email for that Apple account. Sign in with your email code instead.",
+    );
+    strictEqual(
+      notice({
+        status: "refused",
+        provider: "microsoft.com",
+        email: "p@example.com",
+        refusal: "link_wrong_account",
+      }),
+      "We couldn't add Microsoft sign-in. Try again, or sign in with your email code.",
     );
     strictEqual(
       notice({
