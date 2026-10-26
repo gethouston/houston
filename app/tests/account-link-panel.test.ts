@@ -64,7 +64,7 @@ describe("account link panel", () => {
     } as const;
     const element = h(panel.AccountLinkPanel, { view });
     deepStrictEqual(textsOf(element, "h2, p"), [
-      "You already have a Houston account",
+      "Confirm it's you",
       "You already have a Houston account with p@example.com. We sent a code there. Enter it to add Microsoft sign-in to that account.",
       "We sent a 6-digit code to p@example.com.",
       "That code is wrong or expired. Request a new one and try again.",
