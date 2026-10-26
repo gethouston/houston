@@ -28,10 +28,26 @@ export function useOrg(enabled: boolean) {
 }
 
 /**
+ * What adding one more person to the active org costs (`POST
+ * /v1/org/members/quote`), for an owner on the People tab. It sits under the
+ * org key, so a roster change re-quotes. Failures surface through `call()`.
+ */
+export function useSeatQuote(enabled: boolean) {
+  return useQuery({
+    queryKey: queryKeys.seatQuote(),
+    queryFn: () => tauriOrg.quoteSeat(),
+    enabled,
+    staleTime: 30_000,
+  });
+}
+
+/**
  * Adding a member waits for the host (it may mint an invite instead) and
  * carries no `onError`: `tauriOrg.addMember` routes through `call()`, which
  * surfaces + reports the failure once (the "user already in another org" 409
- * included). Adding an `onError` here would double-toast.
+ * included). Adding an `onError` here would double-toast. The seat refusals
+ * (a declined card, a bank check, a payer-only seat, a stale quote) resolve as
+ * outcomes the caller renders.
  */
 export function useAddMember() {
   const qc = useQueryClient();
@@ -44,13 +60,23 @@ export function useAddMember() {
       email,
       role,
       options,
+      prorationDate,
     }: {
       email: string;
       role: OrgRole;
       options?: EngineCallOptions;
-    }) => tauriOrg.addMember(email, role, options),
-    onSuccess: (_data, { role }) => {
-      analytics.track("org_member_added", { role });
+      prorationDate?: number;
+    }) => tauriOrg.addMember(email, role, options, prorationDate),
+    onSuccess: (outcome, { role }) => {
+      if (outcome.kind === "quote_changed") {
+        qc.setQueryData(queryKeys.seatQuote(), outcome.quote);
+        return;
+      }
+      if (outcome.kind === "added") {
+        analytics.track("org_member_added", { role });
+        // A paid or filled seat changes the org's seat counts on its billing.
+        qc.invalidateQueries({ queryKey: queryKeys.orgs() });
+      }
       qc.invalidateQueries({ queryKey: queryKeys.org() });
     },
   });
@@ -89,9 +115,22 @@ function useOrgWrite() {
   );
 }
 
+/**
+ * A seat freed by a removal or a revoke changes the org's seat counts and the
+ * next quote.
+ */
+function useRefreshSeats() {
+  const qc = useQueryClient();
+  return useCallback(() => {
+    qc.invalidateQueries({ queryKey: queryKeys.orgs() });
+    qc.invalidateQueries({ queryKey: queryKeys.seatQuote() });
+  }, [qc]);
+}
+
 /** Revoke a pending invite (owner only). */
 export function useDeleteInvite() {
   const write = useOrgWrite();
+  const refreshSeats = useRefreshSeats();
   return useCallback(
     (inviteId: string) =>
       write({
@@ -99,14 +138,18 @@ export function useDeleteInvite() {
         copy: "revokeInvite",
         apply: (org) => orgWithoutInvite(org, inviteId),
         write: () => tauriOrg.deleteInvite(inviteId),
-        onSuccess: () => analytics.track("org_invite_revoked"),
+        onSuccess: () => {
+          analytics.track("org_invite_revoked");
+          refreshSeats();
+        },
       }),
-    [write],
+    [write, refreshSeats],
   );
 }
 
 export function useRemoveMember() {
   const write = useOrgWrite();
+  const refreshSeats = useRefreshSeats();
   return useCallback(
     (userId: string) =>
       write({
@@ -114,9 +157,12 @@ export function useRemoveMember() {
         copy: "removeMember",
         apply: (org) => orgWithoutMember(org, userId),
         write: () => tauriOrg.removeMember(userId),
-        onSuccess: () => analytics.track("org_member_removed"),
+        onSuccess: () => {
+          analytics.track("org_member_removed");
+          refreshSeats();
+        },
       }),
-    [write],
+    [write, refreshSeats],
   );
 }
 

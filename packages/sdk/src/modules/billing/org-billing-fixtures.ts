@@ -26,6 +26,8 @@ export function freeOrgBilling(patch: Partial<OrgBilling> = {}): OrgBilling {
     seatGraceEndsAt: null,
     renewsAt: null,
     priceNotice: null,
+    paidSeats: null,
+    seatsInUse: null,
     usage: {
       scope: "org",
       used: 10,

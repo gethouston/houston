@@ -146,7 +146,9 @@ export function orgBillingPrice(
   const seatCents = billing.seatPriceCents;
   if (billing.interval === null || seatCents === null)
     return { kind: "unpriced" };
-  const seats = Math.max(1, billing.seats);
+  // A yearly subscription bills its paid seats, which may outnumber the
+  // members: a removed person's seat stays paid until renewal.
+  const seats = Math.max(1, billing.paidSeats ?? billing.seats);
   const grace =
     billing.tier === "paid" &&
     seats > 1 &&

@@ -1,3 +1,4 @@
+import type { AddOrgMemberOutcome, SeatQuote } from "@houston/sdk";
 import type * as controlPlane from "../control-plane";
 import { HoustonEngineError } from "./errors";
 import type { BaseCtor } from "./mixin";
@@ -60,14 +61,32 @@ export function OrgsMixin<TBase extends BaseCtor>(Base: TBase) {
         throw err;
       }
     }
+    // What adding one more person costs. A gateway that predates the quote
+    // (404) charges nothing up front, which is what `no_charge` says: the
+    // add then goes through as it always did.
+    async quoteSeat(): Promise<SeatQuote> {
+      if (!this.ctx.cp)
+        throw new Error("multiplayer requires the hosted gateway");
+      try {
+        return await viaSdk("/v1/org/members/quote", () =>
+          this.ctx.sdk.org.quoteSeat(),
+        );
+      } catch (err) {
+        if (err instanceof HoustonEngineError && err.status === 404) {
+          return { kind: "no_charge" };
+        }
+        throw err;
+      }
+    }
     async addOrgMember(
       email: string,
       role: controlPlane.OrgRole,
-    ): Promise<controlPlane.AddOrgMemberResult> {
+      prorationDate?: number,
+    ): Promise<AddOrgMemberOutcome> {
       if (!this.ctx.cp)
         throw new Error("multiplayer requires the hosted gateway");
       return viaSdk("/v1/org/members", () =>
-        this.ctx.sdk.org.addOrgMember(email, role),
+        this.ctx.sdk.org.addOrgMember(email, role, prorationDate),
       );
     }
     async deleteOrgInvite(inviteId: string): Promise<void> {

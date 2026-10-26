@@ -35,6 +35,8 @@ const free: OrgBilling = {
   seatGraceEndsAt: null,
   renewsAt: null,
   priceNotice: null,
+  paidSeats: null,
+  seatsInUse: null,
   usage: null,
   routines: {
     paused: false,

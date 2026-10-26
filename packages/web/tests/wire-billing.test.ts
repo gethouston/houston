@@ -185,6 +185,44 @@ describe("the delegated billing requests", () => {
   });
 });
 
+describe("a yearly org's paid seats", () => {
+  // The counts ride each org's billing on the one orgs read: no route of
+  // their own, nothing else on the wire.
+  test("listOrgs reads paidSeats and seatsInUse off GET /v1/orgs", async () => {
+    const billing = {
+      tier: "paid",
+      status: "active",
+      lockAt: null,
+      lockReason: null,
+      freeSlot: false,
+      isBillingOwner: true,
+      seats: 2,
+      interval: "year",
+      seatPriceCents: 18000,
+      seatPrices: { monthlyCents: 2000, annualCents: 18000 },
+      seatGraceEndsAt: null,
+      renewsAt: "2027-03-26T12:00:00Z",
+      priceNotice: null,
+      paidSeats: 3,
+      seatsInUse: 2,
+      usage: null,
+      routines: null,
+    };
+    const org = { id: "org-1", slug: "acme", name: "Acme", billing };
+    stubFetch(() => json(200, { orgs: [org], invites: [], freeOrg: null }));
+
+    const list = await client().listOrgs();
+    expect(list.orgs[0]?.billing).toMatchObject({
+      paidSeats: 3,
+      seatsInUse: 2,
+    });
+    const call = soleCall();
+    expect(call.method).toBe("GET");
+    expect(call.url).toBe(`${BASE}/v1/orgs`);
+    expect(call.body).toBeNull();
+  });
+});
+
 describe("what the mixin softens, and what it must not", () => {
   for (const status of NOT_ENTITLED) {
     test(`a ${status} on getBilling is a team with no billing to show`, async () => {

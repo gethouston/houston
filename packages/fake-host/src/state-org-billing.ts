@@ -83,6 +83,8 @@ export function planOrgBilling(seed: Required<PlanSeed>): OrgBilling {
     seatGraceEndsAt: null,
     renewsAt: null,
     priceNotice: null,
+    paidSeats: null,
+    seatsInUse: null,
     usage:
       free && summary.usage
         ? {
@@ -135,6 +137,8 @@ export function freeOrgBilling(): OrgBilling {
     seatGraceEndsAt: null,
     renewsAt: null,
     priceNotice: null,
+    paidSeats: null,
+    seatsInUse: null,
     usage: null,
     routines: null,
   };
@@ -156,6 +160,8 @@ export function unpaidOrgBilling(): OrgBilling {
     seatGraceEndsAt: null,
     renewsAt: null,
     priceNotice: null,
+    paidSeats: null,
+    seatsInUse: null,
     usage: null,
     routines: null,
   };

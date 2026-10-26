@@ -5,6 +5,7 @@ import {
   type SeatIntervalRefusal,
   seatPricesSchema,
 } from "./seat-prices";
+import { seatCountFields } from "./seat-quote";
 import type { OrgSummary, OrgsList } from "./types";
 
 /**
@@ -82,6 +83,7 @@ const orgBillingWire = z.object({
   usage: orgUsageSchema.nullable(),
   routines: orgRoutinesSchema.nullable(),
   ...priceNoticeFields,
+  ...seatCountFields,
 });
 
 /**
@@ -91,10 +93,19 @@ const orgBillingWire = z.object({
  * (null) and no surface names one.
  */
 export const orgBillingSchema = orgBillingWire.transform(
-  ({ seatPrices, renewsAt, priceNotice, ...billing }) => ({
+  ({
+    seatPrices,
+    renewsAt,
+    priceNotice,
+    paidSeats,
+    seatsInUse,
+    ...billing
+  }) => ({
     ...billing,
     renewsAt: renewsAt ?? null,
     priceNotice: priceNotice ?? null,
+    paidSeats: paidSeats ?? null,
+    seatsInUse: seatsInUse ?? null,
     seatPrices:
       seatPrices ??
       (billing.seatPriceCents === null

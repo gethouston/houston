@@ -59,6 +59,8 @@ const freeOrg: OrgBilling = {
   seatGraceEndsAt: null,
   renewsAt: null,
   priceNotice: null,
+  paidSeats: null,
+  seatsInUse: null,
   usage: {
     scope: "org",
     used: 40,

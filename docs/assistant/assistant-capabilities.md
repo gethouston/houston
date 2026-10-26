@@ -96,6 +96,7 @@ Calling an operation returns the host's raw response. Where the adapter function
 - `listMemberRoutines`: Lists the routines someone set up that would stop if they were removed from this space.
 - `orgAudit`: Shows the record of who did what in this space, newest first.
 - `orgUsage`: Shows how much each person and agent used this space over recent days.
+- `quoteSeat`: Says what adding one more person to this space would cost.
 - `removeOrgMember`: Removes someone from the current space. **Confirmation required.**
 - `setOrgMemberRole`: Changes what someone is allowed to do in this space. **Confirmation required.**
 

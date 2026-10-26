@@ -115,9 +115,8 @@ describe("org module — membership writes", () => {
     );
 
     await expect(sdk.org.addOrgMember("ada@x.co", "user")).resolves.toEqual({
-      role: "user",
-      invited: true,
-      email: "ada@x.co",
+      kind: "added",
+      member: { role: "user", invited: true, email: "ada@x.co" },
     });
     expect(calls).toEqual([
       {

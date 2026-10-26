@@ -26,7 +26,7 @@ import {
 
 const BASE = "http://host";
 
-const { calls, reset, restore, stubFetch } = createWireCapture();
+const { calls, reset, restore, stubFetch, stubRouted } = createWireCapture();
 
 beforeEach(() => {
   installLocalStorage();
@@ -156,8 +156,8 @@ describe("the delegated org writes", () => {
     stubFetch(() => json(202, { role: "user", invited: true }));
 
     await expect(client().addOrgMember("ada@x.co", "user")).resolves.toEqual({
-      role: "user",
-      invited: true,
+      kind: "added",
+      member: { role: "user", invited: true },
     });
     const call = onlyCall();
     expect(call.url).toBe(`${BASE}/v1/org/members`);
@@ -200,6 +200,87 @@ describe("the delegated org writes", () => {
     expect(call.method).toBe("PATCH");
     expect(call.body).toBe(JSON.stringify({ role: "admin" }));
     expect(call.headers.get("Content-Type")).toBe("application/json");
+  });
+});
+
+describe("a seat the add may pay for", () => {
+  const CHARGE = {
+    kind: "charge",
+    amountCents: 7500,
+    currency: "usd",
+    prorationDate: 1793000000,
+    paidSeats: 2,
+    seatsInUse: 2,
+    renewsAt: "2027-03-26T12:00:00Z",
+  };
+
+  test("quoteSeat POSTs exactly {} to /v1/org/members/quote", async () => {
+    stubFetch(() => json(200, CHARGE));
+
+    await expect(client().quoteSeat()).resolves.toEqual(CHARGE);
+    const call = onlyCall();
+    expect(call.url).toBe(`${BASE}/v1/org/members/quote`);
+    expect(call.method).toBe("POST");
+    expect(call.body).toBe("{}");
+    expect(call.headers.get("Content-Type")).toBe("application/json");
+    expect(call.auth).toBe("Bearer t");
+    expect(call.org).toBe(ORG);
+  });
+
+  test("a gateway with no quote route charges nothing up front", async () => {
+    stubFetch(() => json(404, { error: "not found" }));
+
+    await expect(client().quoteSeat()).resolves.toEqual({ kind: "no_charge" });
+    expect(calls).toHaveLength(1);
+  });
+
+  test("addOrgMember POSTs exactly {email, role, prorationDate}", async () => {
+    stubFetch(() => json(200, { userId: "u9", role: "admin" }));
+
+    await expect(
+      client().addOrgMember("ada@x.co", "admin", 1793000000),
+    ).resolves.toEqual({
+      kind: "added",
+      member: { userId: "u9", role: "admin" },
+    });
+    const call = onlyCall();
+    expect(call.url).toBe(`${BASE}/v1/org/members`);
+    expect(call.method).toBe("POST");
+    expect(call.body).toBe(
+      '{"email":"ada@x.co","role":"admin","prorationDate":1793000000}',
+    );
+    expect(call.org).toBe(ORG);
+  });
+
+  test("a declined card and a bank check come back as outcomes", async () => {
+    for (const code of ["seat_payment_failed", "seat_payment_needs_action"]) {
+      reset();
+      stubFetch(() => json(402, { error: "card", code }));
+      await expect(
+        client().addOrgMember("ada@x.co", "user", 1793000000),
+      ).resolves.toEqual({ kind: code });
+    }
+  });
+
+  test("a stale quote is re-quoted before the add answers", async () => {
+    const fresh = { ...CHARGE, amountCents: 9000 };
+    stubRouted((call) =>
+      call.url.endsWith("/quote")
+        ? json(200, fresh)
+        : json(409, { error: "stale", code: "seat_quote_changed" }),
+    );
+
+    await expect(
+      client().addOrgMember("ada@x.co", "user", 1793000000),
+    ).resolves.toEqual({ kind: "quote_changed", quote: fresh });
+    expect(calls.map((c) => [c.method, c.url, c.body])).toEqual([
+      [
+        "POST",
+        `${BASE}/v1/org/members`,
+        '{"email":"ada@x.co","role":"user","prorationDate":1793000000}',
+      ],
+      ["POST", `${BASE}/v1/org/members/quote`, "{}"],
+    ]);
   });
 });
 

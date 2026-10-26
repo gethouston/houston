@@ -53,6 +53,12 @@ export {
   orgRecovery,
   orgStanding,
 } from "./modules/billing/recovery";
+export {
+  type BillingRenewal,
+  billingRenewal,
+  type SeatUsageView,
+  seatUsageView,
+} from "./modules/billing/seat-usage";
 // ===== Plan module contract ===========================================
 export { PlanCommand, PlanHttpError, type PlanModule } from "./modules/plan";
 export {

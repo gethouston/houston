@@ -20,12 +20,19 @@ export function useTeamMoveInvites(addMember: ReturnType<typeof useAddMember>) {
     setSending(true);
     for (const invite of sendableInvites(invites)) {
       try {
-        await addMember.mutateAsync({
+        const outcome = await addMember.mutateAsync({
           email: invite.email,
           role: "user",
           options: { silence: isExpectedShareError },
         });
-        mark(invite.email, { status: "sent" });
+        // A seat this flow cannot pay for (it shows no price) fails the row;
+        // the People tab is where a seat is bought.
+        mark(
+          invite.email,
+          outcome.kind === "added"
+            ? { status: "sent" }
+            : { status: "failed", error: outcome.kind },
+        );
       } catch (error) {
         mark(invite.email, {
           status: "failed",

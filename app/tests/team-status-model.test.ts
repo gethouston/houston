@@ -32,6 +32,8 @@ function billing(patch: Partial<OrgBilling>): OrgBilling {
     seatGraceEndsAt: null,
     renewsAt: null,
     priceNotice: null,
+    paidSeats: null,
+    seatsInUse: null,
     usage: { scope: "org", used: 10, limit: 40, resetsAt: FUTURE },
     routines: null,
     ...patch,

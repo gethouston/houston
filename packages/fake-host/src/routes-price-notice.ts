@@ -60,6 +60,9 @@ export function handlePriceNoticeRoutes(
     seatPriceCents: annual,
     renewsAt: new Date(Date.now() + YEAR_MS).toISOString(),
     priceNotice: null,
+    // A yearly subscription pays for the seats in use on the day it starts.
+    paidSeats: Math.max(1, billing.seats),
+    seatsInUse: Math.max(1, billing.seats),
   };
   state.setOrgBilling(slug, next);
   return json({ billing: next });

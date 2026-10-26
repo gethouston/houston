@@ -16,13 +16,7 @@
  */
 
 import { type HttpScope, httpRequest, SdkHttpError } from "../http";
-import type {
-  AddOrgMemberResult,
-  OrgInfo,
-  OrgPerson,
-  OrgRole,
-  UserProfilesResult,
-} from "./types";
+import type { OrgInfo, OrgPerson, OrgRole, UserProfilesResult } from "./types";
 
 /** A failed `/v1/org*` request. `status` is the upstream HTTP status. */
 export class OrgHttpError extends SdkHttpError {
@@ -77,25 +71,6 @@ export async function getOrgProfiles(
 export async function getOrgPeople(scope: HttpScope): Promise<OrgPerson[]> {
   const res = await httpRequest(scope, "/v1/org/people");
   return ((await res.json()) as { people?: OrgPerson[] }).people ?? [];
-}
-
-/**
- * Invites someone to this space with the role the user chooses.
- * @param email The person's email address, as they gave it.
- * @param role What they may do in the space.
- * @assistant group:org
- * @assistant confirm: outward. It invites a real person into the space, where they can see and drive the agents in it.
- */
-export async function addOrgMember(
-  scope: HttpScope,
-  email: string,
-  role: OrgRole,
-): Promise<AddOrgMemberResult> {
-  const res = await httpRequest(scope, "/v1/org/members", {
-    method: "POST",
-    body: JSON.stringify({ email, role }),
-  });
-  return (await res.json()) as AddOrgMemberResult;
 }
 
 /**

@@ -123,6 +123,7 @@ describe("people tab model — describeAddResult", () => {
       {
         kind: "added",
         email: "ada@x.io",
+        seat: null,
       },
     );
   });
@@ -133,13 +134,13 @@ describe("people tab model — describeAddResult", () => {
         invited: true,
         email: "canonical@x.io",
       }),
-      { kind: "invited", email: "canonical@x.io" },
+      { kind: "invited", email: "canonical@x.io", seat: null },
     );
   });
   it("falls back to the typed email when the invite echoes none", () => {
     deepStrictEqual(
       describeAddResult("typed@x.io", { role: "user", invited: true }),
-      { kind: "invited", email: "typed@x.io" },
+      { kind: "invited", email: "typed@x.io", seat: null },
     );
   });
 });

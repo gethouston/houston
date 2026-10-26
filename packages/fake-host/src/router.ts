@@ -49,6 +49,7 @@ import {
   handlePriceNoticeRoutes,
   setSwitchDeclines,
 } from "./routes-price-notice";
+import { handleSeatRoutes, setSeatChargeResult } from "./routes-seats";
 import { handleSetupRuntime } from "./routes-setup-runtime";
 import { handleSharedSkillsRoutes } from "./routes-shared-skills";
 import { handleSpaceInvitesControl, handleSpacesRoutes } from "./routes-spaces";
@@ -104,6 +105,17 @@ export async function handle(req: Request): Promise<Response> {
     state.reset();
     state.setYearlySold(true);
     setSwitchDeclines(false);
+    setSeatChargeResult("ok");
+    return json({ ok: true });
+  }
+  // `{ result: "decline" | "needs_action" }` answers the next seat charge.
+  if (path === "/__test__/seat-charge" && method === "POST") {
+    const body = await parseBody(req);
+    setSeatChargeResult(
+      body?.result === "decline" || body?.result === "needs_action"
+        ? body.result
+        : "ok",
+    );
     return json({ ok: true });
   }
   // `{ decline: true }` makes the next switch to yearly decline the card.
@@ -467,6 +479,10 @@ export async function handle(req: Request): Promise<Response> {
   // --- user-scoped gateway routes (integrations, preferences, locale) ---
   const userRoute = handleUserRoutes(method, segs, body);
   if (userRoute) return userRoute;
+
+  // --- yearly seats: the quote, and the seat side of an add or a removal ---
+  const seatRoute = handleSeatRoutes(method, segs, req, body);
+  if (seatRoute) return seatRoute;
 
   // --- Teams v2 gateway routes (agent + org settings / allowlist ceilings) ---
   const teamsRoute = handleTeamsRoutes(method, segs, body, url);

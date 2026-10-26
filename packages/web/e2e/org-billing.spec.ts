@@ -43,6 +43,8 @@ function teamBilling(patch: Partial<OrgBilling>): OrgBilling {
     seatGraceEndsAt: null,
     renewsAt: null,
     priceNotice: null,
+    paidSeats: null,
+    seatsInUse: null,
     usage: {
       scope: "org",
       used: 34,
@@ -201,6 +203,8 @@ test("the billing owner sees a seat grace's price today and the total after", as
       seatGraceEndsAt: "2026-11-04T17:00:00.000Z",
       renewsAt: null,
       priceNotice: null,
+      paidSeats: null,
+      seatsInUse: null,
     }),
   );
   await enterTeam(page);

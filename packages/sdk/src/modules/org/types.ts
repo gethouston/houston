@@ -20,6 +20,7 @@ export const OrgCommand = {
   GetProfiles: "org/getProfiles",
   GetPeople: "org/getPeople",
   AddMember: "org/addMember",
+  QuoteSeat: "org/quoteSeat",
   DeleteInvite: "org/deleteInvite",
   RemoveMember: "org/removeMember",
   MemberRoutines: "org/memberRoutines",

@@ -48,14 +48,19 @@ export function useShareInvites(
       try {
         // `already_member` is expected: the badge renders it inline as the
         // sole surface, so `call()` must not also show its bug toast.
-        await addMember.mutateAsync({
+        const outcome = await addMember.mutateAsync({
           email: invite.email,
           role: "user",
           options: { silence: isExpectedShareError },
         });
+        // A seat this flow cannot pay for (it shows no price) fails the row;
+        // the People tab is where a seat is bought.
         patch((s) => ({
           ...s,
-          invites: markInviteSent(s.invites, invite.email),
+          invites:
+            outcome.kind === "added"
+              ? markInviteSent(s.invites, invite.email)
+              : markInviteFailed(s.invites, invite.email, outcome.kind),
         }));
       } catch (err) {
         const code = shareErrorCode(err) ?? "error";

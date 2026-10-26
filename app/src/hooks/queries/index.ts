@@ -52,6 +52,7 @@ export {
   useDeleteInvite,
   useOrg,
   useRemoveMember,
+  useSeatQuote,
   useSetMemberRole,
 } from "./use-org";
 export { useOrgAudit } from "./use-org-audit";

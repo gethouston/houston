@@ -147,6 +147,9 @@ export const queryKeys = {
   // Multiplayer (org). The current user's org + roster is app-scoped (one org
   // per user).
   org: () => ["org"] as const,
+  /** What adding one more person costs. Under the org prefix, so every roster
+   *  invalidation re-quotes too. */
+  seatQuote: () => ["org", "seat-quote"] as const,
   /** The routines removing a member would stop, read by the remove
    *  confirmation. The bare prefix refreshes every member's at once. */
   memberRoutines: (userId?: string) =>

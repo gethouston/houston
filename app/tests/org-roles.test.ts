@@ -144,6 +144,8 @@ describe("canSeeBillingTab", () => {
     seatGraceEndsAt: null,
     renewsAt: null,
     priceNotice: null,
+    paidSeats: null,
+    seatsInUse: null,
     usage: null,
     routines: null,
   });

@@ -3,6 +3,7 @@ import type {
   OrgMember,
   OrgRole,
 } from "@houston/engine-adapter";
+import type { SeatAddedNote } from "@houston/sdk";
 
 /**
  * Pure, DOM-free logic for the Organization > People tab (Teams v2). Extracted
@@ -98,16 +99,20 @@ export function grantsOwner(next: OrgRole, current?: OrgRole): boolean {
  * Which confirmation the add form should show after `POST /org/members`. A known
  * Houston user is added directly (`added`); an unknown email creates a pending
  * invite instead (host answers `202 {invited:true}`) → `invited`. The email is
- * echoed so the copy can name who was added/invited.
+ * echoed so the copy can name who was added/invited, and `seat` says what the
+ * seat cost (the SDK's `seatAddedNote`), when there is something to say.
  */
-export type AddOutcome =
-  | { kind: "added"; email: string }
-  | { kind: "invited"; email: string };
+export interface AddOutcome {
+  kind: "added" | "invited";
+  email: string;
+  seat: SeatAddedNote | null;
+}
 
 export function describeAddResult(
   email: string,
   result: AddOrgMemberResult,
+  seat: SeatAddedNote | null = null,
 ): AddOutcome {
   const kind = result.invited ? "invited" : "added";
-  return { kind, email: result.email ?? email };
+  return { kind, email: result.email ?? email, seat };
 }
