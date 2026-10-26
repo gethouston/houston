@@ -25,6 +25,7 @@ const PAYER_ONLY: SeatQuote = {
   kind: "billing_owner_only",
   paidSeats: 2,
   seatsInUse: 2,
+  billingOwnerName: "Ana Ruiz",
 };
 const MONTH: SeatQuote = { kind: "next_invoice", seatPriceCents: 2000 };
 
@@ -83,7 +84,11 @@ describe("seatNote", () => {
   it("tells another owner that only the payer can add a seat", () => {
     expect(seatNote(PAYER_ONLY, yearly(false))).toEqual({
       kind: "other_full",
+      ownerName: "Ana Ruiz",
     });
+    expect(
+      seatNote({ ...PAYER_ONLY, billingOwnerName: null }, yearly(false)),
+    ).toEqual({ kind: "other_full", ownerName: null });
   });
 
   it("names the monthly price and next bill to the payer alone", () => {
@@ -114,6 +119,12 @@ describe("seatChargeView", () => {
       seatsAtRenewal: 3,
       renewalCents: 54000,
     });
+  });
+
+  it("counts the seats in use at renewal when invites outnumber the paid ones", () => {
+    const view = seatChargeView({ ...CHARGE, seatsInUse: 3 }, yearly(true));
+    expect(view.seatsAtRenewal).toBe(4);
+    expect(view.renewalCents).toBe(72000);
   });
 
   it("shows no renewal figure without a yearly seat price", () => {

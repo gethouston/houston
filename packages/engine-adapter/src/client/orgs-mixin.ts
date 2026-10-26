@@ -82,11 +82,17 @@ export function OrgsMixin<TBase extends BaseCtor>(Base: TBase) {
       email: string,
       role: controlPlane.OrgRole,
       prorationDate?: number,
+      quotedAmountCents?: number,
     ): Promise<AddOrgMemberOutcome> {
       if (!this.ctx.cp)
         throw new Error("multiplayer requires the hosted gateway");
       return viaSdk("/v1/org/members", () =>
-        this.ctx.sdk.org.addOrgMember(email, role, prorationDate),
+        this.ctx.sdk.org.addOrgMember(
+          email,
+          role,
+          prorationDate,
+          quotedAmountCents,
+        ),
       );
     }
     async deleteOrgInvite(inviteId: string): Promise<void> {

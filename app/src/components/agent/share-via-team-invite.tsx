@@ -2,6 +2,10 @@ import { Button, Input } from "@houston-ai/core";
 import { Check, X } from "lucide-react";
 import { type FormEvent, useState } from "react";
 import { useTranslation } from "react-i18next";
+import {
+  inviteSeatRefusal,
+  inviteSendable,
+} from "../../lib/invite-seat-refusal";
 import type { EmailInvite, TeamRef } from "../../lib/share-via-team";
 
 /**
@@ -39,9 +43,7 @@ export function InviteStep({
     setValue("");
   };
 
-  const hasSendable = invites.some(
-    (i) => i.status === "pending" || i.status === "failed",
-  );
+  const hasSendable = invites.some(inviteSendable);
 
   return (
     <div className="space-y-3">
@@ -107,8 +109,10 @@ function InviteBadge({ invite }: { invite: EmailInvite }) {
     );
   }
   if (invite.status === "failed") {
-    const key =
-      invite.error === "already_member"
+    const seat = inviteSeatRefusal(invite.error);
+    const key = seat
+      ? (`shareViaTeam.invite.error.${seat}` as const)
+      : invite.error === "already_member"
         ? "shareViaTeam.invite.error.already_member"
         : "shareViaTeam.invite.error.generic";
     return (

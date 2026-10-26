@@ -1,3 +1,5 @@
+import { setUnreadableWireSink } from "@houston/wire-types";
+
 /**
  * Where the adapter reports a failure it absorbs: a read that degrades and
  * still answers has no caller to throw to, yet the failure must reach the
@@ -11,6 +13,9 @@ let sink: AdapterErrorSink = (source, error) =>
 
 export function setAdapterErrorSink(next: AdapterErrorSink): void {
   sink = next;
+  // A wire value the shared parsers replaced with a fallback reaches the
+  // same reporting path.
+  setUnreadableWireSink(next);
 }
 
 export function reportAdapterError(source: string, error: unknown): void {

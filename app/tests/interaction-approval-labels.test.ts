@@ -318,3 +318,24 @@ test("other approvals in a store app keep both answers", () => {
     leave();
   }
 });
+
+test("an add never shows the price quote it carries", () => {
+  const step = localizeApprovalQuestion(
+    approvalStep({
+      detail: undefined,
+      approval: {
+        operation: "addOrgMember",
+        args: [
+          { name: "email", value: "jo@x.co", long: false },
+          { name: "role", value: "user", long: false },
+          { name: "prorationDate", value: "1796506429", long: false },
+          { name: "quotedAmountCents", value: "7500", long: false },
+        ],
+      },
+    }),
+    copyFor("en"),
+  );
+  ok(step.question.includes('"jo@x.co"'));
+  ok(!step.question.includes("1796506429"));
+  ok(!step.question.includes("7500"));
+});

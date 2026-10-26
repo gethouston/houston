@@ -19,10 +19,12 @@ import { initialsFor, rosterPersonName } from "./people-tab-model";
  * One member on the People roster: avatar, name/email and role, with the
  * role dropdown and Remove when the caller may edit them. `focused` is the
  * person People was opened on, ringed and announced as the current row.
+ * `pays` marks the person who pays for the org in place of their email.
  */
 export function PeopleRosterRow({
   member,
   isSelf,
+  pays = false,
   editable,
   focused,
   onRole,
@@ -30,6 +32,7 @@ export function PeopleRosterRow({
 }: {
   member: OrgMember;
   isSelf: boolean;
+  pays?: boolean;
   editable: boolean;
   focused: boolean;
   onRole: (role: OrgRole) => void;
@@ -71,10 +74,16 @@ export function PeopleRosterRow({
               </span>
             )}
           </div>
-          {secondaryEmail && (
+          {pays ? (
             <div className="truncate text-xs text-ink-muted">
-              {secondaryEmail}
+              {t("people.roster.payer")}
             </div>
+          ) : (
+            secondaryEmail && (
+              <div className="truncate text-xs text-ink-muted">
+                {secondaryEmail}
+              </div>
+            )
           )}
         </div>
       </div>

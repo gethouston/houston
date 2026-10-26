@@ -41,12 +41,14 @@ export function chargeDialog(
 /**
  * Where the screen goes after an add answered: the person is in (`done`, with
  * the line to show), the dialog stays up in a new phase or with a new quote
- * (`dialog`), or it closes with nobody added while the note under the form
+ * (`dialog`), the add goes again under a new quote that charges nothing
+ * (`resend`), or it closes with nobody added while the note under the form
  * re-reads the quote (`closed`).
  */
 export type SeatFlowNext =
   | { kind: "done"; outcome: AddOutcome }
   | { kind: "dialog"; dialog: ChargeDialog }
+  | { kind: "resend"; quote: SeatQuote }
   | { kind: "closed" };
 
 export function afterAdd(input: {
@@ -57,6 +59,8 @@ export function afterAdd(input: {
   billing: OrgBilling | null | undefined;
   outcome: AddOrgMemberOutcome;
   dialog: ChargeDialog | null;
+  /** False in the store apps, which never show a price or take a charge. */
+  purchasable: boolean;
 }): SeatFlowNext {
   const { outcome, dialog } = input;
   switch (outcome.kind) {
@@ -78,15 +82,21 @@ export function afterAdd(input: {
         ? { kind: "dialog", dialog: { ...dialog, phase: "needs_action" } }
         : { kind: "closed" };
     case "billing_owner_only":
+    case "seat_charge_in_app":
       return { kind: "closed" };
     case "quote_changed": {
       const step = seatAddStep(outcome.quote);
-      return step.kind === "confirm_charge"
-        ? {
-            kind: "dialog",
-            dialog: chargeDialog(input.email, input.role, step.quote),
-          }
-        : { kind: "closed" };
+      if (step.kind === "confirm_charge")
+        return input.purchasable
+          ? {
+              kind: "dialog",
+              dialog: chargeDialog(input.email, input.role, step.quote),
+            }
+          : { kind: "closed" };
+      // The person already agreed to pay more than nothing costs now.
+      if (step.kind === "add" && dialog)
+        return { kind: "resend", quote: outcome.quote };
+      return { kind: "closed" };
     }
   }
 }

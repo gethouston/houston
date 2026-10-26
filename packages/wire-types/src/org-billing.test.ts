@@ -1,5 +1,6 @@
 import { describe, expect, it } from "vitest";
-import { parseOrgBilling, readCreatedOrg, readOrgsList } from "./org-billing";
+import { parseOrgBilling, readOrgsList } from "./org-billing";
+import { readCreatedOrg } from "./org-create";
 
 const BILLING = {
   tier: "free",

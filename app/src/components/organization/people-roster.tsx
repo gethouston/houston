@@ -2,6 +2,7 @@ import type { OrgMember } from "@houston/engine-adapter";
 import { useState } from "react";
 import { useTranslation } from "react-i18next";
 import { useRemoveMember, useSetMemberRole } from "../../hooks/queries";
+import { useActiveOrgBilling } from "../../hooks/queries/use-billing";
 import {
   type PendingAction,
   PeopleRosterConfirm,
@@ -36,6 +37,8 @@ export function PeopleRoster({
   const removeMember = useRemoveMember();
   const [pending, setPending] = useState<PendingAction | null>(null);
   const { focused, listRef } = usePersonFocus();
+  const { billing } = useActiveOrgBilling();
+  const selfPays = billing?.tier === "paid" && billing.isBillingOwner;
 
   const confirmPending = () => {
     const action = pending;
@@ -61,6 +64,9 @@ export function PeopleRoster({
               key={member.userId}
               member={member}
               isSelf={isSelf}
+              // Billing names only whether the caller pays, so only their
+              // own row can carry the mark.
+              pays={isSelf && selfPays}
               editable={canEditMember({
                 canManage,
                 isSelf,

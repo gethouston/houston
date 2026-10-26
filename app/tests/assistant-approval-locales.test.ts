@@ -1,6 +1,7 @@
 import { ok, strictEqual } from "node:assert";
 import { readFileSync } from "node:fs";
 import { test } from "node:test";
+import { MACHINE_ARGUMENTS } from "../src/lib/interaction-approval-labels.ts";
 
 /**
  * The approval card is the last thing a person reads before something
@@ -40,6 +41,7 @@ for (const locale of LOCALES) {
     for (const op of CONFIRM_OPERATIONS)
       for (const param of op.params ?? [])
         if (
+          !MACHINE_ARGUMENTS[op.name]?.includes(param.name) &&
           typeof bundle.argumentsByOperation[op.name]?.[param.name] !==
             "string" &&
           typeof bundle.arguments[param.name] !== "string"

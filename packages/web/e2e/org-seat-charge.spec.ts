@@ -133,7 +133,7 @@ test("a free paid seat is taken at no charge", async ({ page }) => {
 test("another owner cannot buy a seat", async ({ page }) => {
   const people = await openPeople(page, yearly({ isBillingOwner: false }));
   await expect(people.getByTestId("people-seat-note")).toContainText(
-    "only the owner who pays for this organization can add one",
+    "Ask Ana Ruiz to add this person.",
   );
   await people.getByLabel("Email").fill("jordan@company.com");
   await expect(

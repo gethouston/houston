@@ -5,6 +5,7 @@ import {
   isMoveAlreadyDone,
   type MoveErrorKind,
 } from "@houston/sdk";
+import { inviteSendable } from "./invite-seat-refusal";
 
 /**
  * Pure, DOM-free state machine behind {@link ShareViaTeamFlow} — the
@@ -268,11 +269,14 @@ export function markInviteFailed(
   return setInvite(invites, email, { status: "failed", error });
 }
 
-/** Invites that still need sending: never-sent `pending` plus retried `failed`. */
+/**
+ * Invites that still need sending: never-sent `pending` plus retried `failed`,
+ * except a seat refusal no retry can change (`invite-seat-refusal.ts`).
+ */
 export function sendableInvites(
   invites: readonly EmailInvite[],
 ): EmailInvite[] {
-  return invites.filter((i) => i.status === "pending" || i.status === "failed");
+  return invites.filter(inviteSendable);
 }
 
 /** Finish the flow (invites are best-effort; the move already succeeded). */

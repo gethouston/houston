@@ -106,12 +106,14 @@ export interface OrgModule {
   quoteSeat(): Promise<SeatQuote>;
   /**
    * Add someone by email, or create a pending invite when they are not a user
-   * yet. `prorationDate` is the `charge` quote's, when the add pays a seat.
+   * yet. `prorationDate` and `quotedAmountCents` are the `charge` quote's,
+   * when the add pays a seat.
    */
   addOrgMember(
     email: string,
     role: OrgRole,
     prorationDate?: number,
+    quotedAmountCents?: number,
   ): Promise<AddOrgMemberOutcome>;
   /** Cancel a pending invitation by id. */
   deleteOrgInvite(inviteId: string): Promise<void>;
@@ -144,6 +146,7 @@ export function createOrgModule(ctx: ModuleContext): OrgModule {
       requireString(p, "email"),
       requireRole(p, "role"),
       optionalNumber(p, "prorationDate"),
+      optionalNumber(p, "quotedAmountCents"),
     ),
   );
   ctx.registerCommand(OrgCommand.DeleteInvite, (p) =>
@@ -173,8 +176,8 @@ export function createOrgModule(ctx: ModuleContext): OrgModule {
     getOrgProfiles: (ids) => getOrgProfiles(scope, ids),
     getOrgPeople: () => getOrgPeople(scope),
     quoteSeat: () => quoteSeat(scope),
-    addOrgMember: (email, role, prorationDate) =>
-      addOrgMember(scope, email, role, prorationDate),
+    addOrgMember: (email, role, prorationDate, quotedAmountCents) =>
+      addOrgMember(scope, email, role, prorationDate, quotedAmountCents),
     deleteOrgInvite: (inviteId) => deleteOrgInvite(scope, inviteId),
     removeOrgMember: (userId) => removeOrgMember(scope, userId),
     listMemberRoutines: (userId) => listMemberRoutines(scope, userId),

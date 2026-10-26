@@ -27,6 +27,15 @@ import {
  */
 
 type QuestionStep = Extract<InteractionStep, { kind: "question" }>;
+
+/**
+ * Arguments that only tie a call to an earlier answer (a price quote's
+ * timestamp and amount) and mean nothing to the person approving it. The
+ * card's sentence already says what the call does, so they are left off.
+ */
+export const MACHINE_ARGUMENTS: Readonly<Record<string, readonly string[]>> = {
+  addOrgMember: ["prorationDate", "quotedAmountCents"],
+};
 type ChatQuestionStep = Extract<ChatInteractionStep, { kind: "question" }>;
 
 /** Every piece of card copy the reader's locale owns. Built from `t()` by
@@ -127,7 +136,9 @@ export function localizeApprovalQuestion(
     // reads, which is still the exact call they are being asked about.
     return { ...step, question: `${step.question} ${copy.closing}`, options };
 
-  const args = (step.approval?.args ?? []).filter(isArg);
+  const args = (step.approval?.args ?? [])
+    .filter(isArg)
+    .filter((arg) => !MACHINE_ARGUMENTS[operation]?.includes(arg.name));
   if (operation === "createAgent") {
     const name = args.find((arg) => arg.name === "name")?.value;
     const color = args.find((arg) => arg.name === "color")?.value;

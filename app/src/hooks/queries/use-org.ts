@@ -30,14 +30,17 @@ export function useOrg(enabled: boolean) {
 /**
  * What adding one more person to the active org costs (`POST
  * /v1/org/members/quote`), for an owner on the People tab. It sits under the
- * org key, so a roster change re-quotes. Failures surface through `call()`.
+ * org key, so a roster change re-quotes. Each read is a Stripe read, and Add
+ * re-quotes before it sends anyway, so focus never refetches it. Failures
+ * surface through `call()`.
  */
 export function useSeatQuote(enabled: boolean) {
   return useQuery({
     queryKey: queryKeys.seatQuote(),
     queryFn: () => tauriOrg.quoteSeat(),
     enabled,
-    staleTime: 30_000,
+    staleTime: 5 * 60_000,
+    refetchOnWindowFocus: false,
   });
 }
 
@@ -60,13 +63,14 @@ export function useAddMember() {
       email,
       role,
       options,
-      prorationDate,
+      charge,
     }: {
       email: string;
       role: OrgRole;
       options?: EngineCallOptions;
-      prorationDate?: number;
-    }) => tauriOrg.addMember(email, role, options, prorationDate),
+      /** The `charge` quote's date and amount, when the add pays a seat. */
+      charge?: { prorationDate: number; quotedAmountCents: number };
+    }) => tauriOrg.addMember(email, role, options, charge),
     onSuccess: (outcome, { role }) => {
       if (outcome.kind === "quote_changed") {
         qc.setQueryData(queryKeys.seatQuote(), outcome.quote);

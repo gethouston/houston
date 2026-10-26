@@ -246,7 +246,8 @@
       "you": "(you)",
       "changeRole": "Change role for {{name}}",
       "remove": "Remove",
-      "removeLabel": "Remove {{name}}"
+      "removeLabel": "Remove {{name}}",
+      "payer": "Pays for this organization"
     },
     "removeConfirm": {
       "title": "Remove {{name}}?",
@@ -278,6 +279,7 @@
       "yearFree_other": "{{count}} paid seats are free. Adding someone uses a seat you already paid for, so there's no charge.",
       "month": "Each person you add costs {{price}} a month, starting with your next bill on {{date}}.",
       "otherFull": "Every paid seat is in use, and only the owner who pays for this organization can add one. Ask that owner to add this person.",
+      "otherFullNamed": "Every paid seat is in use, and only the owner who pays for this organization can add one. Ask {{name}} to add this person.",
       "otherFree_one": "1 paid seat is free. Adding someone uses it, so there's no charge.",
       "otherFree_other": "{{count}} paid seats are free. Adding someone uses one, so there's no charge.",
       "doneCharged": "We charged {{amount}} to your card for their seat.",
@@ -418,7 +420,10 @@
       },
       "error": {
         "already_member": "Already on the team",
-        "generic": "Couldn't invite. Try again."
+        "generic": "Couldn't invite. Try again.",
+        "quote_changed": "Every paid seat is in use. Add them from People, where you'll see the price.",
+        "billing_owner_only": "Every paid seat is in use. Ask the owner who pays for this organization to add them.",
+        "seat_charge_in_app": "Adding them needs a new paid seat. Add them from People, where you'll see the price."
       }
     }
   },

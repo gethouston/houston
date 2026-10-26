@@ -37,11 +37,12 @@ describe("yearly seats on the fake gateway", () => {
     });
   const quote = async () =>
     (await send("POST", "/v1/org/members/quote", {})).json();
-  const add = (prorationDate?: number) =>
+  const add = (prorationDate?: number, quotedAmountCents?: number) =>
     send("POST", "/v1/org/members", {
       email: "jo@x.co",
       role: "user",
       prorationDate,
+      quotedAmountCents,
     });
 
   beforeEach(async () => {
@@ -65,26 +66,69 @@ describe("yearly seats on the fake gateway", () => {
     });
     expect(charge.amountCents).toBeGreaterThan(7000);
     expect(charge.amountCents).toBeLessThan(7500);
-    expect((await add(charge.prorationDate)).status).toBe(202);
+    expect((await add(charge.prorationDate, charge.amountCents)).status).toBe(
+      202,
+    );
     expect(await quote()).toMatchObject({ kind: "charge", paidSeats: 3 });
   });
 
-  it("refuses a charge with no quote, a declined card, and a bank check", async () => {
+  it("refuses a charge with no quote, a moved amount, a declined card, and a bank check", async () => {
     await arm(YEARLY);
     expect(await (await add()).json()).toMatchObject({
       code: "seat_quote_changed",
     });
+    const { prorationDate, amountCents } = await quote();
+    expect(
+      await (await add(prorationDate, amountCents + 1)).json(),
+    ).toMatchObject({ code: "seat_quote_changed" });
+    const again = async () => {
+      const fresh = await quote();
+      return add(fresh.prorationDate, fresh.amountCents);
+    };
     await send("POST", "/__test__/seat-charge", { result: "decline" });
-    const declined = await add(1);
+    const declined = await again();
     expect(declined.status).toBe(402);
     expect(await declined.json()).toMatchObject({
       code: "seat_payment_failed",
     });
     await send("POST", "/__test__/seat-charge", { result: "needs_action" });
-    expect(await (await add(1)).json()).toMatchObject({
+    expect(await (await again()).json()).toMatchObject({
       code: "seat_payment_needs_action",
     });
-    expect((await add(1)).status).toBe(202);
+    expect((await again()).status).toBe(202);
+  });
+
+  it("refuses a paid seat to the AI Manager", async () => {
+    await arm(YEARLY);
+    const { prorationDate, amountCents } = await quote();
+    const res = await fetch(`${host.url}/v1/org/members`, {
+      method: "POST",
+      headers: {
+        "content-type": "application/json",
+        "x-houston-org": TEAM,
+        "x-houston-acting-as": "u1",
+      },
+      body: JSON.stringify({
+        email: "jo@x.co",
+        role: "user",
+        prorationDate,
+        quotedAmountCents: amountCents,
+      }),
+    });
+    expect(res.status).toBe(403);
+    expect(await res.json()).toMatchObject({ code: "seat_charge_in_app" });
+  });
+
+  it("quotes nothing on a locked org", async () => {
+    await arm({
+      ...YEARLY,
+      status: "locked",
+      lockAt: "2026-10-01T00:00:00.000Z",
+      lockReason: "payment_failed",
+    });
+    const res = await send("POST", "/v1/org/members/quote", {});
+    expect(res.status).toBe(403);
+    expect(await res.json()).toMatchObject({ code: "needs_upgrade" });
   });
 
   it("fills a free paid seat at no charge, and keeps a removed seat paid", async () => {

@@ -32,8 +32,8 @@ export function seatAddStep(quote: SeatQuote): SeatAddStep {
  *   any charge;
  * - `year_free` / `other_free`: `free` paid seats are unused, so the add costs
  *   nothing (said to the payer, or to another owner);
- * - `other_full`: another owner, every paid seat in use; only the payer can
- *   add a seat, so Add is off;
+ * - `other_full`: another owner, every paid seat in use; only the payer
+ *   (`ownerName`, when the gateway names them) can add a seat, so Add is off;
  * - `month`: the payer of a monthly org; each person costs `seatPriceCents` a
  *   month from the next bill on `nextBillAt`.
  * Null when there is nothing to say.
@@ -42,7 +42,7 @@ export type SeatNote =
   | { kind: "year_full" }
   | { kind: "year_free"; free: number }
   | { kind: "other_free"; free: number }
-  | { kind: "other_full" }
+  | { kind: "other_full"; ownerName: string | null }
   | { kind: "month"; seatPriceCents: number; nextBillAt: string };
 
 export function seatNote(
@@ -54,7 +54,7 @@ export function seatNote(
     case "charge":
       return { kind: "year_full" };
     case "billing_owner_only":
-      return { kind: "other_full" };
+      return { kind: "other_full", ownerName: quote.billingOwnerName };
     case "free_seat": {
       const free = Math.max(1, quote.paidSeats - quote.seatsInUse);
       return pays ? { kind: "year_free", free } : { kind: "other_free", free };
@@ -95,7 +95,9 @@ export function seatChargeView(
   quote: ChargeSeatQuote,
   billing: OrgBilling | null | undefined,
 ): SeatChargeView {
-  const seatsAtRenewal = quote.paidSeats + 1;
+  // Renewal bills the seats in use that day, which pending invites can push
+  // past the paid ones.
+  const seatsAtRenewal = Math.max(quote.paidSeats, quote.seatsInUse) + 1;
   const yearlySeat =
     billing?.interval === "year" ? billing.seatPriceCents : null;
   return {

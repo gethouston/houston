@@ -12,6 +12,9 @@ import * as state from "./state";
 
 const YEAR_MS = 365 * 24 * 3_600_000;
 
+/** Who pays, as the gateway names them to an owner who does not. */
+export const FAKE_BILLING_OWNER_NAME = "Ana Ruiz";
+
 type SeatChargeResult = "ok" | "decline" | "needs_action";
 let nextCharge: SeatChargeResult = "ok";
 
@@ -43,7 +46,12 @@ export function quoteFor(billing: OrgBilling | null, now: number): SeatQuote {
     if (paidSeats > seatsInUse)
       return { kind: "free_seat", paidSeats, seatsInUse };
     if (!yearly.isBillingOwner)
-      return { kind: "billing_owner_only", paidSeats, seatsInUse };
+      return {
+        kind: "billing_owner_only",
+        paidSeats,
+        seatsInUse,
+        billingOwnerName: FAKE_BILLING_OWNER_NAME,
+      };
     const left = Math.max(0, Date.parse(yearly.renewsAt) - now);
     return {
       kind: "charge",
@@ -76,8 +84,15 @@ export function handleSeatRoutes(
   if (segs[0] !== "v1" || segs[1] !== "org") return undefined;
   const slug = state.requestOrgSlug(req);
   const billing = state.orgBillingOf(slug);
-  if (method === "POST" && segs.join("/") === "v1/org/members/quote")
+  if (method === "POST" && segs.join("/") === "v1/org/members/quote") {
+    // A locked org takes no one new, so the gateway quotes nothing.
+    if (state.orgWritesLocked(slug))
+      return json(
+        { error: "this organization is locked", code: "needs_upgrade" },
+        403,
+      );
     return json(quoteFor(billing, Date.now()));
+  }
   const yearly = yearlySeats(billing);
   if (!yearly) return undefined;
   const removes =
@@ -100,8 +115,15 @@ export function handleSeatRoutes(
   if (quote.kind === "billing_owner_only") return refuse(403, quote.kind);
   let paidSeats = yearly.paidSeats;
   if (quote.kind === "charge") {
-    // An add that carries no quote is told the seat is now charged.
-    if (typeof body?.prorationDate !== "number")
+    // The AI Manager never pays for a seat: the person adds them from People.
+    if (req.headers.has("x-houston-acting-as"))
+      return refuse(403, "seat_charge_in_app");
+    // An add that carries no quote, or a different amount, is told the
+    // price changed.
+    if (
+      typeof body?.prorationDate !== "number" ||
+      body?.quotedAmountCents !== quote.amountCents
+    )
       return refuse(409, "seat_quote_changed");
     const result = nextCharge;
     nextCharge = "ok";

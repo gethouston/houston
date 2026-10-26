@@ -1,6 +1,23 @@
-import { describe, expect, it } from "vitest";
+import { afterEach, describe, expect, it } from "vitest";
 import { parseOrgBilling } from "./org-billing";
 import { parseSeatQuote, SEAT_ADD_REFUSALS } from "./seat-quote";
+import { setUnreadableWireSink } from "./unreadable-wire";
+
+const BILLING_FOR_REPORT = {
+  tier: "paid",
+  status: "active",
+  lockAt: null,
+  lockReason: null,
+  freeSlot: false,
+  isBillingOwner: true,
+  seats: 2,
+  interval: "year",
+  seatPriceCents: 18000,
+  seatPrices: { monthlyCents: 2000, annualCents: 18000 },
+  seatGraceEndsAt: null,
+  usage: null,
+  routines: null,
+};
 
 const CHARGE = {
   kind: "charge",
@@ -17,7 +34,12 @@ describe("parseSeatQuote", () => {
     const quotes = [
       CHARGE,
       { kind: "free_seat", paidSeats: 3, seatsInUse: 2 },
-      { kind: "billing_owner_only", paidSeats: 2, seatsInUse: 2 },
+      {
+        kind: "billing_owner_only",
+        paidSeats: 2,
+        seatsInUse: 2,
+        billingOwnerName: "Ana Ruiz",
+      },
       { kind: "next_invoice", seatPriceCents: 2000 },
       { kind: "no_charge" },
     ];
@@ -38,6 +60,45 @@ describe("parseSeatQuote", () => {
   });
 });
 
+describe("an unreadable answer", () => {
+  afterEach(() =>
+    setUnreadableWireSink((source, error) => console.error(source, error)),
+  );
+
+  it("names nobody for an older gateway's payer-only quote", () => {
+    expect(
+      parseSeatQuote({
+        kind: "billing_owner_only",
+        paidSeats: 2,
+        seatsInUse: 2,
+      }),
+    ).toEqual({
+      kind: "billing_owner_only",
+      paidSeats: 2,
+      seatsInUse: 2,
+      billingOwnerName: null,
+    });
+  });
+
+  it("reports every fallback it takes", () => {
+    const reports: string[] = [];
+    setUnreadableWireSink((source) => reports.push(source));
+    parseSeatQuote({ kind: "trial_seat" });
+    parseSeatQuote({
+      kind: "billing_owner_only",
+      paidSeats: 2,
+      seatsInUse: 2,
+      billingOwnerName: 7,
+    });
+    parseOrgBilling({ ...BILLING_FOR_REPORT, paidSeats: "3" });
+    expect(reports).toEqual([
+      "seat_quote_unreadable",
+      "seat_quote_owner_name_unreadable",
+      "org_billing_paid_seats_unreadable",
+    ]);
+  });
+});
+
 describe("SEAT_ADD_REFUSALS", () => {
   it("pairs each refusal with the status the gateway answers it with", () => {
     expect(SEAT_ADD_REFUSALS).toEqual({
@@ -46,6 +107,7 @@ describe("SEAT_ADD_REFUSALS", () => {
       seat_quote_changed: 409,
       seat_quote_expired: 409,
       billing_owner_only: 403,
+      seat_charge_in_app: 403,
     });
   });
 });

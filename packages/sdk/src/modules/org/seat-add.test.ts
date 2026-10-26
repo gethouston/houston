@@ -71,7 +71,12 @@ describe("quoteSeat", () => {
   it("reads every quote kind, and an unknown one as no charge", async () => {
     const kinds = [
       { kind: "free_seat", paidSeats: 3, seatsInUse: 2 },
-      { kind: "billing_owner_only", paidSeats: 2, seatsInUse: 2 },
+      {
+        kind: "billing_owner_only",
+        paidSeats: 2,
+        seatsInUse: 2,
+        billingOwnerName: "Ana Ruiz",
+      },
       { kind: "next_invoice", seatPriceCents: 2000 },
       { kind: "no_charge" },
     ];
@@ -90,18 +95,38 @@ describe("quoteSeat", () => {
 });
 
 describe("addOrgMember with a seat to pay", () => {
-  it("sends the quote's prorationDate with the add", async () => {
+  it("sends the quote's prorationDate and amount with the add", async () => {
     const { sdk, calls } = makeSdk(json(ADDED, 202));
 
     await expect(
-      sdk.org.addOrgMember("ada@x.co", "user", 1793000000),
+      sdk.org.addOrgMember("ada@x.co", "user", 1793000000, 7500),
     ).resolves.toEqual({ kind: "added", member: ADDED });
     expect(calls[0].body).toBe(
       JSON.stringify({
         email: "ada@x.co",
         role: "user",
         prorationDate: 1793000000,
+        quotedAmountCents: 7500,
       }),
+    );
+  });
+
+  it("leaves the amount out whenever it leaves the date out", async () => {
+    const { sdk, calls } = makeSdk(json(ADDED, 202));
+
+    await sdk.org.addOrgMember("ada@x.co", "user", undefined, 7500);
+    expect(calls[0].body).toBe(
+      JSON.stringify({ email: "ada@x.co", role: "user" }),
+    );
+  });
+
+  it("tells the AI Manager to send a paid seat to People", async () => {
+    const { sdk } = makeSdk(refuse(403, "seat_charge_in_app"));
+
+    const outcome = await sdk.org.addOrgMember("ada@x.co", "user");
+    expect(outcome.kind).toBe("seat_charge_in_app");
+    expect(outcome.kind === "seat_charge_in_app" && outcome.hint).toContain(
+      "add them from People",
     );
   });
 

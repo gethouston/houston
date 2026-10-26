@@ -2477,7 +2477,7 @@ components:
   - id: org-seat-charge
     title: Organization seat charge
     purpose: Tell an owner what adding someone costs before it happens, and let the payer of a yearly org pay for a new seat.
-    anatomy: [seat-note, seat-note-dot, added-line, charge-dialog, charged-now-row, renewal-row, refusal-alert, manage-billing-button, retry-button, pay-button, remove-seat-note]
+    anatomy: [seat-note, seat-note-dot, payer-roster-mark, added-line, charge-dialog, charged-now-row, renewal-row, refusal-alert, manage-billing-button, retry-button, pay-button, remove-seat-note]
     states: [no-note, yearly-full, yearly-free-seat, other-owner-blocked, other-owner-free-seat, monthly, asking, charging, declined, needs-confirmation, portal-opened, added-charged, added-free, added-monthly]
     variants: [billing-owner, other-owner, store-app, phone, desktop]
     behavior: >-
@@ -2487,7 +2487,10 @@ components:
       form says what a new seat costs before anything is sent: every paid
       seat in use (the price comes first), N free paid seats (no charge),
       a monthly price from the next bill, or, for an owner who does not
-      pay, that only the payer can add a seat, with Add disabled. On a
+      pay, that only the payer can add a seat ("Ask Ana Ruiz to add this
+      person." when the gateway names them), with Add disabled. The payer's
+      own roster row reads "Pays for this organization". A locked org is
+      never quoted. On a
       full yearly org Add opens a dialog: "Charged now" with the amount
       and "For the time left until your plan renews on <date>", then "At
       renewal on <date>" with the yearly total for the seats, and a "Pay
@@ -2500,7 +2503,10 @@ components:
       covers. Removing someone from a yearly org says there is no refund
       and the seat stays paid until renewal; on monthly it says the next
       bill covers one seat fewer. The store apps name no price and send a
-      new paid seat to the web.
+      new paid seat to the web. The share-via-team and team-move invite
+      rows never buy a seat: a full yearly org fails the row with "Add them
+      from People, where you'll see the price" (or ask the payer) and no
+      retry, and the AI Manager is told the same.
     a11y: The dialog is an alertdialog titled by its question, the refusal is role=alert, the added line is aria-live polite, and every action is a visible button.
     since: 144
 

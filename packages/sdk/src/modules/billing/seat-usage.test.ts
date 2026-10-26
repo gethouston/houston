@@ -46,6 +46,14 @@ describe("billingRenewal", () => {
 });
 
 describe("orgBillingPrice on a yearly org", () => {
+  it("bills the seats in use when they outnumber the paid ones", () => {
+    const price = orgBillingPrice(
+      { ...yearly, paidSeats: 2, seatsInUse: 3 },
+      Date.parse("2026-10-26T00:00:00Z"),
+    );
+    expect(price.kind === "priced" && price.total).toBe(54000);
+  });
+
   it("bills the paid seats, not the members", () => {
     expect(orgBillingPrice(yearly, Date.parse("2026-10-26T00:00:00Z"))).toEqual(
       {

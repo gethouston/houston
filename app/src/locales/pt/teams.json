@@ -246,7 +246,8 @@
       "you": "(você)",
       "changeRole": "Alterar a função de {{name}}",
       "remove": "Remover",
-      "removeLabel": "Remover {{name}}"
+      "removeLabel": "Remover {{name}}",
+      "payer": "Paga por esta organização"
     },
     "removeConfirm": {
       "title": "Remover {{name}}?",
@@ -278,6 +279,7 @@
       "yearFree_other": "{{count}} assentos pagos estão livres. Adicionar alguém usa um assento que você já pagou, então não há cobrança.",
       "month": "Cada pessoa que você adicionar custa {{price}} por mês, a partir da sua próxima fatura em {{date}}.",
       "otherFull": "Todos os assentos pagos estão em uso, e somente o proprietário que paga por esta organização pode adicionar um. Peça a esse proprietário para adicionar esta pessoa.",
+      "otherFullNamed": "Todos os assentos pagos estão em uso, e somente o proprietário que paga por esta organização pode adicionar um. Peça a {{name}} para adicionar esta pessoa.",
       "otherFree_one": "1 assento pago está livre. Adicionar alguém usa esse assento, então não há cobrança.",
       "otherFree_other": "{{count}} assentos pagos estão livres. Adicionar alguém usa um deles, então não há cobrança.",
       "doneCharged": "Cobramos {{amount}} no seu cartão pelo assento dessa pessoa.",
@@ -418,7 +420,10 @@
       },
       "error": {
         "already_member": "Já está na equipe",
-        "generic": "Não foi possível convidar. Tente novamente."
+        "generic": "Não foi possível convidar. Tente novamente.",
+        "quote_changed": "Todos os assentos pagos estão em uso. Adicione essa pessoa em Pessoas, onde você vê o preço.",
+        "billing_owner_only": "Todos os assentos pagos estão em uso. Peça ao proprietário que paga por esta organização para adicioná-la.",
+        "seat_charge_in_app": "Adicionar essa pessoa precisa de um novo assento pago. Adicione em Pessoas, onde você vê o preço."
       }
     }
   },

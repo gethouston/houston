@@ -234,11 +234,11 @@ describe("a seat the add may pay for", () => {
     expect(calls).toHaveLength(1);
   });
 
-  test("addOrgMember POSTs exactly {email, role, prorationDate}", async () => {
+  test("addOrgMember POSTs exactly {email, role, prorationDate, quotedAmountCents}", async () => {
     stubFetch(() => json(200, { userId: "u9", role: "admin" }));
 
     await expect(
-      client().addOrgMember("ada@x.co", "admin", 1793000000),
+      client().addOrgMember("ada@x.co", "admin", 1793000000, 7500),
     ).resolves.toEqual({
       kind: "added",
       member: { userId: "u9", role: "admin" },
@@ -247,9 +247,26 @@ describe("a seat the add may pay for", () => {
     expect(call.url).toBe(`${BASE}/v1/org/members`);
     expect(call.method).toBe("POST");
     expect(call.body).toBe(
-      '{"email":"ada@x.co","role":"admin","prorationDate":1793000000}',
+      '{"email":"ada@x.co","role":"admin","prorationDate":1793000000,"quotedAmountCents":7500}',
     );
     expect(call.org).toBe(ORG);
+  });
+
+  test("the amount never travels without the date", async () => {
+    stubFetch(() => json(202, { role: "user", invited: true }));
+
+    await client().addOrgMember("ada@x.co", "user", undefined, 7500);
+    expect(onlyCall().body).toBe('{"email":"ada@x.co","role":"user"}');
+  });
+
+  test("a paid seat asked for by the AI Manager comes back as an outcome", async () => {
+    stubFetch(() =>
+      json(403, { error: "charge in app", code: "seat_charge_in_app" }),
+    );
+
+    const outcome = await client().addOrgMember("ada@x.co", "user");
+    expect(outcome.kind).toBe("seat_charge_in_app");
+    expect(calls).toHaveLength(1);
   });
 
   test("a declined card and a bank check come back as outcomes", async () => {
@@ -271,13 +288,13 @@ describe("a seat the add may pay for", () => {
     );
 
     await expect(
-      client().addOrgMember("ada@x.co", "user", 1793000000),
+      client().addOrgMember("ada@x.co", "user", 1793000000, 7500),
     ).resolves.toEqual({ kind: "quote_changed", quote: fresh });
     expect(calls.map((c) => [c.method, c.url, c.body])).toEqual([
       [
         "POST",
         `${BASE}/v1/org/members`,
-        '{"email":"ada@x.co","role":"user","prorationDate":1793000000}',
+        '{"email":"ada@x.co","role":"user","prorationDate":1793000000,"quotedAmountCents":7500}',
       ],
       ["POST", `${BASE}/v1/org/members/quote`, "{}"],
     ]);

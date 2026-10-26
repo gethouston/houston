@@ -39,7 +39,9 @@ export function PeopleSeatNote({
         : note.kind === "other_free"
           ? t("people.seat.otherFree", { count: note.free })
           : note.kind === "other_full"
-            ? t("people.seat.otherFull")
+            ? note.ownerName
+              ? t("people.seat.otherFullNamed", { name: note.ownerName })
+              : t("people.seat.otherFull")
             : t("people.seat.month", {
                 price: formatPlanAmount(
                   note.seatPriceCents,

@@ -30,7 +30,16 @@ export type AddOrgMemberOutcome =
   | { kind: "seat_payment_failed" }
   | { kind: "seat_payment_needs_action" }
   | { kind: "billing_owner_only" }
+  | { kind: "seat_charge_in_app"; hint: string }
   | { kind: "quote_changed"; quote: SeatQuote };
+
+/**
+ * What the AI Manager tells the person when an add it made needs a paid seat:
+ * the manager never pays for one, so the person adds them from People, where
+ * the price shows before anything is charged.
+ */
+export const SEAT_CHARGE_IN_APP_HINT =
+  "Every paid seat is in use, so adding this person needs a new paid seat. Ask the person to add them from People in Admin, where they will see the price before anything is charged.";
 
 /** The seat refusal behind a failed add, or null for every other error. */
 export function seatAddRefusal(error: unknown): SeatAddRefusal | null {
@@ -67,16 +76,21 @@ export async function quoteSeat(scope: HttpScope): Promise<SeatQuote> {
  *
  * On a yearly organization with every paid seat in use, this charges the card
  * on file for one more seat: quote it first with quoteSeat, show the person
- * the amount, and pass the quote's `prorationDate`. Answers `added`, or a
- * state where nobody was added and nothing was charged: `seat_payment_failed`
- * (the card was declined), `seat_payment_needs_action` (the bank wants to
- * confirm the payment), `billing_owner_only` (only the person who pays can
- * add a seat), or `quote_changed` with the new quote to show before asking
- * again. Every other failure throws.
+ * the amount, and pass the quote's `prorationDate` and `amountCents`. Answers
+ * `added`, or a state where nobody was added and nothing was charged:
+ * `seat_payment_failed` (the card was declined), `seat_payment_needs_action`
+ * (the bank wants to confirm the payment), `billing_owner_only` (only the
+ * person who pays can add a seat), `seat_charge_in_app` (the AI Manager never
+ * pays for a seat: tell the person to add them from People, where they will
+ * see the price), or `quote_changed` with the new quote to show before asking
+ * again. Adding into a free paid seat, or on a monthly plan, needs no quote.
+ * Every other failure throws.
  * @param email The person's email address, as they gave it.
  * @param role What they may do in the space.
  * @param prorationDate The `prorationDate` of the `charge` quote the person
  *   agreed to; omitted when the quote charges nothing.
+ * @param quotedAmountCents The `amountCents` of that same quote, so the
+ *   gateway charges only the amount shown; sent only with `prorationDate`.
  * @assistant group:org
  * @assistant confirm: outward. It invites a real person into the space, where they can see and drive the agents in it, and it may charge the card on file for their seat.
  */
@@ -85,11 +99,14 @@ export async function addOrgMember(
   email: string,
   role: OrgRole,
   prorationDate?: number,
+  quotedAmountCents?: number,
 ): Promise<AddOrgMemberOutcome> {
+  // The amount only ever travels with the date it was quoted at.
+  if (prorationDate === undefined) quotedAmountCents = undefined;
   try {
     const res = await httpRequest(scope, "/v1/org/members", {
       method: "POST",
-      body: JSON.stringify({ email, role, prorationDate }),
+      body: JSON.stringify({ email, role, prorationDate, quotedAmountCents }),
     });
     return { kind: "added", member: (await res.json()) as AddOrgMemberResult };
   } catch (err) {
@@ -98,6 +115,8 @@ export async function addOrgMember(
     if (refusal === "seat_quote_changed" || refusal === "seat_quote_expired") {
       return { kind: "quote_changed", quote: await quoteSeat(scope) };
     }
+    if (refusal === "seat_charge_in_app")
+      return { kind: refusal, hint: SEAT_CHARGE_IN_APP_HINT };
     return { kind: refusal };
   }
 }

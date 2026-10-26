@@ -47,6 +47,7 @@ const base = {
   quote: QUOTE,
   billing: BILLING,
   dialog: DIALOG,
+  purchasable: true,
 };
 
 describe("people seat flow — after an add", () => {
@@ -90,22 +91,49 @@ describe("people seat flow — after an add", () => {
     );
   });
 
-  it("closes when the new quote charges nothing or only the payer can add", () => {
+  it("adds anyway when the new quote charges nothing, since they agreed to pay", () => {
+    const free = { kind: "free_seat" as const, paidSeats: 3, seatsInUse: 2 };
+    deepStrictEqual(
+      afterAdd({ ...base, outcome: { kind: "quote_changed", quote: free } }),
+      { kind: "resend", quote: free },
+    );
+    // With no dialog, nobody agreed to anything: the note re-reads instead.
     deepStrictEqual(
       afterAdd({
         ...base,
+        dialog: null,
+        outcome: { kind: "quote_changed", quote: free },
+      }),
+      { kind: "closed" },
+    );
+  });
+
+  it("never opens the charge dialog in the store apps", () => {
+    deepStrictEqual(
+      afterAdd({
+        ...base,
+        dialog: null,
+        purchasable: false,
         outcome: {
           kind: "quote_changed",
-          quote: { kind: "free_seat", paidSeats: 3, seatsInUse: 2 },
+          quote: { ...QUOTE, amountCents: 9000 },
         },
       }),
       { kind: "closed" },
     );
+  });
+
+  it("closes when only the payer can add, or the manager would pay", () => {
     deepStrictEqual(
       afterAdd({ ...base, outcome: { kind: "billing_owner_only" } }),
-      {
-        kind: "closed",
-      },
+      { kind: "closed" },
+    );
+    deepStrictEqual(
+      afterAdd({
+        ...base,
+        outcome: { kind: "seat_charge_in_app", hint: "Add them from People." },
+      }),
+      { kind: "closed" },
     );
   });
 
