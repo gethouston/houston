@@ -93,6 +93,9 @@ export {
   HeartbeatHttpError,
   type HeartbeatModule,
 } from "./modules/heartbeat";
+// Email-code sign-in and the account-exists link. The one factory a surface
+// builds itself: no kernel exists before sign-in (see the module header).
+export * from "./modules/identity";
 export * from "./modules/plan/announcement-model";
 export * from "./modules/plan/billing-model";
 export { PushCommand, PushHttpError, type PushModule } from "./modules/push";

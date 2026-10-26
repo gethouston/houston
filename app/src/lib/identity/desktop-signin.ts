@@ -1,18 +1,25 @@
 // Desktop sign-in orchestration: drive the loopback/PKCE authorize + the GCIP
 // REST exchange, and assemble a `SignInOutcome` (the app's `Session` + GCIP's
-// account-created flag). auth.ts calls these on the `osIsTauri()` branch; the
+// account-created flag), or a `PendingLink` when the provider's email already
+// belongs to an account. auth.ts calls these on the `osIsTauri()` branch; the
 // web branch uses firebase-js-sdk instead. Kept beside the identity REST
 // modules (not in auth.ts) so auth.ts stays a thin dispatcher.
 
+import type { PendingLink } from "@houston/sdk/identity";
 import { authorizeAppleDesktop } from "./apple-authorize.ts";
 import { identityConfig } from "./config.ts";
+import { holdNeedConfirmation } from "./desktop-link.ts";
 import type { LoopbackAuthorizeOptions } from "./desktop-oauth.ts";
 import { IdentityError } from "./errors.ts";
 import {
+  type IdpExchange,
+  type IdpProviderId,
   type IdpSignInResult,
-  signInWithCustomToken,
   signInWithIdp,
   signInWithIdpSession,
+} from "./firebase-idp.ts";
+import {
+  signInWithCustomToken,
   updateAccountProfile,
 } from "./firebase-rest.ts";
 import { authorizeGoogleDesktop } from "./google-authorize.ts";
@@ -51,69 +58,76 @@ async function withProfileBackfill(
   }
 }
 
+/** What a provider sign-in came to: a session, or an account to link onto. */
+export type DesktopSignIn = SignInOutcome | PendingLink;
+
+async function settle(
+  exchange: IdpExchange,
+  provider: IdpProviderId,
+  googleIdToken?: string,
+): Promise<DesktopSignIn> {
+  if (exchange.kind === "need_confirmation")
+    return holdNeedConfirmation(exchange.confirmation, googleIdToken);
+  const { result } = exchange;
+  return {
+    session: sessionFromIdp(await withProfileBackfill(result), provider),
+    isNewUser: result.isNewUser,
+  };
+}
+
 /**
- * Google: loopback id_token → `signInWithIdp` → SignInOutcome (provider
- * "google.com"). Returns `null` when the loopback authorize was benignly
- * cancelled.
+ * Google: loopback id_token → `signInWithIdp`. Returns `null` when the
+ * loopback authorize was benignly cancelled.
  */
 export async function googleDesktopSession(
   opts?: LoopbackAuthorizeOptions,
-): Promise<SignInOutcome | null> {
+): Promise<DesktopSignIn | null> {
   const idToken = await authorizeGoogleDesktop(opts);
   if (idToken === null) return null; // benign cancel
-  const result = await signInWithIdp({
+  const exchange = await signInWithIdp({
     apiKey: identityConfig.apiKey,
     providerId: "google.com",
     idToken,
   });
-  return {
-    session: sessionFromIdp(await withProfileBackfill(result), "google.com"),
-    isNewUser: result.isNewUser,
-  };
+  return settle(exchange, "google.com", idToken);
 }
 
 /**
  * Microsoft: GCIP-brokered loopback (`createAuthUri` → loopback → GCIP redeems
- * the code server-side) → `signInWithIdpSession` → SignInOutcome (provider
- * "microsoft.com"). Brokered because neither Entra nor GCIP accepts a
- * client-side Microsoft token exchange (see microsoft-authorize.ts). Returns
- * `null` when the authorize was benignly cancelled.
+ * the code server-side) → `signInWithIdpSession`. Brokered because neither
+ * Entra nor GCIP accepts a client-side Microsoft token exchange (see
+ * microsoft-authorize.ts). Returns `null` when the authorize was benignly
+ * cancelled.
  */
 export async function microsoftDesktopSession(
   opts?: LoopbackAuthorizeOptions,
-): Promise<SignInOutcome | null> {
+): Promise<DesktopSignIn | null> {
   const authorized = await authorizeMicrosoftDesktop(opts);
   if (authorized === null) return null; // benign cancel
-  const result = await signInWithIdpSession({
+  const exchange = await signInWithIdpSession({
     apiKey: identityConfig.apiKey,
     requestUri: authorized.requestUri,
     sessionId: authorized.sessionId,
   });
-  return {
-    session: sessionFromIdp(await withProfileBackfill(result), "microsoft.com"),
-    isNewUser: result.isNewUser,
-  };
+  return settle(exchange, "microsoft.com");
 }
 
 /**
  * Apple: GCIP-brokered loopback (`createAuthUri` → handler → loopback) →
- * `signInWithIdpSession` → SignInOutcome (provider "apple.com"). Returns `null`
- * when the authorize was benignly cancelled.
+ * `signInWithIdpSession`. Returns `null` when the authorize was benignly
+ * cancelled.
  */
 export async function appleDesktopSession(
   opts?: LoopbackAuthorizeOptions,
-): Promise<SignInOutcome | null> {
+): Promise<DesktopSignIn | null> {
   const authorized = await authorizeAppleDesktop(opts);
   if (authorized === null) return null; // benign cancel
-  const result = await signInWithIdpSession({
+  const exchange = await signInWithIdpSession({
     apiKey: identityConfig.apiKey,
     requestUri: authorized.requestUri,
     sessionId: authorized.sessionId,
   });
-  return {
-    session: sessionFromIdp(await withProfileBackfill(result), "apple.com"),
-    isNewUser: result.isNewUser,
-  };
+  return settle(exchange, "apple.com");
 }
 
 /** Email OTP: gateway custom token → REST exchange → outcome from decoded claims. */

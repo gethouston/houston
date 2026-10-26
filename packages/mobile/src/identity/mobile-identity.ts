@@ -1,8 +1,16 @@
 import { FirebaseAuthentication } from "@capacitor-firebase/authentication";
 import { logAndReportError } from "@houston/app/lib/error-report";
-import { IdentityError, type SignInOutcome } from "@houston/app/lib/identity";
-import { signInWithCredential } from "firebase/auth";
+import {
+  IdentityError,
+  type PendingLink,
+  type SignInOutcome,
+} from "@houston/app/lib/identity";
+import { type OAuthCredential, signInWithCredential } from "firebase/auth";
 import { ready } from "../../../web/src/identity/firebase-auth-instance";
+import {
+  holdAccountExists,
+  isAccountExists,
+} from "../../../web/src/identity/firebase-link";
 import { webSignOut as jsSignOut } from "../../../web/src/identity/firebase-popup";
 import {
   backfillAccountProfile,
@@ -13,9 +21,14 @@ import { type NativeProvider, nativeCredential } from "./native-credential";
 import { isNativeSignInCancel, mapNativeSignInError } from "./native-errors";
 
 export {
+  webDiscardPending,
+  webLinkPending,
+} from "../../../web/src/identity/firebase-link";
+export {
   initWebAuth,
   toSession,
   webCurrentSession,
+  webCurrentUid,
   webOnIdTokenChanged,
   webRefreshIdToken,
   webSignInWithCustomToken,
@@ -60,9 +73,13 @@ export async function webSignOut(): Promise<void> {
   }
 }
 
-async function signIn(provider: NativeProvider): Promise<SignInOutcome | null> {
+async function signIn(
+  provider: NativeProvider,
+): Promise<SignInOutcome | PendingLink | null> {
   if (!nativeIdentity.providers[provider])
     throw new IdentityError("operation_not_allowed");
+  // Kept outside the try: an existing account refuses it, and the link needs it.
+  let credential: OAuthCredential | null = null;
   try {
     const result =
       provider === "google"
@@ -70,7 +87,7 @@ async function signIn(provider: NativeProvider): Promise<SignInOutcome | null> {
         : await FirebaseAuthentication.signInWithApple({
             scopes: ["email", "name"],
           });
-    const credential = nativeCredential(provider, result);
+    credential = nativeCredential(provider, result);
     const userCredential = await signInWithCredential(
       await ready(),
       credential,
@@ -81,21 +98,33 @@ async function signIn(provider: NativeProvider): Promise<SignInOutcome | null> {
     return await toOutcome(userCredential);
   } catch (error) {
     if (isNativeSignInCancel(error)) return null;
+    if (isAccountExists(error))
+      return holdAccountExists(
+        error,
+        provider === "google" ? "google.com" : "apple.com",
+        credential,
+      );
     const mapped = mapNativeSignInError(error);
     if (mapped.code === "unknown") logAndReportError("native_sign_in", error);
     throw mapped;
   }
 }
 
-export function webSignInWithGoogle(): Promise<SignInOutcome | null> {
+export function webSignInWithGoogle(): Promise<
+  SignInOutcome | PendingLink | null
+> {
   return signIn("google");
 }
 
-export function webSignInWithApple(): Promise<SignInOutcome | null> {
+export function webSignInWithApple(): Promise<
+  SignInOutcome | PendingLink | null
+> {
   return signIn("apple");
 }
 
-export function webSignInWithMicrosoft(): Promise<SignInOutcome | null> {
+export function webSignInWithMicrosoft(): Promise<
+  SignInOutcome | PendingLink | null
+> {
   // The plugin cannot expose a Microsoft credential for JS SDK sign-in while
   // skipNativeAuth is true. See Capawesome's firebase-js-sdk.md "Quirks".
   throw new IdentityError("operation_not_allowed");

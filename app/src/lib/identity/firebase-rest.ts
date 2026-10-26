@@ -1,8 +1,9 @@
 // Typed GCIP REST wrappers — the desktop's Firebase Auth client (the web +
-// admin surfaces use firebase-js-sdk instead; see MIGRATION-DESIGN §2). Four
-// calls, all `fetch`, all throwing typed `IdentityError` on failure:
+// admin surfaces use firebase-js-sdk instead; see MIGRATION-DESIGN §2). The
+// federated calls live in firebase-idp.ts. All `fetch`, all throwing typed
+// `IdentityError` on failure:
 //
-//   signInWithIdp        — federated sign-in (Google / Microsoft), generic
+//   createAuthUri        — authorize URL for the brokered Apple/Microsoft flows
 //   signInWithPassword   — admin email+password
 //   signInWithCustomToken— email-OTP final exchange (gateway-minted token)
 //   refreshIdToken       — rehydrate/refresh via securetoken.googleapis.com
@@ -12,29 +13,13 @@
 // and validates required fields (missing → `malformed_response`).
 
 import { IdentityError } from "./errors.ts";
+import type { IdpProviderId } from "./firebase-idp.ts";
 import {
   IDENTITY_TOOLKIT_BASE,
   postGcipForm,
   postGcipJson,
   SECURE_TOKEN_BASE,
 } from "./rest-client.ts";
-
-/** Federated provider ids GCIP `signInWithIdp` accepts here. */
-export type IdpProviderId = "google.com" | "microsoft.com" | "apple.com";
-
-export interface IdpSignInResult {
-  idToken: string;
-  refreshToken: string;
-  expiresAt: number;
-  uid: string;
-  email: string;
-  emailVerified: boolean;
-  displayName: string | null;
-  photoUrl: string | null;
-  providerId: string;
-  /** True when THIS exchange created the GCIP account (first sign-in ever). */
-  isNewUser: boolean;
-}
 
 export interface PasswordSignInResult {
   idToken: string;
@@ -57,7 +42,7 @@ export interface CustomTokenSignInResult extends TokenSignInResult {
   isNewUser: boolean;
 }
 
-function reqString(
+export function reqString(
   obj: Record<string, unknown>,
   key: string,
   httpStatus = 200,
@@ -70,88 +55,16 @@ function reqString(
 }
 
 /** `expiresIn` arrives as a seconds STRING; convert to an absolute epoch-ms. */
-function expiresAtFrom(obj: Record<string, unknown>, key: string): number {
+export function expiresAtFrom(
+  obj: Record<string, unknown>,
+  key: string,
+): number {
   const raw = obj[key];
   const seconds = typeof raw === "string" ? Number(raw) : Number.NaN;
   if (!Number.isFinite(seconds)) {
     throw new IdentityError("malformed_response");
   }
   return Date.now() + seconds * 1000;
-}
-
-/** Federated sign-in. Supply an OIDC `idToken` and/or OAuth `accessToken`. */
-export async function signInWithIdp(params: {
-  apiKey: string;
-  providerId: IdpProviderId;
-  idToken?: string;
-  accessToken?: string;
-  requestUri?: string;
-}): Promise<IdpSignInResult> {
-  const cred = new URLSearchParams({ providerId: params.providerId });
-  if (params.idToken) cred.set("id_token", params.idToken);
-  if (params.accessToken) cred.set("access_token", params.accessToken);
-  if (!params.idToken && !params.accessToken) {
-    throw new IdentityError("invalid_idp_response");
-  }
-  const body = await postGcipJson(
-    `${IDENTITY_TOOLKIT_BASE}/accounts:signInWithIdp?key=${params.apiKey}`,
-    {
-      postBody: cred.toString(),
-      requestUri: params.requestUri ?? "http://localhost",
-      returnSecureToken: true,
-      returnIdpCredential: true,
-    },
-  );
-  return {
-    idToken: reqString(body, "idToken"),
-    refreshToken: reqString(body, "refreshToken"),
-    expiresAt: expiresAtFrom(body, "expiresIn"),
-    uid: reqString(body, "localId"),
-    email: typeof body.email === "string" ? body.email : "",
-    emailVerified: body.emailVerified === true,
-    displayName: typeof body.displayName === "string" ? body.displayName : null,
-    photoUrl: typeof body.photoUrl === "string" ? body.photoUrl : null,
-    providerId:
-      typeof body.providerId === "string" ? body.providerId : params.providerId,
-    isNewUser: body.isNewUser === true,
-  };
-}
-
-/**
- * Session-based federated sign-in completion, the second half of the
- * GCIP-BROKERED flows (Apple via the gateway deep-link bridge, Microsoft via
- * the loopback): `createAuthUri` minted the authorize URL and a
- * `sessionId`; after the provider bounced through GCIP's handler back to the
- * loopback `continueUri`, the FULL callback URL goes back as `requestUri` and
- * GCIP redeems the pair itself — no provider token exchange on the client, no
- * provider secret anywhere near it.
- */
-export async function signInWithIdpSession(params: {
-  apiKey: string;
-  requestUri: string;
-  sessionId: string;
-}): Promise<IdpSignInResult> {
-  const body = await postGcipJson(
-    `${IDENTITY_TOOLKIT_BASE}/accounts:signInWithIdp?key=${params.apiKey}`,
-    {
-      requestUri: params.requestUri,
-      sessionId: params.sessionId,
-      returnSecureToken: true,
-      returnIdpCredential: true,
-    },
-  );
-  return {
-    idToken: reqString(body, "idToken"),
-    refreshToken: reqString(body, "refreshToken"),
-    expiresAt: expiresAtFrom(body, "expiresIn"),
-    uid: reqString(body, "localId"),
-    email: typeof body.email === "string" ? body.email : "",
-    emailVerified: body.emailVerified === true,
-    displayName: typeof body.displayName === "string" ? body.displayName : null,
-    photoUrl: typeof body.photoUrl === "string" ? body.photoUrl : null,
-    providerId: typeof body.providerId === "string" ? body.providerId : "",
-    isNewUser: body.isNewUser === true,
-  };
 }
 
 /**

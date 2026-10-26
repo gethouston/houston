@@ -24,6 +24,11 @@ type AuthErrorKey =
   | "auth.providerDisabled"
   | "auth.otpInvalid"
   | "auth.otpRateLimited"
+  | "auth.otpPasswordAccount"
+  | "auth.otpEmailChanged"
+  | "auth.otpUnverifiedAccount"
+  | "auth.otpAccountDeleting"
+  | "auth.otpAccountMerging"
   | "auth.network"
   | "auth.tooManyAttempts"
   | "auth.userDisabled"
@@ -36,11 +41,19 @@ type AuthErrorKey =
 const CODE_TO_KEY: Record<IdentityErrorCode, AuthErrorKey> = {
   invalid_credentials: "auth.invalidCredentials",
   credential_mismatch: "auth.credentialMismatch",
+  identity_already_linked: "auth.credentialMismatch",
   email_exists: "auth.credentialMismatch",
   operation_not_allowed: "auth.providerDisabled",
   otp_invalid_code: "auth.otpInvalid",
   token_expired: "auth.otpInvalid",
   otp_rate_limited: "auth.otpRateLimited",
+  otp_password_account: "auth.otpPasswordAccount",
+  otp_email_changed: "auth.otpEmailChanged",
+  otp_unverified_account: "auth.otpUnverifiedAccount",
+  otp_account_deleting: "auth.otpAccountDeleting",
+  otp_account_disabled: "auth.userDisabled",
+  // The code is spent by the time the merge answers, so the remedy is a new one.
+  otp_account_merging: "auth.otpAccountMerging",
   network: "auth.network",
   too_many_attempts: "auth.tooManyAttempts",
   user_disabled: "auth.userDisabled",

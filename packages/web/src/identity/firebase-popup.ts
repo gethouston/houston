@@ -9,6 +9,8 @@
 // here has an identical-signature counterpart in the desktop stub.
 
 import type { Session, SignInOutcome } from "@houston/app/lib/identity";
+import type { PendingLink } from "@houston/sdk/identity";
+import type { LinkProvider } from "@houston/wire-types";
 import {
   GoogleAuthProvider,
   OAuthProvider,
@@ -19,6 +21,7 @@ import {
 } from "firebase/auth";
 import { ready, requireAuth } from "./firebase-auth-instance.ts";
 import { isBenignPopupCancel, mapFirebaseError } from "./firebase-errors.ts";
+import { holdAccountExists, isAccountExists } from "./firebase-link.ts";
 import {
   backfillAccountProfile,
   toOutcome,
@@ -26,11 +29,14 @@ import {
 } from "./firebase-session.ts";
 
 export { initWebAuth } from "./firebase-auth-instance.ts";
+export { webDiscardPending, webLinkPending } from "./firebase-link.ts";
 export { toSession } from "./firebase-session.ts";
 
+/** A popup sign-in that met an existing account resolves to the link it needs. */
 async function popupSignIn(
   provider: GoogleAuthProvider | OAuthProvider,
-): Promise<SignInOutcome | null> {
+  id: LinkProvider,
+): Promise<SignInOutcome | PendingLink | null> {
   const auth = await ready();
   try {
     const cred = await signInWithPopup(auth, provider);
@@ -38,27 +44,41 @@ async function popupSignIn(
     return await toOutcome(cred);
   } catch (e) {
     if (isBenignPopupCancel(e)) return null; // benign cancel: no toast, no-op
+    if (isAccountExists(e))
+      return holdAccountExists(
+        e,
+        id,
+        id === "google.com"
+          ? GoogleAuthProvider.credentialFromError(e)
+          : OAuthProvider.credentialFromError(e),
+      );
     throw mapFirebaseError(e);
   }
 }
 
 /** Google popup sign-in. Resolves `null` if the user cancels the popup. */
-export function webSignInWithGoogle(): Promise<SignInOutcome | null> {
-  return popupSignIn(new GoogleAuthProvider());
+export function webSignInWithGoogle(): Promise<
+  SignInOutcome | PendingLink | null
+> {
+  return popupSignIn(new GoogleAuthProvider(), "google.com");
 }
 
 /** Microsoft (Entra) popup sign-in. Resolves `null` on a cancelled popup. */
-export function webSignInWithMicrosoft(): Promise<SignInOutcome | null> {
-  return popupSignIn(new OAuthProvider("microsoft.com"));
+export function webSignInWithMicrosoft(): Promise<
+  SignInOutcome | PendingLink | null
+> {
+  return popupSignIn(new OAuthProvider("microsoft.com"), "microsoft.com");
 }
 
 /** Apple popup sign-in. Resolves `null` on a cancelled popup. Apple returns
  *  the user's name/email only on the FIRST consent for this Services ID. */
-export function webSignInWithApple(): Promise<SignInOutcome | null> {
+export function webSignInWithApple(): Promise<
+  SignInOutcome | PendingLink | null
+> {
   const provider = new OAuthProvider("apple.com");
   provider.addScope("email");
   provider.addScope("name");
-  return popupSignIn(provider);
+  return popupSignIn(provider, "apple.com");
 }
 
 /** Exchange a gateway-minted custom token (email-OTP flow) for a session. */
@@ -95,6 +115,11 @@ export function webOnIdTokenChanged(
   return onIdTokenChanged(auth, async (user) => {
     cb(user ? await toSession(user) : null);
   });
+}
+
+/** The uid Firebase is signed in as right now, or null. */
+export function webCurrentUid(): string | null {
+  return requireAuth().currentUser?.uid ?? null;
 }
 
 /** Force-refresh the current id token (the `__HOUSTON_SESSION_REFRESH__` seam). */

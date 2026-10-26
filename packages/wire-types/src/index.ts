@@ -20,6 +20,7 @@ export * from "./compute-refusal";
 export * from "./delegation";
 export * from "./first-day-refusal";
 export * from "./heartbeat";
+export * from "./identity";
 export * from "./interactions";
 export * from "./linkedin";
 export * from "./local-model-bridge";

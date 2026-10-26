@@ -12,7 +12,8 @@ export type IdentityErrorCode =
   | "email_exists" // EMAIL_EXISTS
   | "invalid_idp_response" // INVALID_IDP_RESPONSE / MISSING_OR_INVALID_NONCE
   | "invalid_credentials" // INVALID_PASSWORD / EMAIL_NOT_FOUND / INVALID_LOGIN_CREDENTIALS / USER_NOT_FOUND
-  | "credential_mismatch" // FEDERATED_USER_ID_ALREADY_LINKED / CREDENTIAL_MISMATCH
+  | "credential_mismatch" // CREDENTIAL_MISMATCH
+  | "identity_already_linked" // FEDERATED_USER_ID_ALREADY_LINKED (provider identity owned by an account)
   | "invalid_custom_token" // INVALID_CUSTOM_TOKEN / CREDENTIAL_MISMATCH (custom)
   | "operation_not_allowed" // OPERATION_NOT_ALLOWED (provider disabled)
   // token refresh
@@ -31,6 +32,12 @@ export type IdentityErrorCode =
   // gateway email-OTP flow
   | "otp_invalid_code" // gateway 401: wrong / expired 6-digit code
   | "otp_rate_limited" // gateway 429: too many start/verify requests
+  | "otp_password_account" // gateway 409: the address belongs to a password account
+  | "otp_email_changed" // gateway 409: the address's account now signs in with another email
+  | "otp_unverified_account" // gateway 409: another known account holds the address unconfirmed
+  | "otp_account_deleting" // gateway 409: the account is being deleted
+  | "otp_account_disabled" // gateway 403: the account is disabled
+  | "otp_account_merging" // gateway 503: the account is being merged; request a new code
   // transport
   | "network" // fetch threw (offline, DNS, TLS) — no HTTP response
   | "malformed_response" // 2xx but body is not the expected shape / non-JSON
@@ -76,7 +83,7 @@ const GCIP_CODE_MAP: Record<string, IdentityErrorCode> = {
   EMAIL_NOT_FOUND: "invalid_credentials",
   INVALID_LOGIN_CREDENTIALS: "invalid_credentials",
   USER_NOT_FOUND: "invalid_credentials",
-  FEDERATED_USER_ID_ALREADY_LINKED: "credential_mismatch",
+  FEDERATED_USER_ID_ALREADY_LINKED: "identity_already_linked",
   CREDENTIAL_MISMATCH: "credential_mismatch",
   INVALID_CUSTOM_TOKEN: "invalid_custom_token",
   CREDENTIAL_TOO_OLD_LOGIN_AGAIN: "token_expired",

@@ -15,6 +15,10 @@
       "types": "./src/react/index.ts",
       "import": "./src/react/index.ts"
     },
+    "./identity": {
+      "types": "./src/modules/identity/index.ts",
+      "import": "./src/modules/identity/index.ts"
+    },
     "./appearance": {
       "types": "./src/modules/appearance/model.ts",
       "import": "./src/modules/appearance/model.ts"

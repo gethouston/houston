@@ -49,7 +49,11 @@ import type { BridgeQuietClass } from "@houston/sdk/local-model-bridge/quiet";
  *  exists (`routines/routine-gone`): deleted elsewhere, or a list served
  *  from a stale mirror. An expected state with its own copy, but unlike the
  *  plan floor it still reports ONE fingerprinted warning: a burst of them
- *  means a stale mirror, which is our bug. */
+ *  means a stale mirror, which is our bug.
+ *  `link_identity_taken` is a provider sign-in that met an existing account
+ *  whose provider identity already belongs to another account
+ *  (`modules/identity`): the person stays signed in by email code and sees
+ *  a notice. Support can join the accounts, so it is one counted warning. */
 export type QuietErrorClass =
   | "engine_waking"
   | "offline"
@@ -62,7 +66,8 @@ export type QuietErrorClass =
   | "first_day_no_provider"
   | "bug_intake_unavailable"
   | "upload_interrupted"
-  | "routine_gone";
+  | "routine_gone"
+  | "link_identity_taken";
 
 /**
  * The burst-gate key a quiet-class report collapses on.

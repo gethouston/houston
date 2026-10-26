@@ -9,7 +9,8 @@
 //
 // No I/O, no globals — unit-tested in app/tests/auth-session-map.test.ts.
 
-import type { IdpSignInResult, TokenSignInResult } from "./firebase-rest.ts";
+import type { IdpSignInResult } from "./firebase-idp.ts";
+import type { TokenSignInResult } from "./firebase-rest.ts";
 import type { IdTokenClaims } from "./id-token.ts";
 import type { AuthProvider, Session } from "./session.ts";
 
