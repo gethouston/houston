@@ -43,6 +43,7 @@
     "sessionComplete": {
       "title": "{{workspace}} · {{agent}}",
       "body": "Your AI Employee has finished working.",
+      "timeLimit": "Your AI Employee reached the limit for one reply and is ready to continue.",
       "question_one": "Your AI Employee has a question for you.",
       "question_other": "Your AI Employee has questions for you.",
       "signin": "Your AI Employee needs you to sign in.",

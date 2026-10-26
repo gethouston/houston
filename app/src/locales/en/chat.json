@@ -325,6 +325,8 @@
     "failed": "Your agent couldn't get ready for this message. Send it again in a moment.",
     "unconfirmed": "We couldn't confirm your agent got this message. Check back in a few minutes, and if there's still no reply, send it again."
   },
+  "replyTimeLimit": "Your agent worked for 4 hours, the limit for one reply. Its progress is saved. Say \"continue\" and it will pick up where it left off.",
+  "replyTimeLimitUnsaved": "Your agent reached the 4-hour limit for one reply and stopped before it could save its last steps. Say \"continue\" to pick up from the last saved point.",
   "engineRestart": {
     "sayContinue": "Your agent had to restart. Say continue and it will pick up where it left off.",
     "resuming": "Your agent was interrupted by a restart and is picking up where it left off."

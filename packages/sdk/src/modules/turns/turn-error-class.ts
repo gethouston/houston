@@ -149,4 +149,6 @@ export function isSessionStatusOrigin(
 export interface SessionStatusDetail {
   errorClass?: TurnErrorClass;
   origin?: SessionStatusOrigin;
+  /** Expected end at the reply ceiling, separate from an ordinary completed reply. */
+  stopReason?: "turn_time_limit" | "turn_time_limit_unsaved";
 }

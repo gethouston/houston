@@ -1,4 +1,4 @@
-import type { ModelCallReport } from "@houston/protocol";
+import { type ModelCallReport, TurnErrorCode } from "@houston/protocol";
 import type { WireFrame } from "@houston/runtime-client";
 import type { TurnDurabilityResult } from "./turn-durability";
 import type { TurnSetupCode, TurnSetupError } from "./turn-layout";
@@ -71,7 +71,10 @@ export function turnTerminalFrame(
       : {}),
   };
   const diagnostic = Object.keys(fields).length > 0 ? fields : undefined;
-  if (outcome.error) {
+  if (
+    outcome.error &&
+    (!outcome.stopReason || outcome.error === "claim_fenced")
+  ) {
     // SAFETY: pooled-turn diagnostics are an additive internal transport field;
     // public WireFrame consumers still receive the required error message.
     return {
@@ -79,6 +82,34 @@ export function turnTerminalFrame(
       data: { message: outcome.error, ...diagnostic },
       turnId,
     } as WireFrame;
+  }
+  if (outcome.stopReason) {
+    const code = outcome.stopReason;
+    if (outcome.error)
+      console.error("[turn] wind-down durability failed", outcome.error);
+    console.info("[turn] wind_down", {
+      turnId,
+      stopReason: code,
+      stopToTerminalMs: Math.round(
+        (timings?.t_terminal ?? performance.now()) -
+          (timings?.t_stop_received ?? performance.now()),
+      ),
+      syncMs: Math.round(
+        (timings?.t_sync_done ?? 0) - (timings?.t_sync_start ?? 0),
+      ),
+    });
+    return {
+      type: "error",
+      data: {
+        message:
+          code === TurnErrorCode.TimeLimitUnsaved
+            ? "This reply reached the 4-hour limit for one turn and stopped before it could save its last steps. Say continue to pick up from the last saved point."
+            : "This reply reached the 4-hour limit for one turn. Say continue and the agent picks up from what it saved.",
+        code,
+        ...diagnostic,
+      },
+      turnId,
+    };
   }
   // SAFETY: claimed-turn diagnostics intentionally widen this internal done
   // frame while preserving null for every ordinary public-protocol turn.

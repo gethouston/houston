@@ -1,7 +1,6 @@
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { useCallback, useEffect, useState } from "react";
 import {
-  activeWorkspaceLocale,
   applyEngineLocale,
   changeLocale,
   isSupported,
@@ -11,12 +10,10 @@ import {
   type SupportedLocale,
 } from "../lib/i18n";
 import { logger } from "../lib/logger";
-import { tauriPreferences, tauriWorkspaces } from "../lib/tauri";
+import { tauriPreferences } from "../lib/tauri";
 import { useWorkspaceStore } from "../stores/workspaces";
 
 const globalKey = ["locale-preference"] as const;
-const bootWorkspaceKey = ["boot-workspace-locale"] as const;
-const LAST_WORKSPACE_KEY = "last_workspace_id";
 
 export interface LocalePreferenceState {
   /**
@@ -79,49 +76,17 @@ export function useLocalePreference(): LocalePreferenceState {
     staleTime: 30_000,
   });
 
-  // Boot-time active-workspace override, resolved INDEPENDENTLY of <App/> —
-  // which mounts below <LanguageGate> and only then loads workspaces. When this
-  // resolves quickly the first paint already reflects the override (no flash);
-  // when it is slow or never settles it is applied on arrival instead. It is
-  // best-effort and MUST NOT gate the paint: see `localeGateIsLoading` and the
-  // apply effect below. Blocking the gate on this query hung the app on launch
-  // (a non-settling GET /workspaces never released the gate, gethouston/houston#439).
-  // A rejecting fetch logs and resolves null (the real error surfaces via the
-  // store's loadWorkspaces), so boot falls back to the global default.
-  const bootWorkspaceQuery = useQuery({
-    queryKey: bootWorkspaceKey,
-    queryFn: async (): Promise<string | null> => {
-      try {
-        const [workspaces, lastId] = await Promise.all([
-          tauriWorkspaces.list(),
-          tauriPreferences.get(LAST_WORKSPACE_KEY),
-        ]);
-        return activeWorkspaceLocale(workspaces, lastId);
-      } catch (err) {
-        logger.error(
-          "[locale] boot workspace resolve failed",
-          err instanceof Error ? err.message : String(err),
-        );
-        return null;
-      }
-    },
-    staleTime: 30_000,
-  });
-
   const globalLocale = globalQuery.data ?? null;
-  // Once <App/> has set an active workspace it is authoritative (it reacts to
-  // the user switching workspaces); before that, the boot query stands in so
-  // the first paint already reflects the active workspace's override.
-  const workspaceLocale = storeCurrent
-    ? (storeCurrent.locale ?? null)
-    : (bootWorkspaceQuery.data ?? null);
+  // The workspace store owns boot selection. Its override applies on arrival
+  // without another preference read or a competing legacy lift.
+  const workspaceLocale = storeCurrent?.locale ?? null;
   const effective = resolveEffectiveLocale(workspaceLocale, globalLocale);
 
   // Apply the engine-resolved locale to the live i18n instance once the GLOBAL
   // preference has resolved, and re-apply whenever `effective` changes — which
   // includes the boot workspace override landing LATER (apply-on-arrival) and
   // the user switching into a workspace that pins a different language. We do
-  // NOT wait on `bootWorkspaceQuery` here: gating the first paint on it hung
+  // NOT wait on the workspace load here: gating the first paint on it hung
   // the app when GET /workspaces never settled (gethouston/houston#439).
   // Applying is best-effort — the i18next detector already picked a valid
   // language — so a failure must NOT hold the gate: always un-gate in

@@ -26,8 +26,12 @@ import {
   HoustonSdk,
   type KeyValueStore,
   type SdkLogger,
+  type WorkspacePreferenceReporter,
+  WorkspacePreferenceUnavailable,
+  type WorkspaceSelectionState,
 } from "@houston/sdk";
 import { createDevicePrefsStore } from "./client/device-prefs";
+import { toHoustonEngineError } from "./client/sdk-error";
 // The barrel, never `cp/transient-retry` directly: the web suite mocks
 // `./control-plane` wholesale and a submodule import would bypass the mock.
 import { transientRetryFetch } from "./control-plane";
@@ -105,6 +109,8 @@ export interface EngineSdkOptions {
    */
   fetch: typeof fetch;
   liveToken?: () => string;
+  workspaceSelection?: WorkspaceSelectionState;
+  reportPreferenceError?: WorkspacePreferenceReporter;
 }
 
 /**
@@ -118,8 +124,8 @@ export interface EngineSdkOptions {
  * it at this ONE construction point, rather than inside each SDK module, is
  * what lets a mixin delegate a READ at all: a GET that meets a rolling deploy
  * or a cold engine pod rides it out on the reason-aware ladder instead of
- * surfacing as a boot-path failure. Only GET/HEAD are retried, so no write is
- * ever replayed and a delegated write is still exactly one request on the wire.
+ * surfacing as a boot-path failure. GET/HEAD and the idempotent workspace-choice PUT use this ladder.
+ * Other delegated writes remain exactly one request on the wire.
  */
 export function createEngineSdk(opts: EngineSdkOptions): HoustonSdk {
   return new HoustonSdk({
@@ -127,6 +133,19 @@ export function createEngineSdk(opts: EngineSdkOptions): HoustonSdk {
     reactivity: false,
     ports: {
       fetch: transientRetryFetch(opts.fetch),
+      workspaceSelection: opts.workspaceSelection,
+      reportPreferenceError: opts.reportPreferenceError
+        ? (operation, error) =>
+            opts.reportPreferenceError?.(
+              operation,
+              toHoustonEngineError(
+                error instanceof WorkspacePreferenceUnavailable
+                  ? error.cause
+                  : error,
+                "/v1/preferences/last_workspace_id",
+              ),
+            )
+        : undefined,
       userId: opts.liveToken
         ? () => jwtSub(opts.liveToken?.() ?? "")
         : undefined,

@@ -46,5 +46,6 @@ export * from "./reply-complete";
 export * from "./routine-fire";
 export * from "./routine-refusal";
 export * from "./scratch";
+export * from "./turn-error";
 export * from "./turn-limits";
 export * from "./wire";

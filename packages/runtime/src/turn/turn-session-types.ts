@@ -19,6 +19,7 @@ import type { TurnGrantScope } from "./types";
 
 export interface TurnOutcome {
   error?: string;
+  stopReason?: ChatMessage["stopReason"];
   /** Interaction the model ended the turn waiting on, if any. */
   pendingInteraction?: PendingInteraction;
   /** A new mission's after-turn title, as written in the tree (pre-sync). */
@@ -42,6 +43,8 @@ export interface TurnSessionRequest {
   provider: string;
   emit: (e: WireFrame) => void;
   signal: AbortSignal | undefined;
+  /** The heartbeat stop state, read before the agent loop settles. */
+  stopReason?: () => ChatMessage["stopReason"];
   nonce?: string;
   pin?: TurnModelPin;
   mode?: TurnMode;

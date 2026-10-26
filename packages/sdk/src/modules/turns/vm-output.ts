@@ -1,4 +1,5 @@
 import type { PendingInteraction } from "@houston/runtime-client";
+import { TurnErrorCode } from "@houston/wire-types";
 import { LruCache } from "../../lru";
 import type { ScopeStore } from "../../store";
 import type {
@@ -466,7 +467,9 @@ export class ConversationVmOutput implements FeedOutput {
       run.data = data;
       if (turnId !== undefined) run.turnId ??= turnId;
       s.streaming.delete(finalOf);
-    } else if (!this.upsertByTurn(s, feed_type, data, turnId, toolIndex)) {
+    } else if (
+      !this.upsertByTurn(s, feed_type, data, turnId, toolIndex, notice)
+    ) {
       // A fresh entry: carry a supplied `ts`, else stamp the wall clock now; an
       // optimistic push carries `pending: true` until server evidence clears it,
       // and (multiplayer) the sender's `author` plus the teammates the message
@@ -504,8 +507,26 @@ export class ConversationVmOutput implements FeedOutput {
     data: unknown,
     turnId: string | undefined,
     toolIndex: number | undefined,
+    notice: EngineNoticeKind | undefined,
   ): boolean {
     if (turnId === undefined) return false;
+    if (feed_type === "system_message" && notice !== undefined) {
+      const entry = findLast(
+        s.feed,
+        (f) =>
+          f.turnId === turnId &&
+          f.feed_type === feed_type &&
+          (f.notice === notice ||
+            ((f.notice === TurnErrorCode.TimeLimit ||
+              f.notice === TurnErrorCode.TimeLimitUnsaved) &&
+              (notice === TurnErrorCode.TimeLimit ||
+                notice === TurnErrorCode.TimeLimitUnsaved))),
+      );
+      if (!entry) return false;
+      entry.data = data;
+      entry.notice = notice;
+      return true;
+    }
     if (SINGLETON_TYPES.has(feed_type)) {
       // Also match the type's open/orphaned streaming counterpart — a dead
       // sink can leave one behind, and the re-delivered final must close it,

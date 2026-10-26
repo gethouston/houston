@@ -1190,10 +1190,20 @@ export const tauriConfig = {
 // ─── Preferences ──────────────────────────────────────────────────────
 
 export const tauriPreferences = {
+  resolveWorkspace: (
+    workspaces: readonly Workspace[] | Promise<readonly Workspace[]>,
+  ) => getEngine().resolveWorkspaceSelection(workspaces),
+  rememberWorkspace: (value: string | null) =>
+    getEngine().rememberWorkspaceSelection(value),
   get: (key: string) =>
     call<string | null>("get_preference", () => getEngine().getPreference(key)),
   set: (key: string, value: string | null) =>
-    call<void>("set_preference", () => getEngine().setPreference(key, value)),
+    call<void>(
+      "set_preference",
+      () => getEngine().setPreference(key, value),
+      undefined,
+      key === "last_workspace_id" ? { surface: false } : undefined,
+    ),
   /** The SDK's create-only seed, pinned to one workspace's space. */
   seedTimezone: (workspaceId: string, detected: string) =>
     call<TimezoneSeedResult>("seed_timezone", () =>

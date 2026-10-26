@@ -33,9 +33,9 @@ export const invisibleFinal = (s: TurnState) =>
   });
 
 /**
- * Settle a successful turn: flush accumulations, final_result, completed. The
- * board ALWAYS lands on `needs_you` — the engine never writes `done`. Closing a
- * mission is the USER's call: a finished turn parks its card where the user can
+ * Settle a completed reply or expected time limit: flush accumulations,
+ * final_result, completed. The board always lands on `needs_you`. Only the
+ * user closes a mission: a finished turn parks its card where the user can
  * read the result and decide, so nothing is auto-archived out from under them.
  *
  * There is no split on the captured interaction any more. Blocking or not
@@ -45,18 +45,31 @@ export const invisibleFinal = (s: TurnState) =>
  * suggestion bubbles — and the suggestions survive the user's later move to
  * done.
  */
-export function finishOk(s: TurnState): void {
+export function finishOk(
+  s: TurnState,
+  notice?: {
+    kind: "turn_time_limit" | "turn_time_limit_unsaved";
+    message: string;
+  },
+): void {
   if (s.settled) return;
   s.settled = true;
   if (s.thinking) push(s, { feed_type: "thinking", data: s.thinking });
   if (s.text) push(s, { feed_type: "assistant_text", data: s.text });
+  if (notice) s.pendingInteraction = null;
+  if (notice)
+    push(s, {
+      feed_type: "system_message",
+      data: notice.message,
+      notice: notice.kind,
+    });
   push(s, {
     feed_type: "final_result",
     data: { result: s.text, cost_usd: null, duration_ms: null, usage: s.usage },
   });
   s.firstResponse?.resolve("no_text", s.turnId);
   settleCard(s, "needs_you");
-  emitStatus(s, "completed");
+  emitStatus(s, "completed", undefined, undefined, notice?.kind);
 }
 
 /**

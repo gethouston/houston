@@ -134,10 +134,12 @@ export function emitStatus(
   status: SessionStatusValue,
   error?: string,
   errorClass?: TurnErrorClass,
+  stopReason?: "turn_time_limit" | "turn_time_limit_unsaved",
 ): void {
   s.output.sessionStatus(s.agentPath, s.sessionKey, status, error, {
     origin: s.origin,
     ...(errorClass ? { errorClass } : {}),
+    ...(stopReason ? { stopReason } : {}),
   });
 }
 
@@ -149,6 +151,8 @@ export function emitStatus(
 const NOTICE_CLASS: Record<EngineNoticeKind, TurnErrorClass | null> = {
   engine_restart: "engine_restart",
   engine_resumed: null,
+  turn_time_limit: null,
+  turn_time_limit_unsaved: null,
   send_busy: "send_busy",
   compute_busy: "compute_busy",
   // The H-003 setup notices and the lost-after-202 bound class as themselves

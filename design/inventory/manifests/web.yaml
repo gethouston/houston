@@ -13,7 +13,7 @@
 
 surface: web
 enforced: true
-inventoryVersion: 140
+inventoryVersion: 143
 
 components:
   manager-avatar:
@@ -79,7 +79,7 @@ components:
 
   system-message:
     status: implemented
-    ref: "@houston-ai/chat chat-system-message"
+    ref: "@houston-ai/chat chat-system-message + app/src/components/chat-notice-copy.ts (localized reply-time-limit note)"
 
   skill-invocation-message:
     status: partial

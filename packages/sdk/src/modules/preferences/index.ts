@@ -2,10 +2,9 @@
  * The preferences module — per-user key/value preferences plus the
  * workspace-locale override (the desktop's boot + language-settings path).
  *
- * These are pure commands: they read/write the gateway's user-scoped routes and
- * return the value; there is no reactive scope to publish (a preference read is
- * on-demand, and the locale write is a one-shot the surface acts on). The same
- * handlers back both the typed facade and the `dispatch` path.
+ * Preferences are read on demand, with no reactive scope to publish. Workspace
+ * selection also owns its device mirror, legacy migration and ordered write queue.
+ * The same handlers back the typed facade and the `dispatch` path.
  *
  * SEAM — user-scoped, NOT per-agent. Preferences are keyed by the caller's
  * session `sub`, so this module talks to the flat {@link PreferencesClient}
@@ -20,11 +19,17 @@ import {
 } from "@houston/runtime-client";
 import type { ModuleContext } from "../../module-context";
 import { requireString } from "../payload";
+import type { Workspace as SelectionWorkspace } from "../workspaces/types";
 import {
   seedTimezone as seedTimezoneWith,
   type TimezoneSeedInput,
   type TimezoneSeedResult,
 } from "./timezone";
+
+import {
+  WORKSPACE_SELECTION_KEY,
+  workspaceSelectionPreference,
+} from "./workspace-selection";
 
 export type { TimezoneSeedInput, TimezoneSeedResult } from "./timezone";
 export { TIMEZONE_PREFERENCE } from "./timezone";
@@ -42,6 +47,12 @@ export type PreferencesCommandType =
 
 /** The typed facade for preference reads/writes + the workspace locale. */
 export interface PreferencesModule {
+  /** Resolve boot selection and record the space this device displays. */
+  resolveWorkspace<
+    T extends Pick<SelectionWorkspace, "id" | "isDefault" | "kind">,
+  >(workspaces: readonly T[] | Promise<readonly T[]>): Promise<T | null>;
+  /** Mirror the displayed space on this device without changing the account. */
+  rememberWorkspace(value: string | null): Promise<void>;
   /** Read a preference value, or `null` when unset. */
   get(key: string): Promise<string | null>;
   /** Write (or, with `null`, clear) a preference; echoes the stored value. */
@@ -68,6 +79,7 @@ export function createPreferencesModule(ctx: ModuleContext): PreferencesModule {
   const { baseUrl, ports } = ctx.config;
 
   const client = new PreferencesClient({ baseUrl, fetch: ports.fetch });
+  const workspaceSelection = workspaceSelectionPreference(ctx);
   const emitTokenExpired = () => authExpiry.notifyExpired();
 
   /** Run a client call, surfacing a 401 as the shared token-expiry signal. */
@@ -91,7 +103,11 @@ export function createPreferencesModule(ctx: ModuleContext): PreferencesModule {
    * @assistant group:settings hidden: UI plumbing; an open key/value write that can clobber any app setting.
    */
   const set = (key: string, value: string | null): Promise<string | null> =>
-    run(() => client.setPreference(key, value));
+    run(() =>
+      key === WORKSPACE_SELECTION_KEY
+        ? workspaceSelection.set(value)
+        : client.setPreference(key, value),
+    );
   /**
    * Sets the language the app's own screens are shown in, for one workspace.
    * @param workspaceId The workspace this acts on, by the id listWorkspaces
@@ -135,5 +151,12 @@ export function createPreferencesModule(ctx: ModuleContext): PreferencesModule {
     }),
   );
 
-  return { get, set, setLocale, seedTimezone };
+  return {
+    get,
+    set,
+    setLocale,
+    seedTimezone,
+    rememberWorkspace: workspaceSelection.remember,
+    resolveWorkspace: workspaceSelection.resolve,
+  };
 }

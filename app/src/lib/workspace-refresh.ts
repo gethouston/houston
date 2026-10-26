@@ -1,3 +1,4 @@
+import { resolveActiveWorkspace } from "@houston/sdk";
 import type { Workspace } from "./types";
 
 /**
@@ -12,8 +13,8 @@ import type { Workspace } from "./types";
  *                  server-side rename of the active space shows too. No
  *                  re-pin, no cache reset — the active org is the same.
  *  - `reselect`  — the ACTIVE space vanished (the user was removed from that
- *                  team while the app was open): land on the default/first
- *                  space; the store must then re-pin the active org and reset
+ *                  team while the app was open): land on another team, else
+ *                  personal; the store must re-pin the active org and reset
  *                  the space-scoped caches exactly like a user-driven switch —
  *                  staying pinned to a space the gateway now 403s would strand
  *                  every request.
@@ -55,7 +56,7 @@ export function planSpacesRefresh(
       return {
         kind: "reselect",
         workspaces: fresh,
-        current: fresh.find((w) => w.isDefault) ?? fresh[0] ?? null,
+        current: resolveActiveWorkspace(fresh, null),
       };
     }
     return { kind: "update", workspaces: fresh, current: stillCurrent };

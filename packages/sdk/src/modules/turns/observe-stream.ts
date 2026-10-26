@@ -5,6 +5,7 @@ import {
 } from "@houston/runtime-client";
 import { TurnBoardWrites } from "./board-writes";
 import type { FeedOutput } from "./feed-output";
+import { turnProgressAt } from "./send-hold-clock";
 import {
   type ActiveStream,
   STREAM_FAILURE_BUDGET,
@@ -72,6 +73,7 @@ export function observeConversation(
         signal: ac.signal,
         onEvent: (f) => {
           if (typeof f.seq === "number") entry.lastSeq = f.seq;
+          entry.lastProgressAt = turnProgressAt(f) ?? entry.lastProgressAt;
           sink.onFrame(f);
         },
         onRetry: ({ consecutiveFailures }) => {

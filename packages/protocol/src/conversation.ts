@@ -437,6 +437,8 @@ export interface ChatMessage {
    * running when the process died, when the engine had recorded one.
    */
   interrupted?: TurnInterruption;
+  /** Reply ceiling reason, replayed as an expected end. */
+  stopReason?: import("./turn-error").TurnErrorCode;
 }
 
 /**

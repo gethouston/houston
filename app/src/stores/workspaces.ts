@@ -1,7 +1,6 @@
 import { create } from "zustand";
 import { analytics } from "../lib/analytics";
-import { readBootPreference } from "../lib/boot-preference";
-import { setActiveOrg } from "../lib/engine";
+import { setActiveOrg, setPreferenceErrorReporter } from "../lib/engine";
 import { queryClient } from "../lib/query-client";
 import { resetCacheForSpaceChange } from "../lib/space-cache";
 import { orgSlugFromWorkspaceId } from "../lib/space-id";
@@ -11,11 +10,11 @@ import {
   tauriWorkspaces,
 } from "../lib/tauri";
 import type { Workspace } from "../lib/types";
+import { reportWorkspacePreferenceError } from "../lib/workspace-preference-error";
 import {
   planSpacesRefresh,
   withoutPendingDeletes,
 } from "../lib/workspace-refresh";
-import { resolveActiveWorkspace } from "../lib/workspace-switch";
 import {
   pendingWorkspaceDeletes,
   runWorkspaceDelete,
@@ -73,6 +72,10 @@ interface WorkspaceState {
   reset: () => void;
 }
 
+let loadGeneration = 0;
+
+setPreferenceErrorReporter(reportWorkspacePreferenceError);
+
 export const useWorkspaceStore = create<WorkspaceState>((set, get) => ({
   setLocale: workspaceLocaleWrites({
     read: (id) => get().workspaces.find((w) => w.id === id)?.locale,
@@ -86,50 +89,40 @@ export const useWorkspaceStore = create<WorkspaceState>((set, get) => ({
 
   workspaces: [],
   current: null,
-  // Start "not settled" so App.tsx renders the loading splash on first paint
-  // instead of a first-run route. Returning users with an existing workspace
-  // would otherwise briefly fall through the `workspaces.length === 0` gate
-  // and enter the setup flow before `loadWorkspaces()` resolves, which marks
-  // `onboarding_pending` and holds them there. The splash
-  // reads `loaded` (never-loaded-yet), NOT `loading`: a retry or a refresh must
-  // not swap the whole app for the splash and remount the shell under the user.
+  // Only the first load shows the boot splash; later reloads keep the shell.
   loading: true,
   loaded: false,
   loadError: false,
 
   loadWorkspaces: async () => {
+    const generation = loadGeneration;
     set({ loading: true });
     try {
-      // Restore the last-selected space alongside the list. On a personal-only
-      // host the persisted id resolves to the sole default workspace, so this
-      // stays byte-identical to the old isDefault-then-first resolution.
-      //
-      // The preference read goes through `readBootPreference`, so a device store
-      // that refuses the read (blocked site data, partitioned webview) resolves
-      // to "no last space" and is reported, instead of rejecting into this
-      // catch: the list is the load, and the restored id is a convenience on top
-      // of it. Sharing one catch with the list is what turned a blocked
-      // localStorage into the workspace-load failure screen.
-      const [listed, lastId] = await Promise.all([
-        tauriWorkspaces.list(),
-        readBootPreference("last_workspace_id"),
-      ]);
-      const workspaces = withoutPendingDeletes(listed, pendingWorkspaceDeletes);
-      const current = resolveActiveWorkspace(workspaces, lastId);
-      // Pin the active space (C8) BEFORE the first space-scoped fetches fire so
-      // they carry the right x-houston-org from the start (no header for
-      // personal). No cache reset here — nothing has been fetched yet.
-      setActiveOrg(current ? orgSlugFromWorkspaceId(current.id) : null);
-      set({ workspaces, current, loadError: false });
+      const listed = tauriWorkspaces
+        .list()
+        .then((rows) => withoutPendingDeletes(rows, pendingWorkspaceDeletes));
+      const resolution = get().current
+        ? null
+        : tauriPreferences.resolveWorkspace(listed);
+      const [workspaces, current] = await Promise.all([listed, resolution]);
+      if (generation !== loadGeneration) return;
+      const shown = get().current;
+      if (shown) {
+        applyRefreshPlan(
+          planSpacesRefresh(get().workspaces, shown, workspaces),
+          set,
+        );
+        set({ loadError: false });
+      } else {
+        // Pin boot requests before the first space-scoped fetch.
+        setActiveOrg(current ? orgSlugFromWorkspaceId(current.id) : null);
+        set({ workspaces, current, loadError: false });
+      }
     } catch {
-      // No reporting here: the space list runs through `call()`
-      // (`lib/tauri.ts`), which already toasts the failure AND captures it to
-      // Sentry. This catch only settles state — it records that the attempt
-      // failed so a gated screen can offer a retry (SettingsView) instead of
-      // spinning, and can tell "the load broke" from "there is nothing here".
-      set({ loadError: true });
+      // The list and SDK preference reporter already report their failures.
+      if (generation === loadGeneration) set({ loadError: true });
     } finally {
-      set({ loading: false, loaded: true });
+      if (generation === loadGeneration) set({ loading: false, loaded: true });
     }
   },
 
@@ -157,7 +150,9 @@ export const useWorkspaceStore = create<WorkspaceState>((set, get) => ({
 
   setCurrent: (ws) => {
     set({ current: ws });
-    tauriPreferences.set("last_workspace_id", ws.id);
+    void tauriPreferences.set("last_workspace_id", ws.id).catch((err) => {
+      reportWorkspacePreferenceError("write", err);
+    });
     // C8 active space: re-point the gateway to the selected space BEFORE any
     // refetch. On a real space change (personal⇄team or team⇄team) the caller's
     // per-space role and every server answer differ, so drop the whole query
@@ -185,6 +180,7 @@ export const useWorkspaceStore = create<WorkspaceState>((set, get) => ({
   // a stale list, until the incoming account's loadWorkspaces() resolves. The
   // outgoing account's in-flight deletes must not filter the incoming list.
   reset: () => {
+    loadGeneration++;
     pendingWorkspaceDeletes.clear();
     set({ workspaces: [], current: null, loading: true });
   },

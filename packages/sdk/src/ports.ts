@@ -11,6 +11,10 @@
  */
 
 import type { FanOutGate } from "./fan-out";
+import type {
+  WorkspacePreferenceReporter,
+  WorkspaceSelectionState,
+} from "./modules/preferences/workspace-selection-state";
 
 /**
  * A minimal string-keyed persistent store (e.g. `localStorage`, the desktop
@@ -93,6 +97,10 @@ export interface PageLifecycle {
  * `fetch` signature exactly so the runtime-client can be driven by it.
  */
 export interface SdkPorts {
+  /** Keep ordered workspace choices across same-user SDK rebuilds. */
+  workspaceSelection?: WorkspaceSelectionState;
+  /** Reports a recoverable preference failure without discarding account data. */
+  reportPreferenceError?: WorkspacePreferenceReporter;
   /** Current authenticated user; null disables account-specific device caches. */
   userId?: () => string | null;
   /** HTTP transport, shaped exactly like the global `fetch`. */

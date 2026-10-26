@@ -19,6 +19,7 @@ import { beforeEach, expect, test, vi } from "vitest";
  */
 
 const {
+  track,
   logAndReportError,
   reportError,
   listWorkspaces,
@@ -26,6 +27,7 @@ const {
   setPreference,
   setActiveOrg,
 } = vi.hoisted(() => ({
+  track: vi.fn(),
   logAndReportError: vi.fn(),
   reportError: vi.fn(),
   listWorkspaces: vi.fn(),
@@ -38,9 +40,12 @@ vi.mock("@houston/app/lib/error-report", () => ({
   logAndReportError,
   reportError,
 }));
-vi.mock("@houston/app/lib/engine", () => ({ setActiveOrg }));
+vi.mock("@houston/app/lib/engine", () => ({
+  setActiveOrg,
+  setPreferenceErrorReporter: () => {},
+}));
 vi.mock("@houston/app/lib/analytics", () => ({
-  analytics: { track: vi.fn() },
+  analytics: { track },
 }));
 vi.mock("@houston/app/lib/query-client", () => ({ queryClient: {} }));
 vi.mock("@houston/app/lib/space-cache", () => ({
@@ -48,7 +53,12 @@ vi.mock("@houston/app/lib/space-cache", () => ({
 }));
 vi.mock("@houston/app/lib/tauri", () => ({
   tauriWorkspaces: { list: listWorkspaces },
-  tauriPreferences: { get: getPreference, set: setPreference },
+  tauriPreferences: {
+    get: getPreference,
+    set: setPreference,
+    resolveWorkspace: async (workspaces: Promise<unknown[]>) =>
+      (await workspaces)[0] ?? null,
+  },
 }));
 
 import { useWorkspaceStore } from "@houston/app/stores/workspaces";
@@ -61,11 +71,12 @@ const PERSONAL = {
 };
 
 beforeEach(() => {
+  track.mockReset();
   logAndReportError.mockReset();
   reportError.mockReset();
   listWorkspaces.mockReset();
   getPreference.mockReset().mockResolvedValue(null);
-  setPreference.mockReset();
+  setPreference.mockReset().mockResolvedValue(undefined);
   setActiveOrg.mockReset();
   useWorkspaceStore.setState({
     workspaces: [],

@@ -1,13 +1,10 @@
 import { migrateProviderModel } from "@houston/domain";
+import type { Workspace } from "@houston/sdk";
 import { TIMEZONE_PREFERENCE, type TimezoneSeedResult } from "@houston/sdk";
 import type { ProjectConfig } from "@houston/wire-types";
 import { emitLocalEcho } from "../bus";
 import * as controlPlane from "../control-plane";
-import {
-  DEFAULT_AGENT_ID,
-  DEFAULT_AGENT_NAME,
-  DEFAULT_WORKSPACE_ID,
-} from "../synthetic";
+import { DEFAULT_AGENT_ID, DEFAULT_AGENT_NAME } from "../synthetic";
 // The device layout lives in ONE module: the SDK reads the same keys through its
 // `devicePreferences` port, and a store that refuses still throws from there.
 import { clearLocalPref, readLocalPref, writeLocalPref } from "./device-prefs";
@@ -15,26 +12,7 @@ import type { BaseCtor } from "./mixin";
 import { viaSdk } from "./sdk-error";
 import { teamSlugFromWorkspaceId } from "./workspaces-mixin";
 
-/**
- * Preference keys that are ACCOUNT state, not device state. The engine acts on
- * them — the host scheduler fires routines in `timezone` (hosted mode stamps it
- * onto each agent's environment), `locale` backs the workspace wire shape, and
- * the migration flag must survive a reinstall — so they live behind the
- * host's `/v1/preferences/:key`, never in this browser's localStorage. A
- * device-local copy is invisible to the scheduler: routines then fire in the
- * host's zone while the UI renders the browser's, an hours-off "next run"
- * (HOU-732). Everything else (theme, last_agent_id, recent models, …) is
- * per-device UI state and stays local. `houston_onboarding_segment` and its
- * successor `houston_onboarding_survey` are here too: the industry / role /
- * automation-goal answers must survive across the user's devices, not re-ask
- * on every fresh install. Same for `onboarding_completed`
- * (PRODUCT-1282): sign-out purges every account-scoped localStorage key, so a
- * device-local copy dies with the session and the next sign-in re-onboarded a
- * returning user whose agent list read empty for a moment (warming pod). As an
- * account key it survives sign-out and follows the account to new devices.
- * `first_message_sent` is the same kind of account fact: the activation beat
- * fires once per account, so its armed/sent state must follow the account.
- */
+/** Account keys follow the person; the SDK owns workspace-device migration and ordering. */
 const ACCOUNT_PREF_KEYS = new Set([
   "timezone",
   "locale",
@@ -43,6 +21,7 @@ const ACCOUNT_PREF_KEYS = new Set([
   "houston_onboarding_survey",
   "onboarding_completed",
   "first_message_sent",
+  "last_workspace_id",
 ]);
 
 /** The raw diagnostic of a store that refused, for the two notes below. */
@@ -82,7 +61,21 @@ function dropLegacyLocalPref(key: string): void {
 
 export function ConfigPrefsMixin<TBase extends BaseCtor>(Base: TBase) {
   class ConfigPrefs extends Base {
+    resolveWorkspaceSelection<
+      T extends Pick<Workspace, "id" | "isDefault" | "kind">,
+    >(workspaces: readonly T[] | Promise<readonly T[]>): Promise<T | null> {
+      return this.ctx.sdk.preferences.resolveWorkspace(workspaces);
+    }
+    /** Mirror the displayed space without writing an account preference. */
+    rememberWorkspaceSelection(value: string | null): Promise<void> {
+      return this.ctx.sdk.preferences.rememberWorkspace(value);
+    }
     async getPreference(key: string): Promise<string | null> {
+      if (key === "last_workspace_id") {
+        return viaSdk(controlPlane.prefPath(key), () =>
+          this.ctx.sdk.preferences.get(key),
+        );
+      }
       if (ACCOUNT_PREF_KEYS.has(key)) {
         // The account-key READ is the SDK's too: the same `GET
         // /v1/preferences/:key` over the same shared gateway fetch, which carries
@@ -110,9 +103,7 @@ export function ConfigPrefsMixin<TBase extends BaseCtor>(Base: TBase) {
       }
       const stored = readLocalPref(key);
       if (stored !== null) return stored;
-      // Default to the synthetic ids so the shell auto-selects the workspace +
-      // agent on first load (otherwise no agent is current and the board is empty).
-      if (key === "last_workspace_id") return DEFAULT_WORKSPACE_ID;
+      // Auto-select the synthetic agent when no device choice exists.
       if (key === "last_agent_id") return DEFAULT_AGENT_ID;
       return null;
     }
@@ -123,11 +114,11 @@ export function ConfigPrefsMixin<TBase extends BaseCtor>(Base: TBase) {
       if (ACCOUNT_PREF_KEYS.has(key)) {
         // The account-key WRITE is the SDK's: its PreferencesClient issues the
         // identical `PUT /v1/preferences/:key` with body `{value}` over the SAME
-        // shared gateway fetch (bearer + `x-houston-org`), and — unlike the
+        // shared gateway fetch (bearer + the route's org scope), and — unlike the
         // agents/activities facades — does NOT refetch. The SDK echoes the
         // stored value; this caller discards it, so the observable request and
         // the `void` result match the control-plane helper byte for byte. PUTs
-        // never transient-retry in either path, so nothing is lost.
+        // only transient-retry for the idempotent workspace choice.
         await viaSdk(controlPlane.prefPath(key), () =>
           this.ctx.sdk.preferences.set(key, value),
         );

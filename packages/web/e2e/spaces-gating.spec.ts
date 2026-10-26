@@ -1,6 +1,7 @@
-import { FAKE_HOST_URL } from "@houston/fake-host";
+import { FAKE_HOST_URL, SEED_WORKSPACE_ID } from "@houston/fake-host";
 import type { APIRequestContext, Page } from "@playwright/test";
 import { expect, test } from "./support/fixtures";
+import { setAccountPreference } from "./support/onboarding";
 import {
   companyContextButton,
   expectAdminSections,
@@ -119,6 +120,8 @@ test("spaces host: switching to a team space gives Admin its People roster", asy
 }) => {
   await armCapabilities(request, SPACES_OWNER_CAPS);
   await armTeamWorkspace(request);
+  // Personal is the space this person last used, so the app opens there.
+  await setAccountPreference(request, "last_workspace_id", SEED_WORKSPACE_ID);
   await page.goto("/");
   await railPainted(page);
 

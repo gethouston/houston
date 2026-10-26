@@ -1,6 +1,7 @@
 /** Engine adapter bootstrap for the Houston desktop app. */
 
 import { EngineWebSocket, HoustonClient } from "@houston/engine-adapter";
+import type { WorkspacePreferenceReporter } from "@houston/sdk";
 import {
   appUpdateChannel,
   currentAppVersion,
@@ -151,6 +152,19 @@ const _ready: Promise<void> = new Promise((resolve) => {
 });
 /** Lazily-created shared WS instance. */
 let _ws: EngineWebSocket | null = null;
+/**
+ * Installed by the workspace store, the only caller of the workspace-selection
+ * calls that report through it. Importing the reporter here instead pulls the
+ * app's reporting graph (analytics, tauri, stores) into this module's
+ * evaluation, and `stores/agent-provisioning` calls `whenEngineReady()` at
+ * load, before `_ready` exists: vite dev's native ESM boot dies on it.
+ */
+let _preferenceErrorReporter: WorkspacePreferenceReporter | null = null;
+export function setPreferenceErrorReporter(
+  report: WorkspacePreferenceReporter,
+): void {
+  _preferenceErrorReporter = report;
+}
 function applyConfig(config: { baseUrl: string; token: string }) {
   const previousEnvironment = window.__HOUSTON_ENGINE__?.baseUrl;
   window.__HOUSTON_ENGINE__ = config;
@@ -162,7 +176,11 @@ function applyConfig(config: { baseUrl: string; token: string }) {
     // client's own retry/backoff bridges the restart gap (HOU-432).
     _client.setEndpoint(config);
   } else {
-    _client = new HoustonClient(config);
+    _client = new HoustonClient({
+      ...config,
+      onPreferenceError: (operation, error) =>
+        _preferenceErrorReporter?.(operation, error),
+    });
   }
   // Re-apply the recorded active space (C8) to the (re)built/repointed client:
   // a freshly-built client starts personal, so without this the current space

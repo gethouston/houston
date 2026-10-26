@@ -7,6 +7,7 @@
  * responses get read that way and executes the waiting.
  */
 
+import { assertRequestIdentity } from "@houston/sdk/auth-replay";
 import {
   classifyUnavailableBody,
   retryDelaysFor,
@@ -94,7 +95,8 @@ function sleep(ms: number, signal?: AbortSignal | null): Promise<void> {
  * handoff, or an engine pod that is still cold-starting: transient gateway
  * statuses and network-level drops are retried on the schedule their
  * {@link UnavailableReason} earns. Writes never blind-retry — a thrown network
- * error on a POST may have reached the gateway; the caller decides. The SDK
+ * error on a POST may have reached the gateway; the caller decides. The account
+ * workspace PUT is idempotent and uses this ladder within the SDK deadline. The SDK
  * owns the waking retry of the writes it may repeat (a first-day start, an
  * id-bearing board-card create), so a ladder here would stack under its own.
  * A read on a {@link CALLER_OWNED_RETRY_PATHS} path is the caller's to retry
@@ -109,7 +111,9 @@ export function transientRetryFetch(inner: typeof fetch): typeof fetch {
     const method = (init?.method ?? "GET").toUpperCase();
     const path = pathOf(input);
     const retriable =
-      (method === "GET" || method === "HEAD") &&
+      (method === "GET" ||
+        method === "HEAD" ||
+        (method === "PUT" && path === "/v1/preferences/last_workspace_id")) &&
       !(path !== null && CALLER_OWNED_RETRY_PATHS.has(path));
     const givenUp = () => init?.signal?.aborted === true;
     let res: Response | undefined;
@@ -117,6 +121,7 @@ export function transientRetryFetch(inner: typeof fetch): typeof fetch {
     for (let i = 0; ; i++) {
       failure = undefined;
       res = undefined;
+      assertRequestIdentity(init);
       try {
         res = await inner(input, init);
       } catch (err) {

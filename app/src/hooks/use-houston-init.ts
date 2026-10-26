@@ -28,19 +28,7 @@ export function useHoustonInit() {
       await loadConfigs();
       await loadWorkspaces();
 
-      const wsState = useWorkspaceStore.getState();
-      let currentWorkspace = wsState.current;
-      // Both restores read through `readBootPreference`: a device store that
-      // refuses the read answers "unset" and is reported, so boot continues into
-      // the resolved space with its agents instead of stopping on a convenience.
-      const lastWsId = await readBootPreference("last_workspace_id");
-      if (lastWsId) {
-        const saved = wsState.workspaces.find((w) => w.id === lastWsId);
-        if (saved) {
-          useWorkspaceStore.getState().setCurrent(saved);
-          currentWorkspace = saved;
-        }
-      }
+      const currentWorkspace = useWorkspaceStore.getState().current;
 
       // Read BEFORE loadAgents: its auto-selection of agents[0] runs the
       // same side effects a user selection does, which OVERWRITE this

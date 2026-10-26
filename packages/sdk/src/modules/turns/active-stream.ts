@@ -9,6 +9,8 @@ export interface ActiveStream {
   dispose: () => void;
   /** Last seen envelope seq — the observer→turn handoff cursor. */
   lastSeq?: number;
+  /** Agent progress for held sends, never a transport heartbeat or refusal. */
+  lastProgressAt?: number;
   /**
    * A turn whose send waits behind another turn or for room (`send-hold.ts`):
    * the queue watchdog never flushes over it.

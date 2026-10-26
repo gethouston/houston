@@ -97,6 +97,7 @@ export async function executeReadyTurn(input: {
               input.timings,
               input.startup,
             );
+            request.stopReason = () => input.heartbeat?.stopReason;
             // The card may postdate hydration: its title rebases the tree's
             // board onto a fresh store read (turn-mission-title-remote.ts).
             if (request.missionTitle)
@@ -153,6 +154,7 @@ export async function executeReadyTurn(input: {
       resolved: input.resolved,
       heartbeat: input.heartbeat,
       outcome,
+      timings: input.timings,
       transcript: input.transcript,
       ...(input.sandbox ? { views: input.sandbox.views() } : {}),
       ...(afterSync ? { afterSync } : {}),
@@ -169,6 +171,9 @@ export async function executeReadyTurn(input: {
   ]);
   input.timings.t_durable = performance.now();
   await reportPooledSettle(input, durable, input.mentionReport);
+  if (input.heartbeat?.stopReceivedAt !== undefined)
+    input.timings.t_stop_received = input.heartbeat.stopReceivedAt;
+  input.timings.t_terminal = performance.now();
   input.emit(
     durableTerminalFrame(
       durable,

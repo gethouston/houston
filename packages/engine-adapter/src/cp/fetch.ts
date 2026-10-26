@@ -119,9 +119,11 @@ export function gatewayAuthFetch(
       const accountScoped =
         path.startsWith("/v1/me/plan") ||
         path.startsWith("/v1/me/plus/") ||
-        path.startsWith("/v1/me/billing-choice");
+        path.startsWith("/v1/me/billing-choice") ||
+        path === "/v1/preferences/last_workspace_id";
       const org = accountScoped ? null : getOrg?.();
-      if (org) headers.set("x-houston-org", org);
+      if (accountScoped) headers.delete("x-houston-org");
+      else if (org) headers.set("x-houston-org", org);
       // Build identity: `<semver>+<channel>` on every gateway request, for
       // log/debug attribution (nothing server-side acts on it — the version
       // floor was retired, PRODUCT-1144). Read live off the desktop-installed

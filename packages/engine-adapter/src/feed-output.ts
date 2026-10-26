@@ -84,6 +84,7 @@ export function createBusFeedOutput(
         error,
         ...(detail?.errorClass ? { error_class: detail.errorClass } : {}),
         ...(detail?.origin ? { origin: detail.origin } : {}),
+        ...(detail?.stopReason ? { stop_reason: detail.stopReason } : {}),
       });
     },
     firstResponse(agentPath, sessionKey, response) {

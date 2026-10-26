@@ -3,6 +3,13 @@
 Every `version` bump in `inventory.yaml` needs a matching entry here (enforced by
 `pnpm check:parity`). Newest first. Use `## vN` headings.
 
+## v143 - 2026-10-25
+
+The system-message component renders the typed four-hour reply limit through
+its existing centered note, localized in English, Spanish and Portuguese. The
+reply asks the person to say continue. Graceful stops confirm saved progress;
+forced stops explain that the last steps could not be saved.
+
 ## v142 - 2026-10-23
 
 A new promo-ended modal (`promo-ended-modal`) tells the billing owner whose

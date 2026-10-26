@@ -6,6 +6,7 @@ import {
   ENGINE_RESUMED_MESSAGE,
   STOPPED_BY_USER,
 } from "./turn-errors";
+import { timeLimitNotice } from "./turn-notices";
 import {
   finishErr,
   finishOk,
@@ -81,6 +82,12 @@ export function adoptReply(
   // renders exactly what the live `done` frame we missed would have shown.
   // Guarded: persisted messages outlive code, and a reply written by an older
   // build carries a pre-step interaction shape that must not reach the VM.
+  const notice = timeLimitNotice(reply.stopReason);
+  if (notice) {
+    s.pendingInteraction = null;
+    finishOk(s, notice);
+    return;
+  }
   if (isPendingInteraction(reply.pendingInteraction))
     s.pendingInteraction = reply.pendingInteraction;
   finishOk(s);

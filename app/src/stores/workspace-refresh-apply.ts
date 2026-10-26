@@ -14,7 +14,7 @@ import type { SpacesRefreshPlan } from "../lib/workspace-refresh";
  * from a team) and a delete the user drove themselves (PRODUCT-1410).
  *
  * `reselect` (the active space is gone) re-pins exactly like `setCurrent`:
- * persists the landing space, re-points the gateway (`x-houston-org` + the
+ * re-points the gateway (`x-houston-org` + the
  * event stream's `?org=`) and drops the space-scoped query cache. Staying
  * pinned to a space the gateway now 403s/404s would strand every request.
  */
@@ -31,7 +31,7 @@ export function applyRefreshPlan(
     plan.workspaces.map((w) => w.id),
   );
   if (plan.kind === "reselect" && plan.current) {
-    tauriPreferences.set("last_workspace_id", plan.current.id);
+    void tauriPreferences.rememberWorkspace(plan.current.id);
     const orgChanged = setActiveOrg(orgSlugFromWorkspaceId(plan.current.id));
     resetCacheForSpaceChange(queryClient, orgChanged);
   }

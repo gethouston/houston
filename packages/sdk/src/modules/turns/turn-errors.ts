@@ -172,20 +172,18 @@ export const ENGINE_RESUMED_MESSAGE =
   "Your agent was interrupted by a restart and is picking up where it left off.";
 
 /**
- * WHY the engine or the SDK authored a system line, carried on the
- * `system_message` feed item beside its English default. A surface renders
- * its own copy by kind and never by matching the English text: the wording
- * is a default for surfaces without a dictionary, not a contract to compare
- * against. `send_busy`: a send held behind a running turn past its whole
- * budget (`turn-running.ts`). `compute_busy`: a send the cloud's shared
- * compute had no room for past its whole budget (`send-busy.ts`).
+ * Why a system line was authored, carried beside its English default.
+ * Surfaces localize by kind; the English text is only a default.
+ * Busy notices describe a send that exhausted its waiting budget.
  * `agent_too_large` / `agent_setup_failed`: a turn that failed before any
  * provider work; `turn_unconfirmed`: an accepted turn we never saw again
- * (`turn-notices.ts`).
+ * (`turn-notices.ts`). `turn_time_limit`: saved work at the reply ceiling.
  */
 export type EngineNoticeKind =
   | "engine_restart"
   | "engine_resumed"
+  | "turn_time_limit"
+  | "turn_time_limit_unsaved"
   | "send_busy"
   | "compute_busy"
   | "agent_too_large"
