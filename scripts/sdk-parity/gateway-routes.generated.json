@@ -658,6 +658,14 @@
     "reason": "the internal operator dashboard's server pulls it with the shared GW_METRICS_TOKEN bearer; no Houston principal is behind the call and the app never reads it"
   },
   {
+    "pattern": "/v1/metrics/tokens",
+    "methods": [
+      "GET"
+    ],
+    "classification": "infra",
+    "reason": "the internal Product dashboard's server pulls it with the shared GW_PEOPLE_TOKEN bearer on behalf of a staff viewer; no Houston principal is behind the call and the app never reads it"
+  },
+  {
     "pattern": "/v1/observability/e2b/sandboxes",
     "methods": [
       "GET"
