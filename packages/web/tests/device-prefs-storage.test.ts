@@ -35,7 +35,10 @@ vi.mock("../../../app/src/lib/tauri", () => ({
   },
   tauriWorkspaces: { list: appMocks.list },
 }));
-vi.mock("../../../app/src/lib/engine", () => ({ setActiveOrg: () => false }));
+vi.mock("../../../app/src/lib/engine", () => ({
+  setActiveOrg: () => false,
+  setPreferenceErrorReporter: () => {},
+}));
 vi.mock("../../../app/src/lib/analytics", () => ({
   analytics: { track: () => {} },
 }));

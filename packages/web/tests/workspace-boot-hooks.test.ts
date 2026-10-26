@@ -25,7 +25,10 @@ vi.mock("../../../app/src/lib/tauri", () => ({
   tauriWorkspaces: { list: mocks.list },
   tauriProvider: { getDefault: async () => null },
 }));
-vi.mock("../../../app/src/lib/engine", () => ({ setActiveOrg: () => false }));
+vi.mock("../../../app/src/lib/engine", () => ({
+  setActiveOrg: () => false,
+  setPreferenceErrorReporter: () => {},
+}));
 vi.mock("../../../app/src/lib/analytics", () => ({
   analytics: { track: mocks.track },
 }));

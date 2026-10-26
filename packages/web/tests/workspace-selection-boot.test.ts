@@ -11,7 +11,10 @@ const mocks = vi.hoisted(() => ({
 vi.mock("@houston/app/lib/error-report", () => ({
   logAndReportError: mocks.report,
 }));
-vi.mock("@houston/app/lib/engine", () => ({ setActiveOrg: mocks.pin }));
+vi.mock("@houston/app/lib/engine", () => ({
+  setActiveOrg: mocks.pin,
+  setPreferenceErrorReporter: () => {},
+}));
 vi.mock("@houston/app/lib/analytics", () => ({
   analytics: { track: mocks.track },
 }));

@@ -40,7 +40,10 @@ vi.mock("@houston/app/lib/error-report", () => ({
   logAndReportError,
   reportError,
 }));
-vi.mock("@houston/app/lib/engine", () => ({ setActiveOrg }));
+vi.mock("@houston/app/lib/engine", () => ({
+  setActiveOrg,
+  setPreferenceErrorReporter: () => {},
+}));
 vi.mock("@houston/app/lib/analytics", () => ({
   analytics: { track },
 }));
