@@ -36,7 +36,7 @@
 #   a11y     roles / labels / focus expectations the surface must honor
 #   since    inventory version this component first appeared in
 
-version: 143
+version: 144
 
 components:
   - id: agent-delegation-settings
@@ -2438,8 +2438,8 @@ components:
   - id: org-billing-tab
     title: Organization billing tab
     purpose: Show what an org costs and who pays, and let its billing owner upgrade or manage it.
-    anatomy: [plan-card, plan-title, seats-and-total, status-badge, seat-grace-line, lock-date, benefits, interval-choice, price-line, upgrade-button, manage-button, ask-owner-line, usage-card, usage-progress, reset-line]
-    states: [free, paid, paid-yearly, seat-grace, past-due, scheduled-lock, locked, checkout-open, checkout-succeeded, loading, unavailable]
+    anatomy: [plan-card, plan-title, seats-and-total, renewal-line, status-badge, seat-dots, seats-in-use-line, free-seat-help, seat-grace-line, lock-date, benefits, interval-choice, price-line, upgrade-button, manage-button, ask-owner-line, usage-card, usage-progress, reset-line]
+    states: [free, paid, paid-yearly, paid-yearly-free-seats, seat-grace, past-due, scheduled-lock, locked, checkout-open, checkout-succeeded, loading, unavailable]
     variants: [billing-owner, other-owner-or-admin, store-app, monthly-only, phone, desktop]
     behavior: >-
       Admin's Billing section on every cloud org, the Personal row included,
@@ -2461,11 +2461,48 @@ components:
       admins see the state and seats with a
       line telling them to ask the owner; plain members never reach it. A
       seat grace reads "$20 a month until <date>, then $60 a month" (a year
-      for a yearly org). Every figure comes from the wire. A free
-      org's weekly pool shows as a share of the week and its reset time,
+      for a yearly org). Under the header a paid org reads when it is next
+      billed: "Renews Mar 26, 2027" for yearly, "Next bill on Nov 26, 2026"
+      for monthly (SDK billingRenewal). A live yearly org counts its paid
+      seats (SDK seatUsageView): "3 paid seats, $540 a year" for the payer,
+      "3 paid seats" for everyone else; while a paid seat is unused (a
+      removed person's seat stays paid until renewal) a row of dots (filled
+      in use, hollow free) reads "2 in use, 1 free" with a line saying the
+      next person added takes a free seat at no charge. Every figure comes
+      from the wire. A free org's weekly pool shows as a share of the week and its reset time,
       never a message count. The store apps show no price and no button.
     a11y: Labeled progress, status text beside its color, and visible actions.
     since: 138
+
+  - id: org-seat-charge
+    title: Organization seat charge
+    purpose: Tell an owner what adding someone costs before it happens, and let the payer of a yearly org pay for a new seat.
+    anatomy: [seat-note, seat-note-dot, added-line, charge-dialog, charged-now-row, renewal-row, refusal-alert, manage-billing-button, retry-button, pay-button, remove-seat-note]
+    states: [no-note, yearly-full, yearly-free-seat, other-owner-blocked, other-owner-free-seat, monthly, asking, charging, declined, needs-confirmation, portal-opened, added-charged, added-free, added-monthly]
+    variants: [billing-owner, other-owner, store-app, phone, desktop]
+    behavior: >-
+      Lives in the People tab's Add someone row and its remove dialog, over
+      the SDK's quoteSeat, addOrgMember, seatNote, seatAddStep,
+      seatChargeView, seatAddedNote and seatRemoveNote. A note under the
+      form says what a new seat costs before anything is sent: every paid
+      seat in use (the price comes first), N free paid seats (no charge),
+      a monthly price from the next bill, or, for an owner who does not
+      pay, that only the payer can add a seat, with Add disabled. On a
+      full yearly org Add opens a dialog: "Charged now" with the amount
+      and "For the time left until your plan renews on <date>", then "At
+      renewal on <date>" with the yearly total for the seats, and a "Pay
+      $X and add" button that shows "Charging your card..." while it runs.
+      A declined card, or a bank that wants to confirm the payment, keeps
+      the dialog with nobody added and nothing charged, Manage billing
+      (the Stripe portal) and Try again. A changed quote shows the new
+      price. After an add the line under the form says what was charged,
+      that a free paid seat took them, or what the next monthly bill
+      covers. Removing someone from a yearly org says there is no refund
+      and the seat stays paid until renewal; on monthly it says the next
+      bill covers one seat fewer. The store apps name no price and send a
+      new paid seat to the web.
+    a11y: The dialog is an alertdialog titled by its question, the refusal is role=alert, the added line is aria-live polite, and every action is a visible button.
+    since: 144
 
   - id: org-plan-upgrade-row
     title: Org plan upgrade row

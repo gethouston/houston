@@ -37,6 +37,15 @@ const GATED_BY: Record<string, string> = {
     "components/organization/billing-plan-card.tsx",
   "components/organization/seat-interval-choice.tsx":
     "components/organization/billing-plan-card.tsx",
+  // The seat note, the charge dialog and the added line name a seat's price
+  // only from the seat flow, which never opens the dialog and drops the
+  // monthly price in the store apps.
+  "components/organization/people-add-done.tsx":
+    "components/organization/use-seat-add.ts",
+  "components/organization/people-seat-note.tsx":
+    "components/organization/use-seat-add.ts",
+  "components/organization/seat-charge-dialog.tsx":
+    "components/organization/use-seat-add.ts",
   // The pricing-change modal names prices only where the app sells.
   "components/shell/billing-change-copy.ts":
     "components/shell/billing-change-copy.ts",

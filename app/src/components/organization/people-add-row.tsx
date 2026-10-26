@@ -1,4 +1,5 @@
 import type { OrgRole } from "@houston/engine-adapter";
+import { seatAddBlocked } from "@houston/sdk";
 import {
   AsyncButton,
   ConfirmDialog,
@@ -11,13 +12,12 @@ import {
 } from "@houston-ai/core";
 import { useState } from "react";
 import { useTranslation } from "react-i18next";
-import { useAddMember } from "../../hooks/queries";
 import { GRANTABLE_ROLES } from "../../lib/org-roles";
-import {
-  type AddOutcome,
-  describeAddResult,
-  grantsOwner,
-} from "./people-tab-model";
+import { PeopleAddDone } from "./people-add-done";
+import { PeopleSeatNote } from "./people-seat-note";
+import { type AddOutcome, grantsOwner } from "./people-tab-model";
+import { SeatChargeDialog } from "./seat-charge-dialog";
+import { useSeatAdd } from "./use-seat-add";
 
 /**
  * The owner-only "Add someone" row on the People tab: email + role (Owner /
@@ -25,33 +25,35 @@ import {
  * `POST /org/members`. A known user is added directly; an unknown email becomes
  * a pending invite (`202`), and we confirm which happened inline. Adding
  * someone as OWNER (full org authority, billing included) is confirm-gated
- * before the request fires. Failures (already a member, another org) reach the
- * user as a toast from the `call()` wrapper, so no `onError` here.
+ * before the request fires. A note under the form says what a new seat costs
+ * (`useSeatAdd`): on a yearly org with every paid seat in use, the payer
+ * confirms the charge in a dialog first, and another owner cannot add at all.
+ * Unexpected failures (already a member, another org) reach the reporting
+ * paths through the `call()` wrapper, so no `onError` here.
  */
 export function PeopleAddRow() {
   const { t } = useTranslation("teams");
-  const addMember = useAddMember();
   const [email, setEmail] = useState("");
   const [role, setRole] = useState<OrgRole>("user");
   const [outcome, setOutcome] = useState<AddOutcome | null>(null);
   const [confirmOwner, setConfirmOwner] = useState(false);
+  const seat = useSeatAdd((done) => {
+    setOutcome(done);
+    setEmail("");
+    setRole("user");
+  });
+  const blocked =
+    seatAddBlocked(seat.quote) ||
+    (!seat.purchasable && seat.quote?.kind === "charge");
 
-  const send = async () => {
+  const send = () => {
     const value = email.trim();
-    if (!value || addMember.isPending) return;
-    try {
-      const result = await addMember.mutateAsync({ email: value, role });
-      setOutcome(describeAddResult(value, result));
-      setEmail("");
-      setRole("user");
-    } catch {
-      // call() already surfaced the reason (already a member, another org, ...);
-      // keep the typed email so the owner can fix and retry.
-    }
+    if (!value || seat.pending) return Promise.resolve();
+    return seat.start(value, role);
   };
 
   const submit = async () => {
-    if (!email.trim() || addMember.isPending) return;
+    if (!email.trim() || seat.pending || blocked) return;
     if (grantsOwner(role)) {
       setConfirmOwner(true);
       return;
@@ -65,7 +67,7 @@ export function PeopleAddRow() {
         {t("people.add.title")}
       </h2>
       <p className="mb-3 text-xs text-ink-muted">{t("people.add.subtitle")}</p>
-      <div className="flex flex-col gap-2 sm:flex-row sm:items-end">
+      <div className="flex flex-col gap-2 md:flex-row md:items-end">
         <div className="flex-1">
           <label
             htmlFor="org-add-email"
@@ -88,7 +90,7 @@ export function PeopleAddRow() {
             className="rounded-xl bg-card"
           />
         </div>
-        <div className="sm:w-44">
+        <div className="md:w-44">
           <label
             htmlFor="org-add-role"
             className="mb-1.5 block text-xs text-ink-muted"
@@ -109,8 +111,8 @@ export function PeopleAddRow() {
           </Select>
         </div>
         <AsyncButton
-          className="rounded-full"
-          disabled={!email.trim()}
+          className="self-start rounded-full md:self-auto"
+          disabled={!email.trim() || blocked}
           onClick={() => submit()}
         >
           {t("people.add.submit")}
@@ -119,12 +121,12 @@ export function PeopleAddRow() {
       <p className="mt-2 text-xs text-ink-muted">
         {t(`people.roleHelp.${role}`)}
       </p>
-      <p aria-live="polite" className="mt-2 min-h-4 text-xs text-success">
-        {outcome?.kind === "added" &&
-          t("people.add.added", { email: outcome.email })}
-        {outcome?.kind === "invited" &&
-          t("people.add.invited", { email: outcome.email })}
-      </p>
+      <PeopleSeatNote
+        quote={seat.quote}
+        billing={seat.billing}
+        purchasable={seat.purchasable}
+      />
+      <PeopleAddDone outcome={outcome} />
       <ConfirmDialog
         open={confirmOwner}
         onOpenChange={setConfirmOwner}
@@ -136,6 +138,13 @@ export function PeopleAddRow() {
           setConfirmOwner(false);
           void send();
         }}
+      />
+      <SeatChargeDialog
+        dialog={seat.dialog}
+        billing={seat.billing}
+        onPay={seat.pay}
+        onCancel={seat.cancel}
+        onPortalOpened={seat.portalOpened}
       />
     </section>
   );

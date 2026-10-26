@@ -259,7 +259,9 @@
       "untitledRoutine": "Rotina sem título",
       "paused": "Pausada",
       "confirm": "Remover",
-      "cancel": "Cancelar"
+      "cancel": "Cancelar",
+      "seatYear": "Este assento não é reembolsado. Ele continua pago até a renovação do seu plano em {{date}}, e você pode passá-lo para outra pessoa sem custo.",
+      "seatMonth": "Sua próxima fatura, em {{date}}, cobre um assento a menos."
     },
     "makeOwnerConfirm": {
       "title": "Tornar {{name}} proprietário?",
@@ -269,6 +271,39 @@
     "lastOwner": {
       "title": "A organização precisa de um proprietário",
       "body": "Você não pode remover nem rebaixar o único proprietário. Primeiro torne outra pessoa proprietária."
+    },
+    "seat": {
+      "yearFull": "Todos os assentos pagos estão em uso. Adicionar alguém soma um assento, e você vê o preço antes de qualquer cobrança.",
+      "yearFree_one": "1 assento pago está livre. Adicionar alguém usa um assento que você já pagou, então não há cobrança.",
+      "yearFree_other": "{{count}} assentos pagos estão livres. Adicionar alguém usa um assento que você já pagou, então não há cobrança.",
+      "month": "Cada pessoa que você adicionar custa {{price}} por mês, a partir da sua próxima fatura em {{date}}.",
+      "otherFull": "Todos os assentos pagos estão em uso, e somente o proprietário que paga por esta organização pode adicionar um. Peça a esse proprietário para adicionar esta pessoa.",
+      "otherFree_one": "1 assento pago está livre. Adicionar alguém usa esse assento, então não há cobrança.",
+      "otherFree_other": "{{count}} assentos pagos estão livres. Adicionar alguém usa um deles, então não há cobrança.",
+      "doneCharged": "Cobramos {{amount}} no seu cartão pelo assento dessa pessoa.",
+      "doneFree": "Ela usa um assento que você já pagou. Sem cobrança.",
+      "doneFreeOther": "Ela usa um assento pago que estava livre. Sem cobrança.",
+      "doneMonth_one": "Sua próxima fatura, em {{date}}, cobre {{count}} assento.",
+      "doneMonth_other": "Sua próxima fatura, em {{date}}, cobre {{count}} assentos."
+    },
+    "seatCharge": {
+      "title": "Adicionar um assento para {{email}}?",
+      "lead": "Todos os assentos pagos estão em uso, então para adicionar esta pessoa você precisa de mais um.",
+      "nowLabel": "Cobrado agora",
+      "nowDetail": "Pelo tempo que falta até a renovação do seu plano em {{date}}. Cobrado no cartão cadastrado.",
+      "renewLabel": "Na renovação, em {{date}}",
+      "renewValue": "{{total}} por ano",
+      "renewDetail_one": "Por {{count}} assento. Você paga pelos assentos em uso nesse dia.",
+      "renewDetail_other": "Por {{count}} assentos. Você paga pelos assentos em uso nesse dia.",
+      "confirm": "Pagar {{amount}} e adicionar",
+      "paying": "Cobrando no seu cartão...",
+      "cancel": "Cancelar",
+      "declinedTitle": "Seu cartão foi recusado",
+      "declinedBody": "Não adicionamos {{email}} e nada foi cobrado. Atualize seu cartão em Gerenciar cobrança e tente de novo.",
+      "confirmTitle": "Seu banco quer confirmar este pagamento",
+      "confirmBody": "Não adicionamos {{email}} e nada foi cobrado. Seu banco quer confirmar o pagamento, então atualize seu cartão em Gerenciar cobrança e tente de novo.",
+      "portalOpened": "Abrimos o portal de cobrança no seu navegador. Volte aqui quando seu cartão estiver atualizado.",
+      "retry": "Tentar de novo"
     }
   },
   "activityTab": {
@@ -490,7 +525,17 @@
     "usageShared": "Todos nesta organização compartilham. É renovado {{time}}.",
     "usageSharedNoTime": "Todos nesta organização compartilham. É renovado ainda nesta semana.",
     "freeSummary_one": "{{count}} membro, com um uso semanal",
-    "freeSummary_other": "{{count}} membros compartilham um uso semanal"
+    "freeSummary_other": "{{count}} membros compartilham um uso semanal",
+    "paidSeatsYear_one": "{{count}} assento pago, {{total}} por ano",
+    "paidSeatsYear_other": "{{count}} assentos pagos, {{total}} por ano",
+    "paidSeats_one": "{{count}} assento pago",
+    "paidSeats_other": "{{count}} assentos pagos",
+    "renews": "Renova em {{date}}",
+    "nextBill": "Próxima fatura em {{date}}",
+    "inUse_one": "{{used}} em uso, {{count}} livre",
+    "inUse_other": "{{used}} em uso, {{count}} livres",
+    "freeHelp": "A próxima pessoa que você adicionar usa um assento livre sem custo. Na renovação, você paga só pelos assentos em uso nesse dia.",
+    "freeHelpOther": "A próxima pessoa adicionada usa um assento livre sem custo."
   },
   "degrade": {
     "writeBlockedTitle": "Esta organização está bloqueada",

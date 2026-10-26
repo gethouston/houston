@@ -3,6 +3,19 @@
 Every `version` bump in `inventory.yaml` needs a matching entry here (enforced by
 `pnpm check:parity`). Newest first. Use `## vN` headings.
 
+## v144 - 2026-10-26
+
+A new organization seat charge (`org-seat-charge`) tells an owner what adding
+someone costs before it happens. On a yearly organization with every paid seat
+in use, the person who pays confirms "Pay $75 and add" in a dialog that shows
+the charge now (for the time left until renewal) and the yearly total at
+renewal; a declined card or a bank check adds nobody and offers Manage billing
+and Try again. A free paid seat is taken at no charge, another owner is told
+only the payer can add a seat, and removing someone from a yearly
+organization says the seat stays paid until renewal with no refund. The
+organization billing tab (`org-billing-tab`) now reads the renewal or next
+bill date, and a yearly organization's paid seats against the seats in use.
+
 ## v143 - 2026-10-25
 
 The system-message component renders the typed four-hour reply limit through

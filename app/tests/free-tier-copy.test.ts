@@ -36,6 +36,9 @@ const OTHER_SENSE = [
   /^chat:contextCompactedManual$/,
   /^agents:.*saveDiskFull$/,
   /^shell:.*gettingReadyBody$/,
+  // A paid seat nobody uses: it costs nothing more, it is not the free tier.
+  /^teams:people\.seat\.(yearFree|otherFree|doneFreeOther)/,
+  /^teams:billing\.(inUse|freeHelp)/,
 ];
 
 describe("plan copy", () => {

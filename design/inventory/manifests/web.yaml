@@ -13,7 +13,7 @@
 
 surface: web
 enforced: true
-inventoryVersion: 143
+inventoryVersion: 144
 
 components:
   manager-avatar:
@@ -352,7 +352,11 @@ components:
     notes: The plan dialogs render in app and are not extracted as reusable ui components.
   org-billing-tab:
     status: partial
-    ref: "app/src/components/organization/billing-tab.tsx (billing-plan-card.tsx, billing-plan-action.tsx, billing-usage-card.tsx over billing-tab-model.ts), checkout via hooks/queries/use-org-checkout.ts over SDK BillingCheckoutTracker"
+    ref: "app/src/components/organization/billing-tab.tsx (billing-plan-card.tsx, billing-plan-action.tsx, billing-seat-usage.tsx, billing-usage-card.tsx over billing-tab-model.ts), checkout via hooks/queries/use-org-checkout.ts over SDK BillingCheckoutTracker"
+    notes: Renders in app and is not extracted as a reusable ui component.
+  org-seat-charge:
+    status: partial
+    ref: "app/src/components/organization/people-add-row.tsx (people-seat-note.tsx, people-add-done.tsx, seat-charge-dialog.tsx with seat-charge-refusal.tsx, flow in use-seat-add.ts over the pure people-seat-flow.ts) and people-remove-confirm.tsx, over SDK quoteSeat, addOrgMember and seat-view"
     notes: Renders in app and is not extracted as a reusable ui component.
 
   org-plan-upgrade-row:

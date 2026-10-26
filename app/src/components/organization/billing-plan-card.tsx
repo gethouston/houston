@@ -1,13 +1,16 @@
 import type { OrgBilling } from "@houston/engine-adapter";
 import {
+  billingRenewal,
   formatLocalDate,
   formatPlanAmount,
   orgBillingPrice,
+  seatUsageView,
 } from "@houston/sdk";
 import { Card, StatusBadge, type StatusKind } from "@houston-ai/core";
 import { useTranslation } from "react-i18next";
 import { canPurchaseInApp } from "../../lib/purchase-policy.ts";
 import { BillingPlanAction } from "./billing-plan-action.tsx";
+import { BillingSeatUsage } from "./billing-seat-usage.tsx";
 import {
   BILLING_CURRENCY,
   type BillingTabStatus,
@@ -25,8 +28,10 @@ const BADGE: Record<BillingTabStatus, StatusKind | null> = {
 
 /**
  * The org's plan: Free or Paid, its seats and what they bill per the
- * subscription's interval (a month or a year), a seat grace's two prices, a
- * scheduled lock, and the one action the caller has.
+ * subscription's interval (a month or a year), when it renews or next bills,
+ * a seat grace's two prices, a scheduled lock, and the one action the caller
+ * has. A live yearly org counts its paid seats (priced for the payer alone)
+ * and, while some are free, how many are in use.
  */
 export function BillingPlanCard({
   billing,
@@ -53,6 +58,8 @@ export function BillingPlanCard({
   const price = orgBillingPrice(billing, now);
   const priced = purchasable && price.kind === "priced" ? price : null;
   const yearly = priced?.interval === "year";
+  const usage = seatUsageView(billing);
+  const renewal = billingRenewal(billing);
   return (
     <Card className="gap-4 px-5 py-5 md:px-6" data-testid="billing-plan">
       <div className="flex items-start justify-between gap-3">
@@ -63,13 +70,33 @@ export function BillingPlanCard({
           <p className="text-sm text-ink-muted tabular-nums">
             {!paid
               ? t("billing.freeSummary", { count: seats })
-              : priced && priced.today === null
-                ? t(yearly ? "billing.seatsTotalYear" : "billing.seatsTotal", {
-                    count: seats,
-                    total: money(priced.total),
-                  })
-                : t("billing.seats", { count: seats })}
+              : usage
+                ? billing.isBillingOwner && priced && priced.today === null
+                  ? t("billing.paidSeatsYear", {
+                      count: usage.paidSeats,
+                      total: money(priced.total),
+                    })
+                  : t("billing.paidSeats", { count: usage.paidSeats })
+                : priced && priced.today === null
+                  ? t(
+                      yearly ? "billing.seatsTotalYear" : "billing.seatsTotal",
+                      {
+                        count: seats,
+                        total: money(priced.total),
+                      },
+                    )
+                  : t("billing.seats", { count: seats })}
           </p>
+          {renewal && (
+            <p className="text-sm text-ink-muted tabular-nums">
+              {t(
+                renewal.kind === "renews"
+                  ? "billing.renews"
+                  : "billing.nextBill",
+                { date: day(renewal.at) },
+              )}
+            </p>
+          )}
         </div>
         {badge && (
           <StatusBadge
@@ -87,6 +114,9 @@ export function BillingPlanCard({
             total: money(priced.total),
           })}
         </p>
+      )}
+      {usage && (
+        <BillingSeatUsage usage={usage} pays={billing.isBillingOwner} />
       )}
       {lockAt && (
         <p className="text-sm text-warning-ink">

@@ -259,7 +259,9 @@
       "untitledRoutine": "Untitled routine",
       "paused": "Paused",
       "confirm": "Remove",
-      "cancel": "Cancel"
+      "cancel": "Cancel",
+      "seatYear": "No refund for this seat. It stays paid until your plan renews on {{date}}, and you can give it to someone else at no charge.",
+      "seatMonth": "Your next bill, on {{date}}, covers one seat fewer."
     },
     "makeOwnerConfirm": {
       "title": "Make {{name}} an owner?",
@@ -269,6 +271,39 @@
     "lastOwner": {
       "title": "The organization needs an owner",
       "body": "You can't remove or demote the only owner. Make someone else an owner first."
+    },
+    "seat": {
+      "yearFull": "Every paid seat is in use. Adding someone adds a seat, and you'll see the price before anything is charged.",
+      "yearFree_one": "1 paid seat is free. Adding someone uses a seat you already paid for, so there's no charge.",
+      "yearFree_other": "{{count}} paid seats are free. Adding someone uses a seat you already paid for, so there's no charge.",
+      "month": "Each person you add costs {{price}} a month, starting with your next bill on {{date}}.",
+      "otherFull": "Every paid seat is in use, and only the owner who pays for this organization can add one. Ask that owner to add this person.",
+      "otherFree_one": "1 paid seat is free. Adding someone uses it, so there's no charge.",
+      "otherFree_other": "{{count}} paid seats are free. Adding someone uses one, so there's no charge.",
+      "doneCharged": "We charged {{amount}} to your card for their seat.",
+      "doneFree": "They use a seat you already paid for. No charge.",
+      "doneFreeOther": "They use a paid seat that was free. No charge.",
+      "doneMonth_one": "Your next bill, on {{date}}, covers {{count}} seat.",
+      "doneMonth_other": "Your next bill, on {{date}}, covers {{count}} seats."
+    },
+    "seatCharge": {
+      "title": "Add a seat for {{email}}?",
+      "lead": "Every paid seat is in use, so adding this person needs one more.",
+      "nowLabel": "Charged now",
+      "nowDetail": "For the time left until your plan renews on {{date}}. Charged to your card on file.",
+      "renewLabel": "At renewal on {{date}}",
+      "renewValue": "{{total}} a year",
+      "renewDetail_one": "For {{count}} seat. You pay for the seats in use on that day.",
+      "renewDetail_other": "For {{count}} seats. You pay for the seats in use on that day.",
+      "confirm": "Pay {{amount}} and add",
+      "paying": "Charging your card...",
+      "cancel": "Cancel",
+      "declinedTitle": "Your card was declined",
+      "declinedBody": "We didn't add {{email}}, and nothing was charged. Update your card in Manage billing, then try again.",
+      "confirmTitle": "Your bank wants to confirm this payment",
+      "confirmBody": "We didn't add {{email}}, and nothing was charged. Your bank wants to confirm the payment, so update your card in Manage billing, then try again.",
+      "portalOpened": "We opened the billing portal in your browser. Come back here once your card is updated.",
+      "retry": "Try again"
     }
   },
   "activityTab": {
@@ -490,7 +525,17 @@
     "usageShared": "Everyone in this organization shares it. Resets {{time}}.",
     "usageSharedNoTime": "Everyone in this organization shares it. Resets later this week.",
     "freeSummary_one": "{{count}} member, with one weekly allowance",
-    "freeSummary_other": "{{count}} members share one weekly allowance"
+    "freeSummary_other": "{{count}} members share one weekly allowance",
+    "paidSeatsYear_one": "{{count}} paid seat, {{total}} a year",
+    "paidSeatsYear_other": "{{count}} paid seats, {{total}} a year",
+    "paidSeats_one": "{{count}} paid seat",
+    "paidSeats_other": "{{count}} paid seats",
+    "renews": "Renews {{date}}",
+    "nextBill": "Next bill on {{date}}",
+    "inUse_one": "{{used}} in use, {{count}} free",
+    "inUse_other": "{{used}} in use, {{count}} free",
+    "freeHelp": "The next person you add takes a free seat at no charge. At renewal you pay only for the seats in use that day.",
+    "freeHelpOther": "The next person added takes a free seat at no charge."
   },
   "degrade": {
     "writeBlockedTitle": "This organization is locked",
