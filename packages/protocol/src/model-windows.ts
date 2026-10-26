@@ -51,8 +51,8 @@ interface WindowOverride {
  *   once observed usage proves it (`effectiveModelWindow`), so a row without
  *   the variant loses nothing, while a served row WITHOUT the ceiling pins the
  *   bar at 100% and compacts at 258k on a chat the provider would carry on.
- *   gpt-6.1-sol has no row: pi reports a 500k window for it, and no `/status`
- *   reading backs a different number yet.
+ *   gpt-6.1-sol and gpt-6.1-terra have no rows: pi reports a 500k window for
+ *   them, and no `/status` reading backs a different number yet.
  *
  * `anthropic` carries no row: its lineup (Sonnet 5.5, Opus 5.5, Fable 5.1,
  * Haiku 5.5) runs a native 1M window on every plan, Pro included, with no

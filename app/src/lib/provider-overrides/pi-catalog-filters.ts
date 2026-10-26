@@ -70,6 +70,7 @@ export const VISIBLE_MODELS: Readonly<Record<string, ReadonlySet<string>>> = {
   // dead turn.
   openai: new Set([
     "gpt-6-luna",
+    "gpt-6.1-terra",
     "gpt-6-sol",
     "gpt-6.1-sol",
     "gpt-6-astra",

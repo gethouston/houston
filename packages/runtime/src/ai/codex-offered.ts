@@ -26,6 +26,9 @@
  *   refused — gpt-5.5 (400 "… not supported when using Codex with a ChatGPT
  *             account"), which pi 1.4.0 dropped for the same reason
  *
+ * Re-probed 2026-10-26, same method:
+ *   served  — gpt-6.1-terra (200 `response.created`, efforts none/low/max)
+ *
  * pi 1.4.0 ships neither refused id, so the set below filters nothing today. It
  * stays because pi has carried refused rows before, and a stored pin on either
  * id must still fail as `model_unavailable` with a served switch target.

@@ -79,6 +79,7 @@ export const SAMPLE_CATALOG: ProviderCatalog = [
       // Non-vision fixture entry (`leaves a non-vision model without the image
       // modality` reads this one).
       reasoningModel("gpt-5.6-luna", { contextWindow: 372_000 }),
+      reasoningModel("gpt-6.1-terra", { contextWindow: 500_000 }),
       reasoningModel("gpt-6.1-sol", { contextWindow: 500_000 }),
       // NOT in VISIBLE_MODELS.openai — the curated set hides them from the
       // picker AND the hub. The Codex backend REFUSES gpt-5.5,

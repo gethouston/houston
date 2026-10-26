@@ -265,6 +265,7 @@
     },
     "modelDescriptions": {
       "gpt-6-luna": "La opción predeterminada. El GPT-6 más liviano para tu cuota.",
+      "gpt-6_1-terra": "El GPT-6 equilibrado más nuevo. Más profundidad que Luna, consume tu cuota la mitad de rápido que Sol.",
       "gpt-6-sol": "Nivel medio de GPT-6. Más profundidad que Luna para trabajo difícil.",
       "gpt-6_1-sol": "El Sol más nuevo. Mismo nivel que GPT-6 Sol, maneja conversaciones más largas.",
       "gpt-6-astra": "El GPT-6 más capaz. Consume tu cuota 5 veces más rápido que Sol.",

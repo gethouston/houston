@@ -32,10 +32,11 @@ test("the codex codenames a user speaks resolve to their ids", () => {
   const cases: Record<string, string> = {
     Astra: "gpt-6-astra",
     astra: "gpt-6-astra",
-    Terra: "gpt-5.6-terra",
+    "GPT-5.6 Terra": "gpt-5.6-terra",
     "GPT-5.6 Luna": "gpt-5.6-luna",
     "GPT-5.6 Sol": "gpt-5.6-sol",
     "GPT-6 Luna": "gpt-6-luna",
+    "GPT-6.1 Terra": "gpt-6.1-terra",
     "GPT-6.1 Sol": "gpt-6.1-sol",
   };
   for (const [spoken, id] of Object.entries(cases)) {
@@ -77,7 +78,7 @@ test("a bare family name lands on that family's one lineup model", () => {
     ambiguous: false,
   });
   // Codex codenames repeat across generations: a bare "Sol" or "Luna" lands on
-  // the newest row and says so, while "Astra" and "Terra" name one row each.
+  // the newest row and says so, while "Astra" names one row.
   expect(resolveSpokenModel("openai-codex", "Sol")).toEqual({
     id: "gpt-6.1-sol",
     name: "GPT-6.1 Sol",
@@ -86,6 +87,11 @@ test("a bare family name lands on that family's one lineup model", () => {
   expect(resolveSpokenModel("openai-codex", "luna")).toEqual({
     id: "gpt-6-luna",
     name: "GPT-6 Luna",
+    ambiguous: true,
+  });
+  expect(resolveSpokenModel("openai-codex", "Terra")).toEqual({
+    id: "gpt-6.1-terra",
+    name: "GPT-6.1 Terra",
     ambiguous: true,
   });
   expect(resolveSpokenModel("openai-codex", "Astra")?.ambiguous).toBe(false);

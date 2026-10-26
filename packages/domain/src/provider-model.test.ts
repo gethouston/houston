@@ -43,6 +43,7 @@ const PI_MODELS: Record<string, Set<string>> = {
     "gpt-5.6-terra",
     "gpt-6-astra",
     "gpt-6-luna",
+    "gpt-6.1-terra",
     "gpt-6-sol",
     "gpt-6.1-sol",
   ]),

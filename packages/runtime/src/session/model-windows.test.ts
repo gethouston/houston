@@ -94,9 +94,10 @@ test("MODEL_WINDOW_OVERRIDES: every served Codex row reads the 95%-effective win
       max: 950_000,
     });
   }
-  // pi reports 500,000 for gpt-6.1-sol, and no `/status` reading backs another
-  // number, so pi's window stands.
-  expect(MODEL_WINDOW_OVERRIDES["openai-codex"]["gpt-6.1-sol"]).toBeUndefined();
+  // pi reports 500,000 for both GPT-6.1 rows, and no `/status` reading backs
+  // another number, so pi's windows stand.
+  for (const id of ["gpt-6.1-terra", "gpt-6.1-sol"])
+    expect(MODEL_WINDOW_OVERRIDES["openai-codex"][id]).toBeUndefined();
 });
 
 test("effectiveModelWindow: the Codex default divides by its effective window", () => {

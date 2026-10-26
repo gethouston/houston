@@ -1,3 +1,4 @@
+import { getSupportedThinkingLevels } from "@earendil-works/pi-ai";
 import { getModel } from "@earendil-works/pi-ai/compat";
 import { expect, test } from "vitest";
 import { piModelIds } from "./pi-catalog";
@@ -11,7 +12,7 @@ type ModelId = Parameters<typeof getModel>[1];
  * Houston's own tables promise from the runnable set.
  */
 test("the GPT-6 line is in pi's openai-codex catalog", () => {
-  for (const id of ["gpt-6-luna", "gpt-6-sol", "gpt-6-astra"])
+  for (const id of ["gpt-6-luna", "gpt-6.1-terra", "gpt-6-sol", "gpt-6-astra"])
     expect(piModelIds("openai-codex")).toContain(id);
 });
 
@@ -39,6 +40,33 @@ test("GPT-6 Luna carries the Codex default's shape", () => {
       cacheWrite: 0.25,
     },
   ]);
+});
+
+test("GPT-6.1 Terra carries the Codex subscription shape", () => {
+  const m = getModel("openai-codex", "gpt-6.1-terra" as ModelId);
+  expect(m).toBeDefined();
+  expect(m?.id).toBe("gpt-6.1-terra");
+  expect(m?.name).toBe("GPT-6.1 Terra");
+  expect(m?.contextWindow).toBe(500_000);
+  expect(m?.maxTokens).toBe(128_000);
+  expect(m?.reasoning).toBe(true);
+  expect(m?.input).toEqual(["text", "image"]);
+  expect(m?.cost).toMatchObject({
+    input: 1,
+    output: 5,
+    cacheRead: 0.05,
+    cacheWrite: 1.25,
+  });
+  expect(m?.cost.tiers).toEqual([
+    {
+      inputTokensAbove: 272_000,
+      input: 2,
+      output: 7.5,
+      cacheRead: 0.1,
+      cacheWrite: 2.5,
+    },
+  ]);
+  expect(m && getSupportedThinkingLevels(m)).toContain("off");
 });
 
 test("GPT-6 Astra is in pi's openai-codex catalog", () => {

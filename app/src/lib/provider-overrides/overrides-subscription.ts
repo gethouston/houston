@@ -15,6 +15,10 @@ export const SUBSCRIPTION_OVERRIDES: Record<string, ProviderOverride> = {
       "gpt-6-luna": {
         description: "The default pick. The lightest GPT-6 on your allowance.",
       },
+      "gpt-6.1-terra": {
+        description:
+          "Newest balanced GPT-6. More depth than Luna, uses your allowance half as fast as Sol.",
+      },
       "gpt-6-sol": {
         description: "Mid GPT-6 tier. More depth than Luna for harder work.",
       },

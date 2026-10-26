@@ -1,5 +1,8 @@
+import { getModel } from "@earendil-works/pi-ai/compat";
 import { expect, test } from "vitest";
 import { buildProviderCatalog } from "./pi-catalog";
+
+type ModelId = Parameters<typeof getModel>[1];
 
 /**
  * The GPT-6 line ships natively in pi-ai's baked OpenAI catalogs. Luna is the
@@ -10,7 +13,7 @@ import { buildProviderCatalog } from "./pi-catalog";
 test("GET /v1/catalog advertises the GPT-6 line under openai-codex", () => {
   const codex = buildProviderCatalog().find((p) => p.id === "openai-codex");
   expect(codex).toBeDefined();
-  for (const id of ["gpt-6-luna", "gpt-6-sol", "gpt-6-astra"])
+  for (const id of ["gpt-6-luna", "gpt-6.1-terra", "gpt-6-sol", "gpt-6-astra"])
     expect(
       codex?.models.map((m) => m.id),
       id,
@@ -32,6 +35,36 @@ test("GET /v1/catalog advertises the GPT-6 line under openai-codex", () => {
   // all the way off — Astra below has no such row.
   expect(luna?.thinkingLevels).toContain("off");
   expect(luna?.thinkingLevels).toContain("max");
+});
+
+test("GET /v1/catalog advertises GPT-6.1 Terra's Codex shape", () => {
+  const codex = buildProviderCatalog().find((p) => p.id === "openai-codex");
+  const terra = codex?.models.find((m) => m.id === "gpt-6.1-terra");
+  const raw = getModel("openai-codex", "gpt-6.1-terra" as ModelId);
+
+  expect(terra).toBeDefined();
+  expect(terra?.id).toBe("gpt-6.1-terra");
+  expect(terra?.name).toBe("GPT-6.1 Terra");
+  expect(terra?.contextWindow).toBe(500_000);
+  expect(terra?.maxTokens).toBe(128_000);
+  expect(terra?.reasoning).toBe(true);
+  expect(terra?.vision).toBe(true);
+  expect(terra?.pricing).toMatchObject({
+    input: 1,
+    output: 5,
+    cacheRead: 0.05,
+    cacheWrite: 1.25,
+  });
+  expect(raw?.cost.tiers).toEqual([
+    {
+      inputTokensAbove: 272_000,
+      input: 2,
+      output: 7.5,
+      cacheRead: 0.1,
+      cacheWrite: 2.5,
+    },
+  ]);
+  expect(terra?.thinkingLevels).toContain("off");
 });
 
 test("GET /v1/catalog advertises GPT-6 Astra under openai-codex", () => {
