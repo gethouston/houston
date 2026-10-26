@@ -73,6 +73,7 @@ export const OPERATION_POLICY_FLOOR: Readonly<Record<string, OperationPolicy>> =
   addAgentCustomIntegration: { group: "integrations", confirm: true, hidden: false, route: "POST /agents/{agentSlugOrId}/integrations/custom/definitions", rawResponse: true },
   addCustomIntegration: { group: "integrations", confirm: true, hidden: false, route: "POST /v1/integrations/custom/definitions", rawResponse: true },
   addOrgMember: { group: "org", confirm: true, hidden: false, route: "POST /v1/org/members", rawResponse: true },
+  quoteSeat: { group: "org", confirm: false, hidden: false, route: "POST /v1/org/members/quote", rawResponse: true },
   agentCustomIntegrations: { group: "integrations", confirm: false, hidden: false, route: "GET /agents/{agentSlugOrId}/integrations/custom/definitions", rawResponse: true },
   agentCustomIntegrationTools: { group: "integrations", confirm: false, hidden: false, route: "GET /agents/{agentSlugOrId}/integrations/custom/definitions/{slug}/tools", rawResponse: true },
   agentTriggerStatus: { group: "routines", confirm: false, hidden: false, route: "GET /v1/agents/{agentSlugOrId}/trigger-status", rawResponse: true },

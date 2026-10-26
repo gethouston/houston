@@ -41,6 +41,7 @@ export const CLOUD_ONLY_PROBES: readonly CloudOnlyProbe[] = [
     email: "probe@example.com",
     role: "user",
   }),
+  cloudOnly("quoteSeat", SPACES),
   cloudOnly("setOrgMemberRole", SPACES, { ...NO_USER, role: "user" }),
   cloudOnly("removeOrgMember", SPACES, NO_USER),
   cloudOnly("listMemberRoutines", SPACES, NO_USER),
