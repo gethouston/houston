@@ -122,6 +122,18 @@ describe("promoEndedView", () => {
     });
   });
 
+  it("prices the switch for members plus pending invites", () => {
+    expect(
+      promoEndedView(
+        paidOrgBilling({
+          interval: "month",
+          priceNotice: NOTICE,
+          seatsInUse: 5,
+        }),
+      )?.seats,
+    ).toBe(5);
+  });
+
   it("is null for anyone else, a free org, or no notice", () => {
     expect(
       promoEndedView(

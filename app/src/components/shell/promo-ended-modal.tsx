@@ -37,7 +37,9 @@ function yearlyNext(
 ): { totalCents: number; at: string } {
   if (billing?.renewsAt && billing.seatPriceCents !== null)
     return {
-      totalCents: billing.seatPriceCents * Math.max(1, billing.seats),
+      totalCents:
+        billing.seatPriceCents *
+        Math.max(1, billing.seatsInUse ?? billing.seats),
       at: billing.renewsAt,
     };
   return {

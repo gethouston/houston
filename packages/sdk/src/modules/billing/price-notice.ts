@@ -107,7 +107,8 @@ export function promoEndedView(
     previousCents: notice.previousCents,
     nextCents: notice.nextCents,
     renewsAt: notice.renewsAt,
-    seats: Math.max(1, billing.seats),
+    // The switch to yearly charges members plus pending invites.
+    seats: Math.max(1, billing.seatsInUse ?? billing.seats),
     prices: billing.seatPrices,
   };
 }
