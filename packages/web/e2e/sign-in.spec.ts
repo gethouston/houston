@@ -10,7 +10,7 @@
  * has node:test coverage in app/tests/identity-*.test.ts and cannot be driven in
  * a browser, so here the OAuth buttons are only asserted-rendered, never clicked.
  * The passwordless email-OTP path IS fully in-app, so it's driven end to end
- * against a MOCKED gateway (identity/otp.ts contract):
+ * against a MOCKED gateway (the `@houston/sdk` identity module contract):
  *   POST /v1/auth/email-otp/start  → 204
  *   POST /v1/auth/email-otp/verify → 200 {customToken} | 401 (invalid) | 429 (rate)
  */

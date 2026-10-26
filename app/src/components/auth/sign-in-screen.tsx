@@ -1,48 +1,41 @@
 import { HoustonHelmet } from "@houston-ai/core";
-import { useEffect, useMemo, useState } from "react";
+import { useMemo, useState } from "react";
 import { useTranslation } from "react-i18next";
-import {
-  cancelPendingAuthorize,
-  onAuthError,
-  signInWithApple,
-  signInWithGoogle,
-  signInWithMicrosoft,
-} from "../../lib/auth";
+import { useAccountLink } from "../../hooks/use-account-link";
 import { describeLastSignIn, readLastSignIn } from "../../lib/last-sign-in";
-import { logger } from "../../lib/logger";
 import { canPurchaseInApp } from "../../lib/purchase-policy";
 import { FirstRunScreen } from "../onboarding/first-run-screen";
-import { authErrorKey } from "./auth-errors";
+import {
+  AccountLinkPanel,
+  isLinkActive,
+  useAccountLinkNotice,
+} from "./account-link-panel";
 import { ContinueLastSignIn } from "./continue-last-sign-in";
 import { EmailSignIn } from "./email-sign-in";
 import {
   hasAvailableProviders,
-  type Provider,
   ProviderButtonRow,
   providerAvailable,
 } from "./provider-button-row";
 import { ReferralPanel } from "./referral-panel";
-import { LegalFooter } from "./sign-in-panels";
-
-const SIGN_IN_BY_PROVIDER = {
-  google: signInWithGoogle,
-  apple: signInWithApple,
-  azure: signInWithMicrosoft,
-} as const;
+import { Divider, LegalFooter } from "./sign-in-panels";
+import { useProviderSignIn } from "./use-provider-sign-in";
 
 /**
  * Shared sign-in screen for local and hosted sessions. A remembered provider
  * gets the filled continue button; native builds offer only configured native
  * providers and omit the referral promotion. Email code sign-in stays available.
  * The desktop loopback flow is cancelled on unmount so a late callback cannot
- * replace a session established through another method.
+ * replace a session established through another method. A provider sign-in
+ * that met an existing account swaps the options for the account link's code
+ * step until it ends.
  */
 export function SignInScreen() {
   const showReferral = canPurchaseInApp();
-  const { t } = useTranslation("errors");
   const { t: tAuth } = useTranslation("auth");
-  const [pending, setPending] = useState<Provider | null>(null);
-  const [error, setError] = useState<string | null>(null);
+  const { pending, error, handleSignIn } = useProviderSignIn();
+  const link = useAccountLink();
+  const linkNotice = useAccountLinkNotice(link);
   // The email code flow, once started from the continue button, collapses the
   // returning-user chrome (continue button + "another way" options) down to the
   // focused address/code entry. A rising token drives EmailSignIn's auto-send.
@@ -59,40 +52,6 @@ export function SignInScreen() {
     const hint = readLastSignIn();
     return hint ? { ...describeLastSignIn(hint), fullEmail: hint.email } : null;
   }, []);
-
-  // Cancel any in-flight loopback authorize when this screen unmounts, so a late
-  // browser completion can't overwrite a session the user established another way.
-  useEffect(() => cancelPendingAuthorize, []);
-
-  // Surface OAuth errors that happen AFTER the browser hands off (provider
-  // rejection, code-exchange failure, identity already linked to another
-  // user). Without this the user only saw the "kick off" failure path and
-  // every post-callback failure was invisible. Post-hand-off failures arrive
-  // as stable identity codes, resolved to localized copy here.
-  useEffect(() => {
-    return onAuthError((code) => {
-      setPending(null);
-      setError(t(authErrorKey(code)));
-    });
-  }, [t]);
-
-  const handleSignIn = (provider: Provider) => async () => {
-    setPending(provider);
-    setError(null);
-    // `onBrowserOpened` re-enables the buttons the instant the system browser
-    // opens, so the whole (up-to-300s) round-trip never freezes them.
-    const opts = { onBrowserOpened: () => setPending(null) };
-    try {
-      await SIGN_IN_BY_PROVIDER[provider](opts);
-    } catch (e) {
-      logger.error(`[auth] ${provider} sign-in failed: ${e}`);
-      setError(t(authErrorKey(e)));
-    } finally {
-      // Belt-and-suspenders for a PRE-browser failure (config / loopback bind),
-      // where `onBrowserOpened` never fired. Post-browser, this is a no-op.
-      setPending(null);
-    }
-  };
 
   // The one-click return path. For an OAuth provider it runs the very same
   // sign-in the matching pill would; for the email path it hands the stored
@@ -139,37 +98,50 @@ export function SignInScreen() {
           <div
             className={`flex flex-col gap-5 bg-card p-6 md:p-8${showReferral ? " md:col-span-2" : ""}`}
           >
-            <h1 className="text-lg font-medium">{tAuth("title")}</h1>
-
-            {showContinue && lastSignIn && continueTitle && (
+            {isLinkActive(link) ? (
+              <AccountLinkPanel view={link} />
+            ) : (
               <>
-                <ContinueLastSignIn
-                  highlight={lastSignIn.highlight}
-                  title={continueTitle}
-                  email={lastSignIn.email}
-                  pending={pending !== null && pending === lastSignIn.highlight}
-                  disabled={pending !== null}
-                  onClick={onContinue}
-                />
-                <Divider label={tAuth("divider.orAnotherWay")} />
-              </>
-            )}
+                <h1 className="text-lg font-medium">{tAuth("title")}</h1>
 
-            {!emailFlowActive && (
-              <>
-                <ProviderButtonRow pending={pending} onSignIn={handleSignIn} />
-                {hasAvailableProviders() && (
-                  <Divider label={tAuth("divider.or")} />
+                {showContinue && lastSignIn && continueTitle && (
+                  <>
+                    <ContinueLastSignIn
+                      highlight={lastSignIn.highlight}
+                      title={continueTitle}
+                      email={lastSignIn.email}
+                      pending={
+                        pending !== null && pending === lastSignIn.highlight
+                      }
+                      disabled={pending !== null}
+                      onClick={onContinue}
+                    />
+                    <Divider label={tAuth("divider.orAnotherWay")} />
+                  </>
                 )}
+
+                {!emailFlowActive && (
+                  <>
+                    <ProviderButtonRow
+                      pending={pending}
+                      onSignIn={handleSignIn}
+                    />
+                    {hasAvailableProviders() && (
+                      <Divider label={tAuth("divider.or")} />
+                    )}
+                  </>
+                )}
+
+                <EmailSignIn
+                  submitFilled={!showContinue}
+                  autoSubmit={emailAutoSubmit ?? undefined}
+                />
               </>
             )}
 
-            <EmailSignIn
-              submitFilled={!showContinue}
-              autoSubmit={emailAutoSubmit ?? undefined}
-            />
-
-            {error && <p className="text-xs text-danger">{error}</p>}
+            {(error ?? linkNotice) && (
+              <p className="text-xs text-danger">{error ?? linkNotice}</p>
+            )}
           </div>
 
           {showReferral && <ReferralPanel />}
@@ -178,16 +150,5 @@ export function SignInScreen() {
 
       <LegalFooter />
     </FirstRunScreen>
-  );
-}
-
-/** A hairline rule with a centered lowercase label ("or", "or use another way"). */
-function Divider({ label }: { label: string }) {
-  return (
-    <div className="flex items-center gap-3">
-      <div className="h-px flex-1 bg-line" />
-      <span className="text-xs text-ink-muted">{label}</span>
-      <div className="h-px flex-1 bg-line" />
-    </div>
   );
 }

@@ -75,7 +75,7 @@ function fakeIdToken(): string {
 async function mockIdentityBackend(page: Page): Promise<void> {
   const idToken = fakeIdToken();
 
-  // The gateway's OTP contract (identity/otp.ts): start always succeeds, verify
+  // The gateway's OTP contract (`@houston/sdk` identity module): start always succeeds, verify
   // hands back the custom token firebase then exchanges.
   await page.route("**/v1/auth/email-otp/start", (route) =>
     route.fulfill({ status: 204 }),

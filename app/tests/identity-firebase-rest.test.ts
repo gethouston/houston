@@ -2,11 +2,15 @@ import { rejects, strictEqual } from "node:assert/strict";
 import { afterEach, describe, it } from "node:test";
 import { IdentityError } from "../src/lib/identity/errors.ts";
 import {
+  type IdpExchange,
+  type IdpSignInResult,
+  signInWithIdp,
+  signInWithIdpSession,
+} from "../src/lib/identity/firebase-idp.ts";
+import {
   createAuthUri,
   refreshIdToken,
   signInWithCustomToken,
-  signInWithIdp,
-  signInWithIdpSession,
   signInWithPassword,
 } from "../src/lib/identity/firebase-rest.ts";
 
@@ -43,6 +47,12 @@ function stubNetworkFailure(): void {
   }) as typeof fetch;
 }
 
+/** The session of an exchange that signed in. */
+function signedIn(exchange: IdpExchange): IdpSignInResult {
+  if (exchange.kind !== "signed_in") throw new Error(exchange.kind);
+  return exchange.result;
+}
+
 /** Assert the thrown value is an IdentityError with the given code. */
 function hasCode(code: string) {
   return (e: unknown) => e instanceof IdentityError && e.code === code;
@@ -64,11 +74,13 @@ describe("firebase-rest signInWithIdp", () => {
   it("normalizes the raw response and computes an absolute expiresAt", async () => {
     stubFetch(200, IDP_OK);
     const before = Date.now();
-    const r = await signInWithIdp({
-      apiKey: "k",
-      providerId: "google.com",
-      idToken: "google-id-token",
-    });
+    const r = signedIn(
+      await signInWithIdp({
+        apiKey: "k",
+        providerId: "google.com",
+        idToken: "google-id-token",
+      }),
+    );
     strictEqual(r.uid, "uid-1");
     strictEqual(r.email, "a@b.com");
     strictEqual(r.emailVerified, true);
@@ -81,22 +93,26 @@ describe("firebase-rest signInWithIdp", () => {
 
   it("parses isNewUser=true when the exchange created the account", async () => {
     stubFetch(200, { ...IDP_OK, isNewUser: true });
-    const r = await signInWithIdp({
-      apiKey: "k",
-      providerId: "google.com",
-      idToken: "google-id-token",
-    });
+    const r = signedIn(
+      await signInWithIdp({
+        apiKey: "k",
+        providerId: "google.com",
+        idToken: "google-id-token",
+      }),
+    );
     strictEqual(r.isNewUser, true);
   });
 
   it("parses photoUrl as null when the GCIP response omits it", async () => {
     const { photoUrl: _omit, ...withoutPhoto } = IDP_OK;
     stubFetch(200, withoutPhoto);
-    const r = await signInWithIdp({
-      apiKey: "k",
-      providerId: "google.com",
-      idToken: "google-id-token",
-    });
+    const r = signedIn(
+      await signInWithIdp({
+        apiKey: "k",
+        providerId: "google.com",
+        idToken: "google-id-token",
+      }),
+    );
     strictEqual(r.photoUrl, null);
   });
 
@@ -287,11 +303,13 @@ describe("firebase-rest signInWithIdpSession (brokered flow, Apple)", () => {
       providerId: "apple.com",
       isNewUser: true,
     });
-    const res = await signInWithIdpSession({
-      apiKey: "k",
-      requestUri: "http://127.0.0.1:8975/auth/callback?state=st-9&code=c",
-      sessionId: "sess-9",
-    });
+    const res = signedIn(
+      await signInWithIdpSession({
+        apiKey: "k",
+        requestUri: "http://127.0.0.1:8975/auth/callback?state=st-9&code=c",
+        sessionId: "sess-9",
+      }),
+    );
     strictEqual(res.uid, "uid-1");
     strictEqual(res.providerId, "apple.com");
     strictEqual(res.isNewUser, true);

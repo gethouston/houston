@@ -2,7 +2,7 @@ import { useTranslation } from "react-i18next";
 
 /**
  * Helper copy + secondary actions under the 6-digit code entry: where the code
- * went, resend, and switch-address. `pr-12` mirrors the send button + gap on
+ * went, resend, and a way back (switch address, or leave the account link). `pr-12` mirrors the send button + gap on
  * the row above, so the centered copy lines up with the pin boxes, not the
  * full row.
  */
@@ -11,13 +11,15 @@ export function EmailCodeFooter({
   pending,
   error,
   onResend,
-  onChangeEmail,
+  backLabel,
+  onBack,
 }: {
   email: string;
   pending: boolean;
   error: string | null;
   onResend: () => void;
-  onChangeEmail: () => void;
+  backLabel: string;
+  onBack: () => void;
 }) {
   const { t } = useTranslation("auth");
   return (
@@ -36,10 +38,11 @@ export function EmailCodeFooter({
         </button>
         <button
           type="button"
-          onClick={onChangeEmail}
-          className="text-xs text-ink-muted underline-offset-2 hover:text-ink hover:underline"
+          disabled={pending}
+          onClick={onBack}
+          className="text-xs text-ink-muted underline-offset-2 hover:text-ink hover:underline disabled:opacity-50"
         >
-          {t("email.useDifferentEmail")}
+          {backLabel}
         </button>
       </div>
       {error && (

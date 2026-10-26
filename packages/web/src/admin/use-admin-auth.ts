@@ -6,6 +6,7 @@
 // as the control-plane bearer.
 
 import {
+  IdentityError,
   identityConfig,
   refreshIdToken,
   signInWithPassword,
@@ -168,6 +169,7 @@ export function useAdminAuth(): AdminAuth {
     setError(null);
     try {
       const s = await webSignInWithGoogle();
+      if (s && "kind" in s) throw new IdentityError("identity_already_linked");
       if (s) adopt(sessionFromIdentity(s.session)); // null = popup cancelled (benign)
     } catch (e) {
       setError(adminAuthMessage(e));

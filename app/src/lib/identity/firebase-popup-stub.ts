@@ -7,6 +7,11 @@
 // here mirrors that module's signature but throws `operation_not_allowed` — none
 // is ever called on desktop (the flows are `osIsTauri()`-guarded in auth.ts).
 
+import type {
+  LinkAttempt,
+  PendingLink,
+  PendingLinkHandle,
+} from "@houston/sdk/identity";
 import { IdentityError, type Session, type SignInOutcome } from "./index.ts";
 
 // A firebase-free structural view of the fields `toSession` reads from a
@@ -35,15 +40,21 @@ export function initWebAuth(_config: {
   notOnDesktop();
 }
 
-export function webSignInWithGoogle(): Promise<SignInOutcome | null> {
+export function webSignInWithGoogle(): Promise<
+  SignInOutcome | PendingLink | null
+> {
   return notOnDesktop();
 }
 
-export function webSignInWithMicrosoft(): Promise<SignInOutcome | null> {
+export function webSignInWithMicrosoft(): Promise<
+  SignInOutcome | PendingLink | null
+> {
   return notOnDesktop();
 }
 
-export function webSignInWithApple(): Promise<SignInOutcome | null> {
+export function webSignInWithApple(): Promise<
+  SignInOutcome | PendingLink | null
+> {
   return notOnDesktop();
 }
 
@@ -51,6 +62,17 @@ export function webSignInWithCustomToken(
   _token: string,
 ): Promise<SignInOutcome | null> {
   return notOnDesktop();
+}
+
+export function webLinkPending(
+  _handle: PendingLinkHandle,
+  _session: Session,
+): Promise<LinkAttempt<Session>> {
+  return notOnDesktop();
+}
+
+export function webDiscardPending(_handle: PendingLinkHandle): void {
+  notOnDesktop();
 }
 
 export function webSignOut(): Promise<void> {

@@ -10,6 +10,7 @@
 // `.ts`-subpath imports, so they are intentionally NOT re-exported here — a
 // slim barrel keeps the public surface honest.
 
+export type { PendingLink } from "@houston/sdk/identity";
 export { identityConfig, isIdentityConfigured } from "./config.ts";
 export {
   IdentityError,
@@ -27,7 +28,6 @@ export {
   type TokenSignInResult,
 } from "./firebase-rest.ts";
 export { decodeIdTokenClaims } from "./id-token.ts";
-export { startEmailOtp, verifyEmailOtp } from "./otp.ts";
 export { refreshNow, setSessionSink } from "./refresh.ts";
 export {
   startProactiveRefresh,

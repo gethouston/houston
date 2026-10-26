@@ -24,6 +24,7 @@ type AuthErrorKey =
   | "auth.providerDisabled"
   | "auth.otpInvalid"
   | "auth.otpRateLimited"
+  | "auth.otpPasswordAccount"
   | "auth.network"
   | "auth.tooManyAttempts"
   | "auth.userDisabled"
@@ -36,11 +37,13 @@ type AuthErrorKey =
 const CODE_TO_KEY: Record<IdentityErrorCode, AuthErrorKey> = {
   invalid_credentials: "auth.invalidCredentials",
   credential_mismatch: "auth.credentialMismatch",
+  identity_already_linked: "auth.credentialMismatch",
   email_exists: "auth.credentialMismatch",
   operation_not_allowed: "auth.providerDisabled",
   otp_invalid_code: "auth.otpInvalid",
   token_expired: "auth.otpInvalid",
   otp_rate_limited: "auth.otpRateLimited",
+  otp_password_account: "auth.otpPasswordAccount",
   network: "auth.network",
   too_many_attempts: "auth.tooManyAttempts",
   user_disabled: "auth.userDisabled",

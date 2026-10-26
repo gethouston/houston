@@ -6,16 +6,15 @@
 // failure is a typed `IdentityError`: user calls emit its `.code` to `onAuthError`
 // AND rethrow for the caller's `catch`.
 
+import { EmailOtpError, type PendingLink } from "@houston/sdk/identity";
+import { identityClient, startAccountLink } from "./account-link";
 import { emitAuthError, onAuthError } from "./auth-error-bus";
-import { gatewayUrl } from "./auth-gateway";
 import {
   IdentityError,
-  identityConfig,
   isIdentityConfigured,
   isIdentityError,
+  type SignInOutcome,
   setSessionSink,
-  startEmailOtp,
-  verifyEmailOtp as verifyEmailOtpGateway,
 } from "./identity";
 import { cancelPendingAuthorize } from "./identity/desktop-oauth";
 import {
@@ -32,9 +31,12 @@ import {
   establishWebSession,
 } from "./sign-in-establish";
 import { signOut } from "./sign-out";
+import { webIdentity } from "./web-identity";
 
 setSessionSink((session) => cacheSession(session)); // refresh.ts → app cache
 
+// The account-exists flow's client and code entry (account-link.ts).
+export { confirmAccountLink, identityClient } from "./account-link";
 // Public re-exports, so `lib/auth` stays the ONE auth front door: the session
 // cache mirror (session-cache.ts), the sign-out lifecycle (sign-out.ts), the
 // post-hand-off error bus (auth-error-bus.ts), and the loopback-cancel seam
@@ -77,57 +79,71 @@ async function guardAuthCall(
   }
 }
 
-// Lazy-load the web SDK surface (a no-op stub on desktop; never reached there).
-const loadWebIdentity = () => import("@houston/web-identity");
+type ProviderSignIn = SignInOutcome | PendingLink | null;
+type WebIdentity = Awaited<ReturnType<typeof webIdentity>>;
+
+// A provider sign-in either signs in, or met an existing account for the same
+// email: the SDK then holds it while the person proves the inbox with a code.
+// A `null` result is a benign cancel (superseded / unmount / abandoned tab /
+// closed popup): no session write, no emit, no throw.
+function providerSignIn(
+  desktop: (opts?: SignInOptions) => Promise<ProviderSignIn>,
+  web: (identity: WebIdentity) => Promise<ProviderSignIn>,
+  analyticsProvider: string,
+  opts?: SignInOptions,
+): Promise<void> {
+  return guardAuthCall(async () => {
+    requireConfigured();
+    // Web popups return focus naturally, so `onBrowserOpened` is desktop-only.
+    const result = osIsTauri()
+      ? await desktop(opts)
+      : await web(await webIdentity());
+    if (!result) return;
+    if ("kind" in result) return startAccountLink(result);
+    if (osIsTauri()) await establishDesktopSession(result, analyticsProvider);
+    else establishWebSession(result, analyticsProvider);
+    identityClient.cancelAccountLink(); // an earlier link's notice is stale now
+  });
+}
 
 export function signInWithGoogle(opts?: SignInOptions): Promise<void> {
-  return guardAuthCall(async () => {
-    requireConfigured();
-    if (osIsTauri()) {
-      // A `null` session = benign cancel (superseded / unmount / abandoned tab):
-      // no session write, no emit, no throw — mirroring the web popup-cancel path.
-      const signIn = await googleDesktopSession(opts);
-      if (signIn) await establishDesktopSession(signIn, "google");
-      return;
-    }
-    // Web popup returns focus naturally, so `onBrowserOpened` is not needed here.
-    const web = await loadWebIdentity();
-    web.initWebAuth(identityConfig);
-    establishWebSession(await web.webSignInWithGoogle(), "google");
-  });
+  return providerSignIn(
+    googleDesktopSession,
+    (web) => web.webSignInWithGoogle(),
+    "google",
+    opts,
+  );
 }
 
+// "azure" keeps the historical analytics provider value for continuity.
 export function signInWithMicrosoft(opts?: SignInOptions): Promise<void> {
-  return guardAuthCall(async () => {
-    requireConfigured();
-    if (osIsTauri()) {
-      // "azure" keeps the historical analytics provider value for continuity.
-      // A `null` session is a benign cancel (see signInWithGoogle).
-      const signIn = await microsoftDesktopSession(opts);
-      if (signIn) await establishDesktopSession(signIn, "azure");
-      return;
-    }
-    const web = await loadWebIdentity();
-    web.initWebAuth(identityConfig);
-    establishWebSession(await web.webSignInWithMicrosoft(), "azure");
-  });
+  return providerSignIn(
+    microsoftDesktopSession,
+    (web) => web.webSignInWithMicrosoft(),
+    "azure",
+    opts,
+  );
 }
 
+// Desktop Apple is a GCIP-brokered loopback: Apple rejects 127.0.0.1
+// redirects on direct OAuth, so GCIP's handler is the registered return URL.
 export function signInWithApple(opts?: SignInOptions): Promise<void> {
-  return guardAuthCall(async () => {
-    requireConfigured();
-    if (osIsTauri()) {
-      // GCIP-brokered loopback (Apple rejects 127.0.0.1 redirects on direct
-      // OAuth, so GCIP's handler is the registered return URL). A `null`
-      // session is a benign cancel (see signInWithGoogle).
-      const signIn = await appleDesktopSession(opts);
-      if (signIn) await establishDesktopSession(signIn, "apple");
-      return;
-    }
-    const web = await loadWebIdentity();
-    web.initWebAuth(identityConfig);
-    establishWebSession(await web.webSignInWithApple(), "apple");
-  });
+  return providerSignIn(
+    appleDesktopSession,
+    (web) => web.webSignInWithApple(),
+    "apple",
+    opts,
+  );
+}
+
+// The SDK's email-code failures carry the same codes the sign-in UI renders.
+async function emailCodeCall<T>(call: () => Promise<T>): Promise<T> {
+  try {
+    return await call();
+  } catch (e) {
+    if (!(e instanceof EmailOtpError)) throw e;
+    throw new IdentityError(e.code, { httpStatus: e.status, cause: e });
+  }
 }
 
 /**
@@ -139,7 +155,7 @@ export function sendEmailOtp(email: string): Promise<void> {
   return guardAuthCall(
     async () => {
       requireConfigured();
-      await startEmailOtp(gatewayUrl(), email);
+      await emailCodeCall(() => identityClient.sendEmailCode(email));
     },
     { emit: false },
   );
@@ -150,22 +166,20 @@ export function verifyEmailOtp(email: string, code: string): Promise<void> {
   return guardAuthCall(
     async () => {
       requireConfigured();
-      const { customToken } = await verifyEmailOtpGateway(
-        gatewayUrl(),
-        email,
-        code,
+      const customToken = await emailCodeCall(() =>
+        identityClient.verifyEmailCode(email, code),
       );
       if (osIsTauri()) {
         const signIn = await customTokenDesktopSession(customToken);
         await establishDesktopSession(signIn, "email");
-        return;
+      } else {
+        const web = await webIdentity();
+        establishWebSession(
+          await web.webSignInWithCustomToken(customToken),
+          "email",
+        );
       }
-      const web = await loadWebIdentity();
-      web.initWebAuth(identityConfig);
-      establishWebSession(
-        await web.webSignInWithCustomToken(customToken),
-        "email",
-      );
+      identityClient.cancelAccountLink(); // an earlier link's notice is stale now
     },
     { emit: false }, // EmailSignIn renders this error inline (no duplicate).
   );

@@ -35,6 +35,16 @@ async function readJsonBody(res: Response): Promise<Record<string, unknown>> {
     if (typeof parsed !== "object" || parsed === null) {
       throw new IdentityError("malformed_response", { httpStatus: res.status });
     }
+    // `signInWithIdp` refuses a link with HTTP 200 and `errorMessage` instead
+    // of an error body (FEDERATED_USER_ID_ALREADY_LINKED), with no tokens.
+    const { errorMessage } = parsed as Record<string, unknown>;
+    if (typeof errorMessage === "string" && errorMessage.trim()) {
+      const rawCode = errorMessage.trim();
+      throw new IdentityError(mapGcipCode(rawCode), {
+        rawCode,
+        httpStatus: res.status,
+      });
+    }
     return parsed as Record<string, unknown>;
   } catch (e) {
     if (e instanceof IdentityError) throw e;

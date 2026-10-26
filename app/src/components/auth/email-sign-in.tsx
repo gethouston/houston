@@ -1,17 +1,11 @@
-import {
-  Button,
-  Input,
-  InputOTP,
-  InputOTPGroup,
-  InputOTPSlot,
-  REGEXP_ONLY_DIGITS,
-} from "@houston-ai/core";
+import { Button, Input } from "@houston-ai/core";
 import { ArrowRight, Loader2 } from "lucide-react";
 import { type FormEvent, useEffect, useRef, useState } from "react";
 import { useTranslation } from "react-i18next";
 import { sendEmailOtp, verifyEmailOtp } from "../../lib/auth";
 import { logger } from "../../lib/logger";
 import { authErrorKey } from "./auth-errors";
+import { EmailCodeEntry } from "./email-code-entry";
 import { EmailCodeFooter } from "./email-code-footer";
 
 type Step = "email" | "code";
@@ -23,9 +17,7 @@ type Step = "email" | "code";
  * unmounts as soon as the session lands in the query cache.
  *
  * Compact inline shape: a rounded email field with a send button on its right.
- * The code step swaps it for a six-box pin input that auto-advances, accepts a
- * pasted code, and verifies itself on the sixth digit; the arrow button stays
- * as the retry affordance after a rejected code.
+ * The code step swaps it for the six-box {@link EmailCodeEntry}.
  *
  * `submitFilled` controls whether the send/verify button is the screen's single
  * filled action: it is by default, but steps down to secondary when the returning
@@ -108,61 +100,24 @@ export function EmailSignIn({
     void verifyCode();
   };
 
-  const SendButton = ({ disabled }: { disabled: boolean }) => (
-    <Button
-      type="submit"
-      size="icon"
-      variant={submitFilled ? "default" : "secondary"}
-      disabled={disabled}
-      aria-label={
-        step === "code" ? tAuth("email.verifyCode") : tAuth("email.sendCode")
-      }
-      // The address row is the phone's primary sign-in field: 44px there,
-      // 40px from md:. The code row keeps 40px beside its six pin boxes.
-      className={`shrink-0 rounded-full border-none! active:scale-[0.96] md:active:scale-100 ${step === "code" ? "size-10" : "size-11 md:size-10"}`}
-    >
-      {pending ? (
-        <Loader2 className="size-4 animate-spin" />
-      ) : (
-        <ArrowRight className="size-4" />
-      )}
-    </Button>
-  );
-
   if (step === "code") {
     return (
       <form onSubmit={onVerifySubmit} className="flex w-full flex-col gap-2">
-        <div className="flex items-center gap-2">
-          <InputOTP
-            maxLength={6}
-            value={code}
-            onChange={setCode}
-            onComplete={(value: string) => void verifyCode(value)}
-            pattern={REGEXP_ONLY_DIGITS}
-            inputMode="numeric"
-            autoComplete="one-time-code"
-            autoFocus
-            disabled={pending}
-            containerClassName="flex-1 justify-center"
-          >
-            <InputOTPGroup>
-              {[0, 1, 2, 3, 4, 5].map((index) => (
-                <InputOTPSlot
-                  key={index}
-                  index={index}
-                  className="size-9 border-ink/40 md:size-10"
-                />
-              ))}
-            </InputOTPGroup>
-          </InputOTP>
-          <SendButton disabled={pending || code.trim().length < 6} />
-        </div>
+        <EmailCodeEntry
+          code={code}
+          onChange={setCode}
+          onComplete={(value) => void verifyCode(value)}
+          pending={pending}
+          filled={submitFilled}
+          label={tAuth("email.verifyCode")}
+        />
         <EmailCodeFooter
           email={email}
           pending={pending}
           error={error}
           onResend={() => void sendCode()}
-          onChangeEmail={() => {
+          backLabel={tAuth("email.useDifferentEmail")}
+          onBack={() => {
             setStep("email");
             setCode("");
             setError(null);
@@ -183,7 +138,22 @@ export function EmailSignIn({
           placeholder="you@example.com"
           className="h-11 flex-1 rounded-full border-ink/40 px-4 md:h-10"
         />
-        <SendButton disabled={pending || email.trim().length === 0} />
+        <Button
+          type="submit"
+          size="icon"
+          variant={submitFilled ? "default" : "secondary"}
+          disabled={pending || email.trim().length === 0}
+          aria-label={tAuth("email.sendCode")}
+          // The address row is the phone's primary sign-in field: 44px there,
+          // 40px from md:.
+          className="size-11 shrink-0 rounded-full border-none! active:scale-[0.96] md:size-10 md:active:scale-100"
+        >
+          {pending ? (
+            <Loader2 className="size-4 animate-spin" />
+          ) : (
+            <ArrowRight className="size-4" />
+          )}
+        </Button>
       </div>
       {error && <p className="text-xs text-danger">{error}</p>}
     </form>

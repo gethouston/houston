@@ -120,6 +120,8 @@ export function adminAuthMessage(e: unknown): string {
       return "Sign-in is misconfigured (invalid Firebase API key).";
     case "network":
       return "Network error. Check your connection and try again.";
+    case "identity_already_linked":
+      return "This Google address already has an account. Sign in with your password.";
     default:
       return `Sign-in failed (${e.code}).`;
   }

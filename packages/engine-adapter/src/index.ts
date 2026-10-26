@@ -46,6 +46,7 @@ export {
   type FirstResponseEvent,
   subscribeFirstResponses,
 } from "./first-responses";
+export { createIdentityClient } from "./identity";
 // Warming-engine send queue (HOU-693): show the message as sent while the
 // engine boots; the deferred real send suppresses its own bubble.
 export { pushPendingUserMessage } from "./turn-stream";

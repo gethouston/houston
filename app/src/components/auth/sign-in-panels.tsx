@@ -35,3 +35,14 @@ export function LegalFooter() {
     </div>
   );
 }
+
+/** A hairline rule with a centered lowercase label ("or", "or use another way"). */
+export function Divider({ label }: { label: string }) {
+  return (
+    <div className="flex items-center gap-3">
+      <div className="h-px flex-1 bg-line" />
+      <span className="text-xs text-ink-muted">{label}</span>
+      <div className="h-px flex-1 bg-line" />
+    </div>
+  );
+}
