@@ -3,6 +3,7 @@ import { act } from "react";
 import { createRoot } from "react-dom/client";
 import { afterEach, expect, test, vi } from "vitest";
 import { useMessageTime } from "../../../app/src/hooks/use-message-time";
+import { usePresentationNow } from "../../../app/src/hooks/use-presentation-now";
 
 vi.mock("react-i18next", () => ({
   useTranslation: () => ({
@@ -66,4 +67,30 @@ test("the shared clock aligns its first tick to the next minute", async () => {
   } finally {
     await act(async () => root.unmount());
   }
+});
+
+test("the first render after an unsubscribed gap reads the current minute", async () => {
+  vi.useFakeTimers();
+  vi.setSystemTime(new Date("2026-10-27T17:00:15.000Z"));
+  const readings: number[] = [];
+  function Clock() {
+    readings.push(usePresentationNow());
+    return null;
+  }
+  const host = document.createElement("div");
+  const first = createRoot(host);
+  await act(async () => first.render(<Clock />));
+  await act(async () => first.unmount());
+  expect(vi.getTimerCount()).toBe(0);
+  await vi.advanceTimersByTimeAsync(195_000);
+  readings.length = 0;
+  const reopened = createRoot(host);
+  try {
+    await act(async () => reopened.render(<Clock />));
+    expect(readings).toEqual([Date.parse("2026-10-27T17:03:00.000Z")]);
+    expect(vi.getTimerCount()).toBe(1);
+  } finally {
+    await act(async () => reopened.unmount());
+  }
+  expect(vi.getTimerCount()).toBe(0);
 });
