@@ -86,6 +86,8 @@ export async function runTurnAttempt(
   // after yielding an error `result` — is not reported a SECOND time.
   let providerErrored = false;
   let succeeded = false;
+  // The CLI exited on its own, so its startup report is complete on disk.
+  let streamEnded = false;
   const danglingResume = (message: string): boolean =>
     resume !== undefined && DANGLING_RESUME_RE.test(message);
   const timer = createClaudeCallTimer();
@@ -144,6 +146,7 @@ export async function runTurnAttempt(
       }
       if (beat) state.emitReplyBeat(beat); // after the frames it follows
     }
+    streamEnded = !state.isAborting();
   } catch (err) {
     // The user's Stop aborts the controller, which makes the SDK iterator
     // throw (any shape). Swallow it — cancelTurn already surfaced the stop, so
@@ -168,12 +171,12 @@ export async function runTurnAttempt(
       data: classifyText(errMessage(err), state.model, null, accessDigest),
     });
   } finally {
-    collectClaudeStartupProfile(env.CLAUDE_CONFIG_DIR);
     if (capturedSessionId)
       state.deps.sessionsStore.setSessionId(
         state.deps.conversationId,
         capturedSessionId,
       );
+    if (streamEnded) collectClaudeStartupProfile(env.CLAUDE_CONFIG_DIR);
   }
   return succeeded && !providerErrored && !abortController.signal.aborted
     ? "success"

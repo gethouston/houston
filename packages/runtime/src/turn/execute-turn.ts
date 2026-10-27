@@ -43,7 +43,7 @@ export async function executeTurn(
   const root = await prepareTurnRoot(turn);
   timings.t_tmpdir = performance.now();
   setActiveTurnTimings(timings);
-  armClaudeStartupProfile();
+  armClaudeStartupProfile(deps.singleUse !== undefined);
   const scope = `${turn.workspaceId}/${turn.agentId}`;
   const abort = new AbortController();
   // A CLAIMED turn's lifetime is the claim, not the HTTP connection: the

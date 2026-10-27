@@ -39,12 +39,30 @@ function configDirWith(files: Record<string, string>): string {
 
 test("samples about one turn in twenty", () => {
   expect(CLAUDE_STARTUP_PROFILE_RATE).toBe(0.05);
-  armClaudeStartupProfile(() => 0.049);
+  armClaudeStartupProfile(true, () => 0.049);
   expect(claudeStartupProfileEnv()).toEqual({
     CLAUDE_CODE_PROFILE_STARTUP: "1",
   });
-  armClaudeStartupProfile(() => 0.05);
+  armClaudeStartupProfile(true, () => 0.05);
   expect(claudeStartupProfileEnv()).toEqual({});
+  // A multi-turn worker shares this module state between turns: never armed.
+  armClaudeStartupProfile(false, () => 0);
+  expect(claudeStartupProfileEnv()).toEqual({});
+});
+
+test("a CLI with many more checkpoints never crowds out the phase sums", () => {
+  const marks = Array.from({ length: 300 }, (_, i) => ({
+    name: `mark_${i}`,
+    startTime: i,
+  }));
+  const parsed = parseClaudeStartupProfile({ ...REPORT, marks });
+  expect(Object.keys(parsed ?? {})).toHaveLength(120);
+  expect(parsed).toMatchObject({
+    "phase.init_network": 40,
+    "phase.import_time": 105,
+    node_boot: 12,
+    mark_0: 0,
+  });
 });
 
 test("flattens marks, phases and node boot into whole-ms entries", () => {
@@ -67,7 +85,7 @@ test("a sampled turn's report reaches its terminal frame once, and the folder ne
     "s1.txt": "STARTUP PROFILING REPORT",
     "s1.json": JSON.stringify(REPORT),
   });
-  armClaudeStartupProfile(() => 0);
+  armClaudeStartupProfile(true, () => 0);
   collectClaudeStartupProfile(configDir);
   expect(existsSync(join(configDir, "startup-perf"))).toBe(false);
 
@@ -86,14 +104,14 @@ test("a sampled turn's report reaches its terminal frame once, and the folder ne
 
 test("an unsampled turn neither reads nor removes anything", () => {
   const configDir = configDirWith({ "s1.json": JSON.stringify(REPORT) });
-  armClaudeStartupProfile(() => 0.9);
+  armClaudeStartupProfile(true, () => 0.9);
   collectClaudeStartupProfile(configDir);
   expect(existsSync(join(configDir, "startup-perf", "s1.json"))).toBe(true);
   expect(takeClaudeStartupProfile()).toBeUndefined();
 });
 
 test("a corrupt or missing report costs only the sample", () => {
-  armClaudeStartupProfile(() => 0);
+  armClaudeStartupProfile(true, () => 0);
   collectClaudeStartupProfile(join(tmpdir(), "claude-startup-none"));
   const configDir = configDirWith({ "s1.json": "{not json" });
   collectClaudeStartupProfile(configDir);

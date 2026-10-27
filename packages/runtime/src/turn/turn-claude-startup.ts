@@ -6,10 +6,11 @@ import { join } from "node:path";
  * spawn-to-init cost (HOU-149) splits into the CLI's phases in prod.
  *
  * `CLAUDE_CODE_PROFILE_STARTUP=1` makes the CLI write
- * `<CLAUDE_CONFIG_DIR>/startup-perf/<session>.{json,txt}`. That folder sits
- * in the conversation's synced sessions tree, so it is read and removed right
- * after the CLI exits, before sync-back. Like the turn's network marks, this
- * is one record per process: a single-use worker runs exactly one turn.
+ * `<CLAUDE_CONFIG_DIR>/startup-perf/<session>.{json,txt}` inside the
+ * conversation's sessions tree. A claimed turn's sync scope already leaves it
+ * out (turn-filesystem-scope.ts); the folder is removed after reading so an
+ * unclaimed turn's whole-tree sync never uploads it either. The state is one
+ * record per process, so only a single-use worker (one turn) arms it.
  */
 
 // Enough sampled turns to compare template builds in a day of prod logs; few
@@ -25,8 +26,11 @@ let armed = false;
 let report: Record<string, number> | undefined;
 
 /** Decide, once per pooled turn, whether its Claude CLI runs profiled. */
-export function armClaudeStartupProfile(random: () => number = Math.random) {
-  armed = random() < CLAUDE_STARTUP_PROFILE_RATE;
+export function armClaudeStartupProfile(
+  singleUse: boolean,
+  random: () => number = Math.random,
+) {
+  armed = singleUse && random() < CLAUDE_STARTUP_PROFILE_RATE;
   report = undefined;
 }
 
@@ -58,23 +62,25 @@ export function parseClaudeStartupProfile(
     if (ms === undefined || !KEY.test(key) || key in out) return;
     if (Object.keys(out).length < MAX_ENTRIES) out[key] = ms;
   };
-  for (const mark of value.marks) {
-    if (isRecord(mark) && typeof mark.name === "string")
-      put(mark.name, wholeMs(mark.startTime));
-  }
+  // Phases first: a CLI that adds checkpoints must not crowd out the sums.
   if (isRecord(value.metadata)) {
     for (const [key, ms] of Object.entries(value.metadata)) {
       if (key.endsWith("_ms")) put(`phase.${key.slice(0, -3)}`, wholeMs(ms));
     }
   }
   put("node_boot", wholeMs(value.nodeBootMs));
+  for (const mark of value.marks) {
+    if (isRecord(mark) && typeof mark.name === "string")
+      put(mark.name, wholeMs(mark.startTime));
+  }
   return Object.keys(out).length > 0 ? out : undefined;
 }
 
 /**
- * After a profiled CLI run: keep the first report this turn produced and
- * remove the folder, so no profiler output reaches the synced tree. A missing
- * or unreadable report costs only the sample.
+ * After a profiled CLI run that ended on its own (an early exit may leave the
+ * CLI still writing its shutdown report): keep the first report this turn
+ * produced and remove the folder. Never throws: a missing or unreadable
+ * report costs only the sample, and anything unexpected is reported.
  */
 export function collectClaudeStartupProfile(configDir: string | undefined) {
   if (!armed || !configDir) return;
@@ -87,10 +93,20 @@ export function collectClaudeStartupProfile(configDir: string | undefined) {
       );
     }
   } catch (error) {
-    if ((error as NodeJS.ErrnoException).code !== "ENOENT")
-      console.warn("[claude] startup profile unreadable:", error);
+    // No folder: the CLI wrote no report this run.
+    if ((error as NodeJS.ErrnoException).code === "ENOENT") return;
+    reportFailure(error);
   }
-  rmSync(dir, { recursive: true, force: true });
+  try {
+    rmSync(dir, { recursive: true, force: true });
+  } catch (error) {
+    reportFailure(error);
+  }
+}
+
+// console.error is the runtime's Sentry feed (installRuntimeLogging).
+function reportFailure(error: unknown) {
+  console.error("[claude] startup profile collection failed:", error);
 }
 
 /** The turn's report for its terminal frame, once; later calls get none. */
