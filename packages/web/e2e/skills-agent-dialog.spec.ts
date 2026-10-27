@@ -119,6 +119,11 @@ test("rename pencil retitles a skill from the editor header", async ({
     editor.getByRole("heading", { name: "Invoice magic", level: 2 }),
   ).toBeVisible();
   await editor.getByRole("button", { name: "Save changes" }).click();
+  // Leaving while the save is in flight still counts as a dirty draft and
+  // opens the discard confirm; a landed save clears the draft.
+  await expect(
+    editor.getByRole("button", { name: "Discard", exact: true }),
+  ).toBeDisabled();
 
   // The editor stays on the skill it saved; the list behind it re-serves the
   // new display title.
