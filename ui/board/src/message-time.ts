@@ -38,22 +38,22 @@ export function formatMessageTime(
   }).format(at);
   let short: string;
   const elapsed = now.getTime() - at.getTime();
-  if (elapsed >= -300_000 && elapsed < 60_000) short = words.now;
+  if (elapsed < -300_000 || days >= 7)
+    short = formatter(locale, {
+      month: "short",
+      day: "numeric",
+      ...(at.getFullYear() !== now.getFullYear() ? { year: "numeric" } : {}),
+    }).format(at);
+  else if (elapsed < 60_000) short = words.now;
   else if (days === 0)
     short = formatter(locale, {
       hour: "numeric",
       minute: "2-digit",
     }).format(at);
   else if (days === 1) short = words.yesterday;
-  else if (days > 1 && days <= 6)
+  else
     short = formatter(locale, { weekday: "short" })
       .format(at)
       .replace(/\.$/, "");
-  else
-    short = formatter(locale, {
-      month: "short",
-      day: "numeric",
-      ...(at.getFullYear() !== now.getFullYear() ? { year: "numeric" } : {}),
-    }).format(at);
   return { short, full };
 }

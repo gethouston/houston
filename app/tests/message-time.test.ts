@@ -131,7 +131,7 @@ it("bounds the future clock-skew allowance at five minutes", () => {
   const words = { now: "Now", yesterday: "Yesterday" };
   for (const [iso, expected] of [
     ["2026-10-27T17:05:00.000Z", "Now"],
-    ["2026-10-27T17:05:01.000Z", "5:05 PM"],
+    ["2026-10-27T17:05:01.000Z", "Oct 27"],
     ["2026-10-28T17:00:00.000Z", "Oct 28"],
     ["2027-10-27T17:00:00.000Z", "Oct 27, 2027"],
   ])
