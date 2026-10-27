@@ -61,15 +61,15 @@ export function childMissionsOf(
         title: item.title,
         statusLabel: label[tone],
         tone,
-        updatedAt: item.updatedAt,
+        lastMessageAt: item.lastMessageAt,
       };
     })
     .sort(
       (a, b) =>
         TONE_ORDER[a.tone] - TONE_ORDER[b.tone] ||
-        b.updatedAt.localeCompare(a.updatedAt),
+        b.lastMessageAt.localeCompare(a.lastMessageAt),
     )
-    .map(({ updatedAt: _updatedAt, ...mission }) => mission);
+    .map(({ lastMessageAt: _lastMessageAt, ...mission }) => mission);
 }
 
 /** A board item's chat address: its explicit session key, else the

@@ -21,7 +21,7 @@ export interface KanbanItem {
   /** Small pill labels shown at the bottom of the card. */
   tags?: string[];
   status: string;
-  updatedAt: string;
+  lastMessageAt: string;
   icon?: React.ReactNode;
   metadata?: Record<string, unknown>;
   /** Human contributors shown as an avatar face stack on the card. */

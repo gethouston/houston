@@ -1,4 +1,11 @@
-import { colors, easings, scale, shadowLayerCss, shadows } from "./model.mjs";
+import {
+  colors,
+  easings,
+  font,
+  scale,
+  shadowLayerCss,
+  shadows,
+} from "./model.mjs";
 
 const HEADER = `/**
  * Houston design tokens — semantic colour, elevation, motion and spacing
@@ -55,6 +62,10 @@ const vars = (tokens) => [...colors(tokens), ...elevations(tokens)];
 
 /** The theme-independent scales CSS reads: durations, easings, spacing. */
 const themeless = (tokens) => [
+  ...font(tokens, "size").map(({ name, value }) => ({
+    name: `font-size-${name}`,
+    value,
+  })),
   ...scale(tokens, "duration").map(({ name, value }) => ({
     name: `duration-${name}`,
     value,

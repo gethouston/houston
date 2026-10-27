@@ -20,7 +20,7 @@ const mission = (tags?: string[]): KanbanItem => ({
   id: "m1",
   title: "Draft the launch email",
   status: "archived",
-  updatedAt: "2026-09-28T10:00:00.000Z",
+  lastMessageAt: "2026-09-28T10:00:00.000Z",
   tags,
 });
 

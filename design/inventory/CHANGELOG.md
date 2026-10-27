@@ -3,6 +3,14 @@
 Every `version` bump in `inventory.yaml` needs a matching entry here (enforced by
 `pnpm check:parity`). Newest first. Use `## vN` headings.
 
+## v145 - 2026-10-27
+
+Mission cards and archived list rows show the last user or agent message time
+and sort by it. The agent row holds the short localized time with a full-date
+tooltip; detail headers show the full timestamp. Phone mission rows use the
+same formatter. Renames, moves, archives and model-pin clearing preserve the
+message time. Older rows use their updated_at until the next message.
+
 ## v144 - 2026-10-26
 
 A new organization seat charge (`org-seat-charge`) tells an owner what adding

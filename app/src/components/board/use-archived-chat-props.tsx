@@ -1,5 +1,6 @@
 import type { AIBoardProps } from "@houston-ai/board";
 import { useTranslation } from "react-i18next";
+import { useMessageTime } from "../../hooks/use-message-time";
 import { useUIStore } from "../../stores/ui";
 import { AgentPanelAvatar } from "../shell/agent-panel-avatar";
 import { panelTaskLabel } from "./panel-task-label";
@@ -21,6 +22,7 @@ export function useArchivedChatProps(
   archivedPanel: ArchivedPanel,
 ) {
   const { t } = useTranslation("board");
+  const formatTime = useMessageTime();
   const { labels, composerLabels } = useBoardLabels();
   const addToast = useUIStore((s) => s.addToast);
   const { selectedItem, activeAgent } = data;
@@ -56,7 +58,9 @@ export function useArchivedChatProps(
     ),
     labels,
     composerLabels,
+    formatTime,
     cardLabels: {
+      lastMessage: (time) => t("time.lastMessage", { time }),
       deleteTooltip: t("cardActions.deleteTooltip"),
       deleteTitle: (name: string) => t("deleteCard.titleWithName", { name }),
       deleteDescription: t("deleteCard.description"),

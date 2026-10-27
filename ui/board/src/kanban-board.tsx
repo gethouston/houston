@@ -2,6 +2,7 @@ import { useCallback, useMemo } from "react";
 import { columnDragRole, defaultCanDropItem } from "./dnd";
 import type { KanbanCardLabels } from "./kanban-card";
 import { KanbanColumn } from "./kanban-column";
+import type { MessageTimeFormatter } from "./message-time";
 import type { KanbanColumn as KanbanColumnType, KanbanItem } from "./types";
 import { useBoardDrag } from "./use-board-drag";
 
@@ -24,6 +25,7 @@ export interface KanbanBoardProps {
   actions?: (item: KanbanItem) => React.ReactNode;
   avatar?: React.ReactNode;
   cardLabels?: KanbanCardLabels;
+  formatTime?: MessageTimeFormatter;
   /** Enable per-card multi-select checkboxes. */
   selectable?: boolean;
   /** Ids currently in the multi-select set. */
@@ -62,6 +64,7 @@ export function KanbanBoard({
   actions,
   avatar,
   cardLabels,
+  formatTime,
   selectable,
   selectedIds,
   onToggleSelect,
@@ -100,7 +103,8 @@ export function KanbanBoard({
         .filter((item) => col.statuses.includes(item.status))
         .sort(
           (a, b) =>
-            new Date(b.updatedAt).getTime() - new Date(a.updatedAt).getTime(),
+            new Date(b.lastMessageAt).getTime() -
+            new Date(a.lastMessageAt).getTime(),
         );
       return { ...col, items: colItems };
     });
@@ -161,6 +165,7 @@ export function KanbanBoard({
             actions={actions}
             avatar={avatar}
             cardLabels={cardLabels}
+            formatTime={formatTime}
             selectable={
               selectable &&
               (selectionLockColumnId == null ||

@@ -1,6 +1,7 @@
 import type { AIBoardProps, MessageMention } from "@houston-ai/board";
 import { useCallback, useMemo } from "react";
 import { useTranslation } from "react-i18next";
+import { useMessageTime } from "../../hooks/use-message-time";
 import { useOpenAgentHref } from "../../hooks/use-open-agent-file";
 import { isAgentPathWarming } from "../../lib/agent-warming-guard";
 import { childMissionsOf, parentMissionOf } from "../../lib/child-missions";
@@ -33,6 +34,7 @@ export function useBoardChatWiring(source: BoardSource) {
   const { t } = useTranslation(["dashboard", "board"]);
   const addToast = useUIStore((s) => s.addToast);
   const queuedLabels = useQueuedMessageLabels();
+  const formatTime = useMessageTime();
   const { labels, cardLabels, composerLabels } = useBoardLabels();
   const { drafts, onDraftChange, newConversationKey } = useBoardDrafts(
     source.draftScope,
@@ -156,6 +158,7 @@ export function useBoardChatWiring(source: BoardSource) {
     onNotice: handleNotice,
     labels,
     composerLabels,
+    formatTime,
     currentUserId: panel.currentUserId,
     authorLabels: panel.authorLabels,
     showSenders: panel.showSenders,

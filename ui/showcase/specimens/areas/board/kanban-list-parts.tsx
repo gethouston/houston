@@ -44,7 +44,7 @@ const ROUTINE_RUN: KanbanItem = {
   group: "Meeting Notes",
   title: "Weekly pipeline summary for the Monday sync",
   status: "done",
-  updatedAt: "2026-02-23T08:00:00.000Z",
+  lastMessageAt: "2026-02-23T08:00:00.000Z",
   tags: ["Routine"],
 };
 

@@ -1,6 +1,6 @@
 import type { TaskRowStatus } from "@houston-ai/board";
 import { useTranslation } from "react-i18next";
-import { formatRelativeTime } from "../organization/org-time";
+import { useMessageTime } from "../../hooks/use-message-time";
 import { AgentAvatarStack } from "./agent-avatar-stack";
 import type { AgentHomeConversation } from "./agents-home-model";
 import { MissionOriginTag } from "./mission-origin-tag";
@@ -9,7 +9,7 @@ import { MissionStatusTag } from "./mission-status-tag";
 /**
  * One task in the phone's per-agent list, in the same chat-list grammar as
  * the Agents home row above it: the agent's large avatar on the left (its
- * running ring while THIS task runs), the task's title with the movement's
+ * running ring while THIS task runs), the task's title with the last message's
  * time trailing, the preview line under it ("Typing" while running, else the
  * task's own description), and the status label as a small tag beneath, with
  * the origin tag beside it when the task was not the user's own doing.
@@ -36,8 +36,10 @@ export function AgentMissionRow({
   color?: string;
   onOpen: (mission: AgentHomeConversation) => void;
 }) {
-  const { t, i18n } = useTranslation("shell");
-  const atMs = mission.updated_at ? Date.parse(mission.updated_at) : Number.NaN;
+  const { t } = useTranslation("shell");
+  const formatTime = useMessageTime();
+  const iso = mission.last_message_at ?? mission.updated_at;
+  const time = iso ? formatTime(iso) : undefined;
   const running = status === "running";
   return (
     <li className="mx-4 border-b border-line last:border-b-0">
@@ -54,14 +56,16 @@ export function AgentMissionRow({
             <span className="min-w-0 flex-1 truncate text-base font-weight-510 text-ink">
               {mission.title}
             </span>
-            {!Number.isNaN(atMs) && (
+            {time && (
               // data-relative-time: a live clock the visual suite masks.
-              <span
+              <time
+                dateTime={iso}
+                title={time.full}
                 data-relative-time
                 className="shrink-0 text-xs text-ink-muted tabular-nums"
               >
-                {formatRelativeTime(atMs, i18n.language)}
-              </span>
+                {time.short}
+              </time>
             )}
           </span>
           {(running || mission.description) && (

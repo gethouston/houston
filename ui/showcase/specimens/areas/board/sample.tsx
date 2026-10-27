@@ -49,7 +49,7 @@ export const RUNNING_MISSION: KanbanItem = {
   title: "Triage this morning's 34 unread threads",
   description: "Nine need a real answer. Drafting those now.",
   status: "running",
-  updatedAt: "2026-03-04T09:12:00.000Z",
+  lastMessageAt: "2026-03-04T09:12:00.000Z",
   people: [PEOPLE[0], PEOPLE[1]],
 };
 
@@ -59,7 +59,7 @@ export const NEEDS_YOU_MISSION: KanbanItem = {
   title: "Approve the refund reply to Dana Reyes",
   description: "She has asked twice. The draft offers the full amount back.",
   status: "needs_you",
-  updatedAt: "2026-03-04T08:40:00.000Z",
+  lastMessageAt: "2026-03-04T08:40:00.000Z",
   people: [PEOPLE[0]],
 };
 
@@ -69,7 +69,7 @@ export const DONE_MISSION: KanbanItem = {
   title: "Monday standup summary",
   description: "Filed to the team doc, five follow-ups assigned.",
   status: "done",
-  updatedAt: "2026-03-04T07:05:00.000Z",
+  lastMessageAt: "2026-03-04T07:05:00.000Z",
   tags: ["Calendar", "Notion"],
   people: PEOPLE.slice(1, 7),
 };
@@ -80,7 +80,7 @@ export const ERROR_MISSION: KanbanItem = {
   title: "Could not join the 10:00 call",
   description: "The Google Calendar connection expired on Friday.",
   status: "error",
-  updatedAt: "2026-03-04T06:30:00.000Z",
+  lastMessageAt: "2026-03-04T06:30:00.000Z",
 };
 
 /** Every mission the board renders, one per section plus the failed one. */
@@ -92,7 +92,7 @@ export const MISSIONS: KanbanItem[] = [
     title: "File last week's receipts",
     description: "Eleven found so far, all from the travel thread.",
     status: "running",
-    updatedAt: "2026-03-04T08:55:00.000Z",
+    lastMessageAt: "2026-03-04T08:55:00.000Z",
     people: [PEOPLE[2]],
   },
   NEEDS_YOU_MISSION,
@@ -108,14 +108,14 @@ export const ARCHIVED: KanbanItem[] = [
     group: "Meeting Notes",
     title: "Q1 board review notes",
     status: "done",
-    updatedAt: "2026-02-27T16:20:00.000Z",
+    lastMessageAt: "2026-02-27T16:20:00.000Z",
   },
   {
     id: "m-welcome",
     group: "Inbox Zero",
     title: "Reply to the three new customer intros",
     status: "done",
-    updatedAt: "2026-02-24T11:02:00.000Z",
+    lastMessageAt: "2026-02-24T11:02:00.000Z",
     tags: ["Started by Houston"],
   },
 ];

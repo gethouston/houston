@@ -7,7 +7,7 @@ const card = (id: string, title = `Mission ${id}`): KanbanItem => ({
   id,
   title,
   status: "running",
-  updatedAt: "2026-01-01T00:00:00.000Z",
+  lastMessageAt: "2026-01-01T00:00:00.000Z",
 });
 
 describe("resolvePanelState", () => {

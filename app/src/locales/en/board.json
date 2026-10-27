@@ -1,4 +1,9 @@
 {
+  "time": {
+    "now": "Now",
+    "yesterday": "Yesterday",
+    "lastMessage": "Last message: {{time}}"
+  },
   "cardActions": {
     "approve": "Move to done",
     "approveTooltip": "Move to done",

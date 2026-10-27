@@ -2,6 +2,7 @@ import { cn } from "@houston-ai/core";
 import { motion } from "framer-motion";
 import { KanbanCard, type KanbanCardLabels } from "./kanban-card";
 import { KanbanColumnAdd, KanbanColumnHeader } from "./kanban-column-parts";
+import type { MessageTimeFormatter } from "./message-time";
 import type { KanbanItem } from "./types";
 
 export interface KanbanColumnProps {
@@ -29,6 +30,7 @@ export interface KanbanColumnProps {
   actions?: (item: KanbanItem) => React.ReactNode;
   avatar?: React.ReactNode;
   cardLabels?: KanbanCardLabels;
+  formatTime?: MessageTimeFormatter;
   /** Node rendered on the right of the column header (e.g. archive-all). */
   headerAction?: React.ReactNode;
   /** Enable per-card multi-select checkboxes. */
@@ -71,6 +73,7 @@ export function KanbanColumn({
   actions,
   avatar,
   cardLabels,
+  formatTime,
   headerAction,
   selectable,
   selectedIds,
@@ -143,6 +146,7 @@ export function KanbanColumn({
                 actions={actions?.(item)}
                 avatar={avatar}
                 labels={cardLabels}
+                formatTime={formatTime}
                 selectable={selectable}
                 selectedForBulk={selectedIds?.has(item.id) ?? false}
                 anySelected={anySelected}

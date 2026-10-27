@@ -1,4 +1,9 @@
 {
+  "time": {
+    "now": "Agora",
+    "yesterday": "Ontem",
+    "lastMessage": "Última mensagem: {{time}}"
+  },
   "cardActions": {
     "approve": "Mover para Pronto",
     "approveTooltip": "Mover para Pronto",

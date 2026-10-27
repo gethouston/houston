@@ -3,6 +3,7 @@ import { motion } from "framer-motion";
 import type { KanbanCardLabels } from "./kanban-card";
 import { KanbanListItem } from "./kanban-list-item";
 import { KanbanListRail } from "./kanban-list-rail";
+import type { MessageTimeFormatter } from "./message-time";
 import type { BoardSearchSnippet, KanbanItem } from "./types";
 
 export interface KanbanListProps {
@@ -12,6 +13,7 @@ export interface KanbanListProps {
   onDelete?: (item: KanbanItem) => void;
   avatar?: React.ReactNode;
   cardLabels?: KanbanCardLabels;
+  formatTime?: MessageTimeFormatter;
   emptyState?: React.ReactNode;
   /** Per-item matched body fragment, keyed by `KanbanItem.id`, shown below a row
    *  when the search matched in the body rather than the title. */
@@ -33,6 +35,7 @@ export function KanbanList({
   onDelete,
   avatar,
   cardLabels,
+  formatTime,
   emptyState,
   searchSnippets,
   align = "center",
@@ -46,7 +49,8 @@ export function KanbanList({
   }
 
   const sorted = [...items].sort(
-    (a, b) => new Date(b.updatedAt).getTime() - new Date(a.updatedAt).getTime(),
+    (a, b) =>
+      new Date(b.lastMessageAt).getTime() - new Date(a.lastMessageAt).getTime(),
   );
 
   return (
@@ -74,6 +78,7 @@ export function KanbanList({
               onSelect={() => onSelect(item)}
               onDelete={onDelete ? () => onDelete(item) : undefined}
               labels={cardLabels}
+              formatTime={formatTime}
               snippet={searchSnippets?.[item.id]}
             />
           </motion.div>

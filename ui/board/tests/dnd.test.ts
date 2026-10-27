@@ -7,7 +7,7 @@ const item = (status: string): KanbanItem => ({
   id: "a1",
   title: "Mission",
   status,
-  updatedAt: "2026-01-01T00:00:00.000Z",
+  lastMessageAt: "2026-01-01T00:00:00.000Z",
 });
 
 const col = (id: string, statuses: string[]): KanbanColumn => ({

@@ -10,6 +10,8 @@ import { Trash2 } from "lucide-react";
 import { useState } from "react";
 import type { KanbanCardLabels } from "./kanban-card";
 import { KanbanTag } from "./kanban-tag";
+import { KanbanTime } from "./kanban-time";
+import type { MessageTimeFormatter } from "./message-time";
 import type { BoardSearchSnippet, KanbanItem } from "./types";
 
 export interface KanbanListItemProps {
@@ -22,6 +24,7 @@ export interface KanbanListItemProps {
   onSelect: () => void;
   onDelete?: () => void;
   labels?: KanbanCardLabels;
+  formatTime?: MessageTimeFormatter;
   /** Matched body/history fragment shown below the title when the search match
    *  was found there rather than in the title (the title is never highlighted). */
   snippet?: BoardSearchSnippet;
@@ -41,6 +44,7 @@ export function KanbanListItem({
   onSelect,
   onDelete,
   labels,
+  formatTime,
   snippet,
 }: KanbanListItemProps) {
   const [confirm, setConfirm] = useState(false);
@@ -84,6 +88,7 @@ export function KanbanListItem({
                 {item.group}
               </span>
             )}
+            <KanbanTime iso={item.lastMessageAt} formatTime={formatTime} />
             <span className="text-[13px] font-medium text-ink flex-1 truncate">
               {item.title}
             </span>

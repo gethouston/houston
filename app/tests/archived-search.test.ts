@@ -9,21 +9,21 @@ const missions = [
     title: "Refresh quarterly budget",
     description: "Update spreadsheet",
     status: "archived",
-    updatedAt: "2026-01-01T00:00:00Z",
+    lastMessageAt: "2026-01-01T00:00:00Z",
   },
   {
     id: "a2",
     title: "Plan team offsite",
     description: "Pick venue and agenda",
     status: "archived",
-    updatedAt: "2026-01-02T00:00:00Z",
+    lastMessageAt: "2026-01-02T00:00:00Z",
   },
   {
     id: "active",
     title: "Budget review",
     description: "Live conversation",
     status: "running",
-    updatedAt: "2026-01-03T00:00:00Z",
+    lastMessageAt: "2026-01-03T00:00:00Z",
   },
 ];
 

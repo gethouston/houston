@@ -6,7 +6,7 @@ import { boardItemConversationRow } from "../src/components/board/board-item-row
 // deleted conversation's key from, and `metadata` is an open bag.
 
 describe("boardItemConversationRow", () => {
-  const card = { title: "t", status: "todo", updatedAt: "2026-09-23" };
+  const card = { title: "t", status: "todo", lastMessageAt: "2026-09-23" };
 
   it("reads the card's session key back as the row's", () => {
     deepStrictEqual(

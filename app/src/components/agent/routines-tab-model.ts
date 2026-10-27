@@ -161,7 +161,10 @@ export function setupChatItem(
     title: activity.title,
     description: "",
     status: activity.status,
-    updatedAt: activity.updated_at ?? new Date().toISOString(),
+    lastMessageAt:
+      activity.last_message_at ??
+      activity.updated_at ??
+      new Date().toISOString(),
     group,
     metadata: sessionKey ? { sessionKey } : {},
   };

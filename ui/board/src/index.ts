@@ -52,6 +52,8 @@ export type {
   PersonToneClass,
 } from "./kanban-people-tone";
 export { personNameToneClass, personToneClass } from "./kanban-people-tone";
+export type { MessageTime, MessageTimeFormatter } from "./message-time";
+export { formatMessageTime } from "./message-time";
 export type {
   TaskListGroupLabels,
   TaskListGroupProps,

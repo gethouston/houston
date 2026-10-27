@@ -263,3 +263,32 @@ describe("drillInMissionTarget", () => {
     assert.equal(at({ pendingId: null }), "wait");
   });
 });
+
+it("orders phone mission rows by last message while older rows use updated_at", () => {
+  const sections = agentMissionSections(
+    [
+      mission({
+        id: "recent-edit",
+        agent_path: "/ws/a",
+        updated_at: "2026-10-27T17:00:00.000Z",
+        last_message_at: "2026-10-20T10:00:00.000Z",
+      }),
+      mission({
+        id: "recent-message",
+        agent_path: "/ws/a",
+        updated_at: "2026-10-26T10:00:00.000Z",
+        last_message_at: "2026-10-26T10:00:00.000Z",
+      }),
+      mission({
+        id: "legacy",
+        agent_path: "/ws/a",
+        updated_at: "2026-10-25T10:00:00.000Z",
+      }),
+    ],
+    "/ws/a",
+  );
+  assert.deepEqual(
+    sections.running.map((m) => m.id),
+    ["recent-message", "legacy", "recent-edit"],
+  );
+});

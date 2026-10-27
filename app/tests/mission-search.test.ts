@@ -13,21 +13,21 @@ const missions = [
     title: "Budget review",
     description: "Discuss launch plan",
     status: "done",
-    updatedAt: "2026-01-01T00:00:00Z",
+    lastMessageAt: "2026-01-01T00:00:00Z",
   },
   {
     id: "two",
     title: "Weekly report",
     description: "Find budget notes in transcript",
     status: "done",
-    updatedAt: "2026-01-02T00:00:00Z",
+    lastMessageAt: "2026-01-02T00:00:00Z",
   },
   {
     id: "three",
     title: "Customer follow-up",
     description: "Send agenda",
     status: "running",
-    updatedAt: "2026-01-03T00:00:00Z",
+    lastMessageAt: "2026-01-03T00:00:00Z",
   },
 ];
 

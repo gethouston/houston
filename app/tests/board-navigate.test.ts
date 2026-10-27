@@ -12,12 +12,12 @@ const COLUMNS: KanbanColumnConfig[] = [
 function item(
   id: string,
   status: string,
-  updatedAt = "2025-01-01T00:00:00Z",
+  lastMessageAt = "2025-01-01T00:00:00Z",
 ): KanbanItem {
-  return { id, title: id, status, updatedAt };
+  return { id, title: id, status, lastMessageAt };
 }
 
-// Sort within a column is updatedAt-desc, so newer items come first.
+// Sort within a column is lastMessageAt-desc, so newer items come first.
 // Encode that in the ISO timestamps to keep tests legible.
 const r1 = item("r1", "running", "2025-01-03T00:00:00Z");
 const r2 = item("r2", "running", "2025-01-02T00:00:00Z");

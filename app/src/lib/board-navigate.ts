@@ -10,7 +10,7 @@ interface NavigateInput {
 
 /**
  * Pure kanban navigation. Mirrors KanbanBoard's per-column grouping +
- * updatedAt-desc sort so arrow keys move the selection through cards in
+ * lastMessageAt-desc sort so arrow keys move the selection through cards in
  * the same order the user sees them. Returns the next selectedId, or
  * `null` if there's nothing to do (empty board, no movement available).
  *
@@ -31,7 +31,8 @@ export function navigateBoard(
       .slice()
       .sort(
         (a, b) =>
-          new Date(b.updatedAt).getTime() - new Date(a.updatedAt).getTime(),
+          new Date(b.lastMessageAt).getTime() -
+          new Date(a.lastMessageAt).getTime(),
       ),
   }));
 

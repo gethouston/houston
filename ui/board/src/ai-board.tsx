@@ -30,6 +30,7 @@ import type { KanbanCardLabels } from "./kanban-card";
 import { showsCardAction } from "./kanban-card-actions";
 import { KanbanDetailPanel } from "./kanban-detail-panel";
 import { KanbanList } from "./kanban-list";
+import type { MessageTimeFormatter } from "./message-time";
 import { type ResolvedSelection, resolvePanelState } from "./panel-state";
 import { shouldDropComposerSend } from "./submit-gate";
 import type { BoardSearchSnippet, KanbanColumn, KanbanItem } from "./types";
@@ -261,6 +262,7 @@ export interface AIBoardProps {
   onDraftChange?: (sessionKey: string, text: string) => void;
   /** Translated label overrides for per-card copy (the card's action tooltips + delete confirm). */
   cardLabels?: KanbanCardLabels;
+  formatTime?: MessageTimeFormatter;
   /** Translated overrides for the copy the board renders itself (composer
    *  placeholders, the uncreated conversation's panel title). */
   labels?: AIBoardLabels;
@@ -435,6 +437,7 @@ export function AIBoard({
   canSendEmpty,
   onComposerSubmit,
   cardLabels,
+  formatTime,
   labels,
   composerAsksOpeningWhenEmpty,
   composerOverride,
@@ -796,6 +799,7 @@ export function AIBoard({
           emptyState={emptyState}
           avatar={cardAvatar}
           cardLabels={cardLabels}
+          formatTime={formatTime}
           searchSnippets={searchSnippets}
           align={listAlign}
         />
@@ -818,6 +822,7 @@ export function AIBoard({
           actions={actions}
           avatar={cardAvatar}
           cardLabels={cardLabels}
+          formatTime={formatTime}
           selectable={selectable}
           selectedIds={selectedIds}
           onToggleSelect={onToggleSelect}
@@ -843,6 +848,9 @@ export function AIBoard({
   const detailPanel = (
     <KanbanDetailPanel
       title={panelTitle}
+      lastMessageAt={panelItem?.lastMessageAt}
+      formatTime={formatTime}
+      lastMessageLabel={cardLabels?.lastMessage}
       hideHeader={hidePanelHeader}
       onClose={hidePanelClose ? undefined : closePanel}
       leading={panelLeading}

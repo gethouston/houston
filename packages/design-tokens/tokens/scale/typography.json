@@ -14,6 +14,7 @@
     },
     "size": {
       "$type": "dimension",
+      "xxs": { "$value": "11px" },
       "xs": { "$value": "12px" },
       "sm": { "$value": "14px" },
       "base": { "$value": "16px" },

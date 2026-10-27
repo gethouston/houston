@@ -7,10 +7,7 @@ import {
   taskListSectionsFor,
 } from "../board/task-list-model.ts";
 import { missionColumnIdForStatus } from "../mission-board-columns.ts";
-import {
-  type AgentHomeConversation,
-  updatedAtMs,
-} from "./agents-home-model.ts";
+import type { AgentHomeConversation } from "./agents-home-model.ts";
 
 /**
  * One agent's task list, as rules: how the swept rows split into the screen's
@@ -27,7 +24,7 @@ export interface AgentMissionSections {
 }
 
 /**
- * Section one agent's swept rows, newest movement first in every section.
+ * Section one agent's swept rows, newest message first in every section.
  * The status→section mapping is the board's own (`missionColumnIdForStatus`),
  * so a mission always sits in the same section here as the column it occupies
  * on the desktop board.
@@ -56,7 +53,8 @@ export function agentMissionSections(
     else if (column === "done") sections.done.push(row);
   }
   const byRecency = (a: AgentHomeConversation, b: AgentHomeConversation) =>
-    updatedAtMs(b) - updatedAtMs(a);
+    (Date.parse(b.last_message_at ?? b.updated_at ?? "") || 0) -
+    (Date.parse(a.last_message_at ?? a.updated_at ?? "") || 0);
   sections.needsYou.sort(byRecency);
   sections.running.sort(byRecency);
   sections.done.sort(byRecency);

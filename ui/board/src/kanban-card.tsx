@@ -19,6 +19,8 @@ import {
   stackSlots,
 } from "./kanban-people-logic";
 import { KanbanTag } from "./kanban-tag";
+import { KanbanTime } from "./kanban-time";
+import type { MessageTimeFormatter } from "./message-time";
 import type { KanbanItem } from "./types";
 
 export interface KanbanCardLabels {
@@ -42,6 +44,7 @@ export interface KanbanCardLabels {
   peopleExpand?: string;
   /** Accessible label for the detail panel's icon-only close button. */
   closePanel?: string;
+  lastMessage?: (time: string) => string;
 }
 
 const DEFAULT_LABELS: Required<KanbanCardLabels> = {
@@ -56,6 +59,7 @@ const DEFAULT_LABELS: Required<KanbanCardLabels> = {
   people: "People",
   peopleExpand: "All people",
   closePanel: "Close panel",
+  lastMessage: (time) => `Last message: ${time}`,
 };
 
 export interface KanbanCardProps {
@@ -75,6 +79,7 @@ export interface KanbanCardProps {
   actions?: React.ReactNode;
   avatar?: React.ReactNode;
   labels?: KanbanCardLabels;
+  formatTime?: MessageTimeFormatter;
   /** Mark this card as the currently-open one in the right panel. */
   selected?: boolean;
   /** Mark this card as keyboard-focused (highlighted via arrow nav, not yet
@@ -113,6 +118,7 @@ export function KanbanCard({
   actions,
   avatar,
   labels,
+  formatTime,
   selected = false,
   highlighted = false,
   selectable = false,
@@ -266,8 +272,8 @@ export function KanbanCard({
         )}
       >
         {/* Top row: agent info + action buttons */}
-        <div className="flex items-center justify-between mb-1.5">
-          <div className="flex items-center min-w-0">
+        <div className="flex flex-wrap items-center justify-between gap-y-1.5 mb-1.5">
+          <div className="flex items-center min-w-0 max-w-full shrink-0">
             {/* Multi-select checkbox. Collapsed to zero width AND zero margin
                 until the card is hovered/focused or a selection is active, so
                 it reveals on hover (pushing the agent name right) yet stays
@@ -323,10 +329,23 @@ export function KanbanCard({
                 </span>
               ))}
             {item.group && (
-              <span className="ml-1.5 text-[11px] text-ink-muted truncate">
-                {item.group}
-              </span>
+              <>
+                <span className="ml-1.5 text-[length:var(--ht-font-size-xxs)] text-ink-muted truncate">
+                  {item.group}
+                </span>
+                <span
+                  aria-hidden="true"
+                  className="ml-1 text-xs text-ink-muted"
+                >
+                  ·
+                </span>
+              </>
             )}
+            <KanbanTime
+              iso={item.lastMessageAt}
+              formatTime={formatTime}
+              compact
+            />
           </div>
           {/* Card actions. Every button is a 24px box holding a 16px glyph —
               the accessibility floor for a hit target, and the product's
@@ -338,7 +357,7 @@ export function KanbanCard({
               appears on hover, and only where the outcome is semantic:
               approve turns success-green, delete danger-red; archive and
               rename take the row's neutral hover. */}
-          <div className="flex items-center gap-0.5 shrink-0">
+          <div className="ml-auto flex items-center gap-0.5 shrink-0">
             {showsApprove && onApprove && (
               <Tooltip>
                 <TooltipTrigger asChild>

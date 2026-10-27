@@ -8,13 +8,13 @@ function item(
   id: string,
   status: string,
   originSessionKey?: string,
-  updatedAt = "2026-08-07T00:00:00.000Z",
+  lastMessageAt = "2026-08-07T00:00:00.000Z",
 ) {
   return {
     id,
     title: id,
     status,
-    updatedAt,
+    lastMessageAt,
     ...(originSessionKey ? { metadata: { originSessionKey } } : {}),
   };
 }
@@ -96,7 +96,12 @@ describe("childMissionsOf", () => {
 });
 
 describe("parentMissionOf", () => {
-  const parent = { id: "p1", title: "p1", status: "needs_you", updatedAt: "" };
+  const parent = {
+    id: "p1",
+    title: "p1",
+    status: "needs_you",
+    lastMessageAt: "",
+  };
   const child = item("c1", "running", "activity-p1");
 
   it("resolves the parent of an agent-started chat", () => {

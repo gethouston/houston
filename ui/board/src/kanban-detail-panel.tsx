@@ -3,6 +3,7 @@ import { Loader2, XIcon } from "lucide-react";
 import { forwardRef } from "react";
 import { KanbanPeople } from "./kanban-people";
 import { hasPeopleBeyond } from "./kanban-people-logic";
+import { formatMessageTime, type MessageTimeFormatter } from "./message-time";
 import type { KanbanPerson } from "./types";
 
 const STATUS_LABEL: Record<string, string> = {
@@ -17,6 +18,9 @@ const STATUS_LABEL: Record<string, string> = {
 
 export interface KanbanDetailPanelProps {
   title: string;
+  lastMessageAt?: string;
+  formatTime?: MessageTimeFormatter;
+  lastMessageLabel?: (time: string) => string;
   subtitle?: string;
   status?: string;
   /** Omit to render a panel with no close button (a non-dismissable companion panel). */
@@ -55,6 +59,9 @@ export const KanbanDetailPanel = forwardRef<
 >(function KanbanDetailPanel(
   {
     title,
+    lastMessageAt,
+    formatTime = formatMessageTime,
+    lastMessageLabel = (time) => `Last message: ${time}`,
     subtitle,
     status,
     onClose,
@@ -127,6 +134,13 @@ export const KanbanDetailPanel = forwardRef<
                       </span>
                     </>
                   )}
+                </p>
+              )}
+              {lastMessageAt && (
+                <p className="text-xs text-ink-muted">
+                  <time dateTime={lastMessageAt} data-relative-time>
+                    {lastMessageLabel(formatTime(lastMessageAt).full)}
+                  </time>
                 </p>
               )}
             </div>

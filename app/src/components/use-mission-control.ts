@@ -175,7 +175,8 @@ export function useMissionControl(agents: Agent[]) {
             color: agentsByFolderPath.get(c.agent_path)?.color,
           }),
           status: c.status ?? "",
-          updatedAt: c.updated_at ?? new Date().toISOString(),
+          lastMessageAt:
+            c.last_message_at ?? c.updated_at ?? new Date().toISOString(),
           tags: missionCardTags(originTagOf(c)),
           metadata: {
             agentPath: c.agent_path,
