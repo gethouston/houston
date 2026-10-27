@@ -5,15 +5,15 @@ import { SEED_AGENT_NAME } from "@houston/fake-host";
  * The board belongs to one AI Employee, with the sidebar, titlebar, and seeded
  * missions. It is fully deterministic under the fake
  * host: two seeded missions with FIXED timestamps (state-store.ts `EPOCH`),
- * and the kanban cards render no relative time (only sort by it), so the whole
- * screen is stable. We capture it in both themes at a fixed desktop viewport,
+ * and the cards format those fixed historic dates, so the whole screen
+ * is stable. We capture it in both themes at a fixed desktop viewport,
  * plus one narrow-width run (the most important screen gets responsive
  * coverage).
  *
  * Determinism rules for this suite live in ../README.md. In short: fixed
  * viewport, `animations: "disabled"` (config-wide), a small
- * `maxDiffPixelRatio`. The board screens carry no live clock, so they need no
- * masks; the phone screens (Agents home, the per-agent missions drill) render
+ * `maxDiffPixelRatio`. The board dates are fixed, so they need no masks;
+ * the phone screens (Agents home, the per-agent missions drill) render
  * relative times against the wall clock and mask those spans.
  */
 
