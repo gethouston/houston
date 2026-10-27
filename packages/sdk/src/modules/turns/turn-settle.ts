@@ -68,7 +68,7 @@ export function finishOk(
     data: { result: s.text, cost_usd: null, duration_ms: null, usage: s.usage },
   });
   s.firstResponse?.resolve("no_text", s.turnId);
-  settleCard(s, "needs_you", "last_message");
+  settleCard(s, "needs_you", notice ? undefined : "last_message");
   emitStatus(s, "completed", undefined, undefined, notice?.kind);
 }
 

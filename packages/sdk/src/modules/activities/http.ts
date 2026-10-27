@@ -1,7 +1,7 @@
 /**
  * The runtime client is scoped to conversations, so board writes use host
- * routes. Named @assistant functions define the catalog; the turn-only
- * stamped writer stays private so generic edits cannot change message time.
+ * routes. The stamped writer is public through ActivitiesWrites.update, but
+ * stays out of the AI Manager catalog defined by named @assistant functions.
  */
 
 import type {
