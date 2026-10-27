@@ -7,7 +7,10 @@ import type {
   TurnLimits,
   TurnMode,
 } from "@houston/protocol";
-import { beforeEach, expect, test } from "vitest";
+import { afterEach, beforeEach, expect, test, vi } from "vitest";
+
+afterEach(() => vi.restoreAllMocks());
+
 import { ACTING_AS_HEADER } from "../auth/acting";
 import type { Agent, Workspace } from "../domain/types";
 import type { FireTurnOptions } from "../fire-turn-options";
@@ -221,6 +224,9 @@ test("a bad sandbox token is rejected", async () => {
 });
 
 test("start creates an origin-stamped row and fires the child turn", async () => {
+  vi.spyOn(Date.prototype, "toISOString").mockReturnValue(
+    "2026-10-27T16:25:00.000Z",
+  );
   const r = await call(
     "POST",
     "/sandbox/missions/start",
@@ -234,6 +240,7 @@ test("start creates an origin-stamped row and fires the child turn", async () =>
   expect(r.status).toBe(201);
   const created = (await onDisk()).find((a) => a.id !== PARENT.id);
   expect(created?.title).toBe("Draft the invite");
+  expect(created?.last_message_at).toBe("2026-10-27T16:25:00.000Z");
   expect(created?.status).toBe("running");
   expect(created?.origin_session_key).toBe("conv-parent");
   expect(created?.description).toBe("Write the invite email.");
@@ -513,6 +520,9 @@ test("status moves a finished mission and refuses the rest", async () => {
 });
 
 test("settle applies only to agent-started missions still running", async () => {
+  vi.spyOn(Date.prototype, "toISOString").mockReturnValue(
+    "2026-10-27T16:25:00.000Z",
+  );
   await saveActivities(vfs, root, [
     PARENT,
     {
@@ -529,6 +539,9 @@ test("settle applies only to agent-started missions still running", async () => 
     status: "needs_you",
   });
   expect(user.body).toEqual({ ok: false });
+  expect((await onDisk()).find((a) => a.id === "parent-1")).not.toHaveProperty(
+    "last_message_at",
+  );
   expect((await onDisk()).find((a) => a.id === "parent-1")?.status).toBe(
     "running",
   );
@@ -544,6 +557,7 @@ test("settle applies only to agent-started missions still running", async () => 
   expect(child.body).toEqual({ ok: true });
   const settled = (await onDisk()).find((a) => a.id === "child-1");
   expect(settled?.status).toBe("needs_you");
+  expect(settled?.last_message_at).toBe("2026-10-27T16:25:00.000Z");
   expect(settled?.pending_interaction?.steps[0]?.id).toBe("q1");
 
   // A second settle (already off `running`) is a no-op.

@@ -32,6 +32,7 @@ export {
   AttachmentTooLargeError,
   type AttachmentUpload,
   asAttachmentsSaveInput,
+  type BoardPersistOptions,
   type BoardStatus,
   buildAttachmentText,
   COMPUTE_BUSY_MESSAGE,

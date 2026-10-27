@@ -21,7 +21,12 @@
  * board operation is annotated once, where it is written.
  */
 
-import type { Activity, ActivityUpdate, NewActivity } from "@houston/protocol";
+import type {
+  Activity,
+  ActivityStamp,
+  ActivityUpdate,
+  NewActivity,
+} from "@houston/protocol";
 import {
   type HttpScope,
   httpRequest,
@@ -51,12 +56,14 @@ export interface ActivitiesHttp {
     agentId: string,
     id: string,
     update: ActivityUpdate,
+    stamp?: ActivityStamp,
   ): Promise<Activity>;
   remove(agentId: string, id: string): Promise<void>;
 }
 
 /**
- * Lists the missions on an agent's board.
+ * Lists the missions on an agent's board, including last_message_at when
+ * the last user or agent message time is recorded.
  * @param agentId The agent this acts on, by the id listAgents returns. An
  *   agent's name is not its id, so read the id from listAgents first.
  * @assistant group:missions
@@ -121,11 +128,16 @@ export async function updateActivity(
   agentId: string,
   id: string,
   updates: ActivityUpdate,
+  stamp?: ActivityStamp,
 ): Promise<Activity> {
+  // Older hosts ignore query params but reject unknown PATCH body fields.
+  const q = new URLSearchParams();
+  if (stamp !== undefined) q.set("stamp", stamp);
+  const suffix = q.toString();
   const res = await retryWriteWhileRefused(scope.ports.clock, () =>
     httpRequest(
       scope,
-      `/agents/${encodeURIComponent(agentId)}/activities/${encodeURIComponent(id)}`,
+      `/agents/${encodeURIComponent(agentId)}/activities/${encodeURIComponent(id)}${suffix ? `?${suffix}` : ""}`,
       { method: "PATCH", body: JSON.stringify(updates) },
     ),
   );
@@ -160,7 +172,8 @@ export function createActivitiesHttp(ctx: ScopeContext): ActivitiesHttp {
     list: (agentId) => listActivities(scope, agentId),
     create: (agentId, input, opts) =>
       createActivity(scope, agentId, input, opts),
-    update: (agentId, id, update) => updateActivity(scope, agentId, id, update),
+    update: (agentId, id, update, stamp) =>
+      updateActivity(scope, agentId, id, update, stamp),
     remove: (agentId, id) => deleteActivity(scope, agentId, id),
   };
 }
@@ -174,7 +187,8 @@ export function createActivitiesHttp(ctx: ScopeContext): ActivitiesHttp {
 export function createActivitiesWrites(http: ActivitiesHttp): ActivitiesWrites {
   return {
     create: (agentId, input, opts) => http.create(agentId, input, opts),
-    update: (agentId, id, updates) => http.update(agentId, id, updates),
+    update: (agentId, id, updates, stamp) =>
+      http.update(agentId, id, updates, stamp),
     setStatus: (agentId, id, status) => http.update(agentId, id, { status }),
     rename: (agentId, id, title) => http.update(agentId, id, { title }),
     delete: (agentId, id) => http.remove(agentId, id),

@@ -59,3 +59,17 @@ test("a failed settle write still tells the person", async () => {
     },
   });
 });
+
+test("the bus output carries the explicit stamp and leaves reconciliation unstamped", async () => {
+  const { vi } = await import("vitest");
+  const persist = vi.fn(async () => {});
+  const output = createBusFeedOutput(persist);
+  await output.persistBoardStatus("a1", "sk", "running", null, {
+    stamp: "last_message",
+  });
+  await output.persistBoardStatus("a1", "sk", "needs_you", null);
+  expect(persist.mock.calls).toEqual([
+    ["a1", "sk", "running", null, { stamp: "last_message" }],
+    ["a1", "sk", "needs_you", null, undefined],
+  ]);
+});

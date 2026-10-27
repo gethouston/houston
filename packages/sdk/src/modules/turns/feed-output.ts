@@ -14,6 +14,7 @@
  * are the same ones the desktop UI reacts to, carried along unchanged.
  */
 
+import type { ActivityStamp } from "@houston/protocol";
 import type { PendingInteraction } from "@houston/runtime-client";
 import type { FirstResponse } from "./first-response";
 import type { SendWaitReason } from "./send-busy";
@@ -54,6 +55,8 @@ export type BoardStatus = "running" | TerminalBoardStatus;
  */
 export interface BoardPersistOptions {
   provisional?: boolean;
+  /** Only live message writes stamp the card; reconciliation leaves it alone. */
+  stamp?: ActivityStamp;
 }
 
 /**

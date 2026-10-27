@@ -112,9 +112,9 @@ test("a turn PATCHes its card in order, reading the board only once", async () =
 
   expect(board().map((call) => `${call.method} ${call.url}`)).toEqual([
     `GET ${BASE}/agents/${AGENT}/activities`,
-    `PATCH ${BASE}/agents/${AGENT}/activities/m1`,
-    `PATCH ${BASE}/agents/${AGENT}/activities/m1`,
-    `PATCH ${BASE}/agents/${AGENT}/activities/m1`,
+    `PATCH ${BASE}/agents/${AGENT}/activities/m1?stamp=last_message`,
+    `PATCH ${BASE}/agents/${AGENT}/activities/m1?stamp=last_message`,
+    `PATCH ${BASE}/agents/${AGENT}/activities/m1?stamp=last_message`,
   ]);
   expect(board().map((call) => call.body)).toEqual([
     null,

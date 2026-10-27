@@ -13,6 +13,7 @@
 
 import type {
   Activity,
+  ActivityStamp,
   ActivityUpdate,
   NewActivity,
   PendingInteraction,
@@ -42,8 +43,9 @@ export interface ActivityItem {
   description?: string;
   /** Canonical status incl. `archived`; unknown values pass through unchanged. */
   status: string;
-  /** ISO timestamp of the last change, when the wire carries one. */
+  /** Server times: last write, then last user or agent message. */
   updatedAt?: string;
+  lastMessageAt?: string;
   /** The chat/session address — the wire's `session_key`, or `activity-<id>`. */
   sessionKey: string;
   /** Present when this activity is a routine's chat. */
@@ -103,6 +105,7 @@ export interface ActivitiesWrites {
     agentId: string,
     id: string,
     updates: ActivityUpdate,
+    stamp?: ActivityStamp,
   ): Promise<Activity>;
   /** `PATCH …/:id` with `{ status }`; returns the updated wire activity. */
   setStatus(agentId: string, id: string, status: string): Promise<Activity>;
@@ -161,6 +164,7 @@ export interface ActivitiesModule {
     sessionKey: string,
     status: string,
     pendingInteraction: PendingInteraction | null,
+    stamp?: ActivityStamp,
   ): Promise<void>;
   /** Rename a mission, then refetch. */
   rename(agentId: string, id: string, title: string): Promise<void>;

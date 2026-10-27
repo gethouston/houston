@@ -29,12 +29,13 @@ import {
 type QuestionStep = Extract<InteractionStep, { kind: "question" }>;
 
 /**
- * Arguments that only tie a call to an earlier answer (a price quote's
- * timestamp and amount) and mean nothing to the person approving it. The
+ * Arguments carrying host bookkeeping, such as a price quote or a message
+ * timestamp, rather than the decision the person is approving. The
  * card's sentence already says what the call does, so they are left off.
  */
 export const MACHINE_ARGUMENTS: Readonly<Record<string, readonly string[]>> = {
   addOrgMember: ["prorationDate", "quotedAmountCents"],
+  updateActivity: ["stamp"],
 };
 type ChatQuestionStep = Extract<ChatInteractionStep, { kind: "question" }>;
 

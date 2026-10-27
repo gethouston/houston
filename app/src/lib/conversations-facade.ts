@@ -36,6 +36,7 @@ export interface RawConversation {
   type: "primary" | "activity";
   session_key: string;
   updated_at?: string;
+  last_message_at?: string;
   agent_path: string;
   agent_name: string;
   agent?: string;
@@ -151,6 +152,7 @@ function conversationToRaw(c: ConversationEntry): RawConversation {
     type: c.type as "primary" | "activity",
     session_key: c.session_key,
     updated_at: c.updated_at,
+    last_message_at: c.last_message_at,
     agent_path: c.agent_path,
     agent_name: c.agent_name,
     agent: c.agent,

@@ -31,6 +31,9 @@ export interface ActivityMention {
 /** The most people one mission's aggregate tracks; older entries drop first. */
 export const ACTIVITY_MENTIONS_MAX = 32;
 
+export const activityStampSchema = z.literal("last_message");
+export type ActivityStamp = z.infer<typeof activityStampSchema>;
+
 export interface Activity {
   id: string;
   title: string;
@@ -49,6 +52,8 @@ export interface Activity {
    *  `routine_id`). */
   skill_slug?: string;
   updated_at?: string;
+  /** Last user or agent message, stamped by the server clock. */
+  last_message_at?: string;
   provider?: string;
   model?: string;
   /** The one thing this mission is waiting on the user for, if any. Present

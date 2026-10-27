@@ -1,5 +1,7 @@
+import type { ActivityStamp } from "@houston/protocol";
 import type { SdkLogger } from "../../ports";
 import type {
+  BoardPersistOptions,
   BoardStatus,
   FeedOutput,
   PendingInteraction,
@@ -18,6 +20,7 @@ export type BoardStatusPersister = (
   sessionKey: string,
   status: BoardStatus,
   pendingInteraction: PendingInteraction | null,
+  stamp?: ActivityStamp,
 ) => Promise<void>;
 
 /**
@@ -48,6 +51,7 @@ export class ActivityStatusOutput implements FeedOutput {
     sessionKey: string,
     status: BoardStatus,
     pendingInteraction?: PendingInteraction | null,
+    opts?: BoardPersistOptions,
   ): Promise<void> {
     try {
       await this.persist(
@@ -55,6 +59,7 @@ export class ActivityStatusOutput implements FeedOutput {
         sessionKey,
         status,
         pendingInteraction ?? null,
+        opts?.stamp,
       );
     } catch (err) {
       this.logger.warn("activities: board status persist failed", {

@@ -179,5 +179,6 @@ export function routineActivity(
     routine_id: routine.id,
     routine_run_id: run.id,
     updated_at: nowIso,
+    last_message_at: nowIso,
   };
 }

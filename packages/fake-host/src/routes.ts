@@ -108,7 +108,13 @@ export function handleAgents(
       return handleSkillsManifest(method, id, rest, body);
 
     case "activities":
-      return handleActivities(method, id, rest, body);
+      return handleActivities(
+        method,
+        id,
+        rest,
+        body,
+        new URL(req.url).searchParams,
+      );
 
     case "skills":
       return handleSkills(method, id, rest, body);

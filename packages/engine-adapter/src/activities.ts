@@ -3,6 +3,7 @@ import {
   missionConversationId,
   missionConversationKey,
 } from "@houston/domain";
+import type { ActivityStamp } from "@houston/protocol";
 import type {
   Activity,
   ActivityUpdate,
@@ -59,6 +60,7 @@ export function activityToConversation(
     type: "activity",
     session_key: missionConversationKey(a),
     updated_at: a.updated_at,
+    last_message_at: a.last_message_at,
     agent_path: agentPath,
     agent_name: agentName,
     agent: a.agent,
@@ -145,6 +147,7 @@ export function setStatusBySessionKey(
   sessionKey: string,
   status: string,
   pendingInteraction: PendingInteraction | null,
+  stamp?: ActivityStamp,
 ): void {
   const items = read(agentPath);
   const idx = items.findIndex((a) => addressesMission(a, sessionKey));
@@ -156,6 +159,7 @@ export function setStatusBySessionKey(
     status,
     updated_at: new Date().toISOString(),
   };
+  if (stamp === "last_message") next.last_message_at = next.updated_at;
   if (pendingInteraction) next.pending_interaction = pendingInteraction;
   else delete next.pending_interaction;
   items[idx] = next;

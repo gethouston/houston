@@ -339,3 +339,22 @@ test("an add never shows the price quote it carries", () => {
   ok(!step.question.includes("1796506429"));
   ok(!step.question.includes("7500"));
 });
+
+test("a mission update never exposes the internal message stamp", () => {
+  const step = localizeApprovalQuestion(
+    approvalStep({
+      detail: undefined,
+      approval: {
+        operation: "updateActivity",
+        args: [
+          { name: "id", value: "m1", long: false },
+          { name: "stamp", value: "last_message", long: false },
+        ],
+      },
+    }),
+    copyFor("en"),
+  );
+  ok(step.question.includes('"m1"'));
+  ok(!step.question.includes("last_message"));
+  ok(!step.question.includes("stamp"));
+});

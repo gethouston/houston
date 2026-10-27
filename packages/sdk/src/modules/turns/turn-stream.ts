@@ -214,7 +214,7 @@ export async function streamTurn(
   // never delays turn start; persistBoardStatus surfaces its own failure.
   // Every later write to this card queues behind it (board-writes.ts).
   const board = new TurnBoardWrites(output, agentPath, sessionKey);
-  void board.persist("running", null);
+  void board.persist("running", null, { stamp: "last_message" });
 
   const nonce = opts.nonce ?? randomNonce();
   const prior = registry.get(key);

@@ -37,6 +37,7 @@ export interface AgentHomeConversation {
   /** Agent-mode id; setup chats never appear on the home surfaces. */
   agent?: string | null;
   updated_at?: string;
+  last_message_at?: string;
   /** Who started the task, the facts its origin tag reads
    *  (`missionStartedBy`, PRODUCT-1928). */
   routine_id?: string;

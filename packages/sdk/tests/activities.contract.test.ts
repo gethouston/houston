@@ -180,3 +180,31 @@ describe("activities scope key", () => {
     expect(activitiesScope("abc")).toBe("activities/abc");
   });
 });
+
+it("message stamps survive status changes and reach the AI Manager's VM", async () => {
+  await h.sdk.activities.setStatusBySessionKey(
+    SEED_AGENT_ID,
+    "activity-act-1",
+    "running",
+    null,
+    "last_message",
+  );
+  expect(vm()?.items.find((item) => item.id === "act-1")?.lastMessageAt).toBe(
+    "2024-01-01T00:00:00.000Z",
+  );
+  await h.sdk.activities.setStatus(SEED_AGENT_ID, "act-1", "done");
+  expect(
+    (await h.sdk.activities.list(SEED_AGENT_ID)).find(
+      (item) => item.id === "act-1",
+    )?.last_message_at,
+  ).toBe("2024-01-01T00:00:00.000Z");
+  await h.sdk.activities.setStatusBySessionKey(
+    SEED_AGENT_ID,
+    "activity-act-2",
+    "needs_you",
+    null,
+  );
+  expect(vm()?.items.find((item) => item.id === "act-2")).not.toHaveProperty(
+    "lastMessageAt",
+  );
+});

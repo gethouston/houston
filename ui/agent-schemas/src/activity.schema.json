@@ -25,6 +25,7 @@
         "description": "The installed skill (directory slug) this setup chat belongs to. Set by Houston, not by the agent."
       },
       "updated_at": { "type": "string", "format": "date-time" },
+      "last_message_at": { "type": "string", "format": "date-time" },
       "provider": { "type": "string" },
       "model": { "type": "string" },
       "origin_session_key": {

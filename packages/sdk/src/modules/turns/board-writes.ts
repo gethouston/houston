@@ -109,6 +109,7 @@ export class TurnBoardWrites implements TurnCardWrites {
   replyPhase(complete: boolean): void {
     void this.persist(complete ? "needs_you" : "running", null, {
       provisional: true,
+      stamp: "last_message",
     });
   }
 
@@ -117,7 +118,9 @@ export class TurnBoardWrites implements TurnCardWrites {
     status: TerminalBoardStatus,
     pendingInteraction: PendingInteraction | null,
   ): void {
-    this.settleWrite ??= this.persist(status, pendingInteraction);
+    this.settleWrite ??= this.persist(status, pendingInteraction, {
+      stamp: "last_message",
+    });
   }
 
   /** The terminal write, or undefined when the turn never settled. */

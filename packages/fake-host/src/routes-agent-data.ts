@@ -4,6 +4,7 @@
  * attachments (packages/engine-adapter/src/control-plane.ts).
  */
 
+import { activityStampSchema, activityUpdateSchema } from "@houston/protocol";
 import {
   ROUTINE_NOT_FOUND,
   ROUTINE_NOT_FOUND_REASON,
@@ -28,6 +29,7 @@ export function handleActivities(
   id: string,
   rest: string[],
   body: Record<string, unknown> | undefined,
+  params: URLSearchParams,
 ): Response {
   if (rest.length === 2) {
     if (method === "GET") return json({ items: state.listActivities(id) });
@@ -36,7 +38,13 @@ export function handleActivities(
   }
   const aid = rest[2];
   if (method === "PATCH") {
-    const updated = state.updateActivity(id, aid, body ?? {});
+    const update = activityUpdateSchema.safeParse(body ?? {});
+    const stamp = activityStampSchema
+      .optional()
+      .safeParse(params.get("stamp") ?? undefined);
+    if (!update.success || !stamp.success)
+      return json({ error: "invalid activity update" }, 400);
+    const updated = state.updateActivity(id, aid, update.data, stamp.data);
     return updated ? json(updated) : json({ error: "activity not found" }, 404);
   }
   if (method === "DELETE") {

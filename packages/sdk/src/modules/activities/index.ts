@@ -15,7 +15,7 @@
  * shared {@link ModuleContext.authExpiry} notifier.
  */
 
-import type { PendingInteraction } from "@houston/protocol";
+import type { ActivityStamp, PendingInteraction } from "@houston/protocol";
 import type { ModuleContext } from "../../module-context";
 import { registerActivitiesCommands } from "./commands";
 import { attachActivitiesReactivity } from "./events-stream";
@@ -115,6 +115,7 @@ export function createActivitiesModule(ctx: ModuleContext): ActivitiesModule {
     sessionKey: string,
     status: string,
     pendingInteraction: PendingInteraction | null,
+    stamp?: ActivityStamp,
   ): Promise<void> {
     const match = (await http.list(agentId)).find((a) =>
       matchesActivitySessionKey(a, sessionKey),
@@ -127,10 +128,15 @@ export function createActivitiesModule(ctx: ModuleContext): ActivitiesModule {
       });
       return;
     }
-    await http.update(agentId, match.id, {
-      status,
-      pending_interaction: pendingInteraction,
-    });
+    await http.update(
+      agentId,
+      match.id,
+      {
+        status,
+        pending_interaction: pendingInteraction,
+      },
+      stamp,
+    );
     await refresh(agentId, true);
   }
   async function rename(

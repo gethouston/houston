@@ -47,6 +47,9 @@ export function toActivityItem(a: Activity): ActivityItem {
     sessionKey: sessionKeyOf(a),
     startedBy: missionStartedBy(a),
     ...(a.description ? { description: a.description } : {}),
+    ...(a.last_message_at !== undefined
+      ? { lastMessageAt: a.last_message_at }
+      : {}),
     ...(a.updated_at !== undefined ? { updatedAt: a.updated_at } : {}),
     ...(a.routine_id !== undefined ? { routineId: a.routine_id } : {}),
     ...(a.origin_session_key !== undefined

@@ -1,4 +1,5 @@
 import {
+  type BoardPersistOptions,
   type BoardStatus,
   type FeedOutput,
   type PendingInteraction,
@@ -54,6 +55,7 @@ export function createBusFeedOutput(
     sessionKey: string,
     status: BoardStatus,
     pendingInteraction: PendingInteraction | null,
+    opts?: BoardPersistOptions,
   ) => Promise<void>,
 ): FeedOutput {
   return {
@@ -103,6 +105,7 @@ export function createBusFeedOutput(
           sessionKey,
           status,
           pendingInteraction ?? null,
+          opts,
         );
       } catch (e) {
         // A send into an asleep mission starts the turn on the client, and the

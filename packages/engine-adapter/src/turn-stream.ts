@@ -1,5 +1,6 @@
 import type { HoustonEngineClient } from "@houston/runtime-client";
 import {
+  type BoardPersistOptions,
   type BoardStatus,
   type FeedAuthor,
   type FeedMention,
@@ -63,12 +64,13 @@ function composedOutput(
   setActivityStatus: (
     status: BoardStatus,
     pendingInteraction: PendingInteraction | null,
+    opts?: BoardPersistOptions,
   ) => Promise<void>,
 ) {
   return new MultiplexFeedOutput([
     conversationVm,
-    createBusFeedOutput((_a, _s, status, pendingInteraction) =>
-      setActivityStatus(status, pendingInteraction),
+    createBusFeedOutput((_a, _s, status, pendingInteraction, opts) =>
+      setActivityStatus(status, pendingInteraction, opts),
     ),
     cachePersistOutput(),
   ]);
@@ -134,6 +136,7 @@ export function streamTurn(
   setActivityStatus: (
     status: BoardStatus,
     pendingInteraction: PendingInteraction | null,
+    opts?: BoardPersistOptions,
   ) => Promise<void>,
   opts: StreamTurnOptions = {},
 ): Promise<void> {
@@ -156,6 +159,7 @@ export function observeConversation(
   setActivityStatus: (
     status: BoardStatus,
     pendingInteraction: PendingInteraction | null,
+    opts?: BoardPersistOptions,
   ) => Promise<void>,
   messagesAtOpen: number,
   tuning?: StreamTuning,

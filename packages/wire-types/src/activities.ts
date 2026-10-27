@@ -20,6 +20,7 @@ export interface Activity {
    *  durable reverse direction of the skill <-> chat link (HOU-791). */
   skill_slug?: string;
   updated_at?: string;
+  last_message_at?: string;
   provider?: string;
   model?: string;
   /** The conversation this mission was started from, present only when the
@@ -99,6 +100,7 @@ export interface ConversationEntry {
   type: string;
   session_key: string;
   updated_at?: string;
+  last_message_at?: string;
   agent_path: string;
   agent_name: string;
   agent?: string;

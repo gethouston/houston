@@ -20,3 +20,45 @@ it("seeds a mission's starter, and drops one the real host never stamps", () => 
   const forged = createActivity("seed-agent", body);
   expect("started_by" in forged).toBe(false);
 });
+
+it("PATCH stamps from its query and preserves the stamp on ordinary writes", async () => {
+  const { handleActivities } = await import("./routes-agent-data");
+  const created = createActivity("message-agent", { title: "Draft" });
+  const stamped = handleActivities(
+    "PATCH",
+    "message-agent",
+    ["message-agent", "activities", created.id],
+    { status: "needs_you" },
+    new URLSearchParams("stamp=last_message"),
+  );
+  expect(await stamped.json()).toMatchObject({
+    last_message_at: "2024-01-01T00:00:00.000Z",
+  });
+  const { writeAgentFile } = await import("./state");
+  writeAgentFile(
+    "message-agent",
+    ".houston/activity/activity.json",
+    JSON.stringify([
+      { ...created, last_message_at: "2026-10-26T10:00:00.000Z" },
+    ]),
+  );
+  const renamed = handleActivities(
+    "PATCH",
+    "message-agent",
+    ["message-agent", "activities", created.id],
+    { title: "Renamed" },
+    new URLSearchParams(),
+  );
+  expect(await renamed.json()).toMatchObject({
+    title: "Renamed",
+    last_message_at: "2026-10-26T10:00:00.000Z",
+  });
+  const forged = handleActivities(
+    "PATCH",
+    "message-agent",
+    ["message-agent", "activities", created.id],
+    { last_message_at: "2000-01-01T00:00:00.000Z" },
+    new URLSearchParams(),
+  );
+  expect(forged.status).toBe(400);
+});

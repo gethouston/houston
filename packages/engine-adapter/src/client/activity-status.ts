@@ -1,5 +1,5 @@
 import { addressesMission } from "@houston/domain";
-import type { BoardStatus } from "@houston/sdk";
+import type { BoardPersistOptions, BoardStatus } from "@houston/sdk";
 import type { PendingInteraction } from "@houston/wire-types";
 import * as activities from "../activities";
 import { emitLocalEcho } from "../bus";
@@ -31,6 +31,7 @@ export async function setActivityStatus(
   status: BoardStatus,
   pendingInteraction: PendingInteraction | null,
   turnCard?: { id?: string },
+  opts?: BoardPersistOptions,
 ): Promise<void> {
   if (!ctx.cp) {
     activities.setStatusBySessionKey(
@@ -38,6 +39,7 @@ export async function setActivityStatus(
       sessionKey,
       status,
       pendingInteraction,
+      opts?.stamp,
     );
     // Write-through echo: this is the settle path (a turn finishing PATCHes
     // its board status). Without it the card sticks on "running" until a
@@ -70,10 +72,15 @@ export async function setActivityStatus(
       // `pending_interaction: null` clears it explicitly (the host route +
       // domain applyActivityUpdate honor null); a value records the interaction.
       await viaSdk(`${board}/${encodeURIComponent(cardId)}`, () =>
-        ctx.sdk.activities.writes.update(agentPath, cardId, {
-          status,
-          pending_interaction: pendingInteraction,
-        }),
+        ctx.sdk.activities.writes.update(
+          agentPath,
+          cardId,
+          {
+            status,
+            pending_interaction: pendingInteraction,
+          },
+          opts?.stamp,
+        ),
       );
       if (turnCard) turnCard.id = cardId;
       break;
@@ -98,9 +105,10 @@ export function turnCardWriter(
 ): (
   status: BoardStatus,
   pendingInteraction: PendingInteraction | null,
+  opts?: BoardPersistOptions,
 ) => Promise<void> {
   const turnCard: { id?: string } = {};
-  return (status, pendingInteraction) =>
+  return (status, pendingInteraction, opts) =>
     setActivityStatus(
       ctx,
       agentPath,
@@ -108,5 +116,6 @@ export function turnCardWriter(
       status,
       pendingInteraction,
       turnCard,
+      opts,
     );
 }

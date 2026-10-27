@@ -118,7 +118,9 @@ test.each([
       ),
     );
     const write = calls.findLast((call) => call.method === "PATCH");
-    expect(write?.url).toBe("http://host/agents/a1/activities/m1");
+    expect(write?.url).toBe(
+      "http://host/agents/a1/activities/m1?stamp=last_message",
+    );
     if (!write) throw new Error("missing settle write");
     expectGatewayHeaders(write);
   } finally {

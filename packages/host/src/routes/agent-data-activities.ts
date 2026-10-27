@@ -16,7 +16,7 @@ import type {
   MissionStarter,
   NewActivity,
 } from "@houston/protocol";
-import { activityUpdateSchema } from "@houston/protocol";
+import { activityStampSchema, activityUpdateSchema } from "@houston/protocol";
 import { hostOwnedApprovalCards } from "./activity-approval-cards";
 import { retirePendingFirstDay } from "./agent-first-day-retire";
 import { withDocLock } from "./doc-lock";
@@ -145,6 +145,16 @@ export async function handleActivitiesData(
       json(res, 400, { error: "invalid activity update" });
       return;
     }
+    const stamp = activityStampSchema
+      .optional()
+      .safeParse(
+        new URL(req.url ?? "/", "http://host").searchParams.get("stamp") ??
+          undefined,
+      );
+    if (!stamp.success) {
+      json(res, 400, { error: "invalid activity stamp" });
+      return;
+    }
     const update = parsed.data;
     const next = await locked(async () => {
       const { items } = await loadActivities(store, root);
@@ -154,7 +164,8 @@ export async function handleActivitiesData(
         current,
         update,
         nowIso,
-        author ?? undefined,
+        author,
+        stamp.data,
       );
       await saveActivities(store, root, upsertById(items, applied));
       return applied;

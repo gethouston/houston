@@ -79,6 +79,7 @@ export async function startMission(
     // Across pods the parent chat is unreadable from here, so the row itself is
     // the only place these facts survive - and the next start counts its depth
     // from this number.
+    const nowIso = new Date().toISOString();
     const activity = {
       ...createActivity(
         {
@@ -90,11 +91,12 @@ export async function startMission(
           origin_session_key: origin.session_key,
         },
         id,
-        new Date().toISOString(),
+        nowIso,
         target.author,
       ),
       ...(origin.agent ? { origin_agent: origin.agent } : {}),
       origin_depth: origin.depth,
+      last_message_at: nowIso,
       ...(opts.startedBy ? { started_by: opts.startedBy } : {}),
     };
     await saveActivities(target.vfs, target.root, upsertById(items, activity));

@@ -1,6 +1,7 @@
 import {
   type Activity,
   type ActivityContributor,
+  type ActivityStamp,
   type ActivityUpdate,
   isPendingInteraction,
   type NewActivity,
@@ -148,12 +149,14 @@ export function applyActivityUpdate(
   update: ActivityUpdate,
   nowIso: string,
   author?: ActivityContributor,
+  stamp?: ActivityStamp,
 ): Activity {
   const { pending_interaction, provider, model, ...rest } = update;
   const defined = Object.fromEntries(
     Object.entries(rest).filter(([, v]) => v !== undefined),
   );
   const next = { ...current, ...defined, updated_at: nowIso } as Activity;
+  if (stamp === "last_message") next.last_message_at = nowIso;
   // `provider`/`model` are the mission's model pin: `null` deletes the key so
   // the mission falls back to the engine's own resolution (the warming flush
   // clears a pin its pod cannot honor).
