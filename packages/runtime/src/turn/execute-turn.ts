@@ -10,6 +10,7 @@ import { executeReadyTurn } from "./execute-ready-turn";
 import { executeShadowTurn } from "./execute-shadow-turn";
 import type { TurnServerDeps } from "./server-types";
 import { startTurnRequestFilesystem } from "./turn-claimed-hydration";
+import { armClaudeStartupProfile } from "./turn-claude-startup";
 import { cleanupTurn } from "./turn-cleanup";
 import { writeTurnCredential } from "./turn-credential";
 import type { TurnFilesystemPreparation } from "./turn-filesystem";
@@ -42,6 +43,7 @@ export async function executeTurn(
   const root = await prepareTurnRoot(turn);
   timings.t_tmpdir = performance.now();
   setActiveTurnTimings(timings);
+  armClaudeStartupProfile();
   const scope = `${turn.workspaceId}/${turn.agentId}`;
   const abort = new AbortController();
   // A CLAIMED turn's lifetime is the claim, not the HTTP connection: the

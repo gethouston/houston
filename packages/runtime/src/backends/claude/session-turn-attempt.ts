@@ -1,4 +1,8 @@
 import type { Options } from "@anthropic-ai/claude-agent-sdk";
+import {
+  claudeStartupProfileEnv,
+  collectClaudeStartupProfile,
+} from "../../turn/turn-claude-startup";
 import { markTurnOnce } from "../../turn/turn-network-marks";
 import { toSdkEffort } from "./effort";
 import { classifyText } from "./errors";
@@ -63,7 +67,7 @@ export async function runTurnAttempt(
     ...state.deps.baseOptions,
     // The per-turn env OVERRIDES the build-time one in baseOptions, so this
     // spawn carries the currently stored credential (PRODUCT-1355).
-    env,
+    env: { ...env, ...claudeStartupProfileEnv() },
     model: state.model,
     abortController,
     ...(resume ? { resume } : {}),
@@ -164,6 +168,7 @@ export async function runTurnAttempt(
       data: classifyText(errMessage(err), state.model, null, accessDigest),
     });
   } finally {
+    collectClaudeStartupProfile(env.CLAUDE_CONFIG_DIR);
     if (capturedSessionId)
       state.deps.sessionsStore.setSessionId(
         state.deps.conversationId,

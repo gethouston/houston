@@ -1,5 +1,6 @@
 import { type ModelCallReport, TurnErrorCode } from "@houston/protocol";
 import type { WireFrame } from "@houston/runtime-client";
+import { takeClaudeStartupProfile } from "./turn-claude-startup";
 import type { TurnDurabilityResult } from "./turn-durability";
 import type { TurnSetupCode, TurnSetupError } from "./turn-layout";
 import type { MissionTitleReport } from "./turn-mission-title-outcome";
@@ -48,8 +49,11 @@ export function turnTerminalFrame(
   // The worker's pre-prompt cost is its own request-to-prompt span: the
   // earliest mark is the request's arrival.
   const prePrompt = timingsMs?.prompt_start;
+  // Its own field, not timingsMs: the gateway logs at most 32 timing keys.
+  const claudeStartupMs = takeClaudeStartupProfile();
   const fields = {
     ...(timingsMs ? { timingsMs } : {}),
+    ...(claudeStartupMs ? { claudeStartupMs } : {}),
     ...(changed.length > 0 ? { changed } : {}),
     ...(poolWritesOutOfScope > 0 ? { poolWritesOutOfScope } : {}),
     ...(transcriptSkipped ? { transcriptSkipped } : {}),
