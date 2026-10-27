@@ -90,15 +90,16 @@ it("ignores future stamp values without refusing the PATCH", async () => {
 });
 
 it.each([
-  "patch",
-  "dismiss",
-] as const)("backfills a legacy card before a non-message %s", async (operation) => {
+  ["patch", "2023-10-26T10:00:00.000Z"],
+  ["dismiss", "2023-10-26T10:00:00.000Z"],
+  ["patch", undefined],
+  ["dismiss", undefined],
+] as const)("backfills a legacy card before a non-message %s, previous time %s", async (operation, previous) => {
   const { writeAgentFile } = await import("./state");
   const { updateActivity, clearActivityInteraction, listActivities } =
     await import("./state-activities");
   const agent = `legacy-${operation}`;
   const created = createActivity(agent, { title: "Old" });
-  const previous = "2023-10-26T10:00:00.000Z";
   writeAgentFile(
     agent,
     ".houston/activity/activity.json",
@@ -123,6 +124,6 @@ it.each([
   else clearActivityInteraction(agent, `activity-${created.id}`);
   expect(listActivities(agent)[0]).toMatchObject({
     updated_at: "2024-01-01T00:00:00.000Z",
-    last_message_at: previous,
+    last_message_at: previous ?? "2024-01-01T00:00:00.000Z",
   });
 });

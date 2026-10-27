@@ -25,18 +25,11 @@ import { fireActivityChanged, type MissionsCtx } from "./missions-sandbox";
 import { refuseMissionRoute, resolveMissionRoute } from "./missions-target";
 
 /**
- * The agent's explicit board move (`POST /sandbox/missions/status`): `done` or
- * `archived`, finished missions only. This is the ONE deliberate exception to
- * "only the user moves a card to done" - the user delegated the review to the
- * agent (PRODUCT-1244's planning-agent flow), the move is an explicit tool call
- * visible in the parent chat, and the guards below keep it away from anything
- * still running and from the agent's own conversation (which the turn's settle
- * would immediately contradict).
- *
- * An optional `agent` moves a card on ANOTHER agent's board - the settle half
- * of a mission the caller started there. That board is reached wherever it
- * lives: on this disk, or over the wire in the agent's own pod, which applies
- * the very same move with the very same guards.
+ * Explicit delegated review may move a finished mission to `done` or
+ * `archived`, visible as a tool call in the parent chat. The guards exclude
+ * running missions and the caller's own conversation, whose settle would
+ * contradict the move. An optional `agent` targets another agent's board,
+ * locally or in its pod, where the same guards apply.
  */
 export async function handleMissionStatus(
   callerCtx: MissionsCtx,
@@ -121,12 +114,10 @@ export async function applyMissionStatus(
 }
 
 /**
- * The runtime's turn-end report (`POST /sandbox/missions/settle`). Applied ONLY
- * to an agent-started mission (`origin_session_key` present) still on
- * `running`: those may have no client observing their conversation, so without
- * this report their card would sit on Running forever. Every other mission
- * keeps today's client-side settle untouched; a report for one answers
- * `{ok:false}` and writes nothing.
+ * The runtime's turn-end report stamps every successful reply. Status changes
+ * remain limited to agent-started missions still running: those may have no
+ * client to settle their card. An observer may already have changed status
+ * before this report arrives, so the reply stamp is independent of that guard.
  */
 export async function handleMissionSettle(
   ctx: MissionsCtx,
@@ -181,14 +172,18 @@ export async function handleMissionSettle(
           ),
         };
       }
-      if (!current?.origin_session_key || current.status !== "running")
-        return { settled: false, report };
+      if (!current) return { settled: false, report };
+      const changesStatus =
+        Boolean(current.origin_session_key) && current.status === "running";
+      const stamp =
+        !stopped && status === "needs_you" ? "last_message" : undefined;
+      if (!changesStatus && !stamp) return { settled: false, report };
       const applied = applyActivityUpdate(
         current,
-        { status, pending_interaction: interaction },
+        changesStatus ? { status, pending_interaction: interaction } : {},
         new Date().toISOString(),
         undefined,
-        !stopped && status === "needs_you" ? "last_message" : undefined,
+        stamp,
       );
       await saveActivities(ctx.vfs, ctx.root, upsertById(items, applied));
       return { settled: true, report };

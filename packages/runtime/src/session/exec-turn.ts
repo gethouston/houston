@@ -857,11 +857,10 @@ export async function execTurn(
         ...(pendingInteraction ? { pendingInteraction } : {}),
       });
     }
-    // Report the terminal board state to the host: applied ONLY to
-    // agent-started missions (which may have no client observing this
-    // conversation to settle their card); a no-op for everything else. Mirrors
-    // the client settle: clean/stopped → needs_you, streamed failure → error,
-    // and only the clean finish carries the interaction.
+    // Every reply needs a server stamp even with no sending client. The host
+    // also settles running agent-started cards, which may have no observer.
+    // Clean/stopped → needs_you, streamed failure → error; only the clean
+    // finish carries the interaction.
     reportMissionSettle(
       id,
       providerError ? "error" : "needs_you",

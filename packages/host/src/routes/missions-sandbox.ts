@@ -43,7 +43,8 @@ import { defineRouteFamily } from "./registry";
  * but a mission the agent started may never have a client observing it, so the
  * runtime reports every turn end and THIS route applies it ONLY to
  * agent-started missions (`origin_session_key` present) that are still
- * `running`. User-created missions keep the client settle path untouched.
+ * `running`. Every successful reply also stamps the card's message time,
+ * regardless of its origin or current status.
  */
 export interface MissionsDeps {
   store: WorkspaceStore;

@@ -15,14 +15,13 @@ export interface MissionSettleOptions {
  * is normally CLIENT-side (the SDK folds the terminal frame and PATCHes the
  * activity) — but a mission the AGENT started may never have a client observing
  * its conversation, so its card would sit on Running forever. The runtime
- * reports every turn end here and the host applies it ONLY to agent-started
- * missions still on `running` (routes/missions-manage.ts), so user-created
- * missions keep the client settle path byte-identical.
+ * reports every turn end here. The host changes status only for agent-started
+ * missions still on `running`, but stamps every successful reply's message
+ * time regardless of the card's origin or status (routes/missions-manage.ts).
  *
  * Fire-and-forget, never turn-fatal: this runs after the turn's terminal frame
  * is already published, with no UI thread to toast on. Network drops retry
- * (the host applies at most one settle per mission, so replays are safe) with
- * a fresh timeout per attempt; a settle that still fails logs a WARN
+ * with a fresh timeout per attempt; a settle that still fails logs a WARN
  * breadcrumb, never a console.error — the pod↔control-plane socket dropping
  * is connectivity, not a Houston fault, and it self-heals when the user opens
  * the mission (settle-from-history).

@@ -64,3 +64,22 @@ for (const bulk of [false, true]) {
     assert.equal(rows[0]?.updated_at, "2026-10-27T17:00:00.000Z");
   });
 }
+
+it("single and bulk writes anchor a card missing both timestamps to now", async () => {
+  for (const bulk of [false, true]) {
+    let rows: Activity[] = [
+      { id: "old", title: "Old", description: "", status: "running" },
+    ];
+    const writes = activityWrites({
+      list: async () => rows,
+      write: async (_path, items) => {
+        rows = items;
+      },
+      now: () => "2026-10-27T17:00:00.000Z",
+      newId: () => "new",
+    });
+    if (bulk) await writes.bulkUpdate("agent", ["old"], { status: "done" });
+    else await writes.update("agent", "old", { status: "done" });
+    assert.equal(rows[0]?.last_message_at, "2026-10-27T17:00:00.000Z");
+  }
+});

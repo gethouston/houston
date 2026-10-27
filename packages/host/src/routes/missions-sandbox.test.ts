@@ -24,6 +24,7 @@ import type {
 } from "../ports";
 import { MemoryWorkspaceStore } from "../store/memory";
 import { MemoryVfs } from "../vfs";
+import { handleActivitiesData } from "./agent-data-activities";
 import { CONVERSATION_ID_HEADER } from "./learnings-sandbox";
 import { liveTurns } from "./live-turn";
 import { missionFanout } from "./mission-fanout";
@@ -36,8 +37,8 @@ import { handleSandboxMissions } from "./missions-sandbox";
  *    a failed fire rolls the row back so no card sticks on Running.
  *  - Depth 1: an agent-started mission can't start missions of its own.
  *  - `status` moves only FINISHED missions, never the calling conversation's.
- *  - `settle` applies ONLY to agent-started missions still running — user
- *    missions keep the client-side settle path untouched.
+ *  - `settle` changes status only for agent-started missions still running;
+ *    every successful reply stamps its card, even after an observer's write.
  */
 
 const paths = new LocalPaths();
@@ -519,7 +520,7 @@ test("status moves a finished mission and refuses the rest", async () => {
   expect(missing.status).toBe(404);
 });
 
-test("settle applies only to agent-started missions still running", async () => {
+test("settle changes status only for agent-started missions still running", async () => {
   vi.spyOn(Date.prototype, "toISOString").mockReturnValue(
     "2026-10-27T16:25:00.000Z",
   );
@@ -533,14 +534,15 @@ test("settle applies only to agent-started missions still running", async () => 
       origin_session_key: "conv-parent",
     },
   ]);
-  // A user mission (no origin marker) is never touched.
+  // A user mission gets a reply stamp without changing status.
   const user = await call("POST", "/sandbox/missions/settle", {
     conversation_id: "conv-parent",
     status: "needs_you",
   });
-  expect(user.body).toEqual({ ok: false });
-  expect((await onDisk()).find((a) => a.id === "parent-1")).not.toHaveProperty(
+  expect(user.body).toEqual({ ok: true });
+  expect((await onDisk()).find((a) => a.id === "parent-1")).toHaveProperty(
     "last_message_at",
+    "2026-10-27T16:25:00.000Z",
   );
   expect((await onDisk()).find((a) => a.id === "parent-1")?.status).toBe(
     "running",
@@ -773,6 +775,96 @@ function actingToken(sub: string, name: string): string {
     "base64url",
   );
   return `acting-v1.${payload}.sig`;
+}
+
+test.each([
+  undefined,
+  "conv-parent",
+])("a successful settle stamps after an observer's reply_complete write, origin %s", async (origin) => {
+  const earlier = "2026-10-26T10:00:00.000Z";
+  const replyAt = "2026-10-27T16:25:00.000Z";
+  vi.spyOn(Date.prototype, "toISOString").mockReturnValue(replyAt);
+  await saveActivities(vfs, root, [
+    {
+      ...PARENT,
+      origin_session_key: origin,
+      last_message_at: earlier,
+    },
+  ]);
+  const { res, captured } = fakeRes();
+  await handleActivitiesData(
+    vfs,
+    root,
+    agent.id,
+    "PATCH",
+    PARENT.id,
+    fakeReq({ status: "needs_you", pending_interaction: null }, {}),
+    res,
+  );
+  expect(captured.status).toBe(200);
+  expect((await onDisk())[0]).toMatchObject({
+    status: "needs_you",
+    last_message_at: earlier,
+  });
+  events.length = 0;
+  const result = await call("POST", "/sandbox/missions/settle", {
+    conversation_id: "conv-parent",
+    status: "needs_you",
+    stopped: false,
+  });
+  expect(result.body).toEqual({ ok: true });
+  expect((await onDisk())[0]).toMatchObject({
+    status: "needs_you",
+    last_message_at: replyAt,
+  });
+  expect(events).toEqual([{ type: "ActivityChanged", agentPath: agent.id }]);
+});
+
+for (const origin of [undefined, "conv-parent"]) {
+  for (const cardStatus of [
+    "running",
+    "needs_you",
+    "done",
+    "archived",
+    "error",
+  ]) {
+    test.each([
+      { status: "needs_you", stopped: false },
+      { status: "needs_you", stopped: true },
+      { status: "error", stopped: false },
+    ])(`settle preserves status guards and stamps only replies, origin ${origin}, card ${cardStatus}, report %j`, async (outcome) => {
+      const earlier = "2026-10-26T10:00:00.000Z";
+      const replyAt = "2026-10-27T16:25:00.000Z";
+      vi.spyOn(Date.prototype, "toISOString").mockReturnValue(replyAt);
+      const interaction = {
+        steps: [{ kind: "question", id: "q1", question: "Which tone?" }],
+      } as const;
+      await saveActivities(vfs, root, [
+        {
+          ...PARENT,
+          status: cardStatus,
+          origin_session_key: origin,
+          last_message_at: earlier,
+          pending_interaction: { steps: [...interaction.steps] },
+        },
+      ]);
+      const result = await call("POST", "/sandbox/missions/settle", {
+        conversation_id: "conv-parent",
+        ...outcome,
+        pending_interaction: null,
+      });
+      const changesStatus = Boolean(origin) && cardStatus === "running";
+      const stamps = outcome.status === "needs_you" && !outcome.stopped;
+      expect(result.body).toEqual({ ok: changesStatus || stamps });
+      const [card] = await onDisk();
+      expect(card?.status).toBe(changesStatus ? outcome.status : cardStatus);
+      expect(card?.last_message_at).toBe(stamps ? replyAt : earlier);
+      expect(card?.pending_interaction).toEqual(
+        changesStatus ? undefined : interaction,
+      );
+      expect(events).toHaveLength(changesStatus || stamps ? 1 : 0);
+    });
+  }
 }
 
 test("plan mode refuses a start: the host reads its own record of the turn", async () => {
