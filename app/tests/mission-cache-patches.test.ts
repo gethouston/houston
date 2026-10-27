@@ -101,6 +101,7 @@ describe("missionEditPatches", () => {
     deepStrictEqual(aggregate?.[0], {
       ...row("a1", ALICE),
       status: "done",
+      last_message_at: T,
       updated_at: T,
     });
     strictEqual(aggregate?.[2]?.status, "needs_you");
@@ -348,4 +349,24 @@ describe("refused mission writes", () => {
     await refuse();
     strictEqual(qc.getQueryState(key)?.isInvalidated, true);
   });
+});
+
+it("optimistic aggregate moves backfill the previous time before the host answers", () => {
+  const [, aggregate] = missionEditPatches(
+    { [ALICE]: ["a1"] },
+    { status: "done" },
+    T,
+  );
+  const previous = "2026-10-07T08:00:00.000Z";
+  deepStrictEqual(
+    aggregate.apply([{ ...row("a1", ALICE), updated_at: previous }]),
+    [
+      {
+        ...row("a1", ALICE),
+        status: "done",
+        updated_at: T,
+        last_message_at: previous,
+      },
+    ],
+  );
 });

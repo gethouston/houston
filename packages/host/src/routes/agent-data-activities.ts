@@ -151,10 +151,6 @@ export async function handleActivitiesData(
         new URL(req.url ?? "/", "http://host").searchParams.get("stamp") ??
           undefined,
       );
-    if (!stamp.success) {
-      json(res, 400, { error: "invalid activity stamp" });
-      return;
-    }
     const update = parsed.data;
     const next = await locked(async () => {
       const { items } = await loadActivities(store, root);
@@ -165,7 +161,7 @@ export async function handleActivitiesData(
         update,
         nowIso,
         author,
-        stamp.data,
+        stamp.success ? stamp.data : undefined,
       );
       await saveActivities(store, root, upsertById(items, applied));
       return applied;

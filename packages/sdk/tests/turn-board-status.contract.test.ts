@@ -28,6 +28,7 @@ import {
   describe,
   expect,
   it,
+  vi,
 } from "vitest";
 import {
   control,
@@ -166,4 +167,43 @@ describe("SDK turn settle → activity board status", () => {
       solo.sdk.dispose();
     }
   });
+});
+
+it("default SDK wiring stamps both the user's send and the successful reply settle", async () => {
+  const wireFetch = globalThis.fetch;
+  const patches: { url: string; status: string }[] = [];
+  const spy = vi
+    .spyOn(globalThis, "fetch")
+    .mockImplementation((input, init) => {
+      if (init?.method === "PATCH" && String(input).includes("/activities/")) {
+        patches.push({
+          url: String(input),
+          status: JSON.parse(String(init.body)).status,
+        });
+      }
+      return wireFetch(input, init);
+    });
+  try {
+    await h.sdk.turns.send({
+      agentId: SEED_AGENT_ID,
+      conversationId: "activity-act-1",
+      text: "Ping",
+    });
+    await until(
+      () => convVm(h.sdk, "activity-act-1")?.running === false,
+      "turn settled",
+    );
+    await until(
+      () => patches.some((p) => p.status === "needs_you"),
+      "settle PATCH",
+    );
+    expect(
+      patches.map(({ url, status }) => [new URL(url).search, status]),
+    ).toEqual([
+      ["?stamp=last_message", "running"],
+      ["?stamp=last_message", "needs_you"],
+    ]);
+  } finally {
+    spy.mockRestore();
+  }
 });

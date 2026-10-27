@@ -49,7 +49,13 @@ export function observeConversation(
   registry.set(key, entry);
 
   // An observed turn's early hand-back and its settle, in order.
-  const board = new TurnBoardWrites(output, agentPath, sessionKey);
+  const board = new TurnBoardWrites(
+    output,
+    agentPath,
+    sessionKey,
+    undefined,
+    "observer",
+  );
   const sink = new TurnSink({
     agentPath,
     sessionKey,

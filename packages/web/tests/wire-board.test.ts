@@ -143,7 +143,7 @@ test("a failed mission update propagates — never swallowed", async () => {
   ).rejects.toMatchObject({ name: "HoustonEngineError", status: 404 });
 });
 
-test("a turn stamps start and settle through the adapter with the exact query URL", async () => {
+test("a provider-refused send stamps start but never its error settle", async () => {
   stubRouted((call) => {
     if (call.url.includes("/activities"))
       return call.method === "GET"
@@ -161,7 +161,7 @@ test("a turn stamps start and settle through the adapter with the exact query UR
   const patches = calls.filter((c) => c.method === "PATCH");
   expect(patches.map((c) => c.url)).toEqual([
     "http://host/agents/a1/activities/m1?stamp=last_message",
-    "http://host/agents/a1/activities/m1?stamp=last_message",
+    "http://host/agents/a1/activities/m1",
   ]);
   expect(patches.map((c) => c.body)).toEqual([
     '{"status":"running","pending_interaction":null}',

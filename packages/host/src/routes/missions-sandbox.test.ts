@@ -1052,3 +1052,29 @@ test("settle answers while the push reporter is still pending", async () => {
   await callPromise;
   expect(answered).toBe(true);
 });
+
+for (const outcome of [
+  { status: "needs_you", stopped: true },
+  { status: "error" },
+]) {
+  test(`mission settle ${JSON.stringify(outcome)} preserves the existing message time`, async () => {
+    await saveActivities(vfs, root, [
+      {
+        ...PARENT,
+        id: "child-stop",
+        session_key: "conv-child-stop",
+        origin_session_key: "conv-parent",
+        last_message_at: "2026-10-26T10:00:00.000Z",
+      },
+    ]);
+    const result = await call("POST", "/sandbox/missions/settle", {
+      conversation_id: "conv-child-stop",
+      ...outcome,
+    });
+    expect(result.body).toEqual({ ok: true });
+    expect((await onDisk()).find((a) => a.id === "child-stop")).toMatchObject({
+      status: outcome.status,
+      last_message_at: "2026-10-26T10:00:00.000Z",
+    });
+  });
+}

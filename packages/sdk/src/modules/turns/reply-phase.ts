@@ -1,4 +1,4 @@
-import { isOfferToolName } from "@houston/protocol";
+import { type ActivityStamp, isOfferToolName } from "@houston/protocol";
 import type { WireFrame } from "@houston/runtime-client";
 import type { TurnCardWrites } from "./board-writes";
 import type { TerminalBoardStatus } from "./feed-output";
@@ -56,7 +56,11 @@ export function setReplyPhase(s: TurnState, complete: boolean): void {
  * and the next turn's `running` write must queue behind this one
  * (board-writes.ts), never race it.
  */
-export function settleCard(s: TurnState, terminal: TerminalBoardStatus): void {
+export function settleCard(
+  s: TurnState,
+  terminal: TerminalBoardStatus,
+  stamp?: ActivityStamp,
+): void {
   s.terminal = terminal;
-  s.board?.settle(terminal, s.pendingInteraction);
+  s.board?.settle(terminal, s.pendingInteraction, stamp);
 }

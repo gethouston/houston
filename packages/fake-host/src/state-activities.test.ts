@@ -62,3 +62,67 @@ it("PATCH stamps from its query and preserves the stamp on ordinary writes", asy
   );
   expect(forged.status).toBe(400);
 });
+
+it("ignores future stamp values without refusing the PATCH", async () => {
+  const { handleActivities } = await import("./routes-agent-data");
+  const card = createActivity("future-stamp-agent", {
+    title: "Draft",
+    last_message_at: "2026-10-26T10:00:00.000Z",
+  });
+  const { writeAgentFile } = await import("./state");
+  writeAgentFile(
+    "future-stamp-agent",
+    ".houston/activity/activity.json",
+    JSON.stringify([{ ...card, last_message_at: "2026-10-26T10:00:00.000Z" }]),
+  );
+  const response = handleActivities(
+    "PATCH",
+    "future-stamp-agent",
+    ["future-stamp-agent", "activities", card.id],
+    { status: "done" },
+    new URLSearchParams("stamp=future"),
+  );
+  expect(response.status).toBe(200);
+  expect(await response.json()).toMatchObject({
+    status: "done",
+    last_message_at: "2026-10-26T10:00:00.000Z",
+  });
+});
+
+it.each([
+  "patch",
+  "dismiss",
+] as const)("backfills a legacy card before a non-message %s", async (operation) => {
+  const { writeAgentFile } = await import("./state");
+  const { updateActivity, clearActivityInteraction, listActivities } =
+    await import("./state-activities");
+  const agent = `legacy-${operation}`;
+  const created = createActivity(agent, { title: "Old" });
+  const previous = "2023-10-26T10:00:00.000Z";
+  writeAgentFile(
+    agent,
+    ".houston/activity/activity.json",
+    JSON.stringify([
+      {
+        ...created,
+        updated_at: previous,
+        pending_interaction: {
+          steps: [
+            {
+              kind: "suggest_actions",
+              id: "s1",
+              actions: [{ id: "a1", label: "Again", message: "Again" }],
+            },
+          ],
+        },
+      },
+    ]),
+  );
+  if (operation === "patch")
+    updateActivity(agent, created.id, { status: "done" });
+  else clearActivityInteraction(agent, `activity-${created.id}`);
+  expect(listActivities(agent)[0]).toMatchObject({
+    updated_at: "2024-01-01T00:00:00.000Z",
+    last_message_at: previous,
+  });
+});

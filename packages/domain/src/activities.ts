@@ -157,6 +157,7 @@ export function applyActivityUpdate(
   );
   const next = { ...current, ...defined, updated_at: nowIso } as Activity;
   if (stamp === "last_message") next.last_message_at = nowIso;
+  else next.last_message_at ??= current.updated_at ?? nowIso;
   // `provider`/`model` are the mission's model pin: `null` deletes the key so
   // the mission falls back to the engine's own resolution (the warming flush
   // clears a pin its pod cannot honor).

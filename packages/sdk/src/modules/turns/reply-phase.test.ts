@@ -383,7 +383,7 @@ test("writes to one card queue across boards; other cards never wait", async () 
     },
   };
   const first = new TurnBoardWrites(output, AGENT, "sk-a");
-  first.settle("needs_you", offers);
+  first.settle("needs_you", offers, undefined);
   const nextTurn = new TurnBoardWrites(output, AGENT, "sk-a");
   const next = nextTurn.persist("running", null);
   await new TurnBoardWrites(output, AGENT, "sk-b").persist("running", null);
@@ -408,7 +408,7 @@ test("a write that never answers holds the card's queue only so long", async () 
   };
   const board = new TurnBoardWrites(output, AGENT, "sk-hung", 10);
   void board.persist("running", null);
-  board.settle("needs_you", null);
+  board.settle("needs_you", null, undefined);
   await board.settled;
   expect(seen).toEqual(["running", "needs_you"]);
 });

@@ -116,12 +116,13 @@ export class HoustonSdk implements SdkModules {
     this.activities = moduleFactories.createActivitiesModule(ctx);
     this.turns = moduleFactories.createTurnsModule(
       ctx,
-      (agentId, sessionKey, status, pendingInteraction) =>
+      (agentId, sessionKey, status, pendingInteraction, stamp) =>
         this.activities.setStatusBySessionKey(
           agentId,
           sessionKey,
           status,
           pendingInteraction,
+          stamp,
         ),
     );
     this.missions = moduleFactories.createMissionsSearchModule(ctx);

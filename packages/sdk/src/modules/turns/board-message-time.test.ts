@@ -21,7 +21,7 @@ test("turn start, reply and settle request server message stamps", async () => {
   await board.persist("running", null, { stamp: "last_message" });
   board.replyPhase(true);
   await reply;
-  board.settle("needs_you", null);
+  board.settle("needs_you", null, "last_message");
   await board.settled;
   expect(writes).toEqual([
     { status: "running", stamp: "last_message" },
@@ -44,4 +44,44 @@ test("a reconciliation write has no implicit message stamp", async () => {
   expect(persist).toEqual([
     ["a1", "activity-m2", "needs_you", null, undefined],
   ]);
+});
+
+test("continuing after a reply does not invent another message time", async () => {
+  let written = () => {};
+  const done = new Promise<void>((resolve) => {
+    written = resolve;
+  });
+  const stamps: (ActivityStamp | undefined)[] = [];
+  const output: FeedOutput = {
+    pushFeedItem() {},
+    sessionStatus() {},
+    async persistBoardStatus(_a, _s, _status, _interaction, opts) {
+      stamps.push(opts?.stamp);
+      written();
+    },
+  };
+  const board = new TurnBoardWrites(output, "a1", "carried-on");
+  board.replyPhase(false);
+  await done;
+  expect(stamps).toEqual([undefined]);
+});
+
+test("an observer's start write cannot stamp even when explicitly requested", async () => {
+  const stamps: (ActivityStamp | undefined)[] = [];
+  const output: FeedOutput = {
+    pushFeedItem() {},
+    sessionStatus() {},
+    async persistBoardStatus(_a, _s, _status, _interaction, opts) {
+      stamps.push(opts?.stamp);
+    },
+  };
+  const board = new TurnBoardWrites(
+    output,
+    "a1",
+    "observed-start",
+    undefined,
+    "observer",
+  );
+  await board.persist("running", null, { stamp: "last_message" });
+  expect(stamps).toEqual([undefined]);
 });

@@ -188,7 +188,7 @@ export async function handleMissionSettle(
         { status, pending_interaction: interaction },
         new Date().toISOString(),
         undefined,
-        "last_message",
+        !stopped && status === "needs_you" ? "last_message" : undefined,
       );
       await saveActivities(ctx.vfs, ctx.root, upsertById(items, applied));
       return { settled: true, report };

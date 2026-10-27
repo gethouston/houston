@@ -45,6 +45,7 @@ export function applyActivityPatch(
     Object.entries(rest).filter(([, v]) => v !== undefined),
   );
   const merged: Activity = { ...item, ...defined, updated_at: timestamp };
+  merged.last_message_at ??= item.updated_at ?? timestamp;
   // `provider` / `model` are the mission's model pin: `null` DELETES the key
   // (the schema has no null type) so the mission falls back to the engine's
   // own resolution — the warming flush clears a pin its pod cannot honor.

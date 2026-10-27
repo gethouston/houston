@@ -44,7 +44,7 @@ test("only an explicit message stamp changes the message time", () => {
       { title: "Renamed" },
       now,
     ),
-  ).not.toHaveProperty("last_message_at");
+  ).toHaveProperty("last_message_at", earlier);
 });
 
 test("a PATCH body cannot author the server timestamp", () => {
@@ -88,4 +88,30 @@ test("a surfaced routine stamps both a fresh and an existing card", () => {
       now,
     ).last_message_at,
   ).toBe("2026-10-27T16:25:00.000Z");
+});
+
+test("dragging a legacy card to done freezes its previous update time", () => {
+  expect(
+    applyActivityUpdate(
+      createActivity({ title: "Old" }, "m2", earlier),
+      { status: "done" },
+      now,
+    ),
+  ).toMatchObject({
+    status: "done",
+    last_message_at: earlier,
+    updated_at: now,
+  });
+});
+
+test("a legacy card missing both timestamps anchors its fallback once", () => {
+  const card = {
+    id: "untimed",
+    title: "Old",
+    description: "",
+    status: "running",
+  };
+  const first = applyActivityUpdate(card, { status: "done" }, now);
+  expect(first.last_message_at).toBe(now);
+  expect(applyActivityUpdate(first, { status: "done" }, now)).toEqual(first);
 });

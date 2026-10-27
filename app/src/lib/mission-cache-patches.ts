@@ -24,8 +24,8 @@ export interface MissionEdit {
   title?: string;
 }
 
-interface AggregateRow {
-  id: string;
+interface AggregateRow
+  extends Pick<Activity, "id" | "updated_at" | "last_message_at"> {
   agent_path: string;
 }
 
@@ -154,7 +154,12 @@ export function missionEditPatches(
         mapMatching(
           rows,
           (row) => owns(sets, row),
-          (row) => ({ ...row, ...fields, updated_at: timestamp }),
+          (row) => ({
+            ...row,
+            ...fields,
+            last_message_at: row.last_message_at ?? row.updated_at ?? timestamp,
+            updated_at: timestamp,
+          }),
         ),
       revert: (
         rows: AggregateRow[] | undefined,

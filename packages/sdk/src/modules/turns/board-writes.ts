@@ -1,3 +1,4 @@
+import type { ActivityStamp } from "@houston/protocol";
 import type {
   BoardPersistOptions,
   BoardStatus,
@@ -30,6 +31,7 @@ export interface TurnCardWrites {
   settle(
     status: TerminalBoardStatus,
     pendingInteraction: PendingInteraction | null,
+    stamp: ActivityStamp | undefined,
   ): void;
 }
 
@@ -67,6 +69,7 @@ export class TurnBoardWrites implements TurnCardWrites {
     private readonly agentPath: string,
     private readonly sessionKey: string,
     private readonly waitMs: number = BOARD_WRITE_WAIT_MS,
+    private readonly mode: "turn" | "observer" = "turn",
   ) {}
 
   /**
@@ -91,7 +94,7 @@ export class TurnBoardWrites implements TurnCardWrites {
         this.sessionKey,
         status,
         pendingInteraction,
-        opts,
+        this.mode === "observer" && opts ? { ...opts, stamp: undefined } : opts,
       );
     });
     q.tail = write.then(
@@ -109,7 +112,7 @@ export class TurnBoardWrites implements TurnCardWrites {
   replyPhase(complete: boolean): void {
     void this.persist(complete ? "needs_you" : "running", null, {
       provisional: true,
-      stamp: "last_message",
+      stamp: complete ? "last_message" : undefined,
     });
   }
 
@@ -117,9 +120,10 @@ export class TurnBoardWrites implements TurnCardWrites {
   settle(
     status: TerminalBoardStatus,
     pendingInteraction: PendingInteraction | null,
+    stamp: ActivityStamp | undefined,
   ): void {
     this.settleWrite ??= this.persist(status, pendingInteraction, {
-      stamp: "last_message",
+      stamp,
     });
   }
 

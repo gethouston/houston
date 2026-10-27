@@ -204,7 +204,8 @@ it("message stamps survive status changes and reach the AI Manager's VM", async 
     "needs_you",
     null,
   );
-  expect(vm()?.items.find((item) => item.id === "act-2")).not.toHaveProperty(
+  expect(vm()?.items.find((item) => item.id === "act-2")).toHaveProperty(
     "lastMessageAt",
+    "2024-01-01T00:00:00.000Z",
   );
 });

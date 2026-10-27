@@ -42,9 +42,13 @@ export function handleActivities(
     const stamp = activityStampSchema
       .optional()
       .safeParse(params.get("stamp") ?? undefined);
-    if (!update.success || !stamp.success)
-      return json({ error: "invalid activity update" }, 400);
-    const updated = state.updateActivity(id, aid, update.data, stamp.data);
+    if (!update.success) return json({ error: "invalid activity update" }, 400);
+    const updated = state.updateActivity(
+      id,
+      aid,
+      update.data,
+      stamp.success ? stamp.data : undefined,
+    );
     return updated ? json(updated) : json({ error: "activity not found" }, 404);
   }
   if (method === "DELETE") {

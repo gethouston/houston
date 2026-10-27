@@ -62,9 +62,19 @@ test("PATCH without the query preserves the message time", async () => {
 
 test.each([
   ["", { last_message_at: "2000-01-01T00:00:00.000Z" }],
-  ["?stamp=unknown", { status: "needs_you" }],
-])("refuses a forged timestamp or invalid stamp", async (query, body) => {
+])("refuses a forged timestamp", async (query, body) => {
   const { status, card } = await patch(query, body);
   expect(status).toBe(400);
   expect(card?.last_message_at).toBe("2026-10-26T10:00:00.000Z");
+});
+
+test("unknown future stamps are ignored while the update still lands", async () => {
+  const { status, card } = await patch("?stamp=future", {
+    status: "needs_you",
+  });
+  expect(status).toBe(200);
+  expect(card).toMatchObject({
+    status: "needs_you",
+    last_message_at: "2026-10-26T10:00:00.000Z",
+  });
 });
