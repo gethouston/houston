@@ -60,7 +60,8 @@ export const KanbanDetailPanel = forwardRef<
   {
     title,
     lastMessageAt,
-    formatTime = formatMessageTime,
+    formatTime = (iso, dateStyle) =>
+      formatMessageTime(iso, undefined, undefined, undefined, dateStyle),
     lastMessageLabel = (time) => `Last message: ${time}`,
     subtitle,
     status,
@@ -139,7 +140,7 @@ export const KanbanDetailPanel = forwardRef<
               {lastMessageAt && (
                 <p className="text-xs text-ink-muted">
                   <time dateTime={lastMessageAt} data-relative-time>
-                    {lastMessageLabel(formatTime(lastMessageAt).full)}
+                    {lastMessageLabel(formatTime(lastMessageAt, "medium").full)}
                   </time>
                 </p>
               )}

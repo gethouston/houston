@@ -108,16 +108,32 @@ it("changes from Now at exactly a minute and from weekday at seven calendar days
 it("uses local calendar days across a daylight-saving transition", () => {
   process.env.TZ = "America/New_York";
   try {
-    assert.equal(
-      formatLastMessageTime(
-        "2026-11-01T00:30:00-04:00",
-        "en",
-        { now: "Now", yesterday: "Yesterday" },
-        new Date("2026-11-02T00:15:00-05:00"),
-      ).short,
-      "Yesterday",
-    );
+    for (const [at, today] of [
+      ["2026-11-01T23:30:00-05:00", "2026-11-02T00:15:00-05:00"],
+      ["2026-03-08T00:30:00-05:00", "2026-03-09T00:15:00-04:00"],
+    ]) {
+      assert.equal(
+        formatLastMessageTime(
+          at,
+          "en",
+          { now: "Now", yesterday: "Yesterday" },
+          new Date(today),
+        ).short,
+        "Yesterday",
+      );
+    }
   } finally {
     process.env.TZ = "UTC";
   }
+});
+
+it("bounds the future clock-skew allowance at five minutes", () => {
+  const words = { now: "Now", yesterday: "Yesterday" };
+  for (const [iso, expected] of [
+    ["2026-10-27T17:05:00.000Z", "Now"],
+    ["2026-10-27T17:05:01.000Z", "5:05 PM"],
+    ["2026-10-28T17:00:00.000Z", "Oct 28"],
+    ["2027-10-27T17:00:00.000Z", "Oct 27, 2027"],
+  ])
+    assert.equal(formatLastMessageTime(iso, "en", words, now).short, expected);
 });

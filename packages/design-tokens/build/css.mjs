@@ -108,5 +108,10 @@ export function buildCss(light, dark, palettes) {
     "",
     block(":root", themeless(light)),
     "",
+    `@theme {\n${scale(light, "container")
+      .map(({ name, value }) => `  --container-${name}: ${value};`)
+      .join("\n")}\n}`,
+
+    "",
   ].join("\n");
 }

@@ -240,7 +240,7 @@ export function KanbanCard({
           // colliding with the conic-gradient keyframe animation.
           // Restrict transitions to the safe properties we actually
           // care about.
-          "kanban-card group/card relative rounded-xl p-3 transition-[background-color,box-shadow,border-color] duration-200",
+          "kanban-card @container/card group/card relative rounded-xl p-3 transition-[background-color,box-shadow,border-color] duration-200",
           // The whole card reads as clickable: a plain pointer, never the grab
           // "hand". During a drag the global `body.kanban-dragging` cursor (set
           // by the board) overrides this everywhere, so the same grab/not-
@@ -272,8 +272,8 @@ export function KanbanCard({
         )}
       >
         {/* Top row: agent info + action buttons */}
-        <div className="flex flex-wrap items-center justify-between gap-y-1.5 mb-1.5">
-          <div className="flex items-center min-w-0 max-w-full shrink-0">
+        <div className="flex items-center justify-between mb-1.5">
+          <div className="flex items-center min-w-0 flex-1">
             {/* Multi-select checkbox. Collapsed to zero width AND zero margin
                 until the card is hovered/focused or a selection is active, so
                 it reveals on hover (pushing the agent name right) yet stays
@@ -322,20 +322,24 @@ export function KanbanCard({
                 Contributors show only in the bottom-right people overlay, never
                 as the card icon. `item.icon` remains a generic per-item fallback for
                 boards that pass no `avatar` (e.g. cross-agent lists). */}
-            {avatar ??
-              (item.icon && (
-                <span className="size-3.5 shrink-0 flex items-center justify-center">
-                  {item.icon}
-                </span>
-              ))}
+            {(avatar || item.icon) && (
+              <span
+                className={cn(
+                  "shrink-0 flex items-center justify-center",
+                  !avatar && "size-3.5",
+                )}
+              >
+                {avatar ?? item.icon}
+              </span>
+            )}
             {item.group && (
               <>
-                <span className="ml-1.5 text-[length:var(--ht-font-size-xxs)] text-ink-muted truncate">
+                <span className="hidden @min-card-agent/card:inline ml-1.5 min-w-0 text-[length:var(--ht-font-size-xxs)] text-ink-muted truncate">
                   {item.group}
                 </span>
                 <span
                   aria-hidden="true"
-                  className="ml-1 text-xs text-ink-muted"
+                  className="hidden @min-card-agent/card:inline ml-1 shrink-0 text-xs text-ink-muted"
                 >
                   ·
                 </span>

@@ -31,7 +31,7 @@ it("cards and rows show a semantic time with the supplied localized label", () =
       React.createElement(Component, { item, formatTime, onSelect() {} }),
     );
     assert.match(html, /<time[^>]*dateTime="2026-10-27T15:48:00.000Z"/);
-    assert.match(html, /title="martes, 27 de octubre de 2026, 15:48"/);
+    assert.doesNotMatch(html, /<time[^>]*title=/);
     assert.match(html, />15:48<\/time>/);
     assert.ok(html.indexOf("Legal assistant") < html.indexOf(">15:48</time>"));
   }
@@ -89,4 +89,19 @@ it("board columns and list rows sort by last message, newest first", () => {
   );
   for (const html of [list, board])
     assert.ok(html.indexOf("Newest") < html.indexOf("Draft"));
+});
+
+it("detail headers use the medium date and short time", () => {
+  const html = render(
+    React.createElement(
+      KanbanDetailPanel,
+      { title: "Draft", lastMessageAt: item.lastMessageAt },
+      null,
+    ),
+  );
+  const expected = new Intl.DateTimeFormat("en-US", {
+    dateStyle: "medium",
+    timeStyle: "short",
+  }).format(new Date(item.lastMessageAt));
+  assert.ok(html.includes(`Last message: ${expected}`));
 });

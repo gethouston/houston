@@ -3,6 +3,13 @@
 Every `version` bump in `inventory.yaml` needs a matching entry here (enforced by
 `pnpm check:parity`). Newest first. Use `## vN` headings.
 
+## v146 - 2026-10-27
+
+Mission cards keep their action row at narrow widths, hiding the agent name
+before truncating long timestamps; avatars and controls keep their size.
+Detail headers use a medium date and short
+time. Relative labels share a minute clock; full-date tooltips use one tooltip.
+
 ## v145 - 2026-10-27
 
 Mission cards and archived list rows show the last user or agent message time
