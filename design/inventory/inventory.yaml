@@ -36,7 +36,7 @@
 #   a11y     roles / labels / focus expectations the surface must honor
 #   since    inventory version this component first appeared in
 
-version: 148
+version: 149
 
 components:
   - id: agent-delegation-settings
@@ -913,8 +913,9 @@ components:
       in full down to a 180px column. A card's message from another year
       shows the longest of month and year, numeric month and year, or the
       year that fits; list rows keep the full date, as do the tooltip and
-      detail header. Columns reserve their scrollbar's room, so a card keeps
-      its width when its column scrolls. The
+      detail header. Columns reserve their scrollbar's room in place of their
+      right padding, so a card keeps main's width and keeps it when its column
+      scrolls; the multi-select ring is drawn inside the card's border. The
       select checkbox takes the leading avatar's place on hover, focus or an
       active selection, so revealing it never narrows the row or moves it.
       Old rows fall back to updated_at; board edits preserve

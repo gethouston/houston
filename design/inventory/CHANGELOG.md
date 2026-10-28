@@ -3,6 +3,15 @@
 Every `version` bump in `inventory.yaml` needs a matching entry here (enforced by
 `pnpm check:parity`). Newest first. Use `## vN` headings.
 
+## v149 - 2026-10-28
+
+Cards are as wide as before v148: the column's reserved scrollbar room
+replaces its right padding, and the multi-select ring is drawn inside the
+card's border (same 2px, same tint) so the gutter never clips it. Enter,
+Space and the vertical arrows on a card's action buttons and its "More
+actions" button stay with that control instead of also reaching the board's
+open-highlighted-mission and move-highlight keys.
+
 ## v148 - 2026-10-28
 
 A card's past-year time shows the longest of month and year, numeric month

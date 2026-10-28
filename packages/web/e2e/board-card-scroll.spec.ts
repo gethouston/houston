@@ -11,6 +11,7 @@ import {
   BUCKET_NAMES,
   card,
   expectSteady,
+  MAIN_CARD_WIDTH,
   measure,
   openBoard,
 } from "./support/card-time";
@@ -32,6 +33,7 @@ test("a scrolling column keeps its cards as wide as the rest", async ({
     true,
   );
   const reference = await measure(card(page, "now-running"));
+  expect(reference.cardWidth).toBeCloseTo(MAIN_CARD_WIDTH[1280].open, 1);
   for (const id of [
     ...BUCKET_NAMES.map((b) => `${b}-done`),
     ...Array.from({ length: 12 }, (_, i) => `filler-${i}`),

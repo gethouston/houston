@@ -79,3 +79,81 @@ test("closing the more menu returns focus to its button", async ({ page }) => {
   await expect(page.getByRole("alertdialog")).toHaveCount(0);
   await expect(more).toBeFocused();
 });
+
+/**
+ * The board answers bare Enter (open the highlighted mission) and the arrows
+ * (move the highlight) on window while the chat is closed. A key that presses
+ * or opens a card control must stay with that control. With three columns the
+ * actions only fold while the chat is open; a board with more columns folds
+ * them with it closed, which a style stands in for here by holding every
+ * column at its 180px minimum.
+ */
+test.describe("keys on a card's controls", () => {
+  async function highlightFirstCard(page: Page) {
+    await page.goto("/");
+    await page.addStyleTag({
+      content: "[data-kanban-column] { max-width: 180px; }",
+    });
+    await expect(
+      page.locator('[data-kanban-card="act-2"]').getByRole("button", {
+        name: "More actions",
+      }),
+    ).toBeVisible();
+    await page.keyboard.press("ArrowDown");
+    const highlighted = page.locator("[data-highlighted]");
+    await expect(highlighted).toHaveCount(1);
+    return highlighted.getAttribute("data-kanban-card");
+  }
+
+  test("Enter, Space and ArrowDown on More actions only open the menu", async ({
+    page,
+  }) => {
+    const highlightedId = await highlightFirstCard(page);
+    const more = page
+      .locator('[data-kanban-card="act-2"]')
+      .getByRole("button", { name: "More actions" });
+    for (const key of ["Enter", "Space", "ArrowDown"]) {
+      await more.focus();
+      await page.keyboard.press(key);
+      await expect(page.getByRole("menu"), key).toBeVisible();
+      await page.keyboard.press("Escape");
+      await expect(page.getByRole("menu")).toHaveCount(0);
+      await expect(
+        page.getByPlaceholder(FOLLOW_UP_PLACEHOLDER),
+        key,
+      ).toHaveCount(0);
+      await expect(page.locator("[data-highlighted]"), key).toHaveAttribute(
+        "data-kanban-card",
+        highlightedId ?? "",
+      );
+    }
+  });
+
+  test("Enter on the status action only runs it", async ({ page }) => {
+    await highlightFirstCard(page);
+    await page
+      .locator('[data-kanban-card="act-1"]')
+      .getByRole("button", { name: "Move to done" })
+      .press("Enter");
+    // Moved to Done, where the card's status action is archive.
+    await expect(
+      page
+        .locator('[data-kanban-card="act-1"]')
+        .getByRole("button", { name: "Archive" }),
+    ).toBeVisible();
+    await expect(page.getByPlaceholder(FOLLOW_UP_PLACEHOLDER)).toHaveCount(0);
+  });
+
+  test("Enter in the rename input only commits the title", async ({ page }) => {
+    await highlightFirstCard(page);
+    const card = page.locator('[data-kanban-card="act-2"]');
+    await card.getByRole("button", { name: "More actions" }).press("Enter");
+    await page.getByRole("menuitem", { name: "Change title" }).press("Enter");
+    const input = card.getByRole("textbox");
+    await expect(input).toBeFocused();
+    await input.fill("Launch note");
+    await input.press("Enter");
+    await expect(card.getByText("Launch note")).toBeVisible();
+    await expect(page.getByPlaceholder(FOLLOW_UP_PLACEHOLDER)).toHaveCount(0);
+  });
+});

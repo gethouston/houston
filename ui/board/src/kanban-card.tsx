@@ -257,8 +257,9 @@ export function KanbanCard({
           // Half-strength primary (not solid) so selecting a whole column
           // reads as a calm grey outline, not a wall of hard black/white
           // edges — the filled checkbox is the primary "selected" signal.
-          selectedForBulk &&
-            "ring-2 ring-action/50 ring-offset-1 ring-offset-input",
+          // Drawn inside the border: the column's scrollbar gutter sits
+          // flush with the card's right edge and would clip an outer ring.
+          selectedForBulk && "ring-2 ring-inset ring-action/50",
           // Dim the card while it's being dragged.
           dragging && "opacity-40",
         )}

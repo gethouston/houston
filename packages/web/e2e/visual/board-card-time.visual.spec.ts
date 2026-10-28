@@ -15,6 +15,7 @@ import {
   expectSteady,
   type Fit,
   LABELS,
+  MAIN_CARD_WIDTH,
   measure,
   openBoard,
   STATUSES,
@@ -43,6 +44,9 @@ for (const locale of ["en", "es", "pt"] as const)
             expect.soft(LABELS[locale][bucket], id).toContain(fit.text);
             rest.set(id, fit);
             expectSteady(fit, fit, `${id} rest`);
+            expect
+              .soft(fit.cardWidth, `${id} width as on main`)
+              .toBeCloseTo(MAIN_CARD_WIDTH[width][chat ? "open" : "closed"], 1);
           }
         for (const status of STATUSES)
           for (const bucket of BUCKET_NAMES) {

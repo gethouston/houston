@@ -9,7 +9,7 @@ import {
   TooltipTrigger,
 } from "@houston-ai/core";
 import { Archive, Check, MoreHorizontal, Pencil, Trash2 } from "lucide-react";
-import { type ReactNode, useRef } from "react";
+import { type KeyboardEvent, type ReactNode, useRef } from "react";
 import { ACTION_BUTTON_CLASS, ACTION_ICON_CLASS } from "./kanban-card-actions";
 
 /** Rename and delete sit inline only from the `card-actions` container width
@@ -18,6 +18,14 @@ import { ACTION_BUTTON_CLASS, ACTION_ICON_CLASS } from "./kanban-card-actions";
  *  "10 de ago.", and a target may not shrink under 24px. */
 const INLINE_ONLY = "hidden @min-card-actions/card:inline-flex";
 const FOLDED_ONLY = "@min-card-actions/card:hidden";
+const CONTROL_KEYS = new Set(["Enter", " ", "ArrowDown", "ArrowUp"]);
+
+/** The board answers bare Enter (open the highlighted mission) and the arrows
+ *  (move the highlight) on window. A key that presses a button or opens the
+ *  menu is the button's alone. */
+function keepControlKeys(e: KeyboardEvent<HTMLButtonElement>) {
+  if (CONTROL_KEYS.has(e.key)) e.stopPropagation();
+}
 
 export interface KanbanCardActionLabels {
   approveTooltip: string;
@@ -50,6 +58,7 @@ function ActionButton({
             e.stopPropagation();
             onClick();
           }}
+          onKeyDown={keepControlKeys}
           className={cn(ACTION_BUTTON_CLASS, className)}
           aria-label={label}
         >
@@ -125,6 +134,7 @@ export function KanbanCardActionRow({
                   ref={trigger}
                   type="button"
                   onClick={(e) => e.stopPropagation()}
+                  onKeyDown={keepControlKeys}
                   className={cn(ACTION_BUTTON_CLASS, FOLDED_ONLY)}
                   aria-label={labels.moreActions}
                 >

@@ -49,6 +49,15 @@ export const LABELS: Record<Locale, Record<Bucket, string[]>> = {
     pastYear: ["ago. de 2025", "08/2025", "2025"],
   },
 };
+/** Card widths on main before HOU-165 (measured with this seed at 900px tall),
+ *  by window width and chat state. Cards must keep them: a narrower card wraps
+ *  more titles. */
+export const MAIN_CARD_WIDTH: Record<number, { open: number; closed: number }> =
+  {
+    1280: { open: 168, closed: 302.671875 },
+    1440: { open: 180.546875, closed: 356 },
+    1920: { open: 268.546875, closed: 516 },
+  };
 // Running cards carry rename + delete; Needs you adds approve, Done archive.
 export const STATUSES = ["running", "needs_you", "done"] as const;
 
