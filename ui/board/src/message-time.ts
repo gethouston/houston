@@ -1,6 +1,9 @@
 export interface MessageTime {
   short: string;
   full: string;
+  /** Another year only: shorter forms for a card's narrow time slot, longest
+   *  first. The card shows the first that fits; rows with room use `short`. */
+  compact?: string[];
 }
 
 export type MessageTimeFormatter = (
@@ -37,14 +40,24 @@ export function formatMessageTime(
     timeStyle: "short",
   }).format(at);
   let short: string;
+  let compact: string[] | undefined;
   const elapsed = now.getTime() - at.getTime();
-  if (elapsed < -300_000 || days >= 7)
+  if (elapsed < -300_000 || days >= 7) {
+    const sameYear = at.getFullYear() === now.getFullYear();
     short = formatter(locale, {
       month: "short",
       day: "numeric",
-      ...(at.getFullYear() !== now.getFullYear() ? { year: "numeric" } : {}),
+      ...(sameYear ? {} : { year: "numeric" }),
     }).format(at);
-  else if (elapsed < 60_000) short = words.now;
+    // A narrow card cannot hold a full date with its year (pt "31 de ago.
+    // de 2025" is 104px beside a 66px slot), so it steps down these.
+    if (!sameYear)
+      compact = [
+        { month: "short", year: "numeric" } as const,
+        { month: "numeric", year: "numeric" } as const,
+        { year: "numeric" } as const,
+      ].map((options) => formatter(locale, options).format(at));
+  } else if (elapsed < 60_000) short = words.now;
   else if (days === 0)
     short = formatter(locale, {
       hour: "numeric",
@@ -55,5 +68,5 @@ export function formatMessageTime(
     short = formatter(locale, { weekday: "short" })
       .format(at)
       .replace(/\.$/, "");
-  return { short, full };
+  return compact ? { short, full, compact } : { short, full };
 }

@@ -1,7 +1,11 @@
 import { cn, Tooltip, TooltipContent, TooltipTrigger } from "@houston-ai/core";
+import { useRef } from "react";
+import { useFittingLabel } from "./fit-label";
 import { formatMessageTime, type MessageTimeFormatter } from "./message-time";
 
-/** The same visible timestamp and full-date tooltip on cards and list rows. */
+/** The same visible timestamp and full-date tooltip on cards and list rows.
+ *  A compact (card) label from another year steps down to the longest of its
+ *  shorter forms that fits; rows with room keep the full date. */
 export function KanbanTime({
   iso,
   formatTime = formatMessageTime,
@@ -12,10 +16,16 @@ export function KanbanTime({
   compact?: boolean;
 }) {
   const time = formatTime(iso);
+  const ref = useRef<HTMLTimeElement>(null);
+  const label = useFittingLabel(
+    compact && time.compact ? time.compact : [time.short],
+    ref,
+  );
   return (
     <Tooltip>
       <TooltipTrigger asChild>
         <time
+          ref={ref}
           dateTime={iso}
           style={compact ? { fontSize: "var(--ht-font-size-xxs)" } : undefined}
           data-relative-time
@@ -26,7 +36,7 @@ export function KanbanTime({
               : "shrink-0 whitespace-nowrap",
           )}
         >
-          {time.short}
+          {label}
         </time>
       </TooltipTrigger>
       <TooltipContent>{time.full}</TooltipContent>

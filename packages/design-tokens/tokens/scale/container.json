@@ -1,6 +1,7 @@
 {
   "container": {
     "$type": "dimension",
+    "card-actions": { "$value": "176px" },
     "card-agent": { "$value": "220px" }
   }
 }

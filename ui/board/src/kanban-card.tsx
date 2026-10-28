@@ -1,17 +1,8 @@
-import {
-  ConfirmDialog,
-  cn,
-  Tooltip,
-  TooltipContent,
-  TooltipTrigger,
-} from "@houston-ai/core";
-import { Archive, Check, Pencil, Trash2 } from "lucide-react";
+import { ConfirmDialog, cn } from "@houston-ai/core";
+import { Check } from "lucide-react";
 import { useEffect, useRef, useState } from "react";
-import {
-  ACTION_BUTTON_CLASS,
-  ACTION_ICON_CLASS,
-  showsCardAction,
-} from "./kanban-card-actions";
+import { KanbanCardActionRow } from "./kanban-card-action-row";
+import { showsCardAction } from "./kanban-card-actions";
 import { KanbanPeople } from "./kanban-people";
 import {
   CARD_PEOPLE_MAX,
@@ -44,6 +35,9 @@ export interface KanbanCardLabels {
   peopleExpand?: string;
   /** Accessible label for the detail panel's icon-only close button. */
   closePanel?: string;
+  /** Tooltip + accessible label for the narrow card's "more" button, which
+   *  holds rename and delete when they don't fit inline. */
+  moreActions?: string;
   lastMessage?: (time: string) => string;
 }
 
@@ -59,6 +53,7 @@ const DEFAULT_LABELS: Required<KanbanCardLabels> = {
   people: "People",
   peopleExpand: "All people",
   closePanel: "Close panel",
+  moreActions: "More actions",
   lastMessage: (time) => `Last message: ${time}`,
 };
 
@@ -150,6 +145,7 @@ export function KanbanCard({
   const [editing, setEditing] = useState(false);
   const [editValue, setEditValue] = useState(item.title);
   const inputRef = useRef<HTMLInputElement>(null);
+  const deleteReturnFocus = useRef<HTMLElement | null>(null);
   // The face stack floats over the body's bottom-right corner, so the body has
   // to give it a gutter or the last line of text runs underneath the faces
   // (the artifact the landing mock avoids with `.tc-desc { padding-right }`).
@@ -160,23 +156,19 @@ export function KanbanCard({
   // Don't let a drag start while renaming (the title input owns the gesture)
   // or while a multi-select is active (the bulk action bar owns moves then).
   const canDrag = enableDrag && !editing && !anySelected;
+  const showsSelect = selectable && !!onToggleSelect;
+  const selectionActive = selectedForBulk || anySelected;
 
   useEffect(() => {
     if (editing) inputRef.current?.focus();
   }, [editing]);
-
-  const handleDeleteClick = (e: React.MouseEvent) => {
-    e.stopPropagation();
-    setShowConfirm(true);
-  };
 
   const confirmDelete = () => {
     onDelete?.();
     setShowConfirm(false);
   };
 
-  const handleRenameClick = (e: React.MouseEvent) => {
-    e.stopPropagation();
+  const startRename = () => {
     setEditValue(item.title);
     setEditing(true);
   };
@@ -265,8 +257,9 @@ export function KanbanCard({
           // Half-strength primary (not solid) so selecting a whole column
           // reads as a calm grey outline, not a wall of hard black/white
           // edges — the filled checkbox is the primary "selected" signal.
-          selectedForBulk &&
-            "ring-2 ring-action/50 ring-offset-1 ring-offset-input",
+          // Drawn inside the border: the column's scrollbar gutter sits
+          // flush with the card's right edge and would clip an outer ring.
+          selectedForBulk && "ring-2 ring-inset ring-action/50",
           // Dim the card while it's being dragged.
           dragging && "opacity-40",
         )}
@@ -274,62 +267,60 @@ export function KanbanCard({
         {/* Top row: agent info + action buttons */}
         <div className="flex items-center justify-between mb-1.5">
           <div className="flex items-center min-w-0 flex-1">
-            {/* Multi-select checkbox. Collapsed to zero width AND zero margin
-                until the card is hovered/focused or a selection is active, so
-                it reveals on hover (pushing the agent name right) yet stays
-                keyboard-reachable — never a hover-only affordance. The margin
-                collapses with the width so at rest the leading icon sits flush
-                with the card's content padding (same left edge as the title
-                and description); the gap lives on the checkbox,
-                never as a container `gap` that a zero-width child would keep. */}
-            {selectable && onToggleSelect && (
-              <div
+            {/* The multi-select checkbox takes the leading icon's place rather
+                than its own width, so revealing it on hover, focus or an active
+                selection never narrows the time or shifts the row. It stays
+                keyboard-reachable (focusing it is what reveals it) and only
+                takes pointer input while shown. The board-wide `avatar` (the
+                agent helmet) leads EVERY board; `item.icon` is the fallback
+                for boards that pass none. */}
+            {(avatar || item.icon || showsSelect) && (
+              <span
                 className={cn(
-                  "shrink-0 overflow-hidden transition-all duration-150",
-                  selectedForBulk || anySelected
-                    ? "w-4 mr-1.5 opacity-100"
-                    : "w-0 mr-0 opacity-0 group-hover/card:w-4 group-hover/card:mr-1.5 group-hover/card:opacity-100 group-focus-within/card:w-4 group-focus-within/card:mr-1.5 group-focus-within/card:opacity-100",
+                  "relative shrink-0 flex items-center justify-center",
+                  !avatar && "size-3.5",
                 )}
               >
                 <span
                   className={cn(
-                    "size-4 rounded-[5px] border flex items-center justify-center transition-colors relative",
-                    selectedForBulk
-                      ? "bg-action border-action text-action-text"
-                      : "border-ink-muted/40 text-transparent hover:border-ink",
+                    "flex items-center justify-center transition-opacity duration-150",
+                    showsSelect &&
+                      (selectionActive
+                        ? "opacity-0"
+                        : "group-hover/card:opacity-0 group-focus-within/card:opacity-0"),
                   )}
                 >
-                  <input
-                    type="checkbox"
-                    checked={selectedForBulk}
-                    aria-label={l.selectTooltip}
-                    onChange={(e) => {
-                      e.stopPropagation();
-                      onToggleSelect();
-                    }}
-                    onClick={(e) => e.stopPropagation()}
-                    className="absolute inset-0 opacity-0 cursor-pointer size-full"
-                  />
-                  <Check
-                    className="size-3 pointer-events-none"
-                    strokeWidth={3}
-                  />
+                  {avatar ?? item.icon}
                 </span>
-              </div>
-            )}
-            {/* The board-wide `avatar` (the agent helmet) is the leading icon on
-                EVERY board — Mission Control and the per-agent board alike.
-                Contributors show only in the bottom-right people overlay, never
-                as the card icon. `item.icon` remains a generic per-item fallback for
-                boards that pass no `avatar` (e.g. cross-agent lists). */}
-            {(avatar || item.icon) && (
-              <span
-                className={cn(
-                  "shrink-0 flex items-center justify-center",
-                  !avatar && "size-3.5",
+                {showsSelect && (
+                  <span
+                    className={cn(
+                      "absolute inset-0 m-auto size-4 rounded-[5px] border flex items-center justify-center transition-opacity duration-150",
+                      selectionActive
+                        ? "opacity-100"
+                        : "opacity-0 pointer-events-none group-hover/card:opacity-100 group-hover/card:pointer-events-auto group-focus-within/card:opacity-100 group-focus-within/card:pointer-events-auto",
+                      selectedForBulk
+                        ? "bg-action border-action text-action-text"
+                        : "bg-input border-ink-muted/40 text-transparent hover:border-ink",
+                    )}
+                  >
+                    <input
+                      type="checkbox"
+                      checked={selectedForBulk}
+                      aria-label={l.selectTooltip}
+                      onChange={(e) => {
+                        e.stopPropagation();
+                        onToggleSelect?.();
+                      }}
+                      onClick={(e) => e.stopPropagation()}
+                      className="absolute inset-0 opacity-0 cursor-pointer size-full"
+                    />
+                    <Check
+                      className="size-3 pointer-events-none"
+                      strokeWidth={3}
+                    />
+                  </span>
                 )}
-              >
-                {avatar ?? item.icon}
               </span>
             )}
             {item.group && (
@@ -351,95 +342,19 @@ export function KanbanCard({
               compact
             />
           </div>
-          {/* Card actions. Every button is a 24px box holding a 16px glyph —
-              the accessibility floor for a hit target, and the product's
-              "small" icon size — and every glyph rests at the SAME light
-              `ink-muted/40` (ACTION_BUTTON_CLASS). The row is one control
-              cluster, so mixed resting weights read as a bug; the light tint
-              keeps it recessive behind the mission's own content until the
-              card is worked with. Colour only
-              appears on hover, and only where the outcome is semantic:
-              approve turns success-green, delete danger-red; archive and
-              rename take the row's neutral hover. */}
-          <div className="ml-auto flex items-center gap-0.5 shrink-0">
-            {showsApprove && onApprove && (
-              <Tooltip>
-                <TooltipTrigger asChild>
-                  <button
-                    type="button"
-                    onClick={(e) => {
-                      e.stopPropagation();
-                      onApprove();
-                    }}
-                    className={cn(
-                      ACTION_BUTTON_CLASS,
-                      "hover:bg-success/10 hover:text-success",
-                    )}
-                    aria-label={l.approveTooltip}
-                  >
-                    <Check className={ACTION_ICON_CLASS} />
-                  </button>
-                </TooltipTrigger>
-                <TooltipContent side="top">{l.approveTooltip}</TooltipContent>
-              </Tooltip>
-            )}
-            {/* Archive: the checkmark's counterpart one column over. A signed-off
-                mission's only remaining move is out of the way, so it gets the
-                same one-click treatment and the same resting weight. Neutral,
-                never `danger` — archiving hides a mission, it doesn't destroy
-                one (that is the trash can beside it). */}
-            {showsArchive && onArchive && (
-              <Tooltip>
-                <TooltipTrigger asChild>
-                  <button
-                    type="button"
-                    onClick={(e) => {
-                      e.stopPropagation();
-                      onArchive();
-                    }}
-                    className={ACTION_BUTTON_CLASS}
-                    aria-label={l.archiveTooltip}
-                  >
-                    <Archive className={ACTION_ICON_CLASS} />
-                  </button>
-                </TooltipTrigger>
-                <TooltipContent side="top">{l.archiveTooltip}</TooltipContent>
-              </Tooltip>
-            )}
-            {onRename && (
-              <Tooltip>
-                <TooltipTrigger asChild>
-                  <button
-                    type="button"
-                    onClick={handleRenameClick}
-                    className={ACTION_BUTTON_CLASS}
-                    aria-label={l.renameTooltip}
-                  >
-                    <Pencil className={ACTION_ICON_CLASS} />
-                  </button>
-                </TooltipTrigger>
-                <TooltipContent side="top">{l.renameTooltip}</TooltipContent>
-              </Tooltip>
-            )}
-            {onDelete && (
-              <Tooltip>
-                <TooltipTrigger asChild>
-                  <button
-                    type="button"
-                    onClick={handleDeleteClick}
-                    className={cn(
-                      ACTION_BUTTON_CLASS,
-                      "hover:bg-danger/10 hover:text-danger",
-                    )}
-                    aria-label={l.deleteTooltip}
-                  >
-                    <Trash2 className={ACTION_ICON_CLASS} />
-                  </button>
-                </TooltipTrigger>
-                <TooltipContent side="top">{l.deleteTooltip}</TooltipContent>
-              </Tooltip>
-            )}
-          </div>
+          <KanbanCardActionRow
+            onApprove={showsApprove ? onApprove : undefined}
+            onArchive={showsArchive ? onArchive : undefined}
+            onRename={onRename && startRename}
+            onDelete={
+              onDelete &&
+              ((returnFocusTo) => {
+                deleteReturnFocus.current = returnFocusTo ?? null;
+                setShowConfirm(true);
+              })
+            }
+            labels={l}
+          />
         </div>
 
         {/* Card body (title + description). Relative so the people stack can
@@ -536,6 +451,12 @@ export function KanbanCard({
         title={l.deleteTitle(item.title)}
         description={l.deleteDescription}
         onConfirm={confirmDelete}
+        onCloseAutoFocus={(e) => {
+          const target = deleteReturnFocus.current;
+          if (!target?.isConnected) return;
+          e.preventDefault();
+          target.focus();
+        }}
       />
     </>
   );

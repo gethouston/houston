@@ -9,12 +9,16 @@ const cases = [
   {
     lang: "en",
     expected: ["Now", "4:25 PM", "Yesterday", "Sun", "Oct 12", "Oct 12, 2025"],
+    pastCompact: ["Oct 2025", "10/2025", "2025"],
+    yearBoundary: ["Jan 2", "Dec 31, 2026"],
     full: "Tuesday, October 27, 2026 at 4:25 PM",
     monday: "Mon",
   },
   {
     lang: "es",
     expected: ["Ahora", "16:25", "Ayer", "dom", "12 oct", "12 oct 2025"],
+    pastCompact: ["oct 2025", "10/2025", "2025"],
+    yearBoundary: ["2 ene", "31 dic 2026"],
     full: "martes, 27 de octubre de 2026, 16:25",
     monday: "lun",
   },
@@ -28,6 +32,8 @@ const cases = [
       "12 de out.",
       "12 de out. de 2025",
     ],
+    pastCompact: ["out. de 2025", "10/2025", "2025"],
+    yearBoundary: ["2 de jan.", "31 de dez. de 2026"],
     full: "terça-feira, 27 de outubro de 2026 às 16:25",
     monday: "seg",
   },
@@ -41,7 +47,14 @@ const dates = [
   "2025-10-12T16:25:00.000Z",
 ];
 
-for (const { lang, expected, full, monday } of cases) {
+for (const {
+  lang,
+  expected,
+  pastCompact,
+  yearBoundary,
+  full,
+  monday,
+} of cases) {
   describe(`last message time in ${lang}`, () => {
     const locale: { time: { now: string; yesterday: string } } = JSON.parse(
       readFileSync(
@@ -65,6 +78,30 @@ for (const { lang, expected, full, monday } of cases) {
         ).short,
         monday,
       );
+    });
+    it("gives another year's date shorter card forms, longest first", () => {
+      const past = formatLastMessageTime(
+        "2025-10-12T16:25:00.000Z",
+        lang,
+        locale.time,
+        now,
+      );
+      assert.deepEqual(past.compact, pastCompact);
+      for (const iso of dates.slice(0, 5))
+        assert.equal(
+          formatLastMessageTime(iso, lang, locale.time, now).compact,
+          undefined,
+        );
+    });
+    it("switches to the year-bearing forms at the year boundary", () => {
+      const january = new Date("2027-01-20T12:00:00.000Z");
+      const [thisYear, lastYear] = [
+        "2027-01-02T12:00:00.000Z",
+        "2026-12-31T12:00:00.000Z",
+      ].map((iso) => formatLastMessageTime(iso, lang, locale.time, january));
+      assert.deepEqual([thisYear.short, lastYear.short], yearBoundary);
+      assert.equal(thisYear.compact, undefined);
+      assert.equal(lastYear.compact?.at(-1), "2026");
     });
     it("provides the full date and short clock time for tooltips and detail", () => {
       assert.equal(

@@ -56,6 +56,11 @@ export function createActivity(
     ...(input.origin_session_key !== undefined && {
       origin_session_key: input.origin_session_key,
     }),
+    // The last message time is stamped by the real host when a message lands;
+    // accepted here so an e2e can seed a card in any time-label bucket.
+    ...(input.last_message_at !== undefined && {
+      last_message_at: input.last_message_at,
+    }),
     // Which AI started it (PRODUCT-1928): the real host stamps it from the
     // verified caller; accepted here so an e2e can seed a Houston-started card.
     ...(isMissionStarter(input.started_by) && {

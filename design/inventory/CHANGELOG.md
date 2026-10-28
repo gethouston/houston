@@ -3,6 +3,36 @@
 Every `version` bump in `inventory.yaml` needs a matching entry here (enforced by
 `pnpm check:parity`). Newest first. Use `## vN` headings.
 
+## v149 - 2026-10-28
+
+Cards are as wide as before v148: the column's reserved scrollbar room
+replaces its right padding, and the multi-select ring is drawn inside the
+card's border (same 2px, same tint) so the gutter never clips it. Enter,
+Space and the vertical arrows on a card's action buttons and its "More
+actions" button stay with that control instead of also reaching the board's
+open-highlighted-mission and move-highlight keys.
+
+## v148 - 2026-10-28
+
+A card's past-year time shows the longest of month and year, numeric month
+and year, or the year alone that fits its slot, measured in the browser, so
+no platform font clips it. Archived list rows and phone mission rows keep
+the full past-year date. Board columns always reserve the scrollbar's 6px,
+so cards keep their width when a column scrolls (6px narrower than before
+at rest). Closing a card's "More actions" menu, or cancelling the delete it
+opened, returns focus to the menu button.
+
+## v147 - 2026-10-28
+
+Mission card time labels never ellipsize. Below the new `card-actions`
+container width (176px of card content), rename and delete fold into one
+always-visible "More actions" button and the status action stays inline,
+which leaves the time at least 72px in a 180px column. The select checkbox
+swaps in for the leading avatar instead of taking its own width, so hover,
+focus and selection keep the row as it was. A message from another year
+shows the month and year ("ago. de 2025"); the tooltip and detail header keep
+the full date.
+
 ## v146 - 2026-10-27
 
 Mission cards keep their action row at narrow widths, hiding the agent name
