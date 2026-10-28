@@ -57,3 +57,25 @@ test("a narrow card deletes its mission from the more menu", async ({
   await expect(card).toHaveCount(0);
   await expect(page.getByText("Task: Plan a trip to Tokyo")).toBeVisible();
 });
+
+test("closing the more menu returns focus to its button", async ({ page }) => {
+  await openChatOnNarrowBoard(page);
+  const more = page
+    .locator('[data-kanban-card="act-2"]')
+    .getByRole("button", { name: "More actions" });
+
+  await more.click();
+  await expect(page.getByRole("menu")).toBeVisible();
+  await page.keyboard.press("Escape");
+  await expect(page.getByRole("menu")).toHaveCount(0);
+  await expect(more).toBeFocused();
+
+  await more.click();
+  await page.getByRole("menuitem", { name: "Delete" }).click();
+  await page
+    .getByRole("alertdialog")
+    .getByRole("button", { name: "Cancel" })
+    .click();
+  await expect(page.getByRole("alertdialog")).toHaveCount(0);
+  await expect(more).toBeFocused();
+});

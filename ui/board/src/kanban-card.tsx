@@ -145,6 +145,7 @@ export function KanbanCard({
   const [editing, setEditing] = useState(false);
   const [editValue, setEditValue] = useState(item.title);
   const inputRef = useRef<HTMLInputElement>(null);
+  const deleteReturnFocus = useRef<HTMLElement | null>(null);
   // The face stack floats over the body's bottom-right corner, so the body has
   // to give it a gutter or the last line of text runs underneath the faces
   // (the artifact the landing mock avoids with `.tc-desc { padding-right }`).
@@ -344,7 +345,13 @@ export function KanbanCard({
             onApprove={showsApprove ? onApprove : undefined}
             onArchive={showsArchive ? onArchive : undefined}
             onRename={onRename && startRename}
-            onDelete={onDelete && (() => setShowConfirm(true))}
+            onDelete={
+              onDelete &&
+              ((returnFocusTo) => {
+                deleteReturnFocus.current = returnFocusTo ?? null;
+                setShowConfirm(true);
+              })
+            }
             labels={l}
           />
         </div>
@@ -443,6 +450,12 @@ export function KanbanCard({
         title={l.deleteTitle(item.title)}
         description={l.deleteDescription}
         onConfirm={confirmDelete}
+        onCloseAutoFocus={(e) => {
+          const target = deleteReturnFocus.current;
+          if (!target?.isConnected) return;
+          e.preventDefault();
+          target.focus();
+        }}
       />
     </>
   );

@@ -9,7 +9,7 @@ import {
   TooltipTrigger,
 } from "@houston-ai/core";
 import { Archive, Check, MoreHorizontal, Pencil, Trash2 } from "lucide-react";
-import type { ReactNode } from "react";
+import { type ReactNode, useRef } from "react";
 import { ACTION_BUTTON_CLASS, ACTION_ICON_CLASS } from "./kanban-card-actions";
 
 /** Rename and delete sit inline only from the `card-actions` container width
@@ -73,9 +73,13 @@ export function KanbanCardActionRow({
   onApprove?: () => void;
   onArchive?: () => void;
   onRename?: () => void;
-  onDelete?: () => void;
+  /** Gets the menu's trigger when chosen from the menu: the menu item it was
+   *  opened from is gone, so the confirm dialog returns focus there. */
+  onDelete?: (returnFocusTo?: HTMLElement | null) => void;
   labels: KanbanCardActionLabels;
 }) {
+  const renaming = useRef(false);
+  const trigger = useRef<HTMLButtonElement>(null);
   return (
     <div className="ml-auto flex items-center gap-0.5 shrink-0">
       {onApprove && (
@@ -104,7 +108,7 @@ export function KanbanCardActionRow({
       {onDelete && (
         <ActionButton
           label={labels.deleteTooltip}
-          onClick={onDelete}
+          onClick={() => onDelete()}
           className={cn("hover:bg-danger/10 hover:text-danger", INLINE_ONLY)}
         >
           <Trash2 className={ACTION_ICON_CLASS} />
@@ -118,6 +122,7 @@ export function KanbanCardActionRow({
             <TooltipTrigger asChild>
               <DropdownMenuTrigger asChild>
                 <button
+                  ref={trigger}
                   type="button"
                   onClick={(e) => e.stopPropagation()}
                   className={cn(ACTION_BUTTON_CLASS, FOLDED_ONLY)}
@@ -130,21 +135,33 @@ export function KanbanCardActionRow({
             <TooltipContent side="top">{labels.moreActions}</TooltipContent>
           </Tooltip>
           {/* The content is portalled, but React still bubbles its clicks to
-              the card, which would open the mission. Focus stays where the
-              item put it (the rename input), not back on the trigger. */}
+              the card, which would open the mission. Closing returns focus to
+              the trigger, except after Rename, whose input takes it. */}
           <DropdownMenuContent
             align="end"
             onClick={(e) => e.stopPropagation()}
-            onCloseAutoFocus={(e) => e.preventDefault()}
+            onCloseAutoFocus={(e) => {
+              if (!renaming.current) return;
+              renaming.current = false;
+              e.preventDefault();
+            }}
           >
             {onRename && (
-              <DropdownMenuItem onSelect={onRename}>
+              <DropdownMenuItem
+                onSelect={() => {
+                  renaming.current = true;
+                  onRename();
+                }}
+              >
                 <Pencil />
                 {labels.renameTooltip}
               </DropdownMenuItem>
             )}
             {onDelete && (
-              <DropdownMenuItem variant="destructive" onSelect={onDelete}>
+              <DropdownMenuItem
+                variant="destructive"
+                onSelect={() => onDelete(trigger.current)}
+              >
                 <Trash2 />
                 {labels.deleteTooltip}
               </DropdownMenuItem>

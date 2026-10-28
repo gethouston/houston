@@ -113,8 +113,15 @@ export function KanbanColumn({
       />
 
       {/* Cards. `pt-1` so the selected ring on the first card isn't
-          clipped by the scroll container's top edge. */}
-      <div className="flex-1 px-1.5 pt-1 pb-1.5 space-y-1.5 overflow-y-auto">
+          clipped by the scroll container's top edge. The styled scrollbar
+          takes layout width, so its room is always reserved and a card is the
+          same width whether or not its column scrolls. `overflow-y-scroll`
+          for WebKit (the desktop app), which reports `scrollbar-gutter`
+          support but reserves nothing for a styled scrollbar; the gutter for
+          Chromium with hidden scrollbars. The track is transparent and no
+          thumb draws until the list overflows. Padding stays on both sides:
+          the multi-select ring needs room at either edge. */}
+      <div className="flex-1 px-1.5 pt-1 pb-1.5 space-y-1.5 overflow-y-scroll [scrollbar-gutter:stable]">
         {/* Cards mount/unmount with NO enter/exit animation: switching agents
             swaps the whole item set, and any fade would cross-blend the
             previous agent's cards with the next one's (HOU-858). `layout`

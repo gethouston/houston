@@ -3,6 +3,16 @@
 Every `version` bump in `inventory.yaml` needs a matching entry here (enforced by
 `pnpm check:parity`). Newest first. Use `## vN` headings.
 
+## v148 - 2026-10-28
+
+A card's past-year time shows the longest of month and year, numeric month
+and year, or the year alone that fits its slot, measured in the browser, so
+no platform font clips it. Archived list rows and phone mission rows keep
+the full past-year date. Board columns always reserve the scrollbar's 6px,
+so cards keep their width when a column scrolls (6px narrower than before
+at rest). Closing a card's "More actions" menu, or cancelling the delete it
+opened, returns focus to the menu button.
+
 ## v147 - 2026-10-28
 
 Mission card time labels never ellipsize. Below the new `card-actions`

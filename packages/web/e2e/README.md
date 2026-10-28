@@ -44,6 +44,8 @@ e2e/
   support/          # every helper, alphabetically:
     activate-pending-connection.ts # finish a fake-host OAuth hand-off once the
                     # connection it opened is pending
+    card-time.ts    # board cards seeded at each time-label bucket's widest
+                    # label, and the fit + layout-shift measures of their time
     composer.ts     # the chat composer's placeholder copy, which the specs
                     # locate a composer by
     copy-agent.ts   # the copy-an-agent door on both breakpoints, plus the
