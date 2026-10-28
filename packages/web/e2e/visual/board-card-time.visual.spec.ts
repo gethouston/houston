@@ -36,21 +36,38 @@ for (const locale of ["en", "es", "pt"] as const)
         test.describe.configure({ mode: "serial" });
         let context: BrowserContext | undefined;
         let page: Page;
+        let failed = false;
 
         // beforeAll gets no `page` fixture. The runner fills the project's
         // context options (and this file's `test.use`) into a context made
-        // here too, so only the fresh fake host and the boot seed are ours.
-        test.beforeAll(async ({ browser, fakeHost }) => {
+        // here too, but not its video: the config records every attempt
+        // because recording paces the page, so the context records its own,
+        // kept only when a test of the group fails.
+        test.beforeAll(async ({ browser, fakeHost }, testInfo) => {
           context = await browser.newContext({
             viewport: { width, height: 900 },
+            recordVideo: { dir: testInfo.outputPath("video") },
           });
           page = await context.newPage();
           await context.request.post(`${fakeHost.url}/__test__/reset`);
           await seedPage(page);
           await openBoard(page, { locale, width, chat });
         });
-        test.afterAll(async () => {
+        // biome-ignore lint/correctness/noEmptyPattern: Playwright requires the destructuring pattern on a hook's first parameter
+        test.afterEach(async ({}, testInfo) => {
+          if (testInfo.status !== testInfo.expectedStatus) failed = true;
+        });
+        // biome-ignore lint/correctness/noEmptyPattern: Playwright requires the destructuring pattern on a hook's first parameter
+        test.afterAll(async ({}, testInfo) => {
+          const video = page?.video();
           await context?.close();
+          if (!video) return;
+          if (failed)
+            await testInfo.attach("video", {
+              path: await video.path(),
+              contentType: "video/webm",
+            });
+          else await video.delete();
         });
 
         for (const status of STATUSES)
