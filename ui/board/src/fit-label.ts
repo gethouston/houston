@@ -42,10 +42,12 @@ export function useFittingLabel(
   useLayoutEffect(() => {
     const row = ref.current?.parentElement;
     if (!measures || !row) return;
-    let width = row.clientWidth;
+    // Fractional widths: clientWidth rounds, and a fraction is enough to clip.
+    let width = row.getBoundingClientRect().width;
     const observer = new ResizeObserver(() => {
-      if (row.clientWidth === width) return;
-      width = row.clientWidth;
+      const next = row.getBoundingClientRect().width;
+      if (next === width) return;
+      width = next;
       flushSync(() => setPick({ key, index: 0 }));
     });
     observer.observe(row);

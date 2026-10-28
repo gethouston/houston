@@ -144,6 +144,22 @@ test.describe("keys on a card's controls", () => {
     await expect(page.getByPlaceholder(FOLLOW_UP_PLACEHOLDER)).toHaveCount(0);
   });
 
+  test("arrows on a plain card action still move the board highlight", async ({
+    page,
+  }) => {
+    await page.goto("/");
+    await page.addStyleTag({
+      content: "[data-kanban-column] { max-width: 180px; }",
+    });
+    await page
+      .locator('[data-kanban-card="act-2"]')
+      .getByRole("button", { name: "Archive" })
+      .focus();
+    await expect(page.locator("[data-highlighted]")).toHaveCount(0);
+    await page.keyboard.press("ArrowDown");
+    await expect(page.locator("[data-highlighted]")).toHaveCount(1);
+  });
+
   test("Enter in the rename input only commits the title", async ({ page }) => {
     await highlightFirstCard(page);
     const card = page.locator('[data-kanban-card="act-2"]');

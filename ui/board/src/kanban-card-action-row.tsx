@@ -18,14 +18,19 @@ import { ACTION_BUTTON_CLASS, ACTION_ICON_CLASS } from "./kanban-card-actions";
  *  "10 de ago.", and a target may not shrink under 24px. */
 const INLINE_ONLY = "hidden @min-card-actions/card:inline-flex";
 const FOLDED_ONLY = "@min-card-actions/card:hidden";
-const CONTROL_KEYS = new Set(["Enter", " ", "ArrowDown", "ArrowUp"]);
+const PRESS_KEYS = new Set(["Enter", " "]);
+const MENU_KEYS = new Set(["Enter", " ", "ArrowDown", "ArrowUp"]);
 
 /** The board answers bare Enter (open the highlighted mission) and the arrows
- *  (move the highlight) on window. A key that presses a button or opens the
- *  menu is the button's alone. */
-function keepControlKeys(e: KeyboardEvent<HTMLButtonElement>) {
-  if (CONTROL_KEYS.has(e.key)) e.stopPropagation();
+ *  (move the highlight) on window. A key that presses a button, or opens the
+ *  menu, is the control's alone; every other arrow still moves the board. */
+function keepKeys(keys: Set<string>) {
+  return (e: KeyboardEvent<HTMLButtonElement>) => {
+    if (keys.has(e.key)) e.stopPropagation();
+  };
 }
+const keepPressKeys = keepKeys(PRESS_KEYS);
+const keepMenuKeys = keepKeys(MENU_KEYS);
 
 export interface KanbanCardActionLabels {
   approveTooltip: string;
@@ -58,7 +63,7 @@ function ActionButton({
             e.stopPropagation();
             onClick();
           }}
-          onKeyDown={keepControlKeys}
+          onKeyDown={keepPressKeys}
           className={cn(ACTION_BUTTON_CLASS, className)}
           aria-label={label}
         >
@@ -134,7 +139,7 @@ export function KanbanCardActionRow({
                   ref={trigger}
                   type="button"
                   onClick={(e) => e.stopPropagation()}
-                  onKeyDown={keepControlKeys}
+                  onKeyDown={keepMenuKeys}
                   className={cn(ACTION_BUTTON_CLASS, FOLDED_ONLY)}
                   aria-label={labels.moreActions}
                 >
