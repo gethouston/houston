@@ -24,8 +24,7 @@ import {
 import { expect, test } from "../support/fixtures";
 import { seedPage } from "../support/seed";
 
-const TIMEZONE = "UTC";
-test.use({ timezoneId: TIMEZONE });
+test.use({ timezoneId: "UTC" });
 
 // One boot per locale, width and chat state, shared by one test per column: a
 // boot plus every bucket and state of all three columns outran the 30s test
@@ -35,20 +34,15 @@ for (const locale of ["en", "es", "pt"] as const)
     for (const chat of [false, true])
       test.describe(`card time fits: ${locale} ${width}px chat ${chat ? "open" : "closed"}`, () => {
         test.describe.configure({ mode: "serial" });
-        let context: BrowserContext;
+        let context: BrowserContext | undefined;
         let page: Page;
 
-        // beforeAll gets no `page` fixture, so this rebuilds what it would
-        // have: the project's context options, a fresh fake host, the boot seed.
-        test.beforeAll(async ({ browser, fakeHost }, testInfo) => {
-          const use = testInfo.project.use;
+        // beforeAll gets no `page` fixture. The runner fills the project's
+        // context options (and this file's `test.use`) into a context made
+        // here too, so only the fresh fake host and the boot seed are ours.
+        test.beforeAll(async ({ browser, fakeHost }) => {
           context = await browser.newContext({
-            ...use.contextOptions,
-            baseURL: use.baseURL,
-            userAgent: use.userAgent,
-            deviceScaleFactor: use.deviceScaleFactor,
             viewport: { width, height: 900 },
-            timezoneId: TIMEZONE,
           });
           page = await context.newPage();
           await context.request.post(`${fakeHost.url}/__test__/reset`);
@@ -56,7 +50,7 @@ for (const locale of ["en", "es", "pt"] as const)
           await openBoard(page, { locale, width, chat });
         });
         test.afterAll(async () => {
-          await context.close();
+          await context?.close();
         });
 
         for (const status of STATUSES)
