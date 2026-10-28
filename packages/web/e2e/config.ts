@@ -20,6 +20,16 @@ export const WEB_PORT = Number(
 export const WEB_URL = `http://localhost:${WEB_PORT}`;
 
 /**
+ * How long a spec waits for its boot anchor, the first thing it expects on
+ * screen after `page.goto`. On the vite dev server (the visual job) a boot
+ * fetches and runs about 3,000 unbundled modules before the app's first host
+ * request; on a slow CI runner that alone takes 11 to 12 s, past the 10 s
+ * expect default. Only the boot anchor gets this budget; every later
+ * assertion keeps the default.
+ */
+export const BOOT_TIMEOUT = 20_000;
+
+/**
  * A SECOND vite dev server, five ports up, baked with a (fake) Firebase API key
  * so `isIdentityConfigured()` is true and the GCIP `SignInScreen` renders. The
  * default server bakes NO key (identity off), so the whole existing suite still

@@ -5,6 +5,7 @@
  */
 import { FAKE_HOST_URL, SEED_AGENT_ID } from "@houston/fake-host";
 import type { Locator, Page } from "@playwright/test";
+import { BOOT_TIMEOUT } from "../config";
 import { seedLocale } from "./billing-choice";
 import { expect } from "./fixtures";
 
@@ -144,7 +145,7 @@ export async function openBoard(
   await seedCards(page, extraDone);
   await page.setViewportSize({ width, height: 900 });
   await page.goto("/");
-  await expect(card(page, "now-done")).toBeVisible();
+  await expect(card(page, "now-done")).toBeVisible({ timeout: BOOT_TIMEOUT });
   if (chat) {
     await card(page, "act-1").click();
     await expect(page.getByRole("textbox").last()).toBeVisible();

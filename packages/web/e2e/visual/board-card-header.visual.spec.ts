@@ -1,3 +1,4 @@
+import { BOOT_TIMEOUT } from "../config";
 import { expect, test } from "../support/fixtures";
 import { pinTheme } from "./support";
 
@@ -10,7 +11,7 @@ for (const width of [1280, 1440, 1920]) {
     const card = page
       .locator("[data-kanban-card]")
       .filter({ has: page.getByText("Plan a trip to Tokyo", { exact: true }) });
-    await expect(card).toBeVisible();
+    await expect(card).toBeVisible({ timeout: BOOT_TIMEOUT });
     await pinTheme(page, "light");
     const heights: Record<string, number> = {};
     for (const state of ["wide", "chat"] as const) {
