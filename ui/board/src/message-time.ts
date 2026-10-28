@@ -39,11 +39,15 @@ export function formatMessageTime(
   let short: string;
   const elapsed = now.getTime() - at.getTime();
   if (elapsed < -300_000 || days >= 7)
-    short = formatter(locale, {
-      month: "short",
-      day: "numeric",
-      ...(at.getFullYear() !== now.getFullYear() ? { year: "numeric" } : {}),
-    }).format(at);
+    // Another year drops the day: the narrowest card leaves the label 72px,
+    // which holds a month and year in every locale ("ago. de 2025") but not a
+    // full date. The tooltip keeps the full date.
+    short = formatter(
+      locale,
+      at.getFullYear() === now.getFullYear()
+        ? { month: "short", day: "numeric" }
+        : { month: "short", year: "numeric" },
+    ).format(at);
   else if (elapsed < 60_000) short = words.now;
   else if (days === 0)
     short = formatter(locale, {

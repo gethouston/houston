@@ -36,7 +36,7 @@
 #   a11y     roles / labels / focus expectations the surface must honor
 #   since    inventory version this component first appeared in
 
-version: 146
+version: 147
 
 components:
   - id: agent-delegation-settings
@@ -907,8 +907,13 @@ components:
       The last user or agent message time follows the agent name, with a full
       timestamp tooltip and semantic time element. Detail headers use a medium
       date and short time. A shared presentation clock refreshes labels each
-      minute. Narrow cards hide the agent name first, then ellipsize long times while
-      avatars and actions keep their size.
+      minute. Narrow cards hide the agent name first; below the card-actions
+      width, rename and delete fold into one always-visible "More actions"
+      button while the status action stays inline, so every time label shows
+      in full down to a 180px column. A message from another year shows the
+      month and year; the tooltip and detail header keep the full date. The
+      select checkbox takes the leading avatar's place on hover, focus or an
+      active selection, so revealing it never narrows the row or moves it.
       Old rows fall back to updated_at; board edits preserve
       last_message_at. Cards and list rows sort newest message first.
       Running state shows the comet glow. The card carries at most ONE

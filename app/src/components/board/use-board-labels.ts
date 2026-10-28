@@ -32,6 +32,7 @@ export function useBoardLabels(surface: BoardLabelSurface = "board"): {
       people: t("board:people.label"),
       peopleExpand: t("board:people.expand"),
       closePanel: t("board:cardActions.closePanel"),
+      moreActions: t("board:cardActions.moreActions"),
       lastMessage: (time) => t("board:time.lastMessage", { time }),
     },
     composerLabels: {

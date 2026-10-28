@@ -3,6 +3,17 @@
 Every `version` bump in `inventory.yaml` needs a matching entry here (enforced by
 `pnpm check:parity`). Newest first. Use `## vN` headings.
 
+## v147 - 2026-10-28
+
+Mission card time labels never ellipsize. Below the new `card-actions`
+container width (176px of card content), rename and delete fold into one
+always-visible "More actions" button and the status action stays inline,
+which leaves the time at least 72px in a 180px column. The select checkbox
+swaps in for the leading avatar instead of taking its own width, so hover,
+focus and selection keep the row as it was. A message from another year
+shows the month and year ("ago. de 2025"); the tooltip and detail header keep
+the full date.
+
 ## v146 - 2026-10-27
 
 Mission cards keep their action row at narrow widths, hiding the agent name

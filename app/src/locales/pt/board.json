@@ -11,7 +11,8 @@
     "renameTooltip": "Mudar título",
     "deleteTooltip": "Excluir",
     "select": "Selecionar tarefa",
-    "closePanel": "Fechar painel"
+    "closePanel": "Fechar painel",
+    "moreActions": "Mais ações"
   },
   "deleteCard": {
     "titleWithName": "Excluir \"{{name}}\"?",
