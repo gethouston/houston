@@ -24,20 +24,22 @@ import { expect, test } from "../support/fixtures";
 
 test.use({ timezoneId: "UTC" });
 
+// One test per column: a cold dev-server boot plus every bucket and state of
+// all three columns outran the 30s test budget on a slow CI runner.
 for (const locale of ["en", "es", "pt"] as const)
   for (const width of [1280, 1440, 1920])
     for (const chat of [false, true])
-      test(`card time fits: ${locale} ${width}px chat ${chat ? "open" : "closed"}`, async ({
-        page,
-      }) => {
-        await openBoard(page, { locale, width, chat });
-        const rest = new Map<string, Fit>();
-        const restOf = (id: string) => {
-          const fit = rest.get(id);
-          if (!fit) throw new Error(`no resting measure for ${id}`);
-          return fit;
-        };
-        for (const status of STATUSES)
+      for (const status of STATUSES)
+        test(`card time fits: ${locale} ${width}px chat ${chat ? "open" : "closed"} ${status}`, async ({
+          page,
+        }) => {
+          await openBoard(page, { locale, width, chat });
+          const rest = new Map<string, Fit>();
+          const restOf = (id: string) => {
+            const fit = rest.get(id);
+            if (!fit) throw new Error(`no resting measure for ${id}`);
+            return fit;
+          };
           for (const bucket of BUCKET_NAMES) {
             const id = `${bucket}-${status}`;
             const fit = await measure(card(page, id));
@@ -48,7 +50,6 @@ for (const locale of ["en", "es", "pt"] as const)
               .soft(fit.cardWidth, `${id} width as on main`)
               .toBeCloseTo(MAIN_CARD_WIDTH[width][chat ? "open" : "closed"], 1);
           }
-        for (const status of STATUSES)
           for (const bucket of BUCKET_NAMES) {
             const id = `${bucket}-${status}`;
             await card(page, id).hover({ position: { x: 40, y: 50 } });
@@ -66,7 +67,6 @@ for (const locale of ["en", "es", "pt"] as const)
             );
             await card(page, id).blur();
           }
-        for (const status of STATUSES) {
           // One checked card puts every card of its column in selection mode.
           const first = card(page, `now-${status}`);
           await first.hover({ position: { x: 40, y: 50 } });
@@ -77,10 +77,7 @@ for (const locale of ["en", "es", "pt"] as const)
             const fit = await measure(card(page, id));
             expectSteady(fit, restOf(id), `${id} selected`);
           }
-          await first.hover({ position: { x: 40, y: 50 } });
-          await first.getByRole("checkbox").uncheck();
-        }
-      });
+        });
 
 test("a past-year label steps down to a shorter form that fits", async ({
   page,
