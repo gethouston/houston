@@ -298,7 +298,9 @@ so each server gets its own optimizer output — no shared state, no race.
 1. `import { test, expect } from "./support/fixtures"` (gives you a seeded page).
 2. `await page.goto("/")` — the app boots straight to the shell, onto the FIRST
    team's Tasks board (there is no global board; the Agents home is where boot
-   waits when no team has resolved), one agent selected.
+   waits when no team has resolved), one agent selected. Wait for the first
+   thing you expect there with `{ timeout: BOOT_TIMEOUT }` (`e2e/config.ts`):
+   a dev-server boot on a slow CI runner outlasts the 10s default.
 3. Prefer role/label/text selectors; the app forces `en`, so English copy is
    stable. Reach for an existing stable anchor (e.g. `data-tour-target`) over a
    brittle one before adding a new `data-testid`.

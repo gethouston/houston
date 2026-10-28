@@ -1,4 +1,5 @@
 import { expect, type Locator, type Page } from "@playwright/test";
+import { BOOT_TIMEOUT } from "../config";
 import { screen } from "./team-nav";
 
 /**
@@ -35,12 +36,12 @@ export async function press(
  * glass. The rows wait on the one-sweep conversations query, which on a cold
  * dev server sits behind the first transform of the whole app chunk; on a CI
  * runner sharing two workers that has outlasted the default expect window
- * (the failure screenshot showed the row painted, just late). The BOOT anchor
- * alone gets the longer wait; everything after it keeps the default.
+ * (the failure screenshot showed the row painted, just late), so it waits
+ * {@link BOOT_TIMEOUT}.
  */
 export async function awaitAgentsHome(page: Page): Promise<Locator> {
   const row = page.getByTestId("agents-home-row").first();
-  await expect(row).toBeVisible({ timeout: 20_000 });
+  await expect(row).toBeVisible({ timeout: BOOT_TIMEOUT });
   return row;
 }
 
