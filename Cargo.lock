@@ -2109,7 +2109,7 @@ dependencies = [
  "houston-local-model-bridge",
  "keyring",
  "log",
- "minisign-verify 0.2.5",
+ "minisign-verify",
  "notify-rust",
  "objc2",
  "objc2-app-kit",
@@ -2985,12 +2985,6 @@ dependencies = [
  "thiserror 1.0.69",
  "uuid",
 ]
-
-[[package]]
-name = "minisign-verify"
-version = "0.2.5"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "22f9645cb765ea72b8111f36c522475d2daa0d22c957a9826437e97534bc4e9e"
 
 [[package]]
 name = "minisign-verify"
@@ -5599,7 +5593,7 @@ dependencies = [
  "infer",
  "libc",
  "log",
- "minisign-verify 0.3.0",
+ "minisign-verify",
  "osakit",
  "percent-encoding",
  "reqwest 0.13.2",
