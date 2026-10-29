@@ -1,7 +1,7 @@
 import { resolveAuthConfig } from "./composio-auth-config";
 import { fetchAllRawToolkits } from "./composio-catalog";
 import { ComposioHttp } from "./composio-http";
-import { extractIdentity, IDENTITY_PROBES } from "./composio-identity";
+import { ComposioIdentityCache } from "./composio-identity-cache";
 import { searchComposio } from "./composio-search";
 import {
   mapConnection,
@@ -100,10 +100,9 @@ export class ComposioProvider implements IntegrationProvider {
   /** In-process toolkits-catalog cache for search's name resolution. */
   private catalogCache?: { at: number; toolkits: Toolkit[] };
   private catalogInflight?: Promise<Toolkit[]>;
-  /** connectionId → probed account identity (an account's identity never
-   *  changes, so successes cache for the process lifetime; failures are NOT
-   *  cached, so a transient probe error retries on the next list). */
-  private readonly accountIdentity = new Map<string, string>();
+  private readonly accountIdentity = new ComposioIdentityCache((...args) =>
+    this.execute(...args),
+  );
 
   constructor(opts: ComposioOptions) {
     if (!opts.apiKey) throw new Error("composio: missing platform api key");
@@ -157,53 +156,9 @@ export class ComposioProvider implements IntegrationProvider {
       "/api/v3/connected_accounts",
       { query: { user_ids: userId, limit: "100" } },
     );
-    return this.withAccountIdentity(
+    return this.accountIdentity.enrich(
       userId,
       (body?.items ?? []).map(mapConnection),
-    );
-  }
-
-  /**
-   * Fill in the account identity for connections whose auth payload gave us no
-   * label (Composio masks the tokens that would carry it — see
-   * composio-identity.ts): one read-only profile call per account, targeted at
-   * THAT account, cached for the process lifetime. A probe failure just leaves
-   * the label off (the UI falls back to the connection date) — labelling is
-   * enrichment and must never break the list itself.
-   */
-  private async withAccountIdentity(
-    userId: string,
-    connections: Connection[],
-  ): Promise<Connection[]> {
-    return Promise.all(
-      connections.map(async (connection) => {
-        if (connection.accountLabel || connection.status !== "active") {
-          return connection;
-        }
-        const probe = IDENTITY_PROBES[connection.toolkit.toLowerCase()];
-        if (!probe || !connection.connectionId) return connection;
-        const cached = this.accountIdentity.get(connection.connectionId);
-        if (cached) return { ...connection, accountLabel: cached };
-        try {
-          const result = await this.execute(
-            userId,
-            probe.action,
-            probe.params ?? {},
-            undefined,
-            connection.connectionId,
-          );
-          const label = result.successful
-            ? extractIdentity(result.data, probe.fields)
-            : undefined;
-          if (!label) return connection;
-          this.accountIdentity.set(connection.connectionId, label);
-          return { ...connection, accountLabel: label };
-        } catch {
-          // Probe failure = no label this round (date fallback in the UI);
-          // deliberately uncached so the next list retries.
-          return connection;
-        }
-      }),
     );
   }
 
@@ -293,7 +248,7 @@ export class ComposioProvider implements IntegrationProvider {
   ): Promise<Connection | null> {
     const owned = await this.ownedConnection(userId, connectionId);
     if (!owned) return null;
-    const [labelled] = await this.withAccountIdentity(userId, [owned]);
+    const [labelled] = await this.accountIdentity.enrich(userId, [owned]);
     return labelled ?? null;
   }
 
@@ -336,6 +291,7 @@ export class ComposioProvider implements IntegrationProvider {
         `/api/v3/connected_accounts/${encodeURIComponent(connectionId)}`,
         { method: "DELETE", nullStatuses: [404] },
       );
+      this.accountIdentity.invalidate(connectionId);
       return;
     }
     // Remove every connected account for the toolkit (a toolkit can have more
@@ -353,12 +309,13 @@ export class ComposioProvider implements IntegrationProvider {
     await Promise.all(
       (accounts?.items ?? [])
         .flatMap((acct) => (acct.id ? [acct.id] : []))
-        .map((id) =>
-          this.http.call(
+        .map(async (id) => {
+          await this.http.call(
             `/api/v3/connected_accounts/${encodeURIComponent(id)}`,
             { method: "DELETE", nullStatuses: [404] },
-          ),
-        ),
+          );
+          this.accountIdentity.invalidate(id);
+        }),
     );
   }
 

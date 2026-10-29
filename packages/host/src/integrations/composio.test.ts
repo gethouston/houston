@@ -1,4 +1,4 @@
-import { expect, test } from "vitest";
+import { expect, test, vi } from "vitest";
 import { ComposioProvider } from "./composio";
 import { IntegrationUpstreamError } from "./types";
 
@@ -17,7 +17,9 @@ interface Recorded {
   body: unknown;
 }
 
-function harness(handler: (url: URL, method: string) => Reply) {
+function harness(
+  handler: (url: URL, method: string) => Reply | Promise<Reply>,
+) {
   const calls: Recorded[] = [];
   const fetchImpl = (async (input: RequestInfo | URL, init?: RequestInit) => {
     const url = new URL(String(input));
@@ -25,7 +27,7 @@ function harness(handler: (url: URL, method: string) => Reply) {
     const headers = (init?.headers ?? {}) as Record<string, string>;
     const body = init?.body ? JSON.parse(String(init.body)) : undefined;
     calls.push({ path: url.pathname + url.search, method, headers, body });
-    const r = handler(url, method);
+    const r = await handler(url, method);
     return new Response(r.body === undefined ? null : JSON.stringify(r.body), {
       status: r.status ?? 200,
       headers: { "content-type": "application/json" },
@@ -1286,4 +1288,146 @@ test("a failing probe leaves the connection listed, just unlabelled", async () =
   expect(conns).toEqual([
     { toolkit: "gmail", connectionId: "ca_1", status: "active" },
   ]);
+});
+
+test("concurrent connection lists share one identity probe per account", async () => {
+  const { provider, profileCalls } = probeHarness();
+  const [first, second] = await Promise.all([
+    provider.listConnections(USER),
+    provider.listConnections(USER),
+  ]);
+  expect(profileCalls()).toBe(2);
+  expect(first).toEqual(second);
+  expect(first.map((connection) => connection.accountLabel)).toEqual([
+    "probed-1@x.test",
+    "probed-2@x.test",
+  ]);
+});
+
+test.each<Reply>([
+  { status: 500, body: { error: "missing scope" } },
+  { body: { successful: false, error: "refused" } },
+  { body: { successful: true, data: {} } },
+])("an unsuccessful identity probe waits 15 minutes before retrying (%j)", async (reply) => {
+  vi.useFakeTimers({ toFake: ["Date"] });
+  try {
+    vi.setSystemTime(0);
+    let probes = 0;
+    const { provider } = harness((url) => {
+      if (url.pathname.includes("/tools/execute/")) {
+        probes++;
+        return probes === 1
+          ? reply
+          : {
+              body: {
+                successful: true,
+                data: { emailAddress: "user@example.test" },
+              },
+            };
+      }
+      return {
+        body: {
+          items: [{ id: "ca_1", toolkit: { slug: "gmail" }, status: "ACTIVE" }],
+        },
+      };
+    });
+    const unlabelled = [
+      { toolkit: "gmail", connectionId: "ca_1", status: "active" },
+    ];
+    expect(await provider.listConnections(USER)).toEqual(unlabelled);
+    expect(await provider.listConnections(USER)).toEqual(unlabelled);
+    vi.setSystemTime(15 * 60 * 1000 - 1);
+    expect(await provider.listConnections(USER)).toEqual(unlabelled);
+    expect(probes).toBe(1);
+    vi.setSystemTime(15 * 60 * 1000);
+    expect(await provider.listConnections(USER)).toEqual([
+      { ...unlabelled[0], accountLabel: "user@example.test" },
+    ]);
+    await provider.listConnections(USER);
+    expect(probes).toBe(2);
+  } finally {
+    vi.useRealTimers();
+  }
+});
+
+test.each([
+  { targeted: true, successful: true },
+  { targeted: false, successful: true },
+  { targeted: true, successful: false },
+  { targeted: false, successful: false },
+])("disconnect clears the identity cache (%j)", async ({
+  targeted,
+  successful,
+}) => {
+  let probes = 0;
+  const account = {
+    id: "ca_1",
+    toolkit: { slug: "gmail" },
+    status: "ACTIVE",
+    user_id: USER,
+  };
+  const { provider } = harness((url, method) => {
+    if (method === "DELETE") return { status: 204 };
+    if (url.pathname.includes("/tools/execute/")) {
+      probes++;
+      return {
+        body: {
+          successful,
+          data: { emailAddress: `user-${probes}@example.test` },
+        },
+      };
+    }
+    return {
+      body: url.pathname.endsWith("/ca_1") ? account : { items: [account] },
+    };
+  });
+  await provider.listConnections(USER);
+  await provider.disconnect(USER, "gmail", targeted ? "ca_1" : undefined);
+  const listed = await provider.listConnections(USER);
+  expect(probes).toBe(2);
+  expect(listed[0]?.accountLabel).toBe(
+    successful ? "user-2@example.test" : undefined,
+  );
+});
+
+test("disconnect clears a pending probe without letting its result refill the cache", async () => {
+  const started = Promise.withResolvers<void>();
+  const pending = Promise.withResolvers<Reply>();
+  let probes = 0;
+  const account = {
+    id: "ca_1",
+    toolkit: { slug: "gmail" },
+    status: "ACTIVE",
+    user_id: USER,
+  };
+  const { provider } = harness((url, method) => {
+    if (method === "DELETE") return { status: 204 };
+    if (url.pathname.includes("/tools/execute/")) {
+      probes++;
+      if (probes === 1) {
+        started.resolve();
+        return pending.promise;
+      }
+      return {
+        body: {
+          successful: true,
+          data: { emailAddress: "fresh@example.test" },
+        },
+      };
+    }
+    return {
+      body: url.pathname.endsWith("/ca_1") ? account : { items: [account] },
+    };
+  });
+  const first = provider.listConnections(USER);
+  await started.promise;
+  await provider.disconnect(USER, "gmail", "ca_1");
+  pending.resolve({
+    body: { successful: true, data: { emailAddress: "stale@example.test" } },
+  });
+  await first;
+  expect((await provider.listConnections(USER))[0]?.accountLabel).toBe(
+    "fresh@example.test",
+  );
+  expect(probes).toBe(2);
 });
