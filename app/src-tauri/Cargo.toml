@@ -37,7 +37,7 @@ arboard = "3"
 tauri-plugin-updater = "2"
 # The shell downloads releases itself (resume + backoff; src/commands/
 # update_fetch.rs) and verifies them against the updater pubkey the way the
-# plugin does. Same crate + version the plugin pulls in.
+# plugin does, using the minisign verification crate directly.
 minisign-verify = "0.2"
 tauri-plugin-deep-link = "2"
 tauri-plugin-sentry = "0.5"
