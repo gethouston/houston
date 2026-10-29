@@ -4,6 +4,11 @@ import type { Connection } from "./types";
 
 const FAILURE_TTL_MS = 15 * 60 * 1000;
 const MAX_FAILURES = 1000;
+// The transport sets no timeout, and every list for this account shares one
+// in-flight probe, so a stalled probe must not hold those lists.
+const PROBE_DEADLINE_MS = 10_000;
+
+type ProbeOutcome = { label?: string; cacheFailure: boolean };
 
 export class ComposioIdentityCache {
   private readonly labels = new Map<string, string>();
@@ -38,40 +43,53 @@ export class ComposioIdentityCache {
 
         let pending = this.inflight.get(id);
         if (!pending) {
-          // Probes are billed, including refusals and replies with no identity.
-          pending = this.execute(
+          let timer: ReturnType<typeof setTimeout> | undefined;
+          const deadline = new Promise<ProbeOutcome>((resolve) => {
+            timer = setTimeout(
+              () => resolve({ cacheFailure: false }),
+              PROBE_DEADLINE_MS,
+            );
+          });
+          // A refusal or a reply without identity is billed and answers the
+          // same on retry, so it waits out FAILURE_TTL_MS. A thrown error
+          // (network, 429, 5xx) or the deadline may be gone by the next list.
+          const probed = this.execute(
             userId,
             probe.action,
             probe.params ?? {},
             undefined,
             id,
           )
-            .then((result) =>
-              result.successful
-                ? extractIdentity(result.data, probe.fields)
-                : undefined,
+            .then(
+              (result): ProbeOutcome => ({
+                label: result.successful
+                  ? extractIdentity(result.data, probe.fields)
+                  : undefined,
+                cacheFailure: true,
+              }),
             )
-            .catch((error: unknown) => {
+            .catch((error: unknown): ProbeOutcome => {
               console.warn(
                 `[integrations] composio: identity probe failed for '${id}': ${String(error)}`,
               );
-              return undefined;
-            })
-            .then((label) => {
-              // Disconnect can invalidate a probe before its response arrives.
-              if (this.inflight.get(id) !== pending) return label;
-              this.inflight.delete(id);
-              if (label) {
-                this.labels.set(id, label);
-              } else {
-                if (this.failures.size >= MAX_FAILURES) {
-                  const oldest = this.failures.keys().next().value;
-                  if (oldest !== undefined) this.failures.delete(oldest);
-                }
-                this.failures.set(id, Date.now() + FAILURE_TTL_MS);
-              }
-              return label;
+              return { cacheFailure: false };
             });
+          pending = Promise.race([probed, deadline]).then((outcome) => {
+            clearTimeout(timer);
+            // Disconnect can invalidate a probe before its response arrives.
+            if (this.inflight.get(id) !== pending) return outcome.label;
+            this.inflight.delete(id);
+            if (outcome.label) {
+              this.labels.set(id, outcome.label);
+            } else if (outcome.cacheFailure) {
+              if (this.failures.size >= MAX_FAILURES) {
+                const oldest = this.failures.keys().next().value;
+                if (oldest !== undefined) this.failures.delete(oldest);
+              }
+              this.failures.set(id, Date.now() + FAILURE_TTL_MS);
+            }
+            return outcome.label;
+          });
           this.inflight.set(id, pending);
         }
         const label = await pending;

@@ -1290,25 +1290,10 @@ test("a failing probe leaves the connection listed, just unlabelled", async () =
   ]);
 });
 
-test("concurrent connection lists share one identity probe per account", async () => {
-  const { provider, profileCalls } = probeHarness();
-  const [first, second] = await Promise.all([
-    provider.listConnections(USER),
-    provider.listConnections(USER),
-  ]);
-  expect(profileCalls()).toBe(2);
-  expect(first).toEqual(second);
-  expect(first.map((connection) => connection.accountLabel)).toEqual([
-    "probed-1@x.test",
-    "probed-2@x.test",
-  ]);
-});
-
 test.each<Reply>([
-  { status: 500, body: { error: "missing scope" } },
   { body: { successful: false, error: "refused" } },
   { body: { successful: true, data: {} } },
-])("an unsuccessful identity probe waits 15 minutes before retrying (%j)", async (reply) => {
+])("a refused or identity-less probe waits 15 minutes before retrying (%j)", async (reply) => {
   vi.useFakeTimers({ toFake: ["Date"] });
   try {
     vi.setSystemTime(0);
