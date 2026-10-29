@@ -1189,7 +1189,9 @@ jobs:
 
           mv "$REBUILT" "${ARTIFACT_TAR}"
           rm -f "${ARTIFACT_SIG}"
-          app/node_modules/.bin/tauri signer sign "${ARTIFACT_TAR}"
+          # --app-version binds the signature to the release, as `tauri build`
+          # does for the bundles it signs itself.
+          app/node_modules/.bin/tauri signer sign --app-version "$(jq -r .version app/package.json)" "${ARTIFACT_TAR}"
           node scripts/ci/verify-updater-signature.mjs \
             "${ARTIFACT_TAR}" "${ARTIFACT_SIG}" app/src-tauri/tauri.conf.json
 
@@ -2106,7 +2108,7 @@ jobs:
         run: |
           set -euo pipefail
           APPIMAGE="${ARTIFACT_APPIMAGE}"
-          (cd app && pnpm tauri signer sign "$GITHUB_WORKSPACE/$APPIMAGE")
+          (cd app && pnpm tauri signer sign --app-version "$(jq -r .version package.json)" "$GITHUB_WORKSPACE/$APPIMAGE")
           test -s "$APPIMAGE.sig" \
             || { echo "::error::updater signature missing for $APPIMAGE"; exit 1; }
           echo "  sig: $APPIMAGE.sig"
