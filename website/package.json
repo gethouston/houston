@@ -15,9 +15,14 @@
     "@resvg/resvg-js": "^2.6.2",
     "marked": "^18.0.2",
     "qrcode": "^1.5.4",
-    "satori": "^0.29.0"
+    "satori": "^0.33.5"
   },
   "devDependencies": {
     "nunjucks": "^3.2.4"
+  },
+  "overrides": {
+    "satori": {
+      "fflate": "0.7.5"
+    }
   }
 }
