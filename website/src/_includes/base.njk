@@ -16,7 +16,7 @@
     og:locale and the card's language follow the page's `lang`. -#}
 {%- set pageUrl = canonicalUrl or ("https://gethouston.ai" + page.url) %}
 {%- set card = og.cards[ogCard or "home"][locale.code] or og.cards[ogCard or "home"].en %}
-{%- set cardAlt = ogImageAlt or (t.hero.h1Html | replace("&nbsp;", " ")) %}
+{%- set cardAlt = ogImageAlt or (t.hero.h1Html | replace("&nbsp;", " ") | striptags) %}
 {% if description %}<meta name="description" content="{{ description }}">
 {% endif -%}
 <meta property="og:type" content="{{ ogType or 'website' }}">

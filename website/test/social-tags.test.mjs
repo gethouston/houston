@@ -6,10 +6,16 @@
 import assert from "node:assert/strict";
 import { execFileSync } from "node:child_process";
 import { createHash } from "node:crypto";
-import { mkdtempSync, readdirSync, readFileSync, statSync } from "node:fs";
+import {
+  mkdtempSync,
+  readdirSync,
+  readFileSync,
+  rmSync,
+  statSync,
+} from "node:fs";
 import { tmpdir } from "node:os";
 import { dirname, join, relative, resolve } from "node:path";
-import { before, test } from "node:test";
+import { after, before, test } from "node:test";
 import { fileURLToPath } from "node:url";
 
 const site = "https://gethouston.ai";
@@ -63,6 +69,8 @@ const jpegSize = (bytes) => {
   }
   throw new Error("no JPEG frame header");
 };
+
+after(() => rmSync(out, { recursive: true, force: true }));
 
 let pages = [];
 before(() => {
