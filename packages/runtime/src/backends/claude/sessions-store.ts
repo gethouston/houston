@@ -7,6 +7,7 @@ import {
 } from "node:fs";
 import { dirname, join } from "node:path";
 import { atomicTempPath } from "@houston/protocol";
+import { clearStaleTranscriptResults } from "./transcript-clearing";
 import {
   locateTranscript,
   removeTranscript,
@@ -145,6 +146,23 @@ export function createSessionsStore(input: {
           );
           remove(conversationId);
           return undefined;
+        }
+      }
+      // The resume re-sends this transcript, so its stale tool results are
+      // cleared first (./transcript-clearing.ts). Failing leaves it whole.
+      if (cwd) {
+        try {
+          clearStaleTranscriptResults(
+            currentSlugDir
+              ? join(currentSlugDir, `${sessionId}.jsonl`)
+              : located,
+            { workspaceDir: cwd, conversationId },
+          );
+        } catch (err) {
+          console.error(
+            `[claude] could not clear stale tool results for conversation ${conversationId}; resuming with them:`,
+            err,
+          );
         }
       }
       return sessionId;

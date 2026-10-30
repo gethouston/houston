@@ -22,7 +22,10 @@
 const KEEP_RECENT_ROUNDS = 3;
 
 /** A result this small costs less than the cache miss its clearing causes. */
-export const MIN_CLEAR_CHARS = 2_000;
+const MIN_CLEAR_CHARS = 2_000;
+
+/** A screenshot's weight in the budget, about 1.6k tokens. */
+export const IMAGE_CHARS = 6_400;
 
 /** About 30k tokens of stale results per batch. */
 const BATCH_CHARS = 120_000;

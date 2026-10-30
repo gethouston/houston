@@ -7,6 +7,7 @@ import {
 } from "../../session/tool-results/cap";
 import {
   clearedStub,
+  IMAGE_CHARS,
   staleResultIds,
   type ToolResultRef,
 } from "../../session/tool-results/clearing";
@@ -24,9 +25,6 @@ import {
  * the agent folder, and both are the same on every request for the same
  * history, so the prompt cache only misses when a new batch is cleared.
  */
-
-/** A screenshot's weight in the clearing budget, about 1.6k tokens. */
-const IMAGE_CHARS = 6_400;
 
 type AgentMessage = AgentSession["messages"][number];
 type ToolResult = Extract<AgentMessage, { role: "toolResult" }>;
