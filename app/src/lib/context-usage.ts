@@ -1,3 +1,4 @@
+import { compactionWindow } from "@houston/protocol/model-windows";
 import type { FeedItem, TokenUsage } from "@houston-ai/chat";
 import type { ContextWindowConfig } from "./providers";
 
@@ -62,9 +63,11 @@ export function sessionContextUsage(
  * The window to divide by, given the model's catalogued config and the
  * session's observed peak. Self-correcting: starts at the per-model default
  * and snaps UP to the ceiling once observed usage exceeds the default, which
- * proves the real (plan/credit-gated) window is the larger one. Returns null
- * when the model has no catalogued window, so the caller falls back to a raw
- * token count.
+ * proves the real (plan/credit-gated) window is the larger one. Then cut to
+ * the room the runtime lets a conversation fill before it compacts
+ * (`compactionWindow`), so the bar reads full where compaction happens, not at
+ * a fifth of a 1M window. Returns null when the model has no catalogued
+ * window, so the caller falls back to a raw token count.
  *
  * The result is floored at the observed peak, so even a mis-catalogued ceiling
  * can't make the indicator read over 100% — that guarantee lives here in the
@@ -81,17 +84,16 @@ export function effectiveContextWindow(
 ): number | null {
   if (!cfg) return null;
   const estimate = peakContextTokens > cfg.default ? cfg.max : cfg.default;
-  return Math.max(estimate, peakContextTokens);
+  return Math.max(compactionWindow(estimate), peakContextTokens);
 }
 
 /**
  * How full the context window is, 0-100, or `null` when usage or the window
  * isn't known. Rounded and clamped for the displayed gauge (`ContextIndicator`).
- * The runtime owns the autocompact TRIGGER separately (`needsAutocompact` in
- * `packages/runtime`), but the two now agree on the denominator: both size the
- * window from the shared `@houston/protocol` table (`effectiveModelWindow` there
- * mirrors `effectiveContextWindow` above), so the gauge and the compaction point
- * line up.
+ * The runtime owns the autocompact TRIGGER (`needsAutocompact` in
+ * `packages/runtime`); both size the window from the shared
+ * `@houston/protocol` table and read its ceiling and threshold, so the
+ * compaction point is the threshold's percent on this gauge for every model.
  */
 export function contextFillPercent(
   usage: TokenUsage | null,

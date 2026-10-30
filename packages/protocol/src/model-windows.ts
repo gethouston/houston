@@ -98,9 +98,10 @@ export function resolveModelWindow(
  * never exceed the true window. Floored at the observed count so a mis-catalogued
  * ceiling can never read as over 100%.
  *
- * This MUST match the frontend's `effectiveContextWindow` (app/src/lib/
- * context-usage.ts) exactly — that one takes a pre-resolved `{default,max}` and
- * applies the identical rule, so both surfaces agree on the denominator.
+ * The frontend's `effectiveContextWindow` (app/src/lib/context-usage.ts)
+ * applies this identical rule to a pre-resolved `{default,max}`, then cuts the
+ * result to {@link compactionWindow} for display; the runtime applies the
+ * ceiling in its threshold instead (`needsAutocompact`).
  */
 export function effectiveModelWindow(
   providerId: string,
@@ -115,4 +116,30 @@ export function effectiveModelWindow(
   );
   const estimate = observedTokens > def ? max : def;
   return Math.max(estimate, observedTokens);
+}
+
+/**
+ * The fill no conversation grows past, whatever its window. Every request
+ * re-sends the whole context, so a 1M-window chat left to fill to 93% paid
+ * ~900k input tokens per call for days: most of a subscription's limit went
+ * to re-reading history the model rarely needed.
+ */
+export const AUTOCOMPACT_CEILING_TOKENS = 200_000;
+
+/** Percent-full at which a turn compacts (the runtime's default threshold). */
+export const AUTOCOMPACT_THRESHOLD_PERCENT = 93;
+
+/**
+ * The room a conversation actually has: the model's window, cut to where the
+ * ceiling sits at the threshold's percent-full. The context bar divides by
+ * this, so 93% on the bar is where the runtime compacts for every model (a
+ * 1M chat compacts at 200k, which reads 93% of 215k, not 20% of 1M).
+ */
+export function compactionWindow(window: number): number {
+  return Math.min(
+    window,
+    Math.round(
+      (AUTOCOMPACT_CEILING_TOKENS * 100) / AUTOCOMPACT_THRESHOLD_PERCENT,
+    ),
+  );
 }
