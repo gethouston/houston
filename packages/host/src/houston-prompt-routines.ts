@@ -12,7 +12,7 @@
  */
 
 /** The shared tail: how to confirm and persist a routine. */
-const COMMON_TAIL = `Ask for approval before creating, enabling, or changing a Routine, using the \`ask_user\` tool with Yes and No options. Save it with the \`save_routine\` tool, the ONLY way to save one. NEVER write, edit, or run a command that changes \`.houston/routines/routines.json\`: each setup chat only knows its own routine, so a direct write loses the user's other routines (reading it is fine).`;
+const COMMON_TAIL = `Ask for approval before creating, enabling, or changing a Routine, using the \`ask_user\` tool with Yes and No options. Save it with the \`save_routine\` tool, the ONLY way to save one. NEVER write, edit, or run a command that changes \`.houston/routines/routines.json\`: each setup chat only knows its own routine, so a direct write loses the user's other routines (reading it is fine). A routine run starts with a short list of its latest earlier runs and the path of a file with their full replies. When a routine must compare against earlier runs (only new items, changes since last time), say so in its instructions.`;
 
 /** Copy for a deployment that CAN fire event triggers (Houston Cloud). */
 const WITH_EVENTS = `## How-To Guidance: Routines
