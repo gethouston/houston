@@ -1043,8 +1043,6 @@ export interface RunShellRequest {
 // ---------- Sessions ----------
 
 export interface SessionStartRequest {
-  /** Per-user next-step suggestions. Omitted means on. */
-  nextStepSuggestions?: boolean;
   sessionKey: string;
   prompt: string;
   /**

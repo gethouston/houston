@@ -40,7 +40,6 @@ import { ConversationVmOutput } from "./vm-output";
 export function createTurnsModule(
   ctx: ModuleContext,
   persistBoardStatus: BoardStatusPersister,
-  getNextStepSuggestions: () => Promise<boolean>,
 ) {
   const vm = new ConversationVmOutput(ctx.store, {
     cacheMax: ctx.config.conversationCacheMax,
@@ -64,7 +63,6 @@ export function createTurnsModule(
     defaults,
     external,
     registry,
-    getNextStepSuggestions,
   });
   const { send, observe, history } = operations;
   // The one-shot conversation controls (stop / mode / dismiss / rewind /

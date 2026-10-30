@@ -114,7 +114,6 @@ export class HoustonSdk implements SdkModules {
     // capability must exist first. Injected as a bound function (not the whole
     // module) so turns depends on one activities method, never the reverse.
     this.activities = moduleFactories.createActivitiesModule(ctx);
-    this.preferences = moduleFactories.createPreferencesModule(ctx);
     this.turns = moduleFactories.createTurnsModule(
       ctx,
       (agentId, sessionKey, status, pendingInteraction, stamp) =>
@@ -125,11 +124,11 @@ export class HoustonSdk implements SdkModules {
           pendingInteraction,
           stamp,
         ),
-      this.preferences.getNextStepSuggestions,
     );
     this.missions = moduleFactories.createMissionsSearchModule(ctx);
     this.providers = moduleFactories.createProvidersModule(ctx);
     this.integrations = moduleFactories.createIntegrationsModule(ctx);
+    this.preferences = moduleFactories.createPreferencesModule(ctx);
     this.appearance = moduleFactories.createAppearanceModule(ctx);
     this.spaces = moduleFactories.createSpacesModule(ctx);
     this.workspaces = moduleFactories.createWorkspacesModule(ctx);

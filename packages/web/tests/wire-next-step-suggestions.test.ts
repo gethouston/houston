@@ -19,7 +19,7 @@ afterEach(() => {
   restore();
 });
 
-test("the account preference round-trips through the SDK and false rides the send byte for byte", async () => {
+test("the account preference round-trips through the SDK, and a send never carries it (the host applies it)", async () => {
   let value: string | null = null;
   stubRouted((call) => {
     if (call.url.endsWith("/v1/preferences/next_step_suggestions")) {
@@ -53,11 +53,41 @@ test("the account preference round-trips through the SDK and false rides the sen
   expectGatewayHeaders(send);
   const { nonce } = JSON.parse(send.body ?? "{}");
   expect(typeof nonce).toBe("string");
-  expect(send.body).toBe(
-    JSON.stringify({ text: "hola", nonce, nextStepSuggestions: false }),
-  );
+  expect(send.body).toBe(JSON.stringify({ text: "hola", nonce }));
+  // Only the two explicit reads above: the send itself reads nothing.
+  expect(
+    calls.filter(
+      (call) =>
+        call.method === "GET" &&
+        call.url.endsWith("/v1/preferences/next_step_suggestions"),
+    ),
+  ).toHaveLength(2);
   const write = calls.find((call) => call.method === "PUT");
   expect(write?.url).toBe("http://host/v1/preferences/next_step_suggestions");
   expect(write?.body).toBe('{"value":"false"}');
   expect(await client.setNextStepSuggestions(true)).toBe(true);
+});
+
+test("a second quick send queues behind the first instead of dispatching beside it", async () => {
+  stubRouted((call) => {
+    // A preference read that never answers: no send may wait on one.
+    if (call.url.includes("/v1/preferences/"))
+      return new Promise<Response>(() => {});
+    if (call.url.endsWith("/events"))
+      return new Response(new ReadableStream(), {
+        headers: { "content-type": "text/event-stream" },
+      });
+    return json(202, { ok: true, turnId: "t1" });
+  });
+  const client = new HoustonClient({
+    baseUrl: "http://host",
+    token: "t",
+    controlPlane: true,
+  });
+  client.setActiveOrg(ORG);
+  await client.startSession("agent", { sessionKey: "quick", prompt: "one" });
+  await client.startSession("agent", { sessionKey: "quick", prompt: "two" });
+  await vi.waitUntil(() => calls.some((c) => c.url.endsWith("/messages")));
+  const sends = calls.filter((call) => call.url.endsWith("/messages"));
+  expect(sends.map((s) => JSON.parse(s.body ?? "{}").text)).toEqual(["one"]);
 });

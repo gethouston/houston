@@ -14,7 +14,6 @@ import { wireTurnPin } from "../turn-pin";
 import { observeConversation, streamTurn } from "../turn-stream";
 import { turnCardWriter } from "./activity-status";
 import type { BaseCtor } from "./mixin";
-import { viaSdk } from "./sdk-error";
 
 export function ChatSendMixin<TBase extends BaseCtor>(Base: TBase) {
   class ChatSend extends Base {
@@ -60,10 +59,6 @@ export function ChatSendMixin<TBase extends BaseCtor>(Base: TBase) {
         );
         return { sessionKey: req.sessionKey };
       }
-      const nextStepSuggestions = await viaSdk(
-        "/v1/preferences/next_step_suggestions",
-        () => this.ctx.sdk.preferences.getNextStepSuggestions(),
-      );
       // Fire-and-stream: events flow to the feed store over the bus/WS adapter.
       // The board-status setter is cloud-aware (writes land where the board reads).
       // The request's provider/model/effort (the chat's OWN pick, app dialect)
@@ -80,7 +75,6 @@ export function ChatSendMixin<TBase extends BaseCtor>(Base: TBase) {
         req.prompt,
         turnCardWriter(this.ctx, path, req.sessionKey),
         {
-          nextStepSuggestions,
           provider: req.provider,
           suppressUserBubble: req.suppressUserBubble,
           pin: wireTurnPin(req),
