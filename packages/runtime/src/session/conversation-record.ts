@@ -79,8 +79,8 @@ export type Conversation = {
   /**
    * Set while a routine reset (routine-session-reset.ts) has disposed the live
    * session but not yet built its replacement. The next turn on this record
-   * retries the rebuild even when the routine budget no longer asks for one,
-   * so no queued turn ever prompts a disposed session.
+   * retries the rebuild even when it is a person's turn, so no queued turn
+   * ever prompts a disposed session.
    */
   sessionRebuildPending?: true;
 };

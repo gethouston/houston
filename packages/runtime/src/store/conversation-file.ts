@@ -36,7 +36,6 @@ export {
 } from "./conversation-queries";
 export type {
   CompactionCheckpoint,
-  RoutineCarryRecord,
   StoredConversation,
 } from "./stored-conversation";
 

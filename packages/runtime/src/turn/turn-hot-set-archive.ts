@@ -2,7 +2,7 @@ import type { HydrateListedObject } from "@houston/runtime-client/object-sync";
 
 /**
  * How many of a turn's own archive segments hydrate before the prompt: the
- * newest ones. A routine run replays only ROUTINE_REPLAY_TAIL messages
+ * newest ones. A routine digest reads only ROUTINE_REPLAY_TAIL messages
  * (session/routine-replay.ts), which the live tail plus these nearly always
  * hold. Older segments stay remote, listed, never in the manifest (so never
  * read as deleted), and a reader reaching back fetches them on demand
