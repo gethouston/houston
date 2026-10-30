@@ -4,34 +4,13 @@
    (src/index.njk, src/es/index.njk, src/pt/index.njk) are stubs: they set the
    permalink and, through directory data, the language. Nothing else. #}
 {% extends "base.njk" %}
-{% block title %}{{ t.meta.title }}{% endblock %}
-{% block favicon %}<link rel="icon" type="image/svg+xml" href="/favicon.svg">{% endblock %}
+{% set title = t.meta.title %}
+{% set description = t.meta.description %}
+{% set ogTitle = t.meta.ogTitle %}
+{% set ogDescription = t.meta.ogDescription %}
+{% set alternates = { en: locales.en.dir, es: locales.es.dir, pt: locales.pt.dir } %}
 {% block meta %}
-<meta name="description" content="{{ t.meta.description }}">
-<!-- Open Graph / Facebook / Slack / LinkedIn -->
-<meta property="og:type" content="website">
-<meta property="og:url" content="https://gethouston.ai{{ locale.dir }}">
-<meta property="og:title" content="{{ t.meta.ogTitle }}">
-<meta property="og:description" content="{{ t.meta.ogDescription }}">
-<meta property="og:site_name" content="Houston">
-<meta property="og:locale" content="{{ locale.ogLocale }}">
-{%- for code in locales.order %}{% if code != locale.code %}
-<meta property="og:locale:alternate" content="{{ locales[code].ogLocale }}">
-{%- endif %}{% endfor %}
-<!-- Twitter / X -->
-<meta name="twitter:card" content="summary_large_image">
-<meta name="twitter:url" content="https://gethouston.ai{{ locale.dir }}">
-<meta name="twitter:title" content="{{ t.meta.twTitle }}">
-<meta name="twitter:description" content="{{ t.meta.twDescription }}">
 <meta name="twitter:creator" content="@ja818_">
-{# Every locale of the landing emits the SAME alternate set, absolute URLs, so
-   a crawler reaching any one of them finds the other two. x-default points at
-   the English root. #}
-{%- for code in locales.order %}
-<link rel="alternate" hreflang="{{ locales[code].hreflang }}" href="https://gethouston.ai{{ locales[code].dir }}">
-{%- endfor %}
-<link rel="alternate" hreflang="x-default" href="https://gethouston.ai/">
-
 {% include "landing/json-ld.njk" %}
 {% endblock %}
 {% block headScripts %}

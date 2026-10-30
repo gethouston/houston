@@ -30,12 +30,8 @@ export default {
     ogTitle: "Houston: agentes de IA que sí hacen el trabajo",
     ogDescription:
       "Houston es el espacio de trabajo compartido donde las personas y los agentes de IA trabajan juntos. Agentes compartidos, un solo tablero de misiones y roles para todo tu equipo. Empieza en el nivel gratuito.",
-    twTitle: "Houston: agentes de IA que sí hacen el trabajo",
-    twDescription:
-      "Houston es el espacio de trabajo compartido donde las personas y los agentes de IA trabajan juntos. Agentes compartidos, un solo tablero de misiones y roles para todo tu equipo. Empieza en el nivel gratuito.",
     jsonLdDescription:
       "App de escritorio que pone agentes de IA a hacer trabajo real por ti, con la suscripción de ChatGPT o Claude que ya tienes, más de 1.500 integraciones y un nivel gratuito.",
-    ogImageAlt: "Houston: agentes de IA que sí hacen el trabajo.",
   },
 
   nav: {

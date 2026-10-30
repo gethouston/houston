@@ -28,12 +28,8 @@ export default {
     ogTitle: "Houston: AI agents that actually do the work",
     ogDescription:
       "Houston is the shared workspace where people and AI agents work together. Shared agents, one mission board, roles for your whole team. Start on the free tier.",
-    twTitle: "Houston: AI agents that actually do the work",
-    twDescription:
-      "Houston is the shared workspace where people and AI agents work together. Shared agents, one mission board, roles for your whole team. Start on the free tier.",
     jsonLdDescription:
       "Desktop app that runs AI agents which do real work for you, on your existing ChatGPT or Claude subscription, with over 1,500 integrations and a free tier.",
-    ogImageAlt: "Houston: AI agents that actually do the work.",
   },
 
   nav: {

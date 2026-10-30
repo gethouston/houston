@@ -69,35 +69,24 @@ eleventyComputed:
 {% set liIssued = ("&issueYear=" + cert.issueYear + "&issueMonth=" + cert.issueMonth) if cert.issueYear else "" %}
 {% set liAdd = "https://www.linkedin.com/profile/add?startTask=CERTIFICATION_NAME&name=" + (credentialName | urlencode) + "&" + liOrg + liIssued + "&certUrl=" + (cert.pageUrl | urlencode) + "&certId=" + (cert.code | urlencode) %}
 
-{% block title %}{{ headline }} · Houston{% endblock %}
+{% set title = headline + " · Houston" %}
+{% set description = summary %}
+{% set ogTitle = headline %}
+{% set ogType = "article" %}
+{% set canonicalUrl = cert.pageUrl %}
 
 {# This page owns a unique social card (the attendee's own 1200x630 image), so
-   it replaces base.njk's default set entirely instead of adding a second one. #}
+   it replaces base.njk's default image instead of adding a second one. #}
 {% block socialImage %}<meta property="og:image" content="{{ cert.ogImageUrl }}">
-<meta property="og:image:secure_url" content="{{ cert.ogImageUrl }}">
 <meta property="og:image:type" content="image/png">
 <meta property="og:image:width" content="1200">
 <meta property="og:image:height" content="630">
-<meta property="og:image:alt" content="{{ imageAlt }}">
-<meta name="twitter:card" content="summary_large_image">
-<meta name="twitter:image" content="{{ cert.ogImageUrl }}">
-<meta name="twitter:image:alt" content="{{ imageAlt }}">{% endblock %}
-
-{% block canonical %}<link rel="canonical" href="{{ cert.pageUrl }}">{% endblock %}
+<meta property="og:image:alt" content="{{ imageAlt }}">{% endblock %}
 
 {% block meta %}
 {# `dump` quotes and escapes; the extra replace neutralises a literal "<" so a
    name or title can never close the script element. #}
 {% macro json(value) %}{{ value | dump | replace("<", "\\u003c") | safe }}{% endmacro %}
-<meta name="description" content="{{ summary }}">
-<meta property="og:type" content="article">
-<meta property="og:url" content="{{ cert.pageUrl }}">
-<meta property="og:title" content="{{ headline }}">
-<meta property="og:description" content="{{ summary }}">
-<meta property="og:site_name" content="Houston">
-<meta property="og:locale" content="{{ 'es_ES' if cert.lang == 'es' else 'en_US' }}">
-<meta name="twitter:title" content="{{ headline }}">
-<meta name="twitter:description" content="{{ summary }}">
 <script type="application/ld+json">
 {
   "@context": "https://schema.org",

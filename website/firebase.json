@@ -16,6 +16,11 @@
       { "source": "/pricing/pt/", "destination": "/pt/#pricing", "type": 301 },
       { "source": "/waitlist/", "destination": "/#download", "type": 301 },
       {
+        "source": "/og-image.jpg",
+        "destination": "/og/home-en.jpg",
+        "type": 301
+      },
+      {
         "source": "/agent-store",
         "destination": "https://agents.gethouston.ai",
         "type": 302
