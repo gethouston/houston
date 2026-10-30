@@ -80,6 +80,7 @@ function gptSession(onForce: () => void = () => undefined) {
       for (const l of wire) l({ type: "text", data: "Listo, ya está." });
     },
     oneShotText,
+    followUpPassServed: () => true,
     abort: async () => undefined,
     dispose: () => undefined,
     setModel: async () => undefined,

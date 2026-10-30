@@ -39,7 +39,8 @@ export function followUpPassSkip(
 ): FollowUpPassSkip | null {
   if (input.nextStepSuggestions === false) return "disabled";
   if (input.failed) return "failed";
-  if (!input.session.oneShotText) return "unsupported";
+  if (!input.session.oneShotText || !input.session.followUpPassServed?.())
+    return "unsupported";
   if (input.planMode) return "plan";
   if (!input.assistantText.trim()) return "no_reply";
   const steps = input.interaction.pending?.steps ?? [];
@@ -89,8 +90,11 @@ export async function recoverFollowUpActions(
     if (result.outcome === "timeout")
       throw new Error(`timed out after ${timeoutMs} ms`);
     if (result.outcome === "failed") throw result.error;
-    const actions = parseSuggestedActions(JSON.parse(result.text));
-    if (!actions) throw new Error("invalid suggested actions");
+    const actions = parseReply(result.text);
+    if (!actions) {
+      reportUnusableReply(where, result.text);
+      return;
+    }
     runWithInteractionCapture(input.interaction, () =>
       recordSuggestActions({ actions }),
     );
@@ -104,4 +108,38 @@ export async function recoverFollowUpActions(
   } finally {
     clearTimeout(timer);
   }
+}
+
+/** The actions in a reply, which models often wrap in a ```json fence. */
+function parseReply(text: string): ReturnType<typeof parseSuggestedActions> {
+  const unfenced = text
+    .trim()
+    .replace(/^```(?:json)?\s*/i, "")
+    .replace(/\s*```$/, "");
+  try {
+    return parseSuggestedActions(JSON.parse(unfenced));
+  } catch {
+    // Not JSON: the caller reports it with every other unusable reply.
+    return null;
+  }
+}
+
+const UNUSABLE_REPORT_WINDOW_MS = 10 * 60_000;
+let lastUnusableReport = Number.NEGATIVE_INFINITY;
+let unusableSinceReport = 0;
+
+/**
+ * A reply the model did not shape as asked costs this turn its bubbles and
+ * nothing else, and a weak model does it on every turn: one warning per
+ * window, counting the ones it stands for, never an error per turn.
+ */
+function reportUnusableReply(where: string, text: string): void {
+  unusableSinceReport += 1;
+  const now = Date.now();
+  if (now - lastUnusableReport < UNUSABLE_REPORT_WINDOW_MS) return;
+  console.warn(
+    `[follow-up-pass] ${unusableSinceReport} turn(s) ended without actions on a reply that was not the asked JSON (latest ${where}): ${text.slice(0, 200)}`,
+  );
+  lastUnusableReport = now;
+  unusableSinceReport = 0;
 }

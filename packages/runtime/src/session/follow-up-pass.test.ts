@@ -39,7 +39,10 @@ function sessionAnswering(
 ) {
   const oneShotText = vi.fn(answer);
   return {
-    session: { oneShotText } as unknown as HarnessSession,
+    session: {
+      oneShotText,
+      followUpPassServed: () => true,
+    } as unknown as HarnessSession,
     oneShotText,
   };
 }
@@ -87,6 +90,15 @@ test("each skip condition keeps the pass from running", async () => {
     [{ failed: true }, "failed"],
     [{ nextStepSuggestions: false }, "disabled"],
     [{ session: {} as HarnessSession }, "unsupported"],
+    [
+      {
+        session: {
+          oneShotText: async () => "",
+          followUpPassServed: () => false,
+        } as unknown as HarnessSession,
+      },
+      "unsupported",
+    ],
     [{ planMode: true }, "plan"],
     [{ assistantText: "  \n" }, "no_reply"],
     [{ interaction: withQuestion }, "answered"],
@@ -144,25 +156,54 @@ test("a timeout aborts the request, logs, and ends without actions", async () =>
   expect(String(report.mock.calls[0]?.[1])).toContain("timed out after 20 ms");
 });
 
-test("a failure, no call, or invalid arguments log and record nothing", async () => {
-  const answers: (() => Promise<string>)[] = [
-    async () => {
-      throw new Error("429 rate limited");
-    },
-    async () => "not JSON",
-    async () => JSON.stringify({ actions: [ARGS.actions[0]] }),
-  ];
-  for (const answer of answers) {
+test("a failed request reports an error and records nothing", async () => {
+  const interaction = newInteractionHolder();
+  await recoverFollowUpActions(
+    input({
+      session: sessionAnswering(async () => {
+        throw new Error("429 rate limited");
+      }).session,
+      interaction,
+    }),
+  );
+  expect(interaction.pending).toBeUndefined();
+  expect(String(report.mock.calls[0]?.[1])).toContain("429 rate limited");
+});
+
+test("a fenced JSON reply still lands its actions", async () => {
+  const interaction = newInteractionHolder();
+  const fenced = `\`\`\`json\n${JSON.stringify(ARGS)}\n\`\`\``;
+  await recoverFollowUpActions(
+    input({
+      session: sessionAnswering(async () => fenced).session,
+      interaction,
+    }),
+  );
+  expect(interaction.pending?.steps[0]).toMatchObject({
+    kind: "suggest_actions",
+    actions: ARGS.actions,
+  });
+});
+
+test("replies that are not the asked JSON warn once per burst, never as errors", async () => {
+  const warn = vi.spyOn(console, "warn").mockImplementation(() => undefined);
+  for (const answer of [
+    "not JSON",
+    JSON.stringify({ actions: [ARGS.actions[0]] }),
+    "Sure! Here are some ideas.",
+  ]) {
     const interaction = newInteractionHolder();
     await recoverFollowUpActions(
-      input({ session: sessionAnswering(answer).session, interaction }),
+      input({
+        session: sessionAnswering(async () => answer).session,
+        interaction,
+      }),
     );
     expect(interaction.pending).toBeUndefined();
   }
-  const logged = report.mock.calls.map((call: unknown[]) => String(call[1]));
-  expect(logged[0]).toContain("429 rate limited");
-  expect(logged[1]).toContain("SyntaxError");
-  expect(logged[2]).toContain("invalid suggested actions");
+  expect(report).not.toHaveBeenCalled();
+  expect(warn).toHaveBeenCalledTimes(1);
+  expect(String(warn.mock.calls[0]?.[0])).toContain("not the asked JSON");
 });
 
 test("a stop that lands during the pass drops its actions", async () => {

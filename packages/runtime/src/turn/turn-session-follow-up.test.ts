@@ -46,6 +46,7 @@ function backend(calledInBand: boolean) {
       if (calledInBand) recordSuggestActions({ actions: ACTIONS });
     },
     oneShotText,
+    followUpPassServed: () => true,
     abort: async () => undefined,
     dispose: () => undefined,
     setModel: async () => undefined,

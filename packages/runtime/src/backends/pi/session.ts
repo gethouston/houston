@@ -11,6 +11,7 @@ import type {
   ResolvedModel,
   ThinkingLevel,
 } from "../types";
+import { followUpPassServes } from "./follow-up-models";
 import { createPiCallTimer } from "./model-calls";
 import { type SentRequests, subscribePiModelPhase } from "./model-phase";
 import { createReplyBeatReader } from "./reply-beats";
@@ -101,6 +102,11 @@ export class PiSession implements HarnessSession {
 
   prompt(text: string): Promise<void> {
     return this.session.prompt(text);
+  }
+
+  followUpPassServed(): boolean {
+    const model = this.session.model;
+    return model !== undefined && followUpPassServes(model);
   }
 
   async oneShotText(request: {

@@ -110,6 +110,8 @@ export interface HarnessSession {
   ): () => void;
   /** Run one turn; resolves at turn end. Provider errors surface as WireEvents. */
   prompt(text: string): Promise<void>;
+  /** Whether the current model is one the follow-up pass asks (pi/follow-up-models.ts). */
+  followUpPassServed?(): boolean;
   /** A tool-free request on the current model, outside conversation history. */
   oneShotText?(request: {
     systemPrompt: string;
