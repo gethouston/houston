@@ -22,12 +22,9 @@ const GATE_FORM_ERROR = "Something went wrong. Please try again.";
 
 export default {
   meta: {
-    title: "Houston: AI agents that actually do the work",
+    title: "Houston: one app to run all your team's AI agents",
     description:
-      "Houston is the shared workspace where people and AI agents work together. Shared agents, one mission board, roles for your whole team. Start on the free tier.",
-    ogTitle: "Houston: AI agents that actually do the work",
-    ogDescription:
-      "Houston is the shared workspace where people and AI agents work together. Shared agents, one mission board, roles for your whole team. Start on the free tier.",
+      "Houston gives your team one place to run AI agents, on any model, connected to the tools you already use, so every agent and everything it learns belongs to the company instead of one person's account.",
     jsonLdDescription:
       "Desktop app that runs AI agents which do real work for you, on your existing ChatGPT or Claude subscription, with over 1,500 integrations and a free tier.",
   },

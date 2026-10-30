@@ -24,12 +24,9 @@ const GATE_FORM_ERROR = "Algo salió mal. Inténtalo de nuevo.";
 
 export default {
   meta: {
-    title: "Houston: agentes de IA que sí hacen el trabajo",
+    title: "Houston: una app para todos los agentes de IA de tu equipo",
     description:
-      "Houston es el espacio de trabajo compartido donde las personas y los agentes de IA trabajan juntos. Agentes compartidos, un solo tablero de misiones y roles para todo tu equipo. Empieza en el nivel gratuito.",
-    ogTitle: "Houston: agentes de IA que sí hacen el trabajo",
-    ogDescription:
-      "Houston es el espacio de trabajo compartido donde las personas y los agentes de IA trabajan juntos. Agentes compartidos, un solo tablero de misiones y roles para todo tu equipo. Empieza en el nivel gratuito.",
+      "Houston le da a tu equipo un solo lugar para usar agentes de IA, con cualquier modelo y conectados a las herramientas que ya usan, para que cada agente y todo lo que aprende sea de la empresa y no de la cuenta de una persona.",
     jsonLdDescription:
       "App de escritorio que pone agentes de IA a hacer trabajo real por ti, con la suscripción de ChatGPT o Claude que ya tienes, más de 1.500 integraciones y un nivel gratuito.",
   },
