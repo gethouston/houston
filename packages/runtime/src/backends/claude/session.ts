@@ -13,8 +13,8 @@ import { toSdkEffort } from "./effort";
 import { toSdkModel } from "./model";
 import type { ClaudeSessionDeps } from "./session-deps";
 import { SessionEventSubscriptions } from "./session-events";
-import { runTurnAttempt, type TurnAttemptState } from "./session-turn-attempt";
-import { claudeTurnPromptTokens } from "./turn-prompt-size";
+import { runSessionTurn } from "./session-prompt";
+import type { TurnAttemptState } from "./session-turn-attempt";
 
 export type { ClaudeQuery, ClaudeSessionDeps, TurnAuth } from "./session-deps";
 
@@ -67,29 +67,15 @@ export class ClaudeSession
       ? undefined
       : this.deps.sessionsStore.resolveResume(this.deps.conversationId);
     const prompt = `${checkpoint ? compactedPreamble(checkpoint.summary) : ""}${text}`;
-    const fill = resume === undefined ? undefined : this.knownFill();
-    let outcome = await runTurnAttempt(this.attemptState(), {
+    const outcome = await runSessionTurn(() => this.attemptState(), {
       text: prompt,
       resume,
-      promptTokens: claudeTurnPromptTokens(fill, prompt),
+      fill: resume === undefined ? undefined : this.knownFill(),
+      conversationId: this.deps.conversationId,
+      freshPrefix: () => this.deps.freshRetryPromptPrefix?.() ?? "",
+      retryReason: () => this.retryReason,
+      stopped: () => this.disposed || this.aborting,
     });
-    if (outcome === "retry-fresh") {
-      if (this.disposed || this.aborting) return;
-      // The SDK refused the resume id (its cwd-scoped lookup missed the
-      // transcript — e.g. the workspace was renamed), or resumed it with
-      // Houston's tool server detached (PRODUCT-1706). The stale mapping is
-      // already dropped; run the turn once more as a fresh session instead of
-      // erroring a conversation that can never resume again.
-      console.warn(
-        `[claude] resume for conversation ${this.deps.conversationId} ${this.retryReason}; starting a fresh session`,
-      );
-      const retryText = `${this.deps.freshRetryPromptPrefix?.() ?? ""}${prompt}`;
-      outcome = await runTurnAttempt(this.attemptState(), {
-        text: retryText,
-        resume: undefined,
-        promptTokens: claudeTurnPromptTokens(undefined, retryText),
-      });
-    }
     if (outcome === "success" && checkpoint)
       this.compactions.consume(this.deps.conversationId, checkpoint);
   }
