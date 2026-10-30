@@ -96,13 +96,14 @@ function chat(rounds: number): string[] {
   return lines;
 }
 
-function resume(): string | undefined {
+function resumed() {
   return createSessionsStore({
     configDir: join(root, "cfg"),
     sessionsFile: join(root, "sessions.json"),
     cwd: workspaceDir,
   }).resolveResume("c1");
 }
+const resume = () => resumed()?.sessionId;
 
 function resultSent(lines: string[], id: string): string {
   for (const line of lines) {
@@ -196,4 +197,15 @@ test("a cleared screenshot is saved as an image file the stub names", () => {
     payload("mail1", 19_000),
   );
   expect(readFileSync(join(workspaceDir, files?.[1] ?? ""))).toEqual(png);
+});
+
+test("a resume says how many tokens its clearing took off, and nothing once done", () => {
+  writeFileSync(transcript, chat(10).join("\n"));
+  const first = resumed();
+  const lines = readFileSync(transcript, "utf8").split("\n");
+  const stubChars = [0, 1, 2, 3, 4, 5, 6]
+    .map((i) => resultSent(lines, `toolu_${i}`).length)
+    .reduce((a, b) => a + b, 0);
+  expect(first?.clearedTokens).toBe(Math.floor((7 * 19_000 - stubChars) / 4));
+  expect(resumed()?.clearedTokens).toBe(0);
 });

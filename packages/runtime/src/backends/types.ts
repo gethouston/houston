@@ -110,6 +110,12 @@ export interface HarnessSession {
   ): () => void;
   /** Run one turn; resolves at turn end. Provider errors surface as WireEvents. */
   prompt(text: string): Promise<void>;
+  /**
+   * Take stale tool results out of what the next request sends, when the
+   * backend does that between turns (Claude's transcript); returns the tokens
+   * freed. pi clears inside every request, so its fill already reflects it.
+   */
+  clearStaleToolResults?(): number;
   /** Whether the current model is one the follow-up pass asks (pi/follow-up-models.ts). */
   followUpPassServed?(): boolean;
   /** A tool-free request on the current model, outside conversation history. */

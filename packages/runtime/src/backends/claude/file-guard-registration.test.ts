@@ -154,7 +154,10 @@ test("a long-lived session and its compaction carry the guard", async () => {
       purge: () => {
         resume = undefined;
       },
-      resolveResume: () => resume,
+      resolveResume: () =>
+        resume === undefined
+          ? undefined
+          : { sessionId: resume, clearedTokens: 0 },
     },
     compactions: createCompactionCheckpoints(conversations),
     model: "claude-sonnet-4-6",

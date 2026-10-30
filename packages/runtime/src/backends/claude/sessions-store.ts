@@ -53,8 +53,17 @@ export interface SessionsStore {
    * from `disposeConversation` so a deleted anthropic chat leaves nothing behind.
    */
   purge(conversationId: string): void;
-  /** The session id to resume, or undefined when none / its transcript is gone. */
-  resolveResume(conversationId: string): string | undefined;
+  /**
+   * The session to resume, or undefined when none / its transcript is gone.
+   * Clears the transcript's stale tool results on the way, and says how many
+   * tokens that took off the next request (0 once already cleared).
+   */
+  resolveResume(conversationId: string): ClaudeResume | undefined;
+}
+
+export interface ClaudeResume {
+  sessionId: string;
+  clearedTokens: number;
 }
 
 /**
@@ -150,9 +159,10 @@ export function createSessionsStore(input: {
       }
       // The resume re-sends this transcript, so its stale tool results are
       // cleared first (./transcript-clearing.ts). Failing leaves it whole.
+      let clearedTokens = 0;
       if (cwd) {
         try {
-          clearStaleTranscriptResults(
+          clearedTokens = clearStaleTranscriptResults(
             currentSlugDir
               ? join(currentSlugDir, `${sessionId}.jsonl`)
               : located,
@@ -165,7 +175,7 @@ export function createSessionsStore(input: {
           );
         }
       }
-      return sessionId;
+      return { sessionId, clearedTokens };
     },
   };
 }

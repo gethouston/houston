@@ -113,6 +113,8 @@ export async function autocompactPooledSession(input: {
   canonical: readonly ChatMessage[];
   /** Read the fill from the transcript when the session cannot (Claude). */
   transcriptFill: boolean;
+  /** Tokens the resume's stale-result clearing took off that fill. */
+  clearedTokens?: number;
   harvest: FactHarvestTarget;
   /** The person's cancel: it stops the summary, as Stop does on the pod. */
   signal?: AbortSignal;
@@ -120,11 +122,13 @@ export async function autocompactPooledSession(input: {
 }): Promise<ChatMessage["compaction"]> {
   const { session, model, conversationId, signal } = input;
   if (signal?.aborted) return undefined;
-  const fill = pooledContextFill(
+  const read = pooledContextFill(
     session,
     input.canonical,
     input.transcriptFill,
   );
+  const fill =
+    read === null ? null : Math.max(0, read - (input.clearedTokens ?? 0));
   // The same denominator the pod and the context bar divide by.
   const window = effectiveModelWindow(
     model.provider,

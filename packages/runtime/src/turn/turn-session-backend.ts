@@ -4,11 +4,15 @@ import { DEFAULT_REASONING_EFFORT, toThinkingLevel } from "../ai/effort";
 import { logTurnTarget } from "../ai/turn-diagnostic";
 import { readAuthFile } from "../auth/auth-file";
 import type { newUsedTokenCapture } from "../auth/used-token";
+import {
+  type ClaudeResume,
+  createSessionsStore,
+} from "../backends/claude/sessions-store";
 import { hasUnreadablePiSessionTail } from "../backends/pi/session-files";
 import { recordedContextFill } from "../session/recorded-context-fill";
 import { replayForConversation } from "../session/routine-replay";
 import { autocompactPooledSession } from "./turn-autocompact";
-import { resolveTurnClaudeResume, turnClaudeLayout } from "./turn-backend";
+import { turnClaudeLayout } from "./turn-backend";
 import { seedTurnClaudeFlags } from "./turn-claude-flags";
 import { settleClaudeSummary } from "./turn-compactions";
 import { readTurnHarness, writeTurnHarness } from "./turn-harness-state";
@@ -153,6 +157,7 @@ export async function openTurnBackendSession(input: {
         conversationId,
         canonical: input.canonicalMessages,
         transcriptFill: harness === "claude",
+        clearedTokens: claudeResume?.clearedTokens,
         ...(turn.signal ? { signal: turn.signal } : {}),
         harvest: {
           call: turn.sandbox?.call ?? null,
@@ -168,4 +173,21 @@ export async function openTurnBackendSession(input: {
     modelRuntime,
     compaction: autocompaction,
   };
+}
+
+/** Resolve native Claude continuity, relocating a foreign cwd slug if needed. */
+function resolveTurnClaudeResume(
+  directories: TurnDirectories,
+  conversationId: string,
+): ClaudeResume | undefined {
+  const layout = turnClaudeLayout(
+    directories.turnRoot,
+    directories.dataDir,
+    conversationId,
+  );
+  return createSessionsStore({
+    configDir: layout.configDir,
+    sessionsFile: layout.sessionsFile,
+    cwd: directories.workspaceDir,
+  }).resolveResume(conversationId);
 }

@@ -65,7 +65,8 @@ export class ClaudeSession
     const checkpoint = this.compactions.read(this.deps.conversationId);
     const resume = checkpoint
       ? undefined
-      : this.deps.sessionsStore.resolveResume(this.deps.conversationId);
+      : this.deps.sessionsStore.resolveResume(this.deps.conversationId)
+          ?.sessionId;
     const prompt = `${checkpoint ? compactedPreamble(checkpoint.summary) : ""}${text}`;
     const outcome = await runSessionTurn(() => this.attemptState(), {
       text: prompt,
@@ -167,6 +168,17 @@ export class ClaudeSession
     // honest answer, and the one a fresh session starts from.
     this.contextTokens = undefined;
     return outcome;
+  }
+
+  /** Clear stale tool results before the autocompact check reads the fill, so
+   *  it decides on what the next request sends (the resume finds them done). */
+  clearStaleToolResults(): number {
+    const { conversationId, sessionsStore } = this.deps;
+    if (this.disposed || this.compactions.read(conversationId)) return 0;
+    const cleared = sessionsStore.resolveResume(conversationId)?.clearedTokens;
+    if (cleared && this.contextTokens !== undefined)
+      this.contextTokens = Math.max(0, this.contextTokens - cleared);
+    return cleared ?? 0;
   }
 
   /** The context fill measured in this process, else the one recorded. */

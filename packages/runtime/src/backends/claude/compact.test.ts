@@ -92,7 +92,10 @@ function store(
       purged.push(id);
       current = undefined;
     },
-    resolveResume: () => current,
+    resolveResume: () =>
+      current === undefined
+        ? undefined
+        : { sessionId: current, clearedTokens: 0 },
   };
 }
 

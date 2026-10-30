@@ -597,6 +597,7 @@ export async function execTurn(
     // from the SETTLED session, so a rebuilt/fresh session reads low and
     // never re-compacts.
     if (!providerSwitch?.summarized && !compaction) {
+      conv.session.clearStaleToolResults?.();
       const fill = conv.session.getContextUsage()?.tokens ?? null;
       // Divide by Houston's EFFECTIVE window (default, snapping up to the ceiling
       // once observed fill proves the larger plan/credit-gated window is active),

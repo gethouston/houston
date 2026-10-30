@@ -46,10 +46,15 @@ interface Entry {
   message?: { id?: unknown; content?: unknown };
 }
 
+/**
+ * Returns the tokens the next request no longer carries, counted at four
+ * characters a token: an undercount for dense payloads, so a fill reduced by
+ * it errs toward compacting, never toward overflowing.
+ */
 export function clearStaleTranscriptResults(
   transcript: string,
   spill: SpillTarget,
-): void {
+): number {
   const lines = readFileSync(transcript, "utf8").split("\n");
   const entries = new Map<number, Entry>();
   lines.forEach((line, i) => {
@@ -92,23 +97,27 @@ export function clearStaleTranscriptResults(
     rounds.size,
   );
   const dirty = new Set<number>();
+  let freedChars = 0;
   for (const { line, block, ref } of results) {
     if (!stale.has(ref.id)) continue;
     const { text, images } = contentOf(block.content);
     if (stubbedChars(text) !== undefined) continue;
     const name = calls.get(ref.id)?.name ?? "tool";
-    block.content = clearedStub(
+    const stub = clearedStub(
       name,
       ref.chars,
       spillToolResultParts(spill, name, text, images),
     );
+    block.content = stub;
+    freedChars += Math.max(0, ref.chars - stub.length);
     dirty.add(line);
   }
-  if (dirty.size === 0) return;
+  if (dirty.size === 0) return 0;
   for (const line of dirty) lines[line] = JSON.stringify(entries.get(line));
   const tmp = atomicTempPath(transcript, randomUUID());
   writeFileSync(tmp, lines.join("\n"));
   renameSync(tmp, transcript);
+  return Math.floor(freedChars / 4);
 }
 
 /** A tool_result's content: a string, or text and (base64) image blocks. */

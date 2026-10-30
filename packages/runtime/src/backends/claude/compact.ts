@@ -94,7 +94,9 @@ export async function compactClaudeSession(
   deps: ClaudeCompactionDeps,
   customInstructions?: string,
 ): Promise<CompactionOutcome> {
-  const resume = deps.sessionsStore.resolveResume(deps.conversationId);
+  const resume = deps.sessionsStore.resolveResume(
+    deps.conversationId,
+  )?.sessionId;
   // No SDK session yet (a conversation whose first turn has not run, or one
   // already compacted with nothing said since): there is no history in the
   // model's window to summarize.
