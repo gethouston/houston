@@ -9,6 +9,7 @@ import type {
   ThinkingLevel,
 } from "../types";
 import { compactClaudeSession, compactedPreamble } from "./compact";
+import { toSdkEffort } from "./effort";
 import { toSdkModel } from "./model";
 import type { ClaudeSessionDeps } from "./session-deps";
 import { SessionEventSubscriptions } from "./session-events";
@@ -166,6 +167,9 @@ export class ClaudeSession
         sessionsStore: this.deps.sessionsStore,
         compactions: this.compactions,
         model: this.model,
+        ...(this.thinkingLevel
+          ? { effort: toSdkEffort(this.thinkingLevel) }
+          : {}),
         env: auth.env,
         abortController,
       },
