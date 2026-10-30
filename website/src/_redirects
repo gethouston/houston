@@ -26,5 +26,9 @@
 # for the same info the waitlist collected.
 /waitlist/     /#download     301
 
+# The old link-preview card. Cards now live in /og/ (see _data/og.js); this
+# keeps previews that still point at the old URL showing an image.
+/og-image.jpg  /og/home-en.jpg  301
+
 # Agent store bridge. 302 until the store.gethouston.ai domain is proven, then flip to 301.
 /agent-store   https://store.gethouston.ai   302

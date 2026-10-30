@@ -12,26 +12,11 @@
 {% extends "base.njk" %}
 {% set e = t.enterprise %}
 {% set localePath = enterprise.path %}
-{% block title %}{{ e.meta.title }}{% endblock %}
-{% block meta %}
-<meta name="description" content="{{ e.meta.description }}">
-<meta property="og:type" content="website">
-<meta property="og:url" content="https://gethouston.ai{{ locale.dir }}{{ enterprise.path }}">
-<meta property="og:title" content="{{ e.meta.title }}">
-<meta property="og:description" content="{{ e.meta.description }}">
-<meta property="og:site_name" content="Houston">
-<meta property="og:locale" content="{{ locale.ogLocale }}">
-{%- for code in locales.order %}{% if code != locale.code %}
-<meta property="og:locale:alternate" content="{{ locales[code].ogLocale }}">
-{%- endif %}{% endfor %}
-<meta name="twitter:card" content="summary_large_image">
-<meta name="twitter:title" content="{{ e.meta.title }}">
-<meta name="twitter:description" content="{{ e.meta.description }}">
-{%- for code in locales.order %}
-<link rel="alternate" hreflang="{{ locales[code].hreflang }}" href="https://gethouston.ai{{ locales[code].dir }}{{ enterprise.path }}">
-{%- endfor %}
-<link rel="alternate" hreflang="x-default" href="https://gethouston.ai/{{ enterprise.path }}">
-{% endblock %}
+{% set title = e.meta.title %}
+{% set description = e.meta.description %}
+{% set ogCard = "enterprise" %}
+{% set ogImageAlt = e.hero.h1Lines | join(" ") %}
+{% set alternates = { en: locales.en.dir + enterprise.path, es: locales.es.dir + enterprise.path, pt: locales.pt.dir + enterprise.path } %}
 {% block headScripts %}
 <script>document.documentElement.className += " js";</script>
 {% endblock %}

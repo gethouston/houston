@@ -27,7 +27,8 @@ export default function (eleventyConfig) {
   eleventyConfig.addPassthroughCopy("src/houston-gray.svg");
   // Square logo (768x768) used by the Organization structured data.
   eleventyConfig.addPassthroughCopy("src/houston-icon.png");
-  eleventyConfig.addPassthroughCopy("src/og-image.jpg");
+  // Link-preview cards, see _data/og.js.
+  eleventyConfig.addPassthroughCopy("src/og");
   eleventyConfig.addPassthroughCopy("src/icons");
   // Static assets served verbatim from /assets/** — no bundler, no runtime CDN.
   // Includes the marketing landing's token layer + CSS + self-hosted woff2

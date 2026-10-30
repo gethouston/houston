@@ -3,29 +3,50 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>{% block title %}{{ title }}{% endblock %}</title>
-{# The default social card. It is a block so a page that owns a UNIQUE image
-    (certificate share pages: one generated 1200x630 card per attendee) can
-    replace the whole set instead of emitting a second, conflicting og:image
-    from the meta block below. Default renders byte-identical to before, so
-    every existing page is unchanged. -#}
-<!-- Default social card (per-page blocks can override meta) -->
-{% block socialImage %}<meta property="og:image" content="https://gethouston.ai/og-image.jpg">
-<meta property="og:image:secure_url" content="https://gethouston.ai/og-image.jpg">
+<title>{{ title }}</title>
+{#- Search and share tags for every page, from its front matter (a layout sets
+    the same names with `{% set %}` above its blocks):
+      title, description  the <title> and meta description
+      ogTitle, ogDescription  shorter share copy, when it differs
+      ogType               "article" for long reads; "website" by default
+      ogCard, ogImageAlt   a card from _data/og.js other than `home`, and its alt
+      alternates           { en: "/guides/", es: "/guides/es/" } on translated
+                           pages: hreflang links plus og:locale:alternate
+      canonicalUrl         when the public URL is not page.url (/c/<CODE>)
+    og:locale and the card's language follow the page's `lang`. -#}
+{%- set pageUrl = canonicalUrl or ("https://gethouston.ai" + page.url) %}
+{%- set card = og.cards[ogCard or "home"][locale.code] or og.cards[ogCard or "home"].en %}
+{%- set cardAlt = ogImageAlt or (t.hero.h1Html | replace("&nbsp;", " ") | striptags) %}
+{% if description %}<meta name="description" content="{{ description }}">
+{% endif -%}
+<meta property="og:type" content="{{ ogType or 'website' }}">
+<meta property="og:url" content="{{ pageUrl }}">
+<meta property="og:title" content="{{ ogTitle or title }}">
+{% if ogDescription or description %}<meta property="og:description" content="{{ ogDescription or description }}">
+{% endif -%}
+<meta property="og:site_name" content="Houston">
+<meta property="og:locale" content="{{ locale.ogLocale }}">
+{%- for code in locales.order %}{% if alternates[code] and code != locale.code %}
+<meta property="og:locale:alternate" content="{{ locales[code].ogLocale }}">
+{%- endif %}{% endfor %}
+{#- A block so a page with its own image (a certificate's card) replaces the
+    set instead of adding a second og:image. #}
+{% block socialImage %}<meta property="og:image" content="{{ card }}">
 <meta property="og:image:type" content="image/jpeg">
-<meta property="og:image:width" content="1200">
-<meta property="og:image:height" content="630">
-<meta property="og:image:alt" content="{{ t.meta.ogImageAlt }}">
-<meta name="twitter:image" content="https://gethouston.ai/og-image.jpg">
-<meta name="twitter:image:alt" content="{{ t.meta.ogImageAlt }}">{% endblock %}
+<meta property="og:image:width" content="{{ og.width }}">
+<meta property="og:image:height" content="{{ og.height }}">
+<meta property="og:image:alt" content="{{ cardAlt }}">{% endblock %}
+<meta name="twitter:card" content="summary_large_image">
 {% block meta %}{% endblock %}
 {% block favicon %}<link rel="icon" type="image/svg+xml" href="/favicon.svg">{% endblock %}
 {% if noindex %}<meta name="robots" content="noindex,nofollow">{% endif %}
-{# Canonical. A block because pages whose permalink ends in `.html` but whose
-    public URL does not (the /c/<CODE>.html certificate pages, served at
-    /c/<CODE>) must point at the public URL, not at `page.url`. Default is
-    byte-identical to before. -#}
-{% block canonical %}<link rel="canonical" href="https://gethouston.ai{{ page.url }}">{% endblock %}
+<link rel="canonical" href="{{ pageUrl }}">
+{%- for code in locales.order %}{% if alternates[code] %}
+<link rel="alternate" hreflang="{{ locales[code].hreflang }}" href="https://gethouston.ai{{ alternates[code] }}">
+{%- endif %}{% endfor %}
+{%- if alternates %}
+<link rel="alternate" hreflang="x-default" href="https://gethouston.ai{{ alternates.en }}">
+{%- endif %}
 
 <script type="application/ld+json">
 { "@context":"https://schema.org","@type":"Organization","name":"Houston","url":"https://gethouston.ai/","logo":"https://gethouston.ai/houston-icon.png","sameAs":["https://github.com/gethouston/houston","https://www.linkedin.com/company/get-houston"] }
