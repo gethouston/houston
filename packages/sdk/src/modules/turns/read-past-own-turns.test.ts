@@ -226,7 +226,11 @@ test("observe seeds the read taken past a send, never the one it overtook", asyn
     authExpiry: createAuthExpiryNotifier(store),
     registerCommand: () => {},
   };
-  const mod = createTurnsModule(ctx, async () => {});
+  const mod = createTurnsModule(
+    ctx,
+    async () => {},
+    async () => true,
+  );
   const vm = () =>
     store.getSnapshot(conversationScope("", "c1")) as ConversationVM;
 
@@ -275,6 +279,7 @@ test("observe calls on one chat share a read, and a join reads once more", async
       registerCommand: () => {},
     },
     async () => {},
+    async () => true,
   );
 
   const first = mod.observe("c1", "");

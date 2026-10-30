@@ -19,6 +19,7 @@ export interface TurnOperationsDeps {
   readonly external: Set<FeedOutput>;
   /** This SDK's own stream set — never a package-global. */
   readonly registry: StreamRegistry;
+  readonly getNextStepSuggestions: () => Promise<boolean>;
 }
 
 /** The typed turn facade: the SAME functions back the `turns/*` commands. */
@@ -39,7 +40,13 @@ export interface TurnOperations {
  */
 export function createTurnOperations(
   ctx: ModuleContext,
-  { vm, defaults, external, registry }: TurnOperationsDeps,
+  {
+    vm,
+    defaults,
+    external,
+    registry,
+    getNextStepSuggestions,
+  }: TurnOperationsDeps,
 ): TurnOperations {
   const observed = new Map<
     string,
@@ -47,15 +54,8 @@ export function createTurnOperations(
   >();
   const observing = new Map<string, Flight<void>>();
   /**
-   * Start a turn against the agent's sandbox client (`clientFor(agentId)` — the
-   * host nests turn/settings routes under `/agents/<id>`). A model/effort pick
-   * rides the send as a PER-TURN pin — the model paired with its owning
-   * provider (see {@link resolveModelSettings}; the runtime hard-fails a model
-   * under the wrong provider). Deliberately NOT a `setSettings` write: a pick
-   * for one conversation must never move the agent-wide active provider that
-   * every other conversation falls back to (HOU-695). Fires the resumable
-   * stream into the composed output; fire-and-forget like the desktop send —
-   * progress and settlement flow reactively through the VM.
+   * A conversation's model pick belongs to its turn, never the agent settings
+   * other conversations inherit. Progress flows through the VM.
    */
   const send = async (input: TurnSendInput): Promise<void> => {
     const client = ctx.clientFor(input.agentId ?? "");
@@ -81,6 +81,7 @@ export function createTurnOperations(
         mode: resolved.mode,
       };
     }
+    const nextStepSuggestions = await getNextStepSuggestions();
     const output = new MultiplexFeedOutput([...defaults, ...external]);
     void streamTurn(
       client,
@@ -90,6 +91,7 @@ export function createTurnOperations(
       output,
       registry,
       {
+        nextStepSuggestions,
         nonce: input.nonce,
         provider: pin?.provider,
         pin,

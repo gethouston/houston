@@ -32,6 +32,8 @@ export interface EventStreamOptions {
 }
 
 export interface SendOptions {
+  /** Per-user next-step suggestions. Omitted means on. */
+  nextStepSuggestions?: boolean;
   /** Durable retry identity (1–256 characters), echoed live and persisted on the user message. */
   nonce?: string;
   /**

@@ -13,7 +13,7 @@
 
 surface: web
 enforced: true
-inventoryVersion: 149
+inventoryVersion: 150
 
 components:
   manager-avatar:
@@ -339,6 +339,9 @@ components:
   academy-path:
     status: implemented
     ref: "app/src/components/academy/ (academy-path.tsx, academy-chapter-section.tsx, academy-path-node.tsx over the pure academy-path-state.ts), lessons in academy/lessons/registry.ts"
+  next-step-suggestions-settings:
+    status: implemented
+    ref: app/src/components/settings/sections/next-step-suggestions.tsx
   messaging-channels-settings:
     status: implemented
     ref: "app/src/components/settings/sections/channels.tsx (one frame channel-provider-panel.tsx with channel-account-list.tsx, the Slack and WhatsApp flows in channels-slack-card.tsx and channels-whatsapp-card.tsx, the code in channels-whatsapp-link.tsx, the watch in use-watched-channels.ts over @houston/sdk/channels/watch)"

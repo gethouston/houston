@@ -160,6 +160,7 @@ export class HoustonEngineClient extends EngineBrowserClient {
           mentions: opts.mentions,
           approvals: opts.approvals,
           missionTitle: opts.missionTitle,
+          nextStepSuggestions: opts.nextStepSuggestions,
           grants: opts.grants,
         }),
         signal: opts.signal,

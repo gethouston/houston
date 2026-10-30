@@ -34,7 +34,7 @@ const runningTurn: WireFrame[] = [
   { type: "done", data: null, seq: 2 },
 ];
 
-function harness(frames: WireFrame[] = doneTurn) {
+function harness(frames: WireFrame[] = doneTurn, nextStepSuggestions = true) {
   const store = new ScopeStore();
   const commands = new Map<string, CommandHandler>();
   const calls = {
@@ -121,7 +121,11 @@ function harness(frames: WireFrame[] = doneTurn) {
   ) => {
     calls.boardPersists.push({ sessionKey, status });
   };
-  const mod = createTurnsModule(ctx, persistBoardStatus);
+  const mod = createTurnsModule(
+    ctx,
+    persistBoardStatus,
+    async () => nextStepSuggestions,
+  );
   // Sends in this suite carry no agentId, so the VM lands on the "" agent slot.
   const vm = () =>
     store.getSnapshot(conversationScope("", "c1")) as ConversationVM;
@@ -452,4 +456,11 @@ test("a malformed turns/send payload throws (the registry's dispatch turns it in
   expect(() => commands.get("turns/send")?.({ text: "hi" })).toThrow(
     /conversationId/,
   );
+});
+
+test("a send carries the person's disabled suggestion preference", async () => {
+  const { mod, calls, vm } = harness(doneTurn, false);
+  await mod.send({ conversationId: "c1", text: "hi" });
+  await waitFor(() => vm()?.sessionStatus === "completed");
+  expect(calls.sendOpts[0]).toMatchObject({ nextStepSuggestions: false });
 });

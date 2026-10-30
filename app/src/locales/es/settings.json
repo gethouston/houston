@@ -342,5 +342,9 @@
       "title": "No se pudo guardar el ajuste del resumen",
       "description": "Volvió a como estaba. Inténtalo de nuevo en un momento."
     }
+  },
+  "nextStepSuggestions": {
+    "title": "Sugerencias de próximos pasos",
+    "description": "Sugiere acciones después de cada respuesta. Usa una pequeña parte de tu plan de IA."
   }
 }

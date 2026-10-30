@@ -60,6 +60,7 @@ export interface TurnWirePin {
 
 /** Optional knobs for {@link streamTurn}. */
 export interface StreamTurnOptions {
+  nextStepSuggestions?: boolean;
   /** Override the wire nonce (default: a fresh UUID). Its `user` echo names our turnId. */
   nonce?: string;
   /**
@@ -232,6 +233,8 @@ export async function streamTurn(
     mentions,
     approvals: opts.approvals,
     missionTitle: opts.missionTitle,
+    // Omission means on, keeping default sends eligible for older gateways.
+    nextStepSuggestions: opts.nextStepSuggestions === false ? false : undefined,
     grants: opts.grants,
   };
   // Observer→turn handoff. The cursor snapshot happens BEFORE the send so the

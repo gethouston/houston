@@ -85,6 +85,8 @@ export const cloudOnly = (
  * write, never by neither.
  */
 export const WRITE_DRIVEN_OPERATIONS: readonly string[] = [
+  "preferences.getNextStepSuggestions",
+  "preferences.setNextStepSuggestions",
   "createActivity",
   "deleteActivity",
   "createAgent",
