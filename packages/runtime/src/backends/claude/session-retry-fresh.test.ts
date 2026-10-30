@@ -29,7 +29,7 @@ const store: SessionsStore = {
   setSessionId: () => {},
   remove: () => {},
   purge: () => {},
-  resolveResume: () => "sess-gone",
+  resolveResume: () => ({ sessionId: "sess-gone", clearedTokens: 0 }),
 };
 
 function scripted(msgs: SDKMessage[]): AsyncIterable<SDKMessage> {

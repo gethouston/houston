@@ -1,23 +1,24 @@
 import { join } from "node:path";
-import { effectiveModelWindow } from "@houston/protocol/model-windows";
 import type { ChatMessage } from "@houston/runtime-client";
 import { DEFAULT_REASONING_EFFORT, toThinkingLevel } from "../ai/effort";
 import { logTurnTarget } from "../ai/turn-diagnostic";
 import { readAuthFile } from "../auth/auth-file";
 import type { newUsedTokenCapture } from "../auth/used-token";
+import {
+  type ClaudeResume,
+  createSessionsStore,
+} from "../backends/claude/sessions-store";
 import { hasUnreadablePiSessionTail } from "../backends/pi/session-files";
 import { recordedContextFill } from "../session/recorded-context-fill";
-import { replayCharBudget } from "../session/replay-transcript";
 import { replayForConversation } from "../session/routine-replay";
-import { estimateTokens } from "../session/token-estimate";
 import { autocompactPooledSession } from "./turn-autocompact";
-import { resolveTurnClaudeResume, turnClaudeLayout } from "./turn-backend";
+import { turnClaudeLayout } from "./turn-backend";
 import { seedTurnClaudeFlags } from "./turn-claude-flags";
 import { settleClaudeSummary } from "./turn-compactions";
 import { readTurnHarness, writeTurnHarness } from "./turn-harness-state";
 import {
   loadRoutineReplayArchive,
-  resetPooledRoutineContext,
+  resetPooledRoutineSession,
   routineReplayHistory,
 } from "./turn-routine-context";
 import {
@@ -65,20 +66,12 @@ export async function openTurnBackendSession(input: {
     pin?.effort ??
     (diagnostic.reasoning === true ? DEFAULT_REASONING_EFFORT : undefined);
   const thinkingLevel = toThinkingLevel(effort);
-  // The routine context budget, before anything reads or writes the session
-  // dir it may delete (turn-routine-context.ts).
-  const catalogWindow = effectiveModelWindow(
-    provider,
-    model.id,
-    model.contextWindow,
-    0,
-  );
-  const routineReset = resetPooledRoutineContext({
+  // A routine fire starts fresh, before anything reads or writes the session
+  // dir it deletes (turn-routine-context.ts).
+  const routineFire = resetPooledRoutineSession({
     dataDir: directories.dataDir,
     conversationId,
-    turnId,
-    windowTokens: catalogWindow,
-    kind: turn.routineFire ? "fire" : "chat",
+    fire: turn.routineFire === true,
   });
   const harness = backend.id === "anthropic" ? "claude" : "pi";
   const priorHarness = readTurnHarness(directories.dataDir, conversationId);
@@ -90,8 +83,7 @@ export async function openTurnBackendSession(input: {
     hasUnreadablePiSessionTail(
       join(directories.dataDir, "sessions", conversationId),
     );
-  const freshSession =
-    switchedHarness || unreadablePiResume || routineReset !== null;
+  const freshSession = switchedHarness || unreadablePiResume || routineFire;
   writeTurnHarness(directories.dataDir, conversationId, harness);
   const armedSummary = settleClaudeSummary(
     directories.dataDir,
@@ -102,9 +94,9 @@ export async function openTurnBackendSession(input: {
     harness === "claude" && !switchedHarness
       ? resolveTurnClaudeResume(directories, conversationId)
       : undefined;
-  // A routine chat replays the same archive-aware tail the standing server
-  // reads, bounded by the routine budget; every other chat keeps its hydrated
-  // live file and the budget it always had here (routine-replay.ts). Built
+  // A routine chat opens on the digest of the same archive-aware tail the
+  // standing server reads; every other chat keeps its hydrated live file and
+  // the budget it always had here (routine-replay.ts). Built
   // only when a session actually starts without its history: the tail can
   // reach into archive segments, which a resumed run must never parse. Any
   // the tail reaches that stayed remote land first (only stats when none).
@@ -115,13 +107,11 @@ export async function openTurnBackendSession(input: {
       messages: routineReplayHistory(
         directories.dataDir,
         conversationId,
-        turnId,
         input.canonicalMessages,
       ),
       currentTurnId: turnId,
-      currentPrompt: turn.text,
-      windowTokens: routineReset?.windowTokens ?? catalogWindow,
-      charBudget: replayCharBudget(model.contextWindow),
+      dirs: { ...directories, assistantRole: turn.role ?? null },
+      windowTokens: model.contextWindow,
     });
   // An armed Claude summary IS the history the new session starts from.
   const replay =
@@ -145,6 +135,7 @@ export async function openTurnBackendSession(input: {
   const session = await backend.createSession({
     conversationId,
     model,
+    nextStepSuggestions: turn.nextStepSuggestions,
     ...(thinkingLevel ? { thinkingLevel } : {}),
     ...(turn.context ? { context: turn.context } : {}),
     ...(turn.mode ? { mode: turn.mode } : {}),
@@ -166,6 +157,7 @@ export async function openTurnBackendSession(input: {
         conversationId,
         canonical: input.canonicalMessages,
         transcriptFill: harness === "claude",
+        clearedTokens: claudeResume?.clearedTokens,
         ...(turn.signal ? { signal: turn.signal } : {}),
         harvest: {
           call: turn.sandbox?.call ?? null,
@@ -179,11 +171,23 @@ export async function openTurnBackendSession(input: {
     backendId: backend.id,
     model,
     modelRuntime,
-    compaction: routineReset?.compaction ?? autocompaction,
-    // What the reset's replay put in the fresh session, for the run's
-    // recorded carry (turn-routine-context.ts).
-    routineResetBase: routineReset
-      ? estimateTokens(replay?.text ?? "")
-      : undefined,
+    compaction: autocompaction,
   };
+}
+
+/** Resolve native Claude continuity, relocating a foreign cwd slug if needed. */
+function resolveTurnClaudeResume(
+  directories: TurnDirectories,
+  conversationId: string,
+): ClaudeResume | undefined {
+  const layout = turnClaudeLayout(
+    directories.turnRoot,
+    directories.dataDir,
+    conversationId,
+  );
+  return createSessionsStore({
+    configDir: layout.configDir,
+    sessionsFile: layout.sessionsFile,
+    cwd: directories.workspaceDir,
+  }).resolveResume(conversationId);
 }

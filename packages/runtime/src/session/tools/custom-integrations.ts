@@ -2,6 +2,11 @@ import { defineTool } from "@earendil-works/pi-coding-agent";
 import { type Static, Type } from "typebox";
 import { assertNotPlanMode } from "../live-mode-gate";
 import {
+  COVERAGE_CHECK,
+  SETUP_STEPS,
+  VERIFY_STEP,
+} from "./custom-integration-steps";
+import {
   type CredentialTargetStatus,
   makeRequestCredentialTool,
   REQUEST_CREDENTIAL_TOOL_NAME,
@@ -147,7 +152,7 @@ export function makeCustomIntegrationTools(opts: CustomIntegrationToolOptions) {
       );
       const text =
         r.kind === "unknown"
-          ? "This URL is neither a readable OpenAPI document nor a reachable MCP server. Ask the user for the service's API documentation URL (an OpenAPI/Swagger JSON or YAML link) or its MCP server URL - do not guess one."
+          ? `This URL is neither a readable OpenAPI document nor a reachable MCP server. Keep researching the service's own published API description or MCP server; ask the user for its documentation URL only when your own search found nothing - do not guess one. ${SETUP_STEPS}`
           : [
               `Detected: ${r.kind === "openapi" ? "an OpenAPI-described HTTP API" : "an MCP server"}.`,
               r.name ? `Name: ${r.name}.` : "",
@@ -160,6 +165,7 @@ export function makeCustomIntegrationTools(opts: CustomIntegrationToolOptions) {
                   ? "It requires authentication - after adding it, call request_credential so the user can enter their key securely."
                   : "",
               `Next: call custom_integration_add with kind '${r.kind}'.`,
+              SETUP_STEPS,
             ]
               .filter(Boolean)
               .join(" ");
@@ -202,7 +208,7 @@ export function makeCustomIntegrationTools(opts: CustomIntegrationToolOptions) {
       );
       const text =
         r.state.status === "active"
-          ? `Added '${r.name}' (slug: ${r.slug}) with ${r.state.toolCount} available actions. Its actions now appear in integration_search results.`
+          ? `Added '${r.name}' (slug: ${r.slug}) with ${r.state.toolCount} available actions. Its actions now appear in integration_search results. ${COVERAGE_CHECK} ${VERIFY_STEP}`
           : r.state.status === "pending"
             ? r.auth === "oauth"
               ? `Added '${r.name}' (slug: ${r.slug}). It is waiting for the user to sign in: call request_credential with toolkit '${r.slug}' now - the user gets a Sign in card in place of the chat input, and you get a message automatically once they finish. NEVER ask for an API key for it.`

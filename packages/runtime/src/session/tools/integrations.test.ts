@@ -69,7 +69,7 @@ test("returns the generic tools plus request_connection, correctly named", () =>
   ]);
 });
 
-test("search appends account descriptions and execute repeats the account-selection rule", async () => {
+test("search appends account descriptions and the account-selection rule; execute only points to it", async () => {
   mockFetch(() => ({
     body: {
       items: [
@@ -91,8 +91,13 @@ test("search appends account descriptions and execute repeats the account-select
     "never ask when the app has a single account",
   ]) {
     expect(text).toContain(guidance);
-    expect(execute.description).toContain(guidance);
   }
+  // Stated once, on the result that lists the accounts; the always-sent
+  // execute description only says where the rule is.
+  expect(execute.description).toContain(
+    "always pass `account`, chosen as the search result for that app explains",
+  );
+  expect(execute.description).not.toContain("you MUST ask ONE ask_user");
 });
 
 test("search POSTs to the host proxy with the sandbox token + formats matches", async () => {
@@ -339,9 +344,9 @@ test("a giant execute result is truncated with recovery guidance, never fed whol
     params: { include_payload: true },
   });
   const text = (out.content[0] as { text: string }).text;
-  // 64 KB budget + the recovery marker: a bloated result must never re-bill
-  // tens of thousands of context tokens on every later request in the chat.
-  expect(text.length).toBeLessThan(66 * 1024);
+  // The stored ceiling + the recovery marker; the model itself only ever
+  // sees the first 8k characters (backends/*/ cap the result again).
+  expect(text.length).toBeLessThan(514 * 1024);
   expect(text).toContain("[result truncated");
   expect(text).toContain("Re-run the action with tighter parameters");
 });

@@ -1,11 +1,11 @@
-import type { ModelCallTiming, TurnMode } from "@houston/protocol";
+import type { ModelCallTiming } from "@houston/protocol";
 import type { WireEvent } from "@houston/runtime-client";
 import type { PiThinkingLevel } from "../ai/effort";
-import type { ProvidedContext } from "../session/workspace-context";
-import type { ForcedToolCall, ForcedToolCallRequest } from "./forced-tool-call";
+import type { CreateSessionOptions } from "./create-session-options";
 import type { ModelPhase } from "./model-phase";
 import type { ReplyBeat } from "./reply-beat";
 
+export type { CreateSessionOptions } from "./create-session-options";
 export type { ReplyBeat } from "./reply-beat";
 
 /**
@@ -112,12 +112,19 @@ export interface HarnessSession {
   /** Run one turn; resolves at turn end. Provider errors surface as WireEvents. */
   prompt(text: string): Promise<void>;
   /**
-   * After a clean `prompt`, ask the model for one call to a named tool,
-   * invisibly (`ForcedToolCall`). A provider failure rejects. Optional: the
-   * Claude backend runs its turn in a CLI subprocess with no per-request tool
-   * choice, so only pi implements it.
+   * Take stale tool results out of what the next request sends, when the
+   * backend does that between turns (Claude's transcript); returns the tokens
+   * freed. pi clears inside every request, so its fill already reflects it.
    */
-  forceToolCall?(request: ForcedToolCallRequest): Promise<ForcedToolCall>;
+  clearStaleToolResults?(): number;
+  /** Whether the current model is one the follow-up pass asks (pi/follow-up-models.ts). */
+  followUpPassServed?(): boolean;
+  /** A tool-free request on the current model, outside conversation history. */
+  oneShotText?(request: {
+    systemPrompt: string;
+    prompt: string;
+    signal: AbortSignal;
+  }): Promise<string>;
   /** Abort the in-flight turn (the user's Stop), then settle. */
   abort(): Promise<void>;
   /** Tear down the session and its listeners. Idempotent. */
@@ -145,48 +152,6 @@ export interface HarnessSession {
    * Backends that read credentials per request (pi) leave this unimplemented.
    */
   getUsedAccessDigest?(): string | undefined;
-}
-
-/** What a backend needs to open a session for one conversation. */
-export interface CreateSessionOptions {
-  conversationId: string;
-  model: ResolvedModel;
-  thinkingLevel?: ThinkingLevel;
-  /**
-   * The turn's execution mode. "plan" opens the session with the read-only tool
-   * subset + the planning prompt overlay; absent or "execute" is the full
-   * read/write/act session. A mode change on a live conversation rebuilds the
-   * session (see `switchModeIfNeeded`), so this is fixed for the session's life.
-   */
-  mode?: TurnMode;
-  /**
-   * Gateway-provided workspace + user context for the prompt (HOU-711, cloud).
-   * Present when the hosting gateway sourced it from Supabase and put it on the
-   * turn body; absent on local/self-host, where the runtime reads the two
-   * WORKSPACE.md / USER.md files instead.
-   */
-  context?: ProvidedContext;
-  /**
-   * Start a brand-new backend-native session, ignoring any prior session this
-   * backend persisted for the conversation. Set on a cross-BACKEND rebuild
-   * (HOU-951): the conversation's history is carried over as a transcript
-   * replay on the first prompt, so resuming the backend's own stale
-   * pre-switch session would duplicate the pre-switch era and drop everything
-   * said on the other backend in between.
-   */
-  fresh?: boolean;
-  /**
-   * Canonical history to prepend only if a backend-native resume is rejected
-   * and the backend retries the current prompt as a fresh session. Called
-   * only then: building it can read archived transcript segments, which a
-   * resume that succeeds must never pay for.
-   */
-  freshRetryPromptPrefix?: () => string;
-  /**
-   * The context fill the conversation's last reply recorded, for a backend
-   * that only measures its own once a turn has run (Claude).
-   */
-  recordedContextTokens?: () => number | undefined;
 }
 
 /** A pluggable turn-execution backend for a provider. */

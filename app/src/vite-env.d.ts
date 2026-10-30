@@ -18,11 +18,4 @@ interface ImportMetaEnv {
   readonly VITE_FIREBASE_API_KEY?: string;
   readonly VITE_FIREBASE_AUTH_DOMAIN?: string;
   readonly VITE_FIREBASE_PROJECT_ID?: string;
-  /**
-   * Percent-full at which Houston proactively compacts a conversation's
-   * context (default 93). Optional build-time tuning knob; parsed + clamped
-   * to [1, 99] by `resolveThreshold` in `lib/context-usage.ts`. Set it low
-   * (e.g. 5) to force compaction while testing.
-   */
-  readonly VITE_AUTOCOMPACT_THRESHOLD?: string;
 }

@@ -1,7 +1,12 @@
 import { mkdtempSync, rmSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
-import type { Options, SDKMessage } from "@anthropic-ai/claude-agent-sdk";
+import type {
+  HookInput,
+  McpServerConfig,
+  Options,
+  SDKMessage,
+} from "@anthropic-ai/claude-agent-sdk";
 import type { WireEvent } from "@houston/runtime-client";
 import { afterEach, beforeEach, expect, test } from "vitest";
 import { createCompactionCheckpoints } from "../../store/conversation-compaction";
@@ -87,7 +92,10 @@ function store(
       purged.push(id);
       current = undefined;
     },
-    resolveResume: () => current,
+    resolveResume: () =>
+      current === undefined
+        ? undefined
+        : { sessionId: current, clearedTokens: 0 },
   };
 }
 
@@ -146,17 +154,47 @@ test("compaction summarizes the live session and returns the summary", async () 
   expect(sessions.purged).toEqual(["c1"]);
 });
 
-test("the summarizer is given no tools and says nothing on the wire", async () => {
+test("the summarizer keeps the turn's cached prefix and says nothing on the wire", async () => {
   const { query, calls } = scripted(() => [textMsg("a summary"), usageMsg(10)]);
-  const session = make(query, store("sdk-1"));
+  const houston = {
+    type: "sdk",
+    name: "houston",
+  } as unknown as McpServerConfig;
+  const session = new ClaudeSession({
+    query,
+    conversationId: "c1",
+    baseOptions: {
+      tools: ["Bash", "Read"],
+      disallowedTools: ["WebFetch"],
+      mcpServers: { houston },
+      allowedTools: ["mcp__houston__ask_user"],
+      systemPrompt: "You are Houston.",
+    },
+    sessionsStore: store("sdk-1"),
+    compactions: checkpoints,
+    model: "claude-sonnet-4-6",
+    thinkingLevel: "high",
+    refreshAuth: () => ({ env: { CLAUDE_CODE_OAUTH_TOKEN: "t" } }),
+  });
+  await session.prompt("Plan Lisbon");
   const seen: WireEvent[] = [];
   session.subscribe((e) => seen.push(e));
-
   await session.compact();
 
-  // A summarizer that reaches for a tool stops summarizing.
-  expect(calls[0]?.options.tools).toEqual([]);
-  expect(calls[0]?.options.allowedTools).toEqual([]);
+  const [turn, summary] = calls.map((c) => c.options);
+  // Tools, system prompt, model and effort are the request's cached prefix:
+  // the same values on the summary request let it read the history from cache.
+  for (const key of [
+    "tools",
+    "disallowedTools",
+    "mcpServers",
+    "systemPrompt",
+    "model",
+    "thinking",
+    "effort",
+  ] as const)
+    expect(summary?.[key]).toEqual(turn?.[key]);
+  expect(summary?.effort).toBe("high");
   // Houston talking to the model about the chat is not a turn the user asked
   // for: not one frame of it may reach their transcript.
   expect(seen).toEqual([]);
@@ -300,7 +338,7 @@ test("a failed next prompt does not consume compacted history", async () => {
   expect(calls[2]?.options.resume).toBeUndefined();
 });
 
-test("the summarizer has no MCP server or permission to use tools", async () => {
+test("the summarizer may not run a tool, auto-approved or not", async () => {
   const { query, calls } = scripted(() => [textMsg("summary"), usageMsg(10)]);
   const session = new ClaudeSession({
     compactions: checkpoints,
@@ -310,7 +348,7 @@ test("the summarizer has no MCP server or permission to use tools", async () => 
     model: "claude-sonnet-5",
     refreshAuth: () => ({ env: {} }),
     baseOptions: {
-      mcpServers: { hostile: { command: "hostile" } },
+      allowedTools: ["mcp__houston__integration_execute"],
       canUseTool: async (_tool, input) => ({
         behavior: "allow",
         updatedInput: input,
@@ -319,16 +357,27 @@ test("the summarizer has no MCP server or permission to use tools", async () => 
   });
   await session.compact();
   const options = calls[0]?.options;
-  expect(options?.mcpServers).toEqual({});
+  expect(options?.allowedTools).toEqual([]);
+  const signal = new AbortController().signal;
   const permission = options?.canUseTool;
   if (!permission) throw new Error("missing deny-all policy");
   expect(
-    await permission(
-      "Bash",
-      {},
-      { signal: new AbortController().signal, toolUseID: "t", requestId: "p" },
-    ),
+    await permission("Bash", {}, { signal, toolUseID: "t", requestId: "p" }),
   ).toMatchObject({ behavior: "deny" });
+  // Hooks run for the calls Claude Code approves without asking canUseTool.
+  const hook = options?.hooks?.PreToolUse?.[0]?.hooks[0];
+  if (!hook) throw new Error("missing deny-all hook");
+  expect(
+    await hook(
+      {
+        hook_event_name: "PreToolUse",
+        tool_name: "Read",
+        tool_input: { file_path: "notes.md" },
+      } as unknown as HookInput,
+      "t",
+      { signal },
+    ),
+  ).toMatchObject({ hookSpecificOutput: { permissionDecision: "deny" } });
 });
 
 test("checkpoint persistence failure leaves the old resume mapping intact", async () => {

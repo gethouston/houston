@@ -33,7 +33,10 @@ function fakeStore(
     },
     remove: () => {},
     purge: () => {},
-    resolveResume: () => resume,
+    resolveResume: () =>
+      resume === undefined
+        ? undefined
+        : { sessionId: resume, clearedTokens: 0 },
   };
 }
 
@@ -431,6 +434,26 @@ test("getContextUsage is undefined before a turn, then reflects the last usage",
   expect(session.getContextUsage()).toBeUndefined();
   await session.prompt("go");
   expect(session.getContextUsage()).toEqual({ tokens: 100 });
+});
+
+test("clearing stale results takes what it freed off the fill the next check reads", async () => {
+  let cleared = 60;
+  const store: SessionsStore = {
+    ...fakeStore("s"),
+    resolveResume: () => {
+      const clearedTokens = cleared;
+      cleared = 0;
+      return { sessionId: "s", clearedTokens };
+    },
+  };
+  const session = make({ query: arrayQuery([usageMsg()]), store });
+  await session.prompt("go");
+  // The prompt's own resume cleared the first batch; a new one went stale.
+  cleared = 60;
+  expect(session.clearStaleToolResults()).toBe(60);
+  expect(session.getContextUsage()).toEqual({ tokens: 40 });
+  expect(session.clearStaleToolResults()).toBe(0);
+  expect(session.getContextUsage()).toEqual({ tokens: 40 });
 });
 
 function toolInputDeltaMsg(partialJson: string, sessionId = "s"): SDKMessage {

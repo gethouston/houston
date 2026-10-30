@@ -35,27 +35,7 @@ export type StoredConversation = {
    * that never outgrew the live-file budget — byte-identical to before.
    */
   archived?: ArchiveIndex;
-  /**
-   * What the chat's last finished routine run left its backend session
-   * holding (session/routine-carry.ts). A top-level field, not a message, so
-   * a rotation that archives that whole run cannot take it along: the next
-   * run's routine budget reads it on the standing server and a pooled worker
-   * alike.
-   */
-  routineCarry?: RoutineCarryRecord;
 };
-
-/** The context a routine run left its session holding, and how it ended. */
-export interface RoutineCarryRecord {
-  /** The run it describes. */
-  turnId: string;
-  /** Measured (else conservatively estimated) tokens; null when unknown. */
-  tokens: number | null;
-  /** The run ended in a context overflow. */
-  overflowed: boolean;
-  /** The window that overflow named, when the provider named one. */
-  namedWindow: number | null;
-}
 
 /** A compaction summary waiting to be carried into the next prompt. */
 export interface CompactionCheckpoint {

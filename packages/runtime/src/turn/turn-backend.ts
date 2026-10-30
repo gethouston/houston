@@ -10,7 +10,6 @@ import type { BridgedPiTool } from "../backends/claude/custom-tools";
 import type { ClaudeLayout } from "../backends/claude/paths";
 import { readAnthropicToken } from "../backends/claude/read-token";
 import { withServedPlan } from "../backends/claude/served-plan";
-import { createSessionsStore } from "../backends/claude/sessions-store";
 import { createPiBackend, type PiBackendDeps } from "../backends/pi/backend";
 import type { HarnessBackend } from "../backends/types";
 import type { ToolSelection } from "../session/tool-selection";
@@ -181,21 +180,4 @@ export function createTurnBackend(
       workspaceReady,
     ),
   });
-}
-
-/** Resolve native Claude continuity, relocating a foreign cwd slug if needed. */
-export function resolveTurnClaudeResume(
-  directories: TurnDirectories,
-  conversationId: string,
-): string | undefined {
-  const layout = turnClaudeLayout(
-    directories.turnRoot,
-    directories.dataDir,
-    conversationId,
-  );
-  return createSessionsStore({
-    configDir: layout.configDir,
-    sessionsFile: layout.sessionsFile,
-    cwd: directories.workspaceDir,
-  }).resolveResume(conversationId);
 }

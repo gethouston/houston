@@ -128,7 +128,7 @@ export function buildTurnCommonTools(
     makeAskUserTool(),
     makePlanReadyTool(),
     makeSuggestReusableTool(),
-    makeSuggestActionsTool(),
+    ...(turn.nextStepSuggestions !== false ? [makeSuggestActionsTool()] : []),
     ...(codeSandbox ? [codeSandbox] : []),
     ...buildTurnHostTools(turn),
     ...buildTurnCoordinatorTools(turn, dataDir, loadArchive),

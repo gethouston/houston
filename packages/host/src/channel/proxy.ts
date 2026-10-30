@@ -28,6 +28,10 @@ import {
   TurnDeliveryUncertainError,
   TurnFireError,
 } from "./fire-error";
+import {
+  type NextStepSuggestionsReader,
+  stampNextStepSuggestions,
+} from "./next-step-suggestions";
 import { wakeForDispatch } from "./probe-wake";
 
 /**
@@ -83,6 +87,8 @@ export class ProxyChannel implements RuntimeChannel {
       anthropicServedHere?: boolean;
       /** Managed pod shared-cache freshness gate, invoked only for turn starts. */
       beforeTurn?: (agent: ChannelCtx["agent"]) => Promise<void>;
+      /** The person's suggestions setting, on unfronted hosts (./next-step-suggestions.ts). */
+      nextStepSuggestions?: NextStepSuggestionsReader;
       /** Detached standing-runtime SSE capture for durable turnlog ingest. */
       turnLogCapture?: {
         capture(
@@ -190,6 +196,11 @@ export class ProxyChannel implements RuntimeChannel {
     const turnStart = rest.match(/^conversations\/([^/]+)\/messages$/);
     let capturedConversationId: string | undefined;
     if (method === "POST" && turnStart) {
+      if (body && this.opts.nextStepSuggestions)
+        body = await stampNextStepSuggestions(
+          body,
+          this.opts.nextStepSuggestions,
+        );
       try {
         const conversationId = decodeURIComponent(turnStart[1] ?? "");
         capturedConversationId = conversationId;
@@ -284,6 +295,7 @@ export class ProxyChannel implements RuntimeChannel {
     // an errored run.
     const endpoint = await this.opts.launcher.ensureAwake(ctx.agent);
     await this.opts.beforeTurn?.(ctx.agent);
+    const suggestions = (await this.opts.nextStepSuggestions?.()) ?? true;
     await this.attachTurnLogCapture(endpoint, ctx.agent.id, conversationId);
     let res: Response;
     try {
@@ -311,6 +323,7 @@ export class ProxyChannel implements RuntimeChannel {
             ...(pin?.model ? { model: pin.model } : {}),
             ...(pin?.effort ? { effort: pin.effort } : {}),
             ...(pin?.mode ? { mode: pin.mode } : {}),
+            ...(suggestions ? {} : { nextStepSuggestions: false }),
           }),
         },
       );

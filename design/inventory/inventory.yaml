@@ -36,7 +36,7 @@
 #   a11y     roles / labels / focus expectations the surface must honor
 #   since    inventory version this component first appeared in
 
-version: 149
+version: 150
 
 components:
   - id: agent-delegation-settings
@@ -2375,6 +2375,19 @@ components:
       ordered list; the node's action is a real button beside the lesson's
       title; markers are decorative and hidden from screen readers.
     since: 101
+  - id: next-step-suggestions-settings
+    title: Next-step suggestions setting
+    purpose: Let a person choose whether replies offer follow-up action bubbles.
+    anatomy: [icon, title, description, switch]
+    states: [loading, on, off, saving]
+    variants: [phone, desktop]
+    behavior: >-
+      The per-user preference defaults on. The switch waits for the saved value
+      and disables while saving. Turning it off removes the suggestions tool,
+      prompt mandate and recovery request from subsequent turns.
+    a11y: The switch has a localized accessible name and supports keyboard activation.
+    since: 150
+
   - id: messaging-channels-settings
     title: Messaging channels settings
     purpose: Connect messaging identities to the personal assistant in the selected Houston space.

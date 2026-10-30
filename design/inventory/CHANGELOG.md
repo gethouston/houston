@@ -3,6 +3,11 @@
 Every `version` bump in `inventory.yaml` needs a matching entry here (enforced by
 `pnpm check:parity`). Newest first. Use `## vN` headings.
 
+## v150 - 2026-10-30
+
+Settings includes a Next-step suggestions switch on phone and desktop. It
+persists the person's choice through the SDK and defaults on.
+
 ## v149 - 2026-10-28
 
 Cards are as wide as before v148: the column's reserved scrollbar room

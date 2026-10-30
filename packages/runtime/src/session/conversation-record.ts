@@ -37,6 +37,7 @@ export type Conversation = {
    * See `switchModeIfNeeded`.
    */
   mode: TurnMode;
+  nextStepSuggestions?: boolean;
   /**
    * The EXECUTING turn's live-mode ref (set by exec-turn for the turn's
    * duration, cleared when it settles). `POST /conversations/:id/mode` mutates
@@ -79,8 +80,8 @@ export type Conversation = {
   /**
    * Set while a routine reset (routine-session-reset.ts) has disposed the live
    * session but not yet built its replacement. The next turn on this record
-   * retries the rebuild even when the routine budget no longer asks for one,
-   * so no queued turn ever prompts a disposed session.
+   * retries the rebuild even when it is a person's turn, so no queued turn
+   * ever prompts a disposed session.
    */
   sessionRebuildPending?: true;
 };

@@ -126,8 +126,6 @@ export function buildClaudeEnv(
     credentialStorageDir?: string;
     homeDir?: string;
     shellFencePath?: string | null;
-    /** The agent's deferred files may land after the CLI starts. */
-    filesStillLanding?: boolean;
     /** The largest prompt this CLI run sends, in tokens, when known. */
     promptTokens?: number;
     platform?: NodeJS.Platform;
@@ -143,11 +141,16 @@ export function buildClaudeEnv(
   // Files enter a turn only through tool calls, so the CLI's `@path` prompt
   // attachments are off.
   env.CLAUDE_CODE_DISABLE_ATTACHMENTS = "1";
-  // The CLI reads `git status` at startup, outside the tool gate, while the
-  // deferred folders (`.git` included) may still be downloading. The same
-  // switch drops the Bash tool's commit and PR guidance, so only turns with
-  // deferred files set it.
-  if (opts.filesStillLanding) env.CLAUDE_CODE_DISABLE_GIT_INSTRUCTIONS = "1";
+  // The CLI's git context (a `git status` read at startup, outside the tool
+  // gate, plus the Bash tool's commit and PR guidance) is ~1.9k tokens on
+  // every request, and Houston's agents are not coding agents.
+  env.CLAUDE_CODE_DISABLE_GIT_INSTRUCTIONS = "1";
+  // The CLI's own compaction stays on (no DISABLE_AUTO_COMPACT): the same
+  // switch turns off its recovery from a request that overflows the window,
+  // and Houston compacts only between turns (session/autocompact.ts), so a
+  // turn that outgrows the account's real window mid-turn (a 1M catalog
+  // window can be 200k on the plan) would fail instead. Houston's lower
+  // ceiling fires first in every ordinary case.
   // Scrub mode keeps the CLI's credential variables out of the commands the
   // model runs. It also forces permissionMode "default", the mode Houston
   // already runs in. The CLI's Linux build exits at startup with it on unless

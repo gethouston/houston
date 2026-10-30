@@ -293,6 +293,19 @@ describe("the SDK write operations act on the real host", () => {
   let missionId = "";
   let probeAgent = "";
 
+  test("the manager's suggestion toggle round-trips through the catalog", async () => {
+    for (const value of ["false", "true"]) {
+      const written = await call("preferences.setNextStepSuggestions", {
+        value,
+      });
+      expect(written.status).toBe(200);
+      expect(json(written.body).value).toBe(value);
+      const read = await call("preferences.getNextStepSuggestions", {});
+      expect(read.status).toBe(200);
+      expect(json(read.body).value).toBe(value);
+    }
+  });
+
   test("createActivity puts a real mission on the board", async () => {
     const created = await call("createActivity", {
       agentId: PROBE_AGENT,

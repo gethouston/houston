@@ -82,15 +82,15 @@ export class SharedSkillReadOnlyError extends ProtectedWriteDeniedError {
 
 /**
  * A write into a folder the runtime may only read: the attachments people send
- * the coordinator. They are the person's own material, kept as it arrived, and
- * a prompt injection riding one attachment must not be able to rewrite the
- * next, so the model is told to use them as they are.
+ * the coordinator, and the full text of its own oversized tool results. Both
+ * are kept as they arrived, and a prompt injection riding one file must not be
+ * able to rewrite the next, so the model is told to use them as they are.
  */
-export class AttachmentReadOnlyError extends ProtectedWriteDeniedError {
+export class ReadOnlyFolderError extends ProtectedWriteDeniedError {
   constructor() {
     super(
-      "What people send you is kept exactly as it arrived and cannot be changed or replaced. Read it as it is, and save anything worth keeping to your memory instead.",
+      "This folder is kept exactly as it arrived: what people send you, and the full text of your earlier tool results. Nothing in it can be changed or replaced. Read it as it is, and save anything worth keeping to your memory instead.",
     );
-    this.name = "AttachmentReadOnlyError";
+    this.name = "ReadOnlyFolderError";
   }
 }

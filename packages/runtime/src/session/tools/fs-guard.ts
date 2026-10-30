@@ -21,12 +21,12 @@ import {
 } from "./fs-guard-paths";
 
 export {
-  AttachmentReadOnlyError,
   BoardWriteDeniedError,
   PathDeniedError,
   PathEscapeError,
   PathNotAllowedError,
   ProtectedWriteDeniedError,
+  ReadOnlyFolderError,
   RoutineWriteDeniedError,
   SharedSkillReadOnlyError,
 } from "./fs-guard-errors";

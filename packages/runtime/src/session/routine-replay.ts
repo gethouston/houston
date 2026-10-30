@@ -1,83 +1,81 @@
+import { isAbsolute, relative, sep } from "node:path";
+import type { AssistantRuntimeRole } from "@houston/domain/assistant-role";
 import type { ChatMessage } from "@houston/runtime-client";
+import { writeRoutineResultsAt } from "../store/routine-results";
+import { readsRoutineResults } from "./coordinator-policy";
 import {
   type ReplayPreamble,
   renderReplayPreamble,
   replayCharBudget,
 } from "./replay-transcript";
 import { isRoutineConversation } from "./routine-context";
-import { estimateTokens } from "./token-estimate";
+import {
+  renderRoutineDigest,
+  renderRoutineResults,
+  routineTurns,
+} from "./routine-digest";
 
 /**
- * The transcript a routine chat carries into a fresh session, and the one rule
- * every rebuild of a routine chat follows: its replay is bounded by the
- * routine budget, never by the 80%-of-window carry an ordinary chat gets. A
- * routine chat is rebuilt for more reasons than its own reset (a provider
- * switch across backends, a Claude replay re-armed after a failed turn), and a
- * replay sized to the window would put the chat right back at the edge the
- * reset just stepped away from.
+ * What a routine chat carries into a fresh session, and the one rule every
+ * rebuild of a routine chat follows: it opens on the short digest of its
+ * latest turns (routine-digest.ts), never on a transcript sized to the window.
+ * A routine chat is rebuilt on every fire (routine-context.ts) and for the
+ * reasons any chat is (a provider switch across backends, an edit-and-resend,
+ * a Claude resume the SDK refused); all of them carry the same digest.
  */
 
 /**
- * How many of a chat's newest messages a routine reset reads for its replay:
- * far more than the budget keeps, and a window rather than the whole history,
- * so an archived transcript is read no further back than its last segment.
+ * How many of a chat's newest messages a routine rebuild reads: more than
+ * the results file keeps, and a window rather than the whole history, so an
+ * archived transcript is read no further back than its last segment or two.
  */
 export const ROUTINE_REPLAY_TAIL = 200;
 
-/** Share of the window a routine chat's replay may use. */
-const REPLAY_FRACTION = 0.15;
-
-/**
- * Absolute ceiling on a routine replay: dozens of earlier runs' reports, which
- * is the memory a routine uses (what it already found and said), without
- * re-sending the tool output those runs read.
- */
-const REPLAY_CEILING_TOKENS = 24_000;
-
-/**
- * The token budget of a routine chat's replay into a `windowTokens` model. At
- * most 30% of the carry line (routine-context.ts), so a fresh run starts well
- * below it and the next run does not reset again.
- */
-export function routineReplayTokenBudget(windowTokens: number): number {
-  return Math.max(
-    0,
-    Math.min(Math.floor(windowTokens * REPLAY_FRACTION), REPLAY_CEILING_TOKENS),
-  );
+/** Where the runtime keeps its files and where the agent's tools work. */
+export interface RoutineReplayDirs {
+  dataDir: string;
+  workspaceDir: string;
+  /** The runtime's role, whose file wall decides if the results file is readable. */
+  assistantRole: AssistantRuntimeRole | null;
 }
 
 /**
- * Render a routine chat's replay. Every fire sends the routine's full
- * instructions as its user message, so an earlier run whose instructions match
- * this run's is collapsed to one dated line: the budget goes to what the runs
- * found and reported, not to copies of the prompt that follows anyway.
+ * The digest a fresh session of routine chat `conversationId` opens with,
+ * after (re)writing the results file it points at. The pointer is the file's
+ * path relative to the workspace, the root the agent's read tool resolves
+ * against; a layout that keeps the runtime's data outside the workspace, or a
+ * role whose file wall keeps that data out, gets the digest alone, since its
+ * read tool could never open the file.
  */
-export function renderRoutineReplay(
+export function routineReplay(
+  dirs: RoutineReplayDirs,
+  conversationId: string,
   messages: ReadonlyArray<ChatMessage>,
   currentTurnId: string,
-  currentPrompt: string,
-  tokenBudget: number,
 ): ReplayPreamble | null {
-  const prompt = currentPrompt.trim();
-  const collapsed = messages.map((m) =>
-    m.role === "user" &&
-    m.turnId !== currentTurnId &&
-    m.content.trim() === prompt
-      ? {
-          ...m,
-          content: `[Earlier run of this automation at ${new Date(m.ts).toISOString()}, same instructions as this run]`,
-        }
-      : m,
-  );
-  // Counted in conservatively estimated tokens, not characters: a CJK or
-  // log-heavy chat holds far more tokens per character than prose.
-  return renderReplayPreamble(
-    collapsed,
-    currentTurnId,
-    tokenBudget,
-    "routine",
-    estimateTokens,
-  );
+  const turns = routineTurns(messages, currentTurnId);
+  if (turns.length === 0) return null;
+  let pointer: string | null = null;
+  if (!readsRoutineResults(dirs.assistantRole))
+    return renderRoutineDigest(turns, pointer);
+  try {
+    const path = writeRoutineResultsAt(
+      dirs.dataDir,
+      conversationId,
+      renderRoutineResults(turns),
+    );
+    const rel = relative(dirs.workspaceDir, path);
+    if (rel && !rel.startsWith("..") && !isAbsolute(rel))
+      pointer = rel.split(sep).join("/");
+  } catch (error) {
+    // The digest still carries the latest runs; only the way to the full
+    // replies is lost for this turn.
+    console.error(
+      `[routine] ${conversationId}: could not write the earlier runs' results:`,
+      error,
+    );
+  }
+  return renderRoutineDigest(turns, pointer);
 }
 
 /** What a rebuilt session of one conversation needs to carry its history in. */
@@ -85,32 +83,30 @@ export interface ConversationReplayInput {
   conversationId: string;
   messages: ReadonlyArray<ChatMessage>;
   currentTurnId: string;
-  currentPrompt: string;
-  /** The active model's effective window, which sizes a routine replay. */
+  dirs: RoutineReplayDirs;
+  /** The active model's window, which sizes an ordinary chat's replay. */
   windowTokens: number;
-  /** An ordinary chat's budget, unchanged by this module. */
-  charBudget?: number;
   reason?: "switch" | "reset";
 }
 
 /**
- * The replay for ANY session rebuild: routine chats get the bounded routine
- * transcript, every other chat exactly the replay it always had.
+ * The replay for ANY session rebuild: routine chats get their digest, every
+ * other chat exactly the replay it always had.
  */
 export function replayForConversation(
   input: ConversationReplayInput,
 ): ReplayPreamble | null {
   if (isRoutineConversation(input.conversationId))
-    return renderRoutineReplay(
+    return routineReplay(
+      input.dirs,
+      input.conversationId,
       input.messages,
       input.currentTurnId,
-      input.currentPrompt,
-      routineReplayTokenBudget(input.windowTokens),
     );
   return renderReplayPreamble(
     input.messages,
     input.currentTurnId,
-    input.charBudget ?? replayCharBudget(input.windowTokens),
+    replayCharBudget(input.windowTokens),
     input.reason,
   );
 }

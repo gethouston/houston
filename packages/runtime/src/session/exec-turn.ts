@@ -80,11 +80,7 @@ import {
 import { switchNeedsCompaction } from "./provider-switch";
 import { subscribeFinishMarks } from "./reply-complete";
 import { replayForConversation } from "./routine-replay";
-import {
-  type RoutineSessionReset,
-  recordRoutineCarry,
-  resetRoutineSessionIfNeeded,
-} from "./routine-session-reset";
+import { resetRoutineSessionIfNeeded } from "./routine-session-reset";
 import { describeStall, stallFailure } from "./stall-failure";
 import {
   createStallWatchdog,
@@ -110,6 +106,7 @@ export interface CleanTurn {
 
 /** A turn's pinned provider/model/effort/mode. Absent = keep current/default. */
 export interface TurnPin {
+  nextStepSuggestions?: boolean;
   provider?: string | null;
   model?: string | null;
   effort?: string | null;
@@ -131,7 +128,7 @@ export interface RecordedUserTurn {
   author: MessageAuthor | undefined;
   priorAuthors: ReadonlyArray<MessageAuthor | undefined>;
   /** The host fired this turn for a routine run (turn-start.ts sets it from
-   *  the message route). Only fires are held to the routine context budget. */
+   *  the message route). Only fires start on a fresh session. */
   routineFire?: boolean;
 }
 
@@ -416,9 +413,6 @@ export async function execTurn(
    * reports a revocation. Fresh per turn: the fresh instance is the reset.
    */
   const usedTokens = newUsedTokenCapture();
-  // Held outside the try so the finally records the run's carry (the replay
-  // it started from, when it reset) whichever way the turn ended.
-  let routineReset: RoutineSessionReset | null = null;
   // A Stop before the model call ends the turn there (checked once the
   // workdir lock is held, and again with no await left before prompt()).
   const stoppedBeforePrompt = (): boolean => {
@@ -457,16 +451,14 @@ export async function execTurn(
     const mode = liveMode.current;
     const providerChanged = model.provider !== conv.provider;
     const modelChanged = model.id !== conv.model;
-    // ROUTINE CONTEXT BUDGET: a routine FIRE whose previous run ended past its
-    // carry line (or any turn after an overflow) starts on a fresh session
-    // carrying a bounded transcript of recent runs, instead of resuming a
-    // session that no longer fits (routine-context.ts). Runs before the switches below: the
-    // fresh session is already on the right backend and mode, so they no-op.
-    routineReset = await resetRoutineSessionIfNeeded(
+    // ROUTINE CONTEXT RULE: a routine FIRE starts on a fresh session carrying
+    // a short digest of its latest runs (routine-context.ts). Runs before the
+    // switches below: the fresh session is already on the right backend and
+    // mode, so they no-op.
+    const routineReset = await resetRoutineSessionIfNeeded(
       conv,
       id,
       turnId,
-      text,
       model,
       mode,
       recorded.routineFire ? "fire" : "chat",
@@ -479,12 +471,18 @@ export async function execTurn(
     // The rebuild lands directly on `mode`, so a switch that also flips mode is a
     // single rebuild and `switchModeIfNeeded` below then no-ops.
     const { rebuilt, preTokens: rebuiltPreTokens } =
-      await switchBackendIfNeeded(conv, id, model, mode);
+      await switchBackendIfNeeded(
+        conv,
+        id,
+        model,
+        mode,
+        pin?.nextStepSuggestions,
+      );
     // MODE FLIP: a plan⇄execute change on the SAME backend rebuilds the session
     // read-only (or back). History rehydrates from disk; no provider_switched
     // frame (same provider/model). No-op when the mode is unchanged — including
     // right after a cross-backend rebuild that already landed on `mode`.
-    await switchModeIfNeeded(conv, id, model, mode);
+    await switchModeIfNeeded(conv, id, model, mode, pin?.nextStepSuggestions);
     // Attach the turn's listeners to the SETTLED session (the rebuilt one when we
     // crossed a backend or flipped mode, else the session we entered with).
     subscribeSession();
@@ -509,12 +507,9 @@ export async function execTurn(
       0,
     );
     if (routineReset) {
-      // The reset IS this conversation's compaction: same boundary frame and
-      // persisted marker as autocompact, so the routine's chat draws the
-      // divider and the next run's budget measures from here.
+      // No boundary frame: every fire starts fresh, so a divider would sit
+      // between every two runs of the chat.
       replayPrefix = routineReset.replay?.text ?? "";
-      compaction = { trigger: "proactive", pre_tokens: routineReset.preTokens };
-      emit({ type: "context_compacted", data: compaction });
     } else if (rebuilt) {
       // Cross-backend rebuild: the new backend cannot read the old backend's
       // session store, so the fresh session carries the conversation over via a
@@ -527,7 +522,7 @@ export async function execTurn(
         conversationId: id,
         messages: getHistory(id)?.messages ?? [],
         currentTurnId: turnId,
-        currentPrompt: text,
+        dirs: config,
         windowTokens: replayWindow,
       });
       replayPrefix = replay?.text ?? "";
@@ -546,7 +541,7 @@ export async function execTurn(
         conversationId: id,
         messages: getHistory(id)?.messages ?? [],
         currentTurnId: turnId,
-        currentPrompt: text,
+        dirs: config,
         windowTokens: replayWindow,
         reason: "reset",
       });
@@ -598,11 +593,11 @@ export async function execTurn(
     // reseed BEFORE this turn so long chats keep working — a guarantee every
     // surface inherits, owned here because the runtime holds the ground truth
     // (live fill + the active model's window). Skipped when a provider switch
-    // above already summarized or a routine reset just started the session
-    // fresh (nothing left to compact) — the fill is read
+    // above already summarized — the fill is read
     // from the SETTLED session, so a rebuilt/fresh session reads low and
     // never re-compacts.
     if (!providerSwitch?.summarized && !compaction) {
+      conv.session.clearStaleToolResults?.();
       const fill = conv.session.getContextUsage()?.tokens ?? null;
       // Divide by Houston's EFFECTIVE window (default, snapping up to the ceiling
       // once observed fill proves the larger plan/credit-gated window is active),
@@ -706,7 +701,7 @@ export async function execTurn(
     } finally {
       watchdog.disarm();
     }
-    // A clean reply with no suggest_actions call gets one hidden forced pass
+    // A clean reply with no suggest_actions call gets one small tool-free pass
     // (follow-up-pass.ts). Before `stopped` is read, so a Stop during the
     // pass still settles this turn as stopped.
     await recoverFollowUpActions({
@@ -716,6 +711,8 @@ export async function execTurn(
       turnId,
       planMode: mode === "plan" || liveMode.current === "plan",
       assistantText,
+      userText: text,
+      nextStepSuggestions: pin?.nextStepSuggestions,
       failed:
         Boolean(providerError || stalled) || conv.stoppedTurnId === turnId,
       isStopped: () => conv.stoppedTurnId === turnId,
@@ -991,9 +988,6 @@ export async function execTurn(
     unsubPhase?.();
     unsubMessageStart?.();
     modelCalls?.stop();
-    // A routine run records what it left its session holding, for the next
-    // run's budget (routine-session-reset.ts). No-op for any other chat.
-    recordRoutineCarry(id, turnId, routineReset);
     conv.turnId = undefined;
     // Every in-process end of the turn — clean, failed, stopped, thrown —
     // passes here, so a marker that outlives this process is unambiguous.

@@ -48,6 +48,7 @@ export interface TurnSessionRequest {
   nonce?: string;
   pin?: TurnModelPin;
   mode?: TurnMode;
+  nextStepSuggestions?: boolean;
   liveMode?: import("../session/turn-mode-context").TurnModeRef;
   turnId: string;
   displayText?: string;
@@ -56,8 +57,8 @@ export interface TurnSessionRequest {
   missionTitle?: MissionTitleRequest;
   /**
    * This turn is a routine's own fire (`TurnRequest.routine`), not a person
-   * chatting in the routine's chat. Only fires are held to the routine
-   * context budget (session/routine-context.ts).
+   * chatting in the routine's chat. Only fires start on a fresh session
+   * (session/routine-context.ts).
    */
   routineFire?: boolean;
   /** Fresh read of the stored board doc, for a card hydration missed. */

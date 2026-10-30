@@ -1,6 +1,7 @@
 import { join } from "node:path";
 import { sharedSkillsDirKey } from "@houston/domain";
 import { captureRuntimeCredential } from "../channel/capture-credential";
+import { nextStepSuggestionsReader } from "../channel/next-step-suggestions";
 import { ProxyChannel } from "../channel/proxy";
 import { assistantRuntimeRole } from "../launcher/assistant-role";
 import { ProcessLauncher } from "../launcher/process";
@@ -12,6 +13,7 @@ import { syncSharedEndpoint } from "../shared-endpoint/sync";
 import { agentDirFor, liveAgentDirFor } from "./agent-dirs";
 import { managedBridgeRuntimeEnv } from "./bridge-capability";
 import type { createHostBase } from "./host-base";
+import { LOCAL_USER } from "./host-log";
 import type { LocalHostOptions } from "./host-options";
 
 export function createHostRuntime(
@@ -114,6 +116,10 @@ export function createHostRuntime(
     anthropicServedHere: opts.gatewayFronted ?? false,
     beforeTurn: sharedMirror ? () => sharedMirror.beforeTurn() : undefined,
     turnLogCapture: standingFrameCapture,
+    // Behind a gateway, preferences are the gateway's and it stamps the turn.
+    nextStepSuggestions: opts.gatewayFronted
+      ? undefined
+      : nextStepSuggestionsReader(base.vfs, store, LOCAL_USER),
   });
   // Raised at the top of stop(): a heal reads the runtime's live credential
   // and the drain is about to kill that runtime, so the serve route answers

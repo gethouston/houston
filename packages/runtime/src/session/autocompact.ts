@@ -1,20 +1,24 @@
 /**
  * The context-full autocompact decision (pure — unit-tested without a live pi
  * session). Applied by exec-turn.ts before EVERY prompt: when the session's
- * context fill reaches the threshold fraction of the active model's window,
- * the runtime compacts (summarize + reseed) so long chats keep working. This
- * is a guarantee, not a user setting — the runtime owns it because it holds
- * the ground truth (live token fill + the active model's window), so every
- * surface (desktop, web, routines, cloud) inherits it identically.
+ * context fill reaches the ceiling for the active model's window, the runtime
+ * compacts (summarize + reseed) so long chats keep working. This is a
+ * guarantee, not a user setting — the runtime owns it because it holds the
+ * ground truth (live token fill + the active model's window), so every surface
+ * (desktop, web, routines, cloud) inherits it identically.
  */
 
-/**
- * Percent-full at which a turn proactively compacts. A tuning constant, not a
- * user setting; `HOUSTON_AUTOCOMPACT_THRESHOLD` overrides it (e.g. set it low
- * to force compaction while testing). Mirrors the threshold the desktop client
- * used when it owned this decision.
+import {
+  AUTOCOMPACT_CEILING_TOKENS,
+  AUTOCOMPACT_THRESHOLD_PERCENT,
+} from "@houston/protocol/model-windows";
+
+/*
+ * The threshold and the ceiling live with the window table in
+ * `@houston/protocol`, where the context bar reads them too. The threshold is
+ * a tuning constant, not a user setting; `HOUSTON_AUTOCOMPACT_THRESHOLD`
+ * overrides it (e.g. set it low to force compaction while testing).
  */
-const DEFAULT_THRESHOLD_PERCENT = 93;
 
 export function resolveAutocompactThreshold(
   raw: string | undefined = process.env.HOUSTON_AUTOCOMPACT_THRESHOLD,
@@ -22,7 +26,7 @@ export function resolveAutocompactThreshold(
   const n = Number(raw);
   return Number.isFinite(n) && n > 0 && n <= 100
     ? n
-    : DEFAULT_THRESHOLD_PERCENT;
+    : AUTOCOMPACT_THRESHOLD_PERCENT;
 }
 
 /**
@@ -36,5 +40,11 @@ export function needsAutocompact(
   thresholdPercent: number = resolveAutocompactThreshold(),
 ): boolean {
   if (tokens == null || contextWindow <= 0) return false;
-  return (tokens / contextWindow) * 100 >= thresholdPercent;
+  return (
+    tokens >=
+    Math.min(
+      (contextWindow * thresholdPercent) / 100,
+      AUTOCOMPACT_CEILING_TOKENS,
+    )
+  );
 }

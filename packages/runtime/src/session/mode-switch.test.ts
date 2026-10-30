@@ -65,6 +65,7 @@ class HistSession implements HarnessSession {
     readonly backendId: string,
     readonly builtMode: TurnMode,
     readonly prompts: string[],
+    readonly builtSuggestions = true,
   ) {}
   subscribe(l: (e: WireEvent) => void): () => void {
     this.listeners.add(l);
@@ -99,7 +100,12 @@ function histBackend(
     async createSession(opts: CreateSessionOptions): Promise<HarnessSession> {
       const transcript = disk.get(opts.conversationId) ?? [];
       disk.set(opts.conversationId, transcript);
-      const s = new HistSession(id, opts.mode ?? "execute", transcript);
+      const s = new HistSession(
+        id,
+        opts.mode ?? "execute",
+        transcript,
+        opts.nextStepSuggestions,
+      );
       built.push(s);
       return s;
     },
@@ -320,4 +326,27 @@ test("a cross-backend switch that also flips mode lands on plan in a SINGLE rebu
   expect(claudeBuilt[0].builtMode).toBe("plan");
   // The cross-backend boundary still draws its divider.
   expect(events.some((e) => e.type === "provider_switched")).toBe(true);
+});
+
+test("changing the suggestion preference rebuilds the cached session and keeps history", async () => {
+  const disk = new Map<string, string[]>([["suggestions", ["earlier turn"]]]);
+  const built: HistSession[] = [];
+  setDefaultBackend(histBackend("pi", disk, built));
+  modelState.model = OPENAI;
+  const conv = await getConversation("suggestions");
+  expect(
+    (await switchModeIfNeeded(conv, "suggestions", OPENAI, "execute", false))
+      .rebuilt,
+  ).toBe(true);
+  expect(built[1].builtSuggestions).toBe(false);
+  expect(built[1].prompts).toEqual(["earlier turn"]);
+  expect(
+    (await switchModeIfNeeded(conv, "suggestions", OPENAI, "execute", false))
+      .rebuilt,
+  ).toBe(false);
+  expect(
+    (await switchModeIfNeeded(conv, "suggestions", OPENAI, "execute", true))
+      .rebuilt,
+  ).toBe(true);
+  expect(built[2].builtSuggestions).toBe(true);
 });

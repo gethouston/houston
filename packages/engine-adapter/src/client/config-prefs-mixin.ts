@@ -15,6 +15,7 @@ import { teamSlugFromWorkspaceId } from "./workspaces-mixin";
 /** Account keys follow the person; the SDK owns workspace-device migration and ordering. */
 const ACCOUNT_PREF_KEYS = new Set([
   "timezone",
+  "next_step_suggestions",
   "locale",
   "migration_reconnect_dismissed",
   "houston_onboarding_segment",
@@ -69,6 +70,18 @@ export function ConfigPrefsMixin<TBase extends BaseCtor>(Base: TBase) {
     /** Mirror the displayed space without writing an account preference. */
     rememberWorkspaceSelection(value: string | null): Promise<void> {
       return this.ctx.sdk.preferences.rememberWorkspace(value);
+    }
+    getNextStepSuggestions(): Promise<boolean> {
+      return viaSdk(controlPlane.prefPath("next_step_suggestions"), () =>
+        this.ctx.sdk.preferences.getNextStepSuggestions(),
+      );
+    }
+    setNextStepSuggestions(enabled: boolean): Promise<boolean> {
+      return viaSdk(controlPlane.prefPath("next_step_suggestions"), () =>
+        this.ctx.sdk.preferences.setNextStepSuggestions(
+          enabled ? "true" : "false",
+        ),
+      );
     }
     async getPreference(key: string): Promise<string | null> {
       if (key === "last_workspace_id") {

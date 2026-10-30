@@ -21,6 +21,11 @@ import type { ModuleContext } from "../../module-context";
 import { requireString } from "../payload";
 import type { Workspace as SelectionWorkspace } from "../workspaces/types";
 import {
+  createNextStepSuggestionsPreference,
+  NextStepSuggestionsCommand,
+  type NextStepSuggestionsPreference,
+} from "./next-step-suggestions";
+import {
   seedTimezone as seedTimezoneWith,
   type TimezoneSeedInput,
   type TimezoneSeedResult,
@@ -36,6 +41,7 @@ export { TIMEZONE_PREFERENCE } from "./timezone";
 
 /** The write vocabulary — the same constants back the facade and `dispatch`. */
 export const PreferencesCommand = {
+  ...NextStepSuggestionsCommand,
   Get: "preferences/get",
   Set: "preferences/set",
   SetLocale: "workspace/setLocale",
@@ -46,7 +52,7 @@ export type PreferencesCommandType =
   (typeof PreferencesCommand)[keyof typeof PreferencesCommand];
 
 /** The typed facade for preference reads/writes + the workspace locale. */
-export interface PreferencesModule {
+export interface PreferencesModule extends NextStepSuggestionsPreference {
   /** Resolve boot selection and record the space this device displays. */
   resolveWorkspace<
     T extends Pick<SelectionWorkspace, "id" | "isDefault" | "kind">,
@@ -134,6 +140,8 @@ export function createPreferencesModule(ctx: ModuleContext): PreferencesModule {
       input,
     );
 
+  const nextStepSuggestions = createNextStepSuggestionsPreference(ctx);
+
   ctx.registerCommand(PreferencesCommand.Get, (p) =>
     get(requireString(p, "key")),
   );
@@ -152,6 +160,7 @@ export function createPreferencesModule(ctx: ModuleContext): PreferencesModule {
   );
 
   return {
+    ...nextStepSuggestions,
     get,
     set,
     setLocale,

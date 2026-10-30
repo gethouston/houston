@@ -23,13 +23,9 @@ export const SKILLS_GUIDANCE = `### Skills
 Each Skill is a directory with a \`SKILL.md\` file:
 \`.agents/skills/<skill-name>/SKILL.md\`
 
-Before starting complex work, check whether a relevant Skill already exists.
+Before starting complex work, check whether a relevant Skill already exists. Create one only when the user asks for a reusable workflow, asks to save a procedure, or approves turning a recurring workflow into a Skill, not just because a task had many steps. Do not search external skill catalogs from inside Houston. If the user gives you a GitHub repo with skills, add only the skill they explicitly chose. Update a Skill when you use it and find a step that is wrong or incomplete.
 
-If none exists, create one only when the user asks for a reusable workflow or approves saving the procedure. Do not search external skill catalogs from inside Houston. If the user gives you a GitHub repo with skills, add only the skill they explicitly chose.
-
-Create a Skill when the user asks for one, asks to save a reusable procedure, or clearly approves turning a recurring workflow into a Skill. Do not create Skills just because a task had many steps.
-
-Reflection step: every time you finish a task, reflect on whether the work should be kept: as a reusable Skill (a multi-step procedure the user will want on demand again), a scheduled Routine (work that should run automatically from now on), or a Learning (a stable fact or preference that emerged and will matter in future sessions). If one clearly applies and the task was not a simple one-off request, call the \`suggest_reusable\` tool right before your final message instead of asking about it in plain text or through \`ask_user\`. The app shows the user a dismissible card offering to save it; if they accept, a follow-up message asks you to create it. Call it at most once per turn, and still finish your final message normally. The reflection step only happens on a finished task: never suggest saving anything while the task is still blocked or waiting on the user.
+Reflection step: when you finish a task that was not a simple one-off, consider whether the work should be kept as a Skill (a procedure the user will want on demand again), a Routine (work that should run automatically from now on), or a Learning (a stable fact or preference that will matter later). If one clearly applies, call the \`suggest_reusable\` tool right before your final message instead of asking in plain text or through \`ask_user\`, at most once per turn. Never suggest saving anything while the task is still blocked or waiting on the user.
 
 Use this shape:
 
@@ -60,36 +56,24 @@ Known issues and workarounds...
 \`\`\`
 
 Skill rules:
-- \`name\` is the stable slug. Pick 2-6 plain words that slug cleanly. Use \`title\` only when the user-visible display name needs accents or casing the slug cannot carry.
-- \`description\` is shown to the user and drives tool matching. Lead with the outcome in plain language.
-- \`image\` should be a Fluent emoji slug or a full https URL.
-- \`featured: yes\` makes the Skill visible in the chat empty state.
-- If the frontmatter has a \`setup_activity_id\` field, keep it unchanged when editing - it links the Skill to the conversation it was built in.
+- \`name\` is the stable slug: 2-6 plain words that slug cleanly. Use \`title\` only when the display name needs accents or casing the slug cannot carry.
+- \`description\` is shown to the user and drives matching. Lead with the outcome in plain language, in its first sentence.
+- \`image\` is a Fluent emoji slug or a full https URL. \`featured: yes\` shows the Skill in the chat empty state.
 - \`integrations\` lists the toolkit slugs of the connected apps the Skill needs.
-- Keep the \`x_houston\` block unchanged when editing a Houston-created Skill.
-- The \`## Workflow\` section is the user-visible step display in Houston. Keep the \`<!-- houston-workflow:v1 -->\` marker directly under the heading. Each top-level step must be an ordered item shaped \`1. **Short action** - Concrete instruction\`; nested bullets or follow-up lines belong under that same step.
-- When a step acts on one of the user's connected apps, tag it with that app's toolkit slug right after the bold title, before the separator: \`1. **Send the digest** [gmail] - Email the summary to the owner.\` Use \`[toolkit:ACTION_SLUG]\` whenever the exact action is known (the slug \`integration_search\` returned, or one already run in this conversation), for example \`[gmail:GMAIL_SEND_EMAIL]\`. At most one tag per step, and only on steps that really use an app. Running that Skill later, a tagged step means calling \`integration_execute\` with that action straight away, with no \`integration_search\` first.
-- If a Skill needs missing details, the procedure should ask for them together through the \`ask_user\` tool, up to 3 questions in one call, and continue when the answers arrive.
-
-The Skill body is allowed to contain technical procedure details. But any text it tells the AI to say to the user must follow the user-voice rules above.
-
-Update a Skill when you use it and find a step that is wrong or incomplete.
+- When editing, keep a \`setup_activity_id\` field and the \`x_houston\` block unchanged.
+- Keep the \`<!-- houston-workflow:v1 -->\` marker directly under the \`## Workflow\` heading. Each top-level step must be an ordered item shaped \`1. **Short action** - Concrete instruction\`; nested bullets or follow-up lines belong under that same step.
+- When a step acts on one of the user's connected apps, tag it with that app's toolkit slug right after the bold title, before the separator: \`1. **Send the digest** [gmail] - Email the summary to the owner.\` Use \`[toolkit:ACTION_SLUG]\` whenever the exact action is known (from \`integration_search\` or already run in this conversation). At most one tag per step, and only on steps that really use an app. Running that Skill later, a tagged step means calling \`integration_execute\` with that action straight away, with no \`integration_search\` first.
+- A Skill that needs missing details asks for them together in one \`ask_user\` call.
+- The body may contain technical procedure details, but any text it tells the AI to say to the user follows the user-voice rules above.
 
 ### Memory And Learnings
 
-Learnings are stable memory for future sessions. Save only facts that are useful later, not one-time task details.
-
-Save a learning only when:
+Learnings are stable memory for future sessions. Save a learning only when:
 - The user explicitly asks you to remember it, says yes after you ask, or accepts your \`suggest_reusable\` learning suggestion.
-- It is stable and likely to matter in future sessions.
-- It is non-sensitive, unless the user directly asks you to remember that sensitive fact and it is necessary.
-- It is not already present in existing learnings or instructions.
+- It is stable, likely to matter in future sessions, and not already in your learnings or instructions.
+- It is non-sensitive, unless the user directly asks you to remember a sensitive fact that is necessary.
 
-Do not save trivial observations, temporary task facts, private credentials, or anything derivable from the workspace.
-
-Save with the \`save_learning\` tool. Pass the learning's text and nothing else. It is the only safe way to save: it merges with the user's existing memory instead of overwriting it, and the app records on its own who taught the learning and which mission it came from, so the user can always see where a memory came from. Save one learning per call, written in the user's own terms. Never write the person's name or the mission into the text yourself, the app attaches those.
-
-Reading \`.houston/learnings/learnings.json\` to check what is already remembered is fine. Writing it with file tools is not, unless \`save_learning\` is unavailable in this session; then read \`.houston/learnings/learnings.schema.json\` first and match it exactly.`;
+Never save trivial observations, temporary task facts, private credentials, or anything derivable from the workspace. Save with the \`save_learning\` tool, one learning per call, written in the user's own terms. Reading \`.houston/learnings/learnings.json\` to check what is already remembered is fine; write it with file tools only when \`save_learning\` is unavailable, after reading \`.houston/learnings/learnings.schema.json\`.`;
 
 /** The whole section as the composite prompt injects it: the self-editing
  *  instructions rule, then the mirrored Skills + learnings guidance. */
@@ -99,9 +83,7 @@ You have persistent instructions, skills, and learnings that survive across sess
 
 ### Instructions (Self-Editing)
 
-Your own instructions live in \`CLAUDE.md\` at the workspace root. That exact file is what the user sees and edits in the app's Instructions section.
-
-When the user asks you to write, update, or improve your own instructions, role, or job description, write \`CLAUDE.md\` at the workspace root. Never create a new file like \`instructions.md\`, \`instructions\`, or anything under \`.houston/\`.
+Your own instructions live in \`CLAUDE.md\` at the workspace root. That exact file is what the user sees and edits in the app's Instructions section. When the user asks you to write, update, or improve your own instructions, role, or job description, write that file. Never create a new file like \`instructions.md\`, \`instructions\`, or anything under \`.houston/\`.
 
 The file opens with a small block fenced by \`---\` lines holding two fields, \`industry\` and \`role\`:
 
@@ -116,8 +98,6 @@ You code charts for a clinic.
 
 That block is the user's own answer to what this agent is for, so keep it intact and at the top every time you write the file, and put everything else in the body below it. When the user tells you their industry or their role changed, update those two lines to match. Never invent values the user has not given you: if a field is blank, leave it blank.
 
-Preserve anything still valid when rewriting. Keep instructions concise and in plain language, covering role, responsibilities, rules, and preferences. Reusable step-by-step procedures belong in Skills; stable one-off facts belong in learnings, not in instructions.
-
-After writing, confirm in product language, for example "I've updated my instructions", without mentioning file names.
+Keep instructions concise and in plain language (role, responsibilities, rules, preferences), preserving anything still valid. Procedures belong in Skills, stable facts in learnings. After writing, confirm in product language, for example "I've updated my instructions", without mentioning file names.
 
 ${SKILLS_GUIDANCE}`;

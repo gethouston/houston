@@ -5,6 +5,15 @@ import type {
 } from "@earendil-works/pi-coding-agent";
 import type { TSchema } from "typebox";
 import { loggedToolCall } from "../../session/tool-call-log";
+import {
+  CAPPED_TOOLS,
+  cappedResultText,
+  RESULT_HEAD_CHARS,
+} from "../../session/tool-results/cap";
+import {
+  type SpillTarget,
+  spillToolResult,
+} from "../../session/tool-results/spill";
 import { reportsNotDone } from "../../session/tools/assistant-result";
 import { startedMissionFromDetails } from "../../session/tools/start-mission-receipt";
 import { toZodShape } from "./schema-to-zod";
@@ -40,11 +49,20 @@ export interface BridgedPiTool {
 // its request scope from AsyncLocalStorage, as documented on BridgedPiTool.
 const NOOP_CTX = {} as ExtensionContext;
 
-/** Adapt one pi tool into an SDK in-process MCP tool definition. */
-export function adaptTool(tool: BridgedPiTool): SdkMcpToolDefinition {
+/**
+ * Adapt one pi tool into an SDK in-process MCP tool definition. With a
+ * `spill` target, an oversized result from a capped tool reaches the model as
+ * its head plus the path of the full result (session/tool-results/cap.ts).
+ * The CLI only offloads results past ~50k characters, to a file under its
+ * config dir that Houston's file guard keeps the model from reading.
+ */
+export function adaptTool(
+  tool: BridgedPiTool,
+  spill?: SpillTarget,
+): SdkMcpToolDefinition {
   return {
     name: tool.name,
-    description: withPlainName(tool.name, tool.description),
+    description: tool.description,
     inputSchema: toZodShape(tool.parameters),
     async handler(args: unknown, extra: unknown) {
       // The SDK passes an abort signal on `extra`; forward it so a stopped turn
@@ -55,19 +73,43 @@ export function adaptTool(tool: BridgedPiTool): SdkMcpToolDefinition {
       const result = await loggedToolCall(tool.name, () =>
         tool.execute(`mcp-${tool.name}`, args, signal, undefined, NOOP_CTX),
       );
-      return toCallToolResult(result, tool.name);
+      return toCallToolResult(
+        spill ? capped(result, tool.name, spill) : result,
+        tool.name,
+      );
     },
   };
 }
 
-/**
- * Restate a tool's plain name inside its description. MCP tools surface to the
- * model as `mcp__houston__<tool>`, but the shared system prompt names them bare
- * (`ask_user`, `request_connection`). This sentence lets the model map the prompt
- * mandate onto the namespaced tool WITHOUT forking the shared prompt per backend.
- */
-function withPlainName(name: string, description: string): string {
-  return `This is the \`${name}\` tool (your instructions refer to it as \`${name}\`). ${description}`;
+function capped(
+  result: AgentToolResult<unknown>,
+  toolName: string,
+  spill: SpillTarget,
+): AgentToolResult<unknown> {
+  if (!CAPPED_TOOLS.has(toolName)) return result;
+  const text = result.content
+    .map((c) => (c.type === "text" ? c.text : ""))
+    .filter(Boolean)
+    .join("\n");
+  if (text.length <= RESULT_HEAD_CHARS) return result;
+  let path: string;
+  try {
+    path = spillToolResult(spill, toolName, text);
+  } catch (err) {
+    // Unsaved, the result goes out whole: a bigger request, never a lost one.
+    console.error(
+      `[tool-results] could not save the ${toolName} result; sending it whole:`,
+      err,
+    );
+    return result;
+  }
+  return {
+    ...result,
+    content: [
+      { type: "text", text: cappedResultText(text, path) },
+      ...result.content.filter((c) => c.type === "image"),
+    ],
+  };
 }
 
 /** The MCP content blocks Houston's tools emit: text, and `browser` screenshots. */

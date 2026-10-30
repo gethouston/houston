@@ -1,4 +1,4 @@
-import { mkdir, mkdtemp, writeFile } from "node:fs/promises";
+import { mkdir, mkdtemp, readdir, writeFile } from "node:fs/promises";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import type { createSdkMcpServer } from "@anthropic-ai/claude-agent-sdk";
@@ -458,4 +458,69 @@ test("a cancel during compaction stops the summary and the prompt never runs", a
 
   expect(prompts).toEqual([]);
   expect(outcome).toEqual({});
+});
+
+/** A CLI transcript of `rounds` tool rounds, each result `chars` long. */
+function toolTranscript(rounds: number, chars: number): string {
+  const lines: string[] = [];
+  for (let i = 0; i < rounds; i++) {
+    lines.push(
+      JSON.stringify({
+        type: "assistant",
+        message: {
+          id: `msg_${i}`,
+          role: "assistant",
+          content: [
+            { type: "tool_use", id: `toolu_${i}`, name: "mcp__houston__x" },
+          ],
+        },
+      }),
+      JSON.stringify({
+        type: "user",
+        message: {
+          role: "user",
+          content: [
+            {
+              type: "tool_result",
+              tool_use_id: `toolu_${i}`,
+              content: [{ type: "text", text: `r${i} `.padEnd(chars, "x") }],
+            },
+          ],
+        },
+      }),
+    );
+  }
+  return `${lines.join("\n")}\n`;
+}
+
+test("a Claude chat whose fill is mostly stale results clears them and does not compact", async () => {
+  target.model = claudeModel;
+  const dirs = await directories();
+  // 195k recorded; six stale 80k-character results (the batches through
+  // round 5) come off the resume, about 120k tokens, leaving ~75k.
+  seedChat(dirs.dataDir, 195_000);
+  const api = simulatedClaudeApi({
+    windowTokens: 1_000_000,
+    systemTokens: 1_000,
+    runGrowthTokens: 0,
+  });
+  await seedClaudeSession(dirs, api, 195_000);
+  const layout = turnClaudeLayout(dirs.turnRoot, dirs.dataDir, ID);
+  const transcript = join(
+    layout.configDir,
+    "projects",
+    dirs.workspaceDir.replace(/[^A-Za-z0-9]/g, "-"),
+    "sim-old.jsonl",
+  );
+  await writeFile(transcript, toolTranscript(10, 80_000));
+  const frames: WireFrame[] = [];
+
+  await send(dirs, "t1", { claudeSdk: claudeSdk(api) }, frames);
+
+  expect(api.calls.map((call) => call.resume)).toEqual(["sim-old"]);
+  expect(frames.some((f) => f.type === "context_compacted")).toBe(false);
+  // The cleared results were saved where their stubs point.
+  expect(
+    await readdir(join(dirs.workspaceDir, ".tool-results", ID)),
+  ).toHaveLength(6);
 });

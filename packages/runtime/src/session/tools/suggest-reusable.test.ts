@@ -1,5 +1,7 @@
 import type { ExtensionToolContext } from "@earendil-works/pi-coding-agent";
 import { expect, test } from "vitest";
+import type { TurnSessionRequest } from "../../turn/turn-session-types";
+import { buildTurnCommonTools } from "../../turn/turn-toolset";
 import {
   newInteractionHolder,
   runWithInteractionCapture,
@@ -87,11 +89,33 @@ test("after the closing message it ends the turn like suggest_actions", async ()
   expect(text).toMatch(/This ended your turn/);
 });
 
-test("the description says the call ends the turn next to suggest_actions", () => {
+test("the description pairs it with suggest_actions only when that tool is on", () => {
   const d = suggestReusable.description ?? "";
-  expect(d).toContain("together with suggest_actions");
-  expect(d).toContain("it ends your turn");
+  expect(d).toContain(
+    "If you have suggest_actions, call both in that same message.",
+  );
+  expect(d).toContain("It ends your turn");
   expect(d).not.toContain("This does not end your turn");
+});
+
+test("with suggestions off or on, a turn's tools offer to save the work without ordering suggest_actions", async () => {
+  for (const nextStepSuggestions of [false, true]) {
+    const tools = buildTurnCommonTools(
+      { nextStepSuggestions } as TurnSessionRequest,
+      null,
+      "/tmp/data",
+    );
+    const names = tools.map((t) => t.name);
+    expect(names).toContain("suggest_reusable");
+    expect(names.includes("suggest_actions")).toBe(nextStepSuggestions);
+  }
+  const holder = newInteractionHolder();
+  const out = await runWithInteractionCapture(holder, () =>
+    run({ reusableKind: "skill", title: "T", rationale: "R" }),
+  );
+  expect((out.content[0] as { text: string }).text).toContain(
+    "Write your closing message now, then end (calling suggest_actions with it only if you have that tool).",
+  );
 });
 
 test("carries the routine kind through unchanged", async () => {
