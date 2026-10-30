@@ -1,5 +1,6 @@
 import { randomUUID } from "node:crypto";
-import { readFileSync, renameSync, writeFileSync } from "node:fs";
+import { existsSync, readFileSync, renameSync, writeFileSync } from "node:fs";
+import { join } from "node:path";
 import { atomicTempPath } from "@houston/protocol";
 import {
   CAPPED_TOOLS,
@@ -127,11 +128,17 @@ export function clearStaleTranscriptResults(
     if (stubbedChars(text) !== undefined) continue;
     const name = calls.get(ref.id)?.name ?? "tool";
     // A capped result already names its full text's file; saving the head
-    // would point the model at a copy that only points on.
-    const capped = cappedSource(text);
+    // would point the model at a copy that only points on. Retention may have
+    // pruned that file, and the transcript holds only the head, so then the
+    // head is what gets saved.
+    const source = cappedSource(text);
+    const capped =
+      source && existsSync(join(spill.workspaceDir, source.savedAt))
+        ? source
+        : undefined;
     const stub = clearedStub(
       name,
-      original,
+      capped ? original : text.length + images.length * IMAGE_CHARS,
       capped
         ? [capped.savedAt, ...spillToolResultParts(spill, name, "", images)]
         : spillToolResultParts(spill, name, text, images),

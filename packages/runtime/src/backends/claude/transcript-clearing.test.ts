@@ -242,3 +242,32 @@ test("a cleared capped result points at the full result it was cut from", () => 
     18,
   );
 });
+
+test("a capped result whose full file was pruned keeps its head in a fresh file", () => {
+  const target = { workspaceDir, conversationId: "c1" };
+  const full = (i: number) => payload(`mail${i}`, 42_000);
+  const heads = new Map<string, string>();
+  const lines = chat(18).map((line) => {
+    const entry = JSON.parse(line);
+    const block = entry.message?.content?.[0];
+    if (block?.type !== "tool_result") return line;
+    const i = Number(block.tool_use_id.split("_")[1]);
+    const path = spillToolResult(target, "integration_execute", full(i));
+    const head = cappedResultText(full(i), path);
+    heads.set(block.tool_use_id, head);
+    if (i === 0) rmSync(join(workspaceDir, path));
+    block.content = [{ type: "text", text: head }];
+    return JSON.stringify(entry);
+  });
+  writeFileSync(transcript, lines.join("\n"));
+  resume();
+  const sent = resultSent(
+    readFileSync(transcript, "utf8").split("\n"),
+    "toolu_0",
+  );
+  const path = /saved at (\S+) \(relative/.exec(sent)?.[1];
+  expect(path).toBeDefined();
+  expect(readFileSync(join(workspaceDir, String(path)), "utf8")).toBe(
+    heads.get("toolu_0"),
+  );
+});
