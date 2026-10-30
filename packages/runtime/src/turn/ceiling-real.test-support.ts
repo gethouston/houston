@@ -111,6 +111,7 @@ export async function realCeiling(
             finish();
           },
         });
+        session.followUpPassServed = () => true;
         session.oneShotText = async () => {
           followUpCalls += 1;
           stopping = true;
