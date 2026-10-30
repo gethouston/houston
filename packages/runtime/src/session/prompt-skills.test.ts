@@ -7,7 +7,11 @@ import {
   loadSkillsFromDir,
 } from "@earendil-works/pi-coding-agent";
 import { expect, test } from "vitest";
-import { agentSkillsOverride, sortSkillsForPrompt } from "./prompt-skills";
+import {
+  agentSkillsOverride,
+  indexLine,
+  skillsForPrompt,
+} from "./prompt-skills";
 import { buildAgentLoader } from "./resource-loader";
 
 function seedSkill(skillsDir: string, slug: string, name: string): void {
@@ -86,10 +90,10 @@ test("the shared-skill filter still applies before the sort", () => {
 
 test("skills that share a name are ordered by path", () => {
   const skills = [
-    { name: "same", filePath: "/b/SKILL.md" },
-    { name: "same", filePath: "/a/SKILL.md" },
+    { name: "same", filePath: "/b/SKILL.md", description: "B." },
+    { name: "same", filePath: "/a/SKILL.md", description: "A." },
   ];
-  expect(sortSkillsForPrompt(skills).map((skill) => skill.filePath)).toEqual([
+  expect(skillsForPrompt(skills).map((skill) => skill.filePath)).toEqual([
     "/a/SKILL.md",
     "/b/SKILL.md",
   ]);
@@ -113,4 +117,39 @@ test("the agent loader hands pi its skills in name order", async () => {
     "mid-intake",
     "zeta-report",
   ]);
+});
+
+test("the index carries a skill's first sentence, its full text left on disk", () => {
+  const skills = [
+    {
+      name: "close-my-month",
+      filePath: "/s/close-my-month/SKILL.md",
+      description:
+        "Run a full monthly close end-to-end.\n  Reconciles every account. Drafts entries.",
+    },
+  ];
+  expect(skillsForPrompt(skills)[0]?.description).toBe(
+    "Run a full monthly close end-to-end.",
+  );
+  expect(skills[0]?.description).toContain("Drafts entries.");
+});
+
+test("a sentence break needs a capital after it, so abbreviations and lists stay whole", () => {
+  expect(
+    indexLine("Tag spend for Section 174 (e.g. contractors). Then file."),
+  ).toBe("Tag spend for Section 174 (e.g. contractors).");
+  expect(indexLine("Revisa tus gastos. ¿Qué cambió?")).toBe(
+    "Revisa tus gastos.",
+  );
+});
+
+test("an overlong first sentence is cut at a word boundary under 200 characters", () => {
+  const long = `Assemble a board-ready pack: ${"cash, burn, runway, revenue, ".repeat(10)}and more.`;
+  const line = indexLine(long);
+  expect(line.length).toBeLessThanOrEqual(201);
+  expect(line.endsWith("…")).toBe(true);
+  expect(line).toMatch(
+    /^Assemble a board-ready pack: cash, burn, runway, revenue/,
+  );
+  expect(line).not.toMatch(/[\s,]…$/);
 });

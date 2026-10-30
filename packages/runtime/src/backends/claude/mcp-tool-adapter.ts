@@ -44,7 +44,7 @@ const NOOP_CTX = {} as ExtensionContext;
 export function adaptTool(tool: BridgedPiTool): SdkMcpToolDefinition {
   return {
     name: tool.name,
-    description: withPlainName(tool.name, tool.description),
+    description: tool.description,
     inputSchema: toZodShape(tool.parameters),
     async handler(args: unknown, extra: unknown) {
       // The SDK passes an abort signal on `extra`; forward it so a stopped turn
@@ -58,16 +58,6 @@ export function adaptTool(tool: BridgedPiTool): SdkMcpToolDefinition {
       return toCallToolResult(result, tool.name);
     },
   };
-}
-
-/**
- * Restate a tool's plain name inside its description. MCP tools surface to the
- * model as `mcp__houston__<tool>`, but the shared system prompt names them bare
- * (`ask_user`, `request_connection`). This sentence lets the model map the prompt
- * mandate onto the namespaced tool WITHOUT forking the shared prompt per backend.
- */
-function withPlainName(name: string, description: string): string {
-  return `This is the \`${name}\` tool (your instructions refer to it as \`${name}\`). ${description}`;
 }
 
 /** The MCP content blocks Houston's tools emit: text, and `browser` screenshots. */
