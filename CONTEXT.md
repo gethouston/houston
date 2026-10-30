@@ -31,7 +31,7 @@ The runtime moving a conversation to a different provider mid-session, detected 
 _Avoid_: provider handoff (the deleted client-staged mechanism)
 
 **Autocompact**:
-The runtime's always-on decision to summarize and reseed a conversation before a turn when its context is nearly full. A guarantee owned where the ground truth lives (live token fill, active model window), never a user setting or a client flag.
+The runtime's always-on decision to summarize and reseed a conversation before a turn when its context reaches 93% of the model's window or 200k tokens, whichever is lower. A guarantee owned where the ground truth lives (live token fill, active model window), never a user setting or a client flag.
 _Avoid_: compaction flag
 
 **Routine reset**:
