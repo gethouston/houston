@@ -1,8 +1,4 @@
 import { afterEach, beforeEach, expect, test, vi } from "vitest";
-import type {
-  ForcedToolCall,
-  ForcedToolCallRequest,
-} from "../backends/forced-tool-call";
 import type { HarnessSession } from "../backends/types";
 import {
   type FollowUpPassInput,
@@ -30,34 +26,32 @@ const ARGS = {
   ],
 };
 
-let warn: ReturnType<typeof vi.spyOn>;
-let info: ReturnType<typeof vi.spyOn>;
-let debug: ReturnType<typeof vi.spyOn>;
+let report: ReturnType<typeof vi.spyOn>;
 beforeEach(() => {
-  warn = vi.spyOn(console, "warn").mockImplementation(() => undefined);
-  info = vi.spyOn(console, "info").mockImplementation(() => undefined);
-  debug = vi.spyOn(console, "debug").mockImplementation(() => undefined);
+  report = vi.spyOn(console, "error").mockImplementation(() => undefined);
 });
 afterEach(() => vi.restoreAllMocks());
 
 function sessionAnswering(
-  answer: (request: ForcedToolCallRequest) => Promise<ForcedToolCall>,
+  answer: (
+    request: Parameters<NonNullable<HarnessSession["oneShotText"]>>[0],
+  ) => Promise<string>,
 ) {
-  const forceToolCall = vi.fn(answer);
+  const oneShotText = vi.fn(answer);
   return {
-    session: { forceToolCall } as unknown as HarnessSession,
-    forceToolCall,
+    session: { oneShotText } as unknown as HarnessSession,
+    oneShotText,
   };
 }
 
 function input(over: Partial<FollowUpPassInput> = {}): FollowUpPassInput {
   return {
-    session: sessionAnswering(async () => ({ outcome: "called", args: ARGS }))
-      .session,
+    session: sessionAnswering(async () => JSON.stringify(ARGS)).session,
     interaction: newInteractionHolder(),
     conversationId: "c-1",
     turnId: "t-1",
     planMode: false,
+    userText: "Resume esto.",
     assistantText: "Listo, aquí está el resumen.",
     failed: false,
     isStopped: () => false,
@@ -66,14 +60,15 @@ function input(over: Partial<FollowUpPassInput> = {}): FollowUpPassInput {
 }
 
 test("a clean reply with nothing recorded runs once and lands the actions as the done offer", async () => {
-  const { session, forceToolCall } = sessionAnswering(async () => ({
-    outcome: "called",
-    args: ARGS,
-  }));
+  const { session, oneShotText } = sessionAnswering(async () =>
+    JSON.stringify(ARGS),
+  );
   const interaction = newInteractionHolder();
   await recoverFollowUpActions(input({ session, interaction }));
-  expect(forceToolCall).toHaveBeenCalledTimes(1);
-  expect(forceToolCall.mock.calls[0]?.[0].toolName).toBe("suggest_actions");
+  expect(oneShotText).toHaveBeenCalledTimes(1);
+  expect(oneShotText.mock.calls[0]?.[0].prompt).toBe(
+    '{"user":"Resume esto.","reply":"Listo, aquí está el resumen."}',
+  );
   expect(interaction.pending).toEqual({
     steps: [{ kind: "suggest_actions", id: "a1", actions: ARGS.actions }],
   });
@@ -90,6 +85,7 @@ test("each skip condition keeps the pass from running", async () => {
   runWithInteractionCapture(withActions, () => recordSuggestActions(ARGS));
   const cases: [Partial<FollowUpPassInput>, string][] = [
     [{ failed: true }, "failed"],
+    [{ nextStepSuggestions: false }, "disabled"],
     [{ session: {} as HarnessSession }, "unsupported"],
     [{ planMode: true }, "plan"],
     [{ assistantText: "  \n" }, "no_reply"],
@@ -98,14 +94,13 @@ test("each skip condition keeps the pass from running", async () => {
     [{ conversationId: "routine-r1" }, "routine"],
   ];
   for (const [over, skip] of cases) {
-    const { session, forceToolCall } = sessionAnswering(async () => ({
-      outcome: "called",
-      args: ARGS,
-    }));
+    const { session, oneShotText } = sessionAnswering(async () =>
+      JSON.stringify(ARGS),
+    );
     const turn = input({ session, ...over });
     expect(followUpPassSkip(turn)).toBe(skip);
     await recoverFollowUpActions(turn);
-    expect(forceToolCall).not.toHaveBeenCalled();
+    expect(oneShotText).not.toHaveBeenCalled();
   }
 });
 
@@ -137,21 +132,25 @@ test("a timeout aborts the request, logs, and ends without actions", async () =>
       }),
   );
   const interaction = newInteractionHolder();
-  const started = performance.now();
-  await recoverFollowUpActions(input({ session, interaction, timeoutMs: 20 }));
-  expect(performance.now() - started).toBeLessThan(1_000);
+  vi.useFakeTimers();
+  const pending = recoverFollowUpActions(
+    input({ session, interaction, timeoutMs: 20 }),
+  );
+  await vi.advanceTimersByTimeAsync(20);
+  await pending;
+  vi.useRealTimers();
   expect(signal?.aborted).toBe(true);
   expect(interaction.pending).toBeUndefined();
-  expect(String(warn.mock.calls[0]?.[0])).toContain("timed out after 20 ms");
+  expect(String(report.mock.calls[0]?.[1])).toContain("timed out after 20 ms");
 });
 
 test("a failure, no call, or invalid arguments log and record nothing", async () => {
-  const answers: (() => Promise<ForcedToolCall>)[] = [
+  const answers: (() => Promise<string>)[] = [
     async () => {
       throw new Error("429 rate limited");
     },
-    async () => ({ outcome: "not_called" }),
-    async () => ({ outcome: "called", args: { actions: [ARGS.actions[0]] } }),
+    async () => "not JSON",
+    async () => JSON.stringify({ actions: [ARGS.actions[0]] }),
   ];
   for (const answer of answers) {
     const interaction = newInteractionHolder();
@@ -160,10 +159,10 @@ test("a failure, no call, or invalid arguments log and record nothing", async ()
     );
     expect(interaction.pending).toBeUndefined();
   }
-  const logged = warn.mock.calls.map((call: unknown[]) => String(call[0]));
-  expect(logged[0]).toContain("failed: 429 rate limited");
-  expect(logged[1]).toContain("did not call suggest_actions");
-  expect(logged[2]).toContain("arguments were invalid");
+  const logged = report.mock.calls.map((call: unknown[]) => String(call[1]));
+  expect(logged[0]).toContain("429 rate limited");
+  expect(logged[1]).toContain("SyntaxError");
+  expect(logged[2]).toContain("invalid suggested actions");
 });
 
 test("a stop that lands during the pass drops its actions", async () => {
@@ -183,20 +182,29 @@ test("a request the user's Stop aborted is not reported as a failure", async () 
     input({ session, interaction, isStopped: () => stopped }),
   );
   expect(interaction.pending).toBeUndefined();
-  expect(warn).not.toHaveBeenCalled();
+  expect(report).not.toHaveBeenCalled();
 });
 
-test("a model that cannot be forced skips quietly: one debug line, nothing recorded", async () => {
-  const { session, forceToolCall } = sessionAnswering(async () => ({
-    outcome: "unsupported",
-    reason: "amazon-bedrock over bedrock-converse-stream",
-  }));
-  const interaction = newInteractionHolder();
-  await recoverFollowUpActions(input({ session, interaction }));
-  expect(forceToolCall).toHaveBeenCalledTimes(1);
-  expect(interaction.pending).toBeUndefined();
-  expect(warn).not.toHaveBeenCalled();
-  expect(info).not.toHaveBeenCalled();
-  expect(debug).toHaveBeenCalledTimes(1);
-  expect(String(debug.mock.calls[0]?.[0])).toContain("not forceable");
+test("the request contains only bounded user and visible reply excerpts", async () => {
+  const { session, oneShotText } = sessionAnswering(async () =>
+    JSON.stringify(ARGS),
+  );
+  await recoverFollowUpActions(
+    input({
+      session,
+      userText: `user-fixture${"u".repeat(2488)}DROP_USER_TAIL`,
+      assistantText: `DROP_REPLY_HEAD${"r".repeat(2487)}reply-fixture`,
+    }),
+  );
+  const request = oneShotText.mock.calls[0]?.[0];
+  expect(request?.prompt).toBe(
+    JSON.stringify({
+      user: `user-fixture${"u".repeat(2488)}`,
+      reply: `${"r".repeat(2487)}reply-fixture`,
+    }),
+  );
+  expect(
+    (request?.prompt.length ?? 0) + (request?.systemPrompt.length ?? 0),
+  ).toBeLessThan(5600);
+  expect(request?.prompt).not.toContain("DROP_");
 });

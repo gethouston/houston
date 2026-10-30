@@ -106,6 +106,7 @@ export interface CleanTurn {
 
 /** A turn's pinned provider/model/effort/mode. Absent = keep current/default. */
 export interface TurnPin {
+  nextStepSuggestions?: boolean;
   provider?: string | null;
   model?: string | null;
   effort?: string | null;
@@ -470,12 +471,18 @@ export async function execTurn(
     // The rebuild lands directly on `mode`, so a switch that also flips mode is a
     // single rebuild and `switchModeIfNeeded` below then no-ops.
     const { rebuilt, preTokens: rebuiltPreTokens } =
-      await switchBackendIfNeeded(conv, id, model, mode);
+      await switchBackendIfNeeded(
+        conv,
+        id,
+        model,
+        mode,
+        pin?.nextStepSuggestions,
+      );
     // MODE FLIP: a plan⇄execute change on the SAME backend rebuilds the session
     // read-only (or back). History rehydrates from disk; no provider_switched
     // frame (same provider/model). No-op when the mode is unchanged — including
     // right after a cross-backend rebuild that already landed on `mode`.
-    await switchModeIfNeeded(conv, id, model, mode);
+    await switchModeIfNeeded(conv, id, model, mode, pin?.nextStepSuggestions);
     // Attach the turn's listeners to the SETTLED session (the rebuilt one when we
     // crossed a backend or flipped mode, else the session we entered with).
     subscribeSession();
@@ -693,7 +700,7 @@ export async function execTurn(
     } finally {
       watchdog.disarm();
     }
-    // A clean reply with no suggest_actions call gets one hidden forced pass
+    // A clean reply with no suggest_actions call gets one small tool-free pass
     // (follow-up-pass.ts). Before `stopped` is read, so a Stop during the
     // pass still settles this turn as stopped.
     await recoverFollowUpActions({
@@ -703,6 +710,8 @@ export async function execTurn(
       turnId,
       planMode: mode === "plan" || liveMode.current === "plan",
       assistantText,
+      userText: text,
+      nextStepSuggestions: pin?.nextStepSuggestions,
       failed:
         Boolean(providerError || stalled) || conv.stoppedTurnId === turnId,
       isStopped: () => conv.stoppedTurnId === turnId,

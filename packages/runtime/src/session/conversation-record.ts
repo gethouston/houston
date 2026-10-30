@@ -37,6 +37,7 @@ export type Conversation = {
    * See `switchModeIfNeeded`.
    */
   mode: TurnMode;
+  nextStepSuggestions?: boolean;
   /**
    * The EXECUTING turn's live-mode ref (set by exec-turn for the turn's
    * duration, cleared when it settles). `POST /conversations/:id/mode` mutates

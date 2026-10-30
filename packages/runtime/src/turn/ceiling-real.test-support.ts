@@ -111,11 +111,11 @@ export async function realCeiling(
             finish();
           },
         });
-        session.forceToolCall = async () => {
+        session.oneShotText = async () => {
           followUpCalls += 1;
           stopping = true;
           await vi.waitFor(() => expect(stopped).toBe(true));
-          return { outcome: "unsupported", reason: "test" };
+          return "";
         };
         return { id: "pi", createSession: async () => session };
       },

@@ -82,6 +82,8 @@ export async function promptTurnSession(input: {
       turnId: turn.turnId,
       planMode: turn.mode === "plan" || turn.liveMode?.current === "plan",
       assistantText: frames.assistantText,
+      userText: turn.text,
+      nextStepSuggestions: turn.nextStepSuggestions,
       failed:
         Boolean(frames.providerError) ||
         stall.stalled() ||

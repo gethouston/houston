@@ -1,4 +1,5 @@
 import { normalizeTurnMode, parseMentions } from "@houston/protocol";
+import { NextStepSuggestionsSchema } from "@houston/wire-types";
 import { actingFromHeaders } from "../session/acting-context";
 import { ensureProviderForTurn, runTurn } from "../session/chat";
 import { parseConversationCommand } from "../session/conversation-command";
@@ -58,6 +59,13 @@ export async function handleStartTurn(ctx: RouteContext, id: string) {
   } = body;
   if (!text || typeof text !== "string") {
     json(ctx.res, 400, { error: "missing 'text'" });
+    return;
+  }
+  const suggestions = NextStepSuggestionsSchema.safeParse(
+    body.nextStepSuggestions,
+  );
+  if (!suggestions.success) {
+    json(ctx.res, 400, { error: "invalid nextStepSuggestions" });
     return;
   }
   const admission = admissionInput(ctx, body);
@@ -173,6 +181,7 @@ export async function handleStartTurn(ctx: RouteContext, id: string) {
           model: pinnedModel,
           effort: typeof effort === "string" ? effort : undefined,
           mode: turnMode,
+          nextStepSuggestions: suggestions.data,
         },
         acting,
         context,

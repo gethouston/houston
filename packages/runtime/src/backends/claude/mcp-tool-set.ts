@@ -79,6 +79,7 @@ export interface BridgedToolSetInput {
    * auto (it never blocks the turn) but never plan (plan is not a finished task).
    */
   mode?: TurnMode;
+  nextStepSuggestions?: boolean;
 }
 
 /**
@@ -176,5 +177,9 @@ export function buildBridgedToolSet(
       scoped.map((t) => t.name),
     ),
   );
-  return scoped.filter((t) => allowed.has(t.name));
+  return scoped.filter(
+    (t) =>
+      allowed.has(t.name) &&
+      (input.nextStepSuggestions !== false || t.name !== "suggest_actions"),
+  );
 }

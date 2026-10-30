@@ -2,7 +2,6 @@ import type { ModelCallTiming, TurnMode } from "@houston/protocol";
 import type { WireEvent } from "@houston/runtime-client";
 import type { PiThinkingLevel } from "../ai/effort";
 import type { ProvidedContext } from "../session/workspace-context";
-import type { ForcedToolCall, ForcedToolCallRequest } from "./forced-tool-call";
 import type { ModelPhase } from "./model-phase";
 import type { ReplyBeat } from "./reply-beat";
 
@@ -111,13 +110,12 @@ export interface HarnessSession {
   ): () => void;
   /** Run one turn; resolves at turn end. Provider errors surface as WireEvents. */
   prompt(text: string): Promise<void>;
-  /**
-   * After a clean `prompt`, ask the model for one call to a named tool,
-   * invisibly (`ForcedToolCall`). A provider failure rejects. Optional: the
-   * Claude backend runs its turn in a CLI subprocess with no per-request tool
-   * choice, so only pi implements it.
-   */
-  forceToolCall?(request: ForcedToolCallRequest): Promise<ForcedToolCall>;
+  /** A tool-free request on the current model, outside conversation history. */
+  oneShotText?(request: {
+    systemPrompt: string;
+    prompt: string;
+    signal: AbortSignal;
+  }): Promise<string>;
   /** Abort the in-flight turn (the user's Stop), then settle. */
   abort(): Promise<void>;
   /** Tear down the session and its listeners. Idempotent. */
@@ -150,6 +148,7 @@ export interface HarnessSession {
 /** What a backend needs to open a session for one conversation. */
 export interface CreateSessionOptions {
   conversationId: string;
+  nextStepSuggestions?: boolean;
   model: ResolvedModel;
   thinkingLevel?: ThinkingLevel;
   /**

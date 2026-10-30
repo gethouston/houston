@@ -77,10 +77,18 @@ const provider = createServer((req, res) => {
       /^Bearer (\S+)$/.exec(req.headers.authorization ?? "")?.[1] ?? "";
     const prompt = lastPrompt(body);
     seen.push({ prompt, token });
+    const reply = prompt.startsWith('{"user":')
+      ? JSON.stringify({
+          actions: [
+            { id: "review", label: "Review", message: "Review it." },
+            { id: "extend", label: "Extend", message: "Extend it." },
+          ],
+        })
+      : `echo:${prompt}`;
     await new Promise((resolve) => setTimeout(resolve, 10));
     res.writeHead(200, { "content-type": "text/event-stream" });
     res.write(
-      `data: ${JSON.stringify({ choices: [{ index: 0, delta: { content: `echo:${prompt}` }, finish_reason: null }] })}\n\n`,
+      `data: ${JSON.stringify({ choices: [{ index: 0, delta: { content: reply }, finish_reason: null }] })}\n\n`,
     );
     res.write(
       `data: ${JSON.stringify({ choices: [{ index: 0, delta: {}, finish_reason: "stop" }] })}\n\n`,
@@ -175,11 +183,26 @@ test("alternating agents leave no credential, conversation, auth, root, or confi
 
   expect(seen.map(({ token }) => token)).toEqual([
     "token-a",
-    "token-b",
     "token-a",
     "token-b",
+    "token-b",
+    "token-a",
+    "token-a",
+    "token-b",
+    "token-b",
     "token-s",
     "token-s",
+    "token-s",
+    "token-s",
+  ]);
+  const recovered = seen.filter(({ prompt }) => prompt.startsWith('{"user":'));
+  expect(recovered.map(({ prompt }) => JSON.parse(prompt).user)).toEqual([
+    "REQUEST-A-0",
+    "REQUEST-B-0",
+    "REQUEST-A-1",
+    "REQUEST-B-1",
+    "REQUEST-S-0",
+    "REQUEST-S-1",
   ]);
   expect(seen.some(({ token }) => token === "process-global-token")).toBe(
     false,

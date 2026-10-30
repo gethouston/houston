@@ -1,4 +1,5 @@
 import type { Options } from "@anthropic-ai/claude-agent-sdk";
+import { withNextStepSuggestions } from "../../session/next-step-suggestions";
 import type {
   CreateSessionOptions,
   HarnessBackend,
@@ -93,6 +94,7 @@ export function createClaudeBackend(deps: ClaudeBackendDeps): HarnessBackend {
           // `integration_execute` so Autopilot can act on the user's apps
           // without ever waiting on them.
           mode: opts.mode,
+          nextStepSuggestions: opts.nextStepSuggestions,
         });
       } catch (err) {
         throw new ClaudeBackendUnavailableError(err);
@@ -154,7 +156,7 @@ export function createClaudeBackend(deps: ClaudeBackendDeps): HarnessBackend {
         canUseTool: makeCanUseTool(deps.workspaceDir, deps.fileGuard),
         systemPrompt: buildSystemPrompt(
           deps.workspaceDir,
-          deps.systemPrompt,
+          withNextStepSuggestions(deps.systemPrompt, opts.nextStepSuggestions),
           opts.mode,
           opts.context,
           deps.role,

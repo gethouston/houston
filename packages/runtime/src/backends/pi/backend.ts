@@ -11,7 +11,9 @@ import {
   hedgedModelRuntime,
 } from "../../ai/hedged-runtime";
 import { isManagedBridgeModel } from "../../ai/openai-compatible-model";
-import { makeAgentLoader } from "../../session/resource-loader";
+import { config } from "../../config";
+import { withNextStepSuggestions } from "../../session/next-step-suggestions";
+import { makeAgentLoader, SYSTEM_PROMPT } from "../../session/resource-loader";
 import { toolNamesForMode } from "../../session/tool-selection";
 import type {
   CreateSessionOptions,
@@ -82,7 +84,10 @@ export function createPiBackend(deps: PiBackendDeps): HarnessBackend {
         deps.workspaceDir,
         opts.mode,
         opts.context,
-        deps.systemPrompt,
+        withNextStepSuggestions(
+          deps.systemPrompt || config.systemPrompt || SYSTEM_PROMPT,
+          opts.nextStepSuggestions,
+        ),
         deps.sharedSkillsDir,
         deps.role,
       );
@@ -111,8 +116,15 @@ export function createPiBackend(deps: PiBackendDeps): HarnessBackend {
         ),
         resourceLoader: loader,
         ...piTransportSettings(deps.workspaceDir, deps.dataDir, deps.transport),
-        tools: toolNamesForMode(opts.mode, deps.tools),
-        customTools: deps.customTools,
+        tools: toolNamesForMode(opts.mode, deps.tools).filter(
+          (name) =>
+            opts.nextStepSuggestions !== false || name !== "suggest_actions",
+        ),
+        customTools: deps.customTools.filter(
+          (tool) =>
+            opts.nextStepSuggestions !== false ||
+            tool.name !== "suggest_actions",
+        ),
       });
       if (isManagedBridgeModel(opts.model)) session.setAutoRetryEnabled(false);
       return new PiSession(session, requests);

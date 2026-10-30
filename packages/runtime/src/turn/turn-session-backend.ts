@@ -131,6 +131,7 @@ export async function openTurnBackendSession(input: {
   const session = await backend.createSession({
     conversationId,
     model,
+    nextStepSuggestions: turn.nextStepSuggestions,
     ...(thinkingLevel ? { thinkingLevel } : {}),
     ...(turn.context ? { context: turn.context } : {}),
     ...(turn.mode ? { mode: turn.mode } : {}),

@@ -48,6 +48,7 @@ export interface TurnSessionRequest {
   nonce?: string;
   pin?: TurnModelPin;
   mode?: TurnMode;
+  nextStepSuggestions?: boolean;
   liveMode?: import("../session/turn-mode-context").TurnModeRef;
   turnId: string;
   displayText?: string;

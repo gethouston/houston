@@ -1,10 +1,7 @@
 import type { Api, Model } from "@earendil-works/pi-ai";
 import type { AgentSession } from "@earendil-works/pi-coding-agent";
 import type { WireEvent } from "@houston/runtime-client";
-import type {
-  ForcedToolCall,
-  ForcedToolCallRequest,
-} from "../forced-tool-call";
+import { oneShotText } from "../../session/one-shot";
 import type { ModelPhase } from "../model-phase";
 import type {
   CompactionOutcome,
@@ -14,13 +11,6 @@ import type {
   ResolvedModel,
   ThinkingLevel,
 } from "../types";
-import {
-  captureSentRequests,
-  replyAfterLastRequest,
-  runForcedToolCall,
-  type SentRequest,
-} from "./forced-tool-call";
-import { planForcedToolCall } from "./forced-tool-choice";
 import { createPiCallTimer } from "./model-calls";
 import { type SentRequests, subscribePiModelPhase } from "./model-phase";
 import { createReplyBeatReader } from "./reply-beats";
@@ -37,22 +27,16 @@ import { createWireTranslator } from "./wire";
  */
 export class PiSession implements HarnessSession {
   private disposed = false;
-  /** The last request this prompt sent, what `forceToolCall` extends. */
-  private sent: SentRequest | undefined;
-  /** The in-flight forced call, cut by `abort` like the prompt itself. */
-  private forced: AbortController | undefined;
-  /** Timing listeners for forced calls, which pi's events never carry. */
-  private readonly forcedCalls = new Set<(e: HarnessTimingEvent) => void>();
+  private oneShot: AbortController | undefined;
+  private readonly oneShotCalls = new Set<
+    (event: HarnessTimingEvent) => void
+  >();
 
   constructor(
     private readonly session: AgentSession,
     /** What the session's hedged model runtime sends (backend.ts). */
     private readonly requests: SentRequests,
-  ) {
-    captureSentRequests(session, (sent) => {
-      this.sent = sent;
-    });
-  }
+  ) {}
 
   subscribe(listener: (e: WireEvent) => void): () => void {
     const translate = createWireTranslator();
@@ -104,66 +88,49 @@ export class PiSession implements HarnessSession {
     listener: (event: HarnessTimingEvent) => void,
   ): () => void {
     const timer = createPiCallTimer();
-    this.forcedCalls.add(listener);
+    this.oneShotCalls.add(listener);
     const unsubscribe = this.session.subscribe((e) => {
       const call = timer(e);
       if (call) listener({ type: "call", call });
     });
     return () => {
-      this.forcedCalls.delete(listener);
+      this.oneShotCalls.delete(listener);
       unsubscribe();
     };
   }
 
   prompt(text: string): Promise<void> {
-    this.sent = undefined;
     return this.session.prompt(text);
   }
 
-  /**
-   * One request outside pi's agent loop (forced-tool-call.ts): no session
-   * event fires, nothing is appended to the session, and the tool never runs.
-   */
-  async forceToolCall(request: ForcedToolCallRequest): Promise<ForcedToolCall> {
-    // One forced call per prompt; the captured request (the whole transcript
-    // as sent) is not held past it.
-    const sent = this.sent;
-    this.sent = undefined;
-    if (!this.session.getActiveToolNames().includes(request.toolName))
-      return { outcome: "unavailable", reason: "tool not offered" };
-    const reply = replyAfterLastRequest(this.session.messages);
-    if (!sent || !reply)
-      return { outcome: "unavailable", reason: "no finished reply" };
-    // Only where the provider honors a forced call: elsewhere the request
-    // would mostly come back as text and only delay the turn's end.
-    const plan = planForcedToolCall(sent.model, request.toolName);
-    if (plan.kind === "unsupported")
-      return { outcome: "unsupported", reason: plan.reason };
-    const forced = new AbortController();
-    this.forced = forced;
+  async oneShotText(request: {
+    systemPrompt: string;
+    prompt: string;
+    signal: AbortSignal;
+  }): Promise<string> {
+    const controller = new AbortController();
+    this.oneShot = controller;
     try {
-      const { result, call } = await runForcedToolCall({
-        runtime: this.session.modelRuntime,
-        sent,
-        plan,
-        reply,
-        request: {
-          ...request,
-          signal: AbortSignal.any([request.signal, forced.signal]),
+      return await oneShotText({
+        cwd: this.session.sessionManager.getCwd(),
+        model: this.session.model,
+        modelRuntime: this.session.modelRuntime,
+        ...request,
+        signal: AbortSignal.any([request.signal, controller.signal]),
+        thinkingLevel: "minimal",
+        autoRetry: false,
+        transport: "sse",
+        onModelCall: (event) => {
+          for (const listener of this.oneShotCalls) listener(event);
         },
       });
-      if (call)
-        for (const listener of this.forcedCalls)
-          listener({ type: "call", call });
-      return result;
     } finally {
-      // A late finish of an aborted call must not drop a newer call's handle.
-      if (this.forced === forced) this.forced = undefined;
+      if (this.oneShot === controller) this.oneShot = undefined;
     }
   }
 
   abort(): Promise<void> {
-    this.forced?.abort();
+    this.oneShot?.abort();
     return this.session.abort();
   }
 

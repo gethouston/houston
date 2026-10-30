@@ -7,7 +7,6 @@ import type {
   WireFrame,
 } from "@houston/runtime-client";
 import { afterEach, beforeEach, expect, test, vi } from "vitest";
-import type { ForcedToolCall } from "../backends/forced-tool-call";
 import type { HarnessSession, ResolvedModel } from "../backends/types";
 
 /**
@@ -68,9 +67,9 @@ afterEach(() => {
 /** A pi session whose model answers in plain text and never calls the tool. */
 function gptSession(onForce: () => void = () => undefined) {
   const wire = new Set<(e: WireEvent) => void>();
-  const forceToolCall = vi.fn(async (): Promise<ForcedToolCall> => {
+  const oneShotText = vi.fn(async (): Promise<string> => {
     onForce();
-    return { outcome: "called", args: { actions: ACTIONS } };
+    return JSON.stringify({ actions: ACTIONS });
   });
   const session = {
     subscribe(l: (e: WireEvent) => void) {
@@ -80,7 +79,7 @@ function gptSession(onForce: () => void = () => undefined) {
     async prompt() {
       for (const l of wire) l({ type: "text", data: "Listo, ya está." });
     },
-    forceToolCall,
+    oneShotText,
     abort: async () => undefined,
     dispose: () => undefined,
     setModel: async () => undefined,
@@ -88,7 +87,7 @@ function gptSession(onForce: () => void = () => undefined) {
     setThinkingLevel: () => undefined,
     getContextUsage: () => ({ tokens: 100 }),
   } as HarnessSession;
-  return { session, forceToolCall };
+  return { session, oneShotText };
 }
 
 function convWith(session: HarnessSession): Conversation {
@@ -113,9 +112,9 @@ async function run(conv: Conversation, id: string) {
 }
 
 test("the done frame carries the recovered bubbles and the pass emits nothing", async () => {
-  const { session, forceToolCall } = gptSession();
+  const { session, oneShotText } = gptSession();
   const frames = await run(convWith(session), "activity-fu-1");
-  expect(forceToolCall).toHaveBeenCalledTimes(1);
+  expect(oneShotText).toHaveBeenCalledTimes(1);
   const expected: PendingInteraction = {
     steps: [{ kind: "suggest_actions", id: "a1", actions: ACTIONS }],
   };
