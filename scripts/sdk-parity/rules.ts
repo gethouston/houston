@@ -128,18 +128,24 @@ export function checkRules(
     });
   }
 
-  // R2 — an SDK method no server answers. ANY of its keys answering is enough:
-  // a method whose path parameter is closed to a set issues one call per call
-  // site, not one per member, so a deployment that serves `composio` and not
-  // `custom` serves the method. What a member costs is only ever the OTHER
-  // direction — R1 still reports a literal no member names.
+  // R2: a concrete SDK path may be served by a parameterized route.
+  const serverSegments = [...hostKeys, ...gatewayKeys].map((key) =>
+    key.split("/"),
+  );
   for (const method of sdk) {
     if (
       method.keys.some(
         (key) =>
-          hostKeys.has(key) ||
-          gatewayKeys.has(key) ||
-          gatewayPaths.has(pathOf(key)),
+          serverSegments.some((served) => {
+            const requested = key.split("/");
+            return (
+              served.length === requested.length &&
+              served.every(
+                (segment, index) =>
+                  segment === "{}" || segment === requested[index],
+              )
+            );
+          }) || gatewayPaths.has(pathOf(key)),
       )
     )
       continue;
