@@ -59,10 +59,18 @@ test("buildClaudeEnv pins the isolated config dir", () => {
   expect(env.CLAUDE_CONFIG_DIR).toBe("/data/cfg");
 });
 
-test("every session skips the CLI's git context and leaves compaction to Houston", () => {
-  const env = buildClaudeEnv(oauth, { configDir: "/cfg" });
-  expect(env.CLAUDE_CODE_DISABLE_GIT_INSTRUCTIONS).toBe("1");
-  expect(env.DISABLE_AUTO_COMPACT).toBe("1");
+test("every session skips the CLI's git context and keeps its overflow recovery", () => {
+  process.env.DISABLE_AUTO_COMPACT = "1";
+  process.env.DISABLE_COMPACT = "1";
+  try {
+    const env = buildClaudeEnv(oauth, { configDir: "/cfg" });
+    expect(env.CLAUDE_CODE_DISABLE_GIT_INSTRUCTIONS).toBe("1");
+    expect(env.DISABLE_AUTO_COMPACT).toBeUndefined();
+    expect(env.DISABLE_COMPACT).toBeUndefined();
+  } finally {
+    delete process.env.DISABLE_AUTO_COMPACT;
+    delete process.env.DISABLE_COMPACT;
+  }
 });
 
 test("an OAuth token scrubs a stale ambient ANTHROPIC_API_KEY", () => {

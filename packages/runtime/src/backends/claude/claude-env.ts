@@ -145,10 +145,12 @@ export function buildClaudeEnv(
   // gate, plus the Bash tool's commit and PR guidance) is ~1.9k tokens on
   // every request, and Houston's agents are not coding agents.
   env.CLAUDE_CODE_DISABLE_GIT_INSTRUCTIONS = "1";
-  // Houston compacts the conversation itself (session/autocompact.ts), with
-  // its own summary and checkpoint. A second compaction by the CLI would
-  // rewrite the history Houston's checkpoint and context fill describe.
-  env.DISABLE_AUTO_COMPACT = "1";
+  // The CLI's own compaction stays on (no DISABLE_AUTO_COMPACT): the same
+  // switch turns off its recovery from a request that overflows the window,
+  // and Houston compacts only between turns (session/autocompact.ts), so a
+  // turn that outgrows the account's real window mid-turn (a 1M catalog
+  // window can be 200k on the plan) would fail instead. Houston's lower
+  // ceiling fires first in every ordinary case.
   // Scrub mode keeps the CLI's credential variables out of the commands the
   // model runs. It also forces permissionMode "default", the mode Houston
   // already runs in. The CLI's Linux build exits at startup with it on unless
