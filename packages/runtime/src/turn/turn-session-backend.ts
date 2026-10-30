@@ -106,7 +106,7 @@ export async function openTurnBackendSession(input: {
         input.canonicalMessages,
       ),
       currentTurnId: turnId,
-      dirs: directories,
+      dirs: { ...directories, assistantRole: turn.role ?? null },
       windowTokens: model.contextWindow,
     });
   // An armed Claude summary IS the history the new session starts from.

@@ -2,6 +2,7 @@ import { join } from "node:path";
 import type { AssistantRuntimeRole } from "@houston/domain/assistant-role";
 import { UPLOADS_DIR } from "@houston/domain/uploads-dir";
 import { learningsDocPath } from "./learnings-context";
+import { SPILL_DIR } from "./tool-results/spill";
 import type { WorkspaceGuardOptions } from "./tools/fs-guard";
 
 /**
@@ -20,8 +21,10 @@ import type { WorkspaceGuardOptions } from "./tools/fs-guard";
  * no shared root at all. The one widening is READ-ONLY: the folder where what
  * people send it lands (a photo in the composer, a PDF over Slack or WhatsApp),
  * which it must be able to look at to help with it. It can never change those
- * files, so one poisoned attachment cannot rewrite the next. An ordinary agent
- * keeps the workspace containment it has always had.
+ * files, so one poisoned attachment cannot rewrite the next. The other
+ * read-only folder holds the full text of its own tool results that were too
+ * big to keep in context (tool-results/spill.ts): the result it sees points
+ * there. An ordinary agent keeps the workspace containment it has always had.
  */
 
 export interface RuntimeFilePolicyInput {
@@ -50,7 +53,10 @@ export function fileToolGuardOptions(
   if (input.role === "coordinator") {
     return {
       allowedFiles: [learningsDocPath(input.workspaceDir)],
-      readableDirs: [join(input.workspaceDir, UPLOADS_DIR)],
+      readableDirs: [
+        join(input.workspaceDir, UPLOADS_DIR),
+        join(input.workspaceDir, SPILL_DIR),
+      ],
     };
   }
   return {
@@ -59,4 +65,15 @@ export function fileToolGuardOptions(
       ? { readOnlyRoots: [input.sharedSkillsSnapshot] }
       : {}),
   };
+}
+
+/**
+ * Whether this runtime's file wall lets it read a routine chat's results file
+ * (store/routine-results.ts). The coordinator's does not: the file sits among
+ * its session records, which its wall keeps out on purpose.
+ */
+export function readsRoutineResults(
+  role: AssistantRuntimeRole | null,
+): boolean {
+  return role !== "coordinator";
 }

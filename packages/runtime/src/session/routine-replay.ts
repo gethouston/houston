@@ -1,6 +1,8 @@
 import { isAbsolute, relative, sep } from "node:path";
+import type { AssistantRuntimeRole } from "@houston/domain/assistant-role";
 import type { ChatMessage } from "@houston/runtime-client";
 import { writeRoutineResultsAt } from "../store/routine-results";
+import { readsRoutineResults } from "./coordinator-policy";
 import {
   type ReplayPreamble,
   renderReplayPreamble,
@@ -33,14 +35,17 @@ export const ROUTINE_REPLAY_TAIL = 200;
 export interface RoutineReplayDirs {
   dataDir: string;
   workspaceDir: string;
+  /** The runtime's role, whose file wall decides if the results file is readable. */
+  assistantRole: AssistantRuntimeRole | null;
 }
 
 /**
  * The digest a fresh session of routine chat `conversationId` opens with,
  * after (re)writing the results file it points at. The pointer is the file's
  * path relative to the workspace, the root the agent's read tool resolves
- * against; a layout that keeps the runtime's data outside the workspace gets
- * the digest alone, since its read tool could never open the file.
+ * against; a layout that keeps the runtime's data outside the workspace, or a
+ * role whose file wall keeps that data out, gets the digest alone, since its
+ * read tool could never open the file.
  */
 export function routineReplay(
   dirs: RoutineReplayDirs,
@@ -51,6 +56,8 @@ export function routineReplay(
   const turns = routineTurns(messages, currentTurnId);
   if (turns.length === 0) return null;
   let pointer: string | null = null;
+  if (!readsRoutineResults(dirs.assistantRole))
+    return renderRoutineDigest(turns, pointer);
   try {
     const path = writeRoutineResultsAt(
       dirs.dataDir,

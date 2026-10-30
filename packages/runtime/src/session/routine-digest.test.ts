@@ -1,4 +1,4 @@
-import { mkdirSync, mkdtempSync, readFileSync } from "node:fs";
+import { existsSync, mkdirSync, mkdtempSync, readFileSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { routineRunPreamble } from "@houston/domain";
@@ -151,7 +151,7 @@ test("the digest's pointer resolves, from the workspace, to the results file", (
   mkdirSync(dataDir, { recursive: true });
 
   const text = routineReplay(
-    { dataDir, workspaceDir },
+    { dataDir, workspaceDir, assistantRole: null },
     "routine-digest",
     CHAT,
     "now",
@@ -165,12 +165,27 @@ test("the digest's pointer resolves, from the workspace, to the results file", (
   expect(file).toContain("Run 0: 0 new tickets.");
 });
 
+test("the AI Manager, whose file wall keeps its session records out, gets no pointer it could not open", () => {
+  const workspaceDir = mkdtempSync(join(tmpdir(), "routine-digest-ws-"));
+  const dataDir = join(workspaceDir, ".houston", "runtime");
+  const text = routineReplay(
+    { dataDir, workspaceDir, assistantRole: "coordinator" },
+    "routine-digest",
+    CHAT,
+    "now",
+  )?.text;
+  expect(text).toContain("Run 5: nothing new.");
+  expect(text).not.toContain("full replies");
+  expect(existsSync(join(workspaceDir, POINTER))).toBe(false);
+});
+
 test("a runtime whose data sits outside the workspace gets the digest without a pointer", () => {
   vi.spyOn(console, "error").mockImplementation(() => {});
   const text = routineReplay(
     {
       dataDir: mkdtempSync(join(tmpdir(), "routine-digest-data-")),
       workspaceDir: mkdtempSync(join(tmpdir(), "routine-digest-ws-")),
+      assistantRole: null,
     },
     "routine-digest",
     CHAT,
@@ -186,7 +201,7 @@ test("an ordinary chat's replay is exactly the one it always had", () => {
     conversationId: "chat-1",
     messages: CHAT,
     currentTurnId: "now",
-    dirs: { dataDir: tmpdir(), workspaceDir: tmpdir() },
+    dirs: { dataDir: tmpdir(), workspaceDir: tmpdir(), assistantRole: null },
     windowTokens: 200_000,
     reason: "reset",
   });

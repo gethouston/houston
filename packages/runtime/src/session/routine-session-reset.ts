@@ -58,7 +58,7 @@ export async function resetRoutineSessionIfNeeded(
   // previous run out of the live file, and it is the run to remember.
   return {
     replay: routineReplay(
-      { dataDir: config.dataDir, workspaceDir: config.workspaceDir },
+      config,
       conversationId,
       getHistory(conversationId, { limit: ROUTINE_REPLAY_TAIL })?.messages ??
         [],

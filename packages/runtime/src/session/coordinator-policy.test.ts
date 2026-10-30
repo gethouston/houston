@@ -14,7 +14,10 @@ const sharedSkillsDir = "/data/ws/.shared/skills";
 
 const coordinatorWall = {
   allowedFiles: [learningsDocPath(workspaceDir)],
-  readableDirs: [join(workspaceDir, "uploads")],
+  readableDirs: [
+    join(workspaceDir, "uploads"),
+    join(workspaceDir, ".tool-results"),
+  ],
 };
 
 test("the coordinator's file tools are scoped to its memory and its attachments", () => {
