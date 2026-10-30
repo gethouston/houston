@@ -45,6 +45,7 @@ export async function resetRoutineSessionIfNeeded(
     conversationId,
     model,
     mode,
+    nextStepSuggestions: conv.nextStepSuggestions,
     fresh: true,
     ...(conv.context ? { context: conv.context } : {}),
   });
