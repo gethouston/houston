@@ -12,17 +12,8 @@ eleventyComputed:
 ---
 {% extends "subpage.njk" %}
 {% set c = certCopy[event.lang] or certCopy.en %}
-{% block title %}{{ c.title }} · {{ event.title }}{% endblock %}
-{% block meta %}
-<meta name="description" content="{{ c.leadEvent | replace('{event}', event.title) }}">
-<meta property="og:type" content="website">
-<meta property="og:url" content="https://gethouston.ai/certificates/{{ event.slug }}/">
-<meta property="og:title" content="{{ c.title }} · {{ event.title }}">
-<meta property="og:description" content="{{ c.leadEvent | replace('{event}', event.title) }}">
-<meta property="og:site_name" content="Houston">
-<meta property="og:locale" content="{{ 'es_ES' if event.lang == 'es' else 'en_US' }}">
-<meta name="twitter:card" content="summary_large_image">
-{% endblock %}
+{% set title = c.title + " · " + event.title %}
+{% set description = c.leadEvent | replace('{event}', event.title) %}
 {% block subpageStyles %}
 <link rel="stylesheet" href="/assets/css/certificates.css">
 {% endblock %}

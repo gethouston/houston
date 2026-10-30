@@ -61,7 +61,7 @@
   },
   "devDependencies": {
     "@houston/fake-host": "workspace:*",
-    "@playwright/test": "1.61.1",
+    "@playwright/test": "1.64.0",
     "@tailwindcss/vite": "4.3.2",
     "@types/node": "22.20.0",
     "@types/react": "19.2.17",

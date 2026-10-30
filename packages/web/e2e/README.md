@@ -388,7 +388,7 @@ place leaves the darwin checkout with linux binaries.
 rsync -a --exclude node_modules --exclude .git --exclude dist --exclude target \
   ./ ../linux-visual/
 docker run --rm -v "$PWD/../linux-visual":/w -w /w/packages/web \
-  mcr.microsoft.com/playwright:v1.61.1-noble \
+  mcr.microsoft.com/playwright:v1.64.0-noble \
   bash -c "corepack enable && pnpm install --frozen-lockfile && \
     pnpm exec playwright test --project=visual --update-snapshots=all --workers=1"
 # then copy the regenerated *-linux.png back into e2e/visual/__screenshots__/
