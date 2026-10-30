@@ -86,6 +86,9 @@ test("a mix of named and unnamed accounts requires one question before any actio
   );
   expect(text).toContain("that always needs their attention");
   expect(text).toContain("never ask when the app has a single account");
+  expect(text).toContain(
+    "When you set up a routine that uses such an app, settle the account while setting it up and write it into the routine's instructions in plain words.",
+  );
 });
 
 test("unnamed accounts connected on the same day carry their order within that day", () => {

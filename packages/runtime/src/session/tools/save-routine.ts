@@ -64,7 +64,7 @@ export function makeSaveRoutineTool(opts: SaveRoutineToolOptions) {
     name: SAVE_ROUTINE_TOOL_NAME,
     label: "Save a scheduled task",
     description:
-      "Create or update a scheduled task (a Routine) in the user's saved automations. NEVER write .houston/routines/routines.json with file tools - this tool is the ONLY safe way to save, because it merges with the user's other tasks instead of overwriting them. Omit 'id' to create; pass an existing task's 'id' to change it. Give exactly one wake: a 'schedule' (cron, or '@every <N>m' / '@every <N>h' for an uneven interval) or a 'trigger' (event). A save can be refused because it runs more often than this person's plan allows; offer the closest allowed cadence and ask before saving again. On success, tell the user in plain words - never mention files, JSON, cron, or '@every'.",
+      "Create or update a Routine (a scheduled task) in the user's saved automations: the ONLY safe way to save one, because it merges with the user's other routines instead of overwriting them. Omit 'id' to create; pass an existing task's 'id' to change it. Give exactly one wake: a 'schedule' (cron, or '@every <N>m' / '@every <N>h' for an uneven interval) or a 'trigger' (event). A save can be refused because it runs more often than this person's plan allows; offer the closest allowed cadence and ask before saving again. On success, tell the user in plain words - never mention files, JSON, cron, or '@every'.",
     promptSnippet: "Save or update a scheduled task",
     parameters: SaveRoutineParams,
     executionMode: "sequential",

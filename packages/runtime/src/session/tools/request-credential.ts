@@ -5,6 +5,7 @@ import {
 import { type Static, Type } from "typebox";
 import { recordCredentialRequest } from "../interaction";
 import { assertNotPlanMode } from "../live-mode-gate";
+import { VERIFY_STEP } from "./custom-integration-steps";
 
 /**
  * The secure key-entry hand-off tool (custom integrations, HOU-550). It
@@ -98,7 +99,7 @@ export function makeRequestCredentialTool(opts: RequestCredentialToolOptions) {
         content: [
           {
             type: "text" as const,
-            text: "A secure key-entry step was added to the interaction card the user sees in place of the chat input. Queue anything else this task needs in this same turn, then end your turn. Do not ask the user to confirm - you get a message automatically once the key is saved.",
+            text: `A secure key-entry step was added to the interaction card the user sees in place of the chat input. Queue anything else this task needs in this same turn, then end your turn. Do not ask the user to confirm - you get a message automatically once the key is saved. Then: ${VERIFY_STEP}`,
           },
         ],
         details: { toolkit },

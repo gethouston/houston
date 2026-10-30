@@ -68,7 +68,7 @@ const AskUserParams = Type.Object({
       minItems: 1,
       maxItems: MAX_QUESTIONS,
       description:
-        "1 to 3 questions to ask together as one card. Batch everything you need before acting into this ONE call; never ask one question per turn.",
+        "1 to 3 questions to ask together as one card. Batch everything you need before acting into this ONE call; never ask one question per turn. Three is a cap, not a target.",
     },
   ),
 });

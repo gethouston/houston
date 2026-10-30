@@ -69,7 +69,7 @@ test("returns the generic tools plus request_connection, correctly named", () =>
   ]);
 });
 
-test("search appends account descriptions and execute repeats the account-selection rule", async () => {
+test("search appends account descriptions and the account-selection rule; execute only points to it", async () => {
   mockFetch(() => ({
     body: {
       items: [
@@ -91,8 +91,13 @@ test("search appends account descriptions and execute repeats the account-select
     "never ask when the app has a single account",
   ]) {
     expect(text).toContain(guidance);
-    expect(execute.description).toContain(guidance);
   }
+  // Stated once, on the result that lists the accounts; the always-sent
+  // execute description only says where the rule is.
+  expect(execute.description).toContain(
+    "always pass `account`, chosen as the search result for that app explains",
+  );
+  expect(execute.description).not.toContain("you MUST ask ONE ask_user");
 });
 
 test("search POSTs to the host proxy with the sandbox token + formats matches", async () => {
