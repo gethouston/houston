@@ -97,6 +97,9 @@ test("every indexable page has a complete, absolute share card", () => {
       canonical[0],
       `${where}og:url is the canonical`,
     );
+    const title = all(head, /<title>([^<]*)<\/title>/g);
+    assert.equal(title.length, 1, `${where}one <title>`);
+    assert.ok(title[0].trim(), `${where}<title> is empty`);
     for (const key of [
       "og:title",
       "og:description",
@@ -170,4 +173,25 @@ test("the sitemap lists only built, indexable pages", () => {
   const indexable = new Set(pages.map(({ head }) => canonicalOf(head)[0]));
   for (const loc of locs)
     assert.ok(indexable.has(loc), `${loc} is missing or noindex`);
+});
+
+// The sitemap lists each translation group by hand, apart from the page
+// front matter, so a page that loses its hreflang links fails here.
+test("each page carries the language links its sitemap entry lists", () => {
+  const sitemap = readFileSync(join(out, "sitemap.xml"), "utf8");
+  const entries = [...sitemap.matchAll(/<url>([\s\S]*?)<\/url>/g)].map(
+    (m) => m[1],
+  );
+  const groups = entries.filter((entry) => entry.includes("hreflang"));
+  assert.ok(groups.length >= 14, `only ${groups.length} translated entries`);
+  for (const entry of groups) {
+    const loc = entry.match(/<loc>([^<]*)<\/loc>/)[1];
+    const listed = Object.fromEntries(
+      [...entry.matchAll(/hreflang="([^"]*)" href="([^"]*)"/g)].map((m) => [
+        m[1],
+        m[2],
+      ]),
+    );
+    assert.deepEqual(hreflangsOf(headOf(fileFor(loc))), listed, loc);
+  }
 });
