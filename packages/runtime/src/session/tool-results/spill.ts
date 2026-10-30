@@ -36,6 +36,12 @@ export interface SpillTarget {
   conversationId: string;
 }
 
+/** An image block of a tool result, base64 as both backends carry it. */
+export interface SpillImage {
+  data: string;
+  mimeType: string;
+}
+
 /**
  * Save `text` and return its path relative to the agent folder. Named by the
  * content's hash, so saving the same result again is free and returns the same
@@ -46,13 +52,55 @@ export function spillToolResult(
   toolName: string,
   text: string,
 ): string {
-  const digest = createHash("sha256").update(text).digest("hex").slice(0, 16);
-  const rel = `${SPILL_DIR}/${safeSegment(target.conversationId)}/${safeSegment(toolName)}-${digest}.txt`;
+  return saveSpill(target, toolName, "txt", text);
+}
+
+/**
+ * Save a whole result, its text (when it has any) and each image as its own
+ * file the read tool can open, and return the paths, text first.
+ */
+export function spillToolResultParts(
+  target: SpillTarget,
+  toolName: string,
+  text: string,
+  images: readonly SpillImage[],
+): string[] {
+  return [
+    ...(text ? [spillToolResult(target, toolName, text)] : []),
+    ...images.map((image) =>
+      saveSpill(
+        target,
+        toolName,
+        IMAGE_EXTENSIONS[image.mimeType] ?? "bin",
+        Buffer.from(image.data, "base64"),
+      ),
+    ),
+  ];
+}
+
+const IMAGE_EXTENSIONS: Record<string, string> = {
+  "image/png": "png",
+  "image/jpeg": "jpg",
+  "image/gif": "gif",
+  "image/webp": "webp",
+};
+
+function saveSpill(
+  target: SpillTarget,
+  toolName: string,
+  extension: string,
+  content: string | Buffer,
+): string {
+  const digest = createHash("sha256")
+    .update(content)
+    .digest("hex")
+    .slice(0, 16);
+  const rel = `${SPILL_DIR}/${safeSegment(target.conversationId)}/${safeSegment(toolName)}-${digest}.${extension}`;
   const abs = join(target.workspaceDir, rel);
   if (existsSync(abs)) return rel;
   mkdirSync(join(abs, ".."), { recursive: true });
   const tmp = atomicTempPath(abs, randomUUID());
-  writeFileSync(tmp, text);
+  writeFileSync(tmp, content);
   renameSync(tmp, abs);
   pruneSpills(target.workspaceDir, abs);
   return rel;

@@ -14,6 +14,7 @@ import {
 import {
   type SpillTarget,
   spillToolResult,
+  spillToolResultParts,
 } from "../../session/tool-results/spill";
 
 /**
@@ -33,14 +34,20 @@ export function makeToolResultContext(
   target: SpillTarget,
 ): (messages: AgentMessage[]) => Promise<AgentMessage[]> {
   // Saving is keyed by content, so this spares re-hashing on every request,
-  // and keeps a failed save (null) from being retried and reported again.
-  const saved = new Map<string, string | null>();
-  const save = (result: ToolResult, text: string): string | null => {
-    const known = saved.get(result.toolCallId);
+  // and keeps a failed save (null) from being retried and reported again. A
+  // capped result saves its text; a cleared one saves every part.
+  const saved = new Map<string, string[] | null>();
+  const save = (
+    result: ToolResult,
+    whole: boolean,
+    write: () => string[],
+  ): string[] | null => {
+    const key = `${whole ? "all" : "text"}:${result.toolCallId}`;
+    const known = saved.get(key);
     if (known !== undefined) return known;
-    let path: string | null = null;
+    let paths: string[] | null = null;
     try {
-      path = spillToolResult(target, result.toolName, text);
+      paths = write();
     } catch (err) {
       // Unsaved, the result goes out whole: a bigger request, never a lost one.
       console.error(
@@ -48,8 +55,8 @@ export function makeToolResultContext(
         err,
       );
     }
-    saved.set(result.toolCallId, path);
-    return path;
+    saved.set(key, paths);
+    return paths;
   };
 
   return async (messages) => {
@@ -83,13 +90,20 @@ export function makeToolResultContext(
       if (message.role !== "toolResult") return message;
       const { text, images } = parts(message.content);
       if (stale.has(message.toolCallId)) {
-        const path = save(message, text);
-        if (!path) return message;
+        const paths = save(message, true, () =>
+          spillToolResultParts(
+            target,
+            message.toolName,
+            text,
+            message.content.filter((c) => c.type === "image"),
+          ),
+        );
+        if (!paths) return message;
         const chars = text.length + images * IMAGE_CHARS;
         return {
           ...message,
           content: [
-            { type: "text", text: clearedStub(message.toolName, chars, path) },
+            { type: "text", text: clearedStub(message.toolName, chars, paths) },
           ],
         };
       }
@@ -98,7 +112,9 @@ export function makeToolResultContext(
         text.length <= RESULT_HEAD_CHARS
       )
         return message;
-      const path = save(message, text);
+      const path = save(message, false, () => [
+        spillToolResult(target, message.toolName, text),
+      ])?.[0];
       if (!path) return message;
       return {
         ...message,

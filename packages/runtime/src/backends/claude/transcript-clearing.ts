@@ -9,8 +9,9 @@ import {
   type ToolResultRef,
 } from "../../session/tool-results/clearing";
 import {
+  type SpillImage,
   type SpillTarget,
-  spillToolResult,
+  spillToolResultParts,
 } from "../../session/tool-results/spill";
 
 /**
@@ -36,6 +37,7 @@ interface Block {
   tool_use_id?: unknown;
   content?: unknown;
   text?: unknown;
+  source?: { type?: unknown; media_type?: unknown; data?: unknown };
 }
 
 interface Entry {
@@ -74,7 +76,8 @@ export function clearStaleTranscriptResults(
         const call = calls.get(String(block.tool_use_id));
         if (!call) continue;
         const { text, images } = contentOf(block.content);
-        const chars = stubbedChars(text) ?? text.length + images * IMAGE_CHARS;
+        const chars =
+          stubbedChars(text) ?? text.length + images.length * IMAGE_CHARS;
         results.push({
           line,
           block,
@@ -91,13 +94,13 @@ export function clearStaleTranscriptResults(
   const dirty = new Set<number>();
   for (const { line, block, ref } of results) {
     if (!stale.has(ref.id)) continue;
-    const { text } = contentOf(block.content);
+    const { text, images } = contentOf(block.content);
     if (stubbedChars(text) !== undefined) continue;
     const name = calls.get(ref.id)?.name ?? "tool";
     block.content = clearedStub(
       name,
       ref.chars,
-      spillToolResult(spill, name, text),
+      spillToolResultParts(spill, name, text, images),
     );
     dirty.add(line);
   }
@@ -108,16 +111,22 @@ export function clearStaleTranscriptResults(
   renameSync(tmp, transcript);
 }
 
-/** A tool_result's content: a string, or text and image blocks. */
-function contentOf(content: unknown): { text: string; images: number } {
-  if (typeof content === "string") return { text: content, images: 0 };
-  if (!Array.isArray(content)) return { text: "", images: 0 };
+/** A tool_result's content: a string, or text and (base64) image blocks. */
+function contentOf(content: unknown): { text: string; images: SpillImage[] } {
+  if (typeof content === "string") return { text: content, images: [] };
+  if (!Array.isArray(content)) return { text: "", images: [] };
   const blocks = content as Block[];
   return {
     text: blocks
       .filter((b) => b.type === "text")
       .map((b) => String(b.text))
       .join("\n"),
-    images: blocks.filter((b) => b.type === "image").length,
+    images: blocks.flatMap((b) =>
+      b.type === "image" &&
+      b.source?.type === "base64" &&
+      typeof b.source.data === "string"
+        ? [{ data: b.source.data, mimeType: String(b.source.media_type) }]
+        : [],
+    ),
   };
 }

@@ -72,13 +72,17 @@ function clearable(r: ToolResultRef): boolean {
 
 const STUB = /^\[Cleared tool result: [^,\]]+, ([\d,]+) characters\. /;
 
-/** The text a cleared result is replaced with. */
+/** The text a cleared result is replaced with; `savedAt` holds its text, then its images. */
 export function clearedStub(
   toolName: string,
   chars: number,
-  savedAt: string,
+  savedAt: readonly string[],
 ): string {
-  return `[Cleared tool result: ${toolName}, ${chars.toLocaleString("en-US")} characters. It was removed from the conversation to save space. The full result is saved at ${savedAt} (relative to your working directory); read that file if you need it again.]`;
+  const where =
+    savedAt.length === 1
+      ? `is saved at ${savedAt[0]} (relative to your working directory); read that file`
+      : `is saved in these files (relative to your working directory): ${savedAt.join(", ")}; read them`;
+  return `[Cleared tool result: ${toolName}, ${chars.toLocaleString("en-US")} characters. It was removed from the conversation to save space. The full result ${where} if you need it again.]`;
 }
 
 /** The original size a stub records, or undefined when `text` is no stub. */

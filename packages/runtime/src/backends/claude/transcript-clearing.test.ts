@@ -160,3 +160,40 @@ test("a cleared transcript is not rewritten again until the next batch", () => {
   resume();
   expect(readFileSync(transcript, "utf8")).toBe(grown.join("\n"));
 });
+
+test("a cleared screenshot is saved as an image file the stub names", () => {
+  const png = Buffer.from("not really a png, but bytes all the same");
+  const image = {
+    type: "image",
+    source: {
+      type: "base64",
+      media_type: "image/png",
+      data: png.toString("base64"),
+    },
+  };
+  const lines = chat(10).map((line) => {
+    const entry = JSON.parse(line);
+    const block = entry.message?.content?.[0];
+    if (block?.type !== "tool_result") return line;
+    if (block.tool_use_id === "toolu_0") block.content = [image];
+    if (block.tool_use_id === "toolu_1") block.content.push(image);
+    return JSON.stringify(entry);
+  });
+  writeFileSync(transcript, lines.join("\n"));
+  resume();
+  const cleared = readFileSync(transcript, "utf8").split("\n");
+
+  const shot = resultSent(cleared, "toolu_0");
+  const shotPath = /saved at (\S+\.png) \(/.exec(shot)?.[1] ?? "";
+  expect(readFileSync(join(workspaceDir, shotPath))).toEqual(png);
+
+  const both = resultSent(cleared, "toolu_1");
+  const files = /these files \(relative to your working directory\): ([^;]+);/
+    .exec(both)?.[1]
+    ?.split(", ");
+  expect(files?.map((f) => f.split(".").pop())).toEqual(["txt", "png"]);
+  expect(readFileSync(join(workspaceDir, files?.[0] ?? ""), "utf8")).toBe(
+    payload("mail1", 19_000),
+  );
+  expect(readFileSync(join(workspaceDir, files?.[1] ?? ""))).toEqual(png);
+});

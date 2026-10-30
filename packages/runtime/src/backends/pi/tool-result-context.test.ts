@@ -166,3 +166,25 @@ test("the session's own messages are never modified", async () => {
   await transform(messages);
   expect(messages).toEqual(snapshot);
 });
+
+test("a cleared screenshot is saved as an image file the stub names", async () => {
+  const png = Buffer.from("screenshot bytes");
+  const image = {
+    type: "image" as const,
+    data: png.toString("base64"),
+    mimeType: "image/png",
+  };
+  const messages = history(10).map((m) =>
+    m.role === "toolResult" && m.toolCallId === "call-0"
+      ? { ...m, toolName: "browser", content: [image] }
+      : m,
+  );
+  const sent = await makeToolResultContext({
+    workspaceDir,
+    conversationId: "c1",
+  })(messages);
+  const stub = resultText(sent, "call-0");
+  expect(stub).toMatch(/^\[Cleared tool result: browser, 6,400 characters\./);
+  const path = /saved at (\S+\.png) \(/.exec(stub)?.[1] ?? "";
+  expect(readFileSync(join(workspaceDir, path))).toEqual(png);
+});
