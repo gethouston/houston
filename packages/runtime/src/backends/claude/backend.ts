@@ -127,7 +127,6 @@ export function createClaudeBackend(deps: ClaudeBackendDeps): HarnessBackend {
             // resolves it lazily inside the prompt's acting-context scope.
             credentialStorageDir: deps.layout.credentialStorageDir,
             homeDir: deps.layout.homeDir,
-            filesStillLanding: deps.beforeTool !== undefined,
             promptTokens,
           }),
           accessDigest: fresh?.accessDigest,
