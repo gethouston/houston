@@ -25,7 +25,7 @@ pub use skills_memory::SELF_IMPROVEMENT_GUIDANCE;
 /// card (HOU-670).
 pub fn system_prompt_pi() -> String {
     format!(
-        "{HOUSTON_SYSTEM_PROMPT}\n\n---\n\n{SELF_IMPROVEMENT_GUIDANCE}\n\n---\n\n{ROUTINES_GUIDANCE}\n\n---\n\n{MISSIONS_GUIDANCE}{PI_INTEGRATIONS_GUIDANCE}"
+        "{HOUSTON_SYSTEM_PROMPT}\n\n---\n\n{SELF_IMPROVEMENT_GUIDANCE}\n\n---\n\n{ROUTINES_GUIDANCE}\n\n---\n\n{MISSIONS_GUIDANCE}\n\n---\n\n{PI_INTEGRATIONS_GUIDANCE}"
     )
 }
 
@@ -47,9 +47,8 @@ mod tests {
 
         assert!(prompt.contains("# Houston Context"));
         assert!(prompt.contains("# Interaction Procedure"));
-        assert!(prompt.contains("# Load Relevant Guidance"));
         assert!(prompt.contains("Classify the request"));
-        assert!(prompt.contains("Required integrations"));
+        assert!(prompt.contains("the apps that must be connected"));
         assert!(prompt.contains("Routine request"));
         assert!(prompt.contains(
             "Ask for explicit approval before work that will change persistent user data"
@@ -88,7 +87,7 @@ mod tests {
         let prompt = system_prompt_pi();
 
         assert!(prompt.contains("ask_user"));
-        assert!(prompt.contains("never leave a question sitting in plain text"));
+        assert!(prompt.contains("Never leave a question sitting in plain text"));
         assert!(prompt.contains("Always request that approval through the `ask_user` tool"));
     }
 
@@ -96,9 +95,9 @@ mod tests {
     fn prompt_tells_the_agent_to_batch_questions_into_one_call() {
         let prompt = system_prompt_pi();
 
-        assert!(prompt.contains("up to 3 questions"));
-        assert!(prompt.contains("never one question per turn"));
-        assert!(prompt.contains("Three is a cap, not a target"));
+        // The cap and the options live on the ask_user tool itself; the
+        // prompt keeps the one-call mandate.
+        assert!(prompt.contains("batching everything you need into that one call"));
         // The old one-question-per-turn drip is gone.
         assert!(!prompt.contains("one thing at a time"));
         assert!(!prompt.contains("one question at a time"));
@@ -186,8 +185,8 @@ mod tests {
         let prompt = system_prompt_pi();
 
         assert!(prompt.contains("## How-To Guidance: Routines"));
-        assert!(prompt.contains("explicitly says \"routine\""));
-        assert!(prompt.contains("treat it as a Routine setup or update"));
+        assert!(prompt.contains("explicitly says \"scheduled task\""));
+        assert!(prompt.contains("is a Routine setup or update"));
         assert!(
             prompt.contains("Ask for approval before creating, enabling, or changing a Routine")
         );
