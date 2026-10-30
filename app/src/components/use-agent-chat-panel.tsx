@@ -889,8 +889,8 @@ export function useAgentChatPanel({
     // unlocked, so a conversation can move to a new provider mid-session), so a
     // peak observed under the old provider may snap the new model's window up
     // until a `provider_switched` divider resets it. That only ever OVER-states
-    // the window (it can never read above 100% — `effectiveContextWindow`
-    // floors at the peak), and the figure is already labeled an estimate, so
+    // the window (it never reads above 100%: `contextFillPercent` clamps),
+    // and the figure is already labeled an estimate, so
     // it's acceptable for the post-switch turns until the new provider reports
     // its own usage and the indicator re-settles.
     const cfg = getContextWindowConfig(

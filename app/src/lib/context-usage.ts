@@ -69,9 +69,10 @@ export function sessionContextUsage(
  * a fifth of a 1M window. Returns null when the model has no catalogued
  * window, so the caller falls back to a raw token count.
  *
- * The result is floored at the observed peak, so even a mis-catalogued ceiling
- * can't make the indicator read over 100% — that guarantee lives here in the
- * data layer, with the component's clamp as defense in depth.
+ * The peak only resolves which catalogued window is real; it never floors the
+ * result. A chat that peaked at 900k before the ceiling existed compacts at the
+ * same room as any other, so flooring would read its next compaction point as
+ * ~22%. Usage above the room reads 100% through `contextFillPercent`'s clamp.
  *
  * The snap-up rule here is mirrored by `effectiveModelWindow` in
  * `@houston/protocol`, which the runtime's autocompact uses — same table of
@@ -84,7 +85,7 @@ export function effectiveContextWindow(
 ): number | null {
   if (!cfg) return null;
   const estimate = peakContextTokens > cfg.default ? cfg.max : cfg.default;
-  return Math.max(compactionWindow(estimate), peakContextTokens);
+  return compactionWindow(estimate);
 }
 
 /**

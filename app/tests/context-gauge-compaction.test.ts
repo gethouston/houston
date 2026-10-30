@@ -34,11 +34,15 @@ test("a window smaller than the ceiling's room is divided by as is", () => {
   strictEqual(contextFillPercent(usage(119_040), window), 93);
 });
 
-test("a peak from before the ceiling never reads over 100%", () => {
+test("a chat that once peaked at 900k reads 93% at its next compaction point", () => {
   const window = effectiveContextWindow(
     { default: 1_000_000, max: 1_000_000 },
     900_000,
   );
-  strictEqual(window, 900_000);
+  strictEqual(window, 215_054);
+  strictEqual(
+    contextFillPercent(usage(AUTOCOMPACT_CEILING_TOKENS), window),
+    93,
+  );
   strictEqual(contextFillPercent(usage(900_000), window), 100);
 });

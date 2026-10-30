@@ -78,6 +78,6 @@ test("effectiveContextWindow: still snaps up within the SAME provider when its o
     finalResult(120_000),
     finalResult(240_000),
   ]);
-  // Snapped to 1M, then cut to the room before compaction; floored at the peak.
-  assert.equal(effectiveContextWindow(sonnet, peakContextTokens), 240_000);
+  // Snapped to 1M, then cut to the room before compaction.
+  assert.equal(effectiveContextWindow(sonnet, peakContextTokens), 215_054);
 });
