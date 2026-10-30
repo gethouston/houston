@@ -7,10 +7,10 @@ import type {
 } from "../types";
 import type { ClaudeBackendDeps } from "./backend-types";
 import { resolveClaudeExecutable } from "./binary-path";
-import { buildClaudeEnv } from "./claude-env";
 import { buildHoustonMcpServer, HOUSTON_MCP_SERVER_NAME } from "./custom-tools";
 import { toSdkModel } from "./model";
 import { CLAUDE_QUERY_DEFAULTS } from "./query-defaults";
+import { makeRefreshAuth } from "./refresh-auth";
 import { assertAnthropicScopeCredential } from "./scope-guard";
 import {
   ClaudeBackendUnavailableError,
@@ -111,28 +111,7 @@ export function createClaudeBackend(deps: ClaudeBackendDeps): HarnessBackend {
       // dev/tests): the SDK resolves its own native binary. Only set inside the
       // Bun-compiled desktop sidecar, where require.resolve can't reach it.
       const pathToClaudeCodeExecutable = resolveClaudeExecutable();
-      // The subprocess env, rebuilt from a FRESH credential read on every call.
-      // The session invokes this at the start of each attempt (PRODUCT-1355):
-      // the SDK spawns one subprocess per `query()`, so per-attempt env is the
-      // seam that lets a session follow the gateway's token rotation instead of
-      // 401ing forever on the token it was built with. Re-asserting the scope
-      // guard keeps a personal turn whose token vanished a typed refusal, never
-      // a silent fall-through onto the pod-shared (team) credential.
-      const refreshAuth = (promptTokens?: number) => {
-        const fresh = deps.readToken();
-        assertAnthropicScopeCredential(fresh);
-        return {
-          env: buildClaudeEnv(fresh, {
-            configDir: deps.layout.configDir,
-            // A disposable turn supplies this directly. The long-lived layout
-            // resolves it lazily inside the prompt's acting-context scope.
-            credentialStorageDir: deps.layout.credentialStorageDir,
-            homeDir: deps.layout.homeDir,
-            promptTokens,
-          }),
-          accessDigest: fresh?.accessDigest,
-        };
-      };
+      const refreshAuth = makeRefreshAuth(deps);
       // One coherent build-time read for the env AND the digest (the top-of-
       // function `token` read predates the SDK import await, so it is not
       // reused here). Every attempt overrides both with its own fresh read.
