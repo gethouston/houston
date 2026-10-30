@@ -32,7 +32,7 @@ test("an oversized app result reaches Claude as its head and the file holding al
   ).handler({}, {});
 
   const text = firstText(result);
-  expect(text.startsWith(full.slice(0, 20_000))).toBe(true);
+  expect(text.startsWith(full.slice(0, 8_000))).toBe(true);
   expect(text).toContain("This result is 64,000 characters");
   const path = /saved at (\S+) \(/.exec(text)?.[1] ?? "";
   expect(path).toMatch(/^\.tool-results\/c1\/integration_execute-/);
@@ -41,7 +41,7 @@ test("an oversized app result reaches Claude as its head and the file holding al
 
 test("a result under the cap, or from a tool that is not capped, is untouched", async () => {
   const spill = { workspaceDir, conversationId: "c1" };
-  const small = "ok ".repeat(5_000);
+  const small = "ok ".repeat(2_000);
   expect(
     firstText(
       await adaptTool(returning("houston_call", small), spill).handler({}, {}),

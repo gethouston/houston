@@ -217,7 +217,8 @@ test("a cleared capped result points at the full result it was cut from", () => 
   const target = { workspaceDir, conversationId: "c1" };
   const full = (i: number) => payload(`mail${i}`, 42_000);
   const saved = new Map<string, string>();
-  const lines = chat(10).map((line) => {
+  // Fifteen stale 8k heads make the batch.
+  const lines = chat(18).map((line) => {
     const entry = JSON.parse(line);
     const block = entry.message?.content?.[0];
     if (block?.type !== "tool_result") return line;
@@ -231,14 +232,13 @@ test("a cleared capped result points at the full result it was cut from", () => 
   resume();
   const cleared = readFileSync(transcript, "utf8").split("\n");
 
-  // Six 20k heads make the batch.
-  for (let i = 0; i <= 5; i++) {
+  for (let i = 0; i <= 14; i++) {
     expect(resultSent(cleared, `toolu_${i}`)).toBe(
       `[Cleared tool result: integration_execute, 42,000 characters. It was removed from the conversation to save space. The full result is saved at ${saved.get(`toolu_${i}`)} (relative to your working directory); read that file if you need it again.]`,
     );
   }
   // No second copy of the head beside the full results.
   expect(readdirSync(join(workspaceDir, ".tool-results", "c1"))).toHaveLength(
-    10,
+    18,
   );
 });

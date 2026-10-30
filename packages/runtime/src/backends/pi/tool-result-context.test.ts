@@ -63,13 +63,11 @@ function resultText(messages: AgentMessage[], id: string): string {
 
 const savedAt = (text: string) => /saved at (\S+) \(/.exec(text)?.[1];
 
-/** A chat whose first rounds fetched ~19k-character app payloads. */
+/** A chat whose rounds each printed ~19k characters, under no cap. */
 function history(rounds: number): AgentMessage[] {
   const out: AgentMessage[] = [user("Summarize my inbox")];
   for (let i = 0; i < rounds; i++)
-    out.push(
-      ...round(`call-${i}`, "integration_execute", payload(`mail${i}`, 19_000)),
-    );
+    out.push(...round(`call-${i}`, "bash", payload(`mail${i}`, 19_000)));
   return out;
 }
 
@@ -85,8 +83,8 @@ test("an oversized app result is cut to its head, and the rest is in the file it
   ]);
 
   const text = resultText(sent, "call-1");
-  expect(text.startsWith(full.slice(0, 20_000))).toBe(true);
-  expect(text.length).toBeLessThan(20_500);
+  expect(text.startsWith(full.slice(0, 8_000))).toBe(true);
+  expect(text.length).toBeLessThan(8_500);
   const path = savedAt(text);
   expect(path).toMatch(
     /^\.tool-results\/c1\/integration_execute-[0-9a-f]{16}\.txt$/,
@@ -120,9 +118,7 @@ test("stale results stay until they add up to a batch, then all go at once", asy
   const after = await transform(history(10));
   for (let i = 0; i <= 6; i++) {
     const stub = resultText(after, `call-${i}`);
-    expect(stub).toMatch(
-      /^\[Cleared tool result: integration_execute, 19,000 characters\./,
-    );
+    expect(stub).toMatch(/^\[Cleared tool result: bash, 19,000 characters\./);
     expect(readFileSync(join(workspaceDir, savedAt(stub) ?? ""), "utf8")).toBe(
       payload(`mail${i}`, 19_000),
     );

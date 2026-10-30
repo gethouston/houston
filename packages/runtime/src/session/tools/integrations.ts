@@ -183,7 +183,7 @@ const REQUEST_CONNECTION_GUIDANCE =
  * and the model re-runs the action with tighter parameters.
  *
  * The model never sees this much at once: both backends cut a capped tool's
- * result to its first 20k characters and save the whole of it in the agent
+ * result to its first 8k characters and save the whole of it in the agent
  * folder for the model to read (session/tool-results/cap.ts). This ceiling
  * only bounds that file and the session record.
  */

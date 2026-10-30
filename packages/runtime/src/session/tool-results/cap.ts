@@ -12,15 +12,18 @@ import {
 import { READ_MISSION_TOOL_NAME } from "../tools/read-mission";
 
 /**
- * The most text one Houston tool result puts in front of the model (~5k
+ * The most text one Houston tool result puts in front of the model (~2k
  * tokens). The rest is saved to a file the model can read (./spill.ts).
  *
  * Every result is re-sent on every later request until the conversation
  * compacts, so one 64k-character app payload cost ~16k tokens per request for
- * the rest of the chat. The head is enough for the model to see what came back
- * and decide whether it needs more.
+ * the rest of the chat. Measured on real models: a 4k head made them read the
+ * file for answers a few thousand characters in, each read one more request
+ * re-sending the whole context; a 20k head cost more over a ten-turn chat than
+ * 8k did, because a model that needs all of a big result reads the file
+ * either way.
  */
-export const RESULT_HEAD_CHARS = 20_000;
+export const RESULT_HEAD_CHARS = 8_000;
 
 /**
  * The tools whose results are capped: the ones that return whatever an app,
