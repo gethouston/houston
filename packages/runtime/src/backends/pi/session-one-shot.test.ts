@@ -78,6 +78,9 @@ test("the real recovery request is tool-free, small, on the turn model, and leav
     await session.prompt("private earlier user context");
     const before = frames.length;
     const interaction = newInteractionHolder();
+    // The faux API is on no follow-up allowlist (follow-up-models.ts); this
+    // test is about the request, so the pass is let through.
+    session.followUpPassServed = () => true;
     await recoverFollowUpActions({
       session,
       interaction,
