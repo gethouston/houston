@@ -87,14 +87,15 @@ export function createClaudeBackend(deps: ClaudeBackendDeps): HarnessBackend {
           personalAssistant: deps.personalAssistant,
           tools: deps.tools,
           browser: deps.browser,
-          // The mode does the tool filtering (via `toolNamesForMode`), mirroring
-          // the pi path: plan withholds the acting integration tools and keeps
-          // only `ask_user`; auto is the inverse — it drops the blocking tools
-          // (`ask_user`, `request_connection`) but KEEPS `integration_search` /
-          // `integration_execute` so Autopilot can act on the user's apps
-          // without ever waiting on them.
+          // The mode filters the tools as on the pi path (`toolNamesForMode`):
+          // plan keeps `ask_user` and no acting tool; auto drops the blocking
+          // tools but keeps the integration tools, so Autopilot never waits.
           mode: opts.mode,
           nextStepSuggestions: opts.nextStepSuggestions,
+          spill: {
+            workspaceDir: deps.workspaceDir,
+            conversationId: opts.conversationId,
+          },
         });
       } catch (err) {
         throw new ClaudeBackendUnavailableError(err);

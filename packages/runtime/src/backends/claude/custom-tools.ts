@@ -2,6 +2,7 @@ import type {
   createSdkMcpServer as CreateSdkMcpServer,
   McpSdkServerConfigWithInstance,
 } from "@anthropic-ai/claude-agent-sdk";
+import type { SpillTarget } from "../../session/tool-results/spill";
 import { adaptTool } from "./mcp-tool-adapter";
 import { type BridgedToolSetInput, buildBridgedToolSet } from "./mcp-tool-set";
 
@@ -54,6 +55,8 @@ export interface HoustonMcp {
 export interface HoustonMcpInput extends BridgedToolSetInput {
   /** The SDK factory, passed in so this module never imports the optional SDK. */
   createSdkMcpServer: typeof CreateSdkMcpServer;
+  /** Where oversized tool results are saved; absent, none is capped. */
+  spill?: SpillTarget;
 }
 
 /**
@@ -61,7 +64,9 @@ export interface HoustonMcpInput extends BridgedToolSetInput {
  * Claude backend, plus the `allowedTools` entries that auto-approve them.
  */
 export function buildHoustonMcpServer(input: HoustonMcpInput): HoustonMcp {
-  const tools = buildBridgedToolSet(input).map(adaptTool);
+  const tools = buildBridgedToolSet(input).map((tool) =>
+    adaptTool(tool, input.spill),
+  );
   const server = input.createSdkMcpServer({
     name: HOUSTON_MCP_SERVER_NAME,
     tools,

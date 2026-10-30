@@ -23,6 +23,7 @@ import type {
 import { SentRequests } from "./model-phase";
 import { PiSession } from "./session";
 import { resumeSessionManager } from "./session-files";
+import { makeToolResultContext } from "./tool-result-context";
 import { piTransportSettings } from "./transport-settings";
 
 /**
@@ -127,6 +128,15 @@ export function createPiBackend(deps: PiBackendDeps): HarnessBackend {
         ),
       });
       if (isManagedBridgeModel(opts.model)) session.setAutoRetryEnabled(false);
+      // Runs after pi's own projections, on what is about to be sent; the
+      // session keeps every tool result whole (./tool-result-context.ts).
+      const projected = session.agent.transformContext;
+      const toolResults = makeToolResultContext({
+        workspaceDir: deps.workspaceDir,
+        conversationId: opts.conversationId,
+      });
+      session.agent.transformContext = async (messages, signal) =>
+        toolResults(projected ? await projected(messages, signal) : messages);
       return new PiSession(session, requests);
     },
   };

@@ -179,20 +179,15 @@ const REQUEST_CONNECTION_GUIDANCE =
 /**
  * Ceiling for one integration EXECUTE result. App APIs return unbounded
  * documents — a single GMAIL_FETCH_EMAILS with include_payload can exceed 1 MB
- * of JSON, which alone overflows a model's context window and terminally
- * errors the turn (every event-trigger run on a newsletter inbox died this
- * way, HOU-893). Truncate with an instructive marker instead: the model
- * re-runs the action with tighter parameters rather than the turn dying.
+ * of JSON (HOU-893). Past this the result is cut with an instructive marker,
+ * and the model re-runs the action with tighter parameters.
  *
- * 64 KB (~16k tokens), down from the original 256 KB: every result lands in
- * the conversation permanently and is RE-SENT on every subsequent request, so
- * one 256 KB dump (~65k tokens) kept burning a quarter of a model window per
- * turn for the rest of the chat — the dominant driver of subscription-limit
- * exhaustion on ChatGPT/Codex accounts. Fleet data: p99 of real execute
- * results is ~29 KB; only the pathological full-payload dumps exceed 64 KB,
- * and those are exactly the ones the recovery marker exists for.
+ * The model never sees this much at once: both backends cut a capped tool's
+ * result to its first 20k characters and save the whole of it in the agent
+ * folder for the model to read (session/tool-results/cap.ts). This ceiling
+ * only bounds that file and the session record.
  */
-const MAX_RESULT_CHARS = 64 * 1024;
+const MAX_RESULT_CHARS = 512 * 1024;
 
 /**
  * Search results get a MUCH tighter ceiling than execute data: they are a
