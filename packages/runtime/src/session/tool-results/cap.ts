@@ -45,3 +45,15 @@ export const CAPPED_TOOLS: ReadonlySet<string> = new Set([
 export function cappedResultText(text: string, savedAt: string): string {
   return `${text.slice(0, RESULT_HEAD_CHARS)}\n\n[This result is ${text.length.toLocaleString("en-US")} characters, so only the first ${RESULT_HEAD_CHARS.toLocaleString("en-US")} are shown. The full result is saved at ${savedAt} (relative to your working directory). Read that file, with an offset to skip what you have seen, when you need the rest.]`;
 }
+
+const CAPPED =
+  /\n\n\[This result is ([\d,]+) characters, so only the first [\d,]+ are shown\. The full result is saved at (.+) \(relative to your working directory\)\. Read that file, with an offset to skip what you have seen, when you need the rest\.\]$/;
+
+/** The full result a capped text was cut from, or undefined when `text` is not capped. */
+export function cappedSource(
+  text: string,
+): { chars: number; savedAt: string } | undefined {
+  const match = CAPPED.exec(text);
+  if (!match?.[1] || !match[2]) return undefined;
+  return { chars: Number(match[1].replaceAll(",", "")), savedAt: match[2] };
+}

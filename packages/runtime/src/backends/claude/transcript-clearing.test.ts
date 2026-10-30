@@ -1,6 +1,7 @@
 import {
   mkdirSync,
   mkdtempSync,
+  readdirSync,
   readFileSync,
   rmSync,
   writeFileSync,
@@ -8,6 +9,8 @@ import {
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { afterEach, beforeEach, expect, test } from "vitest";
+import { cappedResultText } from "../../session/tool-results/cap";
+import { spillToolResult } from "../../session/tool-results/spill";
 import { createSessionsStore } from "./sessions-store";
 
 /**
@@ -208,4 +211,34 @@ test("a resume says how many tokens its clearing took off, and nothing once done
     .reduce((a, b) => a + b, 0);
   expect(first?.clearedTokens).toBe(Math.floor((7 * 19_000 - stubChars) / 4));
   expect(resumed()?.clearedTokens).toBe(0);
+});
+
+test("a cleared capped result points at the full result it was cut from", () => {
+  const target = { workspaceDir, conversationId: "c1" };
+  const full = (i: number) => payload(`mail${i}`, 42_000);
+  const saved = new Map<string, string>();
+  const lines = chat(10).map((line) => {
+    const entry = JSON.parse(line);
+    const block = entry.message?.content?.[0];
+    if (block?.type !== "tool_result") return line;
+    const i = Number(block.tool_use_id.split("_")[1]);
+    const path = spillToolResult(target, "integration_execute", full(i));
+    saved.set(block.tool_use_id, path);
+    block.content = [{ type: "text", text: cappedResultText(full(i), path) }];
+    return JSON.stringify(entry);
+  });
+  writeFileSync(transcript, lines.join("\n"));
+  resume();
+  const cleared = readFileSync(transcript, "utf8").split("\n");
+
+  // Six 20k heads make the batch.
+  for (let i = 0; i <= 5; i++) {
+    expect(resultSent(cleared, `toolu_${i}`)).toBe(
+      `[Cleared tool result: integration_execute, 42,000 characters. It was removed from the conversation to save space. The full result is saved at ${saved.get(`toolu_${i}`)} (relative to your working directory); read that file if you need it again.]`,
+    );
+  }
+  // No second copy of the head beside the full results.
+  expect(readdirSync(join(workspaceDir, ".tool-results", "c1"))).toHaveLength(
+    10,
+  );
 });

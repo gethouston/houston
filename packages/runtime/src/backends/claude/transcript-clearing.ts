@@ -2,6 +2,11 @@ import { randomUUID } from "node:crypto";
 import { readFileSync, renameSync, writeFileSync } from "node:fs";
 import { atomicTempPath } from "@houston/protocol";
 import {
+  CAPPED_TOOLS,
+  cappedSource,
+  RESULT_HEAD_CHARS,
+} from "../../session/tool-results/cap";
+import {
   clearedStub,
   IMAGE_CHARS,
   staleResultIds,
@@ -64,7 +69,12 @@ export function clearStaleTranscriptResults(
 
   const calls = new Map<string, { round: number; name: string }>();
   const rounds = new Map<unknown, number>();
-  const results: { line: number; block: Block; ref: ToolResultRef }[] = [];
+  const results: {
+    line: number;
+    block: Block;
+    ref: ToolResultRef;
+    original: number;
+  }[] = [];
   for (const [line, entry] of entries) {
     if (entry.isSidechain === true) continue;
     const blocks = Array.isArray(entry.message?.content)
@@ -81,12 +91,25 @@ export function clearStaleTranscriptResults(
         const call = calls.get(String(block.tool_use_id));
         if (!call) continue;
         const { text, images } = contentOf(block.content);
+        const stubbed = stubbedChars(text);
+        const original =
+          stubbed ??
+          (cappedSource(text)?.chars ?? text.length) +
+            images.length * IMAGE_CHARS;
+        // What the model carries. A stub records the full size, so a capped
+        // tool's stub counts as its head: replaying the policy may count a
+        // little less than was cleared, which only delays the next batch.
         const chars =
-          stubbedChars(text) ?? text.length + images.length * IMAGE_CHARS;
+          stubbed === undefined
+            ? text.length + images.length * IMAGE_CHARS
+            : CAPPED_TOOLS.has(call.name)
+              ? Math.min(stubbed, RESULT_HEAD_CHARS)
+              : stubbed;
         results.push({
           line,
           block,
           ref: { id: String(block.tool_use_id), round: call.round, chars },
+          original,
         });
       }
     }
@@ -98,15 +121,20 @@ export function clearStaleTranscriptResults(
   );
   const dirty = new Set<number>();
   let freedChars = 0;
-  for (const { line, block, ref } of results) {
+  for (const { line, block, ref, original } of results) {
     if (!stale.has(ref.id)) continue;
     const { text, images } = contentOf(block.content);
     if (stubbedChars(text) !== undefined) continue;
     const name = calls.get(ref.id)?.name ?? "tool";
+    // A capped result already names its full text's file; saving the head
+    // would point the model at a copy that only points on.
+    const capped = cappedSource(text);
     const stub = clearedStub(
       name,
-      ref.chars,
-      spillToolResultParts(spill, name, text, images),
+      original,
+      capped
+        ? [capped.savedAt, ...spillToolResultParts(spill, name, "", images)]
+        : spillToolResultParts(spill, name, text, images),
     );
     block.content = stub;
     freedChars += Math.max(0, ref.chars - stub.length);
