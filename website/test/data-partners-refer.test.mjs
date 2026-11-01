@@ -12,9 +12,15 @@ import { treeFor } from "./support/locale-tree.mjs";
 
 const { share } = dataPartners.model;
 
-test("the referral pays the reference amount at the estimator's share", () => {
+test("refer amounts are the reference figures at the estimator's share", () => {
   assert.equal(refer.pay(100000), Math.round(100000 * share));
-  assert.equal(refer.amountUsd, refer.pay(100000));
+});
+
+test("the headline amount is 10% of the most an open request pays", () => {
+  const top = Math.max(...referListings.items.map((i) => i.dealMaxUsd));
+  assert.equal(refer.topDealUsd, top);
+  assert.equal(refer.headlineShare, 0.1);
+  assert.equal(refer.amountUsd, Math.round(top * 0.1));
 });
 
 test("no referral earns more than the program's top amount", () => {

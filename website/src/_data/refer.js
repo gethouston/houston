@@ -2,6 +2,7 @@
 // _data/i18n/refer/* (surfaced as `t.refer`). Arrays here zip by index with
 // the i18n arrays, the same contract _data/enterprise.js keeps.
 
+import { REQUESTS } from "../../lib/refer-requests.js";
 import dataPartners from "./dataPartners.js";
 import locales from "./locales.js";
 
@@ -11,7 +12,11 @@ import locales from "./locales.js";
 // on /data-partners, so the two pages quote one program.
 const pay = (referenceUsd) =>
   Math.round(referenceUsd * dataPartners.model.share);
-const amountUsd = pay(100000);
+// The headline "up to" figure: this share of the most any open request pays
+// the company.
+const headlineShare = 0.1;
+const topDealUsd = Math.max(...REQUESTS.map((r) => pay(r.dealMaxUsd)));
+const amountUsd = Math.round(topDealUsd * headlineShare);
 
 const money = (lang, n) =>
   new Intl.NumberFormat(lang, {
@@ -31,6 +36,8 @@ export default {
   people: ["felipe", "julian"],
 
   pay,
+  headlineShare,
+  topDealUsd,
   amountUsd,
   // A company qualifies at the /data-partners bar (the FAQ's 20 full-time
   // employees); a referral earns the full amount from fullAmountEmployees up
