@@ -89,6 +89,8 @@ for (const code of ["en", "es", "pt"]) {
     const referral = tree.dataPartners.faq.items.find((item) => item.link);
     assert.ok(referral.a.includes("{amount}"));
     assert.ok(tree.dataPartners.requests.referLine.includes("{amount}"));
-    assert.ok(!/\d/.test(referral.a), referral.a);
+    const percent = `${refer.headlineShare * 100}%`;
+    assert.ok(referral.a.includes(percent), referral.a);
+    assert.ok(!/\d/.test(referral.a.replaceAll(percent, "")), referral.a);
   });
 }

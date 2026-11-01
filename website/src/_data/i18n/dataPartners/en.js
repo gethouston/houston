@@ -201,7 +201,7 @@ export default {
       },
       {
         q: "How do referral rewards work?",
-        a: "Introduce a company that qualifies and you can earn up to {amount}, paid after its first data delivery. Send it through our referral page so it is credited to you.",
+        a: "Introduce a company that qualifies and you earn 10% of the amount we agree to pay it, up to {amount} on today's open requests, paid after its first data delivery. Send it through our referral page so it is credited to you.",
         link: "Refer a company",
       },
       {

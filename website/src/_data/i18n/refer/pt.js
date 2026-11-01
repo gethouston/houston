@@ -23,7 +23,7 @@ export default {
       label: "Você ganha até",
       per: "por empresa",
       terms: [
-        "Valor integral para empresas com 30 ou mais funcionários",
+        "10% do valor que acordarmos pagar à empresa",
         "Confirmado quando a empresa assina a licença de dados",
         "Pago após a primeira entrega",
       ],
@@ -145,8 +145,8 @@ export default {
       {
         title: "Como você recebe",
         lines: [
-          "Até {amount} por empresa. A empresa precisa de pelo menos 20 funcionários em tempo integral para se qualificar. A partir de 30 funcionários você recebe o valor integral do pedido, e de 20 a 29 uma parte proporcional ao porte.",
-          "Cada pedido mostra seu próprio valor: 10% do máximo que esse pedido paga à empresa, fixado no momento da indicação.",
+          "Você recebe 10% do valor que acordarmos pagar à empresa pelos dados, qualquer que seja o porte, até {amount} nos pedidos abertos de hoje. A empresa precisa de pelo menos 20 funcionários em tempo integral para se qualificar.",
+          "Cada pedido mostra o máximo que você pode ganhar com ele: 10% do máximo que esse pedido paga à empresa.",
           "Confirmamos o valor quando a empresa assina a licença de dados. Até lá, nada é devido.",
           "Pago após a primeira entrega da empresa.",
         ],
@@ -174,7 +174,7 @@ export default {
     items: [
       {
         q: "Quanto posso ganhar?",
-        a: "Até {amount} por empresa. A empresa precisa de pelo menos 20 funcionários em tempo integral para se qualificar. A partir de 30 funcionários você recebe o valor integral do pedido, e de 20 a 29 uma parte proporcional ao porte.",
+        a: "Você recebe 10% do valor que acordarmos pagar à empresa pelos dados, qualquer que seja o porte, até {amount} nos pedidos abertos de hoje. A empresa precisa de pelo menos 20 funcionários em tempo integral para se qualificar.",
       },
       {
         q: "Quando eu recebo?",
@@ -182,7 +182,7 @@ export default {
       },
       {
         q: "Como é definido o valor de cada pedido?",
-        a: "É 10% do máximo que esse pedido paga à empresa. Você o vê em cada pedido, e ele fica fixo no momento da indicação.",
+        a: "Cada pedido mostra 10% do máximo que paga à empresa, para você ver o máximo que pode ganhar. O que você recebe é 10% do valor que realmente acordarmos com a empresa.",
       },
       {
         q: "Preciso conhecer alguém lá?",

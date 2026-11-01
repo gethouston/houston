@@ -60,7 +60,7 @@ export default {
     termsLink: "Read all the terms",
     sidebar: {
       referral: "Referral amount",
-      referralNote: "Set for this request",
+      referralNote: "10% of what the company is paid",
       bonusKinds: {
         fast_signing: "Fast-signing bonus",
         listing: "Listing bonus",

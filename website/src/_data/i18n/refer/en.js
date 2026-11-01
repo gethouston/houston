@@ -25,7 +25,7 @@ export default {
       label: "You earn up to",
       per: "per company",
       terms: [
-        "Full amount for companies with 30+ employees",
+        "10% of what we agree to pay the company",
         "Confirmed when the company signs its data license",
         "Paid after their first delivery",
       ],
@@ -147,8 +147,8 @@ export default {
       {
         title: "How you're paid",
         lines: [
-          "Up to {amount} per company. The company needs at least 20 full-time employees to qualify. From 30 employees you earn the request's full amount, and from 20 to 29 a share in proportion to its size.",
-          "Each request shows its own amount: 10% of the most that request pays the company, fixed when you refer.",
+          "You earn 10% of the amount we agree to pay the company for its data, whatever its size, up to {amount} on today's open requests. The company needs at least 20 full-time employees to qualify.",
+          "Each request shows the most you can earn on it: 10% of the most that request pays the company.",
           "We confirm the amount once the company signs its data license. Nothing is owed until then.",
           "Paid after the company's first delivery.",
         ],
@@ -176,7 +176,7 @@ export default {
     items: [
       {
         q: "How much can I earn?",
-        a: "Up to {amount} per company. The company needs at least 20 full-time employees to qualify. From 30 employees you earn the request's full amount, and from 20 to 29 a share in proportion to its size.",
+        a: "You earn 10% of the amount we agree to pay the company for its data, whatever its size, up to {amount} on today's open requests. The company needs at least 20 full-time employees to qualify.",
       },
       {
         q: "When do I get paid?",
@@ -184,7 +184,7 @@ export default {
       },
       {
         q: "How is the amount for each request set?",
-        a: "It is 10% of the most that request pays the company. You see it on every request, and it is fixed when you refer.",
+        a: "Each request shows 10% of the most it pays the company, so you see the most you can earn. What you are paid is 10% of the amount we actually agree with the company.",
       },
       {
         q: "Do I need to know someone there?",

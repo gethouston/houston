@@ -198,7 +198,7 @@ export default {
       },
       {
         q: "Como funcionam as recompensas por indicação?",
-        a: "Se você nos apresentar uma empresa qualificada, pode ganhar até {amount}, pagos depois da primeira entrega de dados. Envie pela nossa página de indicações para que fique no seu nome.",
+        a: "Se você nos apresentar uma empresa qualificada, recebe 10% do valor que acordarmos pagar a ela, até {amount} nos pedidos abertos de hoje, pagos depois da primeira entrega de dados. Envie pela nossa página de indicações para que fique no seu nome.",
         link: "Indique uma empresa",
       },
       {

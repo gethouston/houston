@@ -58,7 +58,7 @@ export default {
     termsLink: "Leer todas las condiciones",
     sidebar: {
       referral: "Monto de la recomendación",
-      referralNote: "Fijado para esta solicitud",
+      referralNote: "El 10% de lo que se paga a la empresa",
       bonusKinds: {
         fast_signing: "Bono por firma rápida",
         listing: "Bono de la solicitud",

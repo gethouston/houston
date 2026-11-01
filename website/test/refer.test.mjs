@@ -54,15 +54,16 @@ for (const code of ["en", "es", "pt"]) {
   });
 
   // The figure is written once, in _data/refer.js; the copy states the
-  // headcount and the open-referral cap in words, so hold those to it.
+  // referral share in words, so hold it to that.
   test(`${code}: the copy states the program's terms`, () => {
     assert.equal(
       Number(refer.amountText[code].replace(/\D/g, "")),
       refer.amountUsd,
     );
-    const headcount = String(refer.fullAmountEmployees);
-    assert.ok(copy.hero.card.terms[0].includes(headcount));
-    assert.ok(copy.terms.groups[0].lines[0].includes(headcount));
+    const percent = `${refer.headlineShare * 100}%`;
+    assert.ok(copy.hero.card.terms[0].includes(percent));
+    assert.ok(copy.terms.groups[0].lines[0].includes(percent));
+    assert.ok(copy.faq.items[0].a.includes(percent));
     assert.ok(copy.faq.items[0].a.includes("{amount}"));
   });
 

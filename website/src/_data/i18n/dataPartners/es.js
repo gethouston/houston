@@ -198,7 +198,7 @@ export default {
       },
       {
         q: "¿Cómo funcionan las recompensas por recomendación?",
-        a: "Si nos presentas una empresa que califica, puedes ganar hasta {amount}, que se pagan después de su primera entrega de datos. Envíala por nuestra página de recomendaciones para que quede a tu nombre.",
+        a: "Si nos presentas una empresa que califica, recibes el 10% del monto que acordemos pagarle, hasta {amount} en las solicitudes abiertas de hoy, y se paga después de su primera entrega de datos. Envíala por nuestra página de recomendaciones para que quede a tu nombre.",
         link: "Recomienda una empresa",
       },
       {

@@ -40,10 +40,9 @@ export default {
   topDealUsd,
   amountUsd,
   // A company qualifies at the /data-partners bar (the FAQ's 20 full-time
-  // employees); a referral earns the full amount from fullAmountEmployees up
-  // and a pro-rata share between the two.
+  // employees). Past it, size changes nothing: a referral earns
+  // headlineShare of the amount agreed with the company.
   minEmployees: 20,
-  fullAmountEmployees: 30,
   maxOpenReferrals: 5,
   // The amount, formatted per locale, for every {amount} in the copy.
   amountText: Object.fromEntries(

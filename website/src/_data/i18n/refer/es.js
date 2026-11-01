@@ -24,7 +24,7 @@ export default {
       label: "Ganas hasta",
       per: "por empresa",
       terms: [
-        "Monto completo para empresas de 30 o más empleados",
+        "El 10% de lo que acordemos pagar a la empresa",
         "Se confirma cuando la empresa firma su licencia de datos",
         "Se paga tras su primera entrega",
       ],
@@ -146,8 +146,8 @@ export default {
       {
         title: "Cómo se te paga",
         lines: [
-          "Hasta {amount} por empresa. La empresa necesita al menos 20 empleados de tiempo completo para calificar. Desde 30 empleados recibes el monto completo de la solicitud, y de 20 a 29 una parte proporcional a su tamaño.",
-          "Cada solicitud muestra su propio monto: el 10% de lo máximo que esa solicitud paga a la empresa, fijado al momento de recomendar.",
+          "Recibes el 10% del monto que acordemos pagar a la empresa por sus datos, sin importar su tamaño, hasta {amount} en las solicitudes abiertas de hoy. La empresa necesita al menos 20 empleados de tiempo completo para calificar.",
+          "Cada solicitud muestra lo máximo que puedes ganar con ella: el 10% de lo máximo que esa solicitud paga a la empresa.",
           "Confirmamos el monto cuando la empresa firma su licencia de datos. Hasta entonces no se debe nada.",
           "Se paga tras la primera entrega de la empresa.",
         ],
@@ -175,7 +175,7 @@ export default {
     items: [
       {
         q: "¿Cuánto puedo ganar?",
-        a: "Hasta {amount} por empresa. La empresa necesita al menos 20 empleados de tiempo completo para calificar. Desde 30 empleados recibes el monto completo de la solicitud, y de 20 a 29 una parte proporcional a su tamaño.",
+        a: "Recibes el 10% del monto que acordemos pagar a la empresa por sus datos, sin importar su tamaño, hasta {amount} en las solicitudes abiertas de hoy. La empresa necesita al menos 20 empleados de tiempo completo para calificar.",
       },
       {
         q: "¿Cuándo me pagan?",
@@ -183,7 +183,7 @@ export default {
       },
       {
         q: "¿Cómo se define el monto de cada solicitud?",
-        a: "Es el 10% de lo máximo que esa solicitud paga a la empresa. Lo ves en cada solicitud y queda fijo al recomendar.",
+        a: "Cada solicitud muestra el 10% de lo máximo que paga a la empresa, así ves lo máximo que puedes ganar. Lo que recibes es el 10% del monto que realmente acordemos con la empresa.",
       },
       {
         q: "¿Necesito conocer a alguien allí?",
