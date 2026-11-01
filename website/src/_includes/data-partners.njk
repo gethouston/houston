@@ -1,0 +1,77 @@
+{# The /data-partners page, one layout for all three locales, on the
+   /enterprise contract: text from `t.dataPartners`
+   (_data/i18n/dataPartners/<lang>.js), structure from `dataPartners`
+   (_data/dataPartners.js), language from directory data. The page files are
+   stubs that only set the permalink.
+
+   It wears the /enterprise look: the same hero reel, nav chrome, tone flow,
+   photographs, type, pills and closing scene (enterprise*.css,
+   enterprise-*.js), plus its own sections in data-partners*.css. #}
+{% extends "base.njk" %}
+{% set d = t.dataPartners %}
+{% set localePath = dataPartners.path %}
+{% block title %}{{ d.meta.title }}{% endblock %}
+{% block meta %}
+<meta name="description" content="{{ d.meta.description }}">
+<meta property="og:type" content="website">
+<meta property="og:url" content="https://gethouston.ai{{ locale.dir }}{{ dataPartners.path }}">
+<meta property="og:title" content="{{ d.meta.title }}">
+<meta property="og:description" content="{{ d.meta.description }}">
+<meta property="og:site_name" content="Houston">
+<meta property="og:locale" content="{{ locale.ogLocale }}">
+{%- for code in locales.order %}{% if code != locale.code %}
+<meta property="og:locale:alternate" content="{{ locales[code].ogLocale }}">
+{%- endif %}{% endfor %}
+<meta name="twitter:card" content="summary_large_image">
+<meta name="twitter:title" content="{{ d.meta.title }}">
+<meta name="twitter:description" content="{{ d.meta.description }}">
+{%- for code in locales.order %}
+<link rel="alternate" hreflang="{{ locales[code].hreflang }}" href="https://gethouston.ai{{ locales[code].dir }}{{ dataPartners.path }}">
+{%- endfor %}
+<link rel="alternate" hreflang="x-default" href="https://gethouston.ai/{{ dataPartners.path }}">
+{% endblock %}
+{% block headScripts %}
+<script>document.documentElement.className += " js";</script>
+{% endblock %}
+{% block stylesheets %}
+{# The first clip's poster frame is the LCP, as on /enterprise. #}
+<link rel="preload" as="image" type="image/webp" href="{{ dataPartners.reelDir }}/{{ dataPartners.reel[0] }}.webp" fetchpriority="high">
+<link rel="stylesheet" href="/assets/css/site-tokens.css">
+<link rel="stylesheet" href="/assets/css/landing.css">
+<link rel="stylesheet" href="/assets/css/landing-app-window.css">
+<link rel="stylesheet" href="/assets/css/landing-hero.css">
+<link rel="stylesheet" href="/assets/css/landing-multiplayer.css">
+<link rel="stylesheet" href="/assets/css/landing-splits.css">
+<link rel="stylesheet" href="/assets/css/landing-motion.css">
+<link rel="stylesheet" href="/assets/css/download-gate.css">
+<link rel="stylesheet" href="/assets/css/dl-dropdown.css">
+<link rel="stylesheet" href="/assets/css/lang-switch.css">
+<link rel="stylesheet" href="/assets/css/enterprise.css">
+<link rel="stylesheet" href="/assets/css/enterprise-hero.css">
+<link rel="stylesheet" href="/assets/css/enterprise-problem.css">
+<link rel="stylesheet" href="/assets/css/enterprise-flow.css">
+<link rel="stylesheet" href="/assets/css/data-partners.css">
+<link rel="stylesheet" href="/assets/css/data-partners-sections.css">
+{% endblock %}
+{% block body %}
+{% include "data-partners/nav.njk" %}
+<main id="main">
+{% include "data-partners/hero.njk" %}
+{% include "data-partners/statement.njk" %}
+{% include "data-partners/why.njk" %}
+{% include "data-partners/how.njk" %}
+{% include "data-partners/estimator.njk" %}
+{% include "data-partners/payouts.njk" %}
+{% include "data-partners/privacy.njk" %}
+{% include "data-partners/faq.njk" %}
+{% include "data-partners/contact.njk" %}
+</main>
+{% include "landing/footer.njk" %}
+{% include "landing/download-modals.njk" %}
+{% include "landing/subpage-scripts.njk" %}
+{% include "enterprise/scripts.njk" %}
+<script type="module" src="/assets/data-partners-estimator.js"></script>
+<script defer src="/assets/enterprise-reel.js"></script>
+<script defer src="/assets/vendor/lenis.min.js"></script>
+<script defer src="/assets/enterprise-flow.js"></script>
+{% endblock %}

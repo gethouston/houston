@@ -11,6 +11,9 @@ import test from "node:test";
 import { fileURLToPath } from "node:url";
 import computed from "../src/_data/eleventyComputed.js";
 import enterprise from "../src/_data/enterprise.js";
+import dataPartnersEn from "../src/_data/i18n/dataPartners/en.js";
+import dataPartnersEs from "../src/_data/i18n/dataPartners/es.js";
+import dataPartnersPt from "../src/_data/i18n/dataPartners/pt.js";
 import en from "../src/_data/i18n/en.js";
 import enterpriseEn from "../src/_data/i18n/enterprise/en.js";
 import enterpriseEs from "../src/_data/i18n/enterprise/es.js";
@@ -26,6 +29,7 @@ const i18n = {
   es,
   pt,
   enterprise: { en: enterpriseEn, es: enterpriseEs, pt: enterprisePt },
+  dataPartners: { en: dataPartnersEn, es: dataPartnersEs, pt: dataPartnersPt },
 };
 // Exactly what a page gets as `t`, through the real computed-data function.
 const treeFor = (lang) =>

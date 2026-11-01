@@ -1,0 +1,44 @@
+{% from "enterprise/icons.njk" import arrow %}
+{%- set est = t.dataPartners.estimator -%}
+{%- set ex = dataPartners.exampleText[locale.code] -%}
+{%- set lim = dataPartners.limits -%}
+{# The estimator, its own section: sliders and the region left, the range
+   right. The employees slider moves on a log scale (assets/payout-model.js
+   employeesAt), so the markup holds positions, and
+   assets/data-partners-estimator.js turns them into people and dollars.
+   Without JS the default range stands. #}
+<section id="estimate" class="section ent-section dp-estimate" data-tone="light" aria-labelledby="dp-est-title">
+  <div class="ent-head reveal">
+    <h2 class="sec-title" id="dp-est-title">{{ est.title }}</h2>
+    <p class="sec-lead split-line">{{ est.lead }}</p>
+  </div>
+  <div class="dp-est reveal reveal-d1" data-estimator>
+    <form class="dp-est-controls">
+      <div class="dp-slider">
+        <div class="dp-slider-head"><label for="dp-employees">{{ est.employees }}</label><output for="dp-employees" data-show="employees">{{ dataPartners.defaults.employees }}</output></div>
+        <input id="dp-employees" name="employees" type="range" min="0" max="{{ dataPartners.slider.steps }}" step="1" value="{{ dataPartners.slider.start }}" aria-valuetext="{{ dataPartners.defaults.employees }}">
+        <div class="dp-slider-ends" aria-hidden="true"><span>{{ dataPartners.employeesEnds[locale.code].min }}</span><span>{{ dataPartners.employeesEnds[locale.code].max }}</span></div>
+      </div>
+      <div class="dp-slider">
+        <div class="dp-slider-head"><label for="dp-years">{{ est.years }}</label><output for="dp-years" data-show="years">{{ dataPartners.defaults.years }}</output></div>
+        <input id="dp-years" name="years" type="range" min="{{ lim.years.min }}" max="{{ lim.years.max }}" step="1" value="{{ dataPartners.defaults.years }}" aria-describedby="dp-years-hint">
+        <p class="dp-slider-hint" id="dp-years-hint">{{ est.yearsHint }}</p>
+      </div>
+      <fieldset class="dp-regions">
+        <legend>{{ est.region }}</legend>
+        <div class="dp-choices">
+{%- for region in dataPartners.regionOrder %}
+          <label class="dp-choice"><input type="radio" name="region" value="{{ region }}"{% if region == dataPartners.defaults.region %} checked{% endif %}><span>{{ est.regions[loop.index0] }}</span></label>
+{%- endfor %}
+        </div>
+      </fieldset>
+    </form>
+    <div class="dp-est-result">
+      <p class="dp-est-label">{{ est.result }}</p>
+      <p class="dp-est-figure" aria-live="polite"><span data-out="low">{{ ex.low }}</span><span class="dp-est-to">{{ est.to }}</span><span data-out="high">{{ ex.high }}</span></p>
+      <p class="dp-est-note">{{ est.note }}</p>
+      <a class="btn btn-ink dp-est-cta" href="{{ dataPartners.booking }}" target="_blank" rel="noopener">{{ est.cta }}{{ arrow() }}</a>
+    </div>
+    <script type="application/json" data-model>{{ dataPartners.model | jsonScript | safe }}</script>
+  </div>
+</section>

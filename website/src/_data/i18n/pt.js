@@ -44,6 +44,7 @@ export default {
     vision: "Visão",
     changelog: "Novidades",
     enterprise: "Empresas",
+    dataPartners: "Parceiros de dados",
     github: "GitHub",
     githubLabel: "Houston no GitHub",
     download: "Baixar",
