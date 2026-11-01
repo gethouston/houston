@@ -13,7 +13,7 @@
 ] -%}
 <a class="skip-link" href="#main">{{ t.nav.skip }}</a>
 <nav class="lnav" id="lnav" aria-label="{{ t.nav.primary }}">
-  <a class="lnav-brand" href="{{ localeRoot }}">Houston</a>
+  <a class="lnav-brand" href="{{ localeRoot }}{{ dataPartners.path }}">Houston</a>
   <div class="lnav-links">
     {%- for link in links %}
     <a href="{{ link[0] }}">{{ link[1] }}</a>
