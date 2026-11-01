@@ -7,10 +7,10 @@
 {%- set selected = item.slug if item else "" -%}
 {#- One labelled field. Optional fields say so beside the label; every field
     owns an error line the script fills (assets/refer-form.js). -#}
-{%- macro field(name, label, type, auto, placeholder, optional) %}
+{%- macro field(name, label, type, auto, placeholder, optional, mode) %}
         <div class="rf-field">
           <label for="rf-{{ name }}">{{ label }}{% if optional %} <span class="rf-optional">{{ f.optional }}</span>{% endif %}</label>
-          <input id="rf-{{ name }}" name="{{ name }}" type="{{ type }}"{% if auto %} autocomplete="{{ auto }}"{% endif %}{% if placeholder %} placeholder="{{ placeholder }}"{% endif %}{% if not optional %} required{% endif %} aria-describedby="rf-{{ name }}-error">
+          <input id="rf-{{ name }}" name="{{ name }}" type="{{ type }}"{% if mode %} inputmode="{{ mode }}"{% endif %}{% if auto %} autocomplete="{{ auto }}"{% endif %}{% if placeholder %} placeholder="{{ placeholder }}"{% endif %}{% if not optional %} required{% endif %} aria-describedby="rf-{{ name }}-error">
           <p class="rf-error" id="rf-{{ name }}-error" hidden></p>
         </div>
 {%- endmacro -%}
@@ -61,40 +61,14 @@
             </select>
           </div>
 {{ field("companyName", f.companyName, "text", "organization") }}
-          <div class="rf-row">
 {{ field("website", f.website, "text", "url", f.websitePlaceholder) }}
-            <div class="rf-field">
-              <label for="rf-size">{{ f.size }}</label>
-              <select id="rf-size" name="size" required aria-describedby="rf-size-error">
-                <option value="">{{ f.sizeChoose }}</option>
-{%- for value in refer.sizes %}
-                <option value="{{ value }}">{{ f.sizes[loop.index0] }}</option>
-{%- endfor %}
-              </select>
-              <p class="rf-error" id="rf-size-error" hidden></p>
-            </div>
-          </div>
-        </fieldset>
-
-        <fieldset class="rf-group">
-          <legend>{{ f.contact }}</legend>
-          <p class="rf-hint">{{ f.contactHint }}</p>
           <div class="rf-row">
-{{ field("contactName", f.contactName, "text", "off") }}
-{{ field("contactEmail", f.contactEmail, "email", "off") }}
-          </div>
-{{ field("contactLinkedin", f.contactLinkedin, "text", "off", f.linkedinPlaceholder, true) }}
-          <div class="rf-field">
-            <label for="rf-fit">{{ f.fit }} <span class="rf-optional">{{ f.optional }}</span></label>
-            <textarea id="rf-fit" name="fit" rows="3" placeholder="{{ f.fitPlaceholder }}"></textarea>
+{{ field("size", f.size, "text", "off", f.sizePlaceholder) }}
+{{ field("years", f.years, "text", "off", f.yearsPlaceholder, false, "numeric") }}
           </div>
         </fieldset>
 
         <p class="rf-consent">{{ f.consent }} <a href="/privacy/#referrals">{{ f.privacy }}</a></p>
-        <div class="rf-check-field">
-          <label class="rf-check" for="rf-consent"><input id="rf-consent" name="consent" type="checkbox" required aria-describedby="rf-consent-error"><span>{{ f.consentCheck }}</span></label>
-          <p class="rf-error" id="rf-consent-error" hidden></p>
-        </div>
         {#- Left empty by people; a bot that fills every field is dropped. -#}
         <div class="rf-trap" aria-hidden="true"><label for="rf-trap">Leave this empty</label><input id="rf-trap" name="trap" type="text" tabindex="-1" autocomplete="off"></div>
         <button class="rf-submit" type="submit" data-sending="{{ f.sending }}">{{ f.submit }}</button>
@@ -127,8 +101,7 @@
     labels: {
       listing: f.listing,
       yourName: f.yourName, yourEmail: f.yourEmail, companyName: f.companyName,
-      website: f.website, size: f.size, contactName: f.contactName,
-      contactEmail: f.contactEmail, contactLinkedin: f.contactLinkedin, fit: f.fit
+      website: f.website, size: f.size, years: f.years
     }
   } | jsonScript | safe }}</script>
 </section>

@@ -12,7 +12,13 @@ import { fileURLToPath } from "node:url";
 import referEn from "../src/_data/i18n/refer/en.js";
 import landing from "../src/_data/landing.js";
 import refer from "../src/_data/refer.js";
-import { composeMail, siteHost, validate } from "../src/assets/refer-model.js";
+import {
+  composeMail,
+  MAX_SIZE_LENGTH,
+  MAX_YEARS,
+  siteHost,
+  validate,
+} from "../src/assets/refer-model.js";
 import { treeFor } from "./support/locale-tree.mjs";
 
 const src = resolve(dirname(fileURLToPath(import.meta.url)), "../src");
@@ -29,7 +35,6 @@ for (const code of ["en", "es", "pt"]) {
     const pairs = [
       ["categories", refer.categories, copy.companies.categories],
       ["steps", refer.steps, copy.how.steps],
-      ["sizes", refer.sizes, copy.form.sizes],
       ["states", refer.states, copy.track.states],
     ];
     for (const [name, structure, text] of pairs) {
@@ -76,32 +81,25 @@ test("the page is built at the path its alternates point to", () => {
   }
 });
 
-const sizes = refer.sizes;
 const valid = {
   yourName: "Ana Ruiz",
   yourEmail: "ana@gmail.com",
   companyName: "Acme",
   website: "https://www.Acme.com/about",
-  size: "50-199",
-  contactName: "Bo Li",
-  contactEmail: "bo@acme.com",
-  contactLinkedin: "",
-  fit: "",
-  consent: true,
+  size: "about 120",
+  years: "12",
 };
 
 test("a complete referral passes", () => {
-  assert.deepEqual(validate(valid, sizes), {});
+  assert.deepEqual(validate(valid), {});
 });
 
 test("an empty form names every required field, and no optional one", () => {
-  assert.deepEqual(Object.keys(validate({}, sizes)).sort(), [
+  assert.deepEqual(Object.keys(validate({})).sort(), [
     "companyName",
-    "consent",
-    "contactEmail",
-    "contactName",
     "size",
     "website",
+    "years",
     "yourEmail",
     "yourName",
   ]);
@@ -116,42 +114,25 @@ test("a website is read as its bare host", () => {
 
 test("referring your own company is refused on the website", () => {
   const own = { ...valid, yourEmail: "ana@acme.com" };
-  assert.deepEqual(validate(own, sizes), { website: "sameCompany" });
+  assert.deepEqual(validate(own), { website: "sameCompany" });
   const sub = { ...valid, yourEmail: "ana@mail.acme.com" };
-  assert.deepEqual(validate(sub, sizes), { website: "sameCompany" });
+  assert.deepEqual(validate(sub), { website: "sameCompany" });
   const lookalike = { ...valid, yourEmail: "ana@notacme.com" };
-  assert.deepEqual(validate(lookalike, sizes), {});
+  assert.deepEqual(validate(lookalike), {});
 });
 
-test("a LinkedIn link is optional, but must be a profile when given", () => {
-  for (const ok of [
-    "linkedin.com/in/boli",
-    "https://www.linkedin.com/in/bo-li/",
-  ]) {
-    assert.deepEqual(
-      validate({ ...valid, contactLinkedin: ok }, sizes),
-      {},
-      ok,
-    );
-  }
-  const bad = { ...valid, contactLinkedin: "twitter.com/boli" };
-  assert.deepEqual(validate(bad, sizes), {
-    contactLinkedin: "contactLinkedin",
-  });
+test("the company size is the referrer's own words, within reason", () => {
+  for (const size of ["120", "200-500", "about 120 people"])
+    assert.deepEqual(validate({ ...valid, size }), {}, size);
+  for (const size of ["", "   ", "x".repeat(MAX_SIZE_LENGTH + 1)])
+    assert.deepEqual(validate({ ...valid, size }), { size: "size" });
 });
 
-test("a referral needs the contact's OK, ticked, not just any value", () => {
-  for (const consent of [false, "on", undefined]) {
-    assert.deepEqual(validate({ ...valid, consent }, sizes), {
-      consent: "consent",
-    });
-  }
-});
-
-test("a size outside the list is refused", () => {
-  assert.deepEqual(validate({ ...valid, size: "lots" }, sizes), {
-    size: "size",
-  });
+test("years in business is a whole number of years", () => {
+  for (const years of ["0", "12", " 45 ", String(MAX_YEARS)])
+    assert.deepEqual(validate({ ...valid, years }), {}, years);
+  for (const years of ["", "12.5", "about 12", "-3", String(MAX_YEARS + 1)])
+    assert.deepEqual(validate({ ...valid, years }), { years: "years" }, years);
 });
 
 test("the email names the company and carries every filled field", () => {
@@ -163,20 +144,15 @@ test("the email names the company and carries every filled field", () => {
       companyName: form.companyName,
       website: form.website,
       size: form.size,
-      contactName: form.contactName,
-      contactEmail: form.contactEmail,
-      contactLinkedin: form.contactLinkedin,
-      fit: form.fit,
+      years: form.years,
     },
   };
-  const mail = composeMail({ ...valid, fit: "We met at a conference." }, copy);
+  const mail = composeMail(valid, copy);
   assert.equal(mail.subject, "Referral: Acme");
   assert.ok(mail.href.startsWith(`mailto:${refer.inbox}?subject=`));
   assert.match(mail.body, /^Referred by: Ana Ruiz <ana@gmail\.com>/);
   assert.match(mail.body, /Company website: acme\.com/);
-  assert.match(
-    mail.body,
-    /Why are they a good fit\?: We met at a conference\./,
-  );
-  assert.doesNotMatch(mail.body, /LinkedIn/);
+  assert.match(mail.body, /Number of employees: about 120/);
+  assert.match(mail.body, /Years in business: 12/);
+  assert.doesNotMatch(mail.body, /Request:/);
 });

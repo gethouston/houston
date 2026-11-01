@@ -1,8 +1,8 @@
 // Where a referral goes: the row the form builds (assets/refer-model.js),
 // the requests it makes (assets/refer-send.js), and the table it lands in
 // (supabase/migrations/*_data_referrals.sql). The SQL is read here so the
-// columns the public site may write, and the sizes the table accepts, stay
-// the ones the form sends.
+// columns the public site may write stay the ones the form sends, and the
+// statuses the table allows cover the page's referral tracker.
 
 import assert from "node:assert/strict";
 import { readdirSync, readFileSync } from "node:fs";
@@ -20,7 +20,7 @@ const granted = /grant insert \(([^)]*)\) on public\.data_referrals/
   .exec(sql)[1]
   .split(",")
   .map((c) => c.trim());
-const sizeCheck = /company_size in \(([^)]*)\)/
+const statuses = /status in \(([^)]*)\)/
   .exec(sql)[1]
   .split(",")
   .map((v) => v.trim().replace(/'/g, ""));
@@ -31,12 +31,8 @@ const input = {
   listing: "law-firm",
   companyName: "Acme",
   website: "https://www.Acme.com/about",
-  size: "50-199",
-  contactName: "Bo Li",
-  contactEmail: "bo@acme.com",
-  contactLinkedin: "",
-  fit: "",
-  consent: true,
+  size: " about 120 ",
+  years: "12",
 };
 const where = { locale: "es", page: "/es/data-partners/refer/" };
 const row = referralRow(input, where);
@@ -65,17 +61,16 @@ test("the row carries exactly the columns the public site may write", () => {
   assert.deepEqual(Object.keys(row).sort(), [...granted].sort());
 });
 
-test("the table accepts exactly the sizes the form offers", () => {
-  assert.deepEqual(sizeCheck, refer.sizes);
+test("the table allows every state the referral tracker shows", () => {
+  for (const state of refer.states) assert.ok(statuses.includes(state), state);
 });
 
 test("the row is trimmed, the website is its host, empty optionals are null", () => {
   assert.equal(row.referrer_name, "Ana Ruiz");
   assert.equal(row.company_website, "acme.com");
   assert.equal(row.listing, "law-firm");
-  assert.equal(row.contact_linkedin, null);
-  assert.equal(row.fit, null);
-  assert.equal(row.contact_consent, true);
+  assert.equal(row.company_size, "about 120");
+  assert.equal(row.years_in_business, 12);
   assert.equal(row.locale, "es");
   assert.equal(row.page, "/es/data-partners/refer/");
   assert.equal(referralRow({ ...input, listing: "" }, where).listing, null);

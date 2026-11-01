@@ -51,7 +51,7 @@ export default {
     tools: "Herramientas con las que trabajamos",
     questionsTitle: "Preguntas que le haremos a la empresa",
     questionsLead:
-      "Si tu contacto puede responderlas, la empresa probablemente es una buena recomendación.",
+      "Si la empresa puede responderlas, probablemente es una buena recomendación.",
     howTitle: "Cómo funcionan las recomendaciones",
     onListing: "En esta solicitud",
     upTo: "Hasta {amount}",
@@ -67,12 +67,12 @@ export default {
       bonusLine:
         "Se paga a ti y a la empresa si firma su licencia de datos dentro del día siguiente a la aprobación.",
       cta: "Recomendar una empresa",
-      ctaNote: "Toma dos minutos. Solo necesitas un contacto allí.",
+      ctaNote: "Toma más o menos un minuto. No necesitas un contacto.",
       yours: "¿Es tu empresa?",
       yoursCta: "Licencia tus datos",
     },
     formTitle: "Recomienda una empresa para esta solicitud.",
     formLead:
-      "Comparte la empresa y un contacto allí. Nosotros nos encargamos del acercamiento.",
+      "Comparte la empresa y algunos datos. Nosotros nos encargamos del acercamiento.",
   },
 };

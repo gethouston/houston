@@ -39,7 +39,7 @@ export default {
       },
       {
         title: "Indique",
-        line: "Compartilhe a empresa e um contato lá, em cerca de dois minutos.",
+        line: "Compartilhe a empresa e alguns dados sobre ela, em cerca de um minuto.",
       },
       {
         title: "Nós fazemos o trabalho",
@@ -70,7 +70,7 @@ export default {
   },
   refer: {
     title: "Indique uma empresa.",
-    lead: "Compartilhe a empresa e um contato lá. Nós cuidamos da abordagem.",
+    lead: "Compartilhe a empresa e alguns dados. Nós cuidamos da abordagem.",
   },
   track: {
     title: "Depois da indicação",
@@ -103,52 +103,30 @@ export default {
     website: "Site da empresa",
     websitePlaceholder: "acme.com",
     size: "Número de funcionários",
-    sizeChoose: "Escolha um porte",
-    sizes: [
-      "1 a 19",
-      "20 a 49",
-      "50 a 199",
-      "200 a 499",
-      "500 a 999",
-      "1.000 a 4.999",
-      "5.000+",
-    ],
+    sizePlaceholder: "Cerca de 120",
+    years: "Anos de atuação",
+    yearsPlaceholder: "12",
     listing: "Solicitação",
     listingNone: "Não está na lista",
-    contact: "Seu contato lá",
-    contactHint:
-      "Enviamos a apresentação por e-mail, então precisamos de um nome e um endereço.",
-    contactName: "Nome do contato",
-    contactEmail: "E-mail do contato",
-    contactLinkedin: "LinkedIn do contato",
-    linkedinPlaceholder: "linkedin.com/in/nome",
-    fit: "Por que eles são uma boa opção?",
-    fitPlaceholder: "Como você os conhece, que tipo de dados eles têm",
     optional: "Opcional",
     consent:
-      "Podemos entrar em contato com a pessoa indicada para apresentar a Houston. Indique apenas quem gostaria disso.",
+      "Nós entramos em contato com a empresa e mantemos você informado a cada etapa.",
     submit: "Enviar indicação",
     privacy: "Como tratamos esses dados.",
-    consentCheck:
-      "Tenho a permissão dessa pessoa para compartilhar os dados dela com a Houston.",
     sending: "Enviando…",
     saved: {
       title: "Recebemos sua indicação.",
       line: "Nós a revisamos e avisamos você por email a cada etapa, da análise ao pagamento.",
     },
     errors: {
+      size: "Diga mais ou menos quantas pessoas trabalham lá.",
+      years: "Digite os anos de atuação como um número inteiro, como 12.",
       yourName: "Seu nome é obrigatório.",
       yourEmail: "Digite um e-mail válido.",
       companyName: "O nome da empresa é obrigatório.",
       website: "Digite um site válido, como acme.com.",
-      size: "Escolha o porte da empresa.",
-      contactName: "O nome do contato é obrigatório.",
-      contactEmail: "Digite um e-mail válido.",
-      contactLinkedin: "Digite um link válido, como linkedin.com/in/nome.",
       sameCompany:
         "Você não pode indicar sua própria empresa. Ela pode entrar diretamente como parceira de dados.",
-      consent:
-        "Confirme que essa pessoa concorda em ser contatada pela Houston.",
     },
     mail: {
       subject: "Indicação: {company}",
@@ -185,7 +163,7 @@ export default {
       {
         title: "Bom saber",
         lines: [
-          "Podemos entrar em contato com a pessoa indicada para apresentar a Houston. Indique apenas quem gostaria disso.",
+          "Nós entramos em contato com a empresa para apresentar a Houston.",
           "A Houston decide se uma empresa se encaixa e pode recusar qualquer indicação.",
         ],
       },
@@ -208,11 +186,11 @@ export default {
       },
       {
         q: "Preciso conhecer alguém lá?",
-        a: "Sim. Compartilhe um contato que possa falar sobre os dados da empresa, geralmente um fundador, um executivo ou um líder de operações.",
+        a: "Ajuda, mas não é obrigatório. Diga qual é a empresa e nós entramos em contato.",
       },
       {
         q: "O que acontece depois da indicação?",
-        a: "Analisamos a empresa e entramos em contato com a pessoa indicada. Enviamos um e-mail a cada avanço: enviada, em andamento, recompensa confirmada, paga.",
+        a: "Analisamos a empresa e entramos em contato com ela. Enviamos um e-mail a cada avanço: enviada, em andamento, recompensa confirmada, paga.",
       },
       {
         q: "E se alguém indicou antes?",

@@ -5,13 +5,7 @@
 // shows the "ready to send" panel instead. Without JS the form posts the raw
 // fields to the program inbox (its mailto action).
 
-import {
-  CHECKS,
-  composeMail,
-  FIELDS,
-  referralRow,
-  validate,
-} from "./refer-model.js";
+import { composeMail, FIELDS, referralRow, validate } from "./refer-model.js";
 import { sendReferral } from "./refer-send.js";
 
 const form = document.querySelector("[data-refer-form]");
@@ -28,25 +22,18 @@ if (form && done && copyNode) {
         .map((option) => [option.value, option.textContent]),
     ),
   };
-  const sizes = Array.from(form.elements.size.options)
-    .map((option) => option.value)
-    .filter(Boolean);
   let tried = false;
 
   const submit = form.querySelector('[type="submit"]');
   const submitLabel = submit.textContent;
 
-  const values = () => ({
-    ...Object.fromEntries(
+  const values = () =>
+    Object.fromEntries(
       FIELDS.map((name) => [name, form.elements[name]?.value ?? ""]),
-    ),
-    ...Object.fromEntries(
-      CHECKS.map((name) => [name, form.elements[name]?.checked === true]),
-    ),
-  });
+    );
 
   const show = (errors) => {
-    for (const name of [...FIELDS, ...CHECKS]) {
+    for (const name of FIELDS) {
       const input = form.elements[name];
       const line = document.getElementById(`rf-${name}-error`);
       if (!input || !line) continue;
@@ -60,7 +47,7 @@ if (form && done && copyNode) {
 
   // After the first attempt, errors clear as the visitor fixes them.
   form.addEventListener("input", () => {
-    if (tried) show(validate(values(), sizes));
+    if (tried) show(validate(values()));
   });
 
   const finish = (outcome) => {
@@ -81,9 +68,9 @@ if (form && done && copyNode) {
     if (submit.disabled) return;
     tried = true;
     const input = values();
-    const errors = validate(input, sizes);
+    const errors = validate(input);
     show(errors);
-    const first = [...FIELDS, ...CHECKS].find((name) => errors[name]);
+    const first = FIELDS.find((name) => errors[name]);
     if (first) {
       form.elements[first].focus();
       return;

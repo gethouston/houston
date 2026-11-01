@@ -33,11 +33,7 @@ const COLUMNS = [
   ["Company", "company_name"],
   ["Website", "company_website"],
   ["Employees", "company_size"],
-  ["Contact name", "contact_name"],
-  ["Contact email", "contact_email"],
-  ["Contact LinkedIn", "contact_linkedin"],
-  ["Why a fit", "fit"],
-  ["Contact consent", "contact_consent"],
+  ["Years in business", "years_in_business"],
   ["Language", "locale"],
   ["Page", "page"],
 ];
@@ -81,7 +77,6 @@ function tab() {
 // Text a spreadsheet will not run: a leading = + - @ would make a formula.
 function cell(value) {
   if (value === null || value === undefined) return "";
-  if (typeof value === "boolean") return value ? "yes" : "no";
   const text = String(value).slice(0, MAX_CELL);
   return /^[=+\-@]/.test(text) ? `'${text}` : text;
 }

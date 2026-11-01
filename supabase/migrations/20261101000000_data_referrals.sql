@@ -10,15 +10,14 @@
 -- counts" is decided by the team from created_at, and a conflict answer would
 -- tell a stranger that someone else already referred that company.
 --
--- company_size holds the form's values (website/src/_data/refer.js `sizes`);
--- website/test/refer-send.test.mjs holds the two lists, and the granted
--- columns, to each other.
+-- website/test/refer-send.test.mjs holds the granted columns to the row the
+-- form sends, and the status values to the page's referral tracker.
 
 create table if not exists public.data_referrals (
   id uuid primary key default gen_random_uuid(),
   created_at timestamptz not null default now(),
   status text not null default 'submitted'
-    check (status in ('submitted', 'in_progress', 'bonus_confirmed', 'paid', 'declined')),
+    check (status in ('submitted', 'in_progress', 'reward_confirmed', 'paid', 'declined')),
 
   referrer_name text not null check (char_length(referrer_name) between 1 and 200),
   referrer_email text not null check (char_length(referrer_email) between 3 and 320),
@@ -29,16 +28,9 @@ create table if not exists public.data_referrals (
   company_name text not null check (char_length(company_name) between 1 and 200),
   -- The bare host ("acme.com"), already normalized by the form.
   company_website text not null check (char_length(company_website) between 3 and 253),
-  company_size text not null
-    check (company_size in ('1-19', '20-49', '50-199', '200-499', '500-999', '1000-4999', '5000+')),
-
-  contact_name text not null check (char_length(contact_name) between 1 and 200),
-  contact_email text not null check (char_length(contact_email) between 3 and 320),
-  contact_linkedin text check (char_length(contact_linkedin) <= 300),
-  fit text check (char_length(fit) <= 2000),
-  -- The referrer confirmed the contact is happy to hear from Houston. The
-  -- form will not send without it.
-  contact_consent boolean not null check (contact_consent),
+  -- The referrer's own words for the head count ("about 120", "200-500").
+  company_size text not null check (char_length(company_size) between 1 and 60),
+  years_in_business integer not null check (years_in_business between 0 and 300),
 
   locale text check (locale in ('en', 'es', 'pt')),
   page text check (char_length(page) <= 300)
@@ -66,11 +58,7 @@ grant insert (
   company_name,
   company_website,
   company_size,
-  contact_name,
-  contact_email,
-  contact_linkedin,
-  fit,
-  contact_consent,
+  years_in_business,
   locale,
   page
 ) on public.data_referrals to anon, authenticated;

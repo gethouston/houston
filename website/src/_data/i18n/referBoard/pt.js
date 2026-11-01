@@ -51,7 +51,7 @@ export default {
     tools: "Ferramentas com que trabalhamos",
     questionsTitle: "Perguntas que faremos à empresa",
     questionsLead:
-      "Se o seu contato souber responder, a empresa provavelmente é uma boa indicação.",
+      "Se a empresa souber responder, provavelmente é uma boa indicação.",
     howTitle: "Como funcionam as indicações",
     onListing: "Nesta solicitação",
     upTo: "Até {amount}",
@@ -67,12 +67,12 @@ export default {
       bonusLine:
         "Pago a você e à empresa se ela assinar a licença de dados em até um dia após a aprovação.",
       cta: "Indicar uma empresa",
-      ctaNote: "Leva dois minutos. Você só precisa de um contato lá.",
+      ctaNote: "Leva cerca de um minuto. Não precisa de um contato.",
       yours: "Esta empresa é sua?",
       yoursCta: "Licencie seus dados",
     },
     formTitle: "Indique uma empresa para esta solicitação.",
     formLead:
-      "Compartilhe a empresa e um contato lá. Nós cuidamos da abordagem.",
+      "Compartilhe a empresa e alguns dados. Nós cuidamos da abordagem.",
   },
 };

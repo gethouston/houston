@@ -41,7 +41,7 @@ export default {
       },
       {
         title: "Refer them",
-        line: "Share the company and one contact there, in about two minutes.",
+        line: "Share the company and a few details about it, in about a minute.",
       },
       {
         title: "We do the work",
@@ -72,7 +72,7 @@ export default {
   },
   refer: {
     title: "Refer a company.",
-    lead: "Share the company and one contact there. We handle the outreach.",
+    lead: "Share the company and a few details. We handle the outreach.",
   },
   track: {
     title: "After you refer",
@@ -105,51 +105,30 @@ export default {
     website: "Company website",
     websitePlaceholder: "acme.com",
     size: "Number of employees",
-    sizeChoose: "Choose a size",
-    sizes: [
-      "1 to 19",
-      "20 to 49",
-      "50 to 199",
-      "200 to 499",
-      "500 to 999",
-      "1,000 to 4,999",
-      "5,000+",
-    ],
+    sizePlaceholder: "About 120",
+    years: "Years in business",
+    yearsPlaceholder: "12",
     listing: "Request",
     listingNone: "Not on the list",
-    contact: "Your contact there",
-    contactHint:
-      "We email them the introduction, so we need a name and an address.",
-    contactName: "Contact name",
-    contactEmail: "Contact email",
-    contactLinkedin: "Contact LinkedIn",
-    linkedinPlaceholder: "linkedin.com/in/name",
-    fit: "Why are they a good fit?",
-    fitPlaceholder: "How you know them, what kind of data they hold",
     optional: "Optional",
     consent:
-      "We may contact the person you name to introduce Houston. Only refer people who would welcome that.",
+      "We reach out to the company ourselves and keep you posted as it moves.",
     submit: "Send referral",
     privacy: "How we handle these details.",
-    consentCheck:
-      "I have this person's OK to share their details with Houston.",
     sending: "Sending…",
     saved: {
       title: "We have your referral.",
       line: "We review it and email you as it moves, from review to payout.",
     },
     errors: {
+      size: "Tell us roughly how many people work there.",
+      years: "Enter the years in business as a whole number, like 12.",
       yourName: "Your name is required.",
       yourEmail: "Enter a valid email address.",
       companyName: "Company name is required.",
       website: "Enter a valid website, like acme.com.",
-      size: "Choose a company size.",
-      contactName: "Contact name is required.",
-      contactEmail: "Enter a valid email address.",
-      contactLinkedin: "Enter a valid link, like linkedin.com/in/name.",
       sameCompany:
         "You can't refer your own company. It can join as a data partner itself.",
-      consent: "Confirm that this person is happy to hear from Houston.",
     },
     mail: {
       subject: "Referral: {company}",
@@ -186,7 +165,7 @@ export default {
       {
         title: "Good to know",
         lines: [
-          "We may contact the person you name to introduce Houston. Only refer people who would welcome that.",
+          "We reach out to the company ourselves to introduce Houston.",
           "Houston decides whether a company is a fit and may decline any referral.",
         ],
       },
@@ -209,11 +188,11 @@ export default {
       },
       {
         q: "Do I need to know someone there?",
-        a: "Yes. Share a contact who can talk about the company's data, usually a founder, an executive or an operations lead.",
+        a: "It helps, but you don't have to. Tell us the company and we reach out ourselves.",
       },
       {
         q: "What happens after I refer?",
-        a: "We review the company and reach out to your contact. We email you as it moves: submitted, in progress, reward confirmed, paid.",
+        a: "We review the company and reach out to it. We email you as it moves: submitted, in progress, reward confirmed, paid.",
       },
       {
         q: "What if someone referred them first?",

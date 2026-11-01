@@ -53,7 +53,7 @@ export default {
     tools: "Tools we work with",
     questionsTitle: "Questions we'll ask the company",
     questionsLead:
-      "If your contact can answer these, the company is likely a good referral.",
+      "If the company can answer these, it is likely a good referral.",
     howTitle: "How referrals work",
     onListing: "On this request",
     upTo: "Up to {amount}",
@@ -69,12 +69,11 @@ export default {
       bonusLine:
         "Paid to you and to the company if it signs its data license within a day of approval.",
       cta: "Refer a company",
-      ctaNote: "Takes two minutes. You only need a contact there.",
+      ctaNote: "Takes about a minute. No contact needed.",
       yours: "Is this your company?",
       yoursCta: "License your data",
     },
     formTitle: "Refer a company for this request.",
-    formLead:
-      "Share the company and one contact there. We handle the outreach.",
+    formLead: "Share the company and a few details. We handle the outreach.",
   },
 };

@@ -67,17 +67,6 @@ export default {
   ],
   // Zips with t.refer.how.steps.
   steps: ["find", "refer", "work", "paid"],
-  // Zips with t.refer.form.sizes: the value the email carries, the same in
-  // every language.
-  sizes: [
-    "1-19",
-    "20-49",
-    "50-199",
-    "200-499",
-    "500-999",
-    "1000-4999",
-    "5000+",
-  ],
   // Zips with t.refer.track.states.
-  states: ["submitted", "in_progress", "bonus_confirmed", "paid"],
+  states: ["submitted", "in_progress", "reward_confirmed", "paid"],
 };

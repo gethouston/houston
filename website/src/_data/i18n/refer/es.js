@@ -40,7 +40,7 @@ export default {
       },
       {
         title: "Recomiéndala",
-        line: "Comparte la empresa y un contacto allí, en unos dos minutos.",
+        line: "Comparte la empresa y algunos datos sobre ella, en más o menos un minuto.",
       },
       {
         title: "Nosotros hacemos el trabajo",
@@ -71,7 +71,7 @@ export default {
   },
   refer: {
     title: "Recomienda una empresa.",
-    lead: "Comparte la empresa y un contacto allí. Nosotros nos encargamos del acercamiento.",
+    lead: "Comparte la empresa y algunos datos. Nosotros nos encargamos del acercamiento.",
   },
   track: {
     title: "Después de recomendar",
@@ -104,52 +104,30 @@ export default {
     website: "Sitio web de la empresa",
     websitePlaceholder: "acme.com",
     size: "Número de empleados",
-    sizeChoose: "Elige un tamaño",
-    sizes: [
-      "1 a 19",
-      "20 a 49",
-      "50 a 199",
-      "200 a 499",
-      "500 a 999",
-      "1.000 a 4.999",
-      "5.000+",
-    ],
+    sizePlaceholder: "Unos 120",
+    years: "Años en operación",
+    yearsPlaceholder: "12",
     listing: "Solicitud",
     listingNone: "No está en la lista",
-    contact: "Tu contacto allí",
-    contactHint:
-      "Le enviamos la presentación por correo, así que necesitamos un nombre y una dirección.",
-    contactName: "Nombre del contacto",
-    contactEmail: "Correo del contacto",
-    contactLinkedin: "LinkedIn del contacto",
-    linkedinPlaceholder: "linkedin.com/in/nombre",
-    fit: "¿Por qué son una buena opción?",
-    fitPlaceholder: "Cómo los conoces, qué tipo de datos tienen",
     optional: "Opcional",
     consent:
-      "Podemos contactar a la persona que nombres para presentarle Houston. Recomienda solo a personas que lo agradecerían.",
+      "Nosotros contactamos a la empresa y te mantenemos al tanto a medida que avanza.",
     submit: "Enviar recomendación",
     privacy: "Cómo tratamos estos datos.",
-    consentCheck:
-      "Tengo el permiso de esta persona para compartir sus datos con Houston.",
     sending: "Enviando…",
     saved: {
       title: "Recibimos tu recomendación.",
       line: "La revisamos y te escribimos a medida que avanza, desde la revisión hasta el pago.",
     },
     errors: {
+      size: "Dinos más o menos cuántas personas trabajan ahí.",
+      years: "Escribe los años en operación como un número entero, como 12.",
       yourName: "Tu nombre es obligatorio.",
       yourEmail: "Escribe un correo válido.",
       companyName: "El nombre de la empresa es obligatorio.",
       website: "Escribe un sitio web válido, como acme.com.",
-      size: "Elige el tamaño de la empresa.",
-      contactName: "El nombre del contacto es obligatorio.",
-      contactEmail: "Escribe un correo válido.",
-      contactLinkedin: "Escribe un enlace válido, como linkedin.com/in/nombre.",
       sameCompany:
         "No puedes recomendar tu propia empresa. Puede sumarse como socio de datos directamente.",
-      consent:
-        "Confirma que esta persona está de acuerdo en que Houston la contacte.",
     },
     mail: {
       subject: "Recomendación: {company}",
@@ -186,7 +164,7 @@ export default {
       {
         title: "Bueno saber",
         lines: [
-          "Podemos contactar a la persona que nombres para presentarle Houston. Recomienda solo a personas que lo agradecerían.",
+          "Nosotros contactamos a la empresa para presentarle Houston.",
           "Houston decide si una empresa encaja y puede rechazar cualquier recomendación.",
         ],
       },
@@ -209,11 +187,11 @@ export default {
       },
       {
         q: "¿Necesito conocer a alguien allí?",
-        a: "Sí. Comparte un contacto que pueda hablar de los datos de la empresa, normalmente un fundador, un directivo o un líder de operaciones.",
+        a: "Ayuda, pero no es necesario. Dinos qué empresa es y nosotros la contactamos.",
       },
       {
         q: "¿Qué pasa después de recomendar?",
-        a: "Revisamos la empresa y contactamos a tu contacto. Te escribimos a medida que avanza: enviada, en curso, recompensa confirmada, pagada.",
+        a: "Revisamos la empresa y la contactamos. Te escribimos a medida que avanza: enviada, en curso, recompensa confirmada, pagada.",
       },
       {
         q: "¿Y si alguien la recomendó antes?",
