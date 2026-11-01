@@ -204,3 +204,31 @@
     transition: none;
   }
 }
+
+/* ── Requests: a sample of the refer board (refer-board.css cards) ─────── */
+.rf-listings.dp-requests-list {
+  margin-top: clamp(40px, 6vw, 80px);
+}
+.dp-requests-all {
+  margin-top: 24px;
+}
+/* The referral door under the sample: a line left, the ink pill right. */
+.dp-refer-band {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: space-between;
+  gap: 20px 32px;
+  margin-top: clamp(40px, 5vw, 64px);
+  padding: clamp(24px, 3vw, 36px);
+  border-radius: var(--panel-radius);
+  background: var(--panel);
+}
+.dp-refer-band .dp-col-line {
+  margin-top: 6px;
+  max-width: 52ch;
+}
+.dp-faq-link {
+  margin: -10px 0 26px;
+  padding-top: 0;
+}

@@ -14,6 +14,7 @@ export default {
     payouts: "Pagos",
     privacy: "Privacidad",
     faq: "Preguntas",
+    refer: "Recomienda una empresa",
     cta: "Agenda una llamada",
   },
 
@@ -59,6 +60,17 @@ export default {
         line: "Procedimientos, flujos de logística y despacho, inventario y procesos internos.",
       },
     ],
+  },
+
+  requests: {
+    title: "Lo que piden los laboratorios de IA.",
+    lead: "Algunas de las solicitudes abiertas de laboratorios de IA hoy. Si una se parece a tu empresa, tus datos ya tienen demanda.",
+    companyEarns: "Tu empresa gana",
+    all: "Ver las {count} solicitudes",
+    referTitle: "¿Conoces una empresa que encaje?",
+    referLine:
+      "Preséntala a Houston y gana hasta {amount} cuando licencie sus datos.",
+    referCta: "Recomienda una empresa",
   },
 
   how: {
@@ -186,7 +198,8 @@ export default {
       },
       {
         q: "¿Cómo funcionan las recompensas por recomendación?",
-        a: "Si nos presentas una empresa que califica, puedes ganar US$50K o más. Envíala por nuestro proceso de recomendación para que quede a tu nombre; la recompensa se paga a medida que esa empresa alcanza sus hitos de ingresos con nosotros.",
+        a: "Si nos presentas una empresa que califica, puedes ganar hasta {amount}, que se pagan después de su primera entrega de datos. Envíala por nuestra página de recomendaciones para que quede a tu nombre.",
+        link: "Recomienda una empresa",
       },
       {
         q: "¿Qué pasa después de recomendar una empresa?",

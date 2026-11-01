@@ -1,0 +1,64 @@
+{# One request's own page (/data-partners/refer/<slug>/), the card's "open"
+   on the board. One layout for every request and all three locales: the
+   stubs in src/data-partners/refer/ (and es/, pt/) paginate over
+   `referListings.items` with the alias `item`. Text from
+   `t.referListings[item.slug]` and `t.referBoard.listing`, amounts already
+   formatted in `item.fmt`.
+
+   The /enterprise look without the tone flow: a dark header band, then a
+   light page with the payout card held beside the brief, then the same
+   referral form as the board page, the request already chosen. #}
+{% extends "base.njk" %}
+{% set c = t.referListings[item.slug] %}
+{% set f = item.fmt[locale.code] %}
+{% set here = refer.path + item.slug + "/" %}
+{% set localePath = here %}
+{% set title = t.referBoard.listing.metaTitle | replace("{title}", c.title) | replace("{amount}", f.earn) %}
+{% block title %}{{ title }}{% endblock %}
+{% block meta %}
+<meta name="description" content="{{ c.summary }}">
+<meta property="og:type" content="website">
+<meta property="og:url" content="https://gethouston.ai{{ locale.dir }}{{ here }}">
+<meta property="og:title" content="{{ title }}">
+<meta property="og:description" content="{{ c.summary }}">
+<meta property="og:site_name" content="Houston">
+<meta property="og:locale" content="{{ locale.ogLocale }}">
+<meta name="twitter:card" content="summary_large_image">
+<meta name="twitter:title" content="{{ title }}">
+<meta name="twitter:description" content="{{ c.summary }}">
+{%- for code in locales.order %}
+<link rel="alternate" hreflang="{{ locales[code].hreflang }}" href="https://gethouston.ai{{ locales[code].dir }}{{ here }}">
+{%- endfor %}
+<link rel="alternate" hreflang="x-default" href="https://gethouston.ai/{{ here }}">
+{% endblock %}
+{% block headScripts %}
+<script>document.documentElement.className += " js";</script>
+{% endblock %}
+{% block stylesheets %}
+<link rel="stylesheet" href="/assets/css/site-tokens.css">
+<link rel="stylesheet" href="/assets/css/landing.css">
+<link rel="stylesheet" href="/assets/css/landing-motion.css">
+<link rel="stylesheet" href="/assets/css/download-gate.css">
+<link rel="stylesheet" href="/assets/css/dl-dropdown.css">
+<link rel="stylesheet" href="/assets/css/lang-switch.css">
+<link rel="stylesheet" href="/assets/css/enterprise.css">
+<link rel="stylesheet" href="/assets/css/refer.css">
+<link rel="stylesheet" href="/assets/css/refer-form.css">
+<link rel="stylesheet" href="/assets/css/refer-listing.css">
+{% endblock %}
+{% block body %}
+{% include "refer/nav.njk" %}
+<main id="main">
+{% include "refer/listing-head.njk" %}
+<div class="rf-lpage">
+{% include "refer/listing-aside.njk" %}
+{% include "refer/listing-body.njk" %}
+</div>
+{% include "refer/form.njk" %}
+</main>
+{% include "landing/footer.njk" %}
+{% include "landing/download-modals.njk" %}
+{% include "landing/subpage-scripts.njk" %}
+{% include "enterprise/scripts.njk" %}
+<script type="module" src="/assets/refer-form.js"></script>
+{% endblock %}

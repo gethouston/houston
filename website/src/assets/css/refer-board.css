@@ -1,0 +1,319 @@
+/*
+ * /data-partners/refer — the request board: industry tabs and a search on
+ * one row, then a grid of request cards. Light dress by default, .is-dark
+ * while the page's tone flow (enterprise-flow.js) has the section dark.
+ */
+
+.rf-board {
+  margin-top: clamp(40px, 6vw, 72px);
+}
+.rf-board-bar {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: flex-end;
+  justify-content: space-between;
+  gap: 16px 32px;
+  border-bottom: 1px solid var(--line);
+}
+
+/* ── Industry tabs: a glyph over a name, the chosen one underlined ───── */
+.rf-tabs {
+  display: flex;
+  gap: clamp(18px, 2.6vw, 34px);
+  overflow-x: auto;
+  scrollbar-width: none;
+}
+.rf-tabs::-webkit-scrollbar {
+  display: none;
+}
+.rf-tab {
+  flex: none;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 8px;
+  padding: 4px 0 14px;
+  border: 0;
+  border-bottom: 2px solid transparent;
+  margin-bottom: -1px;
+  background: none;
+  color: var(--ink-muted);
+  font: 500 13.5px/1.2 var(--sans);
+  white-space: nowrap;
+  cursor: pointer;
+}
+.rf-tab svg {
+  width: 22px;
+  height: 22px;
+}
+.rf-tab:hover {
+  color: var(--ink-strong);
+}
+.rf-tab[aria-pressed="true"] {
+  color: var(--ink-strong);
+  border-bottom-color: var(--ink-strong);
+}
+.rf-tab:focus-visible {
+  outline: 2px solid var(--focus);
+  outline-offset: 2px;
+  border-radius: 6px;
+}
+
+/* ── Search ─────────────────────────────────────────────────────────── */
+.rf-search {
+  position: relative;
+  display: flex;
+  align-items: center;
+  width: min(280px, 100%);
+  margin-bottom: 12px;
+}
+.rf-search svg {
+  position: absolute;
+  left: 14px;
+  width: 16px;
+  height: 16px;
+  color: var(--ink-subtle);
+  pointer-events: none;
+}
+.rf-search input {
+  width: 100%;
+  height: 42px;
+  padding: 0 14px 0 38px;
+  border: 1px solid var(--line-strong);
+  border-radius: 999px;
+  background: var(--card);
+  color: var(--ink-strong);
+  font: 400 14.5px/1 var(--sans);
+}
+.rf-search input:focus-visible {
+  outline: 2px solid var(--focus);
+  outline-offset: 1px;
+}
+.rf-count {
+  margin-top: 20px;
+  font-size: 13.5px;
+  color: var(--ink-subtle);
+}
+
+/* ── Request cards ──────────────────────────────────────────────────── */
+.rf-listings {
+  list-style: none;
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 14px;
+  margin-top: 14px;
+}
+.rf-listing[hidden] {
+  display: none;
+}
+.rf-listing-link {
+  display: flex;
+  flex-direction: column;
+  height: 100%;
+  padding: clamp(18px, 1.8vw, 22px);
+  border: 1px solid var(--line);
+  border-radius: 18px;
+  background: var(--card);
+  color: var(--ink-strong);
+  transition: border-color var(--dur-fast) var(--ease-standard),
+    transform var(--dur-fast) var(--ease-entrance);
+}
+.rf-listing-link:hover {
+  border-color: var(--line-strong);
+}
+.rf-listing-link:focus-visible {
+  outline: 2px solid var(--focus);
+  outline-offset: 2px;
+}
+.rf-listing-meta,
+.rf-listing-company {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  min-width: 0;
+  font-size: 13px;
+  color: var(--ink-subtle);
+}
+.rf-listing-meta span {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.rf-listing-meta svg,
+.rf-listing-company svg {
+  flex: none;
+  width: 14px;
+  height: 14px;
+}
+.rf-listing-title {
+  margin-top: 10px;
+  font-size: 17px;
+  font-weight: 600;
+  letter-spacing: -0.01em;
+  line-height: 1.3;
+}
+.rf-listing-summary {
+  display: -webkit-box;
+  -webkit-box-orient: vertical;
+  -webkit-line-clamp: 2;
+  overflow: hidden;
+  min-height: 2.9em;
+  margin-top: 6px;
+  font-size: 14px;
+  line-height: 1.45;
+  color: var(--ink-muted);
+}
+.rf-listing-pay {
+  display: flex;
+  align-items: flex-end;
+  justify-content: space-between;
+  gap: 12px;
+  margin-top: auto;
+  padding-top: 18px;
+  border-top: 1px solid var(--line);
+  margin-block-start: 18px;
+}
+.rf-listing-label {
+  font-size: 12.5px;
+  color: var(--ink-subtle);
+}
+.rf-listing-earn {
+  margin-top: 2px;
+  font-size: 24px;
+  font-weight: 600;
+  letter-spacing: -0.02em;
+  line-height: 1.1;
+  font-variant-numeric: tabular-nums;
+}
+.rf-chip {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  margin-top: 8px;
+  padding: 3px 9px;
+  border-radius: 999px;
+  background: var(--panel-raised);
+  font-size: 12px;
+  font-weight: 500;
+  color: var(--ink-strong);
+}
+.rf-chip svg {
+  width: 12px;
+  height: 12px;
+}
+.rf-listing-go {
+  flex: none;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 34px;
+  height: 34px;
+  border: 1px solid var(--line-strong);
+  border-radius: 999px;
+  transition: background-color var(--dur-fast) var(--ease-standard),
+    color var(--dur-fast) var(--ease-standard);
+}
+.rf-listing-go svg {
+  width: 14px;
+  height: 14px;
+}
+.rf-listing-link:hover .rf-listing-go {
+  background: var(--ink-strong);
+  color: #fff;
+}
+.rf-listing-company {
+  margin-top: 14px;
+}
+.rf-listing-company strong {
+  font-weight: 600;
+  color: var(--ink-strong);
+}
+.rf-empty {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: 16px;
+  padding: 40px 0 8px;
+  color: var(--ink-muted);
+}
+.rf-empty[hidden] {
+  display: none;
+}
+
+/* ── On the black band ──────────────────────────────────────────────── */
+.is-dark .rf-board-bar {
+  border-color: var(--line-on-ink);
+}
+.is-dark .rf-tab {
+  color: var(--on-ink-muted);
+}
+.is-dark .rf-tab:hover,
+.is-dark .rf-tab[aria-pressed="true"] {
+  color: #fff;
+}
+.is-dark .rf-tab[aria-pressed="true"] {
+  border-bottom-color: #fff;
+}
+.is-dark .rf-search input {
+  border-color: var(--line-on-ink);
+  background: rgba(255, 255, 255, 0.05);
+  color: #fff;
+}
+.is-dark .rf-search input::placeholder,
+.is-dark .rf-search svg,
+.is-dark .rf-count,
+.is-dark .rf-empty {
+  color: var(--on-ink-muted);
+}
+.is-dark .rf-listing-link {
+  border-color: var(--line-on-ink);
+  background: rgba(255, 255, 255, 0.04);
+  color: #fff;
+}
+.is-dark .rf-listing-link:hover {
+  border-color: rgba(255, 255, 255, 0.32);
+}
+.is-dark .rf-listing-meta,
+.is-dark .rf-listing-company,
+.is-dark .rf-listing-label,
+.is-dark .rf-listing-summary {
+  color: var(--on-ink-muted);
+}
+.is-dark .rf-listing-pay {
+  border-color: var(--line-on-ink);
+}
+.is-dark .rf-chip {
+  background: rgba(255, 255, 255, 0.1);
+  color: #fff;
+}
+.is-dark .rf-listing-go {
+  border-color: var(--line-on-ink);
+}
+.is-dark .rf-listing-link:hover .rf-listing-go {
+  background: #fff;
+  color: var(--ink-strong);
+}
+.is-dark .rf-listing-company strong {
+  color: #fff;
+}
+
+@media (max-width: 960px) {
+  .rf-listings {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+}
+@media (max-width: 640px) {
+  /* minmax(0, ...): a card's one-line meta must not widen the column. */
+  .rf-listings {
+    grid-template-columns: minmax(0, 1fr);
+  }
+  .rf-search {
+    width: 100%;
+  }
+}
+@media (prefers-reduced-motion: reduce) {
+  .rf-listing-link,
+  .rf-listing-go {
+    transition: none;
+  }
+}

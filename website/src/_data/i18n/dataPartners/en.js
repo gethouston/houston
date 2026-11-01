@@ -16,6 +16,7 @@ export default {
     payouts: "Payouts",
     privacy: "Privacy",
     faq: "FAQ",
+    refer: "Refer a company",
     cta: "Book a call",
   },
 
@@ -62,6 +63,17 @@ export default {
         line: "SOPs, fulfillment and logistics flows, inventory and internal processes.",
       },
     ],
+  },
+
+  requests: {
+    title: "What AI labs are asking for.",
+    lead: "A few of the open requests from AI labs right now. If one sounds like your company, your data is already in demand.",
+    companyEarns: "Your company earns",
+    all: "See all {count} requests",
+    referTitle: "Know a company that fits?",
+    referLine:
+      "Introduce it to Houston and earn up to {amount} when it licenses its data.",
+    referCta: "Refer a company",
   },
 
   how: {
@@ -189,7 +201,8 @@ export default {
       },
       {
         q: "How do referral rewards work?",
-        a: "Bring us a qualified company and you can earn $50K or more. Submit it through our referral process so it is credited to you; the reward is paid as that company reaches its revenue milestones with us.",
+        a: "Introduce a company that qualifies and you can earn up to {amount}, paid after its first data delivery. Send it through our referral page so it is credited to you.",
+        link: "Refer a company",
       },
       {
         q: "What happens after a company is referred?",

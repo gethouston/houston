@@ -1,3 +1,4 @@
+{% from "enterprise/icons.njk" import arrow %}
 {%- set f = t.dataPartners.faq -%}
 {%- macro chevron() %}<svg class="dp-faq-chevron" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" aria-hidden="true"><path d="M6 9l6 6 6-6"/></svg>{% endmacro -%}
 {# Questions: one flat list of native disclosures, so every answer opens
@@ -8,7 +9,10 @@
 {%- for item in f.items %}
     <details class="dp-faq-item">
       <summary>{{ item.q }}{{ chevron() }}</summary>
-      <p>{{ item.a }}</p>
+      <p>{{ item.a | replace("{amount}", refer.amountText[locale.code]) }}</p>
+{%- if item.link %}
+      <a class="dp-link dp-faq-link" href="{{ localeRoot }}{{ refer.path }}">{{ item.link }}{{ arrow() }}</a>
+{%- endif %}
     </details>
 {%- endfor %}
   </div>

@@ -1,0 +1,115 @@
+{%- set r = t.refer -%}
+{%- set f = r.form -%}
+{%- set mailto = "mailto:" + refer.inbox -%}
+{#- On a request's own page (`item` is its pagination alias) the form is for
+    that request: its own heading, and the request already chosen. -#}
+{%- set lp = t.referBoard.listing -%}
+{%- set selected = item.slug if item else "" -%}
+{#- One labelled field. Optional fields say so beside the label; every field
+    owns an error line the script fills (assets/refer-form.js). -#}
+{%- macro field(name, label, type, auto, placeholder, optional) %}
+        <div class="rf-field">
+          <label for="rf-{{ name }}">{{ label }}{% if optional %} <span class="rf-optional">{{ f.optional }}</span>{% endif %}</label>
+          <input id="rf-{{ name }}" name="{{ name }}" type="{{ type }}"{% if auto %} autocomplete="{{ auto }}"{% endif %}{% if placeholder %} placeholder="{{ placeholder }}"{% endif %}{% if not optional %} required{% endif %} aria-describedby="rf-{{ name }}-error">
+          <p class="rf-error" id="rf-{{ name }}-error" hidden></p>
+        </div>
+{%- endmacro -%}
+{# Refer a company: the form on the right, and on the left what happens to a
+   referral once it is sent, the four states the team emails about.
+
+   There is no referral endpoint yet, so sending composes an email to the
+   program inbox with everything filled in, and the page says so plainly.
+   Without JS the form posts the same fields to that address. #}
+<section id="refer" class="section ent-section rf-refer" data-tone="light">
+  <div class="rf-refer-grid">
+    <div class="rf-refer-copy reveal">
+      <h2 class="sec-title">{{ lp.formTitle if item else r.refer.title }}</h2>
+      <p class="sec-lead">{{ lp.formLead if item else r.refer.lead }}</p>
+      <h3 class="rf-track-title">{{ r.track.title }}</h3>
+      <ol class="rf-track">
+{%- for state in r.track.states %}
+        <li class="rf-track-step" data-state="{{ refer.states[loop.index0] }}">
+          <span class="rf-track-dot" aria-hidden="true"></span>
+          <p class="rf-track-label">{{ state.label }}</p>
+          <p class="rf-track-line">{{ state.line }}</p>
+        </li>
+{%- endfor %}
+      </ol>
+      <p class="rf-track-note">{{ r.track.note }}</p>
+    </div>
+
+    <div class="rf-form-card reveal reveal-d1">
+      <form class="rf-form" id="rf-form" action="{{ mailto }}" method="post" enctype="text/plain" novalidate data-refer-form>
+        <fieldset class="rf-group">
+          <legend>{{ f.you }}</legend>
+          <div class="rf-row">
+{{ field("yourName", f.yourName, "text", "name") }}
+{{ field("yourEmail", f.yourEmail, "email", "email") }}
+          </div>
+        </fieldset>
+
+        <fieldset class="rf-group">
+          <legend>{{ f.company }}</legend>
+          <div class="rf-field">
+            <label for="rf-listing">{{ f.listing }} <span class="rf-optional">{{ f.optional }}</span></label>
+            <select id="rf-listing" name="listing">
+              <option value="">{{ f.listingNone }}</option>
+{%- for entry in referListings.items %}
+              <option value="{{ entry.slug }}"{% if entry.slug == selected %} selected{% endif %}>{{ t.referListings[entry.slug].title }}</option>
+{%- endfor %}
+            </select>
+          </div>
+{{ field("companyName", f.companyName, "text", "organization") }}
+          <div class="rf-row">
+{{ field("website", f.website, "text", "url", f.websitePlaceholder) }}
+            <div class="rf-field">
+              <label for="rf-size">{{ f.size }}</label>
+              <select id="rf-size" name="size" required aria-describedby="rf-size-error">
+                <option value="">{{ f.sizeChoose }}</option>
+{%- for value in refer.sizes %}
+                <option value="{{ value }}">{{ f.sizes[loop.index0] }}</option>
+{%- endfor %}
+              </select>
+              <p class="rf-error" id="rf-size-error" hidden></p>
+            </div>
+          </div>
+        </fieldset>
+
+        <fieldset class="rf-group">
+          <legend>{{ f.contact }}</legend>
+          <p class="rf-hint">{{ f.contactHint }}</p>
+          <div class="rf-row">
+{{ field("contactName", f.contactName, "text", "off") }}
+{{ field("contactEmail", f.contactEmail, "email", "off") }}
+          </div>
+{{ field("contactLinkedin", f.contactLinkedin, "text", "off", f.linkedinPlaceholder, true) }}
+          <div class="rf-field">
+            <label for="rf-fit">{{ f.fit }} <span class="rf-optional">{{ f.optional }}</span></label>
+            <textarea id="rf-fit" name="fit" rows="3" placeholder="{{ f.fitPlaceholder }}"></textarea>
+          </div>
+        </fieldset>
+
+        <p class="rf-consent">{{ f.consent }}</p>
+        <button class="rf-submit" type="submit">{{ f.submit }}</button>
+      </form>
+
+      <div class="rf-done" id="rf-done" role="status" tabindex="-1" hidden>
+        <h3 class="rf-done-title">{{ f.done.title }}</h3>
+        <p>{{ f.done.line }}</p>
+        <p class="rf-done-fallback">{{ f.done.fallback | replace("{inbox}", '<a href="' + mailto + '" data-done-mail>' + refer.inbox + '</a>') | safe }}</p>
+        <button class="rf-again" type="button" data-again>{{ f.done.again }}</button>
+      </div>
+    </div>
+  </div>
+  <script type="application/json" id="rf-copy">{{ {
+    inbox: refer.inbox,
+    errors: f.errors,
+    mail: f.mail,
+    labels: {
+      listing: f.listing,
+      yourName: f.yourName, yourEmail: f.yourEmail, companyName: f.companyName,
+      website: f.website, size: f.size, contactName: f.contactName,
+      contactEmail: f.contactEmail, contactLinkedin: f.contactLinkedin, fit: f.fit
+    }
+  } | jsonScript | safe }}</script>
+</section>

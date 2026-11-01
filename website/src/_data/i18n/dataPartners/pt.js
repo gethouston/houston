@@ -14,6 +14,7 @@ export default {
     payouts: "Pagamentos",
     privacy: "Privacidade",
     faq: "Perguntas",
+    refer: "Indique uma empresa",
     cta: "Agende uma conversa",
   },
 
@@ -59,6 +60,17 @@ export default {
         line: "Procedimentos, fluxos de logística e expedição, estoque e processos internos.",
       },
     ],
+  },
+
+  requests: {
+    title: "O que os laboratórios de IA estão pedindo.",
+    lead: "Alguns dos pedidos abertos de laboratórios de IA agora. Se algum parece com a sua empresa, seus dados já têm demanda.",
+    companyEarns: "Sua empresa recebe",
+    all: "Ver os {count} pedidos",
+    referTitle: "Conhece uma empresa que se encaixa?",
+    referLine:
+      "Apresente-a à Houston e ganhe até {amount} quando ela licenciar seus dados.",
+    referCta: "Indique uma empresa",
   },
 
   how: {
@@ -186,7 +198,8 @@ export default {
       },
       {
         q: "Como funcionam as recompensas por indicação?",
-        a: "Se você nos apresentar uma empresa qualificada, pode ganhar US$50 mil ou mais. Envie pelo nosso processo de indicação para que fique no seu nome; a recompensa é paga conforme essa empresa atinge suas metas de receita conosco.",
+        a: "Se você nos apresentar uma empresa qualificada, pode ganhar até {amount}, pagos depois da primeira entrega de dados. Envie pela nossa página de indicações para que fique no seu nome.",
+        link: "Indique uma empresa",
       },
       {
         q: "O que acontece depois que uma empresa é indicada?",

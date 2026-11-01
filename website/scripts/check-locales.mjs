@@ -15,6 +15,7 @@
 import { existsSync } from "node:fs";
 import { dirname, resolve } from "node:path";
 import { fileURLToPath } from "node:url";
+import { PAGE_TREES } from "../lib/page-trees.js";
 
 const here = dirname(fileURLToPath(import.meta.url));
 const i18nDir = resolve(here, "../src/_data/i18n");
@@ -93,13 +94,13 @@ const checkDashes = (locale, path, value) => {
 };
 
 // A locale's tree as templates see it: <locale>.js, plus the page copy that
-// _data/eleventyComputed.js joins on (`enterprise`, `dataPartners`), so all of
-// it is held to the same parity.
+// _data/eleventyComputed.js joins on (PAGE_TREES), so all of it is held to
+// the same parity.
 const load = async (locale) => {
   const file = resolve(i18nDir, `${locale}.js`);
   if (!existsSync(file)) return null;
   const tree = { ...(await import(`file://${file}`)).default };
-  for (const page of ["enterprise", "dataPartners"]) {
+  for (const page of PAGE_TREES) {
     const file = resolve(i18nDir, page, `${locale}.js`);
     if (existsSync(file)) tree[page] = (await import(`file://${file}`)).default;
   }

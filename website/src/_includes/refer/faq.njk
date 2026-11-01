@@ -1,0 +1,20 @@
+{%- set r = t.refer -%}
+{%- set amt = refer.amountText[locale.code] -%}
+{# Common questions, in the landing's Q&A dress (landing-marketing.css
+   .faq-item): one flat list, every answer closed until asked. #}
+{%- macro chevron() %}<svg class="faq-chevron" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" aria-hidden="true"><path d="M6 9l6 6 6-6"/></svg>{% endmacro -%}
+<section id="faq" class="section ent-section rf-faq" data-tone="light">
+  <div class="faq-head reveal">
+    <h2 class="sec-title">{{ r.faq.title }}</h2>
+  </div>
+  <div class="faq-groups reveal reveal-d1">
+    <div class="faq-list">
+{%- for item in r.faq.items %}
+      <details class="faq-item">
+        <summary>{{ item.q }}{{ chevron() }}</summary>
+        <div class="faq-answer"><p>{{ item.a | replace("{amount}", amt) }}</p></div>
+      </details>
+{%- endfor %}
+    </div>
+  </div>
+</section>
