@@ -75,8 +75,9 @@ test("Houston pays 60% of the reference curve", () => {
 });
 
 test("the estimate matches every US reference point within 2%", () => {
-  // The floor is 2 employees, so the 1-employee points are out of range.
-  for (const [employees, years, low, high] of US.filter(([e]) => e >= 2)) {
+  // Points under the 20-employee floor are out of range.
+  const inRange = ([e]) => e >= LIMITS.employees.min;
+  for (const [employees, years, low, high] of US.filter(inRange)) {
     const got = estimatePayout(model, { employees, years, region: "US" });
     near(got.low, low * share, `low ${employees}x${years}`);
     near(got.high, high * share, `high ${employees}x${years}`);
@@ -135,7 +136,7 @@ for (const [code, copy] of Object.entries({ en, es, pt })) {
 test("the employees slider spans the limits on a log scale", () => {
   assert.equal(employeesAt(0), LIMITS.employees.min);
   assert.equal(employeesAt(SLIDER_STEPS), LIMITS.employees.max);
-  assert.equal(LIMITS.employees.min, 2);
+  assert.equal(LIMITS.employees.min, 20);
   assert.equal(employeesAt(positionFor(100)), 100);
   let previous = 0;
   for (let position = 0; position <= SLIDER_STEPS; position++) {

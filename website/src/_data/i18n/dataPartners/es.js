@@ -5,7 +5,7 @@ export default {
     title:
       "Houston Data Partners: genera ingresos con los datos operativos de tu empresa",
     description:
-      "Houston licencia a laboratorios de IA verificados los registros que tus equipos crean cada día y te paga desde US$200K hasta más de US$2M. Desidentificados, separados y solo para compradores de EE. UU. y países aliados.",
+      "Houston licencia a laboratorios de IA verificados los registros que tus equipos crean cada día y te paga desde US$60K hasta más de US$1,2M. Desidentificados, separados y solo para compradores de EE. UU. y países aliados.",
   },
 
   nav: {
@@ -20,7 +20,7 @@ export default {
 
   hero: {
     h1Lines: ["Gana con los datos", "de tu empresa."],
-    sub: "Houston licencia a laboratorios de IA verificados los registros que tus equipos crean cada día, y te paga desde US$100K hasta más de US$2M por ellos.",
+    sub: "Houston licencia a laboratorios de IA verificados los registros que tus equipos crean cada día, y te paga desde US$60K hasta más de US$1,2M por ellos.",
     ctaEstimate: "Calcula tu pago",
     ctaBook: "Agenda una llamada",
   },
@@ -94,7 +94,7 @@ export default {
       },
       {
         name: "Pago",
-        line: "Cuando tus datos se aprueban nos facturas, y el pago completo llega dentro de 30 días hábiles. La mayoría de los pagos van de US$150K a más de US$2M.",
+        line: "Cuando tus datos se aprueban nos facturas, y el pago completo llega dentro de 30 días hábiles. La mayoría de los pagos van de US$90K a más de US$1,2M.",
         alt: "Una ingeniera trabajando en una tablet entre turbinas eólicas",
       },
     ],
@@ -120,15 +120,15 @@ export default {
     estimate: "Calcula el tuyo",
     tiers: [
       {
-        amount: "US$100K a US$500K",
+        amount: "US$60K a US$300K",
         line: "Una alianza estándar para una empresa establecida.",
       },
       {
-        amount: "US$500K a US$2M",
+        amount: "US$300K a US$1,2M",
         line: "Grandes conjuntos de datos operativos, o una alianza continua con varios equipos.",
       },
       {
-        amount: "US$2M+",
+        amount: "US$1,2M+",
         line: "Datos propios que nadie más tiene, de los que los laboratorios de punta se disputan.",
       },
     ],

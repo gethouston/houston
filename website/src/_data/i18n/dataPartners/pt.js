@@ -5,7 +5,7 @@ export default {
     title:
       "Houston Data Partners: gere receita com os dados operacionais da sua empresa",
     description:
-      "A Houston licencia para laboratórios de IA verificados os registros que suas equipes criam todo dia e paga de US$200 mil a mais de US$2 milhões. Desidentificados, separados e só para compradores dos EUA e países aliados.",
+      "A Houston licencia para laboratórios de IA verificados os registros que suas equipes criam todo dia e paga de US$60 mil a mais de US$1,2 milhão. Desidentificados, separados e só para compradores dos EUA e países aliados.",
   },
 
   nav: {
@@ -20,7 +20,7 @@ export default {
 
   hero: {
     h1Lines: ["Ganhe com os dados", "da sua empresa."],
-    sub: "A Houston licencia para laboratórios de IA verificados os registros que suas equipes criam todo dia, e paga de US$100 mil a mais de US$2 milhões por eles.",
+    sub: "A Houston licencia para laboratórios de IA verificados os registros que suas equipes criam todo dia, e paga de US$60 mil a mais de US$1,2 milhão por eles.",
     ctaEstimate: "Calcule seu pagamento",
     ctaBook: "Agende uma conversa",
   },
@@ -94,7 +94,7 @@ export default {
       },
       {
         name: "Pagamento",
-        line: "Com os dados aprovados você emite a fatura, e o pagamento integral cai em até 30 dias úteis. A maioria dos pagamentos vai de US$150 mil a mais de US$2 milhões.",
+        line: "Com os dados aprovados você emite a fatura, e o pagamento integral cai em até 30 dias úteis. A maioria dos pagamentos vai de US$90 mil a mais de US$1,2 milhão.",
         alt: "Uma engenheira trabalhando em um tablet entre turbinas eólicas",
       },
     ],
@@ -120,15 +120,15 @@ export default {
     estimate: "Calcule o seu",
     tiers: [
       {
-        amount: "US$100 mil a US$500 mil",
+        amount: "US$60 mil a US$300 mil",
         line: "Uma parceria padrão para uma empresa estabelecida.",
       },
       {
-        amount: "US$500 mil a US$2 milhões",
+        amount: "US$300 mil a US$1,2 milhão",
         line: "Grandes conjuntos de dados operacionais, ou uma parceria contínua com várias equipes.",
       },
       {
-        amount: "US$2 milhões+",
+        amount: "US$1,2 milhão+",
         line: "Dados próprios que ninguém mais tem, disputados pelos laboratórios de ponta.",
       },
     ],

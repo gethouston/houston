@@ -9,8 +9,10 @@
 //           × region × share
 // The coefficients and the share live in _data/dataPartners.js.
 
+// The employee floor is the program's bar (the FAQ's 20 full-time employees):
+// the estimator only prices companies that qualify.
 export const LIMITS = {
-  employees: { min: 2, max: 10000 },
+  employees: { min: 20, max: 10000 },
   years: { min: 1, max: 50 },
 };
 

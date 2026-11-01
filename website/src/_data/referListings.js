@@ -4,6 +4,7 @@
 // formatted for its locale (`fmt`), so no template does money math.
 
 import { REQUESTS } from "../../lib/refer-requests.js";
+import dataPartners from "./dataPartners.js";
 import locales from "./locales.js";
 import refer from "./refer.js";
 
@@ -18,7 +19,8 @@ const money = (lang, n, compact) =>
 
 const paid = (item) => ({
   ...item,
-  dealMinUsd: refer.pay(item.dealMinUsd),
+  // Never below the program's floor, the "from" figure /data-partners states.
+  dealMinUsd: Math.max(refer.pay(item.dealMinUsd), dataPartners.floorUsd),
   dealMaxUsd: refer.pay(item.dealMaxUsd),
   // What the request pays the company, times the headline share: the best
   // request on the board pays exactly the headline amount.

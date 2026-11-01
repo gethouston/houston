@@ -7,7 +7,7 @@ export default {
   meta: {
     title: "Houston Data Partners: earn from your company's operational data",
     description:
-      "Houston licenses the records your teams create every day to vetted AI labs and pays you from $200K to over $2M. De-identified, kept separate, U.S. and allied buyers only.",
+      "Houston licenses the records your teams create every day to vetted AI labs and pays you from $60K to over $1.2M. De-identified, kept separate, U.S. and allied buyers only.",
   },
 
   nav: {
@@ -22,7 +22,7 @@ export default {
 
   hero: {
     h1Lines: ["Earn from your", "company's data."],
-    sub: "Houston licenses the records your teams create every day to vetted AI labs, and pays you from $100K to over $2M for them.",
+    sub: "Houston licenses the records your teams create every day to vetted AI labs, and pays you from $60K to over $1.2M for them.",
     ctaEstimate: "Estimate your payout",
     ctaBook: "Book a call",
   },
@@ -97,7 +97,7 @@ export default {
       },
       {
         name: "Payment",
-        line: "Once your data is approved you invoice us, and full payment lands within 30 business days. Most payments fall between $150K and over $2M.",
+        line: "Once your data is approved you invoice us, and full payment lands within 30 business days. Most payments fall between $90K and over $1.2M.",
         alt: "A field engineer working on a tablet among wind turbines",
       },
     ],
@@ -123,15 +123,15 @@ export default {
     estimate: "Estimate yours",
     tiers: [
       {
-        amount: "$100K to $500K",
+        amount: "$60K to $300K",
         line: "A standard partnership for an established company.",
       },
       {
-        amount: "$500K to $2M",
+        amount: "$300K to $1.2M",
         line: "Big operational datasets, or a partnership that keeps running across several teams.",
       },
       {
-        amount: "$2M+",
+        amount: "$1.2M+",
         line: "Proprietary data nobody else has, the kind frontier labs compete for.",
       },
     ],

@@ -52,6 +52,10 @@ export default {
   people: ["felipe", "julian"],
 
   model,
+  // The least a partnership pays: the reference program's $100K floor at
+  // Houston's share. The hero, the tiers and the meta description state it,
+  // and no request on /data-partners/refer quotes a company less.
+  floorUsd: Math.round(100000 * model.share),
   defaults,
   limits: LIMITS,
   slider: { steps: SLIDER_STEPS, start: positionFor(defaults.employees) },

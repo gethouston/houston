@@ -39,6 +39,20 @@ test("the best request on the board pays exactly the headline amount", () => {
     assert.ok(item.earnUsd <= refer.amountUsd, item.slug);
 });
 
+test("no request quotes a company less than the program's floor", () => {
+  assert.equal(dataPartners.floorUsd, Math.round(100000 * share));
+  for (const item of referListings.items)
+    assert.ok(item.dealMinUsd >= dataPartners.floorUsd, item.slug);
+});
+
+test("the owner page states the program's floor where it quotes a range", () => {
+  const floor = `$${dataPartners.floorUsd / 1000}K`;
+  const en = treeFor("en").dataPartners;
+  assert.ok(en.hero.sub.includes(`from ${floor}`), en.hero.sub);
+  assert.ok(en.meta.description.includes(`from ${floor}`));
+  assert.ok(en.payouts.tiers[0].amount.startsWith(floor));
+});
+
 test("the owner page samples six requests from six industries", () => {
   const { featured, items } = referListings;
   assert.equal(featured.length, 6);
