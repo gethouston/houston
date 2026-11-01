@@ -24,8 +24,9 @@ export default {
   // The URL segment under every locale root ("/data-partners/refer/", ...).
   path: "data-partners/refer/",
 
-  // There is no referral endpoint yet: the form composes an email to this
-  // inbox (assets/refer-form.js), and the page says so.
+  // Referrals are stored in Supabase public.data_referrals
+  // (assets/refer-send.js). When that fails, or without JS, the form emails
+  // this inbox instead.
   inbox: "hello@gethouston.ai",
   people: ["felipe", "julian"],
 

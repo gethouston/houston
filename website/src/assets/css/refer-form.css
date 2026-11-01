@@ -212,6 +212,46 @@
   line-height: 1.5;
   color: var(--ink-muted);
 }
+.rf-consent a {
+  color: var(--ink-strong);
+  text-decoration: underline;
+  text-underline-offset: 2px;
+}
+/* Not an .rf-field: those inputs are 48px text boxes. */
+.rf-check-field {
+  display: flex;
+  flex-direction: column;
+  gap: 7px;
+  margin-top: 14px;
+}
+.rf-check {
+  display: flex;
+  align-items: flex-start;
+  gap: 10px;
+  font-size: 14px;
+  line-height: 1.45;
+  color: var(--ink-strong);
+  cursor: pointer;
+}
+.rf-check input {
+  flex: none;
+  width: 18px;
+  height: 18px;
+  margin: 1px 0 0;
+  accent-color: var(--ink-strong);
+}
+/* The bot trap: out of sight and out of the tab order, still in the form. */
+.rf-trap {
+  position: absolute;
+  left: -10000px;
+  width: 1px;
+  height: 1px;
+  overflow: hidden;
+}
+.rf-submit:disabled {
+  opacity: 0.6;
+  cursor: progress;
+}
 .rf-submit,
 .rf-again {
   display: inline-flex;

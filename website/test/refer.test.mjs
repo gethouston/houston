@@ -87,6 +87,7 @@ const valid = {
   contactEmail: "bo@acme.com",
   contactLinkedin: "",
   fit: "",
+  consent: true,
 };
 
 test("a complete referral passes", () => {
@@ -96,6 +97,7 @@ test("a complete referral passes", () => {
 test("an empty form names every required field, and no optional one", () => {
   assert.deepEqual(Object.keys(validate({}, sizes)).sort(), [
     "companyName",
+    "consent",
     "contactEmail",
     "contactName",
     "size",
@@ -136,6 +138,14 @@ test("a LinkedIn link is optional, but must be a profile when given", () => {
   assert.deepEqual(validate(bad, sizes), {
     contactLinkedin: "contactLinkedin",
   });
+});
+
+test("a referral needs the contact's OK, ticked, not just any value", () => {
+  for (const consent of [false, "on", undefined]) {
+    assert.deepEqual(validate({ ...valid, consent }, sizes), {
+      consent: "consent",
+    });
+  }
 });
 
 test("a size outside the list is refused", () => {

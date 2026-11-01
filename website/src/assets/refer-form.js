@@ -1,10 +1,18 @@
 // The /data-partners/refer form: checks the fields with refer-model.js,
-// shows each error under its field, and on a valid referral opens the
-// visitor's email app with everything filled in, then swaps the form for
-// the "ready to send" panel. Without JS the form posts the raw fields to
-// the same inbox (its mailto action).
+// shows each error under its field, and stores a valid referral through
+// refer-send.js, then swaps the form for the "received" panel. When it cannot
+// be stored, it opens the visitor's email app with everything filled in and
+// shows the "ready to send" panel instead. Without JS the form posts the raw
+// fields to the program inbox (its mailto action).
 
-import { composeMail, FIELDS, validate } from "./refer-model.js";
+import {
+  CHECKS,
+  composeMail,
+  FIELDS,
+  referralRow,
+  validate,
+} from "./refer-model.js";
+import { sendReferral } from "./refer-send.js";
 
 const form = document.querySelector("[data-refer-form]");
 const done = document.getElementById("rf-done");
@@ -25,13 +33,20 @@ if (form && done && copyNode) {
     .filter(Boolean);
   let tried = false;
 
-  const values = () =>
-    Object.fromEntries(
+  const submit = form.querySelector('[type="submit"]');
+  const submitLabel = submit.textContent;
+
+  const values = () => ({
+    ...Object.fromEntries(
       FIELDS.map((name) => [name, form.elements[name]?.value ?? ""]),
-    );
+    ),
+    ...Object.fromEntries(
+      CHECKS.map((name) => [name, form.elements[name]?.checked === true]),
+    ),
+  });
 
   const show = (errors) => {
-    for (const name of FIELDS) {
+    for (const name of [...FIELDS, ...CHECKS]) {
       const input = form.elements[name];
       const line = document.getElementById(`rf-${name}-error`);
       if (!input || !line) continue;
@@ -48,23 +63,52 @@ if (form && done && copyNode) {
     if (tried) show(validate(values(), sizes));
   });
 
-  form.addEventListener("submit", (event) => {
+  const finish = (outcome) => {
+    for (const panel of done.querySelectorAll("[data-done]"))
+      panel.hidden = panel.dataset.done !== outcome;
+    form.hidden = true;
+    done.hidden = false;
+    done.focus();
+  };
+
+  const sending = (on) => {
+    submit.disabled = on;
+    submit.textContent = on ? submit.dataset.sending : submitLabel;
+  };
+
+  form.addEventListener("submit", async (event) => {
     event.preventDefault();
+    if (submit.disabled) return;
     tried = true;
-    const errors = validate(values(), sizes);
+    const input = values();
+    const errors = validate(input, sizes);
     show(errors);
-    const first = FIELDS.find((name) => errors[name]);
+    const first = [...FIELDS, ...CHECKS].find((name) => errors[name]);
     if (first) {
       form.elements[first].focus();
       return;
     }
-    const mail = composeMail(values(), copy);
+    // A filled trap is a bot: it sees success, nothing is stored.
+    if (form.elements.trap?.value) {
+      finish("stored");
+      return;
+    }
+    sending(true);
+    const row = referralRow(input, {
+      locale: copy.locale,
+      page: window.location.pathname,
+    });
+    const outcome = await sendReferral(row, copy.store);
+    sending(false);
+    if (outcome === "stored") {
+      finish("stored");
+      return;
+    }
+    const mail = composeMail(input, copy);
     const fallback = done.querySelector("[data-done-mail]");
     if (fallback) fallback.href = mail.href;
     window.location.href = mail.href;
-    form.hidden = true;
-    done.hidden = false;
-    done.focus();
+    finish("mail");
   });
 
   // Another referral from the same person: only the company and the contact

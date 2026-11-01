@@ -128,6 +128,14 @@ export default {
     consent:
       "Podemos entrar em contato com a pessoa indicada para apresentar a Houston. Indique apenas quem gostaria disso.",
     submit: "Enviar indicação",
+    privacy: "Como tratamos esses dados.",
+    consentCheck:
+      "Tenho a permissão dessa pessoa para compartilhar os dados dela com a Houston.",
+    sending: "Enviando…",
+    saved: {
+      title: "Recebemos sua indicação.",
+      line: "Nós a revisamos e avisamos você por email a cada etapa, da análise ao pagamento.",
+    },
     errors: {
       yourName: "Seu nome é obrigatório.",
       yourEmail: "Digite um e-mail válido.",
@@ -139,6 +147,8 @@ export default {
       contactLinkedin: "Digite um link válido, como linkedin.com/in/nome.",
       sameCompany:
         "Você não pode indicar sua própria empresa. Ela pode entrar diretamente como parceira de dados.",
+      consent:
+        "Confirme que essa pessoa concorda em ser contatada pela Houston.",
     },
     mail: {
       subject: "Indicação: {company}",

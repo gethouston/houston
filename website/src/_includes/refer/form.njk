@@ -17,9 +17,10 @@
 {# Refer a company: the form on the right, and on the left what happens to a
    referral once it is sent, the four states the team emails about.
 
-   There is no referral endpoint yet, so sending composes an email to the
-   program inbox with everything filled in, and the page says so plainly.
-   Without JS the form posts the same fields to that address. #}
+   Sending stores the referral (assets/refer-send.js: Supabase
+   public.data_referrals plus the team's sheet tab) and says so. If it cannot
+   be stored, the form falls back to an email to the program inbox with
+   everything filled in. Without JS the form posts the fields to that inbox. #}
 <section id="refer" class="section ent-section rf-refer" data-tone="light">
   <div class="rf-refer-grid">
     <div class="rf-refer-copy reveal">
@@ -89,20 +90,38 @@
           </div>
         </fieldset>
 
-        <p class="rf-consent">{{ f.consent }}</p>
-        <button class="rf-submit" type="submit">{{ f.submit }}</button>
+        <p class="rf-consent">{{ f.consent }} <a href="/privacy/#referrals">{{ f.privacy }}</a></p>
+        <div class="rf-check-field">
+          <label class="rf-check" for="rf-consent"><input id="rf-consent" name="consent" type="checkbox" required aria-describedby="rf-consent-error"><span>{{ f.consentCheck }}</span></label>
+          <p class="rf-error" id="rf-consent-error" hidden></p>
+        </div>
+        {#- Left empty by people; a bot that fills every field is dropped. -#}
+        <div class="rf-trap" aria-hidden="true"><label for="rf-trap">Leave this empty</label><input id="rf-trap" name="trap" type="text" tabindex="-1" autocomplete="off"></div>
+        <button class="rf-submit" type="submit" data-sending="{{ f.sending }}">{{ f.submit }}</button>
       </form>
 
       <div class="rf-done" id="rf-done" role="status" tabindex="-1" hidden>
-        <h3 class="rf-done-title">{{ f.done.title }}</h3>
-        <p>{{ f.done.line }}</p>
-        <p class="rf-done-fallback">{{ f.done.fallback | replace("{inbox}", '<a href="' + mailto + '" data-done-mail>' + refer.inbox + '</a>') | safe }}</p>
+        <div data-done="stored">
+          <h3 class="rf-done-title">{{ f.saved.title }}</h3>
+          <p>{{ f.saved.line }}</p>
+        </div>
+        <div data-done="mail" hidden>
+          <h3 class="rf-done-title">{{ f.done.title }}</h3>
+          <p>{{ f.done.line }}</p>
+          <p class="rf-done-fallback">{{ f.done.fallback | replace("{inbox}", '<a href="' + mailto + '" data-done-mail>' + refer.inbox + '</a>') | safe }}</p>
+        </div>
         <button class="rf-again" type="button" data-again>{{ f.done.again }}</button>
       </div>
     </div>
   </div>
   <script type="application/json" id="rf-copy">{{ {
     inbox: refer.inbox,
+    locale: locale.code,
+    store: {
+      supabaseUrl: env.supabaseUrl,
+      supabaseAnonKey: env.supabaseAnonKey,
+      sheetEndpoint: env.dataReferralsSheetEndpoint
+    },
     errors: f.errors,
     mail: f.mail,
     labels: {

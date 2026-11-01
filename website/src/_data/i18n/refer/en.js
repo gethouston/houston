@@ -130,6 +130,14 @@ export default {
     consent:
       "We may contact the person you name to introduce Houston. Only refer people who would welcome that.",
     submit: "Send referral",
+    privacy: "How we handle these details.",
+    consentCheck:
+      "I have this person's OK to share their details with Houston.",
+    sending: "Sending…",
+    saved: {
+      title: "We have your referral.",
+      line: "We review it and email you as it moves, from review to payout.",
+    },
     errors: {
       yourName: "Your name is required.",
       yourEmail: "Enter a valid email address.",
@@ -141,6 +149,7 @@ export default {
       contactLinkedin: "Enter a valid link, like linkedin.com/in/name.",
       sameCompany:
         "You can't refer your own company. It can join as a data partner itself.",
+      consent: "Confirm that this person is happy to hear from Houston.",
     },
     mail: {
       subject: "Referral: {company}",
