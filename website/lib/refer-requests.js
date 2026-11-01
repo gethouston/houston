@@ -4,7 +4,8 @@
 // share the /data-partners estimator pays. Text lives in
 // _data/i18n/referListings/* (keyed by slug).
 //
-// Ordered by what a referral earns, highest first, as the board shows them.
+// A referral earns refer.headlineShare of the request's dealMaxUsd, so there
+// is no separate referral figure here; _data/referListings.js sorts the board.
 // `category` is an id from _data/refer.js categories; `tools` are product
 // names, the same in every language.
 //
@@ -17,7 +18,6 @@ export const REQUESTS = [
     category: "services",
     dealMinUsd: 50000,
     dealMaxUsd: 1250000,
-    referralUsd: 75000,
     bonuses: [],
     tools: ["Relativity", "Everlaw", "iManage", "NetDocuments", "Clio"],
   },
@@ -26,7 +26,6 @@ export const REQUESTS = [
     category: "finance",
     dealMinUsd: 25000,
     dealMaxUsd: 865000,
-    referralUsd: 70000,
     bonuses: [],
     tools: [
       "QuickBooks",
@@ -44,7 +43,6 @@ export const REQUESTS = [
     category: "finance",
     dealMinUsd: 50000,
     dealMaxUsd: 800000,
-    referralUsd: 70000,
     bonuses: [],
     tools: [
       "Datasite",
@@ -62,7 +60,6 @@ export const REQUESTS = [
     category: "finance",
     dealMinUsd: 80000,
     dealMaxUsd: 900000,
-    referralUsd: 70000,
     bonuses: [],
     tools: [],
   },
@@ -71,7 +68,6 @@ export const REQUESTS = [
     category: "software",
     dealMinUsd: 20000,
     dealMaxUsd: 750000,
-    referralUsd: 65000,
     bonuses: [],
     tools: [
       "Splunk",
@@ -89,7 +85,6 @@ export const REQUESTS = [
     category: "healthcare",
     dealMinUsd: 100000,
     dealMaxUsd: 900000,
-    referralUsd: 60000,
     bonuses: [],
     tools: ["Zoom for Healthcare", "Doxy.me", "In-house visit apps"],
   },
@@ -98,7 +93,6 @@ export const REQUESTS = [
     category: "healthcare",
     dealMinUsd: 80000,
     dealMaxUsd: 620000,
-    referralUsd: 60000,
     bonuses: [],
     tools: ["PACS", "RIS", "DICOM", "GE MUSE", "Natus", "Nihon Kohden"],
   },
@@ -107,7 +101,6 @@ export const REQUESTS = [
     category: "healthcare",
     dealMinUsd: 80000,
     dealMaxUsd: 820000,
-    referralUsd: 60000,
     bonuses: [],
     tools: [
       "Epic",
@@ -123,7 +116,6 @@ export const REQUESTS = [
     category: "science",
     dealMinUsd: 100000,
     dealMaxUsd: 750000,
-    referralUsd: 60000,
     bonuses: [],
     tools: [
       "MES",
@@ -140,7 +132,6 @@ export const REQUESTS = [
     category: "industrial",
     dealMinUsd: 100000,
     dealMaxUsd: 1500000,
-    referralUsd: 55000,
     bonuses: [],
     tools: [
       "Mastercam",
@@ -158,7 +149,6 @@ export const REQUESTS = [
     category: "software",
     dealMinUsd: 20000,
     dealMaxUsd: 480000,
-    referralUsd: 45000,
     bonuses: [],
     tools: [
       "Claude Code",
@@ -175,7 +165,6 @@ export const REQUESTS = [
     category: "services",
     dealMinUsd: 20000,
     dealMaxUsd: 890000,
-    referralUsd: 45000,
     bonuses: [],
     tools: [
       "Figma",
@@ -191,7 +180,6 @@ export const REQUESTS = [
     category: "industrial",
     dealMinUsd: 115000,
     dealMaxUsd: 1000000,
-    referralUsd: 40000,
     bonuses: [],
     tools: [
       "Procore",
@@ -208,7 +196,6 @@ export const REQUESTS = [
     category: "media",
     dealMinUsd: 100000,
     dealMaxUsd: 1000000,
-    referralUsd: 40000,
     bonuses: [],
     tools: [
       "Unity",
@@ -226,7 +213,6 @@ export const REQUESTS = [
     category: "industrial",
     dealMinUsd: 45000,
     dealMaxUsd: 1350000,
-    referralUsd: 40000,
     bonuses: [],
     tools: [
       "SolidWorks PDM",
@@ -244,7 +230,6 @@ export const REQUESTS = [
     category: "media",
     dealMinUsd: 35000,
     dealMaxUsd: 370000,
-    referralUsd: 40000,
     bonuses: [],
     tools: ["CMS", "LMS", "XML / EPUB pipelines"],
   },
@@ -253,7 +238,6 @@ export const REQUESTS = [
     category: "software",
     dealMinUsd: 55000,
     dealMaxUsd: 350000,
-    referralUsd: 40000,
     bonuses: [],
     tools: [
       "Snowflake",
@@ -273,7 +257,6 @@ export const REQUESTS = [
     category: "media",
     dealMinUsd: 95000,
     dealMaxUsd: 870000,
-    referralUsd: 35000,
     bonuses: [],
     tools: [
       "Frame.io",
@@ -288,7 +271,6 @@ export const REQUESTS = [
     category: "services",
     dealMinUsd: 20000,
     dealMaxUsd: 250000,
-    referralUsd: 30000,
     bonuses: [],
     tools: ["Five9", "Genesys", "NICE", "Talkdesk", "Amazon Connect", "Twilio"],
   },
@@ -297,7 +279,6 @@ export const REQUESTS = [
     category: "services",
     dealMinUsd: 150000,
     dealMaxUsd: 300000,
-    referralUsd: 30000,
     bonuses: [],
     tools: [
       "Microsoft 365",
@@ -312,7 +293,6 @@ export const REQUESTS = [
     category: "media",
     dealMinUsd: 30000,
     dealMaxUsd: 800000,
-    referralUsd: 30000,
     bonuses: [],
     tools: [
       "Shopify",
@@ -328,7 +308,6 @@ export const REQUESTS = [
     category: "science",
     dealMinUsd: 50000,
     dealMaxUsd: 875000,
-    referralUsd: 25000,
     bonuses: [],
     tools: ["Benchling", "LabArchives", "Dotmatics", "LIMS", "Medidata Rave"],
   },
@@ -337,7 +316,6 @@ export const REQUESTS = [
     category: "software",
     dealMinUsd: 50000,
     dealMaxUsd: 500000,
-    referralUsd: 25000,
     bonuses: [],
     tools: ["GitHub", "GitLab", "Bitbucket", "Jira", "Linear", "Confluence"],
   },
@@ -346,7 +324,6 @@ export const REQUESTS = [
     category: "finance",
     dealMinUsd: 25000,
     dealMaxUsd: 1150000,
-    referralUsd: 15000,
     bonuses: [],
     tools: ["kdb+", "C++", "Rust", "FIX", "Python"],
   },

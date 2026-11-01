@@ -86,12 +86,12 @@ export default {
         line: "Estamos trabajando con ellos. Te contaremos cómo resulta.",
       },
       {
-        label: "Bono confirmado",
-        line: "Tu bono está confirmado y en camino.",
+        label: "Recompensa confirmada",
+        line: "Tu recompensa está confirmada y en camino.",
       },
       {
-        label: "Bono pagado",
-        line: "Tu bono ya fue pagado.",
+        label: "Recompensa pagada",
+        line: "Tu recompensa ya fue pagada.",
       },
     ],
   },
@@ -168,8 +168,8 @@ export default {
       {
         title: "Cómo se te paga",
         lines: [
-          "Hasta {amount} por empresa. La empresa necesita al menos 20 empleados de tiempo completo para calificar. Desde 30 empleados recibes el monto completo, y de 20 a 29 una parte proporcional a su tamaño.",
-          "Los bonos adicionales se fijan cuando recomiendas y no cambian después. Un bono con fecha de cierre debe recomendarse antes de que termine.",
+          "Hasta {amount} por empresa. La empresa necesita al menos 20 empleados de tiempo completo para calificar. Desde 30 empleados recibes el monto completo de la solicitud, y de 20 a 29 una parte proporcional a su tamaño.",
+          "Cada solicitud muestra su propio monto: el 10% de lo máximo que esa solicitud paga a la empresa, fijado al momento de recomendar.",
           "Confirmamos el monto cuando la empresa firma su licencia de datos. Hasta entonces no se debe nada.",
           "Se paga tras la primera entrega de la empresa.",
         ],
@@ -197,15 +197,15 @@ export default {
     items: [
       {
         q: "¿Cuánto puedo ganar?",
-        a: "Hasta {amount} por empresa. La empresa necesita al menos 20 empleados de tiempo completo para calificar. Desde 30 empleados recibes el monto completo, y de 20 a 29 una parte proporcional a su tamaño. Algunas recomendaciones suman un bono.",
+        a: "Hasta {amount} por empresa. La empresa necesita al menos 20 empleados de tiempo completo para calificar. Desde 30 empleados recibes el monto completo de la solicitud, y de 20 a 29 una parte proporcional a su tamaño.",
       },
       {
         q: "¿Cuándo me pagan?",
-        a: "Cuando la empresa firma su licencia de datos confirmamos tu bono, y lo pagamos tras su primera entrega.",
+        a: "Cuando la empresa firma su licencia de datos confirmamos tu recompensa, y la pagamos tras su primera entrega.",
       },
       {
-        q: "¿Qué es un bono?",
-        a: "Algunas recomendaciones pagan un extra: un monto fijo cuando la empresa firma, o un bono por firma rápida cuando firma pocos días después de la aprobación. Los bonos que confirmamos al recomendar son los que recibes.",
+        q: "¿Cómo se define el monto de cada solicitud?",
+        a: "Es el 10% de lo máximo que esa solicitud paga a la empresa. Lo ves en cada solicitud y queda fijo al recomendar.",
       },
       {
         q: "¿Necesito conocer a alguien allí?",
@@ -213,7 +213,7 @@ export default {
       },
       {
         q: "¿Qué pasa después de recomendar?",
-        a: "Revisamos la empresa y contactamos a tu contacto. Te escribimos a medida que avanza: enviada, en curso, bono confirmado, pagado.",
+        a: "Revisamos la empresa y contactamos a tu contacto. Te escribimos a medida que avanza: enviada, en curso, recompensa confirmada, pagada.",
       },
       {
         q: "¿Y si alguien la recomendó antes?",

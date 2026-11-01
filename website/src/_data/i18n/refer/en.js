@@ -87,12 +87,12 @@ export default {
         line: "We're working with them. We'll let you know how it lands.",
       },
       {
-        label: "Bonus confirmed",
-        line: "Your bonus is confirmed and on its way.",
+        label: "Reward confirmed",
+        line: "Your reward is confirmed and on its way.",
       },
       {
-        label: "Bonus paid",
-        line: "Your bonus has been paid out.",
+        label: "Reward paid",
+        line: "Your reward has been paid out.",
       },
     ],
   },
@@ -168,8 +168,8 @@ export default {
       {
         title: "How you're paid",
         lines: [
-          "Up to {amount} per company. The company needs at least 20 full-time employees to qualify. From 30 employees you earn the full amount, and from 20 to 29 a share in proportion to its size.",
-          "Bonuses on top are fixed when you refer and never change afterwards. A bonus with an end date must be referred before it ends.",
+          "Up to {amount} per company. The company needs at least 20 full-time employees to qualify. From 30 employees you earn the request's full amount, and from 20 to 29 a share in proportion to its size.",
+          "Each request shows its own amount: 10% of the most that request pays the company, fixed when you refer.",
           "We confirm the amount once the company signs its data license. Nothing is owed until then.",
           "Paid after the company's first delivery.",
         ],
@@ -197,15 +197,15 @@ export default {
     items: [
       {
         q: "How much can I earn?",
-        a: "Up to {amount} per company. The company needs at least 20 full-time employees to qualify. From 30 employees you earn the full amount, and from 20 to 29 a share in proportion to its size. Some referrals add a bonus on top.",
+        a: "Up to {amount} per company. The company needs at least 20 full-time employees to qualify. From 30 employees you earn the request's full amount, and from 20 to 29 a share in proportion to its size.",
       },
       {
         q: "When do I get paid?",
-        a: "Once the company signs its data license we confirm your bonus, and we pay it after their first delivery.",
+        a: "Once the company signs its data license we confirm your reward, and we pay it after their first delivery.",
       },
       {
-        q: "What is a bonus?",
-        a: "Some referrals pay extra on top: a fixed amount when the company signs, or a fast-signing bonus when it signs within days of approval. The bonuses we confirm when you refer are the ones you get.",
+        q: "How is the amount for each request set?",
+        a: "It is 10% of the most that request pays the company. You see it on every request, and it is fixed when you refer.",
       },
       {
         q: "Do I need to know someone there?",
@@ -213,7 +213,7 @@ export default {
       },
       {
         q: "What happens after I refer?",
-        a: "We review the company and reach out to your contact. We email you as it moves: submitted, in progress, bonus confirmed, paid.",
+        a: "We review the company and reach out to your contact. We email you as it moves: submitted, in progress, reward confirmed, paid.",
       },
       {
         q: "What if someone referred them first?",

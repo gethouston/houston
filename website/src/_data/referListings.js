@@ -20,13 +20,19 @@ const paid = (item) => ({
   ...item,
   dealMinUsd: refer.pay(item.dealMinUsd),
   dealMaxUsd: refer.pay(item.dealMaxUsd),
-  referralUsd: refer.pay(item.referralUsd),
+  // What the request pays the company, times the headline share: the best
+  // request on the board pays exactly the headline amount.
+  referralUsd: Math.round(refer.pay(item.dealMaxUsd) * refer.headlineShare),
   bonuses: item.bonuses.map((b) => ({
     ...b,
     amountUsd: refer.pay(b.amountUsd),
   })),
 });
-const items = REQUESTS.map(paid);
+// The board leads with what a referral earns, highest first; ties keep the
+// list's order.
+const items = REQUESTS.map(paid).sort(
+  (a, b) => refer.pay(b.dealMaxUsd) - refer.pay(a.dealMaxUsd),
+);
 
 const withAmounts = (item) => {
   const bonusUsd = item.bonuses.reduce((sum, b) => sum + b.amountUsd, 0);

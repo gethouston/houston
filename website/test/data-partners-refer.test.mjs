@@ -23,7 +23,18 @@ test("the headline amount is 10% of the most an open request pays", () => {
   assert.equal(refer.amountUsd, Math.round(top * 0.1));
 });
 
-test("no referral earns more than the program's top amount", () => {
+test("every request pays the headline share of its own top payout", () => {
+  for (const item of referListings.items)
+    assert.equal(
+      item.referralUsd,
+      Math.round(item.dealMaxUsd * refer.headlineShare),
+      item.slug,
+    );
+});
+
+test("the best request on the board pays exactly the headline amount", () => {
+  const [best] = referListings.items;
+  assert.equal(best.earnUsd, refer.amountUsd);
   for (const item of referListings.items)
     assert.ok(item.earnUsd <= refer.amountUsd, item.slug);
 });
@@ -51,6 +62,13 @@ for (const code of ["en", "es", "pt"]) {
       const low = Number(/^(\d+)/.exec(tree.referListings[slug].size)?.[1]);
       if (low) assert.ok(low >= refer.minEmployees, `${slug}: ${low}`);
     }
+  });
+
+  test(`${code}: the refer copy states the per-request share and no bonus`, () => {
+    const percent = `${refer.headlineShare * 100}%`;
+    assert.ok(tree.refer.terms.groups[0].lines[1].includes(percent));
+    const text = JSON.stringify(tree.refer).toLowerCase();
+    assert.ok(!/bonus|bono|bônus/.test(text));
   });
 
   test(`${code}: the owner page quotes the referral amount, never a literal`, () => {

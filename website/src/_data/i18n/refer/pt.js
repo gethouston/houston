@@ -85,12 +85,12 @@ export default {
         line: "Estamos trabalhando com eles. Avisaremos como ficou.",
       },
       {
-        label: "Bônus confirmado",
-        line: "Seu bônus está confirmado e a caminho.",
+        label: "Recompensa confirmada",
+        line: "Sua recompensa está confirmada e a caminho.",
       },
       {
-        label: "Bônus pago",
-        line: "Seu bônus foi pago.",
+        label: "Recompensa paga",
+        line: "Sua recompensa foi paga.",
       },
     ],
   },
@@ -167,8 +167,8 @@ export default {
       {
         title: "Como você recebe",
         lines: [
-          "Até {amount} por empresa. A empresa precisa de pelo menos 20 funcionários em tempo integral para se qualificar. A partir de 30 funcionários você recebe o valor integral, e de 20 a 29 uma parte proporcional ao porte.",
-          "Bônus adicionais são fixados quando você indica e nunca mudam depois. Um bônus com data de término precisa ser indicado antes de acabar.",
+          "Até {amount} por empresa. A empresa precisa de pelo menos 20 funcionários em tempo integral para se qualificar. A partir de 30 funcionários você recebe o valor integral do pedido, e de 20 a 29 uma parte proporcional ao porte.",
+          "Cada pedido mostra seu próprio valor: 10% do máximo que esse pedido paga à empresa, fixado no momento da indicação.",
           "Confirmamos o valor quando a empresa assina a licença de dados. Até lá, nada é devido.",
           "Pago após a primeira entrega da empresa.",
         ],
@@ -196,15 +196,15 @@ export default {
     items: [
       {
         q: "Quanto posso ganhar?",
-        a: "Até {amount} por empresa. A empresa precisa de pelo menos 20 funcionários em tempo integral para se qualificar. A partir de 30 funcionários você recebe o valor integral, e de 20 a 29 uma parte proporcional ao porte. Algumas indicações somam um bônus.",
+        a: "Até {amount} por empresa. A empresa precisa de pelo menos 20 funcionários em tempo integral para se qualificar. A partir de 30 funcionários você recebe o valor integral do pedido, e de 20 a 29 uma parte proporcional ao porte.",
       },
       {
         q: "Quando eu recebo?",
-        a: "Quando a empresa assina a licença de dados confirmamos seu bônus, e pagamos após a primeira entrega.",
+        a: "Quando a empresa assina a licença de dados confirmamos sua recompensa, e a pagamos após a primeira entrega.",
       },
       {
-        q: "O que é um bônus?",
-        a: "Algumas indicações pagam um extra: um valor fixo quando a empresa assina, ou um bônus de assinatura rápida quando ela assina poucos dias após a aprovação. Os bônus confirmados na indicação são os que você recebe.",
+        q: "Como é definido o valor de cada pedido?",
+        a: "É 10% do máximo que esse pedido paga à empresa. Você o vê em cada pedido, e ele fica fixo no momento da indicação.",
       },
       {
         q: "Preciso conhecer alguém lá?",
@@ -212,7 +212,7 @@ export default {
       },
       {
         q: "O que acontece depois da indicação?",
-        a: "Analisamos a empresa e entramos em contato com a pessoa indicada. Enviamos um e-mail a cada avanço: enviada, em andamento, bônus confirmado, pago.",
+        a: "Analisamos a empresa e entramos em contato com a pessoa indicada. Enviamos um e-mail a cada avanço: enviada, em andamento, recompensa confirmada, paga.",
       },
       {
         q: "E se alguém indicou antes?",
