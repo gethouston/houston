@@ -26,7 +26,6 @@ export default {
       per: "per company",
       terms: [
         "Full amount for companies with 30+ employees",
-        "Bonuses included, locked in when you refer",
         "Confirmed when the company signs its data license",
         "Paid after their first delivery",
       ],
@@ -50,7 +49,7 @@ export default {
       },
       {
         title: "You get paid",
-        line: "Up to {amount} per company, bonuses included, after their first delivery.",
+        line: "Up to {amount} per company, after their first delivery.",
       },
     ],
   },

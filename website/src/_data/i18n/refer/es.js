@@ -25,7 +25,6 @@ export default {
       per: "por empresa",
       terms: [
         "Monto completo para empresas de 30 o más empleados",
-        "Bonos incluidos, fijados al momento de recomendar",
         "Se confirma cuando la empresa firma su licencia de datos",
         "Se paga tras su primera entrega",
       ],
@@ -49,7 +48,7 @@ export default {
       },
       {
         title: "Recibes tu pago",
-        line: "Hasta {amount} por empresa, con bonos incluidos, tras su primera entrega.",
+        line: "Hasta {amount} por empresa, tras su primera entrega.",
       },
     ],
   },

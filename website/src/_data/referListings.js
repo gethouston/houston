@@ -17,14 +17,7 @@ const reference = [
     dealMinUsd: 50000,
     dealMaxUsd: 1250000,
     referralUsd: 75000,
-    bonuses: [
-      {
-        kind: "fast_signing",
-        amountUsd: 10000,
-        recipients: "referrer_and_company",
-        windowDays: 1,
-      },
-    ],
+    bonuses: [],
     tools: ["Relativity", "Everlaw", "iManage", "NetDocuments", "Clio"],
   },
   {
@@ -33,14 +26,7 @@ const reference = [
     dealMinUsd: 25000,
     dealMaxUsd: 865000,
     referralUsd: 70000,
-    bonuses: [
-      {
-        kind: "fast_signing",
-        amountUsd: 10000,
-        recipients: "referrer_and_company",
-        windowDays: 1,
-      },
-    ],
+    bonuses: [],
     tools: [
       "QuickBooks",
       "Xero",
@@ -58,14 +44,7 @@ const reference = [
     dealMinUsd: 50000,
     dealMaxUsd: 800000,
     referralUsd: 70000,
-    bonuses: [
-      {
-        kind: "fast_signing",
-        amountUsd: 10000,
-        recipients: "referrer_and_company",
-        windowDays: 1,
-      },
-    ],
+    bonuses: [],
     tools: [
       "Datasite",
       "Intralinks",
@@ -83,14 +62,7 @@ const reference = [
     dealMinUsd: 80000,
     dealMaxUsd: 900000,
     referralUsd: 70000,
-    bonuses: [
-      {
-        kind: "fast_signing",
-        amountUsd: 10000,
-        recipients: "referrer_and_company",
-        windowDays: 1,
-      },
-    ],
+    bonuses: [],
     tools: [],
   },
   {
@@ -99,14 +71,7 @@ const reference = [
     dealMinUsd: 20000,
     dealMaxUsd: 750000,
     referralUsd: 65000,
-    bonuses: [
-      {
-        kind: "fast_signing",
-        amountUsd: 10000,
-        recipients: "referrer_and_company",
-        windowDays: 1,
-      },
-    ],
+    bonuses: [],
     tools: [
       "Splunk",
       "Microsoft Sentinel",
@@ -124,14 +89,7 @@ const reference = [
     dealMinUsd: 100000,
     dealMaxUsd: 900000,
     referralUsd: 60000,
-    bonuses: [
-      {
-        kind: "fast_signing",
-        amountUsd: 10000,
-        recipients: "referrer_and_company",
-        windowDays: 1,
-      },
-    ],
+    bonuses: [],
     tools: ["Zoom for Healthcare", "Doxy.me", "In-house visit apps"],
   },
   {
@@ -140,14 +98,7 @@ const reference = [
     dealMinUsd: 80000,
     dealMaxUsd: 620000,
     referralUsd: 60000,
-    bonuses: [
-      {
-        kind: "fast_signing",
-        amountUsd: 10000,
-        recipients: "referrer_and_company",
-        windowDays: 1,
-      },
-    ],
+    bonuses: [],
     tools: ["PACS", "RIS", "DICOM", "GE MUSE", "Natus", "Nihon Kohden"],
   },
   {
@@ -156,14 +107,7 @@ const reference = [
     dealMinUsd: 80000,
     dealMaxUsd: 820000,
     referralUsd: 60000,
-    bonuses: [
-      {
-        kind: "fast_signing",
-        amountUsd: 10000,
-        recipients: "referrer_and_company",
-        windowDays: 1,
-      },
-    ],
+    bonuses: [],
     tools: [
       "Epic",
       "athenahealth",
@@ -179,14 +123,7 @@ const reference = [
     dealMinUsd: 100000,
     dealMaxUsd: 750000,
     referralUsd: 60000,
-    bonuses: [
-      {
-        kind: "fast_signing",
-        amountUsd: 10000,
-        recipients: "referrer_and_company",
-        windowDays: 1,
-      },
-    ],
+    bonuses: [],
     tools: [
       "MES",
       "SPC / yield systems",
@@ -203,14 +140,7 @@ const reference = [
     dealMinUsd: 100000,
     dealMaxUsd: 1500000,
     referralUsd: 55000,
-    bonuses: [
-      {
-        kind: "fast_signing",
-        amountUsd: 10000,
-        recipients: "referrer_and_company",
-        windowDays: 1,
-      },
-    ],
+    bonuses: [],
     tools: [
       "Mastercam",
       "Fusion CAM",
@@ -228,14 +158,7 @@ const reference = [
     dealMinUsd: 20000,
     dealMaxUsd: 480000,
     referralUsd: 45000,
-    bonuses: [
-      {
-        kind: "fast_signing",
-        amountUsd: 10000,
-        recipients: "referrer_and_company",
-        windowDays: 1,
-      },
-    ],
+    bonuses: [],
     tools: [
       "Claude Code",
       "Codex",
@@ -252,14 +175,7 @@ const reference = [
     dealMinUsd: 20000,
     dealMaxUsd: 890000,
     referralUsd: 45000,
-    bonuses: [
-      {
-        kind: "fast_signing",
-        amountUsd: 10000,
-        recipients: "referrer_and_company",
-        windowDays: 1,
-      },
-    ],
+    bonuses: [],
     tools: [
       "Figma",
       "Adobe Creative Cloud",
@@ -275,14 +191,7 @@ const reference = [
     dealMinUsd: 115000,
     dealMaxUsd: 1000000,
     referralUsd: 40000,
-    bonuses: [
-      {
-        kind: "fast_signing",
-        amountUsd: 10000,
-        recipients: "referrer_and_company",
-        windowDays: 1,
-      },
-    ],
+    bonuses: [],
     tools: [
       "Procore",
       "Autodesk Construction Cloud",
@@ -299,14 +208,7 @@ const reference = [
     dealMinUsd: 100000,
     dealMaxUsd: 1000000,
     referralUsd: 40000,
-    bonuses: [
-      {
-        kind: "fast_signing",
-        amountUsd: 10000,
-        recipients: "referrer_and_company",
-        windowDays: 1,
-      },
-    ],
+    bonuses: [],
     tools: [
       "Unity",
       "Unreal Engine",
@@ -324,14 +226,7 @@ const reference = [
     dealMinUsd: 45000,
     dealMaxUsd: 1350000,
     referralUsd: 40000,
-    bonuses: [
-      {
-        kind: "fast_signing",
-        amountUsd: 10000,
-        recipients: "referrer_and_company",
-        windowDays: 1,
-      },
-    ],
+    bonuses: [],
     tools: [
       "SolidWorks PDM",
       "PTC Creo",
@@ -349,14 +244,7 @@ const reference = [
     dealMinUsd: 35000,
     dealMaxUsd: 370000,
     referralUsd: 40000,
-    bonuses: [
-      {
-        kind: "fast_signing",
-        amountUsd: 10000,
-        recipients: "referrer_and_company",
-        windowDays: 1,
-      },
-    ],
+    bonuses: [],
     tools: ["CMS", "LMS", "XML / EPUB pipelines"],
   },
   {
@@ -365,14 +253,7 @@ const reference = [
     dealMinUsd: 55000,
     dealMaxUsd: 350000,
     referralUsd: 40000,
-    bonuses: [
-      {
-        kind: "fast_signing",
-        amountUsd: 10000,
-        recipients: "referrer_and_company",
-        windowDays: 1,
-      },
-    ],
+    bonuses: [],
     tools: [
       "Snowflake",
       "BigQuery",
@@ -392,14 +273,7 @@ const reference = [
     dealMinUsd: 95000,
     dealMaxUsd: 870000,
     referralUsd: 35000,
-    bonuses: [
-      {
-        kind: "fast_signing",
-        amountUsd: 10000,
-        recipients: "referrer_and_company",
-        windowDays: 1,
-      },
-    ],
+    bonuses: [],
     tools: [
       "Frame.io",
       "Adobe Premiere",
@@ -414,14 +288,7 @@ const reference = [
     dealMinUsd: 20000,
     dealMaxUsd: 250000,
     referralUsd: 30000,
-    bonuses: [
-      {
-        kind: "fast_signing",
-        amountUsd: 10000,
-        recipients: "referrer_and_company",
-        windowDays: 1,
-      },
-    ],
+    bonuses: [],
     tools: ["Five9", "Genesys", "NICE", "Talkdesk", "Amazon Connect", "Twilio"],
   },
   {
@@ -430,14 +297,7 @@ const reference = [
     dealMinUsd: 150000,
     dealMaxUsd: 300000,
     referralUsd: 30000,
-    bonuses: [
-      {
-        kind: "fast_signing",
-        amountUsd: 10000,
-        recipients: "referrer_and_company",
-        windowDays: 1,
-      },
-    ],
+    bonuses: [],
     tools: [
       "Microsoft 365",
       "SharePoint",
@@ -452,14 +312,7 @@ const reference = [
     dealMinUsd: 30000,
     dealMaxUsd: 800000,
     referralUsd: 30000,
-    bonuses: [
-      {
-        kind: "fast_signing",
-        amountUsd: 10000,
-        recipients: "referrer_and_company",
-        windowDays: 1,
-      },
-    ],
+    bonuses: [],
     tools: [
       "Shopify",
       "Adobe Creative Cloud",
@@ -475,14 +328,7 @@ const reference = [
     dealMinUsd: 50000,
     dealMaxUsd: 875000,
     referralUsd: 25000,
-    bonuses: [
-      {
-        kind: "fast_signing",
-        amountUsd: 10000,
-        recipients: "referrer_and_company",
-        windowDays: 1,
-      },
-    ],
+    bonuses: [],
     tools: ["Benchling", "LabArchives", "Dotmatics", "LIMS", "Medidata Rave"],
   },
   {
@@ -491,14 +337,7 @@ const reference = [
     dealMinUsd: 50000,
     dealMaxUsd: 500000,
     referralUsd: 25000,
-    bonuses: [
-      {
-        kind: "fast_signing",
-        amountUsd: 10000,
-        recipients: "referrer_and_company",
-        windowDays: 1,
-      },
-    ],
+    bonuses: [],
     tools: ["GitHub", "GitLab", "Bitbucket", "Jira", "Linear", "Confluence"],
   },
   {
@@ -507,14 +346,7 @@ const reference = [
     dealMinUsd: 25000,
     dealMaxUsd: 1150000,
     referralUsd: 15000,
-    bonuses: [
-      {
-        kind: "fast_signing",
-        amountUsd: 10000,
-        recipients: "referrer_and_company",
-        windowDays: 1,
-      },
-    ],
+    bonuses: [],
     tools: ["kdb+", "C++", "Rust", "FIX", "Python"],
   },
 ];

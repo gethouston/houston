@@ -24,7 +24,6 @@ export default {
       per: "por empresa",
       terms: [
         "Valor integral para empresas com 30 ou mais funcionários",
-        "Bônus incluídos, fixados no momento da indicação",
         "Confirmado quando a empresa assina a licença de dados",
         "Pago após a primeira entrega",
       ],
@@ -48,7 +47,7 @@ export default {
       },
       {
         title: "Você recebe",
-        line: "Até {amount} por empresa, com bônus incluídos, após a primeira entrega.",
+        line: "Até {amount} por empresa, após a primeira entrega.",
       },
     ],
   },
