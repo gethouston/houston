@@ -67,6 +67,7 @@ jobs:
     permissions:
       contents: read
       id-token: write # Workload Identity Federation
+      actions: write # delete superseded certificate image caches
     steps:
       - uses: actions/checkout@v6
 
@@ -101,13 +102,18 @@ jobs:
       # the whole cohort on every deploy (~20 min of the run). The digest
       # manifest (website/.cache) decides staleness per attendee, but the skip
       # also requires the previously rendered PNGs to exist in _site/c, so both
-      # are cached. The key is per-run so the post-job save always records the
-      # latest state; restore falls back to the most recent previous deploy.
+      # are cached. Restore takes the newest cert-images-* entry.
       # Correctness lives in the manifest digests (attendee data + renderer
       # fingerprint), and render.mjs prunes images for certificates that are no
       # longer issued, so a stale cache can never ship a wrong or revoked image.
+      #
+      # The cache is ~2.2 GB against the repo's 10 GB Actions cache limit, and
+      # only deploys read it, so it is the first entry GitHub evicts when CI
+      # caches crowd the limit: every eviction cost a ~25 min deploy. So it is
+      # saved under a hash of the manifest (no upload when no image changed)
+      # and older copies are deleted, keeping exactly one.
       - name: Restore certificate image cache
-        uses: actions/cache@v5
+        uses: actions/cache/restore@v5
         with:
           path: |
             website/.cache
@@ -155,3 +161,29 @@ jobs:
           accountId: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
           workingDirectory: website
           command: pages deploy _site --project-name=houston-site --branch=main
+
+      # After both deploys, so the upload never holds up a release and a cache
+      # failure never fails one.
+      - name: Save certificate image cache
+        id: cert-cache
+        if: ${{ !cancelled() && hashFiles('website/.cache/certificate-images.json') != '' }}
+        continue-on-error: true
+        uses: actions/cache/save@v5
+        with:
+          path: |
+            website/.cache
+            website/_site/c
+          key: cert-images-${{ hashFiles('website/.cache/certificate-images.json') }}
+
+      # One copy, the one just saved (or found already saved): anything older
+      # only crowds the cache limit.
+      - name: Drop superseded certificate image caches
+        if: ${{ !cancelled() && steps.cert-cache.outcome == 'success' }}
+        continue-on-error: true
+        env:
+          GH_TOKEN: ${{ github.token }}
+          KEEP: cert-images-${{ hashFiles('website/.cache/certificate-images.json') }}
+        run: |
+          gh cache list --repo "$GITHUB_REPOSITORY" --key cert-images- --limit 100 --json key --jq '.[].key' \
+            | { grep -vxF "$KEEP" || true; } \
+            | while read -r key; do gh cache delete --repo "$GITHUB_REPOSITORY" "$key"; done
