@@ -6,6 +6,10 @@
 // public.data_referrals row the form stores (refer-send.js); `composeMail`
 // turns it into the email the program inbox receives when storing fails.
 
+// The program inbox. One constant, here, so the fallback email's address
+// comes from code and never from page text; _data/refer.js reads it too.
+export const INBOX = "hello@gethouston.ai";
+
 const EMAIL = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
 const HOST = /^(?:[a-z0-9](?:[a-z0-9-]*[a-z0-9])?\.)+[a-z]{2,}$/;
 // Whole years, as typed: "12", not "12.5" or "about 12".
@@ -99,6 +103,6 @@ export function composeMail(input, copy) {
   }
   const subject = copy.mail.subject.replace("{company}", v.companyName);
   const body = lines.join("\n");
-  const href = `mailto:${copy.inbox}?subject=${encodeURIComponent(subject)}&body=${encodeURIComponent(body)}`;
+  const href = `mailto:${INBOX}?subject=${encodeURIComponent(subject)}&body=${encodeURIComponent(body)}`;
   return { subject, body, href };
 }

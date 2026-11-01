@@ -3,6 +3,7 @@
 // the i18n arrays, the same contract _data/enterprise.js keeps.
 
 import { REQUESTS } from "../../lib/refer-requests.js";
+import { INBOX } from "../assets/refer-model.js";
 import dataPartners from "./dataPartners.js";
 import locales from "./locales.js";
 
@@ -32,7 +33,7 @@ export default {
   // Referrals are stored in Supabase public.data_referrals
   // (assets/refer-send.js). When that fails, or without JS, the form emails
   // this inbox instead.
-  inbox: "hello@gethouston.ai",
+  inbox: INBOX,
   people: ["felipe", "julian"],
 
   pay,

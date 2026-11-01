@@ -139,7 +139,6 @@ test("years in business is a whole number of years", () => {
 test("the email names the company and carries every filled field", () => {
   const form = referEn.form;
   const copy = {
-    inbox: refer.inbox,
     mail: form.mail,
     labels: {
       companyName: form.companyName,
