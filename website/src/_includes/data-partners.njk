@@ -10,26 +10,9 @@
 {% extends "base.njk" %}
 {% set d = t.dataPartners %}
 {% set localePath = dataPartners.path %}
-{% block title %}{{ d.meta.title }}{% endblock %}
-{% block meta %}
-<meta name="description" content="{{ d.meta.description }}">
-<meta property="og:type" content="website">
-<meta property="og:url" content="https://gethouston.ai{{ locale.dir }}{{ dataPartners.path }}">
-<meta property="og:title" content="{{ d.meta.title }}">
-<meta property="og:description" content="{{ d.meta.description }}">
-<meta property="og:site_name" content="Houston">
-<meta property="og:locale" content="{{ locale.ogLocale }}">
-{%- for code in locales.order %}{% if code != locale.code %}
-<meta property="og:locale:alternate" content="{{ locales[code].ogLocale }}">
-{%- endif %}{% endfor %}
-<meta name="twitter:card" content="summary_large_image">
-<meta name="twitter:title" content="{{ d.meta.title }}">
-<meta name="twitter:description" content="{{ d.meta.description }}">
-{%- for code in locales.order %}
-<link rel="alternate" hreflang="{{ locales[code].hreflang }}" href="https://gethouston.ai{{ locales[code].dir }}{{ dataPartners.path }}">
-{%- endfor %}
-<link rel="alternate" hreflang="x-default" href="https://gethouston.ai/{{ dataPartners.path }}">
-{% endblock %}
+{% set title = d.meta.title %}
+{% set description = d.meta.description %}
+{% set alternates = { en: locales.en.dir + dataPartners.path, es: locales.es.dir + dataPartners.path, pt: locales.pt.dir + dataPartners.path } %}
 {% block headScripts %}
 <script>document.documentElement.className += " js";</script>
 {% endblock %}

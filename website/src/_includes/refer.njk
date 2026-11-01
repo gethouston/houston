@@ -11,28 +11,9 @@
 {% set r = t.refer %}
 {% set amt = refer.amountText[locale.code] %}
 {% set localePath = refer.path %}
-{% block title %}{{ r.meta.title | replace("{amount}", amt) }}{% endblock %}
-{% block meta %}
-{%- set title = r.meta.title | replace("{amount}", amt) %}
-{%- set description = r.meta.description | replace("{amount}", amt) %}
-<meta name="description" content="{{ description }}">
-<meta property="og:type" content="website">
-<meta property="og:url" content="https://gethouston.ai{{ locale.dir }}{{ refer.path }}">
-<meta property="og:title" content="{{ title }}">
-<meta property="og:description" content="{{ description }}">
-<meta property="og:site_name" content="Houston">
-<meta property="og:locale" content="{{ locale.ogLocale }}">
-{%- for code in locales.order %}{% if code != locale.code %}
-<meta property="og:locale:alternate" content="{{ locales[code].ogLocale }}">
-{%- endif %}{% endfor %}
-<meta name="twitter:card" content="summary_large_image">
-<meta name="twitter:title" content="{{ title }}">
-<meta name="twitter:description" content="{{ description }}">
-{%- for code in locales.order %}
-<link rel="alternate" hreflang="{{ locales[code].hreflang }}" href="https://gethouston.ai{{ locales[code].dir }}{{ refer.path }}">
-{%- endfor %}
-<link rel="alternate" hreflang="x-default" href="https://gethouston.ai/{{ refer.path }}">
-{% endblock %}
+{% set title = r.meta.title | replace("{amount}", amt) %}
+{% set description = r.meta.description | replace("{amount}", amt) %}
+{% set alternates = { en: locales.en.dir + refer.path, es: locales.es.dir + refer.path, pt: locales.pt.dir + refer.path } %}
 {% block headScripts %}
 <script>document.documentElement.className += " js";</script>
 {% endblock %}
