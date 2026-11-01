@@ -1,16 +1,10 @@
 {% from "enterprise/icons.njk" import arrow %}
 {%- set d = t.dataPartners -%}
-{%- set reel = dataPartners.reelDir -%}
 {# The fold, /enterprise's own (enterprise/hero.njk): the same reel of real
-   operations under one huge light statement and two ways in. The reel is
-   run by assets/enterprise-reel.js; without JS or with reduced motion the
-   first poster stands. #}
+   operations (data-partners/reel.njk) under one huge light statement and two
+   ways in. #}
 <header class="hero ent-hero" id="top" data-tone="dark">
-  <div class="ent-reel" id="ent-reel" aria-hidden="true">
-{%- for clip in dataPartners.reel %}
-    <video class="ent-reel-clip{% if loop.first %} is-on{% endif %}" muted playsinline preload="{{ 'metadata' if loop.first else 'none' }}" poster="{{ reel }}/{{ clip }}.webp" width="1280" height="720"><source src="{{ reel }}/{{ clip }}.mp4" type="video/mp4"></video>
-{%- endfor %}
-  </div>
+{% include "data-partners/reel.njk" %}
 
   <div class="hero-fold ent-fold">
     <div class="hero-intro hero-load">

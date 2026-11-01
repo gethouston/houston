@@ -1,0 +1,10 @@
+{%- set reelDir = dataPartners.reelDir -%}
+{# The fold's reel of real operations, /enterprise's own clips. Shared by the
+   /data-partners and /data-partners/refer heroes; run by
+   assets/enterprise-reel.js (#ent-reel). Without JS or with reduced motion
+   the first poster stands. #}
+  <div class="ent-reel" id="ent-reel" aria-hidden="true">
+{%- for clip in dataPartners.reel %}
+    <video class="ent-reel-clip{% if loop.first %} is-on{% endif %}" muted playsinline preload="{{ 'metadata' if loop.first else 'none' }}" poster="{{ reelDir }}/{{ clip }}.webp" width="1280" height="720"><source src="{{ reelDir }}/{{ clip }}.mp4" type="video/mp4"></video>
+{%- endfor %}
+  </div>

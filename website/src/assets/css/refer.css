@@ -1,7 +1,7 @@
 /*
  * /data-partners/refer — the fold and the pieces every section shares. The
- * /enterprise hero statement (enterprise-hero.css .ent-h1 / .ent-sub) on the
- * landing's near-black ground with its one white bloom, the payout card
+ * /enterprise hero statement (enterprise-hero.css .ent-h1 / .ent-sub) over
+ * the /data-partners reel (enterprise-hero.css .ent-reel), the payout card
  * beside it. No new palette: white on black, hairlines, the white pill. The
  * sections live in refer-sections.css, the form in refer-form.css.
  */
@@ -11,13 +11,31 @@
   overflow: hidden;
   background: var(--band-black);
 }
-/* The one soft bloom behind the statement, the landing hero's glow. */
-.rf-hero::before {
+/* The reel runs under the fold, so the statement carries the same feathered
+   dark pool as /enterprise's (.ent-fold .hero-intro::before): it reads over
+   the brightest frame. A gradient, not a blur (PERFORMANCE.md rule 2). */
+.rf-intro {
+  position: relative;
+  isolation: isolate;
+}
+.rf-intro::before {
   content: "";
   position: absolute;
-  inset: -20% 30% 40% -20%;
-  background: radial-gradient(closest-side, rgba(255, 255, 255, 0.09), transparent);
+  inset: -12% -8%;
+  z-index: -1;
+  background: radial-gradient(
+    closest-side,
+    rgba(8, 8, 8, 0.7),
+    rgba(8, 8, 8, 0.5) 55%,
+    rgba(8, 8, 8, 0) 100%
+  );
   pointer-events: none;
+}
+.rf-hero .btn-ghost {
+  background: rgba(10, 10, 10, 0.32);
+}
+.rf-hero .btn-ghost:hover {
+  background: rgba(10, 10, 10, 0.5);
 }
 .rf-fold {
   position: relative;
@@ -37,14 +55,10 @@
     gap: clamp(40px, 5vw, 80px);
   }
 }
-/* No reel to fill the fold, so the statement runs a step smaller than
-   /enterprise's and shares the row with the card. */
+/* The statement runs a step smaller than /enterprise's and shares the row
+   with the card; it keeps the hero's text shadow for the reel behind it. */
 .rf-h1 {
   font-size: clamp(40px, min(5.6vw, 9.5vh), 84px);
-  text-shadow: none;
-}
-.rf-intro .ent-sub {
-  text-shadow: none;
 }
 .rf-intro .hero-cta {
   margin-top: clamp(28px, 3.4vw, 40px);
@@ -71,7 +85,8 @@
   padding: clamp(24px, 2.8vw, 36px);
   border: 1px solid var(--line-on-ink);
   border-radius: clamp(20px, 2.2vw, 28px);
-  background: rgba(255, 255, 255, 0.04);
+  /* Dark enough to hold its figures over any frame of the reel. */
+  background: rgba(10, 10, 10, 0.66);
   color: #fff;
 }
 .rf-card-label {

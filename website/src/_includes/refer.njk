@@ -37,6 +37,7 @@
 <script>document.documentElement.className += " js";</script>
 {% endblock %}
 {% block stylesheets %}
+<link rel="preload" as="image" type="image/webp" href="{{ dataPartners.reelDir }}/{{ dataPartners.reel[0] }}.webp" fetchpriority="high">
 <link rel="stylesheet" href="/assets/css/site-tokens.css">
 <link rel="stylesheet" href="/assets/css/landing.css">
 <link rel="stylesheet" href="/assets/css/landing-hero.css">
@@ -71,6 +72,7 @@
 {% include "enterprise/scripts.njk" %}
 <script type="module" src="/assets/refer-form.js"></script>
 <script defer src="/assets/refer-board.js"></script>
+<script defer src="/assets/enterprise-reel.js"></script>
 <script defer src="/assets/vendor/lenis.min.js"></script>
 <script defer src="/assets/enterprise-flow.js"></script>
 {% endblock %}
