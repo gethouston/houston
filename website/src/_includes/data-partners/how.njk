@@ -1,0 +1,21 @@
+{%- set h = t.dataPartners.how -%}
+{# How the process works, on the black band: four photographs from the hero
+   reel's series, one per step, numbered, each with its line under it. Four
+   across on desktop, one under the other on phones. #}
+<section id="how" class="section is-dark ent-section dp-how" data-tone="dark">
+  <div class="ent-head reveal">
+    <h2 class="sec-title">{{ h.title }}</h2>
+    <p class="sec-lead split-line">{{ h.lead }}</p>
+  </div>
+  <ol class="dp-steps reveal reveal-d1">
+{%- for step in h.steps %}
+    <li class="dp-step">
+      <figure class="ent-tile dp-step-photo">
+        <img src="{{ dataPartners.reelDir }}/{{ dataPartners.steps[loop.index0] }}.webp" alt="{{ step.alt }}" width="1280" height="720" loading="lazy" decoding="async">
+        <figcaption class="ent-tile-cap"><span class="dp-step-n">{{ "0" + loop.index }}</span><h3>{{ step.name }}</h3></figcaption>
+      </figure>
+      <p class="dp-step-line">{{ step.line }}</p>
+    </li>
+{%- endfor %}
+  </ol>
+</section>

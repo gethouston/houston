@@ -1,0 +1,19 @@
+{% import "data-partners/icons.njk" as icons %}
+{%- set p = t.dataPartners.privacy -%}
+{# Privacy and control on the black band: four guarantees, two by two on
+   hairlines on desktop. #}
+<section id="privacy" class="section is-dark ent-section dp-privacy" data-tone="dark">
+  <div class="ent-head reveal">
+    <h2 class="sec-title">{{ p.title }}</h2>
+    <p class="sec-lead split-line">{{ p.lead }}</p>
+  </div>
+  <ul class="dp-cols dp-cols-2 reveal reveal-d1">
+{%- for id in dataPartners.privacy %}{% set point = p.points[loop.index0] %}
+    <li class="dp-col">
+      <span class="dp-glyph">{{ icons.glyph(id) }}</span>
+      <h3 class="dp-col-title">{{ point.title }}</h3>
+      <p class="dp-col-line">{{ point.line }}</p>
+    </li>
+{%- endfor %}
+  </ul>
+</section>

@@ -1,0 +1,33 @@
+{% from "enterprise/icons.njk" import arrow %}
+{% from "refer/icons.njk" import glyph %}
+{%- set r = t.refer -%}
+{%- set amt = refer.amountText[locale.code] -%}
+{# The fold: the /data-partners reel (data-partners/reel.njk) behind the
+   enterprise hero's huge light statement and two pills on the left, the
+   payout card on the right (stacked under it on phones). The card is the
+   program in one glance: the most a referral earns and the terms that decide
+   it. #}
+<header class="hero ent-hero rf-hero" id="top" data-tone="dark">
+{% include "data-partners/reel.njk" %}
+  <div class="rf-fold">
+    <div class="rf-intro hero-load">
+      <h1 class="ent-h1 rf-h1">{% for line in r.hero.h1Lines %}<span>{{ line }}</span>{% if not loop.last %} {% endif %}{% endfor %}</h1>
+      <p class="ent-sub">{{ r.hero.sub | replace("{amount}", amt) }}</p>
+      <div class="hero-cta">
+        <a class="btn btn-white" href="#refer">{{ r.hero.ctaRefer }}{{ arrow() }}</a>
+        <a class="btn btn-ghost" href="#how">{{ r.hero.ctaHow }}</a>
+      </div>
+    </div>
+
+    <aside class="rf-card hero-load" aria-labelledby="rf-card-label">
+      <p class="rf-card-label" id="rf-card-label">{{ r.hero.card.label }}</p>
+      <p class="rf-card-amount">{{ amt }}</p>
+      <p class="rf-card-per">{{ r.hero.card.per }}</p>
+      <ul class="rf-card-terms">
+{%- for term in r.hero.card.terms %}
+        <li>{{ glyph("check") }}<span>{{ term }}</span></li>
+{%- endfor %}
+      </ul>
+    </aside>
+  </div>
+</header>

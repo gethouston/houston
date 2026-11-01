@@ -1,0 +1,106 @@
+{% from "refer/icons.njk" import glyph %}
+{%- set l = t.referBoard.listing -%}
+{%- set c = t.referListings[item.slug] -%}
+{%- set f = item.fmt[locale.code] -%}
+{#- A section, and its tab, only when the request has something for it; a
+    sparse request is its overview and how it pays. -#}
+{%- set has = {
+  overview: true,
+  fit: c.lookingFor.length or c.notAFit.length or c.referrers,
+  license: c.covers.length or c.niceToHave.length or item.tools.length,
+  questions: c.questions.length,
+  how: true
+} -%}
+{# The brief, under a row of in-page tabs that stays below the bar while
+   reading: what the buyer wants (overview), whether a company fits, what
+   the license covers, what the company will be asked, and how a referral
+   pays. Plain anchors: every section stands without JS. #}
+<article class="rf-brief">
+  <nav class="rf-ltabs" aria-label="{{ l.tabsLabel }}">
+    <ul>
+{%- for id in ["overview", "fit", "license", "questions", "how"] %}{% if has[id] %}
+      <li><a href="#{{ id }}">{{ l.tabs[id] }}</a></li>
+{%- endif %}{% endfor %}
+    </ul>
+  </nav>
+
+  <section class="rf-lsec" id="overview">
+    <h2>{{ l.about }}</h2>
+    <p class="rf-lprose">{{ c.about }}</p>
+{%- if c.location or c.size or c.history or c.kinds %}
+    <dl class="rf-facts">
+{%- for key in ["location", "size", "history", "kinds"] %}{% if c[key] %}
+      <div><dt>{{ l.facts[key] }}</dt><dd>{{ c[key] }}</dd></div>
+{%- endif %}{% endfor %}
+    </dl>
+{%- endif %}
+  </section>
+
+{%- if has.fit %}
+  <section class="rf-lsec" id="fit">
+    <h2>{{ l.fitTitle }}</h2>
+{%- if c.lookingFor.length or c.notAFit.length %}
+    <div class="rf-fit">
+      <div class="rf-fit-col is-yes">
+        <h3>{{ glyph("check") }}{{ l.lookingFor }}</h3>
+        <ul>{% for line in c.lookingFor %}<li>{{ glyph("check") }}<span>{{ line }}</span></li>{% endfor %}</ul>
+      </div>
+      <div class="rf-fit-col is-no">
+        <h3>{{ glyph("no") }}{{ l.notAFit }}</h3>
+        <ul>{% for line in c.notAFit %}<li>{{ glyph("no") }}<span>{{ line }}</span></li>{% endfor %}</ul>
+      </div>
+    </div>
+{%- endif %}
+{%- if c.referrers %}
+    <div class="rf-who">
+      {{ glyph("find") }}
+      <div>
+        <h3>{{ l.whoKnows }}</h3>
+        <p>{{ c.referrers }}</p>
+      </div>
+      <a class="rf-who-cta" href="#refer">{{ l.referOne }}</a>
+    </div>
+{%- endif %}
+  </section>
+{%- endif %}
+
+{%- if has.license %}
+  <section class="rf-lsec" id="license">
+    <h2>{{ l.licenseTitle }}</h2>
+{%- if c.covers.length %}
+    <ul class="rf-checks">{% for line in c.covers %}<li>{{ glyph("check") }}<span>{{ line }}</span></li>{% endfor %}</ul>
+{%- endif %}
+{%- if c.niceToHave.length %}
+    <h3 class="rf-lsub">{{ l.niceToHave }}</h3>
+    <ul class="rf-checks is-plus">{% for line in c.niceToHave %}<li>{{ glyph("bonus") }}<span>{{ line }}</span></li>{% endfor %}</ul>
+{%- endif %}
+{%- if item.tools.length %}
+    <h3 class="rf-lsub">{{ l.tools }}</h3>
+    <ul class="rf-tools">{% for tool in item.tools %}<li><span aria-hidden="true">{{ tool | first }}</span>{{ tool }}</li>{% endfor %}</ul>
+{%- endif %}
+  </section>
+{%- endif %}
+
+{%- if has.questions %}
+  <section class="rf-lsec" id="questions">
+    <h2>{{ l.questionsTitle }}</h2>
+    <p class="rf-lprose">{{ l.questionsLead }}</p>
+    <ol class="rf-questions">{% for q in c.questions %}<li>{{ q }}</li>{% endfor %}</ol>
+  </section>
+{%- endif %}
+
+  <section class="rf-lsec" id="how">
+    <h2>{{ l.howTitle }}</h2>
+    <ol class="rf-lsteps">
+{%- for step in t.refer.how.steps %}
+      <li><span>{{ loop.index }}</span><div><h3>{{ step.title }}</h3><p>{{ step.line | replace("{amount}", f.earn) }}</p></div></li>
+{%- endfor %}
+    </ol>
+    <div class="rf-onlisting">
+      <p class="rf-onlisting-title">{{ l.onListing }}</p>
+      <p class="rf-onlisting-amount">{{ l.upTo | replace("{amount}", f.earn) }}</p>
+      <ul class="rf-checks">{% for term in t.refer.hero.card.terms %}<li>{{ glyph("check") }}<span>{{ term }}</span></li>{% endfor %}</ul>
+      <a class="rf-onlisting-link" href="{{ localeRoot }}{{ refer.path }}#terms">{{ l.termsLink }}</a>
+    </div>
+  </section>
+</article>

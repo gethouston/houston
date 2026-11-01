@@ -1,0 +1,59 @@
+{# The /data-partners/refer page, one layout for all three locales, on the
+   /enterprise contract: text from `t.refer` (_data/i18n/refer/<lang>.js),
+   structure from `refer` (_data/refer.js), language from directory data. The
+   page files are stubs that only set the permalink.
+
+   It wears the /enterprise look: the same nav chrome, tone flow, type, pills
+   and closing scene (enterprise*.css, enterprise-flow.js), plus its own
+   sections in refer*.css. Every {amount} in the copy is the program's
+   figure, formatted for the locale (refer.amountText). #}
+{% extends "base.njk" %}
+{% set r = t.refer %}
+{% set amt = refer.amountText[locale.code] %}
+{% set localePath = refer.path %}
+{% set title = r.meta.title | replace("{amount}", amt) %}
+{% set description = r.meta.description | replace("{amount}", amt) %}
+{% set alternates = { en: locales.en.dir + refer.path, es: locales.es.dir + refer.path, pt: locales.pt.dir + refer.path } %}
+{% block headScripts %}
+<script>document.documentElement.className += " js";</script>
+{% endblock %}
+{% block stylesheets %}
+<link rel="preload" as="image" type="image/webp" href="{{ dataPartners.reelDir }}/{{ dataPartners.reel[0] }}.webp" fetchpriority="high">
+<link rel="stylesheet" href="/assets/css/site-tokens.css">
+<link rel="stylesheet" href="/assets/css/landing.css">
+<link rel="stylesheet" href="/assets/css/landing-hero.css">
+<link rel="stylesheet" href="/assets/css/landing-splits.css">
+<link rel="stylesheet" href="/assets/css/landing-motion.css">
+<link rel="stylesheet" href="/assets/css/landing-marketing.css">
+<link rel="stylesheet" href="/assets/css/download-gate.css">
+<link rel="stylesheet" href="/assets/css/dl-dropdown.css">
+<link rel="stylesheet" href="/assets/css/lang-switch.css">
+<link rel="stylesheet" href="/assets/css/enterprise.css">
+<link rel="stylesheet" href="/assets/css/enterprise-hero.css">
+<link rel="stylesheet" href="/assets/css/enterprise-flow.css">
+<link rel="stylesheet" href="/assets/css/refer.css">
+<link rel="stylesheet" href="/assets/css/refer-sections.css">
+<link rel="stylesheet" href="/assets/css/refer-board.css">
+<link rel="stylesheet" href="/assets/css/refer-form.css">
+{% endblock %}
+{% block body %}
+{% include "refer/nav.njk" %}
+<main id="main">
+{% include "refer/hero.njk" %}
+{% include "refer/how.njk" %}
+{% include "refer/companies.njk" %}
+{% include "refer/form.njk" %}
+{% include "refer/terms.njk" %}
+{% include "refer/faq.njk" %}
+{% include "refer/contact.njk" %}
+</main>
+{% include "landing/footer.njk" %}
+{% include "landing/download-modals.njk" %}
+{% include "landing/subpage-scripts.njk" %}
+{% include "enterprise/scripts.njk" %}
+<script type="module" src="/assets/refer-form.js"></script>
+<script defer src="/assets/refer-board.js"></script>
+<script defer src="/assets/enterprise-reel.js"></script>
+<script defer src="/assets/vendor/lenis.min.js"></script>
+<script defer src="/assets/enterprise-flow.js"></script>
+{% endblock %}

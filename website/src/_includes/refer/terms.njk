@@ -1,0 +1,20 @@
+{%- set r = t.refer -%}
+{%- set amt = refer.amountText[locale.code] -%}
+{# The key terms, on the black band: three columns (how you're paid, who can
+   refer, good to know), each a short list under a hairline. One column on
+   phones. #}
+<section id="terms" class="section is-dark ent-section rf-terms" data-tone="dark">
+  <h2 class="sec-title rf-terms-title reveal">{{ r.terms.title }}</h2>
+  <div class="rf-terms-grid reveal reveal-d1">
+{%- for group in r.terms.groups %}
+    <div class="rf-terms-group">
+      <h3>{{ group.title }}</h3>
+      <ul>
+{%- for line in group.lines %}
+        <li>{{ line | replace("{amount}", amt) }}</li>
+{%- endfor %}
+      </ul>
+    </div>
+{%- endfor %}
+  </div>
+</section>

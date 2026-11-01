@@ -1,0 +1,14 @@
+{%- set r = t.refer -%}
+{# The closing scene, /enterprise's (enterprise.css .ent-contact): the
+   people who handle the outreach, one big line, one line under it, ONE
+   action, back up to the form. #}
+<section id="contact" class="section ent-section ent-contact" data-tone="dark">
+  <div class="ent-contact-faces reveal" role="group" aria-label="{{ r.contact.peopleLabel }}">
+{%- for id in refer.people %}{% set p = landing.people[id] %}
+    <span class="face face-img" title="{{ t.js.people[id] }}"><img src="/assets/img/{{ p.img }}-96.webp" width="96" height="96" alt="{{ t.js.people[id] }}" loading="lazy" decoding="async"></span>
+{%- endfor %}
+  </div>
+  <h2 class="ent-contact-title reveal">{{ r.contact.title }}</h2>
+  <p class="ent-contact-lead reveal reveal-d1">{{ r.contact.lead }}</p>
+  <a class="ent-contact-cta reveal reveal-d1" href="#refer">{{ r.contact.cta }}<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="m9 18 6-6-6-6"/></svg></a>
+</section>

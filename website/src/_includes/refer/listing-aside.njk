@@ -1,0 +1,29 @@
+{%- set s = t.referBoard.listing.sidebar -%}
+{%- set f = item.fmt[locale.code] -%}
+{# The payout card, held beside the brief as it scrolls (on phones it sits
+   above it): the most a referral earns here, what it is made of, the one
+   action, and the way in for the company itself. #}
+<aside class="rf-aside" aria-labelledby="rf-aside-title">
+  <div class="rf-aside-card">
+    <h2 class="rf-aside-label" id="rf-aside-title">{{ t.referBoard.listing.earnUpTo }}</h2>
+    <p class="rf-aside-amount">{{ f.earn }}</p>
+    <dl class="rf-aside-parts">
+      <div>
+        <dt>{{ s.referral }}<span>{{ s.referralNote }}</span></dt>
+        <dd>{{ f.referral }}</dd>
+      </div>
+{%- for bonus in item.bonuses %}
+      <div class="is-bonus">
+        <dt>{{ s.bonusKinds[bonus.kind] }}<span>{{ s.lockedIn }}</span></dt>
+        <dd>{{ f.bonuses[loop.index0] }}</dd>
+      </div>
+{%- endfor %}
+    </dl>
+{%- if item.bonuses.length %}
+    <p class="rf-aside-line">{{ s.bonusLine }}</p>
+{%- endif %}
+    <a class="rf-aside-cta" href="#refer">{{ s.cta }}</a>
+    <p class="rf-aside-note">{{ s.ctaNote }}</p>
+    <p class="rf-aside-yours">{{ s.yours }} <a href="{{ localeRoot }}data-partners/">{{ s.yoursCta }}</a></p>
+  </div>
+</aside>

@@ -1,0 +1,19 @@
+{% from "enterprise/icons.njk" import arrow %}
+{%- set p = t.dataPartners.payouts -%}
+{# Payout tiers on the black band: three columns on hairlines, the amount set
+   light and large, each pointing back to the estimator. #}
+<section id="payouts" class="section is-dark ent-section dp-payouts" data-tone="dark">
+  <div class="ent-head reveal">
+    <h2 class="sec-title">{{ p.title }}</h2>
+    <p class="sec-lead split-line">{{ p.lead }}</p>
+  </div>
+  <ol class="dp-cols dp-cols-3 reveal reveal-d1">
+{%- for tier in p.tiers %}
+    <li class="dp-col">
+      <p class="dp-tier-amount">{{ tier.amount }}</p>
+      <p class="dp-col-line">{{ tier.line }}</p>
+      <a class="dp-link" href="#estimate">{{ p.estimate }}{{ arrow() }}</a>
+    </li>
+{%- endfor %}
+  </ol>
+</section>

@@ -1,0 +1,22 @@
+{% from "refer/icons.njk" import glyph %}
+{%- set r = t.refer -%}
+{%- set amt = refer.amountText[locale.code] -%}
+{# How referrals work: the four steps in one row on desktop, joined by a
+   hairline from glyph to glyph, stacked with the line running down on
+   phones. #}
+<section id="how" class="section ent-section rf-how" data-tone="light">
+  <div class="ent-head reveal">
+    <h2 class="sec-title">{{ r.how.title }}</h2>
+    <p class="sec-lead">{{ r.how.lead }}</p>
+  </div>
+  <ol class="rf-steps reveal reveal-d1">
+{%- for step in r.how.steps %}
+    <li class="rf-step">
+      <span class="rf-step-mark">{{ glyph(refer.steps[loop.index0]) }}</span>
+      <span class="rf-step-n">{{ loop.index }}</span>
+      <h3 class="rf-step-title">{{ step.title }}</h3>
+      <p class="rf-step-line">{{ step.line | replace("{amount}", amt) }}</p>
+    </li>
+{%- endfor %}
+  </ol>
+</section>

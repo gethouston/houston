@@ -1,0 +1,9 @@
+---
+pagination:
+  data: referListings.items
+  size: 1
+  alias: item
+permalink: "/es/data-partners/refer/{{ item.slug }}/index.html"
+eleventyExcludeFromCollections: true
+---
+{% extends "refer-listing.njk" %}

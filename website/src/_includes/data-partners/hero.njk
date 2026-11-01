@@ -1,0 +1,19 @@
+{% from "enterprise/icons.njk" import arrow %}
+{%- set d = t.dataPartners -%}
+{# The fold, /enterprise's own (enterprise/hero.njk): the same reel of real
+   operations (data-partners/reel.njk) under one huge light statement and two
+   ways in. #}
+<header class="hero ent-hero" id="top" data-tone="dark">
+{% include "data-partners/reel.njk" %}
+
+  <div class="hero-fold ent-fold">
+    <div class="hero-intro hero-load">
+      <h1 class="ent-h1">{% for line in d.hero.h1Lines %}<span>{{ line }}</span>{% if not loop.last %} {% endif %}{% endfor %}</h1>
+      <p class="ent-sub">{{ d.hero.sub }}</p>
+      <div class="hero-cta">
+        <a class="btn btn-white" href="#estimate">{{ d.hero.ctaEstimate }}{{ arrow() }}</a>
+        <a class="btn btn-ghost" href="{{ dataPartners.booking }}" target="_blank" rel="noopener">{{ d.hero.ctaBook }}</a>
+      </div>
+    </div>
+  </div>
+</header>

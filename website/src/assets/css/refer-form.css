@@ -1,0 +1,291 @@
+/*
+ * /data-partners/refer — the referral form and the track beside it. The
+ * form sits on its own white card in both tones, so its fields never
+ * change color under the visitor's cursor; the copy column beside it
+ * follows the page's tone flow.
+ */
+
+.rf-refer-grid {
+  display: grid;
+  grid-template-columns: minmax(0, 0.9fr) minmax(0, 1.1fr);
+  gap: clamp(40px, 6vw, 96px);
+  align-items: start;
+}
+/* Desktop: the copy and the track stay beside the form as it scrolls by. */
+@media (min-width: 961px) {
+  .rf-refer-copy {
+    position: sticky;
+    top: 104px;
+  }
+}
+@media (max-width: 960px) {
+  .rf-refer-grid {
+    grid-template-columns: 1fr;
+  }
+}
+
+/* ── The track: what happens after you send ──────────────────────────── */
+.rf-track-title {
+  margin-top: clamp(40px, 5vw, 64px);
+  font-size: 14px;
+  font-weight: 600;
+  color: var(--ink-subtle);
+}
+.rf-track {
+  list-style: none;
+  margin-top: 18px;
+}
+.rf-track-step {
+  position: relative;
+  padding: 0 0 22px 30px;
+}
+/* The dot, and the line down to the next one. */
+.rf-track-dot {
+  position: absolute;
+  top: 5px;
+  left: 0;
+  width: 11px;
+  height: 11px;
+  border-radius: 999px;
+  border: 1.5px solid var(--ink-strong);
+  background: var(--ground);
+}
+.rf-track-step:last-child .rf-track-dot {
+  background: var(--ink-strong);
+}
+.rf-track-step:not(:last-child)::before {
+  content: "";
+  position: absolute;
+  top: 19px;
+  bottom: 2px;
+  left: 5px;
+  width: 1px;
+  background: var(--line-strong);
+}
+.rf-track-label {
+  font-size: 15.5px;
+  font-weight: 600;
+  color: var(--ink-strong);
+}
+.rf-track-line {
+  margin-top: 3px;
+  font-size: 14.5px;
+  line-height: 1.5;
+  color: var(--ink-muted);
+}
+.rf-track-note {
+  margin-top: 6px;
+  font-size: 14.5px;
+  line-height: 1.5;
+  color: var(--ink-subtle);
+}
+.is-dark .rf-track-dot {
+  border-color: #fff;
+  background: var(--band-black);
+}
+.is-dark .rf-track-step:last-child .rf-track-dot {
+  background: #fff;
+}
+.is-dark .rf-track-step:not(:last-child)::before {
+  background: var(--line-on-ink);
+}
+.is-dark .rf-track-label {
+  color: #fff;
+}
+.is-dark .rf-track-line,
+.is-dark .rf-track-note,
+.is-dark .rf-track-title {
+  color: var(--on-ink-muted);
+}
+
+/* ── The form card ───────────────────────────────────────────────────── */
+.rf-form-card {
+  padding: clamp(22px, 3vw, 40px);
+  border: 1px solid var(--line);
+  border-radius: clamp(20px, 2.2vw, 28px);
+  background: var(--card);
+  color: var(--ink-strong);
+  box-shadow: 0 1px 2px rgba(13, 13, 13, 0.04),
+    0 24px 48px -28px rgba(13, 13, 13, 0.18);
+  scroll-margin-top: 88px;
+}
+.is-dark .rf-form-card {
+  border-color: transparent;
+}
+.rf-group {
+  border: 0;
+  display: grid;
+  gap: 16px;
+}
+.rf-group + .rf-group {
+  margin-top: 28px;
+  padding-top: 26px;
+  border-top: 1px solid var(--line);
+}
+.rf-group legend {
+  float: left;
+  width: 100%;
+  margin-bottom: 4px;
+  font-size: 17px;
+  font-weight: 600;
+  letter-spacing: -0.01em;
+}
+.rf-row {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 16px 14px;
+}
+@media (max-width: 560px) {
+  .rf-row {
+    grid-template-columns: 1fr;
+  }
+}
+.rf-field {
+  display: flex;
+  flex-direction: column;
+  gap: 7px;
+  min-width: 0;
+}
+.rf-field label {
+  font-size: 13.5px;
+  font-weight: 500;
+  color: var(--ink-muted);
+}
+.rf-optional {
+  font-weight: 400;
+  color: var(--ink-subtle);
+}
+.rf-field input,
+.rf-field select,
+.rf-field textarea {
+  width: 100%;
+  min-height: 48px;
+  padding: 12px 14px;
+  border: 1px solid var(--line-strong);
+  border-radius: 12px;
+  background: var(--card);
+  color: var(--ink-strong);
+  font: 400 15.5px/1.35 var(--sans);
+  transition: border-color var(--dur-fast) var(--ease-standard);
+}
+.rf-field select {
+  appearance: none;
+  padding-right: 40px;
+  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='%235d5d5d' stroke-width='2' stroke-linecap='round'%3E%3Cpath d='m6 9 6 6 6-6'/%3E%3C/svg%3E");
+  background-repeat: no-repeat;
+  background-position: right 14px center;
+  background-size: 16px;
+}
+.rf-field textarea {
+  resize: vertical;
+}
+.rf-field input::placeholder,
+.rf-field textarea::placeholder {
+  color: var(--ink-subtle);
+  opacity: 0.8;
+}
+.rf-field input:focus-visible,
+.rf-field select:focus-visible,
+.rf-field textarea:focus-visible {
+  outline: 2px solid var(--focus);
+  outline-offset: 1px;
+  border-color: transparent;
+}
+.rf-field [aria-invalid="true"] {
+  border-color: #b42318;
+}
+/* An error is the one red on the page: it has to be found at a glance. */
+.rf-error {
+  font-size: 13px;
+  line-height: 1.4;
+  color: #b42318;
+}
+.rf-consent {
+  margin-top: 26px;
+  font-size: 13.5px;
+  line-height: 1.5;
+  color: var(--ink-muted);
+}
+.rf-consent a {
+  color: var(--ink-strong);
+  text-decoration: underline;
+  text-underline-offset: 2px;
+}
+/* The bot trap: out of sight and out of the tab order, still in the form. */
+.rf-trap {
+  position: absolute;
+  left: -10000px;
+  width: 1px;
+  height: 1px;
+  overflow: hidden;
+}
+.rf-submit:disabled {
+  opacity: 0.6;
+  cursor: progress;
+}
+.rf-submit,
+.rf-again {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 100%;
+  height: 52px;
+  margin-top: 16px;
+  border: 0;
+  border-radius: 999px;
+  background: var(--action);
+  color: var(--action-text);
+  font: 600 15.5px/1 var(--sans);
+  cursor: pointer;
+  transition: background-color var(--dur-fast) var(--ease-standard),
+    transform var(--dur-fast) var(--ease-entrance);
+}
+.rf-submit:hover,
+.rf-again:hover {
+  background: var(--action-hover);
+}
+.rf-submit:active,
+.rf-again:active {
+  transform: scale(0.98);
+}
+
+/* ── Sent ────────────────────────────────────────────────────────────── */
+.rf-done {
+  padding-block: clamp(12px, 3vw, 40px);
+  outline: none;
+}
+.rf-done-title {
+  font-size: clamp(24px, 2.4vw, 30px);
+  font-weight: 400;
+  letter-spacing: -0.02em;
+  line-height: 1.15;
+}
+.rf-done p {
+  margin-top: 12px;
+  font-size: 15.5px;
+  line-height: 1.55;
+  color: var(--ink-muted);
+}
+.rf-done a {
+  color: var(--link);
+  text-decoration: underline;
+  text-underline-offset: 2px;
+}
+.rf-again {
+  margin-top: 28px;
+  background: transparent;
+  color: var(--ink-strong);
+  border: 1px solid var(--line-strong);
+}
+.rf-again:hover {
+  background: var(--panel);
+}
+@media (prefers-reduced-motion: reduce) {
+  .rf-submit,
+  .rf-again,
+  .rf-field input,
+  .rf-field select,
+  .rf-field textarea {
+    transition: none;
+  }
+}

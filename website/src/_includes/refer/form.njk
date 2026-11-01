@@ -1,0 +1,106 @@
+{%- set r = t.refer -%}
+{%- set f = r.form -%}
+{%- set mailto = "mailto:" + refer.inbox -%}
+{#- On a request's own page (`item` is its pagination alias) the form is for
+    that request: its own heading, and the request already chosen. -#}
+{%- set lp = t.referBoard.listing -%}
+{%- set selected = item.slug if item else "" -%}
+{#- One labelled field. Optional fields say so beside the label; every field
+    owns an error line the script fills (assets/refer-form.js). -#}
+{%- macro field(name, label, type, auto, placeholder, optional, mode) %}
+        <div class="rf-field">
+          <label for="rf-{{ name }}">{{ label }}{% if optional %} <span class="rf-optional">{{ f.optional }}</span>{% endif %}</label>
+          <input id="rf-{{ name }}" name="{{ name }}" type="{{ type }}"{% if mode %} inputmode="{{ mode }}"{% endif %}{% if auto %} autocomplete="{{ auto }}"{% endif %}{% if placeholder %} placeholder="{{ placeholder }}"{% endif %}{% if not optional %} required{% endif %} aria-describedby="rf-{{ name }}-error">
+          <p class="rf-error" id="rf-{{ name }}-error" hidden></p>
+        </div>
+{%- endmacro -%}
+{# Refer a company: the form on the right, and on the left what happens to a
+   referral once it is sent, the four states the team emails about.
+
+   Sending stores the referral (assets/refer-send.js: Supabase
+   public.data_referrals plus the team's sheet tab) and says so. If it cannot
+   be stored, the form falls back to an email to the program inbox with
+   everything filled in. Without JS the form posts the fields to that inbox. #}
+<section id="refer" class="section ent-section rf-refer" data-tone="light">
+  <div class="rf-refer-grid">
+    <div class="rf-refer-copy reveal">
+      <h2 class="sec-title">{{ lp.formTitle if item else r.refer.title }}</h2>
+      <p class="sec-lead">{{ lp.formLead if item else r.refer.lead }}</p>
+      <h3 class="rf-track-title">{{ r.track.title }}</h3>
+      <ol class="rf-track">
+{%- for state in r.track.states %}
+        <li class="rf-track-step" data-state="{{ refer.states[loop.index0] }}">
+          <span class="rf-track-dot" aria-hidden="true"></span>
+          <p class="rf-track-label">{{ state.label }}</p>
+          <p class="rf-track-line">{{ state.line }}</p>
+        </li>
+{%- endfor %}
+      </ol>
+      <p class="rf-track-note">{{ r.track.note }}</p>
+    </div>
+
+    <div class="rf-form-card reveal reveal-d1">
+      <form class="rf-form" id="rf-form" action="{{ mailto }}" method="post" enctype="text/plain" novalidate data-refer-form>
+        <fieldset class="rf-group">
+          <legend>{{ f.you }}</legend>
+          <div class="rf-row">
+{{ field("yourName", f.yourName, "text", "name") }}
+{{ field("yourEmail", f.yourEmail, "email", "email") }}
+          </div>
+        </fieldset>
+
+        <fieldset class="rf-group">
+          <legend>{{ f.company }}</legend>
+          <div class="rf-field">
+            <label for="rf-listing">{{ f.listing }} <span class="rf-optional">{{ f.optional }}</span></label>
+            <select id="rf-listing" name="listing">
+              <option value="">{{ f.listingNone }}</option>
+{%- for entry in referListings.items %}
+              <option value="{{ entry.slug }}"{% if entry.slug == selected %} selected{% endif %}>{{ t.referListings[entry.slug].title }}</option>
+{%- endfor %}
+            </select>
+          </div>
+{{ field("companyName", f.companyName, "text", "organization") }}
+{{ field("website", f.website, "text", "url", f.websitePlaceholder) }}
+          <div class="rf-row">
+{{ field("size", f.size, "text", "off", f.sizePlaceholder) }}
+{{ field("years", f.years, "text", "off", f.yearsPlaceholder, false, "numeric") }}
+          </div>
+        </fieldset>
+
+        <p class="rf-consent">{{ f.consent }} <a href="/privacy/#referrals">{{ f.privacy }}</a></p>
+        {#- Left empty by people; a bot that fills every field is dropped. -#}
+        <div class="rf-trap" aria-hidden="true"><label for="rf-trap">Leave this empty</label><input id="rf-trap" name="trap" type="text" tabindex="-1" autocomplete="off"></div>
+        <button class="rf-submit" type="submit" data-sending="{{ f.sending }}">{{ f.submit }}</button>
+      </form>
+
+      <div class="rf-done" id="rf-done" role="status" tabindex="-1" hidden>
+        <div data-done="stored">
+          <h3 class="rf-done-title">{{ f.saved.title }}</h3>
+          <p>{{ f.saved.line }}</p>
+        </div>
+        <div data-done="mail" hidden>
+          <h3 class="rf-done-title">{{ f.done.title }}</h3>
+          <p>{{ f.done.line }}</p>
+          <p class="rf-done-fallback">{{ f.done.fallback | replace("{inbox}", '<a href="' + mailto + '" data-done-mail>' + refer.inbox + '</a>') | safe }}</p>
+        </div>
+        <button class="rf-again" type="button" data-again>{{ f.done.again }}</button>
+      </div>
+    </div>
+  </div>
+  <script type="application/json" id="rf-copy">{{ {
+    locale: locale.code,
+    store: {
+      supabaseUrl: env.supabaseUrl,
+      supabaseAnonKey: env.supabaseAnonKey,
+      sheetEndpoint: env.dataReferralsSheetEndpoint
+    },
+    errors: f.errors,
+    mail: f.mail,
+    labels: {
+      listing: f.listing,
+      yourName: f.yourName, yourEmail: f.yourEmail, companyName: f.companyName,
+      website: f.website, size: f.size, years: f.years
+    }
+  } | jsonScript | safe }}</script>
+</section>

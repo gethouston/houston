@@ -1,0 +1,48 @@
+{# The /enterprise navbar (enterprise/nav.njk), with this page's anchors and
+   the referral form as its CTA. Same [data-menu] / #lnav-burger /
+   [data-lang-choice] contracts, so subpage-scripts.njk binds it unchanged. #}
+{% from "enterprise/icons.njk" import chevron %}
+{%- set r = t.refer -%}
+{#- On a request's own page (`item` is its pagination alias) the section
+    links go back to the board page, and the languages stay on the request. -#}
+{%- set base = (localeRoot + refer.path) if item else "" -%}
+{%- set here = refer.path + (item.slug + "/" if item else "") -%}
+{%- set links = [
+  [localeRoot + dataPartners.path, t.nav.dataPartners],
+  [base + "#how", r.nav.how],
+  [base + "#companies", r.nav.companies],
+  [base + "#terms", r.nav.terms],
+  [base + "#faq", r.nav.faq]
+] -%}
+<a class="skip-link" href="#main">{{ t.nav.skip }}</a>
+<nav class="lnav" id="lnav" aria-label="{{ t.nav.primary }}">
+  <a class="lnav-brand" href="{{ localeRoot }}{{ dataPartners.path }}">Houston</a>
+  <div class="lnav-links">
+    {%- for link in links %}
+    <a href="{{ link[0] }}">{{ link[1] }}</a>
+    {%- endfor %}
+  </div>
+  <div class="lnav-right">
+    <div class="lnav-res lnav-lang" id="lnav-lang" data-menu>
+      <button class="lnav-res-btn" id="lnav-lang-btn" aria-haspopup="true" aria-expanded="false" aria-controls="lnav-lang-menu" aria-label="{{ t.nav.langLabel }}">{{ locale.short }}{{ chevron() }}</button>
+      <div class="lnav-res-menu" id="lnav-lang-menu" role="menu">
+        {%- for code in locales.order %}
+        <a role="menuitem" href="{{ locales[code].dir }}{{ here }}" data-lang-choice="{{ code }}"{% if code == locale.code %} class="is-active" aria-current="true"{% endif %}>{{ locales[code].label }}</a>
+        {%- endfor %}
+      </div>
+    </div>
+    <a class="lnav-cta" href="#refer">{{ r.nav.cta }}</a>
+    <button class="lnav-burger" id="lnav-burger" aria-label="{{ t.nav.menu }}" aria-controls="lnav-drop" aria-expanded="false">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" id="lnav-burger-icon" aria-hidden="true"><path d="M4 6h16M4 12h16M4 18h16"/></svg>
+    </button>
+  </div>
+</nav>
+<div class="lnav-drop" id="lnav-drop">
+  {%- for link in links %}
+  <a href="{{ link[0] }}">{{ link[1] }}</a>
+  {%- endfor %}
+  {%- for code in locales.order %}
+  <a class="lnav-drop-lang{% if code == locale.code %} is-active{% endif %}" href="{{ locales[code].dir }}{{ here }}" data-lang-choice="{{ code }}"{% if code == locale.code %} aria-current="true"{% endif %}>{{ locales[code].label }}</a>
+  {%- endfor %}
+  <a class="lnav-drop-cta" href="#refer">{{ r.nav.cta }}</a>
+</div>

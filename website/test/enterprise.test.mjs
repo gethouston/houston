@@ -9,29 +9,12 @@ import { existsSync } from "node:fs";
 import { dirname, resolve } from "node:path";
 import test from "node:test";
 import { fileURLToPath } from "node:url";
-import computed from "../src/_data/eleventyComputed.js";
 import enterprise from "../src/_data/enterprise.js";
-import en from "../src/_data/i18n/en.js";
-import enterpriseEn from "../src/_data/i18n/enterprise/en.js";
-import enterpriseEs from "../src/_data/i18n/enterprise/es.js";
-import enterprisePt from "../src/_data/i18n/enterprise/pt.js";
-import es from "../src/_data/i18n/es.js";
-import pt from "../src/_data/i18n/pt.js";
 import landing from "../src/_data/landing.js";
+import { treeFor } from "./support/locale-tree.mjs";
 
 const src = resolve(dirname(fileURLToPath(import.meta.url)), "../src");
-const locales = { en, es, pt };
-const i18n = {
-  en,
-  es,
-  pt,
-  enterprise: { en: enterpriseEn, es: enterpriseEs, pt: enterprisePt },
-};
-// Exactly what a page gets as `t`, through the real computed-data function.
-const treeFor = (lang) =>
-  computed.t({ lang, i18n, locales: { en: {}, es: {}, pt: {} } });
-
-for (const code of Object.keys(locales)) {
+for (const code of ["en", "es", "pt"]) {
   const tree = treeFor(code);
   const copy = tree.enterprise;
 

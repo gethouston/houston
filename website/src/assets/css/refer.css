@@ -1,0 +1,147 @@
+/*
+ * /data-partners/refer — the fold and the pieces every section shares. The
+ * /enterprise hero statement (enterprise-hero.css .ent-h1 / .ent-sub) over
+ * the /data-partners reel (enterprise-hero.css .ent-reel), the payout card
+ * beside it. No new palette: white on black, hairlines, the white pill. The
+ * sections live in refer-sections.css, the form in refer-form.css.
+ */
+
+/* ── Fold ────────────────────────────────────────────────────────────────── */
+.rf-hero {
+  overflow: hidden;
+  background: var(--band-black);
+}
+/* The reel runs under the fold, so the statement carries the same feathered
+   dark pool as /enterprise's (.ent-fold .hero-intro::before): it reads over
+   the brightest frame. A gradient, not a blur (PERFORMANCE.md rule 2). */
+.rf-intro {
+  position: relative;
+  isolation: isolate;
+}
+.rf-intro::before {
+  content: "";
+  position: absolute;
+  inset: -12% -8%;
+  z-index: -1;
+  background: radial-gradient(
+    closest-side,
+    rgba(8, 8, 8, 0.7),
+    rgba(8, 8, 8, 0.5) 55%,
+    rgba(8, 8, 8, 0) 100%
+  );
+  pointer-events: none;
+}
+.rf-hero .btn-ghost {
+  background: rgba(10, 10, 10, 0.32);
+}
+.rf-hero .btn-ghost:hover {
+  background: rgba(10, 10, 10, 0.5);
+}
+.rf-fold {
+  position: relative;
+  z-index: 1;
+  display: grid;
+  gap: 40px;
+  max-width: var(--measure);
+  min-height: 100svh;
+  margin: 0 auto;
+  padding: 112px var(--gutter) 56px;
+  align-content: center;
+}
+@media (min-width: 960px) {
+  .rf-fold {
+    grid-template-columns: minmax(0, 1.2fr) minmax(0, 0.8fr);
+    align-items: center;
+    gap: clamp(40px, 5vw, 80px);
+  }
+}
+/* The statement runs a step smaller than /enterprise's and shares the row
+   with the card; it keeps the hero's text shadow for the reel behind it. */
+.rf-h1 {
+  font-size: clamp(40px, min(5.6vw, 9.5vh), 84px);
+}
+.rf-intro .hero-cta {
+  margin-top: clamp(28px, 3.4vw, 40px);
+}
+.rf-intro .btn svg,
+.rf-unlisted .btn svg {
+  width: 15px;
+  height: 15px;
+}
+@media (max-width: 640px) {
+  .rf-intro .hero-cta {
+    flex-direction: column;
+    align-items: stretch;
+  }
+  .rf-intro .hero-cta .btn {
+    width: 100%;
+  }
+}
+
+/* ── The payout card ─────────────────────────────────────────────────────── */
+/* A quiet panel on the black: a hairline, a faint lift, the site's panel
+   radius. No backdrop blur (PERFORMANCE.md rule 2). */
+.rf-card {
+  padding: clamp(24px, 2.8vw, 36px);
+  border: 1px solid var(--line-on-ink);
+  border-radius: clamp(20px, 2.2vw, 28px);
+  /* Dark enough to hold its figures over any frame of the reel. */
+  background: rgba(10, 10, 10, 0.66);
+  color: #fff;
+}
+.rf-card-label {
+  font-size: 14px;
+  font-weight: 500;
+  color: var(--on-ink-muted);
+}
+/* The figure is the card: big, light, tabular, the hero's own voice. */
+.rf-card-amount {
+  margin-top: 10px;
+  font-size: clamp(48px, 5.4vw, 72px);
+  font-weight: 340;
+  line-height: 1;
+  letter-spacing: -0.04em;
+  font-variant-numeric: tabular-nums;
+}
+.rf-card-per {
+  margin-top: 8px;
+  font-size: 15px;
+  color: var(--on-ink-muted);
+}
+.rf-card-terms {
+  list-style: none;
+  margin-top: clamp(22px, 2.4vw, 30px);
+  padding-top: clamp(18px, 2vw, 24px);
+  border-top: 1px solid var(--line-on-ink);
+  display: grid;
+  gap: 14px;
+}
+.rf-card-terms li {
+  display: grid;
+  grid-template-columns: 20px minmax(0, 1fr);
+  gap: 12px;
+  align-items: start;
+  font-size: 15px;
+  line-height: 1.4;
+  color: rgba(255, 255, 255, 0.86);
+}
+.rf-card-terms svg {
+  width: 18px;
+  height: 18px;
+  margin-top: 1px;
+  color: #fff;
+}
+
+/* ── Shared ──────────────────────────────────────────────────────────────── */
+/* A pill that follows the page's tone: ink on white, white on black. */
+.is-dark .rf-tone-btn {
+  background: #fff;
+  color: var(--ink-strong);
+}
+.is-dark .rf-tone-btn:hover {
+  background: #ececec;
+}
+/* The section leads keep their dark-band dress while the flow is dark. */
+.section.is-dark .sec-lead {
+  color: var(--on-ink-muted);
+}
