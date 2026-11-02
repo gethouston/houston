@@ -38,8 +38,12 @@ jobs:
     # existed) skips the 7 jobs it cannot fail.
     # Pushes to main and manual dispatches always run everything, so the
     # daily cut's "main is green" guard keeps seeing the full set.
-    # The TS checks, unit and App jobs do not depend on this job and run on
-    # every PR.
+    # Two more outputs split the repo at website/, the marketing site, which
+    # is its own npm project that nothing else imports: `app` is true when a
+    # PR touches anything outside it (the TS checks, unit and App jobs run),
+    # `site` when it touches website/ (the Website job runs). A website-only
+    # PR runs just the Website job, about two minutes instead of ten to
+    # eighteen.
     # Two limits of the API path: the PR file listing stops at 3,000 files,
     # so a PR larger than that could skip the suites; and a merge_group
     # event (if a merge queue is ever enabled) is not a pull_request, so it
@@ -52,6 +56,8 @@ jobs:
       pull-requests: read
     outputs:
       web: ${{ github.event_name != 'pull_request' || steps.filter.outputs.web == 'true' }}
+      app: ${{ github.event_name != 'pull_request' || steps.filter.outputs.app == 'true' }}
+      site: ${{ github.event_name != 'pull_request' || steps.filter.outputs.site == 'true' }}
     steps:
       # On pull_request the action lists the PR's files through the API, so
       # no checkout is needed. A pattern starting with `!` excludes; a file
@@ -78,9 +84,17 @@ jobs:
               - 'patches/**'
               - 'tsconfig.json'
               - '.github/workflows/ci.yml'
+            app:
+              - '**'
+              - '!website/**'
+            site:
+              - 'website/**'
+              - '.github/workflows/ci.yml'
 
   checks:
     name: TS checks (lint · typecheck · contract tests)
+    needs: changes
+    if: needs.changes.outputs.app == 'true'
     runs-on: ubuntu-latest
     timeout-minutes: 20
     steps:
@@ -154,6 +168,8 @@ jobs:
     # the edge of the Playwright shards' time, and the two suites keep
     # growing without moving the wall clock. Same commands, same arguments.
     name: Unit tests (${{ matrix.package }})
+    needs: changes
+    if: needs.changes.outputs.app == 'true'
     runs-on: ubuntu-latest
     timeout-minutes: 15
     strategy:
@@ -330,6 +346,8 @@ jobs:
     # 4.2 min against a 4.1 min sequential sum. `!cancelled()` keeps a failure
     # in one lane from hiding the others, as separate jobs never did.
     name: App · Web unit · Agent Store (typecheck · tests · builds)
+    needs: changes
+    if: needs.changes.outputs.app == 'true'
     runs-on: ubuntu-latest
     timeout-minutes: 20
     steps:
@@ -372,3 +390,44 @@ jobs:
           pnpm --filter houston-agentstore typecheck
           pnpm --filter houston-agentstore test
           pnpm --filter houston-agentstore build
+
+  website:
+    # The marketing site: its own npm project (website/package-lock.json),
+    # tests and build, none of which the jobs above run. The tests build the
+    # whole site (test/social-tags.test.mjs), so a template or data error
+    # fails here; the deploy workflow runs the same tests again before it
+    # ships. Biome is the root's pinned version, read from package.json, so
+    # website code keeps its lint when the TS checks job is skipped.
+    name: Website (lint · tests · locales · build)
+    needs: changes
+    if: needs.changes.outputs.site == 'true'
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v6
+        with:
+          persist-credentials: false
+
+      - uses: actions/setup-node@v6
+        with:
+          node-version: 22
+          cache: npm
+          cache-dependency-path: website/package-lock.json
+
+      - name: Biome (website)
+        run: |
+          set -euo pipefail
+          version="$(node -p "require('./package.json').devDependencies['@biomejs/biome']")"
+          npx --yes "@biomejs/biome@${version}" check --error-on-warnings website
+
+      - name: Install
+        working-directory: website
+        run: npm ci
+
+      - name: Tests (build included)
+        working-directory: website
+        run: npm test
+
+      - name: Locale parity
+        working-directory: website
+        run: npm run check:locales
