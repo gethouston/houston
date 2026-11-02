@@ -40,7 +40,6 @@ overrides:
   "brace-expansion@>=2 <2.1.7": "2.1.7"
   "@sentry/cli>undici": "6.29.1"
   "jsdom>undici": "7.30.1"
-  "@earendil-works/pi-coding-agent>undici": "^8.12.3"
   "@executor-js/fumadb>zod": "4.6.7"
   "@executor-js/plugin-mcp>zod": "4.6.7"
   "sharp@<0.35.5": "0.35.5"
@@ -53,6 +52,6 @@ overrides:
   # GHSA-gg6h-894w-4m9c. Drop when @firebase/firestore requires re2js >=2.8.7.
   "re2js@<2.8.7": "2.8.7"
 patchedDependencies:
-  '@earendil-works/pi-ai@1.4.0': patches/@earendil-works__pi-ai@1.4.0.patch
+  '@earendil-works/pi-ai@1.5.0': patches/@earendil-works__pi-ai@1.5.0.patch
   '@executor-js/sdk@1.5.37': patches/@executor-js__sdk@1.5.37.patch
   playwright-core@1.64.0: patches/playwright-core@1.64.0.patch
