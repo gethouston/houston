@@ -11,15 +11,17 @@ import refer from "../src/_data/refer.js";
 import { referralRow } from "../src/assets/refer-model.js";
 import { sendReferral } from "../src/assets/refer-send.js";
 
+// The table and every later change to it, oldest first: the public site may
+// write the columns all of their grants add up to.
 const migrations = new URL("../../supabase/migrations/", import.meta.url);
-const sqlFile = readdirSync(migrations).find((f) =>
-  f.endsWith("_data_referrals.sql"),
-);
-const sql = readFileSync(new URL(sqlFile, migrations), "utf8");
-const granted = /grant insert \(([^)]*)\) on public\.data_referrals/
-  .exec(sql)[1]
-  .split(",")
-  .map((c) => c.trim());
+const sql = readdirSync(migrations)
+  .filter((f) => /_data_referrals(_[a-z_]+)?\.sql$/.test(f))
+  .sort()
+  .map((f) => readFileSync(new URL(f, migrations), "utf8"))
+  .join("\n");
+const granted = [
+  ...sql.matchAll(/grant insert \(([^)]*)\) on public\.data_referrals/g),
+].flatMap((m) => m[1].split(",").map((c) => c.trim()));
 const statuses = /status in \(([^)]*)\)/
   .exec(sql)[1]
   .split(",")
@@ -33,6 +35,7 @@ const input = {
   website: "https://www.Acme.com/about",
   size: " about 120 ",
   years: "12",
+  industry: "services",
 };
 const where = { locale: "es", page: "/es/data-partners/refer/" };
 const row = referralRow(input, where);
@@ -71,6 +74,7 @@ test("the row is trimmed, the website is its host, empty optionals are null", ()
   assert.equal(row.listing, "law-firm");
   assert.equal(row.company_size, "about 120");
   assert.equal(row.years_in_business, 12);
+  assert.equal(row.industry, "services");
   assert.equal(row.locale, "es");
   assert.equal(row.page, "/es/data-partners/refer/");
   assert.equal(referralRow({ ...input, listing: "" }, where).listing, null);

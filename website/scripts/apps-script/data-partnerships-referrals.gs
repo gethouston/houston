@@ -36,6 +36,7 @@ const COLUMNS = [
   ["Years in business", "years_in_business"],
   ["Language", "locale"],
   ["Page", "page"],
+  ["Industry", "industry"],
 ];
 
 // Longest value a cell takes, so a junk post can't flood the sheet.

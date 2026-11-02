@@ -89,13 +89,13 @@ if (form && done && copyNode) {
     submit.focus();
   });
 
-  // Another referral from the same person: only the company and the contact
-  // start over.
+  // Another referral from the same person: only the company starts over. The
+  // reset puts back the page's own industry and request, if it has them.
   done.querySelector("[data-again]")?.addEventListener("click", () => {
     const { yourName, yourEmail } = form.elements;
-    const keep = [yourName.value, yourEmail.value, form.elements.listing.value];
+    const keep = [yourName.value, yourEmail.value];
     form.reset();
-    [yourName.value, yourEmail.value, form.elements.listing.value] = keep;
+    [yourName.value, yourEmail.value] = keep;
     tried = false;
     show({});
     done.hidden = true;

@@ -152,10 +152,6 @@
   font-weight: 500;
   color: var(--ink-muted);
 }
-.rf-optional {
-  font-weight: 400;
-  color: var(--ink-subtle);
-}
 .rf-field input,
 .rf-field select,
 .rf-field textarea {
@@ -184,6 +180,10 @@
 .rf-field textarea::placeholder {
   color: var(--ink-subtle);
   opacity: 0.8;
+}
+/* "Select industry" reads as a placeholder until an industry is picked. */
+.rf-field select:has(option[value=""]:checked) {
+  color: var(--ink-subtle);
 }
 .rf-field input:focus-visible,
 .rf-field select:focus-visible,

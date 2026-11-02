@@ -3,22 +3,24 @@
 {#- The referral form card, on its own so it can sit in the fold of
     /data-partners/refer (refer/hero.njk) and in the form section of each
     request's page (refer/form.njk). On a request's page (`item` is its
-    pagination alias) the request is already chosen.
+    pagination alias) its industry is already chosen, and the request rides
+    along in a hidden field so the team knows which one it answers.
 
     Sending stores the referral (assets/refer-send.js: Supabase
     public.data_referrals plus the team's sheet tab) and says so. If it cannot
     be stored, the form stays filled in and says so above the button. It never
     sends email: without JS the button stays disabled. -#}
-{%- set selected = item.slug if item else "" -%}
-{#- Compact on purpose: three rows of two, the optional request last, and the
+{%- set listing = item.slug if item else "" -%}
+{%- set industry = item.category if item else "" -%}
+{#- Compact on purpose: three rows of two, the industry last, and the
     section names kept for screen readers only, so the whole card fits in
     the fold of a laptop screen beside the statement. -#}
-{#- One labelled field. Optional fields say so beside the label; every field
-    owns an error line the script fills (assets/refer-form.js). -#}
-{%- macro field(name, label, type, auto, placeholder, optional, mode) %}
+{#- One labelled, required field. Every field owns an error line the script
+    fills (assets/refer-form.js). -#}
+{%- macro field(name, label, type, auto, placeholder, mode) %}
         <div class="rf-field">
-          <label for="rf-{{ name }}">{{ label }}{% if optional %} <span class="rf-optional">{{ f.optional }}</span>{% endif %}</label>
-          <input id="rf-{{ name }}" name="{{ name }}" type="{{ type }}"{% if mode %} inputmode="{{ mode }}"{% endif %}{% if auto %} autocomplete="{{ auto }}"{% endif %}{% if placeholder %} placeholder="{{ placeholder }}"{% endif %}{% if not optional %} required{% endif %} aria-describedby="rf-{{ name }}-error">
+          <label for="rf-{{ name }}">{{ label }}</label>
+          <input id="rf-{{ name }}" name="{{ name }}" type="{{ type }}"{% if mode %} inputmode="{{ mode }}"{% endif %}{% if auto %} autocomplete="{{ auto }}"{% endif %}{% if placeholder %} placeholder="{{ placeholder }}"{% endif %} required aria-describedby="rf-{{ name }}-error">
           <p class="rf-error" id="rf-{{ name }}-error" hidden></p>
         </div>
 {%- endmacro -%}
@@ -40,17 +42,19 @@
           </div>
           <div class="rf-row">
 {{ field("size", f.size, "text", "off", f.sizePlaceholder) }}
-{{ field("years", f.years, "text", "off", f.yearsPlaceholder, false, "numeric") }}
+{{ field("years", f.years, "text", "off", f.yearsPlaceholder, "numeric") }}
           </div>
           <div class="rf-field">
-            <label for="rf-listing">{{ f.listing }} <span class="rf-optional">{{ f.optional }}</span></label>
-            <select id="rf-listing" name="listing">
-              <option value="">{{ f.listingNone }}</option>
-{%- for entry in referListings.items %}
-              <option value="{{ entry.slug }}"{% if entry.slug == selected %} selected{% endif %}>{{ t.referListings[entry.slug].title }}</option>
+            <label for="rf-industry">{{ f.industry }}</label>
+            <select id="rf-industry" name="industry" required aria-describedby="rf-industry-error">
+              <option value="">{{ f.industryPlaceholder }}</option>
+{%- for id in refer.categories %}
+              <option value="{{ id }}"{% if id == industry %} selected{% endif %}>{{ r.companies.categories[loop.index0] }}</option>
 {%- endfor %}
             </select>
+            <p class="rf-error" id="rf-industry-error" hidden></p>
           </div>
+          <input type="hidden" name="listing" value="{{ listing }}">
         </fieldset>
 
         <p class="rf-consent">{{ f.consent }} <a href="/privacy/#referrals" target="_blank" rel="noopener">{{ f.privacy }}</a></p>
