@@ -80,7 +80,7 @@ export const MODEL_DISPLAY: Partial<
     "gpt-5.5": "GPT-5.5",
     "gemini-3.5-flash": "Gemini 3.5 Flash",
     "mimo-v2.6-flash-free": "MiMo V2.6 Flash (Free)",
-    "nemotron-3-ultra-free": "Nemotron 3 Ultra (Free)",
+    "nemotron-3.5-super-vl-free": "Nemotron 3.5 Super VL (Free)",
   },
   "opencode-go": {
     "glm-5.2": "GLM-5.2",
