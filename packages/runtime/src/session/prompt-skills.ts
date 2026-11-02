@@ -30,9 +30,12 @@ const INDEX_LINE_CHARS = 200;
 
 const SENTENCE_BREAK = /(?<=[.!?])\s+(?=[\p{Lu}¿¡])/u;
 
-/** "Use when the user says 'X' / 'Y'": a list of phrasings, not what the skill does. */
+/**
+ * "Use when the user says 'X' / 'Y'" or "Triggers on 'X'": a list of
+ * phrasings, not what the skill does. "Triggers a payroll run" is an outcome.
+ */
 const TRIGGER_LEAD =
-  /^(?:(?:use|usa|usar|úsala|úsalo|invoke)\b[^.!?]{0,20}?\b(?:when|whenever|if|cuando|quando)|triggers?)\b/iu;
+  /^(?:(?:use|usa|usar|úsala|úsalo|invoke)\b[^.!?]{0,20}?\b(?:when|whenever|if|cuando|quando)\b|triggers?(?:\s+(?:on|when)\b|\s*:))/iu;
 
 /** Where a leading trigger clause ends: a sentence break or a spaced dash. */
 const TRIGGER_END = /(?<=[.!?])\s+(?=[\p{Lu}¿¡])|\s+[-–—]\s+/u;
@@ -40,15 +43,15 @@ const TRIGGER_END = /(?<=[.!?])\s+(?=[\p{Lu}¿¡])|\s+[-–—]\s+/u;
 /**
  * A skill's description as the index shows it: the first sentence of what the
  * skill does, capped. A description that opens with trigger phrases is indexed
- * from the clause after them, when there is one. The index rides on every
- * model request while the model needs only enough to pick a skill; the full
- * SKILL.md is read once the skill is chosen.
+ * from the clause after them, unless that clause is more trigger phrases. The
+ * index rides on every model request while the model needs only enough to pick
+ * a skill; the full SKILL.md is read once the skill is chosen.
  */
 export function indexLine(description: string): string {
   const flat = description.replace(/\s+/g, " ").trim();
   const end = TRIGGER_LEAD.test(flat) ? TRIGGER_END.exec(flat) : null;
   const outcome = end ? flat.slice(end.index + end[0].length) : "";
-  const text = outcome || flat;
+  const text = outcome && !TRIGGER_LEAD.test(outcome) ? outcome : flat;
   const sentence = text.split(SENTENCE_BREAK)[0] ?? text;
   if (sentence.length <= INDEX_LINE_CHARS) return sentence;
   const cut = sentence.slice(0, INDEX_LINE_CHARS);

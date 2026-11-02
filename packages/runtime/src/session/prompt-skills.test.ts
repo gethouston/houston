@@ -191,3 +191,26 @@ test("a description that is only trigger phrases keeps its first sentence", () =
     "Use when the user says 'close the month' -",
   );
 });
+
+test("a trigger lead followed by more trigger phrases keeps its first sentence", () => {
+  expect(
+    indexLine(
+      'Use when the user provides a LinkedIn post URL and wants to run the full pipeline from commenters to a live cold outreach campaign on Instantly, storing leads in Google Sheets instead of Airtable. Triggers on phrases like "linkedin comment to outreach gsheets", "scrape and email with sheets".',
+    ),
+  ).toBe(
+    "Use when the user provides a LinkedIn post URL and wants to run the full pipeline from commenters to a live cold outreach campaign on Instantly, storing leads in Google Sheets instead of Airtable.",
+  );
+});
+
+test("trigger as a verb is what the skill does, not a trigger lead", () => {
+  expect(
+    indexLine(
+      "Triggers a payroll run in Gusto and emails the summary. Needs the Gusto connection.",
+    ),
+  ).toBe("Triggers a payroll run in Gusto and emails the summary.");
+  expect(
+    indexLine(
+      "Trigger a Zapier webhook - with the payload the user describes.",
+    ),
+  ).toBe("Trigger a Zapier webhook - with the payload the user describes.");
+});
