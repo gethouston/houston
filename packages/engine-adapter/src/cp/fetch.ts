@@ -120,7 +120,8 @@ export function gatewayAuthFetch(
         path.startsWith("/v1/me/plan") ||
         path.startsWith("/v1/me/plus/") ||
         path.startsWith("/v1/me/billing-choice") ||
-        path === "/v1/preferences/last_workspace_id";
+        path === "/v1/preferences/last_workspace_id" ||
+        path === "/v1/preferences/next_step_suggestions";
       const org = accountScoped ? null : getOrg?.();
       if (accountScoped) headers.delete("x-houston-org");
       else if (org) headers.set("x-houston-org", org);

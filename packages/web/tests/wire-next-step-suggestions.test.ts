@@ -65,6 +65,15 @@ test("the account preference round-trips through the SDK, and a send never carri
   const write = calls.find((call) => call.method === "PUT");
   expect(write?.url).toBe("http://host/v1/preferences/next_step_suggestions");
   expect(write?.body).toBe('{"value":"false"}');
+  // One setting per person across every space: the active space never rides.
+  const preferenceCalls = calls.filter((call) =>
+    call.url.endsWith("/v1/preferences/next_step_suggestions"),
+  );
+  expect(preferenceCalls).toHaveLength(3);
+  for (const call of preferenceCalls) {
+    expect(call.headers.get("Authorization")).toBe("Bearer t");
+    expect(call.headers.get("x-houston-org")).toBeNull();
+  }
   expect(await client.setNextStepSuggestions(true)).toBe(true);
 });
 
