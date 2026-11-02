@@ -35,7 +35,8 @@ export function clampComposerHeight(
  *  the dragged size is a floor (the box stays that tall even when empty), and
  *  the cap is the larger of it and the auto cap, so text past a small manual
  *  size still grows the box the way it always did. Re-clamped against the
- *  current viewport, so shrinking the window shrinks a tall composer. */
+ *  current viewport; ChatInputForm re-clamps its manual size on window resize
+ *  so these bounds are applied again when the viewport shrinks. */
 export function composerTextareaBounds(
   manualPx: number | null,
   viewportPx: number,

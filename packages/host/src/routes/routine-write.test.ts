@@ -163,6 +163,38 @@ test("rejects a malformed cron before it can silently never fire", async () => {
   ).toBe(true);
 });
 
+test("UI and SDK writes refuse invalid explicit models on create and update", async () => {
+  const vfs = new MemoryVfs();
+  const invalid = await createRoutineChecked(
+    vfs,
+    ROOT,
+    WS,
+    { ...daily("A"), provider: "anthropic", model: "made-up-model" },
+    OPTS,
+  );
+  expect(invalid).toMatchObject({ error: expect.stringContaining('"model"') });
+  const created = await createRoutineChecked(
+    vfs,
+    ROOT,
+    WS,
+    { ...daily("A"), provider: "anthropic", model: "claude-opus-5-5" },
+    OPTS,
+  );
+  if (!("routine" in created)) throw new Error("expected success");
+  const edited = await updateRoutineChecked(
+    vfs,
+    ROOT,
+    WS,
+    created.routine.id,
+    { model: "gpt-6.1-terra" },
+    OPTS,
+  );
+  expect(edited).toMatchObject({ error: expect.stringContaining('"model"') });
+  expect((await loadRoutines(vfs, ROOT)).items[0]?.model).toBe(
+    "claude-opus-5-5",
+  );
+});
+
 test("stamps setup_activity_id and created_by when supplied", async () => {
   const vfs = new MemoryVfs();
   const result = await createRoutineChecked(

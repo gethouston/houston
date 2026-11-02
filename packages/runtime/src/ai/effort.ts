@@ -1,9 +1,7 @@
 /**
- * pi's reasoning levels (a mirror of pi-ai's `ThinkingLevel`). pi's ceiling is
- * "xhigh"; it has no Houston "max". Kept as a local literal so we don't depend
- * on pi-ai's type being re-exported, while staying structurally assignable to
- * the `thinkingLevel` that `createAgentSession` / `session.setThinkingLevel`
- * accept.
+ * Houston's backend-neutral reasoning levels. pi 1.4.0 also supports "max";
+ * backends/pi/thinking-level.ts translates this normalized "xhigh" to "max"
+ * for models such as Terra that serve max instead of xhigh.
  */
 export type PiThinkingLevel = "minimal" | "low" | "medium" | "high" | "xhigh";
 
@@ -21,10 +19,9 @@ export const DEFAULT_REASONING_EFFORT = "medium";
  * Map a Houston effort value to pi's `thinkingLevel`.
  *
  * Houston's effort vocabulary (agent config + routine pin) is
- * `low | medium | high | xhigh | max`; pi's is `minimal | low | medium | high |
- * xhigh`. Only "max" has no direct counterpart — it denotes "the most reasoning
- * this model offers", which in pi is "xhigh", so it maps there; pi then clamps
- * "xhigh" down to whatever the resolved model actually supports.
+ * `low | medium | high | xhigh | max`. Normalize "max" to the backend-neutral
+ * "xhigh" here. pi 1.4.0 supports both; backends/pi/thinking-level.ts selects
+ * the spelling the resolved model serves, including Terra's "max".
  *
  * Returns `undefined` for an absent or unrecognized value so the caller OMITS
  * the override entirely and pi falls back to its own default — never a silent
@@ -44,7 +41,7 @@ export function toThinkingLevel(
       return "high";
     case "xhigh":
       return "xhigh";
-    // Houston's top level; pi's ceiling is "xhigh" (it then clamps per model).
+    // Normalize here; the pi backend restores "max" when the model requires it.
     case "max":
       return "xhigh";
     default:

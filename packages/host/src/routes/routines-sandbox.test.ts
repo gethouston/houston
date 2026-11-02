@@ -289,12 +289,12 @@ test("the stamped provider is stored in pi's canonical dialect", async () => {
 
 test("a provider the agent named explicitly is kept", async () => {
   await save(
-    { ...BASE, provider: "google", model: "gemini-3.5-pro" },
+    { ...BASE, provider: "google", model: "gemini-3.8-flash" },
     { pin: { provider: "anthropic", model: "claude-sonnet-5" } },
   );
   expect((await onDisk())[0]).toMatchObject({
     provider: "google",
-    model: "gemini-3.5-pro",
+    model: "gemini-3.8-flash",
     effort: null,
   });
 });
@@ -430,6 +430,52 @@ test("an explicit model overrides the new routine default", async () => {
     model: "claude-opus-5-5",
     effort: "high",
   });
+});
+
+test("chat model and effort edits change only the passed fields", async () => {
+  const pin = {
+    provider: "anthropic",
+    model: "claude-opus-5-5",
+    effort: "high",
+  };
+  const created = await save(
+    { ...BASE, model: "claude-opus-5-5", effort: "max" },
+    { pin },
+  );
+  expect(created.status).toBe(201);
+  const id = (created.body as Routine).id;
+  expect((await onDisk())[0]).toMatchObject({
+    provider: "anthropic",
+    model: "claude-opus-5-5",
+    effort: "max",
+  });
+  expect((await save({ id, model: "claude-sonnet-5-5" }, { pin })).status).toBe(
+    200,
+  );
+  expect((await onDisk())[0]).toMatchObject({
+    model: "claude-sonnet-5-5",
+    effort: "max",
+  });
+  expect((await save({ id, effort: "low" }, { pin })).status).toBe(200);
+  expect((await save({ id, prompt: "Only unread" }, { pin })).status).toBe(200);
+  expect((await onDisk())[0]).toMatchObject({
+    model: "claude-sonnet-5-5",
+    effort: "low",
+  });
+});
+
+test("chat refuses a model outside its provider on create and update", async () => {
+  const pin = { provider: "anthropic", model: "claude-opus-5-5" };
+  const refused = await save({ ...BASE, model: "gpt-6.1-terra" }, { pin });
+  expect(refused.status).toBe(400);
+  expect(await onDisk()).toEqual([]);
+  const created = await save(BASE, { pin });
+  const id = (created.body as Routine).id;
+  const original = await onDisk();
+  expect((await save({ id, model: "made-up-model" }, { pin })).status).toBe(
+    400,
+  );
+  expect(await onDisk()).toEqual(original);
 });
 
 test("updating an existing Opus routine never changes its model", async () => {

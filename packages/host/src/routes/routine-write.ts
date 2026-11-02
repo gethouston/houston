@@ -16,6 +16,7 @@ import type { Vfs } from "../vfs";
 import { withDocLock } from "./doc-lock";
 import type { LiveTurnPin } from "./live-turn-pin";
 import { routineCreationPin } from "./routine-creation-pin";
+import { checkedRoutineModel } from "./routine-model";
 import { checkedSchedule } from "./routine-schedule";
 import {
   NO_TRIGGER_BACKEND_WRITE_ERROR,
@@ -101,9 +102,12 @@ export async function createRoutineChecked(
   }
   const providerErr = providerPinError({ provider: input.provider });
   if (providerErr) return { error: providerErr };
+  if (body.model != null) {
+    const checked = await checkedRoutineModel(vfs, root, input);
+    if ("error" in checked) return checked;
+    input = { ...input, model: checked.model };
+  }
 
-  // Load→save under the per-doc lock so concurrent routine writes can't drop
-  // each other's entries (same hazard as activities; see doc-lock.ts).
   return await withDocLock(`${root}#routines`, async () => {
     const { items } = await loadRoutines(vfs, root);
     const routine = createRoutine(
@@ -133,8 +137,6 @@ export async function updateRoutineChecked(
   update: Record<string, unknown>,
   opts: RoutineWriteOptions & { actorSub?: string },
 ): Promise<{ routine: Routine } | RoutineWriteError | { notFound: true }> {
-  // The whole read-modify-write sits inside the lock: re-loading here is what
-  // makes the final save apply to the list a concurrent writer just produced.
   return await withDocLock(`${root}#routines`, async () => {
     const { items } = await loadRoutines(vfs, root);
     const current = items.find((r) => r.id === itemId);
@@ -184,6 +186,11 @@ export async function updateRoutineChecked(
     }
     const providerErr = providerPinError(update);
     if (providerErr) return { error: providerErr };
+    if (update.model != null) {
+      const checked = await checkedRoutineModel(vfs, root, next);
+      if ("error" in checked) return checked;
+      next = { ...next, model: checked.model };
+    }
 
     await saveRoutines(vfs, root, upsertById(items, next));
     return { routine: next };

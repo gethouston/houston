@@ -31,6 +31,10 @@ for (const key of [
   g[key] = (win as unknown as Record<string, unknown>)[key];
 }
 g.IS_REACT_ACT_ENVIRONMENT = true;
+g.ResizeObserver = class {
+  observe() {}
+  disconnect() {}
+};
 Object.defineProperty(win, "innerHeight", { configurable: true, value: 900 });
 
 const React = await import("react");
@@ -95,6 +99,12 @@ describe("composer resize handle", () => {
     const { calls, handle } = mountHandle(100, null);
     key(handle, "ArrowUp");
     assert.deepEqual(calls, [124]);
+  });
+
+  it("ArrowUp grows an empty composer drawn one line tall", () => {
+    const { calls, handle } = mountHandle(23, null);
+    key(handle, "ArrowUp");
+    assert.deepEqual(calls, [72]);
   });
 
   it("ArrowDown under the minimum hands it back to auto-grow", () => {

@@ -1,6 +1,12 @@
 "use client";
 
-import { type KeyboardEvent, type PointerEvent, useRef } from "react";
+import {
+  type KeyboardEvent,
+  type PointerEvent,
+  useLayoutEffect,
+  useRef,
+  useState,
+} from "react";
 import {
   COMPOSER_MANUAL_MIN_PX,
   COMPOSER_RESIZE_STEP_PX,
@@ -28,6 +34,20 @@ export function ComposerResizeHandle({
 }) {
   const ref = useRef<HTMLDivElement>(null);
   const drag = useRef<{ startY: number; startHeight: number } | null>(null);
+  const [measuredHeight, setMeasuredHeight] = useState(0);
+
+  useLayoutEffect(() => {
+    const textarea = ref.current
+      ?.closest("[data-composer-surface]")
+      ?.querySelector("textarea");
+    if (!textarea) return;
+    const measure = () =>
+      setMeasuredHeight(textarea.getBoundingClientRect().height);
+    measure();
+    const observer = new ResizeObserver(measure);
+    observer.observe(textarea);
+    return () => observer.disconnect();
+  }, []);
 
   // Starts from the box as drawn, so a drag from auto-grow does not jump.
   const currentHeight = (): number => {
@@ -69,7 +89,11 @@ export function ComposerResizeHandle({
     // not leak to it either.
     e.preventDefault();
     e.stopPropagation();
-    resizeTo(currentHeight() + step);
+    const start =
+      step > 0
+        ? Math.max(currentHeight(), COMPOSER_MANUAL_MIN_PX)
+        : currentHeight();
+    resizeTo(start + step);
   };
 
   return (
@@ -80,8 +104,8 @@ export function ComposerResizeHandle({
       aria-valuemax={composerHeightLimit(
         typeof window === "undefined" ? 0 : window.innerHeight,
       )}
-      aria-valuemin={COMPOSER_MANUAL_MIN_PX}
-      aria-valuenow={height ?? COMPOSER_MANUAL_MIN_PX}
+      aria-valuemin={Math.min(COMPOSER_MANUAL_MIN_PX, height ?? measuredHeight)}
+      aria-valuenow={height ?? measuredHeight}
       className="group/resize absolute inset-x-0 top-0 z-10 hidden h-3 cursor-ns-resize touch-none justify-center outline-none md:flex"
       onClick={(e) => e.stopPropagation()}
       onDoubleClick={() => onResize(null)}

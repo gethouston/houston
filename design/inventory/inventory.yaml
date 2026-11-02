@@ -36,7 +36,7 @@
 #   a11y     roles / labels / focus expectations the surface must honor
 #   since    inventory version this component first appeared in
 
-version: 150
+version: 151
 
 components:
   - id: agent-delegation-settings
@@ -402,8 +402,9 @@ components:
       minus room for the chat's chrome) and back down; under about two lines
       it lets go to auto-grow, and a double-click resets it. The dragged size
       is a floor (text past a small one still grows the box) and lasts as
-      long as the composer, never persisted. Phones have no handle.
-    a11y: labeled textarea; send/stop button state-labeled; drop zone announced; phone pickers are titled dialogs; the resize handle is a labeled, focusable separator whose up and down arrow keys resize in steps.
+      long as the composer, never persisted. Phones have no handle and ignore
+      the dragged size. Shrinking the viewport re-clamps the manual height.
+    a11y: labeled textarea; send/stop button state-labeled; drop zone announced; phone pickers are titled dialogs; the resize handle is a labeled, focusable separator whose up and down arrow keys resize in steps, starting upward from at least the manual minimum; in auto mode its value announces the measured textarea height.
     since: 1
 
   - id: mention-autocomplete

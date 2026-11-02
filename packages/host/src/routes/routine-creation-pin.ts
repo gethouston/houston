@@ -23,7 +23,7 @@ const ROUTINE_DEFAULTS: Readonly<Record<string, DefaultPin>> = {
   "openai-codex": {
     model: "gpt-6.1-terra",
     // The verified subscription efforts in runtime/ai/codex-offered.ts are narrower than pi's catalog.
-    efforts: ["none", "low", "max"],
+    efforts: ["low", "max"],
   },
 };
 
@@ -32,11 +32,9 @@ export function routineCreationPin(
   authoringPin?: LiveTurnPin,
 ): NewRoutine {
   const inherited = !input.provider ? authoringPin : undefined;
-  const provider =
-    input.provider ||
-    (inherited &&
-      (canonicalProviderId(inherited.provider) ?? inherited.provider));
-  if (!provider) return input;
+  const chosenProvider = input.provider || inherited?.provider;
+  if (!chosenProvider) return input;
+  const provider = canonicalProviderId(chosenProvider) ?? chosenProvider;
   const pin = {
     ...input,
     provider,
@@ -46,9 +44,9 @@ export function routineCreationPin(
   const defaults = ROUTINE_DEFAULTS[provider];
   if (input.model || !defaults) return pin;
   const requested = pin.effort === "off" ? "none" : pin.effort;
-  const rank = EFFORT_ORDER.findIndex(
-    (level) => level === (requested ?? "medium"),
-  );
+  const knownEffort =
+    EFFORT_ORDER.find((level) => level === requested) ?? "medium";
+  const rank = EFFORT_ORDER.indexOf(knownEffort);
   // Equidistant efforts choose the cheaper, lower level.
   const effort = defaults.efforts.reduce<RoutineEffort>(
     (closest, level) =>

@@ -3,6 +3,12 @@
 Every `version` bump in `inventory.yaml` needs a matching entry here (enforced by
 `pnpm check:parity`). Newest first. Use `## vN` headings.
 
+## v151 - 2026-11-02
+
+The composer ignores a desktop manual height on phones and re-clamps it when
+its window shrinks. The resize handle grows an empty one-line field on the
+first upward arrow press and announces the measured height in auto mode.
+
 ## v150 - 2026-11-02
 
 Question cards show an option's description as a small muted line under its
