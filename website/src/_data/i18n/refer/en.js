@@ -105,7 +105,7 @@ export default {
     website: "Company website",
     websitePlaceholder: "acme.com",
     size: "Number of employees",
-    sizePlaceholder: "About 120",
+    sizePlaceholder: "30",
     years: "Years in business",
     yearsPlaceholder: "12",
     listing: "Request",

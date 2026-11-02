@@ -103,7 +103,7 @@ export default {
     website: "Site da empresa",
     websitePlaceholder: "acme.com",
     size: "Número de funcionários",
-    sizePlaceholder: "Cerca de 120",
+    sizePlaceholder: "30",
     years: "Anos de atuação",
     yearsPlaceholder: "12",
     listing: "Solicitação",
