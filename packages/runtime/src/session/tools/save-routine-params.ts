@@ -58,13 +58,13 @@ export const SaveRoutineParams = Type.Object({
   model: Type.Optional(
     Type.String({
       description:
-        "Omit model and effort unless the user asked for a specific model or effort. The provider stays the chat's provider. On create, an explicit model overrides the routine default. On update, omit to leave the saved model unchanged.",
+        "Omit model and effort unless the user asked for a specific model or effort. A new routine uses this chat's provider; an existing one keeps its saved provider, so pick a model from that provider. On create, an explicit model overrides the routine default. On update, omit to leave the saved model unchanged.",
     }),
   ),
   effort: Type.Optional(
     Type.String({
       description:
-        "Omit model and effort unless the user asked for a specific model or effort. The provider stays the chat's provider. On update, omit to leave the saved effort unchanged.",
+        "Omit model and effort unless the user asked for a specific model or effort. A new routine uses this chat's provider; an existing one keeps its saved provider, so pick a model from that provider. On update, omit to leave the saved effort unchanged.",
     }),
   ),
   chat_mode: Type.Optional(
