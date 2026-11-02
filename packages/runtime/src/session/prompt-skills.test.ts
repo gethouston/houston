@@ -153,3 +153,41 @@ test("an overlong first sentence is cut at a word boundary under 200 characters"
   );
   expect(line).not.toMatch(/[\s,]…$/);
 });
+
+test("an outcome-first description keeps its first sentence", () => {
+  expect(
+    indexLine(
+      "Log a single expense from a forwarded receipt — image, PDF, or email — and produce one categorized expense. I extract vendor and date.",
+    ),
+  ).toBe(
+    "Log a single expense from a forwarded receipt — image, PDF, or email — and produce one categorized expense.",
+  );
+});
+
+test("a description that leads with trigger phrases is indexed by what the skill does", () => {
+  expect(
+    indexLine(
+      "Use when the user says 'book the accrual journal entry' / 'draft the depreciation journal entry for Q1' / 'stock-comp journal entry'  -  I draft a balanced double-entry journal entry that branches on `type`: `accrual` | `prepaid` | `payroll` | `revrec` | `depreciation` | `stock-comp` | `adjustment` | `reclass`. Every journal entry is validated balanced to 1 cent.",
+    ),
+  ).toBe(
+    "I draft a balanced double-entry journal entry that branches on `type`: `accrual` | `prepaid` | `payroll` | `revrec` | `depreciation` | `stock-comp` | `adjustment` | `reclass`.",
+  );
+  expect(
+    indexLine(
+      "Use this skill when the user asks to reconcile accounts. Matches bank lines to the ledger and flags gaps. Writes a report.",
+    ),
+  ).toBe("Matches bank lines to the ledger and flags gaps.");
+});
+
+test("a description that is only trigger phrases keeps its first sentence", () => {
+  expect(
+    indexLine(
+      "Use when the user says 'close the month' / 'run month-end' / 'are the books closed'.",
+    ),
+  ).toBe(
+    "Use when the user says 'close the month' / 'run month-end' / 'are the books closed'.",
+  );
+  expect(indexLine("Use when the user says 'close the month'  -  ")).toBe(
+    "Use when the user says 'close the month' -",
+  );
+});
