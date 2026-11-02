@@ -398,9 +398,9 @@ export function makeIntegrationTools(opts: IntegrationToolOptions) {
           items.filter((m) => statusOf(m) === s).map((m) => m.toolkit),
         ),
       ];
-      const parts = [list];
+      // Leads so the 8k head a long list is cut to keeps it (tool-results/cap.ts).
       const accountNote = multiAccountNote(items);
-      if (accountNote) parts.push(accountNote);
+      const parts = accountNote ? [accountNote, list] : [list];
       const connectable = slugsWith("connectable");
       if (connectable.length > 0) {
         parts.push(
@@ -447,7 +447,7 @@ export function makeIntegrationTools(opts: IntegrationToolOptions) {
     name: "integration_execute",
     label: "Run an app action",
     description:
-      "Run an action on one of the user's connected apps - e.g. send an email, create a calendar event, add a task. Pass the action slug from integration_search and its parameters. The user's own account is used automatically; you never handle credentials. When the app has several connected accounts, always pass `account`, chosen as the search result for that app explains; never guess one.",
+      "Run an action on one of the user's connected apps - e.g. send an email, create a calendar event, add a task. Pass the action slug from integration_search and its parameters. The user's own account is used automatically; you never handle credentials. When the app has several connected accounts, always pass `account`; when the right one is unclear, ask the user before acting, and never guess.",
     promptSnippet: "Run an action on one of the user's connected apps",
     parameters: ExecuteParams,
     executionMode: "sequential",

@@ -69,7 +69,7 @@ test("returns the generic tools plus request_connection, correctly named", () =>
   ]);
 });
 
-test("search appends account descriptions and the account-selection rule; execute only points to it", async () => {
+test("search leads with account descriptions and the account-selection rule; execute keeps one sentence of it", async () => {
   mockFetch(() => ({
     body: {
       items: [
@@ -92,10 +92,13 @@ test("search appends account descriptions and the account-selection rule; execut
   ]) {
     expect(text).toContain(guidance);
   }
-  // Stated once, on the result that lists the accounts; the always-sent
-  // execute description only says where the rule is.
+  expect(text.indexOf("MULTIPLE accounts")).toBeLessThan(
+    text.indexOf("GOOGLEDRIVE_LIST_FILES"),
+  );
+  // A tagged skill step runs execute with no search, so the always-sent
+  // description carries the rule in one sentence.
   expect(execute.description).toContain(
-    "always pass `account`, chosen as the search result for that app explains",
+    "always pass `account`; when the right one is unclear, ask the user before acting, and never guess.",
   );
   expect(execute.description).not.toContain("you MUST ask ONE ask_user");
 });
