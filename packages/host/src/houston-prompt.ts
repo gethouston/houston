@@ -5,7 +5,7 @@
  *
  * This prompt is re-sent on every model request, so it carries only what must
  * hold before any tool runs; tool mechanics live in the tool descriptions and
- * results (houston-prompt-budget.test.ts caps its size).
+ * results (packages/runtime/src/session/context-budget.test.ts caps its size).
  *
  * This is PRODUCT content. The host stays prompt-agnostic: it merely injects
  * this into the runtime via HOUSTON_SYSTEM_PROMPT. The real desktop app may
