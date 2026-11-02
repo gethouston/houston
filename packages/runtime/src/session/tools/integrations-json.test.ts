@@ -28,3 +28,15 @@ test("the laid-out text parses back to the same value", () => {
     JSON.parse(JSON.stringify(value)),
   );
 });
+
+test("a payload nested a thousand deep stays minified past the open depth", () => {
+  let value: unknown = "x".repeat(700);
+  for (let i = 0; i < 1000; i++) value = { child: value };
+  const text = layoutJson(value);
+  const lines = text.split("\n");
+  expect(lines).toHaveLength(65);
+  expect(lines[32]?.startsWith(`${" ".repeat(32)}"child": {"child":`)).toBe(
+    true,
+  );
+  expect(JSON.parse(text)).toEqual(value);
+});

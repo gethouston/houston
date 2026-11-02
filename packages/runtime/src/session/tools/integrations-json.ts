@@ -2,6 +2,13 @@
 const LINE_CHARS = 600;
 
 /**
+ * Deeper values stay minified. Each level re-stringifies its subtree, so an
+ * unbounded walk is quadratic in depth and overflows the stack on a payload
+ * nested thousands deep, which JSON.stringify alone handles.
+ */
+const MAX_OPEN_DEPTH = 32;
+
+/**
  * An app's JSON result as the model reads it: a value that fits in
  * {@link LINE_CHARS} stays on one line, a bigger one opens one level with a
  * one-space indent, so a list of records comes out one record per line.
@@ -17,7 +24,8 @@ export function layoutJson(value: unknown, indent = ""): string {
   if (
     value === null ||
     typeof value !== "object" ||
-    indent.length + flat.length <= LINE_CHARS
+    indent.length + flat.length <= LINE_CHARS ||
+    indent.length >= MAX_OPEN_DEPTH
   ) {
     return flat;
   }
