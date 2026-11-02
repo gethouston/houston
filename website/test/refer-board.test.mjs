@@ -129,6 +129,7 @@ test("a referral from a request's page names the request", () => {
       website: "turnerbuild.com",
       size: "about 200",
       years: "18",
+      industry: "industrial",
     },
     { locale: "en", page: "/data-partners/refer/construction/" },
   );

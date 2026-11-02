@@ -17,7 +17,6 @@ export default {
   hero: {
     h1Lines: ["Conhece uma empresa?", "Ganhe pela indicação."],
     sub: "Apresente uma empresa que tenha dados de negócio reais. Quando ela licenciar esses dados com a Houston, você ganha até {amount}.",
-    ctaRefer: "Indicar uma empresa",
     ctaHow: "Como funcionam as indicações",
     card: {
       label: "Você ganha até",
@@ -68,10 +67,6 @@ export default {
       "Conhece uma empresa que não está nesta lista? Você ainda pode indicá-la e ganhar quando ela licenciar seus dados.",
     cta: "Indicar uma empresa",
   },
-  refer: {
-    title: "Indique uma empresa.",
-    lead: "Compartilhe a empresa e alguns dados. Nós cuidamos da abordagem.",
-  },
   track: {
     title: "Depois da indicação",
     note: "Enviamos um e-mail a cada avanço da sua indicação, da análise ao pagamento.",
@@ -106,9 +101,9 @@ export default {
     sizePlaceholder: "30",
     years: "Anos de atuação",
     yearsPlaceholder: "12",
-    listing: "Solicitação",
-    listingNone: "Não está na lista",
-    optional: "Opcional",
+    industry: "Setor",
+    industryPlaceholder: "Selecione o setor",
+    industryOther: "Outro",
     consent:
       "Nós entramos em contato com a empresa e mantemos você informado a cada etapa.",
     submit: "Enviar indicação",
@@ -123,6 +118,7 @@ export default {
       send: "Não conseguimos enviar sua indicação. Verifique sua conexão e tente de novo.",
       size: "Diga mais ou menos quantas pessoas trabalham lá.",
       years: "Digite os anos de atuação como um número inteiro, como 12.",
+      industry: "Escolha o setor da empresa.",
       yourName: "Seu nome é obrigatório.",
       yourEmail: "Digite um e-mail válido.",
       companyName: "O nome da empresa é obrigatório.",

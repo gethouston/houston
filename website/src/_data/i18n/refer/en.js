@@ -19,7 +19,6 @@ export default {
   hero: {
     h1Lines: ["Know a company?", "Earn for the intro."],
     sub: "Introduce a company that holds real business data. When it licenses that data through Houston, you earn up to {amount}.",
-    ctaRefer: "Refer a company",
     ctaHow: "How referrals work",
     card: {
       label: "You earn up to",
@@ -70,10 +69,6 @@ export default {
       "Know a company that isn't on this list? You can still refer it, and earn when it licenses its data.",
     cta: "Refer a company",
   },
-  refer: {
-    title: "Refer a company.",
-    lead: "Share the company and a few details. We handle the outreach.",
-  },
   track: {
     title: "After you refer",
     note: "We email you as your referral moves, from review to payout.",
@@ -108,9 +103,9 @@ export default {
     sizePlaceholder: "30",
     years: "Years in business",
     yearsPlaceholder: "12",
-    listing: "Request",
-    listingNone: "Not on the list",
-    optional: "Optional",
+    industry: "Industry",
+    industryPlaceholder: "Select industry",
+    industryOther: "Other",
     consent:
       "We reach out to the company ourselves and keep you posted as it moves.",
     submit: "Send referral",
@@ -125,6 +120,7 @@ export default {
       send: "We couldn't send your referral. Check your connection and try again.",
       size: "Tell us roughly how many people work there.",
       years: "Enter the years in business as a whole number, like 12.",
+      industry: "Pick the company's industry.",
       yourName: "Your name is required.",
       yourEmail: "Enter a valid email address.",
       companyName: "Company name is required.",

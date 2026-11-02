@@ -16,11 +16,13 @@ export const MAX_SIZE_LENGTH = 60;
 export const FIELDS = [
   "yourName",
   "yourEmail",
-  "listing",
   "companyName",
   "website",
   "size",
   "years",
+  "industry",
+  // Set by the page, not typed: the request a request's page answers.
+  "listing",
 ];
 
 const clean = (value) => (typeof value === "string" ? value.trim() : "");
@@ -51,6 +53,7 @@ export function validate(input) {
   if (!YEARS.test(v.years) || Number(v.years) > MAX_YEARS) {
     errors.years = "years";
   }
+  if (!v.industry) errors.industry = "industry";
   // Your own company is a partner, not a referral. Caught when your email
   // sits on the company's own domain.
   const mine = emailHost(v.yourEmail);
@@ -76,6 +79,7 @@ export function referralRow(input, { locale, page }) {
     company_website: siteHost(v.website),
     company_size: v.size,
     years_in_business: Number(v.years),
+    industry: v.industry,
     locale,
     page,
   };

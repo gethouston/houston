@@ -18,7 +18,6 @@ export default {
   hero: {
     h1Lines: ["¿Conoces una empresa?", "Gana por presentarla."],
     sub: "Presenta una empresa que tenga datos de negocio reales. Cuando licencie esos datos con Houston, ganas hasta {amount}.",
-    ctaRefer: "Recomendar una empresa",
     ctaHow: "Cómo funcionan las recomendaciones",
     card: {
       label: "Ganas hasta",
@@ -69,10 +68,6 @@ export default {
       "¿Conoces una empresa que no está en esta lista? Igual puedes recomendarla y ganar cuando licencie sus datos.",
     cta: "Recomendar una empresa",
   },
-  refer: {
-    title: "Recomienda una empresa.",
-    lead: "Comparte la empresa y algunos datos. Nosotros nos encargamos del acercamiento.",
-  },
   track: {
     title: "Después de recomendar",
     note: "Te escribimos por correo a medida que avanza tu recomendación, de la revisión al pago.",
@@ -107,9 +102,9 @@ export default {
     sizePlaceholder: "30",
     years: "Años en operación",
     yearsPlaceholder: "12",
-    listing: "Solicitud",
-    listingNone: "No está en la lista",
-    optional: "Opcional",
+    industry: "Industria",
+    industryPlaceholder: "Selecciona la industria",
+    industryOther: "Otra",
     consent:
       "Nosotros contactamos a la empresa y te mantenemos al tanto a medida que avanza.",
     submit: "Enviar recomendación",
@@ -124,6 +119,7 @@ export default {
       send: "No pudimos enviar tu recomendación. Revisa tu conexión e inténtalo de nuevo.",
       size: "Dinos más o menos cuántas personas trabajan ahí.",
       years: "Escribe los años en operación como un número entero, como 12.",
+      industry: "Elige la industria de la empresa.",
       yourName: "Tu nombre es obligatorio.",
       yourEmail: "Escribe un correo válido.",
       companyName: "El nombre de la empresa es obligatorio.",

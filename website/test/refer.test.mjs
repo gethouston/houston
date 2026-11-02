@@ -85,15 +85,17 @@ const valid = {
   website: "https://www.Acme.com/about",
   size: "about 120",
   years: "12",
+  industry: "finance",
 };
 
 test("a complete referral passes", () => {
   assert.deepEqual(validate(valid), {});
 });
 
-test("an empty form names every required field, and no optional one", () => {
+test("an empty form names every field the visitor fills, and not the request", () => {
   assert.deepEqual(Object.keys(validate({})).sort(), [
     "companyName",
+    "industry",
     "size",
     "website",
     "years",

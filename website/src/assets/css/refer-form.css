@@ -100,7 +100,7 @@
 
 /* ── The form card ───────────────────────────────────────────────────── */
 .rf-form-card {
-  padding: clamp(22px, 3vw, 40px);
+  padding: clamp(20px, 2.2vw, 28px);
   border: 1px solid var(--line);
   border-radius: clamp(20px, 2.2vw, 28px);
   background: var(--card);
@@ -115,25 +115,26 @@
 .rf-group {
   border: 0;
   display: grid;
-  gap: 16px;
+  gap: 12px;
 }
 .rf-group + .rf-group {
-  margin-top: 28px;
-  padding-top: 26px;
-  border-top: 1px solid var(--line);
+  margin-top: 12px;
 }
+/* The two groups ("About you", "The company") stay named for screen readers;
+   on screen the fields speak for themselves, which keeps the card short
+   enough for the fold. */
 .rf-group legend {
-  float: left;
-  width: 100%;
-  margin-bottom: 4px;
-  font-size: 17px;
-  font-weight: 600;
-  letter-spacing: -0.01em;
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  overflow: hidden;
+  clip-path: inset(50%);
+  white-space: nowrap;
 }
 .rf-row {
   display: grid;
   grid-template-columns: repeat(2, minmax(0, 1fr));
-  gap: 16px 14px;
+  gap: 12px;
 }
 @media (max-width: 560px) {
   .rf-row {
@@ -143,29 +144,25 @@
 .rf-field {
   display: flex;
   flex-direction: column;
-  gap: 7px;
+  gap: 5px;
   min-width: 0;
 }
 .rf-field label {
-  font-size: 13.5px;
+  font-size: 13px;
   font-weight: 500;
   color: var(--ink-muted);
-}
-.rf-optional {
-  font-weight: 400;
-  color: var(--ink-subtle);
 }
 .rf-field input,
 .rf-field select,
 .rf-field textarea {
   width: 100%;
-  min-height: 48px;
-  padding: 12px 14px;
+  min-height: 42px;
+  padding: 9px 12px;
   border: 1px solid var(--line-strong);
-  border-radius: 12px;
+  border-radius: 10px;
   background: var(--card);
   color: var(--ink-strong);
-  font: 400 15.5px/1.35 var(--sans);
+  font: 400 15px/1.35 var(--sans);
   transition: border-color var(--dur-fast) var(--ease-standard);
 }
 .rf-field select {
@@ -184,6 +181,10 @@
   color: var(--ink-subtle);
   opacity: 0.8;
 }
+/* "Select industry" reads as a placeholder until an industry is picked. */
+.rf-field select:has(option[value=""]:checked) {
+  color: var(--ink-subtle);
+}
 .rf-field input:focus-visible,
 .rf-field select:focus-visible,
 .rf-field textarea:focus-visible {
@@ -201,9 +202,9 @@
   color: #b42318;
 }
 .rf-consent {
-  margin-top: 26px;
-  font-size: 13.5px;
-  line-height: 1.5;
+  margin-top: 14px;
+  font-size: 12.5px;
+  line-height: 1.45;
   color: var(--ink-muted);
 }
 .rf-consent a {
@@ -229,8 +230,8 @@
   align-items: center;
   justify-content: center;
   width: 100%;
-  height: 52px;
-  margin-top: 16px;
+  height: 46px;
+  margin-top: 12px;
   border: 0;
   border-radius: 999px;
   background: var(--action);
