@@ -51,6 +51,7 @@
 {%- for id in refer.categories %}
               <option value="{{ id }}"{% if id == industry %} selected{% endif %}>{{ r.companies.categories[loop.index0] }}</option>
 {%- endfor %}
+              <option value="other">{{ f.industryOther }}</option>
             </select>
             <p class="rf-error" id="rf-industry-error" hidden></p>
           </div>

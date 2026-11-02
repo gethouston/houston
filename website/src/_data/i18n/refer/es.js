@@ -104,6 +104,7 @@ export default {
     yearsPlaceholder: "12",
     industry: "Industria",
     industryPlaceholder: "Selecciona la industria",
+    industryOther: "Otra",
     consent:
       "Nosotros contactamos a la empresa y te mantenemos al tanto a medida que avanza.",
     submit: "Enviar recomendación",

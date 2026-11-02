@@ -1,6 +1,6 @@
 -- data_referrals.industry: the company's industry, picked on the
 -- /data-partners/refer form (an id from website/src/_data/refer.js
--- categories, e.g. 'finance'). The form requires it; rows from before this
+-- categories, e.g. 'finance', or 'other'). The form requires it; rows from before this
 -- column have none, so it stays nullable.
 --
 -- Additive: the public site gets INSERT on this one new column, next to the

@@ -103,6 +103,7 @@ export default {
     yearsPlaceholder: "12",
     industry: "Setor",
     industryPlaceholder: "Selecione o setor",
+    industryOther: "Outro",
     consent:
       "Nós entramos em contato com a empresa e mantemos você informado a cada etapa.",
     submit: "Enviar indicação",

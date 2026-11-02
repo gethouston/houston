@@ -105,6 +105,7 @@ export default {
     yearsPlaceholder: "12",
     industry: "Industry",
     industryPlaceholder: "Select industry",
+    industryOther: "Other",
     consent:
       "We reach out to the company ourselves and keep you posted as it moves.",
     submit: "Send referral",
