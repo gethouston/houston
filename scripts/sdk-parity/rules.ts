@@ -9,6 +9,7 @@ import {
   repoRoot,
   type SdkMethod,
 } from "./inputs.ts";
+import { ANY_KEY_PATHS } from "./route-paths.ts";
 
 export type Rule =
   | "sdk-route-unbound"
@@ -128,24 +129,23 @@ export function checkRules(
     });
   }
 
-  // R2: a concrete SDK path may be served by a parameterized route.
-  const serverSegments = [...hostKeys, ...gatewayKeys].map((key) =>
-    key.split("/"),
+  // R2 — an SDK method no server answers. ANY of its keys answering is enough:
+  // a method whose path parameter is closed to a set issues one call per call
+  // site, not one per member. A literal key also meets an any-key route.
+  const anyKey = [...hostKeys, ...gatewayKeys].filter((key) =>
+    ANY_KEY_PATHS.has(pathOf(key)),
   );
+  const servesLiteral = (served: string, key: string) =>
+    served.split("/").length === key.split("/").length &&
+    key.startsWith(served.slice(0, -"{}".length));
   for (const method of sdk) {
     if (
       method.keys.some(
         (key) =>
-          serverSegments.some((served) => {
-            const requested = key.split("/");
-            return (
-              served.length === requested.length &&
-              served.every(
-                (segment, index) =>
-                  segment === "{}" || segment === requested[index],
-              )
-            );
-          }) || gatewayPaths.has(pathOf(key)),
+          hostKeys.has(key) ||
+          gatewayKeys.has(key) ||
+          gatewayPaths.has(pathOf(key)) ||
+          anyKey.some((served) => servesLiteral(served, key)),
       )
     )
       continue;

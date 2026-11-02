@@ -94,3 +94,12 @@ export function routePaths(
     ? [spelled, ...expanded.slice(1)]
     : [spelled, ...expanded];
 }
+
+/**
+ * Server paths whose `{}` segment takes any key, so an SDK method may name one
+ * key in a literal path: the host (routes/account.ts) and the gateway
+ * (prefs.go) both store whatever preference key they are given.
+ */
+export const ANY_KEY_PATHS: ReadonlySet<string> = new Set([
+  "/v1/preferences/{}",
+]);

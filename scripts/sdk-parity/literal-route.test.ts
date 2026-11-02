@@ -37,3 +37,37 @@ test("a parameterized server route serves a literal SDK preference URL", () => {
     ).toBe(true);
   }
 });
+
+test("a literal SDK path never matches another parameterized route", () => {
+  const hostRoute = {
+    method: "GET",
+    path: "/v1/integrations/{}/connections",
+    classification: "sdk",
+    source: "integrations.ts",
+    group: "integrations",
+  };
+  const gatewayRoute = {
+    pattern: "/v1/agents/{slug}/color",
+    methods: ["PUT"],
+    classification: "sdk" as const,
+  };
+  for (const key of [
+    "GET /v1/integrations/composio/connections",
+    "PUT /v1/agents/sol/color",
+  ]) {
+    expect(
+      checkRules(
+        [hostRoute] as Parameters<typeof checkRules>[0],
+        [gatewayRoute],
+        [{ name: "literal", key, keys: [key] }],
+        client,
+      ).filter((violation) => violation.rule === "sdk-method-unserved"),
+    ).toEqual([
+      {
+        rule: "sdk-method-unserved",
+        key: `sdk ${key}`,
+        message: `@houston/sdk literal issues ${key} which no server serves`,
+      },
+    ]);
+  }
+});
