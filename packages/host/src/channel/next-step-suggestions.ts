@@ -10,7 +10,7 @@ import type { WorkspaceStore } from "../ports";
  * Read per turn, so a change lands on the next one. Only an unfronted host
  * (desktop, self-host) wires it: there the preferences doc this host serves is
  * the person's own. Behind a gateway the gateway owns preferences and stamps
- * the field itself, which is why a body that already names it is left alone.
+ * the field itself. Either way a value the client sent is replaced.
  */
 export const NEXT_STEP_SUGGESTIONS_PREFERENCE = "next_step_suggestions";
 
@@ -45,8 +45,8 @@ export function nextStepSuggestionsReader(
 
 /**
  * A turn body as the runtime should receive it. Only OFF is stamped: omission
- * means on, so a default turn's bytes stay what the sender sent. A body this
- * cannot parse travels untouched, for the runtime to refuse.
+ * means on, so a default turn without the field keeps the bytes the sender
+ * sent. A body this cannot parse travels untouched, for the runtime to refuse.
  */
 export async function stampNextStepSuggestions(
   body: Buffer,
@@ -60,8 +60,11 @@ export async function stampNextStepSuggestions(
   }
   if (!parsed || typeof parsed !== "object" || Array.isArray(parsed))
     return body;
-  const fields = parsed as Record<string, unknown>;
-  if (typeof fields.nextStepSuggestions === "boolean") return body;
-  if (await read()) return body;
+  const { nextStepSuggestions: sent, ...fields } = parsed as Record<
+    string,
+    unknown
+  >;
+  if (await read())
+    return sent === undefined ? body : Buffer.from(JSON.stringify(fields));
   return Buffer.from(JSON.stringify({ ...fields, nextStepSuggestions: false }));
 }

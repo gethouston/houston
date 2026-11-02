@@ -127,11 +127,19 @@ test("a change applies to the very next turn", async () => {
   ]);
 });
 
-test("a body that already names the setting (a gateway stamped it) is left alone", async () => {
-  const read = vi.fn(async () => false);
-  const body = '{"text":"hi","nextStepSuggestions":true}';
-  expect(await send(channelReading(read), body)).toBe(body);
-  expect(read).not.toHaveBeenCalled();
+test("a value the client sends never overrides the saved setting", async () => {
+  expect(
+    await send(
+      channelReading(async () => false),
+      '{"text":"hi","nextStepSuggestions":true}',
+    ),
+  ).toBe('{"text":"hi","nextStepSuggestions":false}');
+  expect(
+    await send(
+      channelReading(async () => true),
+      '{"text":"hi","nextStepSuggestions":false}',
+    ),
+  ).toBe('{"text":"hi"}');
 });
 
 test("an unreadable preference keeps suggestions on and warns", async () => {
