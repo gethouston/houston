@@ -17,7 +17,6 @@ export default {
   hero: {
     h1Lines: ["Conhece uma empresa?", "Ganhe pela indicação."],
     sub: "Apresente uma empresa que tenha dados de negócio reais. Quando ela licenciar esses dados com a Houston, você ganha até {amount}.",
-    ctaRefer: "Indicar uma empresa",
     ctaHow: "Como funcionam as indicações",
     card: {
       label: "Você ganha até",
@@ -67,10 +66,6 @@ export default {
     notListed:
       "Conhece uma empresa que não está nesta lista? Você ainda pode indicá-la e ganhar quando ela licenciar seus dados.",
     cta: "Indicar uma empresa",
-  },
-  refer: {
-    title: "Indique uma empresa.",
-    lead: "Compartilhe a empresa e alguns dados. Nós cuidamos da abordagem.",
   },
   track: {
     title: "Depois da indicação",

@@ -135,6 +135,8 @@ test("without a sheet endpoint only the database is written", async () => {
 test("the referral form never opens an email", () => {
   for (const file of [
     "../src/_includes/refer/form.njk",
+    "../src/_includes/refer/form-card.njk",
+    "../src/_includes/refer/hero.njk",
     "../src/assets/refer-form.js",
     "../src/assets/refer-send.js",
   ]) {
@@ -142,7 +144,7 @@ test("the referral form never opens an email", () => {
     assert.doesNotMatch(text, /mailto:/i, file);
   }
   const form = readFileSync(
-    new URL("../src/_includes/refer/form.njk", import.meta.url),
+    new URL("../src/_includes/refer/form-card.njk", import.meta.url),
     "utf8",
   );
   assert.doesNotMatch(form, /<form[^>]*\saction=/, "the form has no action");

@@ -1,0 +1,76 @@
+{%- set r = t.refer -%}
+{%- set f = r.form -%}
+{#- The referral form card, on its own so it can sit in the fold of
+    /data-partners/refer (refer/hero.njk) and in the form section of each
+    request's page (refer/form.njk). On a request's page (`item` is its
+    pagination alias) the request is already chosen.
+
+    Sending stores the referral (assets/refer-send.js: Supabase
+    public.data_referrals plus the team's sheet tab) and says so. If it cannot
+    be stored, the form stays filled in and says so above the button. It never
+    sends email: without JS the button stays disabled. -#}
+{%- set selected = item.slug if item else "" -%}
+{#- One labelled field. Optional fields say so beside the label; every field
+    owns an error line the script fills (assets/refer-form.js). -#}
+{%- macro field(name, label, type, auto, placeholder, optional, mode) %}
+        <div class="rf-field">
+          <label for="rf-{{ name }}">{{ label }}{% if optional %} <span class="rf-optional">{{ f.optional }}</span>{% endif %}</label>
+          <input id="rf-{{ name }}" name="{{ name }}" type="{{ type }}"{% if mode %} inputmode="{{ mode }}"{% endif %}{% if auto %} autocomplete="{{ auto }}"{% endif %}{% if placeholder %} placeholder="{{ placeholder }}"{% endif %}{% if not optional %} required{% endif %} aria-describedby="rf-{{ name }}-error">
+          <p class="rf-error" id="rf-{{ name }}-error" hidden></p>
+        </div>
+{%- endmacro -%}
+    <div class="rf-form-card">
+      <form class="rf-form" id="rf-form" novalidate data-refer-form>
+        <fieldset class="rf-group">
+          <legend>{{ f.you }}</legend>
+          <div class="rf-row">
+{{ field("yourName", f.yourName, "text", "name") }}
+{{ field("yourEmail", f.yourEmail, "email", "email") }}
+          </div>
+        </fieldset>
+
+        <fieldset class="rf-group">
+          <legend>{{ f.company }}</legend>
+          <div class="rf-field">
+            <label for="rf-listing">{{ f.listing }} <span class="rf-optional">{{ f.optional }}</span></label>
+            <select id="rf-listing" name="listing">
+              <option value="">{{ f.listingNone }}</option>
+{%- for entry in referListings.items %}
+              <option value="{{ entry.slug }}"{% if entry.slug == selected %} selected{% endif %}>{{ t.referListings[entry.slug].title }}</option>
+{%- endfor %}
+            </select>
+          </div>
+{{ field("companyName", f.companyName, "text", "organization") }}
+{{ field("website", f.website, "text", "url", f.websitePlaceholder) }}
+          <div class="rf-row">
+{{ field("size", f.size, "text", "off", f.sizePlaceholder) }}
+{{ field("years", f.years, "text", "off", f.yearsPlaceholder, false, "numeric") }}
+          </div>
+        </fieldset>
+
+        <p class="rf-consent">{{ f.consent }} <a href="/privacy/#referrals">{{ f.privacy }}</a></p>
+        {#- Left empty by people; a bot that fills every field is dropped. -#}
+        <div class="rf-trap" aria-hidden="true"><label for="rf-trap">Leave this empty</label><input id="rf-trap" name="trap" type="text" tabindex="-1" autocomplete="off"></div>
+        <p class="rf-error rf-send-error" id="rf-send-error" role="alert" hidden></p>
+        {#- Sending is the script's job (Supabase and the sheet), so the button
+            starts disabled and assets/refer-form.js enables it. Without JS
+            nothing is sent anywhere, and the note says why. -#}
+        <noscript><p class="rf-error">{{ f.needsJs }}</p></noscript>
+        <button class="rf-submit" type="submit" data-sending="{{ f.sending }}" disabled>{{ f.submit }}</button>
+      </form>
+
+      <div class="rf-done" id="rf-done" role="status" tabindex="-1" hidden>
+        <h3 class="rf-done-title">{{ f.saved.title }}</h3>
+        <p>{{ f.saved.line }}</p>
+        <button class="rf-again" type="button" data-again>{{ f.again }}</button>
+      </div>
+    </div>
+<script type="application/json" id="rf-copy">{{ {
+  locale: locale.code,
+  store: {
+    supabaseUrl: env.supabaseUrl,
+    supabaseAnonKey: env.supabaseAnonKey,
+    sheetEndpoint: env.dataReferralsSheetEndpoint
+  },
+  errors: f.errors
+} | jsonScript | safe }}</script>

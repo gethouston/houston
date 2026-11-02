@@ -19,7 +19,6 @@ export default {
   hero: {
     h1Lines: ["Know a company?", "Earn for the intro."],
     sub: "Introduce a company that holds real business data. When it licenses that data through Houston, you earn up to {amount}.",
-    ctaRefer: "Refer a company",
     ctaHow: "How referrals work",
     card: {
       label: "You earn up to",
@@ -69,10 +68,6 @@ export default {
     notListed:
       "Know a company that isn't on this list? You can still refer it, and earn when it licenses its data.",
     cta: "Refer a company",
-  },
-  refer: {
-    title: "Refer a company.",
-    lead: "Share the company and a few details. We handle the outreach.",
   },
   track: {
     title: "After you refer",
