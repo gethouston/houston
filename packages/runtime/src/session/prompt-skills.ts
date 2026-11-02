@@ -35,7 +35,7 @@ const SENTENCE_BREAK = /(?<=[.!?])\s+(?=[\p{Lu}¿¡])/u;
  * phrasings, not what the skill does. "Triggers a payroll run" is an outcome.
  */
 const TRIGGER_LEAD =
-  /^(?:(?:use|usa|usar|úsala|úsalo|invoke)\b[^.!?]{0,20}?\b(?:when|whenever|if|cuando|quando)\b|triggers?(?:\s+(?:on|when)\b|\s*:))/iu;
+  /^(?:(?:use|usa|usar|úsala|úsalo|invoke)\b[^.!?]{0,20}?\b(?:when|whenever|if|cuando|quando)\b|triggers?(?:\s+(?:on|when|include|phrases?|words?)\b|\s*:))/iu;
 
 /** Where a leading trigger clause ends: a sentence break or a spaced dash. */
 const TRIGGER_END = /(?<=[.!?])\s+(?=[\p{Lu}¿¡])|\s+[-–—]\s+/u;

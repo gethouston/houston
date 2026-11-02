@@ -214,3 +214,16 @@ test("trigger as a verb is what the skill does, not a trigger lead", () => {
     ),
   ).toBe("Trigger a Zapier webhook - with the payload the user describes.");
 });
+
+test("trigger phrase and trigger include leads are skipped too", () => {
+  expect(
+    indexLine(
+      "Trigger phrases: 'close the month', 'month-end'. I close the books for the month.",
+    ),
+  ).toBe("I close the books for the month.");
+  expect(
+    indexLine(
+      "Triggers include 'pay run' and 'run payroll'. I run payroll in Gusto.",
+    ),
+  ).toBe("I run payroll in Gusto.");
+});
