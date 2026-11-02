@@ -115,6 +115,7 @@ export default {
     submit: "Enviar recomendación",
     privacy: "Cómo tratamos estos datos.",
     sending: "Enviando…",
+    needsJs: "Activa JavaScript para enviar una recomendación.",
     saved: {
       title: "Recibimos tu recomendación.",
       line: "La revisamos y te escribimos a medida que avanza, desde la revisión hasta el pago.",

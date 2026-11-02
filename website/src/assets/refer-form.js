@@ -2,8 +2,8 @@
 // shows each error under its field, and stores a valid referral through
 // refer-send.js, then swaps the form for the "received" panel. When it cannot
 // be stored, the form stays as filled with a line saying so above the button,
-// so the visitor can send again. Without JS the form posts the raw fields to
-// the program inbox (its mailto action): the only way it can send at all.
+// so the visitor can send again. Nothing is ever sent by email: the button
+// ships disabled and is enabled here, so without JS the form sends nothing.
 
 import { FIELDS, referralRow, validate } from "./refer-model.js";
 import { sendReferral } from "./refer-send.js";
@@ -19,6 +19,7 @@ if (form && done && copyNode) {
 
   const submit = form.querySelector('[type="submit"]');
   const submitLabel = submit.textContent;
+  submit.disabled = false;
 
   const values = () =>
     Object.fromEntries(

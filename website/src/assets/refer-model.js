@@ -5,10 +5,6 @@
 // `form.errors`; `referralRow` turns a valid referral into the
 // public.data_referrals row the form stores (refer-send.js).
 
-// The program inbox, where the form posts when JS is off; _data/refer.js
-// reads it from here.
-export const INBOX = "hello@gethouston.ai";
-
 const EMAIL = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
 const HOST = /^(?:[a-z0-9](?:[a-z0-9-]*[a-z0-9])?\.)+[a-z]{2,}$/;
 // Whole years, as typed: "12", not "12.5" or "about 12".

@@ -116,6 +116,7 @@ export default {
     submit: "Send referral",
     privacy: "How we handle these details.",
     sending: "Sending…",
+    needsJs: "Turn on JavaScript to send a referral.",
     saved: {
       title: "We have your referral.",
       line: "We review it and email you as it moves, from review to payout.",

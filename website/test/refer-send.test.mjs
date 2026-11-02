@@ -128,3 +128,23 @@ test("without a sheet endpoint only the database is written", async () => {
   await tick();
   assert.equal(calls.length, 1);
 });
+
+// A referral is stored, never emailed: no part of the form (its markup, the
+// script that sends it, the request that stores it) may hand off to a mail
+// app, with JS or without it.
+test("the referral form never opens an email", () => {
+  for (const file of [
+    "../src/_includes/refer/form.njk",
+    "../src/assets/refer-form.js",
+    "../src/assets/refer-send.js",
+  ]) {
+    const text = readFileSync(new URL(file, import.meta.url), "utf8");
+    assert.doesNotMatch(text, /mailto:/i, file);
+  }
+  const form = readFileSync(
+    new URL("../src/_includes/refer/form.njk", import.meta.url),
+    "utf8",
+  );
+  assert.doesNotMatch(form, /<form[^>]*\saction=/, "the form has no action");
+  assert.match(form, /class="rf-submit"[^>]*\sdisabled>/, "button ships off");
+});

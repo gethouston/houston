@@ -61,6 +61,36 @@ concurrency:
   cancel-in-progress: true
 
 jobs:
+  # The /data-partners/refer form stores into public.data_referrals with the
+  # anon key. If the table is missing (its migration not applied), every
+  # referral on the live site fails, and nothing else would say so. A job of
+  # its own after the deploy, so the site still ships but the run goes red.
+  # 401 is the healthy answer: the table exists and the public role may not
+  # read it. 404 (PGRST205) means the table is missing.
+  referral-table:
+    name: Referral table is reachable
+    needs: deploy
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    permissions: {}
+    steps:
+      - name: Ask Supabase for public.data_referrals
+        env:
+          SUPABASE_URL: ${{ secrets.SUPABASE_URL }}
+          SUPABASE_ANON_KEY: ${{ secrets.SUPABASE_ANON_KEY }}
+        run: |
+          url="${SUPABASE_URL:-https://zfpnlvxazrataiannvtq.supabase.co}"
+          code="$(curl -s -o /tmp/referrals.json -w '%{http_code}' \
+            "${url}/rest/v1/data_referrals?select=id&limit=0" \
+            -H "apikey: ${SUPABASE_ANON_KEY}" \
+            -H "Authorization: Bearer ${SUPABASE_ANON_KEY}")"
+          if [ "$code" != "401" ]; then
+            echo "::error::public.data_referrals answered ${code}, so referrals from /data-partners/refer cannot be stored. Apply supabase/migrations/20261101000000_data_referrals.sql to houston-prod."
+            cat /tmp/referrals.json
+            exit 1
+          fi
+          echo "public.data_referrals is reachable (anon may insert, not read)."
+
   deploy:
     name: Build & deploy to Firebase Hosting
     runs-on: ubuntu-latest
@@ -155,27 +185,3 @@ jobs:
           accountId: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
           workingDirectory: website
           command: pages deploy _site --project-name=houston-site --branch=main
-
-      # The /data-partners/refer form stores into public.data_referrals with
-      # the anon key. If the table is missing (its migration not applied),
-      # every referral on the live site fails, and nothing else would say so.
-      # After both deploys, so the site still ships, but the run goes red.
-      # 401 is the healthy answer: the table exists and the public role may
-      # not read it. 404 (PGRST205) means the table is missing.
-      - name: Referral table is reachable
-        if: ${{ !cancelled() }}
-        env:
-          SUPABASE_URL: ${{ secrets.SUPABASE_URL }}
-          SUPABASE_ANON_KEY: ${{ secrets.SUPABASE_ANON_KEY }}
-        run: |
-          url="${SUPABASE_URL:-https://zfpnlvxazrataiannvtq.supabase.co}"
-          code="$(curl -s -o /tmp/referrals.json -w '%{http_code}' \
-            "${url}/rest/v1/data_referrals?select=id&limit=0" \
-            -H "apikey: ${SUPABASE_ANON_KEY}" \
-            -H "Authorization: Bearer ${SUPABASE_ANON_KEY}")"
-          if [ "$code" != "401" ]; then
-            echo "::error::public.data_referrals answered ${code}, so referrals from /data-partners/refer cannot be stored. Apply supabase/migrations/20261101000000_data_referrals.sql to houston-prod."
-            cat /tmp/referrals.json
-            exit 1
-          fi
-          echo "public.data_referrals is reachable (anon may insert, not read)."

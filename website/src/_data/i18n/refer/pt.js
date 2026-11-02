@@ -114,6 +114,7 @@ export default {
     submit: "Enviar indicação",
     privacy: "Como tratamos esses dados.",
     sending: "Enviando…",
+    needsJs: "Ative o JavaScript para enviar uma indicação.",
     saved: {
       title: "Recebemos sua indicação.",
       line: "Nós a revisamos e avisamos você por email a cada etapa, da análise ao pagamento.",
