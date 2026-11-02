@@ -51,6 +51,16 @@ const overCeilingItems: ToolMatch[] = Array.from({ length: 30 }, (_, i) => ({
   status: "connected",
   inputParams: { type: "object", properties: wideProperties },
 }));
+// Past FULL_SCHEMA_ITEMS rows show signatures, and past MAX_ITEMS the rest are
+// counted: both notes must survive the 8k head too.
+const manyItems: ToolMatch[] = Array.from({ length: 35 }, (_, i) => ({
+  ...gmailItems[0],
+  action: `GMAIL_ACTION_${i}`,
+  inputParams: {
+    type: "object",
+    properties: { query: { type: "string", description: "x".repeat(1600) } },
+  },
+}));
 const params = { query: "read emails", app: "gmail" };
 
 const textOf = (content: { type: string; text?: string }[]) =>
@@ -138,4 +148,15 @@ test("a capped search keeps the accounts, connect and turned-off rules on pi", a
 test("a search past the 24 KB ceiling says how to see what was cut, on both backends", async () => {
   expect(await claudeSees(overCeilingItems)).toContain(CUT_NOTE);
   expect(await piSees(overCeilingItems)).toContain(CUT_NOTE);
+});
+
+test("a capped search keeps the elided-rows and short-signature notes, on both backends", async () => {
+  for (const text of [await claudeSees(manyItems), await piSees(manyItems)]) {
+    expect(text).toContain(
+      "(+5 more matched but are not shown - narrow the query, or set `app` to the one you need.)",
+    );
+    expect(text).toContain(
+      "(Some actions show a short params signature instead of the full schema.",
+    );
+  }
 });
