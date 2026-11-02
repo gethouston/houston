@@ -30,7 +30,7 @@ export const GATEWAY_OVERRIDES: Record<string, ProviderOverride> = {
       "mimo-v2.6-flash-free": {
         description: "Free to try.",
       },
-      "nemotron-3-ultra-free": {
+      "nemotron-3.5-super-vl-free": {
         description: "NVIDIA. Free to try.",
       },
     },

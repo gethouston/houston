@@ -125,9 +125,13 @@ export const MODEL_ALIASES: Partial<
   // `mimo-v2.6-flash-free` in pi 0.87.1: the same free tier (zero cost,
   // text+image, 200k window), so the map holds the tier.
   // pi 1.4.0 dropped `claude-sonnet-4`; Sonnet 4.6 costs the same per token.
+  // pi 1.5.0 dropped `nemotron-3-ultra-free`; Nemotron 3.5 Super VL is
+  // NVIDIA's free successor with the same 1M window. Zen's `deepseek-v4-flash`
+  // gets no row: V4.1 Flash costs 4.3x more per output token.
   opencode: {
     "mimo-v2.5-free": "mimo-v2.6-flash-free",
     "claude-sonnet-4": "claude-sonnet-4-6",
+    "nemotron-3-ultra-free": "nemotron-3.5-super-vl-free",
   },
   // Each row is a model pi dropped from OpenCode Go, mapped to its successor.
   // 0.99.1 dropped the glm, kimi and qwen rows, each to the same price tier.
@@ -139,6 +143,8 @@ export const MODEL_ALIASES: Partial<
   // deepseek-v4.1-flash also takes images, so the vision pin keeps them.
   // 1.4.0 dropped `space-bunny`; deepseek-v4.1-flash has its exact price,
   // window and image input, so both Space Bunny ids land there.
+  // 1.5.0 dropped two previews for the same model's GA row: MiniMax M3.1
+  // Flash (now plan usage, like Space Bunny) and Gemini 4 Argon (half price).
   "opencode-go": {
     "glm-5.1": "glm-5.2",
     "kimi-k2.6": "kimi-k2.7-code",
@@ -149,6 +155,8 @@ export const MODEL_ALIASES: Partial<
     "deepseek-v4-flash-vision-exp": "deepseek-v4.1-flash",
     "minimax-m2.7": "minimax-m3",
     "grok-4.6": "grok-4.7",
+    "minimax-m3.1-flash-free": "minimax-m3.1-flash",
+    "gemini-4-argon-contributor": "gemini-4-argon",
   },
 };
 
