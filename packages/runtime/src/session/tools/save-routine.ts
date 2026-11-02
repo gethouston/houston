@@ -57,6 +57,9 @@ function inRoutineRun(): boolean {
 interface SavedRoutine {
   id: string;
   name: string;
+  provider?: string | null;
+  model?: string | null;
+  effort?: string | null;
 }
 
 export function makeSaveRoutineTool(opts: SaveRoutineToolOptions) {
@@ -116,10 +119,15 @@ export function makeSaveRoutineTool(opts: SaveRoutineToolOptions) {
         content: [
           {
             type: "text" as const,
-            text: `Saved the scheduled task '${saved.name}'. Tell the user it is set up, in plain words.`,
+            text: `Saved the scheduled task '${saved.name}'. It will run on ${saved.model ?? "the agent's current model"}. Tell the user it is set up, in plain words; mention the model if relevant.`,
           },
         ],
-        details: { id: saved.id },
+        details: {
+          id: saved.id,
+          provider: saved.provider ?? null,
+          model: saved.model ?? null,
+          effort: saved.effort ?? null,
+        },
       };
     },
   });

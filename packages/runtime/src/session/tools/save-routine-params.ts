@@ -58,7 +58,7 @@ export const SaveRoutineParams = Type.Object({
   chat_mode: Type.Optional(
     Type.Union([Type.Literal("shared"), Type.Literal("per_run")], {
       description:
-        "'shared' (default): every run continues one chat. 'per_run': each run gets its own chat.",
+        "'shared' (default): every run continues one chat. 'per_run': each run gets its own chat. Ask what the user will SEE, in this routine's terms, e.g. 'Where should I put each new email I handle?' Offer 'A new chat for each email' / 'All in one chat', with short descriptions of the effect. Option labels must be distinguishable on their own. Never ask about 'results', 'history', or 'organizing'.",
     }),
   ),
   suppress_when_silent: Type.Optional(

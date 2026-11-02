@@ -37,6 +37,7 @@
     "submit": "Enviar",
     "stop": "Parar",
     "attachFiles": "Anexar arquivos",
+    "resize": "Redimensionar a caixa de mensagem",
     "removeAttachment": "Remover {{name}}"
   },
   "mentions": {

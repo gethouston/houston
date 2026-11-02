@@ -21,6 +21,7 @@ import type {
 import { SentRequests } from "./model-phase";
 import { PiSession } from "./session";
 import { resumeSessionManager } from "./session-files";
+import { piThinkingLevel } from "./thinking-level";
 import { piTransportSettings } from "./transport-settings";
 
 /**
@@ -92,7 +93,9 @@ export function createPiBackend(deps: PiBackendDeps): HarnessBackend {
         cwd: deps.workspaceDir,
         agentDir: deps.dataDir,
         model: opts.model as unknown as Model<Api>,
-        ...(opts.thinkingLevel ? { thinkingLevel: opts.thinkingLevel } : {}),
+        ...(opts.thinkingLevel
+          ? { thinkingLevel: piThinkingLevel(opts.model, opts.thinkingLevel) }
+          : {}),
         // Every session request is hedged against a provider that never
         // answers (ai/hedged-runtime.ts).
         modelRuntime: hedgedModelRuntime(

@@ -14,6 +14,8 @@ import type {
 } from "@houston/protocol";
 import type { Vfs } from "../vfs";
 import { withDocLock } from "./doc-lock";
+import type { LiveTurnPin } from "./live-turn-pin";
+import { routineCreationPin } from "./routine-creation-pin";
 import { checkedSchedule } from "./routine-schedule";
 import {
   NO_TRIGGER_BACKEND_WRITE_ERROR,
@@ -65,7 +67,10 @@ export async function createRoutineChecked(
   root: string,
   workspaceId: string,
   body: Record<string, unknown>,
-  opts: RoutineWriteOptions & { createdBy?: string },
+  opts: RoutineWriteOptions & {
+    createdBy?: string;
+    authoringPin?: LiveTurnPin;
+  },
 ): Promise<{ routine: Routine } | RoutineWriteError> {
   for (const field of ["name", "prompt"]) {
     if (!body[field] || typeof body[field] !== "string") {
@@ -79,7 +84,10 @@ export async function createRoutineChecked(
   if (body.trigger != null && !opts.triggersEnabled) {
     return { error: NO_TRIGGER_BACKEND_WRITE_ERROR };
   }
-  let input = body as unknown as NewRoutine;
+  let input = routineCreationPin(
+    body as unknown as NewRoutine,
+    opts.authoringPin,
+  );
   // Trigger routines have no schedule to check.
   if (typeof input.schedule === "string") {
     const checked = await checkedSchedule(vfs, workspaceId, input.schedule);
@@ -91,7 +99,7 @@ export async function createRoutineChecked(
     const refusal = planFloorRefusal(input.schedule, opts.minIntervalMinutes);
     if (refusal) return refusal;
   }
-  const providerErr = providerPinError(body);
+  const providerErr = providerPinError({ provider: input.provider });
   if (providerErr) return { error: providerErr };
 
   // Load→save under the per-doc lock so concurrent routine writes can't drop

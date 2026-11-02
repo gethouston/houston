@@ -16,9 +16,9 @@ export interface ChatInteractionOption {
   kind?: "choice" | "approval";
   id: string;
   label: string;
-  /** TOLERATED on the wire but NOT rendered: the card shows label + Recommended
-   *  chip only. Kept optional so existing steps carrying it still parse; the
-   *  ask_user tool no longer asks the model to produce it. */
+  /** An optional one-line explanation, shown as a small muted line under the
+   *  label (always visible, so it works on touch). Only when present: a row
+   *  without it keeps the single-line layout. */
   description?: string;
   /** Marks this as the suggested default (at most one per question), shown as a
    *  soft "Recommended" chip beside the label. Optional and additive. */
