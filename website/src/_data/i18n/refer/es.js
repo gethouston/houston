@@ -120,6 +120,7 @@ export default {
       line: "La revisamos y te escribimos a medida que avanza, desde la revisión hasta el pago.",
     },
     errors: {
+      send: "No pudimos enviar tu recomendación. Revisa tu conexión e inténtalo de nuevo.",
       size: "Dinos más o menos cuántas personas trabajan ahí.",
       years: "Escribe los años en operación como un número entero, como 12.",
       yourName: "Tu nombre es obligatorio.",
@@ -129,16 +130,7 @@ export default {
       sameCompany:
         "No puedes recomendar tu propia empresa. Puede sumarse como socio de datos directamente.",
     },
-    mail: {
-      subject: "Recomendación: {company}",
-      referrer: "Recomendada por",
-    },
-    done: {
-      title: "Tu recomendación está lista para enviar.",
-      line: "Abrimos tu app de correo con todo completado. Envíalo y nosotros seguimos desde ahí.",
-      fallback: "¿No se abrió nada? Envía los datos a {inbox}.",
-      again: "Recomendar otra empresa",
-    },
+    again: "Recomendar otra empresa",
   },
   terms: {
     title: "Las condiciones que definen lo que ganas.",

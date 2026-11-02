@@ -119,6 +119,7 @@ export default {
       line: "Nós a revisamos e avisamos você por email a cada etapa, da análise ao pagamento.",
     },
     errors: {
+      send: "Não conseguimos enviar sua indicação. Verifique sua conexão e tente de novo.",
       size: "Diga mais ou menos quantas pessoas trabalham lá.",
       years: "Digite os anos de atuação como um número inteiro, como 12.",
       yourName: "Seu nome é obrigatório.",
@@ -128,16 +129,7 @@ export default {
       sameCompany:
         "Você não pode indicar sua própria empresa. Ela pode entrar diretamente como parceira de dados.",
     },
-    mail: {
-      subject: "Indicação: {company}",
-      referrer: "Indicada por",
-    },
-    done: {
-      title: "Sua indicação está pronta para enviar.",
-      line: "Abrimos seu app de e-mail com tudo preenchido. Envie e nós seguimos daí.",
-      fallback: "Nada abriu? Envie os dados para {inbox}.",
-      again: "Indicar outra empresa",
-    },
+    again: "Indicar outra empresa",
   },
   terms: {
     title: "As condições que definem quanto você ganha.",

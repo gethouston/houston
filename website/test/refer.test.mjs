@@ -9,11 +9,9 @@ import { existsSync } from "node:fs";
 import { dirname, resolve } from "node:path";
 import test from "node:test";
 import { fileURLToPath } from "node:url";
-import referEn from "../src/_data/i18n/refer/en.js";
 import landing from "../src/_data/landing.js";
 import refer from "../src/_data/refer.js";
 import {
-  composeMail,
   MAX_SIZE_LENGTH,
   MAX_YEARS,
   siteHost,
@@ -43,14 +41,12 @@ for (const code of ["en", "es", "pt"]) {
   });
 
   test(`${code}: the only placeholders are the ones the templates fill`, () => {
-    const filled = new Set(["{amount}", "{inbox}", "{company}"]);
+    const filled = new Set(["{amount}"]);
     for (const line of strings(copy)) {
       for (const hole of line.match(/\{[^}]*\}/g) ?? []) {
         assert.ok(filled.has(hole), `${hole} in "${line}"`);
       }
     }
-    assert.match(copy.form.done.fallback, /\{inbox\}/);
-    assert.match(copy.form.mail.subject, /\{company\}/);
   });
 
   // The figure is written once, in _data/refer.js; the copy states the
@@ -134,25 +130,4 @@ test("years in business is a whole number of years", () => {
     assert.deepEqual(validate({ ...valid, years }), {}, years);
   for (const years of ["", "12.5", "about 12", "-3", String(MAX_YEARS + 1)])
     assert.deepEqual(validate({ ...valid, years }), { years: "years" }, years);
-});
-
-test("the email names the company and carries every filled field", () => {
-  const form = referEn.form;
-  const copy = {
-    mail: form.mail,
-    labels: {
-      companyName: form.companyName,
-      website: form.website,
-      size: form.size,
-      years: form.years,
-    },
-  };
-  const mail = composeMail(valid, copy);
-  assert.equal(mail.subject, "Referral: Acme");
-  assert.ok(mail.href.startsWith(`mailto:${refer.inbox}?subject=`));
-  assert.match(mail.body, /^Referred by: Ana Ruiz <ana@gmail\.com>/);
-  assert.match(mail.body, /Company website: acme\.com/);
-  assert.match(mail.body, /Number of employees: about 120/);
-  assert.match(mail.body, /Years in business: 12/);
-  assert.doesNotMatch(mail.body, /Request:/);
 });

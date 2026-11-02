@@ -3,11 +3,10 @@
 //
 // `validate` answers which fields are wrong, as keys into the copy's
 // `form.errors`; `referralRow` turns a valid referral into the
-// public.data_referrals row the form stores (refer-send.js); `composeMail`
-// turns it into the email the program inbox receives when storing fails.
+// public.data_referrals row the form stores (refer-send.js).
 
-// The program inbox. One constant, here, so the fallback email's address
-// comes from code and never from page text; _data/refer.js reads it too.
+// The program inbox, where the form posts when JS is off; _data/refer.js
+// reads it from here.
 export const INBOX = "hello@gethouston.ai";
 
 const EMAIL = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
@@ -84,25 +83,4 @@ export function referralRow(input, { locale, page }) {
     locale,
     page,
   };
-}
-
-// The email for a valid referral: a subject naming the company and one
-// "Label: value" line per filled field, labels in the referrer's language.
-export function composeMail(input, copy) {
-  const v = Object.fromEntries(FIELDS.map((k) => [k, clean(input[k])]));
-  const lines = [`${copy.mail.referrer}: ${v.yourName} <${v.yourEmail}>`, ""];
-  for (const key of FIELDS.slice(2)) {
-    if (!v[key]) continue;
-    const value =
-      key === "website"
-        ? siteHost(v.website)
-        : key === "listing"
-          ? (copy.listings?.[v.listing] ?? v.listing)
-          : v[key];
-    lines.push(`${copy.labels[key]}: ${value}`);
-  }
-  const subject = copy.mail.subject.replace("{company}", v.companyName);
-  const body = lines.join("\n");
-  const href = `mailto:${INBOX}?subject=${encodeURIComponent(subject)}&body=${encodeURIComponent(body)}`;
-  return { subject, body, href };
 }
