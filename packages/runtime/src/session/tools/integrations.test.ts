@@ -354,6 +354,27 @@ test("a giant execute result is truncated with recovery guidance, never fed whol
   expect(text).toContain("Re-run the action with tighter parameters");
 });
 
+test("an execute result comes back one record per line, without indent padding", async () => {
+  const a = "a".repeat(300);
+  const b = "b".repeat(300);
+  mockFetch(() => ({
+    body: {
+      successful: true,
+      data: {
+        messages: [
+          { id: "m1", subject: a },
+          { id: "m2", subject: b },
+        ],
+        next: "t",
+      },
+    },
+  }));
+  const out = await run(execute, { action: "GMAIL_FETCH_EMAILS", params: {} });
+  expect((out.content[0] as { text: string }).text).toBe(
+    `{\n "messages": [\n  {"id":"m1","subject":"${a}"},\n  {"id":"m2","subject":"${b}"}\n ],\n "next": "t"\n}`,
+  );
+});
+
 test("a small execute result passes through untouched", async () => {
   mockFetch(() => ({ body: { successful: true, data: { ok: 1 } } }));
   const out = await run(execute, { action: "X", params: {} });

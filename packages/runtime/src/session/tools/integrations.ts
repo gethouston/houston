@@ -3,6 +3,7 @@ import { type Static, Type } from "typebox";
 import { currentActingContext } from "../acting-context";
 import { recordConnection, recordSignin } from "../interaction";
 import { assertNotPlanMode } from "../live-mode-gate";
+import { layoutJson } from "./integrations-json";
 import type { ToolMatch } from "./integrations-render";
 import { searchEmptyText, searchLeadNote } from "./integrations-search-notes";
 import {
@@ -472,7 +473,7 @@ export function makeIntegrationTools(opts: IntegrationToolOptions) {
         throw new Error(`"${params.action}" did not succeed: ${reason}${hint}`);
       }
       const text = boundResultText(
-        result.data ? JSON.stringify(result.data, null, 2) : "Done.",
+        result.data ? layoutJson(result.data) : "Done.",
         "Do not rely on the cut-off tail. Re-run the action with tighter parameters - fewer results, specific ids or fields, and without full payloads/bodies - to get what you need within the limit.",
       );
       return {
