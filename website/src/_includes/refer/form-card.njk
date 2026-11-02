@@ -53,7 +53,7 @@
           </div>
         </fieldset>
 
-        <p class="rf-consent">{{ f.consent }} <a href="/privacy/#referrals">{{ f.privacy }}</a></p>
+        <p class="rf-consent">{{ f.consent }} <a href="/privacy/#referrals" target="_blank" rel="noopener">{{ f.privacy }}</a></p>
         {#- Left empty by people; a bot that fills every field is dropped. -#}
         <div class="rf-trap" aria-hidden="true"><label for="rf-trap">Leave this empty</label><input id="rf-trap" name="trap" type="text" tabindex="-1" autocomplete="off"></div>
         <p class="rf-error rf-send-error" id="rf-send-error" role="alert" hidden></p>
