@@ -75,6 +75,8 @@ export type HoustonEvent =
   // The AI Manager's morning briefing started (a ping) / its settings changed.
   | { type: "HeartbeatDelivered"; data: { agent_path: string } }
   | { type: "HeartbeatChanged"; data: { workspace_id: string } }
+  // An account preference changed (the person, or the AI Manager for them).
+  | { type: "PreferencesChanged"; data: { workspace_id: string } }
   | {
       type: "HeartbeatFired";
       data: { prompt: string; project_id: string | null };

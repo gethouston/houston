@@ -39,6 +39,9 @@ export type HoustonEvent =
    *  Manager (`agentPath` is the manager's own agent); the app notifies on it. */
   | { type: "HeartbeatDelivered"; agentPath: string; date: string }
   /** The briefing settings or its last-run record changed. */
-  | { type: "HeartbeatChanged"; workspaceId: string };
+  | { type: "HeartbeatChanged"; workspaceId: string }
+  /** One of the person's account preferences (`/v1/preferences/:key`) was
+   *  written, by them or by the AI Manager acting for them. */
+  | { type: "PreferencesChanged"; workspaceId: string };
 
 export type HoustonEventType = HoustonEvent["type"];

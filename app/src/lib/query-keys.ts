@@ -61,6 +61,10 @@ export const queryKeys = {
   /** The AI Manager's morning-briefing settings + last run (one per person),
    *  refreshed on the host's `HeartbeatChanged` event. */
   heartbeat: () => ["heartbeat"] as const,
+  /** The person's account preferences (one set per person), refreshed as a
+   *  family on the host's `PreferencesChanged` event. */
+  preferences: () => ["preferences"] as const,
+  nextStepSuggestions: () => ["preferences", "next_step_suggestions"] as const,
 
   /**
    * Durable onboarding flags — USER-scoped and space-INVARIANT (engine prefs on

@@ -105,6 +105,10 @@ export function planInvalidation(
     case "HeartbeatChanged":
       plan.invalidate.push(queryKeys.heartbeat());
       break;
+    // Account preferences are one set per person, the AI Manager writes them too.
+    case "PreferencesChanged":
+      plan.invalidate.push(queryKeys.preferences());
+      break;
     // SessionStatus triggers activity invalidation (agent finished → status).
     case "SessionStatus":
       if (ev.data.status === "completed" || ev.data.status === "error") {

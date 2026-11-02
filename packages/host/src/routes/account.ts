@@ -109,16 +109,23 @@ defineRoute({
     // Create-only (`onlyIfAbsent`, @houston/protocol preference-create): the
     // flag holds whatever the value, null included, and the check and the
     // write share the preferences doc lock (createPreference).
+    const changed = () =>
+      deps.events?.emit(userId, {
+        type: "PreferencesChanged",
+        workspaceId: ws.id,
+      });
     if (body[PREFERENCE_ONLY_IF_ABSENT_FIELD] === true) {
       const out = await createPreference(vfs, ws.id, key, value);
-      return out.created
-        ? json(res, 200, { value: out.value })
-        : json(res, PREFERENCE_EXISTS_STATUS, {
-            code: PREFERENCE_EXISTS_CODE,
-            value: out.value,
-          });
+      if (!out.created)
+        return json(res, PREFERENCE_EXISTS_STATUS, {
+          code: PREFERENCE_EXISTS_CODE,
+          value: out.value,
+        });
+      changed();
+      return json(res, 200, { value: out.value });
     }
     await setPreference(vfs, ws.id, key, value);
+    changed();
     json(res, 200, { value });
   },
 });
