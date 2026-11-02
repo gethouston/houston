@@ -105,7 +105,8 @@ export function planInvalidation(
     case "HeartbeatChanged":
       plan.invalidate.push(queryKeys.heartbeat());
       break;
-    // Account preferences are one set per person, the AI Manager writes them too.
+    // No open-workspace check: locale and next-step suggestions are the
+    // person's in every space, and refetching a per-space key is harmless.
     case "PreferencesChanged":
       plan.invalidate.push(queryKeys.preferences());
       break;

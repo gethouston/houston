@@ -63,8 +63,8 @@ export const queryKeys = {
   /** The AI Manager's morning-briefing settings + last run (one per person),
    *  refreshed on the host's `HeartbeatChanged` event. */
   heartbeat: () => ["heartbeat"] as const,
-  /** The person's account preferences (one set per person), refreshed as a
-   *  family on the host's `PreferencesChanged` event. */
+  /** The person's preferences, refreshed as a family on the host's
+   *  `PreferencesChanged` event. */
   preferences: () => ["preferences"] as const,
   nextStepSuggestions: () => ["preferences", "next_step_suggestions"] as const,
 
