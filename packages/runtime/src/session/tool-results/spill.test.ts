@@ -54,3 +54,28 @@ test("the folder stays within 16 MiB by dropping the oldest results, never the o
     saved.slice(0, 2),
   );
 });
+
+test("saving a result again counts as a fresh use, so the oldest unused one is dropped first", () => {
+  const saved: string[] = [];
+  for (let i = 0; i < 16; i++) {
+    const path = spillToolResult(
+      { workspaceDir, conversationId: "c" },
+      "integration_execute",
+      `${i}`.padEnd(MiB, "x"),
+    );
+    utimesSync(join(workspaceDir, path), 1_000 + i, 1_000 + i);
+    saved.push(path);
+  }
+  expect(
+    spillToolResult(
+      { workspaceDir, conversationId: "c" },
+      "integration_execute",
+      "0".padEnd(MiB, "x"),
+    ),
+  ).toBe(saved[0]);
+
+  spillToolResult({ workspaceDir, conversationId: "c" }, "run_code", "y");
+  expect(saved.filter((p) => !existsSync(join(workspaceDir, p)))).toEqual([
+    saved[1],
+  ]);
+});

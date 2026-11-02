@@ -7,6 +7,7 @@ import {
   rmdirSync,
   rmSync,
   statSync,
+  utimesSync,
   writeFileSync,
 } from "node:fs";
 import { join } from "node:path";
@@ -97,7 +98,12 @@ function saveSpill(
     .slice(0, 16);
   const rel = `${SPILL_DIR}/${safeSegment(target.conversationId)}/${safeSegment(toolName)}-${digest}.${extension}`;
   const abs = join(target.workspaceDir, rel);
-  if (existsSync(abs)) return rel;
+  if (existsSync(abs)) {
+    // Pruning drops the oldest mtime first, so a reused result counts as new.
+    const now = new Date();
+    utimesSync(abs, now, now);
+    return rel;
+  }
   mkdirSync(join(abs, ".."), { recursive: true });
   const tmp = atomicTempPath(abs, randomUUID());
   writeFileSync(tmp, content);
