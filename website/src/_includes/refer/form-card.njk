@@ -10,6 +10,9 @@
     be stored, the form stays filled in and says so above the button. It never
     sends email: without JS the button stays disabled. -#}
 {%- set selected = item.slug if item else "" -%}
+{#- Compact on purpose: three rows of two, the optional request last, and the
+    section names kept for screen readers only, so the whole card fits in
+    the fold of a laptop screen beside the statement. -#}
 {#- One labelled field. Optional fields say so beside the label; every field
     owns an error line the script fills (assets/refer-form.js). -#}
 {%- macro field(name, label, type, auto, placeholder, optional, mode) %}
@@ -31,6 +34,14 @@
 
         <fieldset class="rf-group">
           <legend>{{ f.company }}</legend>
+          <div class="rf-row">
+{{ field("companyName", f.companyName, "text", "organization") }}
+{{ field("website", f.website, "text", "url", f.websitePlaceholder) }}
+          </div>
+          <div class="rf-row">
+{{ field("size", f.size, "text", "off", f.sizePlaceholder) }}
+{{ field("years", f.years, "text", "off", f.yearsPlaceholder, false, "numeric") }}
+          </div>
           <div class="rf-field">
             <label for="rf-listing">{{ f.listing }} <span class="rf-optional">{{ f.optional }}</span></label>
             <select id="rf-listing" name="listing">
@@ -39,12 +50,6 @@
               <option value="{{ entry.slug }}"{% if entry.slug == selected %} selected{% endif %}>{{ t.referListings[entry.slug].title }}</option>
 {%- endfor %}
             </select>
-          </div>
-{{ field("companyName", f.companyName, "text", "organization") }}
-{{ field("website", f.website, "text", "url", f.websitePlaceholder) }}
-          <div class="rf-row">
-{{ field("size", f.size, "text", "off", f.sizePlaceholder) }}
-{{ field("years", f.years, "text", "off", f.yearsPlaceholder, false, "numeric") }}
           </div>
         </fieldset>
 
