@@ -1,5 +1,6 @@
 import type { ProviderOption } from "@houston/domain";
 import type { TurnMode } from "@houston/protocol";
+import { withNextStepSuggestionTools } from "../../session/next-step-suggestions";
 import {
   COORDINATOR_TOOL_NAMES,
   toolNamesForMode,
@@ -177,9 +178,8 @@ export function buildBridgedToolSet(
       scoped.map((t) => t.name),
     ),
   );
-  return scoped.filter(
-    (t) =>
-      allowed.has(t.name) &&
-      (input.nextStepSuggestions !== false || t.name !== "suggest_actions"),
+  return withNextStepSuggestionTools(
+    scoped.filter((t) => allowed.has(t.name)),
+    input.nextStepSuggestions,
   );
 }

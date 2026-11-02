@@ -48,22 +48,30 @@ type SuggestReusableParams = Static<typeof SuggestReusableParams>;
 
 /** The result once the closing message is written: the offer ends the turn
  *  (with `suggest_actions` when that tool is on, both carry pi's terminate
- *  hint). The texts never assume that tool, which a person can turn off. */
+ *  hint). With next-step suggestions off, no text names that tool. */
 const ENDED_INSTRUCTION =
   "Your suggestion was recorded. The app shows the user a dismissible card offering to save this work, under the message you already wrote. This ended your turn.";
 
 /** The result when the model called the tool before writing anything visible. */
-function needsMessageInstruction(visibleText: string): string {
-  return `Your suggestion was recorded. The app will show the user a dismissible card offering to save this work. Do not repeat the suggestion in plain text and do not ask about it again. You called this before writing anything the user can read in this message, so this did NOT end your turn. Write your closing message now, then end (calling suggest_actions with it only if you have that tool). ${unreadReplyInstruction(visibleText)}`;
+function needsMessageInstruction(
+  visibleText: string,
+  nextStepSuggestions: boolean,
+): string {
+  const end = nextStepSuggestions
+    ? "Write your closing message now, then end (calling suggest_actions with it only if you have that tool)."
+    : "Write your closing message now, then end.";
+  return `Your suggestion was recorded. The app will show the user a dismissible card offering to save this work. Do not repeat the suggestion in plain text and do not ask about it again. You called this before writing anything the user can read in this message, so this did NOT end your turn. ${end} ${unreadReplyInstruction(visibleText)}`;
 }
 
 /** The reusable-suggestion tool (execute + auto; never plan). */
-export function makeSuggestReusableTool() {
+export function makeSuggestReusableTool(nextStepSuggestions = true) {
+  const pairing = nextStepSuggestions
+    ? " If you have suggest_actions, call both in that same message."
+    : "";
   return defineTool({
     name: "suggest_reusable",
     label: "Suggest saving as reusable",
-    description:
-      "Offer, on a dismissible card, to save the just-finished work as a reusable Skill, a scheduled Routine, or a Learning. Call it only when the work is clearly worth keeping (not a simple or one-off request), in your final message after your closing text, instead of asking in plain text or via ask_user. If you have suggest_actions, call both in that same message. At most once per turn. It ends your turn, so put nothing after it.",
+    description: `Offer, on a dismissible card, to save the just-finished work as a reusable Skill, a scheduled Routine, or a Learning. Call it only when the work is clearly worth keeping (not a simple or one-off request), in your final message after your closing text, instead of asking in plain text or via ask_user.${pairing} At most once per turn. It ends your turn, so put nothing after it.`,
     promptSnippet:
       "Suggest saving the completed work as a Skill, Routine, or Learning",
     parameters: SuggestReusableParams,
@@ -92,7 +100,10 @@ export function makeSuggestReusableTool() {
           content: [
             {
               type: "text" as const,
-              text: needsMessageInstruction(finish?.visibleText ?? ""),
+              text: needsMessageInstruction(
+                finish?.visibleText ?? "",
+                nextStepSuggestions,
+              ),
             },
           ],
           details,

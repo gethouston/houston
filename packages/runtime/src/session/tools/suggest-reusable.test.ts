@@ -89,16 +89,18 @@ test("after the closing message it ends the turn like suggest_actions", async ()
   expect(text).toMatch(/This ended your turn/);
 });
 
-test("the description pairs it with suggest_actions only when that tool is on", () => {
-  const d = suggestReusable.description ?? "";
-  expect(d).toContain(
-    "If you have suggest_actions, call both in that same message.",
-  );
-  expect(d).toContain("It ends your turn");
-  expect(d).not.toContain("This does not end your turn");
+const ON_DESCRIPTION =
+  "Offer, on a dismissible card, to save the just-finished work as a reusable Skill, a scheduled Routine, or a Learning. Call it only when the work is clearly worth keeping (not a simple or one-off request), in your final message after your closing text, instead of asking in plain text or via ask_user. If you have suggest_actions, call both in that same message. At most once per turn. It ends your turn, so put nothing after it.";
+const OFF_DESCRIPTION =
+  "Offer, on a dismissible card, to save the just-finished work as a reusable Skill, a scheduled Routine, or a Learning. Call it only when the work is clearly worth keeping (not a simple or one-off request), in your final message after your closing text, instead of asking in plain text or via ask_user. At most once per turn. It ends your turn, so put nothing after it.";
+
+test("the description pairs it with suggest_actions only when suggestions are on", () => {
+  expect(makeSuggestReusableTool().description).toBe(ON_DESCRIPTION);
+  expect(makeSuggestReusableTool(true).description).toBe(ON_DESCRIPTION);
+  expect(makeSuggestReusableTool(false).description).toBe(OFF_DESCRIPTION);
 });
 
-test("with suggestions off or on, a turn's tools offer to save the work without ordering suggest_actions", async () => {
+test("a turn's tools carry the suggest_reusable that matches the suggestions setting", () => {
   for (const nextStepSuggestions of [false, true]) {
     const tools = buildTurnCommonTools(
       { nextStepSuggestions } as TurnSessionRequest,
@@ -106,16 +108,34 @@ test("with suggestions off or on, a turn's tools offer to save the work without 
       "/tmp/data",
     );
     const names = tools.map((t) => t.name);
-    expect(names).toContain("suggest_reusable");
     expect(names.includes("suggest_actions")).toBe(nextStepSuggestions);
+    expect(tools.find((t) => t.name === "suggest_reusable")?.description).toBe(
+      nextStepSuggestions ? ON_DESCRIPTION : OFF_DESCRIPTION,
+    );
   }
-  const holder = newInteractionHolder();
-  const out = await runWithInteractionCapture(holder, () =>
-    run({ reusableKind: "skill", title: "T", rationale: "R" }),
-  );
-  expect((out.content[0] as { text: string }).text).toContain(
+});
+
+test("called before any closing text, it names suggest_actions only when suggestions are on", async () => {
+  const textWith = async (nextStepSuggestions: boolean) => {
+    const holder = newInteractionHolder();
+    const out = await runWithInteractionCapture(holder, () =>
+      makeSuggestReusableTool(nextStepSuggestions).execute(
+        "id",
+        { reusableKind: "skill", title: "T", rationale: "R" } as never,
+        undefined,
+        undefined,
+        ctx,
+      ),
+    );
+    return (out.content[0] as { text: string }).text;
+  };
+  const on = await textWith(true);
+  const off = await textWith(false);
+  expect(on).toContain(
     "Write your closing message now, then end (calling suggest_actions with it only if you have that tool).",
   );
+  expect(off).toContain("Write your closing message now, then end.");
+  expect(off).not.toContain("suggest_actions");
 });
 
 test("carries the routine kind through unchanged", async () => {

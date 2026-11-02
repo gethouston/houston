@@ -12,7 +12,10 @@ import {
 } from "../../ai/hedged-runtime";
 import { isManagedBridgeModel } from "../../ai/openai-compatible-model";
 import { config } from "../../config";
-import { withNextStepSuggestions } from "../../session/next-step-suggestions";
+import {
+  withNextStepSuggestions,
+  withNextStepSuggestionTools,
+} from "../../session/next-step-suggestions";
 import { makeAgentLoader, SYSTEM_PROMPT } from "../../session/resource-loader";
 import { toolNamesForMode } from "../../session/tool-selection";
 import type {
@@ -121,10 +124,9 @@ export function createPiBackend(deps: PiBackendDeps): HarnessBackend {
           (name) =>
             opts.nextStepSuggestions !== false || name !== "suggest_actions",
         ),
-        customTools: deps.customTools.filter(
-          (tool) =>
-            opts.nextStepSuggestions !== false ||
-            tool.name !== "suggest_actions",
+        customTools: withNextStepSuggestionTools(
+          deps.customTools,
+          opts.nextStepSuggestions,
         ),
       });
       if (isManagedBridgeModel(opts.model)) session.setAutoRetryEnabled(false);

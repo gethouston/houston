@@ -3,7 +3,10 @@ import { expect, test } from "vitest";
 import { houstonSystemPrompt } from "../../../host/src/houston-prompt";
 import { buildBridgedToolSet } from "../backends/claude/mcp-tool-set";
 import { buildTurnCommonTools } from "../turn/turn-toolset";
-import { withNextStepSuggestions } from "./next-step-suggestions";
+import {
+  withNextStepSuggestions,
+  withNextStepSuggestionTools,
+} from "./next-step-suggestions";
 
 const prompt =
   "Keep this.\n<next_step_suggestions>\nCall suggest_actions.\n</next_step_suggestions>\nAlso this.";
@@ -36,6 +39,35 @@ for (const enabled of [undefined, true, false]) {
     ).toBe(enabled !== false);
   });
 }
+
+test("off, no tool the model sees on pi or Claude names suggest_actions", () => {
+  const turn = {
+    conversationId: "c",
+    text: "hi",
+    provider: "openai-codex",
+    turnId: "t",
+    emit: () => {},
+    signal: undefined,
+  };
+  const piTools = withNextStepSuggestionTools(
+    [...buildTurnCommonTools(turn, null, "/tmp")],
+    false,
+  );
+  const claudeTools = buildBridgedToolSet({ nextStepSuggestions: false });
+  for (const tools of [piTools, claudeTools]) {
+    const seen = JSON.stringify(
+      tools.map((t) => [t.name, t.description, t.parameters]),
+    );
+    expect(seen).toContain("suggest_reusable");
+    expect(seen).not.toContain("suggest_actions");
+  }
+});
+
+test("on, the tools pass through unchanged", () => {
+  const tools = [{ name: "suggest_actions" }, { name: "suggest_reusable" }];
+  expect(withNextStepSuggestionTools(tools)).toEqual(tools);
+  expect(withNextStepSuggestionTools(tools, true)).toEqual(tools);
+});
 
 test("off omits the actual host and desktop product mandates", () => {
   const desktop = readFileSync(
