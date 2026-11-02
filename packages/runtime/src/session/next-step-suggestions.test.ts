@@ -63,6 +63,18 @@ test("off, no tool the model sees on pi or Claude names suggest_actions", () => 
   }
 });
 
+test("off keeps every other tool as the same object, wrappers included", () => {
+  const wrapped = { name: "suggest_reusable", execute: () => "logged" };
+  const other = { name: "ask_user", execute: () => "gated" };
+  const off = withNextStepSuggestionTools(
+    [{ name: "suggest_actions" }, wrapped, other],
+    false,
+  );
+  expect(off).toHaveLength(2);
+  expect(off[0]).toBe(wrapped);
+  expect(off[1]).toBe(other);
+});
+
 test("on, the tools pass through unchanged", () => {
   const tools = [{ name: "suggest_actions" }, { name: "suggest_reusable" }];
   expect(withNextStepSuggestionTools(tools)).toEqual(tools);
