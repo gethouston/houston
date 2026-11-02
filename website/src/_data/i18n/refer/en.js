@@ -116,11 +116,13 @@ export default {
     submit: "Send referral",
     privacy: "How we handle these details.",
     sending: "Sending…",
+    needsJs: "Turn on JavaScript to send a referral.",
     saved: {
       title: "We have your referral.",
       line: "We review it and email you as it moves, from review to payout.",
     },
     errors: {
+      send: "We couldn't send your referral. Check your connection and try again.",
       size: "Tell us roughly how many people work there.",
       years: "Enter the years in business as a whole number, like 12.",
       yourName: "Your name is required.",
@@ -130,16 +132,7 @@ export default {
       sameCompany:
         "You can't refer your own company. It can join as a data partner itself.",
     },
-    mail: {
-      subject: "Referral: {company}",
-      referrer: "Referred by",
-    },
-    done: {
-      title: "Your referral is ready to send.",
-      line: "We opened your email app with everything filled in. Send it and we take it from there.",
-      fallback: "Nothing opened? Email the details to {inbox}.",
-      again: "Refer another company",
-    },
+    again: "Refer another company",
   },
   terms: {
     title: "The terms that decide what you earn.",

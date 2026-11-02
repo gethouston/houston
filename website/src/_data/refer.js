@@ -3,7 +3,6 @@
 // the i18n arrays, the same contract _data/enterprise.js keeps.
 
 import { REQUESTS } from "../../lib/refer-requests.js";
-import { INBOX } from "../assets/refer-model.js";
 import dataPartners from "./dataPartners.js";
 import locales from "./locales.js";
 
@@ -30,10 +29,6 @@ export default {
   // The URL segment under every locale root ("/data-partners/refer/", ...).
   path: "data-partners/refer/",
 
-  // Referrals are stored in Supabase public.data_referrals
-  // (assets/refer-send.js). When that fails, or without JS, the form emails
-  // this inbox instead.
-  inbox: INBOX,
   people: ["felipe", "julian"],
 
   pay,

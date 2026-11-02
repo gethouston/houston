@@ -11,7 +11,7 @@ import test from "node:test";
 import { fileURLToPath } from "node:url";
 import refer from "../src/_data/refer.js";
 import referListings from "../src/_data/referListings.js";
-import { composeMail } from "../src/assets/refer-model.js";
+import { referralRow } from "../src/assets/refer-model.js";
 import { treeFor } from "./support/locale-tree.mjs";
 
 const src = resolve(dirname(fileURLToPath(import.meta.url)), "../src");
@@ -120,24 +120,18 @@ test("every request page is built in every language", () => {
 });
 
 test("a referral from a request's page names the request", () => {
-  const form = treeFor("en").refer.form;
-  const mail = composeMail(
+  const row = referralRow(
     {
       yourName: "Ana Ruiz",
       yourEmail: "ana@gmail.com",
       listing: "construction",
       companyName: "Turner Build",
       website: "turnerbuild.com",
-      size: "200-499",
-      contactName: "Bo Li",
-      contactEmail: "bo@turnerbuild.com",
+      size: "about 200",
+      years: "18",
     },
-    {
-      inbox: refer.inbox,
-      mail: form.mail,
-      listings: { construction: "Construction Company" },
-      labels: { listing: form.listing, companyName: form.companyName },
-    },
+    { locale: "en", page: "/data-partners/refer/construction/" },
   );
-  assert.match(mail.body, /\nRequest: Construction Company\n/);
+  assert.equal(row.listing, "construction");
+  assert.ok(referListings.items.some((item) => item.slug === row.listing));
 });

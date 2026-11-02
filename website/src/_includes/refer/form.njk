@@ -1,6 +1,5 @@
 {%- set r = t.refer -%}
 {%- set f = r.form -%}
-{%- set mailto = "mailto:" + refer.inbox -%}
 {#- On a request's own page (`item` is its pagination alias) the form is for
     that request: its own heading, and the request already chosen. -#}
 {%- set lp = t.referBoard.listing -%}
@@ -19,8 +18,8 @@
 
    Sending stores the referral (assets/refer-send.js: Supabase
    public.data_referrals plus the team's sheet tab) and says so. If it cannot
-   be stored, the form falls back to an email to the program inbox with
-   everything filled in. Without JS the form posts the fields to that inbox. #}
+   be stored, the form stays filled in and says so above the button. It never
+   sends email: without JS the button stays disabled. #}
 <section id="refer" class="section ent-section rf-refer" data-tone="light">
   <div class="rf-refer-grid">
     <div class="rf-refer-copy reveal">
@@ -40,7 +39,7 @@
     </div>
 
     <div class="rf-form-card reveal reveal-d1">
-      <form class="rf-form" id="rf-form" action="{{ mailto }}" method="post" enctype="text/plain" novalidate data-refer-form>
+      <form class="rf-form" id="rf-form" novalidate data-refer-form>
         <fieldset class="rf-group">
           <legend>{{ f.you }}</legend>
           <div class="rf-row">
@@ -71,20 +70,18 @@
         <p class="rf-consent">{{ f.consent }} <a href="/privacy/#referrals">{{ f.privacy }}</a></p>
         {#- Left empty by people; a bot that fills every field is dropped. -#}
         <div class="rf-trap" aria-hidden="true"><label for="rf-trap">Leave this empty</label><input id="rf-trap" name="trap" type="text" tabindex="-1" autocomplete="off"></div>
-        <button class="rf-submit" type="submit" data-sending="{{ f.sending }}">{{ f.submit }}</button>
+        <p class="rf-error rf-send-error" id="rf-send-error" role="alert" hidden></p>
+        {#- Sending is the script's job (Supabase and the sheet), so the button
+            starts disabled and assets/refer-form.js enables it. Without JS
+            nothing is sent anywhere, and the note says why. -#}
+        <noscript><p class="rf-error">{{ f.needsJs }}</p></noscript>
+        <button class="rf-submit" type="submit" data-sending="{{ f.sending }}" disabled>{{ f.submit }}</button>
       </form>
 
       <div class="rf-done" id="rf-done" role="status" tabindex="-1" hidden>
-        <div data-done="stored">
-          <h3 class="rf-done-title">{{ f.saved.title }}</h3>
-          <p>{{ f.saved.line }}</p>
-        </div>
-        <div data-done="mail" hidden>
-          <h3 class="rf-done-title">{{ f.done.title }}</h3>
-          <p>{{ f.done.line }}</p>
-          <p class="rf-done-fallback">{{ f.done.fallback | replace("{inbox}", '<a href="' + mailto + '" data-done-mail>' + refer.inbox + '</a>') | safe }}</p>
-        </div>
-        <button class="rf-again" type="button" data-again>{{ f.done.again }}</button>
+        <h3 class="rf-done-title">{{ f.saved.title }}</h3>
+        <p>{{ f.saved.line }}</p>
+        <button class="rf-again" type="button" data-again>{{ f.again }}</button>
       </div>
     </div>
   </div>
@@ -95,12 +92,6 @@
       supabaseAnonKey: env.supabaseAnonKey,
       sheetEndpoint: env.dataReferralsSheetEndpoint
     },
-    errors: f.errors,
-    mail: f.mail,
-    labels: {
-      listing: f.listing,
-      yourName: f.yourName, yourEmail: f.yourEmail, companyName: f.companyName,
-      website: f.website, size: f.size, years: f.years
-    }
+    errors: f.errors
   } | jsonScript | safe }}</script>
 </section>

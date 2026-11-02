@@ -289,3 +289,7 @@
     transition: none;
   }
 }
+/* A send that did not land: above the button, the form left as filled. */
+.rf-send-error {
+  margin-top: 16px;
+}
