@@ -1,6 +1,3 @@
-import { bootGondolinVm } from "../code-vm/gondolin";
-import { TurnCodeVm } from "../code-vm/turn-code-vm";
-import { config } from "../config";
 import type { TurnServerDeps } from "./server-types";
 import { startTurnCoordinator } from "./turn-coordinator";
 import type { TurnFilesystem } from "./turn-filesystem";
@@ -19,14 +16,6 @@ export function createTurnSandbox(input: {
 }): ReturnType<typeof makeTurnSandboxFetch> | null {
   const { turn, identity } = input;
   if (!turn.grant || !turn.hostToken || !identity) return null;
-  // A VM only for a turn allowed to run code; it boots on warm, not here.
-  const bootCodeVm =
-    input.deps.bootCodeVm ??
-    (config.codeRunTarget === "vm" ? bootGondolinVm : undefined);
-  const codeVm =
-    bootCodeVm && turn.grant.scopes.includes("code-run")
-      ? new TurnCodeVm(bootCodeVm)
-      : undefined;
   // Houston's routes run the host's handlers over its agent's own tree; a
   // turn that hydrated any other layout could answer none of them.
   if (turn.coordinator && input.filesystem.kind !== "standing")
@@ -63,7 +52,6 @@ export function createTurnSandbox(input: {
     orgSlug: identity.org,
     agentSlug: identity.agent,
     ...(input.deps.fetchImpl ? { fetchImpl: input.deps.fetchImpl } : {}),
-    ...(codeVm ? { codeVm } : {}),
     ...(coordinator ? { coordinator } : {}),
   });
 }

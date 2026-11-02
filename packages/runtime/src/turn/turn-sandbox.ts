@@ -3,7 +3,6 @@ import { IntegrationUpstreamError } from "@houston/host/src/integrations/types";
 import type { TurnLimits } from "@houston/protocol";
 import type { WireFrame } from "@houston/runtime-client";
 import type { ObjectStore } from "@houston/runtime-client/object-sync";
-import type { TurnCodeVm } from "../code-vm/turn-code-vm";
 import type { SandboxFetch } from "../session/tools/sandbox-fetch";
 import type { TurnCoordinatorSession } from "./turn-coordinator";
 import { turnCustomContexts } from "./turn-custom-contexts";
@@ -14,7 +13,6 @@ import {
 import { TurnDocConflictError } from "./turn-doc-cas";
 import type { TurnFilesystem } from "./turn-filesystem";
 import { makeTurnCodeRoute, TURN_CODE_RUN_PATH } from "./turn-sandbox-code";
-import { makeTurnVmCodeRoute } from "./turn-sandbox-code-vm";
 import { makeTurnCustomRoutes } from "./turn-sandbox-custom";
 import {
   makeTurnIntegrationRoutes,
@@ -38,8 +36,6 @@ export interface TurnSandboxDeps {
   orgSlug: string;
   agentSlug: string;
   fetchImpl?: typeof fetch;
-  /** Present in `vm` mode: this turn's own code micro-VM, closed on dispose. */
-  codeVm?: TurnCodeVm;
   /** Present on Houston's own turn: its operation and mission routes. */
   coordinator?: TurnCoordinatorSession;
 }
@@ -79,8 +75,6 @@ export function makeTurnSandboxFetch(deps: TurnSandboxDeps): {
   call: SandboxFetch;
   dispose: () => Promise<void>;
   views: () => TurnSandboxViews;
-  /** Start the turn's code VM booting; a no-op outside `vm` mode. */
-  warmCode: () => void;
   /** A frame as the user is shown it (Houston's approval cards). */
   present: (frame: WireFrame) => WireFrame;
   /** Why the person's message may not start this turn, or null. */
@@ -92,15 +86,10 @@ export function makeTurnSandboxFetch(deps: TurnSandboxDeps): {
   const { get: getCustom, reset: resetCustom } = custom;
   const integrations = makeTurnIntegrationRoutes(deps, fetchImpl, getCustom);
   // Scope-gated at BUILD time: without `code-run` the path is simply not a
-  // route this turn has, so it 404s like any other unknown one. The grant
-  // decides WHETHER the turn runs code; the worker's mode decides WHERE.
-  const canRunCode = deps.grant.scopes.includes("code-run");
-  const codeVm = canRunCode ? deps.codeVm : undefined;
-  const codeRun = !canRunCode
-    ? null
-    : codeVm
-      ? makeTurnVmCodeRoute(codeVm)
-      : makeTurnCodeRoute(deps, fetchImpl);
+  // route this turn has, so it 404s like any other unknown one.
+  const codeRun = deps.grant.scopes.includes("code-run")
+    ? makeTurnCodeRoute(deps, fetchImpl)
+    : null;
   const customRoute = makeTurnCustomRoutes(
     deps,
     getCustom,
@@ -167,22 +156,16 @@ export function makeTurnSandboxFetch(deps: TurnSandboxDeps): {
     }
   };
   const dispose = async () => {
-    // The VM goes first and regardless: it holds this tenant's processes.
     try {
-      await deps.codeVm?.close();
+      await resetCustom();
     } finally {
-      try {
-        await resetCustom();
-      } finally {
-        await deps.coordinator?.dispose();
-      }
+      await deps.coordinator?.dispose();
     }
   };
   return {
     call,
     dispose,
     views: () => ({ ...views }),
-    warmCode: () => codeVm?.warm(),
     present: (frame) => deps.coordinator?.present(frame) ?? frame,
     admission: async () => (await deps.coordinator?.admission()) ?? null,
   };
