@@ -376,7 +376,7 @@ test("a turn that needs tools opens with one plain sentence, in BOTH mirrors (PR
     "utf8",
   );
   const bullet = norm(
-    '- When a turn needs work tools (looking something up, reading files, running something, acting on an app), first write one short sentence saying in plain words what you are about to do, for example "Let me check your inbox for that invoice." Once per turn, with no file names, commands, or tool names. Skip it when you answer without work tools, when the user asked for only a bare answer, and before `ask_user`, `request_connection`, `request_credential`, `suggest_actions`, or `suggest_reusable`.',
+    '- When a turn needs work tools (looking something up, reading files, running something, acting on an app), first write one short sentence saying in plain words what you are about to do, for example "Let me check your inbox for that invoice." Once per turn, with no file names, commands, or tool names. Skip it when you answer without work tools, when the user asked for only a bare answer, and before `ask_user`, `request_connection`, `request_credential`, <next_step_suggestions>`suggest_actions`, </next_step_suggestions>or `suggest_reusable`.',
   );
   expect(norm(houstonSystemPrompt())).toContain(bullet);
   expect(norm(rust)).toContain(bullet);

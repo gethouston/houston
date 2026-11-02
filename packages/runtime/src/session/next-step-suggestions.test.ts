@@ -53,5 +53,11 @@ test("off omits the actual host and desktop product mandates", () => {
     expect(withNextStepSuggestions(product, false)).not.toContain(
       "Ending with no follow-ups is not an option.",
     );
+    expect(withNextStepSuggestions(product, false)).not.toContain(
+      "suggest_actions",
+    );
+    expect(withNextStepSuggestions(product, false)).toContain(
+      "before `ask_user`, `request_connection`, `request_credential`, or `suggest_reusable`.",
+    );
   }
 });
