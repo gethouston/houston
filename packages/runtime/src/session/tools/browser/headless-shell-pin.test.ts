@@ -13,6 +13,10 @@ import { expect, test } from "vitest";
 
 const REPO = join(dirname(fileURLToPath(import.meta.url)), "../../../../../..");
 const dockerfile = readFileSync(join(REPO, "selfhost/Dockerfile"), "utf8");
+const engineImageWorkflow = readFileSync(
+  join(REPO, ".github/workflows/engine-pod-image.yml"),
+  "utf8",
+);
 
 const playwrightDir = dirname(
   createRequire(import.meta.url).resolve("playwright-core/package.json"),
@@ -50,6 +54,13 @@ test("the pinned Chrome for Testing build is newer than playwright-core's", () =
   expect(pinnedVersion).toBeDefined();
   expect(
     isOlder(headlessShell?.browserVersion ?? "", pinnedVersion ?? ""),
-    `playwright-core ships ${headlessShell?.browserVersion}; drop the Chrome for Testing swap in selfhost/Dockerfile`,
+    `playwright-core ships ${headlessShell?.browserVersion}; drop the Chrome for Testing swap in selfhost/Dockerfile and the version the smoke launch in .github/workflows/engine-pod-image.yml expects`,
   ).toBe(true);
+});
+
+test("the engine image smoke launch expects the pinned build", () => {
+  // The workflow only runs after merge, so a mismatch has to fail here.
+  expect(engineImageWorkflow.match(/if\(v!==\\"([\d.]+)\\"\)/)?.[1]).toBe(
+    pinnedVersion,
+  );
 });

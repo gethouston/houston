@@ -119,7 +119,8 @@ RUN mkdir -p /data/workspaces /data/db && chown -R node:node /app /data
 # so a newer bundled build is never swapped for this one. Drop the swap once
 # playwright-core's chromium-headless-shell browserVersion is >= 156.0.8078.80
 # (packages/runtime/src/session/tools/browser/headless-shell-pin.test.ts fails
-# in CI before that).
+# in CI before that), together with the version the smoke launch in
+# .github/workflows/engine-pod-image.yml expects.
 ENV PLAYWRIGHT_BROWSERS_PATH=/app/ms-playwright
 ARG TARGETARCH
 RUN set -eu; \
@@ -139,7 +140,7 @@ RUN set -eu; \
       *) echo "ERROR: no Chrome for Testing headless shell for this architecture" >&2; exit 1 ;; \
     esac; \
     apt-get install -y --no-install-recommends unzip; \
-    curl -fsSL -o /tmp/headless-shell.zip \
+    curl -fsSL --retry 3 -o /tmp/headless-shell.zip \
       "https://storage.googleapis.com/chrome-for-testing-public/$CFT_VERSION/$CFT_PLATFORM/chrome-headless-shell-$CFT_PLATFORM.zip"; \
     echo "$CFT_SHA256  /tmp/headless-shell.zip" | sha256sum -c -; \
     rm -rf "$SHELL_DIR/chrome-headless-shell-$CFT_PLATFORM"; \
