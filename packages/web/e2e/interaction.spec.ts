@@ -1277,14 +1277,13 @@ test("a half-walked card and its draft survive switching to another mission with
 });
 
 /**
- * The Recommended chip renders; option descriptions do NOT. The `description`
- * field is still tolerated on the wire (older steps may carry it), but the card
- * shows label + Recommended chip only — restraint, matching the reference. The
- * single option marked `recommended` shows a soft "Recommended" chip; the
- * unmarked one shows none. A single-question fast path, so clicking the
- * recommended option completes and sends immediately.
+ * The Recommended chip and each option's description both render. The single
+ * option marked `recommended` shows a soft "Recommended" chip; the unmarked one
+ * shows none. The description sits under its label so options that read alike
+ * still tell apart. A single-question fast path, so clicking the recommended
+ * option completes and sends immediately.
  */
-test("renders the Recommended chip and never the option description", async ({
+test("renders the Recommended chip and each option description", async ({
   page,
   request,
 }) => {
@@ -1321,15 +1320,14 @@ test("renders the Recommended chip and never the option description", async ({
     page.getByText("Which sample automation should we design?"),
   ).toBeVisible({ timeout: 15_000 });
 
-  // Both labels render; NEITHER description does (the field is tolerated but
-  // never shown).
+  // Both labels render, each with its description under it.
   await expect(page.getByRole("radio", { name: /Task tracker/ })).toBeVisible();
   await expect(
     page.getByText("Owners, due dates, statuses, and overdue work."),
-  ).toHaveCount(0);
+  ).toBeVisible();
   await expect(
     page.getByText("Leads, stages, follow-ups, and estimated value."),
-  ).toHaveCount(0);
+  ).toBeVisible();
   // Exactly one option is marked recommended -> exactly one Recommended chip.
   await expect(page.getByText("Recommended")).toHaveCount(1);
 
