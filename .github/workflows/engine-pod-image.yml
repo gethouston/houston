@@ -177,8 +177,10 @@ jobs:
           # The browser tool's Chromium must launch from the image as built
           # (PLAYWRIGHT_BROWSERS_PATH comes from the image env): a missing
           # revision or system library fails here, before anything publishes.
+          # The version is the Chrome for Testing build selfhost/Dockerfile
+          # swaps in.
           docker run --rm --entrypoint sh "$SHA_TAG" -c '
-            cd /app/dist/runtime && node --input-type=module -e "const {chromium}=await import(\"playwright-core\");const b=await chromium.launch();await b.close();console.log(\"chromium launches\")"
+            cd /app/dist/runtime && node --input-type=module -e "const {chromium}=await import(\"playwright-core\");const b=await chromium.launch();const v=b.version();await b.close();if(v!==\"156.0.8078.80\"){console.error(\"ERROR: chromium \"+v+\", expected 156.0.8078.80\");process.exit(1)}console.log(\"chromium \"+v+\" launches\")"
           '
           docker push "$SHA_TAG"
           docker push "$POC_TAG"
