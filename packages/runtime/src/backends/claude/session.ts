@@ -13,6 +13,7 @@ import { toSdkEffort } from "./effort";
 import { toSdkModel } from "./model";
 import type { ClaudeSessionDeps } from "./session-deps";
 import { SessionEventSubscriptions } from "./session-events";
+import { resumeFill } from "./session-fill";
 import { runSessionTurn } from "./session-prompt";
 import type { TurnAttemptState } from "./session-turn-attempt";
 
@@ -176,8 +177,9 @@ export class ClaudeSession
     const { conversationId, sessionsStore } = this.deps;
     if (this.disposed || this.compactions.read(conversationId)) return 0;
     const cleared = sessionsStore.resolveResume(conversationId)?.clearedTokens;
-    if (cleared && this.contextTokens !== undefined)
-      this.contextTokens = Math.max(0, this.contextTokens - cleared);
+    const fill = this.getContextUsage()?.tokens;
+    if (cleared && fill != null)
+      this.contextTokens = Math.max(0, fill - cleared);
     return cleared ?? 0;
   }
 
@@ -191,8 +193,7 @@ export class ClaudeSession
   }
 
   getContextUsage(): { tokens: number | null } | undefined {
-    return this.contextTokens === undefined
-      ? undefined
-      : { tokens: this.contextTokens };
+    const tokens = resumeFill(this.contextTokens, this.deps, this.compactions);
+    return tokens === undefined ? undefined : { tokens };
   }
 }
