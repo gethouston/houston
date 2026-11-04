@@ -904,7 +904,7 @@ export const PromptInput = ({
         {/* biome-ignore lint/a11y/noStaticElementInteractions: focus-delegation surface; the real interactive widget is the <textarea> inside — role="presentation" is correct, no standalone widget role applies */}
         <div
           data-composer-surface="true"
-          className="group/composer relative cursor-text overflow-clip rounded-[28px] border border-line bg-input p-2.5 dark:bg-card/95 shadow-field focus-within:shadow-field-focus transition-shadow grid grid-cols-[auto_1fr_auto] [grid-template-areas:'header_header_header'_'leading_primary_trailing'_'._footer_.'] data-[expanded]:[grid-template-areas:'header_header_header'_'primary_primary_primary'_'leading_footer_trailing']"
+          className="group/composer relative cursor-text overflow-clip rounded-[28px] border border-line bg-input p-2.5 md:data-[expanded]:pt-4 dark:bg-card/95 shadow-field focus-within:shadow-field-focus transition-shadow grid grid-cols-[auto_1fr_auto] [grid-template-areas:'header_header_header'_'leading_primary_trailing'_'._footer_.'] data-[expanded]:[grid-template-areas:'header_header_header'_'primary_primary_primary'_'leading_footer_trailing']"
           role="presentation"
           onClick={(e) => {
             if (!(e.target as HTMLElement).closest("button")) {
@@ -948,7 +948,7 @@ export const PromptInputBody = ({
 }: PromptInputBodyProps) => (
   <div
     className={cn(
-      "flex items-center overflow-x-hidden px-1 [[data-expanded]_&]:px-3 [grid-area:primary]",
+      "flex items-center overflow-x-hidden px-1 [[data-expanded]_&]:pr-1 [[data-expanded]_&]:pl-3 [grid-area:primary]",
       className,
     )}
     {...props}
@@ -1104,7 +1104,7 @@ export const PromptInputTextarea = ({
     <textarea
       ref={localRef}
       className={cn(
-        "max-h-52 flex-1 resize-none border-none bg-transparent text-base leading-[1.2] py-0.5 text-ink outline-none transition-[height] duration-100 ease-out placeholder:text-ink-muted/50",
+        "max-h-52 flex-1 resize-none border-none bg-transparent text-base leading-[1.2] py-0.5 text-ink outline-none transition-[height] duration-100 ease-out placeholder:text-ink-muted/50 [[data-expanded]_&]:pr-3 [[data-expanded]_&]:leading-normal",
         className,
       )}
       name="message"
