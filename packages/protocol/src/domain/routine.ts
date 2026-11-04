@@ -127,9 +127,13 @@ export interface NewRoutine {
   chat_mode?: RoutineChatMode;
   /** Provider id to pin (e.g. "openai"); omit to inherit the agent's provider. */
   provider?: string | null;
-  /** Model to pin (e.g. "gpt-5.5"); omit to inherit the agent's model. */
+  /** On create with no model, Anthropic defaults to claude-sonnet-5-5 and
+   *  openai-codex to gpt-6.1-terra, with an effort that model serves.
+   *  Other providers inherit the agent's model. An explicit model wins. */
   model?: string | null;
-  /** Reasoning effort to pin (e.g. "high"); omit to inherit the agent's effort. */
+  /** Reasoning effort to pin (e.g. "high"). When create selects a routine
+   *  default model, the inherited or requested effort is clamped to a served
+   *  level. Otherwise omit to inherit the agent's effort. */
   effort?: string | null;
   integrations?: string[];
   /** Setup-chat activity to attach; omit for routines created without a chat. */

@@ -55,10 +55,22 @@ export const SaveRoutineParams = Type.Object({
     }),
   ),
   trigger: Type.Optional(TriggerParam),
+  model: Type.Optional(
+    Type.String({
+      description:
+        "Omit model and effort unless the user asked for a specific model or effort. A new routine uses this chat's provider; an existing one keeps its saved provider, so pick a model from that provider. On create, an explicit model overrides the routine default. On update, omit to leave the saved model unchanged.",
+    }),
+  ),
+  effort: Type.Optional(
+    Type.String({
+      description:
+        "Omit model and effort unless the user asked for a specific model or effort. A new routine uses this chat's provider; an existing one keeps its saved provider, so pick a model from that provider. On update, omit to leave the saved effort unchanged.",
+    }),
+  ),
   chat_mode: Type.Optional(
     Type.Union([Type.Literal("shared"), Type.Literal("per_run")], {
       description:
-        "'shared' (default): every run continues one chat. 'per_run': each run gets its own chat.",
+        "'shared' (default): every run continues one chat. 'per_run': each run gets its own chat. Ask what the user will SEE, in this routine's terms, e.g. 'Where should I put each new email I handle?' Offer 'A new chat for each email' / 'All in one chat', with short descriptions of the effect. Option labels must be distinguishable on their own. Never ask about 'results', 'history', or 'organizing'.",
     }),
   ),
   suppress_when_silent: Type.Optional(

@@ -1,35 +1,19 @@
 "use client";
 
-import { Button, cn, ScrollArea, ScrollBar } from "@houston-ai/core";
+import { Button, cn } from "@houston-ai/core";
 import type { ComponentProps } from "react";
 import { useCallback } from "react";
-import { useHorizontalWheelScroll } from "./horizontal-wheel-scroll";
 
-export type SuggestionsProps = ComponentProps<typeof ScrollArea>;
+export type SuggestionsProps = ComponentProps<"div">;
 
-export const Suggestions = ({
-  className,
-  children,
-  ...props
-}: SuggestionsProps) => {
-  const rootRef = useHorizontalWheelScroll<HTMLDivElement>(
-    '[data-slot="scroll-area-viewport"]',
-  );
-  return (
-    <ScrollArea
-      className="w-full min-w-0 overflow-x-auto whitespace-nowrap"
-      ref={rootRef}
-      {...props}
-    >
-      <div
-        className={cn("flex w-max flex-nowrap items-center gap-2", className)}
-      >
-        {children}
-      </div>
-      <ScrollBar className="hidden" orientation="horizontal" />
-    </ScrollArea>
-  );
-};
+/** The chips wrap onto more lines instead of scrolling sideways: a hidden
+ *  horizontal scroll cut the last chip mid-word with no sign there was more. */
+export const Suggestions = ({ className, ...props }: SuggestionsProps) => (
+  <div
+    className={cn("flex min-w-0 flex-wrap items-center gap-2", className)}
+    {...props}
+  />
+);
 
 export type SuggestionProps = Omit<ComponentProps<typeof Button>, "onClick"> & {
   suggestion: string;
@@ -53,6 +37,9 @@ export const Suggestion = ({
     <Button
       className={cn(
         "cursor-pointer rounded-full px-4 active:scale-[0.96] md:active:scale-100",
+        // A label wider than the row wraps inside its chip instead of
+        // overflowing it.
+        "h-auto min-h-8 max-w-full whitespace-normal py-1.5 text-left leading-snug",
         className,
       )}
       onClick={handleClick}

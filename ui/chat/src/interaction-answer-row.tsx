@@ -67,8 +67,11 @@ export function QuestionAnswerRow({
       )}
       <div
         className={cn(
-          "flex items-center gap-2",
-          hideFreeText && (plus ? "justify-between" : "justify-end"),
+          "flex gap-2",
+          // A growing field keeps the skip at its bottom, beside its send.
+          hideFreeText
+            ? cn("items-center", plus ? "justify-between" : "justify-end")
+            : "items-end",
         )}
       >
         {!hideFreeText && (
@@ -97,7 +100,12 @@ export function QuestionAnswerRow({
           </div>
         )}
         <Button
-          className="mt-1.5 gap-1.5 text-ink-muted"
+          // mb-1.5 lines the skip up with the field's send button (both 32px,
+          // 6px off the pill's bottom), which also centres it on one line.
+          className={cn(
+            "mt-1.5 gap-1.5 text-ink-muted",
+            !hideFreeText && "mb-1.5",
+          )}
           disabled={skip.disabled}
           onClick={skip.onSkip}
           size="sm"
@@ -105,7 +113,9 @@ export function QuestionAnswerRow({
           variant="outline"
         >
           {skip.label}
-          <Kbd>{skip.escLabel}</Kbd>
+          {/* Esc means nothing on a touch screen, and the phone row needs the
+              width for the field. */}
+          <Kbd className="hidden md:inline-flex">{skip.escLabel}</Kbd>
         </Button>
       </div>
     </>

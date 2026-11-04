@@ -5,6 +5,9 @@ import { useTranslation } from "react-i18next";
 export interface IntakeOption {
   id: string;
   label: string;
+  /** A muted second line under the label, for options whose labels alone
+   *  read alike. */
+  description?: string;
 }
 
 /** The option sets for the intake's three question cards. */
@@ -29,9 +32,21 @@ export function useIntakeQuestions(): IntakeQuestions {
         { id: "template", label: t("intake.startTemplate") },
       ],
       wake: [
-        { id: "schedule", label: t("wizard.scheduleOptionTitle") },
-        { id: "trigger", label: t("wizard.eventOptionTitle") },
-        { id: "webhook", label: t("wizard.webhookOptionTitle") },
+        {
+          id: "schedule",
+          label: t("wizard.scheduleOptionTitle"),
+          description: t("wizard.scheduleOptionDescription"),
+        },
+        {
+          id: "trigger",
+          label: t("wizard.eventOptionTitle"),
+          description: t("wizard.eventOptionDescription"),
+        },
+        {
+          id: "webhook",
+          label: t("wizard.webhookOptionTitle"),
+          description: t("wizard.webhookOptionDescription"),
+        },
       ],
       schedule: [
         {

@@ -6,12 +6,15 @@
  * attachments, mentions, dictation — and this one stays its layout.
  */
 
-import type {
-  ChangeEventHandler,
-  ClipboardEventHandler,
-  KeyboardEventHandler,
-  ReactEventHandler,
-  ReactNode,
+import { useIsMobile } from "@houston-ai/core";
+import {
+  type ChangeEventHandler,
+  type ClipboardEventHandler,
+  type KeyboardEventHandler,
+  type ReactEventHandler,
+  type ReactNode,
+  useEffect,
+  useState,
 } from "react";
 import type { PromptInputMessage } from "./ai-elements/prompt-input";
 import {
@@ -23,6 +26,8 @@ import {
 import { ChatInputAttachButton } from "./chat-input-attach-button";
 import type { ChatInputProps, InputStatus } from "./chat-input-types";
 import type { ChatComposerLabels } from "./chat-panel-types";
+import { clampComposerHeight } from "./composer-resize";
+import { ComposerResizeHandle } from "./composer-resize-handle";
 import { ComposerTrailing } from "./composer-trailing";
 import type { DictationControl } from "./dictation-types";
 import { DictationWaveform } from "./dictation-waveform";
@@ -82,8 +87,28 @@ export function ChatInputForm({
   mentionCombobox,
   labels,
 }: ChatInputFormProps) {
+  // The dragged size lives as long as this composer; never persisted.
+  const [manualHeight, setManualHeight] = useState<number | null>(null);
+  const isMobile = useIsMobile();
+  useEffect(() => {
+    const onResize = () =>
+      setManualHeight((height) =>
+        height === null
+          ? null
+          : clampComposerHeight(height, window.innerHeight),
+      );
+    window.addEventListener("resize", onResize);
+    return () => window.removeEventListener("resize", onResize);
+  }, []);
   return (
     <PromptInput onSubmit={onSubmit}>
+      {!dictating && (
+        <ComposerResizeHandle
+          height={manualHeight}
+          label={labels?.resizeComposer}
+          onResize={setManualHeight}
+        />
+      )}
       {header && (
         <PromptInputHeader className="pb-1">{header}</PromptInputHeader>
       )}
@@ -104,6 +129,7 @@ export function ChatInputForm({
             {...mentionCombobox}
             aria-expanded={mentionCombobox ? true : undefined}
             disabled={disabled}
+            manualHeight={isMobile ? null : manualHeight}
             onChange={onTextChange}
             onKeyDown={onKeyDown}
             onPaste={onPaste}

@@ -275,3 +275,35 @@ test("the Claude backend's converted schema carries wantsFiles through and refus
   });
   expect(schema.safeParse(call("maybe")).success).toBe(false);
 });
+
+test.each([
+  "pi",
+  "Claude",
+])("%s schema preserves option descriptions on the recorded interaction", async (backend) => {
+  const args = {
+    questions: [
+      {
+        question: "Which chat?",
+        options: [
+          {
+            id: "new",
+            label: "A new chat for each email",
+            description: "Each email has its own conversation.",
+          },
+        ],
+      },
+    ],
+  };
+  const parsed =
+    backend === "Claude"
+      ? z.object(toZodShape(askUser.parameters)).parse(args)
+      : validateToolArguments(askUser, {
+          type: "toolCall",
+          id: "c1",
+          name: ASK_USER_TOOL_NAME,
+          arguments: args,
+        });
+  expect(await recorded(parsed)).toMatchObject({
+    options: args.questions[0].options,
+  });
+});

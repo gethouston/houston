@@ -37,6 +37,7 @@
     "submit": "Submit",
     "stop": "Stop",
     "attachFiles": "Attach files",
+    "resize": "Resize message box",
     "removeAttachment": "Remove {{name}}"
   },
   "mentions": {

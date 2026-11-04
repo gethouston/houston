@@ -184,3 +184,30 @@ test("outside a turn the header is simply absent", () => {
     },
   );
 });
+
+test("tells the agent the saved routine's provider, model and effort", async () => {
+  mockFetch(() => ({
+    body: {
+      id: "r1",
+      name: "Daily",
+      provider: "openai-codex",
+      model: "gpt-6.1-terra",
+      effort: "low",
+    },
+  }));
+  const out = await run({ name: "Daily", prompt: "p", schedule: "0 9 * * *" });
+  expect(out.content).toEqual([
+    expect.objectContaining({ text: expect.stringContaining("GPT-6.1 Terra") }),
+  ]);
+  expect(out.content[0]).toMatchObject({
+    text: expect.stringContaining("only if the user asks or it matters"),
+  });
+  expect(out.content[0]).toMatchObject({
+    text: expect.stringContaining("never the raw model id"),
+  });
+  expect(out.details).toMatchObject({
+    provider: "openai-codex",
+    model: "gpt-6.1-terra",
+    effort: "low",
+  });
+});

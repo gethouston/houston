@@ -46,6 +46,8 @@ export interface ChatComposerLabels {
   stop?: string;
   /** The "+" button's name. */
   attachFiles?: string;
+  /** The composer's drag-to-resize handle (desktop). */
+  resizeComposer?: string;
   /** An attachment chip's remove button, for the file or folder `name`. */
   removeAttachment?: (name: string) => string;
 }

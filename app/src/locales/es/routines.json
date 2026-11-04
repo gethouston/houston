@@ -4,10 +4,13 @@
   "wizard": {
     "wakeTitle": "¿Cuándo debe ejecutarse esto?",
     "scheduleOptionTitle": "Según un horario",
+    "scheduleOptionDescription": "A horas fijas, como cada día hábil a las 9 a. m.",
     "eventOptionTitle": "Cuando algo pase en una app",
+    "eventOptionDescription": "Una app conectada como Gmail la inicia, por ejemplo cuando llega un correo nuevo.",
     "triggerDescription": "Elige la app que quieres vigilar. Dirás en el chat qué debe pasar en ella.",
     "build": "Créala con tu empleado de IA",
     "webhookOptionTitle": "Desde una app externa",
+    "webhookOptionDescription": "Otro sistema la inicia llamando a una dirección web única que recibes.",
     "webhookTitle": "Actívala desde una dirección web",
     "webhookDescription": "Obtendrás una dirección web única que activa esta rutina cada vez que algo la llame."
   },

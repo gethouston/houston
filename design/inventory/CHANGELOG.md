@@ -3,6 +3,21 @@
 Every `version` bump in `inventory.yaml` needs a matching entry here (enforced by
 `pnpm check:parity`). Newest first. Use `## vN` headings.
 
+## v151 - 2026-11-02
+
+The composer ignores a desktop manual height on phones and re-clamps it when
+its window shrinks. The resize handle grows an empty one-line field on the
+first upward arrow press and announces the measured height in auto mode.
+
+## v150 - 2026-11-02
+
+Question cards show an option's description as a small muted line under its
+label. The question card's free-text field grows with the answer up to a cap,
+with its send and the skip held at the bottom; on a phone the skip drops its
+Esc hint. Suggested action pills wrap onto more lines instead of scrolling
+sideways. The composer gains a desktop resize handle on its top edge: drag or
+arrow keys make the message box taller, double-click resets it.
+
 ## v149 - 2026-10-28
 
 Cards are as wide as before v148: the column's reserved scrollbar room

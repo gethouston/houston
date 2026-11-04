@@ -48,8 +48,8 @@ export const wakeMechanismError = (
  * otherwise the typo saves and every fired run errors. Validated through the
  * SAME canonical mapping the fire path uses (routinePin), so a Rust-era alias
  * ("claude", "codex") that still lives in a migrated routines.json round-trips
- * through an edit without a spurious rejection. Model ids are validated at
- * dispatch (the catalog is the runtime's). Returns the reason, else null.
+ * through an edit without a spurious rejection. Explicit model writes use
+ * routine-model.ts and the picker's catalog. Returns the reason, else null.
  */
 export const providerPinError = (
   body: Record<string, unknown>,

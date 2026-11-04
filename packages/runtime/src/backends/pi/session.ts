@@ -24,6 +24,7 @@ import { planForcedToolCall } from "./forced-tool-choice";
 import { createPiCallTimer } from "./model-calls";
 import { type SentRequests, subscribePiModelPhase } from "./model-phase";
 import { createReplyBeatReader } from "./reply-beats";
+import { piThinkingLevel } from "./thinking-level";
 import { createWireTranslator } from "./wire";
 
 /**
@@ -182,7 +183,7 @@ export class PiSession implements HarnessSession {
   }
 
   setThinkingLevel(level: ThinkingLevel): void {
-    this.session.setThinkingLevel(level);
+    this.session.setThinkingLevel(piThinkingLevel(this.session.model, level));
   }
 
   getContextUsage(): { tokens: number | null } | undefined {
