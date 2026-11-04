@@ -66,13 +66,13 @@ export function sessionContextUsage(
  * proves the real (plan/credit-gated) window is the larger one. Then cut to
  * the room the runtime lets a conversation fill before it compacts
  * (`compactionWindow`), so the bar reads full where compaction happens, not at
- * a fifth of a 1M window. Returns null when the model has no catalogued
+ * half of a 400k window. Returns null when the model has no catalogued
  * window, so the caller falls back to a raw token count.
  *
  * The peak only resolves which catalogued window is real; it never floors the
- * result. A chat that peaked at 900k before the ceiling existed compacts at the
- * same room as any other, so flooring would read its next compaction point as
- * ~22%. Usage above the room reads 100% through `contextFillPercent`'s clamp.
+ * result. A 400k chat that peaked at 380k before the ceiling existed compacts
+ * at the same room as any other, so flooring would read its next compaction
+ * point as ~53%. Usage above the room reads 100% through `contextFillPercent`'s clamp.
  *
  * The snap-up rule here is mirrored by `effectiveModelWindow` in
  * `@houston/protocol`, which the runtime's autocompact uses — same table of
@@ -93,8 +93,8 @@ export function effectiveContextWindow(
  * isn't known. Rounded and clamped for the displayed gauge (`ContextIndicator`).
  * The runtime owns the autocompact TRIGGER (`needsAutocompact` in
  * `packages/runtime`); both size the window from the shared
- * `@houston/protocol` table and read its ceiling and threshold, so the
- * compaction point is the threshold's percent on this gauge for every model.
+ * `@houston/protocol` table and its compaction rule, so the compaction point
+ * reads 93% on this gauge for every model.
  */
 export function contextFillPercent(
   usage: TokenUsage | null,

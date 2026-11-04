@@ -149,8 +149,9 @@ export function buildClaudeEnv(
   // switch turns off its recovery from a request that overflows the window,
   // and Houston compacts only between turns (session/autocompact.ts), so a
   // turn that outgrows the account's real window mid-turn (a 1M catalog
-  // window can be 200k on the plan) would fail instead. Houston's lower
-  // ceiling fires first in every ordinary case.
+  // window can be 200k on the plan) would fail instead. The CLI compacts a 1M
+  // model at 967k, and Houston's point (930k there, 200k at most below 1M)
+  // fires first in every ordinary case.
   // Scrub mode keeps the CLI's credential variables out of the commands the
   // model runs. It also forces permissionMode "default", the mode Houston
   // already runs in. The CLI's Linux build exits at startup with it on unless

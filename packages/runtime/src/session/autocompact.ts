@@ -1,32 +1,28 @@
 /**
  * The context-full autocompact decision (pure — unit-tested without a live pi
  * session). Applied by exec-turn.ts before EVERY prompt: when the session's
- * context fill reaches the ceiling for the active model's window, the runtime
+ * context fill reaches the compaction point for the active model's window, the runtime
  * compacts (summarize + reseed) so long chats keep working. This is a
  * guarantee, not a user setting — the runtime owns it because it holds the
  * ground truth (live token fill + the active model's window), so every surface
  * (desktop, web, routines, cloud) inherits it identically.
  */
 
-import {
-  AUTOCOMPACT_CEILING_TOKENS,
-  AUTOCOMPACT_THRESHOLD_PERCENT,
-} from "@houston/protocol/model-windows";
+import { autocompactPoint } from "@houston/protocol/model-windows";
 
 /*
- * The threshold and the ceiling live with the window table in
- * `@houston/protocol`, where the context bar reads them too. The threshold is
- * a tuning constant, not a user setting; `HOUSTON_AUTOCOMPACT_THRESHOLD`
- * overrides it (e.g. set it low to force compaction while testing).
+ * The compaction point lives with the window table in `@houston/protocol`,
+ * where the context bar reads it too. It is a tuning rule, not a user
+ * setting; `HOUSTON_AUTOCOMPACT_THRESHOLD` replaces it with a plain
+ * percent-full of the window (e.g. set it low to force compaction while
+ * testing).
  */
 
-export function resolveAutocompactThreshold(
+export function resolveAutocompactOverride(
   raw: string | undefined = process.env.HOUSTON_AUTOCOMPACT_THRESHOLD,
-): number {
+): number | undefined {
   const n = Number(raw);
-  return Number.isFinite(n) && n > 0 && n <= 100
-    ? n
-    : AUTOCOMPACT_THRESHOLD_PERCENT;
+  return Number.isFinite(n) && n > 0 && n <= 100 ? n : undefined;
 }
 
 /**
@@ -37,14 +33,12 @@ export function resolveAutocompactThreshold(
 export function needsAutocompact(
   tokens: number | null,
   contextWindow: number,
-  thresholdPercent: number = resolveAutocompactThreshold(),
+  overridePercent: number | undefined = resolveAutocompactOverride(),
 ): boolean {
   if (tokens == null || contextWindow <= 0) return false;
-  return (
-    tokens >=
-    Math.min(
-      (contextWindow * thresholdPercent) / 100,
-      AUTOCOMPACT_CEILING_TOKENS,
-    )
-  );
+  const point =
+    overridePercent === undefined
+      ? autocompactPoint(contextWindow)
+      : (contextWindow * overridePercent) / 100;
+  return tokens >= point;
 }

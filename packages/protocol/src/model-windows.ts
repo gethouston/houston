@@ -100,8 +100,8 @@ export function resolveModelWindow(
  *
  * The frontend's `effectiveContextWindow` (app/src/lib/context-usage.ts)
  * applies this identical rule to a pre-resolved `{default,max}`, then cuts the
- * result to {@link compactionWindow} for display; the runtime applies the
- * ceiling in its threshold instead (`needsAutocompact`).
+ * result to {@link compactionWindow} for display; the runtime compacts at
+ * {@link autocompactPoint} of it instead (`needsAutocompact`).
  */
 export function effectiveModelWindow(
   providerId: string,
@@ -119,23 +119,41 @@ export function effectiveModelWindow(
 }
 
 /**
- * The fill no conversation grows past, whatever its window. Every request
- * re-sends the whole context, so a 1M-window chat left to fill to 93% paid
- * ~900k input tokens per call for days: most of a subscription's limit went
- * to re-reading history the model rarely needed.
+ * The fill a conversation on a window under {@link LONG_CONTEXT_WINDOW_TOKENS}
+ * never grows past. Every request re-sends the whole context, so a large
+ * window left to fill to 93% pays that fill in input tokens on every call.
  */
 export const AUTOCOMPACT_CEILING_TOKENS = 200_000;
 
-/** Percent-full at which a turn compacts (the runtime's default threshold). */
+/** Percent-full at which a turn compacts. */
 export const AUTOCOMPACT_THRESHOLD_PERCENT = 93;
 
 /**
- * The room a conversation actually has: the model's window, cut to where the
- * ceiling sits at the threshold's percent-full. The context bar divides by
- * this, so 93% on the bar is where the runtime compacts for every model (a
- * 1M chat compacts at 200k, which reads 93% of 215k, not 20% of 1M).
+ * A window this large skips the ceiling and compacts at the threshold alone,
+ * so a long chat on a 1M model keeps its history word for word, at the cost
+ * of re-sending all of it on each call. The threshold rather than pi's
+ * default (window minus 16,384): the Claude CLI compacts a 1M model at 967k
+ * mid-turn, and 93% (930k) keeps Houston's between-turn compaction first.
+ */
+export const LONG_CONTEXT_WINDOW_TOKENS = 1_000_000;
+
+/** The context fill at which a turn compacts before prompting. */
+export function autocompactPoint(window: number): number {
+  const atThreshold = (window * AUTOCOMPACT_THRESHOLD_PERCENT) / 100;
+  return window >= LONG_CONTEXT_WINDOW_TOKENS
+    ? atThreshold
+    : Math.min(atThreshold, AUTOCOMPACT_CEILING_TOKENS);
+}
+
+/**
+ * The room a conversation actually has, which the context bar divides by, so
+ * 93% on the bar is where the runtime compacts for every model. A 1M window
+ * is the whole window. Under 1M it is the window cut to where the ceiling
+ * sits at 93% (a 400k chat compacts at 200k, which reads 93% of 215k, not 50%
+ * of 400k).
  */
 export function compactionWindow(window: number): number {
+  if (window >= LONG_CONTEXT_WINDOW_TOKENS) return window;
   return Math.min(
     window,
     Math.round(
