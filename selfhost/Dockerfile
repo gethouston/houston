@@ -112,12 +112,12 @@ RUN mkdir -p /data/workspaces /data/db && chown -R node:node /app /data
 # runtime needs, and a chown -R over it would copy ~280 MB into another layer.
 #
 # The build then swaps that revision's binary for Chrome for Testing
-# 156.0.8078.80, newer than the 156.0.8078.4 that Playwright 1.64 ships
+# 157.0.8103.38, newer than the 156.0.8078.4 that Playwright 1.64 ships
 # (revision 1248). Playwright's own download is the same CfT zip, so the
 # layout and the marker files in the revision directory stay valid. The
 # revision check fails the build when a Playwright bump moves the revision,
 # so a newer bundled build is never swapped for this one. Drop the swap once
-# playwright-core's chromium-headless-shell browserVersion is >= 156.0.8078.80
+# playwright-core's chromium-headless-shell browserVersion is >= 157.0.8103.38
 # (packages/runtime/src/session/tools/browser/headless-shell-pin.test.ts fails
 # in CI before that), together with the version the smoke launch in
 # .github/workflows/engine-pod-image.yml expects.
@@ -131,12 +131,12 @@ RUN set -eu; \
       echo "ERROR: Playwright no longer installs $SHELL_DIR; update or drop the Chrome for Testing swap" >&2; \
       exit 1; \
     fi; \
-    CFT_VERSION=156.0.8078.80; \
+    CFT_VERSION=157.0.8103.38; \
     case "${TARGETARCH:-$(dpkg --print-architecture)}" in \
       amd64) CFT_PLATFORM=linux64; \
-             CFT_SHA256=547dcd374e02961bf998f6046a267644f8502225c36bb78ca307dab32a0b3eb4 ;; \
+             CFT_SHA256=deafffa74660b34853a4119c361fd427ac8c9fcb62db51ddb8a797cd83a4ba2d ;; \
       arm64) CFT_PLATFORM=linux-arm64; \
-             CFT_SHA256=5bb6a00a4285c13303d3f72c5afdb70f144ea7a93eed462365a52b69631c9607 ;; \
+             CFT_SHA256=b9b910a57b2a15eb3e55000a2339f93a973934a413ebfc6e585a50ec6c42fd6c ;; \
       *) echo "ERROR: no Chrome for Testing headless shell for this architecture" >&2; exit 1 ;; \
     esac; \
     apt-get install -y --no-install-recommends unzip; \
