@@ -56,6 +56,18 @@ describe("the briefing turn's outcome", () => {
     expect(briefingOutcome(turn)).toEqual({ kind: "failed", reason });
   });
 
+  test("a summary from compacting is not a briefing", () => {
+    const summary = reply({
+      content: "You are the assistant. The workspace is /x.",
+      compaction: { trigger: "proactive", pre_tokens: 200_000 },
+      compactionSummary: true,
+    });
+    expect(briefingOutcome([summary, reply({ content: "" })])).toEqual({
+      kind: "failed",
+      reason: "the briefing turn ended without a reply",
+    });
+  });
+
   test("a turn nowhere to be found never reached the chat", () => {
     expect(briefingOutcome(null)).toEqual({
       kind: "failed",

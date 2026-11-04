@@ -176,11 +176,47 @@ describe("historyToFeed", () => {
           turnId: "t2",
           compaction: { trigger: "proactive", pre_tokens: 22_133 },
         },
+        {
+          role: "assistant",
+          content: "The process workshop is the best rainy-day pick.",
+          ts: 3,
+          turnId: "t2",
+          usage: { context_tokens: 20_909, output_tokens: 2, cached_tokens: 0 },
+        },
       ]);
-      expect(
-        feed.filter((f) => f.feed_type === "context_compacted"),
-      ).toHaveLength(1);
       expect(shown(feed)).not.toContain("Permit coordinator AI Employee");
+      expect(shown(feed)).toContain(
+        "The process workshop is the best rainy-day pick.",
+      );
+    });
+
+    it("hides an unflagged summary no turn claimed", () => {
+      const feed = historyToFeed([
+        {
+          role: "assistant",
+          content: SUMMARY,
+          ts: 2,
+          compaction: { trigger: "native" },
+        },
+      ]);
+      expect(shown(feed)).not.toContain("Permit coordinator AI Employee");
+    });
+
+    it("still shows a stopped cloud reply that carries the turn's compaction", () => {
+      // The sandbox path stores a stopped Claude reply with the claimed
+      // compaction and no usage; it is the turn's last record, so it shows.
+      const feed = historyToFeed([
+        {
+          role: "assistant",
+          content: "Here are the first two ideas before you stopped me.",
+          ts: 3,
+          turnId: "t2",
+          compaction: { trigger: "proactive", pre_tokens: 22_133 },
+        },
+      ]);
+      expect(shown(feed)).toContain(
+        "Here are the first two ideas before you stopped me.",
+      );
     });
 
     it("leaves /compact with only its divider", () => {

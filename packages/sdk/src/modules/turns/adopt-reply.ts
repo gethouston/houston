@@ -1,4 +1,4 @@
-import { isPendingInteraction } from "@houston/protocol";
+import { isCompactionSummary, isPendingInteraction } from "@houston/protocol";
 import type { ChatMessage } from "@houston/runtime-client";
 import { finishResumed } from "./finish-resumed";
 import {
@@ -70,7 +70,8 @@ export function adoptReply(
     else finishErr(s, ENGINE_RESTART_MESSAGE, "engine_restart");
     return;
   }
-  s.text = reply.content;
+  // `/compact` concludes on the summary it folded into: the divider is the reply.
+  s.text = isCompactionSummary(reply) ? "" : reply.content;
   // Adopt the persisted reasoning only when nothing streamed live — a settle
   // from history must not clobber (or double) what the watcher already saw
   // (finishOk flushes `s.thinking` into the feed).

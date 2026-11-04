@@ -12,6 +12,7 @@ import { timeLimitNotice } from "./turn-notices";
 export function assistantHistory(
   m: ChatMessage,
   mapProvider: (id: string) => string,
+  next?: ChatMessage,
 ): FeedFrame[] {
   const out: FeedFrame[] = [];
   const ts = m.ts;
@@ -81,7 +82,7 @@ export function assistantHistory(
   });
   // A compaction summary is the model's memory of the turns above, written for
   // itself: the divider marks the spot, and its text stays out of the chat.
-  if (m.content && !isCompactionSummary(m))
+  if (m.content && !isCompactionSummary(m, next))
     out.push({ feed_type: "assistant_text", data: m.content, ts, ...turn });
   // A persisted file-change summary: replay it AFTER the assistant text so
   // the chat attaches it to this turn's assistant message on reload.
