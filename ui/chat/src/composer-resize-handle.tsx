@@ -21,7 +21,8 @@ export const DEFAULT_COMPOSER_RESIZE_LABEL = "Resize message box";
  * message box taller, down to shrink it back; a double-click returns it to
  * auto-grow. Focused, the arrow keys do the same in steps. It sits absolutely
  * in the surface's top padding, so the composer's grid never makes room for
- * it. `height` is the manual size (null = auto); the caller owns it.
+ * it; the expanded surface pads its top deeper on desktop, so a scrolled
+ * message's first line clears it. `height` is the manual size (null = auto); the caller owns it.
  */
 export function ComposerResizeHandle({
   height,
