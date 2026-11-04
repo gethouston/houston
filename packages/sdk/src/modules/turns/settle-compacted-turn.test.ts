@@ -107,3 +107,27 @@ test("the pre-settled poll adopts the same conclusive record", async () => {
   expect(items.some((i) => i.feed_type === "provider_error")).toBe(true);
   expect(items.some((i) => i.data === SUMMARY)).toBe(false);
 });
+
+test("a reconnect after /compact settles on the divider, not the summary", async () => {
+  // `/compact` folds into the summary it wrote, so that record concludes it.
+  const { s, items } = state();
+  await reloadAndSettle(
+    s,
+    async () => [
+      { role: "user", content: "/compact", ts: 1, turnId: "t-2" },
+      {
+        role: "assistant",
+        content: SUMMARY,
+        ts: 2,
+        turnId: "t-2",
+        compaction: { trigger: "manual", pre_tokens: 900 },
+        compactionSummary: true,
+      },
+    ],
+    "t-2",
+    () => false,
+    () => {},
+  );
+  expect(s.settled).toBe(true);
+  expect(JSON.stringify(items)).not.toContain(SUMMARY);
+});

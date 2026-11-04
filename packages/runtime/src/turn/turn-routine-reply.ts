@@ -10,6 +10,7 @@ import type {
   RoutineRun,
   RoutineRunFailure,
 } from "@houston/protocol";
+import { type ChatMessage, isCompactionSummary } from "@houston/protocol";
 
 /** What a routine turn left in its conversation. */
 export interface RoutineReply {
@@ -54,6 +55,14 @@ export async function lastAssistantReply(
       const message = messages[i];
       if (message?.role !== "assistant") continue;
       if (message.turnId !== undefined && message.turnId !== turnId) break;
+      // A summary is the model's memory, not what the run reported.
+      if (
+        isCompactionSummary(
+          message as ChatMessage,
+          messages[i + 1] as ChatMessage | undefined,
+        )
+      )
+        continue;
       return {
         content: message.content ?? "",
         ...(message.providerError

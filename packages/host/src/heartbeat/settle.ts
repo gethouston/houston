@@ -4,7 +4,7 @@ import {
   loadHeartbeatDoc,
   settleHeartbeatRun,
 } from "@houston/domain";
-import type { ChatMessage } from "@houston/protocol";
+import { type ChatMessage, isCompactionSummary } from "@houston/protocol";
 import type { Workspace } from "../domain/types";
 import type { EventHub } from "../events/hub";
 import { conversationKey, type WorkspacePaths } from "../paths";
@@ -88,7 +88,14 @@ export function briefingOutcome(
     return { kind: "failed", reason: "the briefing turn was stopped" };
   if (replies.some((m) => m.interrupted))
     return { kind: "failed", reason: "the briefing turn was interrupted" };
-  if (!replies.some((m) => m.content.trim()))
+  if (
+    !turn.some(
+      (m, i) =>
+        m.role === "assistant" &&
+        m.content.trim() &&
+        !isCompactionSummary(m, turn[i + 1]),
+    )
+  )
     return {
       kind: "failed",
       reason: "the briefing turn ended without a reply",

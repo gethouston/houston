@@ -83,7 +83,7 @@ export function historyToFeed(
   mapProvider: (id: string) => string = identityProvider,
 ): FeedFrame[] {
   const out: FeedFrame[] = [];
-  for (const m of messages) {
+  for (const [i, m] of messages.entries()) {
     // Every frame folded from a message carries that message's epoch-ms `ts`
     // (additive; a pre-`ts` transcript simply folds frames with `ts: undefined`)
     // and its `turnId` — the dedup identity the VM fold matches live re-pushes
@@ -110,7 +110,7 @@ export function historyToFeed(
       });
       continue;
     }
-    out.push(...assistantHistory(m, mapProvider));
+    out.push(...assistantHistory(m, mapProvider, messages[i + 1]));
   }
   return out;
 }
