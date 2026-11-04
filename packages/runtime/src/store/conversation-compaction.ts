@@ -43,6 +43,7 @@ export function createCompactionCheckpoints(
             content: summary,
             ts: checkpoint.createdAt,
             compaction: { trigger: "native" },
+            compactionSummary: true,
           },
         ],
       });

@@ -1,5 +1,6 @@
 export * from "./auto-continue";
 export * from "./claude-oauth";
+export * from "./compaction-summary";
 export * from "./conversation";
 export * from "./conversation-import";
 export * from "./core";

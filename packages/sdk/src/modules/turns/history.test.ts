@@ -127,6 +127,98 @@ describe("historyToFeed", () => {
     expect(feed.filter((f) => f.feed_type === "user_message")).toHaveLength(3);
   });
 
+  describe("a compaction summary", () => {
+    const SUMMARY =
+      "You are the Permit coordinator AI Employee. The workspace is /Users/x/workspaces/Personal/Permit coordinator.";
+    const shown = (feed: ReturnType<typeof historyToFeed>) =>
+      JSON.stringify(feed.filter((f) => f.feed_type !== "context_compacted"));
+
+    it("shows only the divider, then the turn's own reply", () => {
+      const feed = historyToFeed([
+        {
+          role: "user",
+          content: "Which is best for a rainy day?",
+          ts: 1,
+          turnId: "t2",
+        },
+        {
+          role: "assistant",
+          content: SUMMARY,
+          ts: 2,
+          turnId: "t2",
+          compaction: { trigger: "proactive", pre_tokens: 22_133 },
+          compactionSummary: true,
+        },
+        {
+          role: "assistant",
+          content: "The process workshop is the best rainy-day pick.",
+          ts: 3,
+          turnId: "t2",
+          usage: { context_tokens: 20_909, output_tokens: 2, cached_tokens: 0 },
+        },
+      ]);
+      expect(
+        feed.filter((f) => f.feed_type === "context_compacted"),
+      ).toHaveLength(1);
+      expect(shown(feed)).not.toContain("Permit coordinator AI Employee");
+      expect(shown(feed)).toContain(
+        "The process workshop is the best rainy-day pick.",
+      );
+    });
+
+    it("hides a summary stored before summaries were flagged", () => {
+      // Cloud chats keep these on disk and no boot migration reaches them.
+      const feed = historyToFeed([
+        {
+          role: "assistant",
+          content: SUMMARY,
+          ts: 2,
+          turnId: "t2",
+          compaction: { trigger: "proactive", pre_tokens: 22_133 },
+        },
+      ]);
+      expect(
+        feed.filter((f) => f.feed_type === "context_compacted"),
+      ).toHaveLength(1);
+      expect(shown(feed)).not.toContain("Permit coordinator AI Employee");
+    });
+
+    it("leaves /compact with only its divider", () => {
+      const feed = historyToFeed([
+        {
+          role: "assistant",
+          content: SUMMARY,
+          ts: 2,
+          turnId: "t3",
+          compaction: { trigger: "manual", pre_tokens: 900 },
+          compactionSummary: true,
+        },
+      ]);
+      expect(
+        feed.find((f) => f.feed_type === "context_compacted")?.data,
+      ).toEqual({
+        trigger: "manual",
+        pre_tokens: 900,
+      });
+      expect(shown(feed)).not.toContain("Permit coordinator AI Employee");
+    });
+
+    it("still shows a reply that compacted before it answered", () => {
+      // pi records a proactive compaction on the turn's own reply.
+      const feed = historyToFeed([
+        {
+          role: "assistant",
+          content: "Here are two more lunch ideas.",
+          ts: 2,
+          turnId: "t2",
+          compaction: { trigger: "proactive", pre_tokens: 14_810 },
+          usage: { context_tokens: 9_000, output_tokens: 40, cached_tokens: 0 },
+        },
+      ]);
+      expect(shown(feed)).toContain("Here are two more lunch ideas.");
+    });
+  });
+
   it("replays a manual compaction with its trigger intact", () => {
     const feed = historyToFeed([
       {
