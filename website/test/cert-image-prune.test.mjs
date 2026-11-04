@@ -9,7 +9,7 @@ import { mkdtemp, readdir, rm, writeFile } from "node:fs/promises";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import test from "node:test";
-import { pruneStaleImages } from "../lib/certs/image-cache.mjs";
+import { manifestText, pruneStaleImages } from "../lib/certs/image-cache.mjs";
 
 async function makeDir(files) {
   const dir = await mkdtemp(join(tmpdir(), "cert-prune-"));
@@ -63,4 +63,13 @@ test("a missing directory is a no-op, not a crash", async () => {
     new Set(["A"]),
   );
   assert.equal(pruned, 0);
+});
+
+// The deploy keys its image cache on a hash of the manifest, so the same set of
+// images has to write the same bytes whatever order the renders finished in.
+test("the image manifest is the same bytes in any order", () => {
+  const a = manifestText({ ZZ9: "d3", AB1: "d1", MM5: "d2" });
+  const b = manifestText({ MM5: "d2", AB1: "d1", ZZ9: "d3" });
+  assert.equal(a, b);
+  assert.deepEqual(Object.keys(JSON.parse(a)), ["AB1", "MM5", "ZZ9"]);
 });

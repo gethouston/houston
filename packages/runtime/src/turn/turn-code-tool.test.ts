@@ -48,7 +48,6 @@ function turn(
   provider: string,
   scopes: TurnGrantScope[] | null,
   call: SandboxFetch = okCall,
-  warmCode?: () => void,
 ): TurnSessionRequest {
   return {
     conversationId: "c1",
@@ -57,7 +56,7 @@ function turn(
     emit: () => undefined,
     signal: undefined,
     turnId: "t1",
-    ...(scopes ? { grant: { scopes }, sandbox: { call, warmCode } } : {}),
+    ...(scopes ? { grant: { scopes }, sandbox: { call } } : {}),
   };
 }
 
@@ -84,7 +83,6 @@ async function startTurnOn(
     provider: string;
     scopes: TurnGrantScope[] | null;
     call?: SandboxFetch;
-    warmCode?: () => void;
   },
 ): Promise<TurnBackendDeps> {
   const { startTurnSession, finishTurnSessionStartup } = startup;
@@ -121,7 +119,7 @@ async function startTurnOn(
         dataDir: join(root, "data"),
         turnRoot: root,
       },
-      turn(input.provider, input.scopes, input.call, input.warmCode),
+      turn(input.provider, input.scopes, input.call),
       deps,
     ),
   );
@@ -236,23 +234,4 @@ test("the run_code budget belongs to the WORKER, not to one turn", async () => {
   await expect(run(second, "r2")).rejects.toThrow(/code-execution budget/);
   pending.release?.();
   await inFlight;
-});
-
-test("vm mode starts the turn's VM booting at startup, only when the turn may run code", async () => {
-  const startup = await loadStartup("vm");
-  const granted = vi.fn();
-  const deps = await startTurnOn(startup, {
-    provider: "openai-codex",
-    scopes: ["code-run"],
-    warmCode: granted,
-  });
-  expect(deps.codeSandbox?.name).toBe("run_code");
-  expect(granted).toHaveBeenCalledTimes(1);
-  const withheld = vi.fn();
-  await startTurnOn(startup, {
-    provider: "openai-codex",
-    scopes: ["integrations"],
-    warmCode: withheld,
-  });
-  expect(withheld).not.toHaveBeenCalled();
 });

@@ -12,8 +12,10 @@
 set -eu
 
 MARKER="$HOME/.houston-dev/stack.marker"
-# Every port the stack owns; 1420 is the desktop app's own vite dev server.
-PORTS="5433 9080 8081 4318 1430 1420"
+# Every port the stack owns; 1420 is the desktop app's own vite dev server,
+# 9091/9092 the gateway's and control-plane's metrics listeners (a leftover
+# gateway holding only :9091 stops the next one at boot).
+PORTS="5433 9080 9091 8081 9092 4318 1430 1420"
 # Commands that are unambiguously the Houston dev stack. The host runs as
 # tsx's cli.mjs AND its loader child (both survive their pane independently —
 # a bare "tsx src/local/main.ts" matched neither, so stale hosts piled up

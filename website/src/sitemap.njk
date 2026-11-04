@@ -29,6 +29,36 @@ eleventyExcludeFromCollections: true
     <xhtml:link rel="alternate" hreflang="x-default" href="https://gethouston.ai/{{ enterprise.path }}"/>
   </url>
 {%- endfor %}
+{%- for code in locales.order %}
+  <url>
+    <loc>https://gethouston.ai{{ locales[code].dir }}{{ dataPartners.path }}</loc>
+    <lastmod>2026-10-29</lastmod>
+    {%- for alt in locales.order %}
+    <xhtml:link rel="alternate" hreflang="{{ locales[alt].hreflang }}" href="https://gethouston.ai{{ locales[alt].dir }}{{ dataPartners.path }}"/>
+    {%- endfor %}
+    <xhtml:link rel="alternate" hreflang="x-default" href="https://gethouston.ai/{{ dataPartners.path }}"/>
+  </url>
+{%- endfor %}
+{%- for code in locales.order %}
+  <url>
+    <loc>https://gethouston.ai{{ locales[code].dir }}{{ refer.path }}</loc>
+    <lastmod>2026-10-29</lastmod>
+    {%- for alt in locales.order %}
+    <xhtml:link rel="alternate" hreflang="{{ locales[alt].hreflang }}" href="https://gethouston.ai{{ locales[alt].dir }}{{ refer.path }}"/>
+    {%- endfor %}
+    <xhtml:link rel="alternate" hreflang="x-default" href="https://gethouston.ai/{{ refer.path }}"/>
+  </url>
+{%- endfor %}
+{%- for item in referListings.items %}{% for code in locales.order %}
+  <url>
+    <loc>https://gethouston.ai{{ locales[code].dir }}{{ refer.path }}{{ item.slug }}/</loc>
+    <lastmod>2026-10-29</lastmod>
+    {%- for alt in locales.order %}
+    <xhtml:link rel="alternate" hreflang="{{ locales[alt].hreflang }}" href="https://gethouston.ai{{ locales[alt].dir }}{{ refer.path }}{{ item.slug }}/"/>
+    {%- endfor %}
+    <xhtml:link rel="alternate" hreflang="x-default" href="https://gethouston.ai/{{ refer.path }}{{ item.slug }}/"/>
+  </url>
+{%- endfor %}{% endfor %}
   <url>
     <loc>https://gethouston.ai/guides/</loc>
     <lastmod>2026-07-02</lastmod>

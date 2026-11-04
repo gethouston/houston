@@ -40,7 +40,7 @@ export const PROVIDERS: readonly HostProvider[] = [
       "gemini-3.5-flash",
       // Free trial models — test the provider without spending credits.
       "mimo-v2.6-flash-free",
-      "nemotron-3-ultra-free",
+      "nemotron-3.5-super-vl-free",
     ],
     defaultModel: DEFAULT_MODEL.opencode,
   },

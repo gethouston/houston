@@ -8,7 +8,7 @@ import {
  * The ground-truth `[turn]` diagnostic: the provider, model and API base URL a
  * turn ACTUALLY runs on, after the pin is applied.
  *
- * baseUrl is the unambiguous half — opencode.ai/inference/go/v1 is OpenCode Go,
+ * baseUrl is the unambiguous half — opencode.ai/inference/go/... is OpenCode Go,
  * chatgpt.com/backend-api is Codex — unlike asking the model itself, which open
  * models (GLM/Kimi/…) routinely get wrong.
  *

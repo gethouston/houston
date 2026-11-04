@@ -21,7 +21,10 @@ export interface ChatSuggestActionsProps {
   onDismiss?: () => void;
 }
 
-/** Optional next-step bubbles shown above a live composer after a clean finish. */
+/** Optional next-step bubbles shown above a live composer after a clean finish.
+ *  The chips wrap onto more lines, so the heading and the dismiss X sit on the
+ *  first line (both 32px tall, the chip height) rather than centring on the
+ *  whole block. */
 export function ChatSuggestActions({
   actions,
   disabled = false,
@@ -30,9 +33,11 @@ export function ChatSuggestActions({
   onDismiss,
 }: ChatSuggestActionsProps) {
   return (
-    <div className="flex items-center gap-2">
-      <p className="shrink-0 text-ink-muted text-xs">{labels.heading}</p>
-      <Suggestions>
+    <div className="flex items-start gap-2">
+      <p className="flex h-8 shrink-0 items-center text-ink-muted text-xs">
+        {labels.heading}
+      </p>
+      <Suggestions className="flex-1">
         {actions.map((action) => (
           <Suggestion
             disabled={disabled}

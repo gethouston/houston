@@ -1,0 +1,13 @@
+{%- set c = t.dataPartners.contact -%}
+{# The /enterprise closing scene (enterprise/contact.njk, styled by
+   enterprise.css): the people you will talk to, one line, one action. #}
+<section id="contact" class="section ent-section ent-contact" data-tone="dark">
+  <div class="ent-contact-faces reveal" role="group" aria-label="{{ c.peopleLabel }}">
+{%- for id in dataPartners.people %}{% set p = landing.people[id] %}
+    <span class="face face-img" title="{{ t.js.people[id] }}"><img src="/assets/img/{{ p.img }}-96.webp" width="96" height="96" alt="{{ t.js.people[id] }}" loading="lazy" decoding="async"></span>
+{%- endfor %}
+  </div>
+  <h2 class="ent-contact-title reveal">{{ c.title }}</h2>
+  <p class="ent-contact-lead reveal reveal-d1">{{ c.lead }}</p>
+  <a class="ent-contact-cta reveal reveal-d1" href="{{ dataPartners.booking }}" target="_blank" rel="noopener">{{ c.cta }}<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="m9 18 6-6-6-6"/></svg></a>
+</section>

@@ -88,12 +88,7 @@ export async function executeReadyTurn(input: {
               input.turnId,
               input.emit,
               input.signal,
-              input.sandbox
-                ? {
-                    call: input.sandbox.call,
-                    warmCode: input.sandbox.warmCode,
-                  }
-                : undefined,
+              input.sandbox ? { call: input.sandbox.call } : undefined,
               input.timings,
               input.startup,
             );

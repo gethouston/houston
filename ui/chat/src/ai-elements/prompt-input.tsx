@@ -62,6 +62,8 @@ import {
   useRef,
   useState,
 } from "react";
+import { composerTextareaBounds } from "../composer-resize";
+import { applyTextareaFit } from "../textarea-fit";
 
 // ============================================================================
 // Helpers
@@ -902,7 +904,7 @@ export const PromptInput = ({
         {/* biome-ignore lint/a11y/noStaticElementInteractions: focus-delegation surface; the real interactive widget is the <textarea> inside — role="presentation" is correct, no standalone widget role applies */}
         <div
           data-composer-surface="true"
-          className="group/composer cursor-text overflow-clip rounded-[28px] border border-line bg-input p-2.5 dark:bg-card/95 shadow-field focus-within:shadow-field-focus transition-shadow grid grid-cols-[auto_1fr_auto] [grid-template-areas:'header_header_header'_'leading_primary_trailing'_'._footer_.'] data-[expanded]:[grid-template-areas:'header_header_header'_'primary_primary_primary'_'leading_footer_trailing']"
+          className="group/composer relative cursor-text overflow-clip rounded-[28px] border border-line bg-input p-2.5 dark:bg-card/95 shadow-field focus-within:shadow-field-focus transition-shadow grid grid-cols-[auto_1fr_auto] [grid-template-areas:'header_header_header'_'leading_primary_trailing'_'._footer_.'] data-[expanded]:[grid-template-areas:'header_header_header'_'primary_primary_primary'_'leading_footer_trailing']"
           role="presentation"
           onClick={(e) => {
             if (!(e.target as HTMLElement).closest("button")) {
@@ -955,13 +957,18 @@ export const PromptInputBody = ({
 
 export type PromptInputTextareaProps = ComponentProps<
   typeof InputGroupTextarea
->;
+> & {
+  /** The size the user dragged the composer to (null or absent = auto-grow);
+   *  see `composerTextareaBounds`. */
+  manualHeight?: number | null;
+};
 
 export const PromptInputTextarea = ({
   onChange,
   onKeyDown,
   className,
   placeholder = "What would you like to know?",
+  manualHeight = null,
   ...props
 }: PromptInputTextareaProps) => {
   const controller = useOptionalPromptInputController();
@@ -1061,33 +1068,30 @@ export const PromptInputTextarea = ({
   const expandedRef = useRef(false);
 
   // Resize textarea + toggle expanded layout.
-  // No visual flash: measure with a hidden clone instead of resetting height.
   useEffect(() => {
     const el = localRef.current;
     if (!el) return;
 
-    // Measure needed height without touching the visible element:
-    // temporarily set height to 0 to get true scrollHeight, but use
-    // overflow:hidden to prevent visual jump
     const surface = el.closest("[data-composer-surface]");
-    const value = el.value;
+    const manual = manualHeight !== null;
+    const { minPx, maxPx } = composerTextareaBounds(
+      manualHeight,
+      window.innerHeight,
+    );
+    // A dragged size can pass the class's max-h-52, and a drag has to follow
+    // the pointer, not ease after it.
+    el.style.maxHeight = manual ? `${maxPx}px` : "";
+    el.style.transition = manual ? "none" : "";
 
-    if (!value) {
+    if (!el.value && !manual) {
       // Empty → collapse to single line, reset height completely
       expandedRef.current = false;
       el.style.height = "";
       el.style.overflow = "hidden";
       surface?.removeAttribute("data-expanded");
     } else {
-      // Has content → measure height
-      el.style.height = "0px";
-      el.style.overflow = "hidden";
-      const scrollH = el.scrollHeight;
-      const newHeight = Math.min(scrollH, 208);
-      el.style.height = `${newHeight}px`;
-      el.style.overflow = newHeight >= 208 ? "auto" : "hidden";
-
-      if (scrollH > 36) {
+      const scrollH = applyTextareaFit(el, maxPx, minPx);
+      if (scrollH > 36 || manual) {
         expandedRef.current = true;
         surface?.setAttribute("data-expanded", "");
       } else if (expandedRef.current) {

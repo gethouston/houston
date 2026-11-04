@@ -1,0 +1,41 @@
+{% from "enterprise/icons.njk" import arrow %}
+{% from "refer/icons.njk" import glyph %}
+{%- set q = t.dataPartners.requests -%}
+{%- set cats = t.refer.companies.categories -%}
+{%- set count = referListings.items.length -%}
+{%- set referUrl = localeRoot + refer.path -%}
+{# A sample of the open requests on /data-partners/refer, told from the
+   company's side: what the request is and what the company earns. Each card
+   opens the request's own page; the band under it is the referral door. #}
+<section id="requests" class="section ent-section dp-requests" data-tone="light" aria-labelledby="dp-requests-title">
+  <div class="ent-head reveal">
+    <h2 class="sec-title" id="dp-requests-title">{{ q.title }}</h2>
+    <p class="sec-lead split-line">{{ q.lead }}</p>
+  </div>
+  <ul class="rf-listings dp-requests-list reveal reveal-d1">
+{%- for item in referListings.featured %}{% set c = t.referListings[item.slug] %}{% set f = item.fmt[locale.code] %}
+    <li class="rf-listing">
+      <a class="rf-listing-link" href="{{ referUrl }}{{ item.slug }}/">
+        <p class="rf-listing-meta">{{ glyph(item.category) }}<span>{{ cats[item.categoryIndex] }}{% if c.size %} · {{ c.size }}{% endif %}</span></p>
+        <h3 class="rf-listing-title">{{ c.title }}</h3>
+        <p class="rf-listing-summary">{{ c.summary }}</p>
+        <div class="rf-listing-pay">
+          <div>
+            <p class="rf-listing-label">{{ q.companyEarns }}</p>
+            <p class="rf-listing-earn">{{ t.referBoard.board.range | replace("{min}", f.dealMin) | replace("{max}", f.dealMax) }}</p>
+          </div>
+          <span class="rf-listing-go" aria-hidden="true">{{ arrow() }}</span>
+        </div>
+      </a>
+    </li>
+{%- endfor %}
+  </ul>
+  <a class="dp-link dp-requests-all reveal" href="{{ referUrl }}#companies">{{ q.all | replace("{count}", count) }}{{ arrow() }}</a>
+  <div class="dp-refer-band reveal">
+    <div>
+      <h3 class="dp-col-title">{{ q.referTitle }}</h3>
+      <p class="dp-col-line">{{ q.referLine | replace("{amount}", refer.amountText[locale.code]) }}</p>
+    </div>
+    <a class="btn btn-ink" href="{{ referUrl }}">{{ q.referCta }}{{ arrow() }}</a>
+  </div>
+</section>

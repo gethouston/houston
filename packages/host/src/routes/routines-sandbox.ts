@@ -1,9 +1,5 @@
 import type { IncomingMessage, ServerResponse } from "node:http";
-import {
-  canonicalProviderId,
-  loadActivities,
-  missionConversationKey,
-} from "@houston/domain";
+import { loadActivities, missionConversationKey } from "@houston/domain";
 import type { HoustonEvent } from "@houston/protocol";
 import { actingDelegatorFromHeader, actingSubFromHeader } from "../auth/acting";
 import type { EventHub } from "../events/hub";
@@ -148,21 +144,6 @@ export async function handleSandboxRoutines(
   // `id` selects update-in-place; it is never a routine field itself.
   const { id, ...fields } = body;
   const creating = typeof id !== "string" || id === "";
-  // A NEW routine the agent saves without naming a provider runs on the pair
-  // the authoring chat runs on (the send's pin, recorded on the live turn).
-  // Left unpinned it would fire on the runtime's last-used provider, which
-  // may be one the user never connected (a local model picked once and
-  // disconnected since, PRODUCT-1849); the chat's provider demonstrably
-  // answers. An update never re-pins: an existing pin, or a deliberate
-  // "follows the agent", is the user's choice.
-  if (creating && !fields.provider && turn?.pin) {
-    // Stored in pi's canonical dialect, the one the fire path resolves; the
-    // composer may have sent a display id ("openai" for Codex).
-    fields.provider =
-      canonicalProviderId(turn.pin.provider) ?? turn.pin.provider;
-    if (!fields.model && turn.pin.model) fields.model = turn.pin.model;
-    if (!fields.effort && turn.pin.effort) fields.effort = turn.pin.effort;
-  }
   // The person's plan floor rides the turn the host recorded (gateway-stamped
   // `limits`), never this request: the runtime could name any limit here.
   const minIntervalMinutes = turn?.limits?.routineMinIntervalMinutes;
@@ -178,6 +159,7 @@ export async function handleSandboxRoutines(
         triggersEnabled,
         nowIso,
         createdBy,
+        authoringPin: turn?.pin,
         ...floor,
       });
 

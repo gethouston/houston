@@ -1,0 +1,33 @@
+{% from "refer/icons.njk" import glyph %}
+{%- set l = t.referBoard.listing -%}
+{%- set c = t.referListings[item.slug] -%}
+{%- set f = item.fmt[locale.code] -%}
+{%- set cat = t.refer.companies.categories[item.categoryIndex] -%}
+{# A request's header, on the dark band: the way back to the board, what
+   kind of company it wants, and the two numbers that matter (what the
+   referrer earns, what the company earns), then the promise about the data. #}
+<header class="hero rf-lhero" id="top">
+  <div class="rf-lhero-in">
+    <a class="rf-back" href="{{ localeRoot }}{{ refer.path }}#companies">{{ glyph("back") }}<span>{{ l.back }}</span></a>
+    <p class="rf-lmeta">{{ glyph(item.category) }}<span>{{ cat }}{% if c.location %} · {{ c.location }}{% endif %}{% if c.size %} · {{ c.size }}{% endif %}</span></p>
+    <h1 class="rf-lh1">{{ c.title }}</h1>
+    <p class="rf-lsummary">{{ c.summary }}</p>
+    <ul class="rf-lstats">
+      <li class="rf-lstat is-you">
+        <p class="rf-lstat-label">{{ glyph("paid") }}{{ l.earnUpTo }}</p>
+        <p class="rf-lstat-value">{{ f.earn }}</p>
+{%- if item.bonusUsd %}
+        <p class="rf-lstat-note">{{ l.includesBonus | replace("{amount}", f.bonus) }}</p>
+{%- endif %}
+      </li>
+      <li class="rf-lstat">
+        <p class="rf-lstat-label">{{ glyph("company") }}{{ l.companyEarns }}</p>
+        <p class="rf-lstat-value">{{ t.referBoard.board.range | replace("{min}", f.dealMin) | replace("{max}", f.dealMax) }}</p>
+{%- if c.dealNote %}
+        <p class="rf-lstat-note">{{ c.dealNote }}</p>
+{%- endif %}
+      </li>
+    </ul>
+    <p class="rf-assure">{{ glyph("shield") }}<span>{{ l.assurance }}</span></p>
+  </div>
+</header>

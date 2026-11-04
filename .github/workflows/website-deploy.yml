@@ -28,7 +28,8 @@ name: Website Deploy
 #
 # ── Required repo secrets ─────────────────────────────────────────────────────
 #   SUPABASE_ANON_KEY   - public (RLS-protected) Supabase anon key for the
-#                         /waitlist form. Still Supabase, intentionally unchanged.
+#                         download form's mirror and the /data-partners/refer
+#                         form (public.data_referrals).
 #   POSTHOG_KEY         - public PostHog ingest token (phc_...). base.njk omits
 #                         the whole analytics snippet when it is empty, so a
 #                         guard step fails the build loudly instead of shipping
@@ -37,6 +38,10 @@ name: Website Deploy
 #                         Cloudflare Pages, which held the key in its dashboard).
 # Optional (committed defaults exist):
 #   SUPABASE_URL, WAITLIST_SHEET_ENDPOINT, POSTHOG_HOST
+#   DATA_REFERRALS_SHEET_ENDPOINT - the "Data Partnerships - Referrals" sheet
+#                         tab's Apps Script web app. No default: unset, the
+#                         referral form stores to Supabase only
+#                         (website/scripts/apps-script/data-partnerships-referrals.gs).
 #   CERTS_EXPORT_TOKEN  - bearer token for the gateway's /v1/certs/export
 #                         endpoint, read at build time to generate the
 #                         certificate pages and images. Deliberately NOT
@@ -56,12 +61,43 @@ concurrency:
   cancel-in-progress: true
 
 jobs:
+  # The /data-partners/refer form stores into public.data_referrals with the
+  # anon key. If the table is missing (its migration not applied), every
+  # referral on the live site fails, and nothing else would say so. A job of
+  # its own after the deploy, so the site still ships but the run goes red.
+  # 401 is the healthy answer: the table exists and the public role may not
+  # read it. 404 (PGRST205) means the table is missing.
+  referral-table:
+    name: Referral table is reachable
+    needs: deploy
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    permissions: {}
+    steps:
+      - name: Ask Supabase for public.data_referrals
+        env:
+          SUPABASE_URL: ${{ secrets.SUPABASE_URL }}
+          SUPABASE_ANON_KEY: ${{ secrets.SUPABASE_ANON_KEY }}
+        run: |
+          url="${SUPABASE_URL:-https://zfpnlvxazrataiannvtq.supabase.co}"
+          code="$(curl -s -o /tmp/referrals.json -w '%{http_code}' \
+            "${url}/rest/v1/data_referrals?select=id&limit=0" \
+            -H "apikey: ${SUPABASE_ANON_KEY}" \
+            -H "Authorization: Bearer ${SUPABASE_ANON_KEY}")"
+          if [ "$code" != "401" ]; then
+            echo "::error::public.data_referrals answered ${code}, so referrals from /data-partners/refer cannot be stored. Apply supabase/migrations/20261101000000_data_referrals.sql to houston-prod."
+            cat /tmp/referrals.json
+            exit 1
+          fi
+          echo "public.data_referrals is reachable (anon may insert, not read)."
+
   deploy:
     name: Build & deploy to Firebase Hosting
     runs-on: ubuntu-latest
     permissions:
       contents: read
       id-token: write # Workload Identity Federation
+      actions: write # delete superseded certificate image caches
     steps:
       - uses: actions/checkout@v6
 
@@ -96,13 +132,18 @@ jobs:
       # the whole cohort on every deploy (~20 min of the run). The digest
       # manifest (website/.cache) decides staleness per attendee, but the skip
       # also requires the previously rendered PNGs to exist in _site/c, so both
-      # are cached. The key is per-run so the post-job save always records the
-      # latest state; restore falls back to the most recent previous deploy.
+      # are cached. Restore takes the newest cert-images-* entry.
       # Correctness lives in the manifest digests (attendee data + renderer
       # fingerprint), and render.mjs prunes images for certificates that are no
       # longer issued, so a stale cache can never ship a wrong or revoked image.
+      #
+      # The cache is ~2.2 GB against the repo's 10 GB Actions cache limit, and
+      # only deploys read it, so it is the first entry GitHub evicts when CI
+      # caches crowd the limit: every eviction cost a ~25 min deploy. So it is
+      # saved under a hash of the manifest (no upload when no image changed)
+      # and older copies are deleted, keeping exactly one.
       - name: Restore certificate image cache
-        uses: actions/cache@v5
+        uses: actions/cache/restore@v5
         with:
           path: |
             website/.cache
@@ -118,6 +159,7 @@ jobs:
           SUPABASE_URL: ${{ secrets.SUPABASE_URL }}
           SUPABASE_ANON_KEY: ${{ secrets.SUPABASE_ANON_KEY }}
           WAITLIST_SHEET_ENDPOINT: ${{ secrets.WAITLIST_SHEET_ENDPOINT }}
+          DATA_REFERRALS_SHEET_ENDPOINT: ${{ secrets.DATA_REFERRALS_SHEET_ENDPOINT }}
           POSTHOG_KEY: ${{ secrets.POSTHOG_KEY }}
           POSTHOG_HOST: ${{ secrets.POSTHOG_HOST }}
           CERTS_EXPORT_TOKEN: ${{ secrets.CERTS_EXPORT_TOKEN }}
@@ -149,3 +191,29 @@ jobs:
           accountId: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
           workingDirectory: website
           command: pages deploy _site --project-name=houston-site --branch=main
+
+      # After both deploys, so the upload never holds up a release and a cache
+      # failure never fails one.
+      - name: Save certificate image cache
+        id: cert-cache
+        if: ${{ !cancelled() && hashFiles('website/.cache/certificate-images.json') != '' }}
+        continue-on-error: true
+        uses: actions/cache/save@v5
+        with:
+          path: |
+            website/.cache
+            website/_site/c
+          key: cert-images-${{ hashFiles('website/.cache/certificate-images.json') }}
+
+      # One copy, the one just saved (or found already saved): anything older
+      # only crowds the cache limit.
+      - name: Drop superseded certificate image caches
+        if: ${{ !cancelled() && steps.cert-cache.outcome == 'success' }}
+        continue-on-error: true
+        env:
+          GH_TOKEN: ${{ github.token }}
+          KEEP: cert-images-${{ hashFiles('website/.cache/certificate-images.json') }}
+        run: |
+          gh cache list --repo "$GITHUB_REPOSITORY" --key cert-images- --limit 100 --json key --jq '.[].key' \
+            | { grep -vxF "$KEEP" || true; } \
+            | while read -r key; do gh cache delete --repo "$GITHUB_REPOSITORY" "$key"; done

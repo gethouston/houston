@@ -1,0 +1,490 @@
+/*
+ * /data-partners/refer/<slug> — one request's page. The dark header band
+ * (the site's black and its one bloom), then a light page: the brief on the
+ * left under in-page tabs, the payout card held on the right. Phones stack
+ * the card above the brief.
+ */
+
+/* ── Header band ────────────────────────────────────────────────────── */
+.rf-lhero {
+  overflow: hidden;
+  background: var(--band-black);
+  color: #fff;
+}
+.rf-lhero::before {
+  content: "";
+  position: absolute;
+  inset: -40% 40% 20% -20%;
+  background: radial-gradient(closest-side, rgba(255, 255, 255, 0.08), transparent);
+  pointer-events: none;
+}
+.rf-lhero-in {
+  position: relative;
+  max-width: var(--measure);
+  margin: 0 auto;
+  padding: 104px var(--gutter) clamp(40px, 5vw, 64px);
+}
+.rf-back,
+.rf-lmeta,
+.rf-assure {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  font-size: 14px;
+  color: var(--on-ink-muted);
+}
+.rf-back svg,
+.rf-lmeta svg,
+.rf-assure svg {
+  flex: none;
+  width: 16px;
+  height: 16px;
+}
+.rf-back:hover {
+  color: #fff;
+}
+.rf-lmeta {
+  display: flex;
+  margin-top: clamp(28px, 3.4vw, 40px);
+}
+.rf-lh1 {
+  max-width: 18ch;
+  margin-top: 12px;
+  font-size: clamp(38px, 5.4vw, 72px);
+  font-weight: 340;
+  line-height: 1.02;
+  letter-spacing: -0.035em;
+  text-wrap: balance;
+}
+.rf-lsummary {
+  max-width: 44ch;
+  margin-top: 16px;
+  font-size: clamp(17px, 1.6vw, 20px);
+  line-height: 1.45;
+  color: rgba(255, 255, 255, 0.82);
+}
+.rf-lstats {
+  list-style: none;
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 12px;
+  max-width: 680px;
+  margin-top: clamp(28px, 3.4vw, 40px);
+}
+.rf-lstat {
+  padding: 18px 20px;
+  border: 1px solid var(--line-on-ink);
+  border-radius: 18px;
+  background: rgba(255, 255, 255, 0.04);
+}
+.rf-lstat.is-you {
+  background: rgba(255, 255, 255, 0.1);
+}
+.rf-lstat-label {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  font-size: 13.5px;
+  color: var(--on-ink-muted);
+}
+.rf-lstat-label svg {
+  width: 16px;
+  height: 16px;
+}
+.rf-lstat-value {
+  margin-top: 8px;
+  font-size: clamp(24px, 2.4vw, 30px);
+  font-weight: 500;
+  letter-spacing: -0.02em;
+  font-variant-numeric: tabular-nums;
+}
+.rf-lstat-note {
+  margin-top: 4px;
+  font-size: 13px;
+  line-height: 1.4;
+  color: var(--on-ink-muted);
+}
+.rf-assure {
+  display: flex;
+  align-items: flex-start;
+  margin-top: 18px;
+  max-width: 680px;
+  line-height: 1.45;
+}
+@media (max-width: 560px) {
+  .rf-lstats {
+    grid-template-columns: 1fr;
+  }
+}
+
+/* ── The page: brief left, payout card right ───────────────────────── */
+.rf-lpage {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) 340px;
+  gap: clamp(40px, 6vw, 88px);
+  align-items: start;
+  max-width: var(--measure);
+  margin: 0 auto;
+  padding: clamp(32px, 4vw, 56px) var(--gutter) 0;
+}
+.rf-aside {
+  grid-column: 2;
+  grid-row: 1;
+  position: sticky;
+  top: 88px;
+}
+.rf-brief {
+  grid-column: 1;
+  grid-row: 1;
+  min-width: 0;
+}
+@media (max-width: 960px) {
+  .rf-lpage {
+    grid-template-columns: 1fr;
+    gap: 32px;
+  }
+  .rf-aside,
+  .rf-brief {
+    grid-column: 1;
+    grid-row: auto;
+    position: static;
+  }
+}
+
+/* ── The payout card ────────────────────────────────────────────────── */
+.rf-aside-card {
+  padding: 24px;
+  border: 1px solid var(--line);
+  border-radius: 22px;
+  background: var(--card);
+  box-shadow: 0 1px 2px rgba(13, 13, 13, 0.04),
+    0 24px 48px -28px rgba(13, 13, 13, 0.18);
+}
+.rf-aside-label {
+  font-size: 14px;
+  font-weight: 500;
+  color: var(--ink-muted);
+}
+.rf-aside-amount {
+  margin-top: 4px;
+  font-size: 38px;
+  font-weight: 500;
+  letter-spacing: -0.03em;
+  font-variant-numeric: tabular-nums;
+  color: var(--ink-strong);
+}
+.rf-aside-parts {
+  display: grid;
+  gap: 12px;
+  margin-top: 18px;
+  padding: 14px 16px;
+  border-radius: 14px;
+  background: var(--panel);
+}
+.rf-aside-parts > div {
+  display: flex;
+  justify-content: space-between;
+  gap: 12px;
+}
+.rf-aside-parts dt {
+  font-size: 14.5px;
+  color: var(--ink-strong);
+}
+.rf-aside-parts dt span {
+  display: block;
+  margin-top: 2px;
+  font-size: 12.5px;
+  color: var(--ink-subtle);
+}
+.rf-aside-parts dd {
+  font-size: 14.5px;
+  font-weight: 600;
+  font-variant-numeric: tabular-nums;
+  color: var(--ink-strong);
+}
+.rf-aside-line,
+.rf-aside-note {
+  margin-top: 12px;
+  font-size: 13px;
+  line-height: 1.45;
+  color: var(--ink-muted);
+}
+.rf-aside-note {
+  text-align: center;
+}
+.rf-aside-cta {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  height: 50px;
+  margin-top: 18px;
+  border-radius: 999px;
+  background: var(--action);
+  color: var(--action-text);
+  font-size: 15.5px;
+  font-weight: 600;
+}
+.rf-aside-cta:hover {
+  background: var(--action-hover);
+}
+.rf-aside-yours {
+  margin-top: 18px;
+  padding-top: 16px;
+  border-top: 1px solid var(--line);
+  font-size: 13.5px;
+  text-align: center;
+  color: var(--ink-muted);
+}
+.rf-aside-yours a,
+.rf-onlisting-link {
+  color: var(--ink-strong);
+  font-weight: 600;
+  text-decoration: underline;
+  text-underline-offset: 3px;
+}
+
+/* ── In-page tabs, held under the bar ───────────────────────────────── */
+.rf-ltabs {
+  position: sticky;
+  top: 60px;
+  z-index: 5;
+  background: var(--ground);
+  border-bottom: 1px solid var(--line);
+}
+.rf-ltabs ul {
+  list-style: none;
+  display: flex;
+  gap: 24px;
+  overflow-x: auto;
+  scrollbar-width: none;
+}
+.rf-ltabs a {
+  display: block;
+  padding: 16px 0 14px;
+  font-size: 14.5px;
+  font-weight: 500;
+  white-space: nowrap;
+  color: var(--ink-muted);
+}
+.rf-ltabs a:hover {
+  color: var(--ink-strong);
+}
+
+/* ── The brief ──────────────────────────────────────────────────────── */
+.rf-lsec {
+  padding-top: clamp(40px, 5vw, 56px);
+  scroll-margin-top: 112px;
+  color: var(--ink-strong);
+}
+.rf-lsec h2 {
+  font-size: clamp(24px, 2.4vw, 30px);
+  font-weight: 400;
+  letter-spacing: -0.02em;
+}
+.rf-lsec h3 {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  font-size: 16px;
+  font-weight: 600;
+}
+.rf-lprose {
+  max-width: 62ch;
+  margin-top: 14px;
+  font-size: 16.5px;
+  line-height: 1.6;
+  color: var(--ink-muted);
+}
+.rf-facts {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 20px 32px;
+  margin-top: 24px;
+  padding: 20px 22px;
+  border: 1px solid var(--line);
+  border-radius: 16px;
+}
+.rf-facts dt {
+  font-size: 13px;
+  color: var(--ink-subtle);
+}
+.rf-facts dd {
+  margin-top: 4px;
+  font-size: 15px;
+  line-height: 1.45;
+}
+.rf-fit {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 14px;
+  margin-top: 22px;
+}
+.rf-fit-col {
+  padding: 20px;
+  border: 1px solid var(--line);
+  border-radius: 16px;
+}
+.rf-fit-col.is-yes {
+  background: var(--panel);
+}
+.rf-fit-col svg,
+.rf-checks svg {
+  flex: none;
+  width: 16px;
+  height: 16px;
+}
+.rf-fit-col ul,
+.rf-checks {
+  list-style: none;
+  display: grid;
+  gap: 12px;
+  margin-top: 14px;
+}
+.rf-fit-col li,
+.rf-checks li {
+  display: flex;
+  align-items: flex-start;
+  gap: 10px;
+  font-size: 15px;
+  line-height: 1.45;
+  color: var(--ink-muted);
+}
+.rf-fit-col li svg,
+.rf-checks li svg {
+  margin-top: 3px;
+  color: var(--ink-strong);
+}
+.rf-fit-col.is-no li svg {
+  color: var(--ink-subtle);
+}
+.rf-who {
+  display: flex;
+  align-items: flex-start;
+  gap: 14px;
+  margin-top: 14px;
+  padding: 20px;
+  border: 1px solid var(--line);
+  border-radius: 16px;
+}
+.rf-who > svg {
+  flex: none;
+  width: 20px;
+  height: 20px;
+  margin-top: 2px;
+}
+.rf-who div {
+  flex: 1;
+}
+.rf-who p {
+  margin-top: 4px;
+  font-size: 15px;
+  line-height: 1.5;
+  color: var(--ink-muted);
+}
+.rf-who-cta {
+  flex: none;
+  align-self: center;
+  padding: 10px 16px;
+  border: 1px solid var(--line-strong);
+  border-radius: 999px;
+  font-size: 14px;
+  font-weight: 600;
+}
+.rf-who-cta:hover {
+  background: var(--panel);
+}
+.rf-lsub {
+  margin-top: 28px;
+}
+.rf-tools {
+  list-style: none;
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  margin-top: 14px;
+}
+.rf-tools li {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  padding: 6px 12px 6px 6px;
+  border: 1px solid var(--line);
+  border-radius: 999px;
+  font-size: 14px;
+}
+.rf-tools span {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 22px;
+  height: 22px;
+  border-radius: 999px;
+  background: var(--panel-raised);
+  font-size: 12px;
+  font-weight: 600;
+}
+.rf-questions {
+  display: grid;
+  gap: 10px;
+  margin-top: 18px;
+  padding-left: 22px;
+  font-size: 15.5px;
+  line-height: 1.5;
+}
+.rf-lsteps {
+  list-style: none;
+  display: grid;
+  gap: 18px;
+  margin-top: 22px;
+}
+.rf-lsteps li {
+  display: flex;
+  gap: 14px;
+}
+.rf-lsteps li > span {
+  flex: none;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 30px;
+  height: 30px;
+  border: 1px solid var(--line-strong);
+  border-radius: 999px;
+  font-size: 13px;
+  font-weight: 600;
+}
+.rf-lsteps p {
+  margin-top: 2px;
+  font-size: 15px;
+  line-height: 1.5;
+  color: var(--ink-muted);
+}
+.rf-onlisting {
+  margin-top: 28px;
+  padding: 22px;
+  border-radius: 16px;
+  background: var(--panel);
+}
+.rf-onlisting-title {
+  font-size: 14px;
+  color: var(--ink-muted);
+}
+.rf-onlisting-amount {
+  margin-top: 4px;
+  font-size: 22px;
+  font-weight: 600;
+}
+.rf-onlisting-link {
+  display: inline-block;
+  margin-top: 18px;
+  font-size: 14.5px;
+}
+@media (max-width: 640px) {
+  .rf-facts,
+  .rf-fit {
+    grid-template-columns: 1fr;
+  }
+  .rf-who {
+    flex-wrap: wrap;
+  }
+}

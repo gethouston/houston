@@ -1,0 +1,265 @@
+/*
+ * /data-partners — the estimator section. The fold, statement band and
+ * the why split are /enterprise's own
+ * (enterprise*.css); the other sections live in data-partners-sections.css.
+ *
+ * Same system as /enterprise: the --panel surface, hairlines, the ink pill,
+ * light 340-weight figures. Both dresses: light by default, .is-dark when the
+ * page's tone flow turns dark.
+ */
+
+/* The statement band holds a sentence, not a number: a wider measure. */
+.dp-statement .ent-proof-head {
+  max-width: 820px;
+}
+
+/* ── The panel: controls left, the range right ───────────────────────── */
+.dp-est {
+  display: grid;
+  gap: clamp(28px, 4vw, 56px);
+  margin-top: clamp(40px, 6vw, 80px);
+  padding: clamp(24px, 4vw, 56px);
+  border-radius: var(--panel-radius);
+  background: var(--panel);
+}
+@media (min-width: 900px) {
+  .dp-est {
+    grid-template-columns: minmax(0, 1fr) minmax(0, 1fr);
+    align-items: center;
+  }
+}
+.dp-est-controls {
+  display: flex;
+  flex-direction: column;
+  gap: 32px;
+}
+
+/* ── Sliders ─────────────────────────────────────────────────────────── */
+.dp-slider-head {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: 16px;
+  margin-bottom: 14px;
+}
+.dp-slider-head label,
+.dp-regions legend {
+  font-size: 15px;
+  font-weight: 500;
+  color: var(--ink-muted);
+}
+.dp-slider-head output {
+  font-size: clamp(26px, 2.4vw, 32px);
+  font-weight: 340;
+  line-height: 1;
+  letter-spacing: -0.02em;
+  font-variant-numeric: tabular-nums;
+  color: var(--ink-strong);
+}
+.dp-slider-ends,
+.dp-slider-hint {
+  margin-top: 10px;
+  font-size: 13px;
+  color: var(--ink-subtle);
+}
+.dp-slider-ends {
+  display: flex;
+  justify-content: space-between;
+  font-variant-numeric: tabular-nums;
+}
+/* The track: a hairline that fills in ink up to the thumb (--fill is set by
+   the script; without it the track stays one tone). */
+.dp-slider input[type="range"] {
+  -webkit-appearance: none;
+  appearance: none;
+  width: 100%;
+  height: 28px;
+  background: transparent;
+  cursor: pointer;
+  --track: var(--line-strong);
+  --ink-fill: var(--ink-strong);
+}
+.dp-slider input[type="range"]::-webkit-slider-runnable-track {
+  height: 4px;
+  border-radius: 999px;
+  background: linear-gradient(
+    to right,
+    var(--ink-fill) var(--fill, 0%),
+    var(--track) var(--fill, 0%)
+  );
+}
+.dp-slider input[type="range"]::-moz-range-track {
+  height: 4px;
+  border-radius: 999px;
+  background: var(--track);
+}
+.dp-slider input[type="range"]::-moz-range-progress {
+  height: 4px;
+  border-radius: 999px;
+  background: var(--ink-fill);
+}
+.dp-slider input[type="range"]::-webkit-slider-thumb {
+  -webkit-appearance: none;
+  width: 28px;
+  height: 28px;
+  margin-top: -12px;
+  border-radius: 50%;
+  background: var(--card);
+  border: 1px solid var(--line-strong);
+  box-shadow: 0 2px 8px rgba(13, 13, 13, 0.16);
+}
+.dp-slider input[type="range"]::-moz-range-thumb {
+  width: 28px;
+  height: 28px;
+  border-radius: 50%;
+  background: var(--card);
+  border: 1px solid var(--line-strong);
+  box-shadow: 0 2px 8px rgba(13, 13, 13, 0.16);
+}
+.dp-slider input[type="range"]:focus-visible {
+  outline: none;
+}
+.dp-slider input[type="range"]:focus-visible::-webkit-slider-thumb {
+  outline: 2px solid var(--focus);
+  outline-offset: 3px;
+}
+.dp-slider input[type="range"]:focus-visible::-moz-range-thumb {
+  outline: 2px solid var(--focus);
+  outline-offset: 3px;
+}
+
+/* ── Region pills ───────────────────────────────────────────────────── */
+.dp-regions {
+  border: 0;
+}
+.dp-regions legend {
+  margin-bottom: 14px;
+}
+.dp-choices {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 8px;
+}
+@media (min-width: 480px) {
+  .dp-choices {
+    grid-template-columns: repeat(4, minmax(0, 1fr));
+  }
+}
+.dp-choice {
+  position: relative;
+}
+.dp-choice input {
+  position: absolute;
+  inset: 0;
+  opacity: 0;
+}
+.dp-choice span {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  height: 44px;
+  padding: 0 10px;
+  border: 1px solid var(--line-strong);
+  border-radius: 999px;
+  background: var(--card);
+  font-size: 14px;
+  font-weight: 500;
+  color: var(--ink-muted);
+  text-align: center;
+  cursor: pointer;
+}
+.dp-choice input:checked + span {
+  border-color: var(--ink-strong);
+  background: var(--ink-strong);
+  color: var(--action-text);
+}
+.dp-choice input:focus-visible + span {
+  outline: 2px solid var(--focus);
+  outline-offset: 2px;
+}
+
+/* ── The range ──────────────────────────────────────────────────────── */
+.dp-est-result {
+  display: flex;
+  flex-direction: column;
+  padding: clamp(24px, 3vw, 40px);
+  border-radius: clamp(18px, 2vw, 28px);
+  background: var(--card);
+  border: 1px solid var(--line);
+}
+.dp-est-label {
+  font-size: 15px;
+  font-weight: 500;
+  color: var(--ink-muted);
+}
+.dp-est-figure {
+  display: flex;
+  flex-direction: column;
+  margin-top: 10px;
+  font-size: clamp(36px, 4.2vw, 56px);
+  font-weight: 340;
+  line-height: 1.04;
+  letter-spacing: -0.035em;
+  font-variant-numeric: tabular-nums;
+  color: var(--ink-strong);
+}
+.dp-est-to {
+  font-size: 0.42em;
+  letter-spacing: 0;
+  margin: 6px 0;
+  color: var(--ink-subtle);
+}
+.dp-est-note {
+  margin-top: 20px;
+  font-size: 13.5px;
+  line-height: 1.5;
+  color: var(--ink-subtle);
+  text-wrap: pretty;
+}
+.dp-est-cta {
+  margin-top: 28px;
+  width: 100%;
+}
+.dp-est-cta svg {
+  width: 15px;
+  height: 15px;
+}
+
+/* ── Dark dress (the tone flow) ─────────────────────────────────────── */
+.section.is-dark .dp-est {
+  background: rgba(255, 255, 255, 0.05);
+}
+.section.is-dark .dp-est-result,
+.section.is-dark .dp-choice span {
+  background: rgba(255, 255, 255, 0.04);
+  border-color: var(--line-on-ink);
+}
+.section.is-dark .dp-slider-head output,
+.section.is-dark .dp-est-figure {
+  color: #fff;
+}
+.section.is-dark .dp-slider-head label,
+.section.is-dark .dp-regions legend,
+.section.is-dark .dp-est-label,
+.section.is-dark .dp-choice span {
+  color: var(--on-ink-muted);
+}
+.section.is-dark .dp-slider-ends,
+.section.is-dark .dp-slider-hint,
+.section.is-dark .dp-est-to,
+.section.is-dark .dp-est-note {
+  color: var(--on-ink-faint);
+}
+.section.is-dark .dp-choice input:checked + span {
+  background: #fff;
+  border-color: #fff;
+  color: var(--ink-strong);
+}
+.section.is-dark .dp-slider input[type="range"] {
+  --track: var(--line-on-ink);
+  --ink-fill: #fff;
+}
+.section.is-dark .dp-est-cta {
+  background: #fff;
+  color: var(--ink-strong);
+}

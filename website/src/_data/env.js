@@ -8,12 +8,16 @@ export default function () {
     // token-gated and read in lib/certs/config.mjs, never here.
     certsGatewayUrl:
       process.env.CERTS_GATEWAY_URL || "https://gateway.gethouston.ai",
-    // Download gate storage. The URL and the Google Sheet endpoint are public. The
+    // Download gate and referral storage. The URL and the Google Sheet endpoints are public. The
     // Supabase anon key is a public, RLS-protected client key, but we inject it
     // at build time (SUPABASE_ANON_KEY) rather than committing the JWT.
     supabaseUrl:
       process.env.SUPABASE_URL || "https://zfpnlvxazrataiannvtq.supabase.co",
     supabaseAnonKey: process.env.SUPABASE_ANON_KEY || "",
+    // The "Data Partnerships - Referrals" sheet tab's Apps Script web app
+    // (scripts/apps-script/data-partnerships-referrals.gs). Public like the
+    // one below; empty turns the referral sheet copy off.
+    dataReferralsSheetEndpoint: process.env.DATA_REFERRALS_SHEET_ENDPOINT || "",
     waitlistSheetEndpoint:
       process.env.WAITLIST_SHEET_ENDPOINT ||
       "https://script.google.com/macros/s/AKfycbyDkiNQtnEO9XqmAoOXyA_WmS2fs7e0ehqiDvjgYBwXV1vY2V-C4KiDCQ5GHfDJ3kgfdg/exec",

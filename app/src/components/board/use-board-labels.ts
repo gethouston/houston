@@ -49,6 +49,7 @@ export function useBoardLabels(surface: BoardLabelSurface = "board"): {
       submit: t("chat:composer.submit"),
       stop: t("chat:composer.stop"),
       attachFiles: t("chat:composer.attachFiles"),
+      resizeComposer: t("chat:composer.resize"),
       removeAttachment: (name: string) =>
         t("chat:composer.removeAttachment", { name }),
     },

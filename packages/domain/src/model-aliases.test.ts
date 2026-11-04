@@ -143,7 +143,13 @@ test("an open-catalog gateway carries only its renames", () => {
   // Nothing else: a gateway id with no successor must keep passing through, so
   // the picker's live list — not this table — decides what it can move to.
   expect(opencode["claude-sonnet-4"]).toBe("claude-sonnet-4-6");
-  expect(Object.keys(opencode)).toEqual(["mimo-v2.5-free", "claude-sonnet-4"]);
+  expect(opencode["nemotron-3-ultra-free"]).toBe("nemotron-3.5-super-vl-free");
+  expect(opencode["deepseek-v4-flash"]).toBeUndefined();
+  expect(Object.keys(opencode)).toEqual([
+    "mimo-v2.5-free",
+    "claude-sonnet-4",
+    "nemotron-3-ultra-free",
+  ]);
   // Each OpenCode Go row is a model pi dropped, mapped to its successor.
   expect(MODEL_ALIASES["opencode-go"]).toEqual({
     "glm-5.1": "glm-5.2",
@@ -155,5 +161,7 @@ test("an open-catalog gateway carries only its renames", () => {
     "deepseek-v4-flash-vision-exp": "deepseek-v4.1-flash",
     "minimax-m2.7": "minimax-m3",
     "grok-4.6": "grok-4.7",
+    "minimax-m3.1-flash-free": "minimax-m3.1-flash",
+    "gemini-4-argon-contributor": "gemini-4-argon",
   });
 });

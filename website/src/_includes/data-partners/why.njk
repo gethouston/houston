@@ -1,0 +1,25 @@
+{% import "data-partners/icons.njk" as icons %}
+{%- set w = t.dataPartners.why -%}
+{# /enterprise's industries split (enterprise/industries.njk): one big title,
+   two phrases left. Where /enterprise shows industry photos, the right side
+   lists the kinds of records worth licensing, two across on hairlines. #}
+<section class="section ent-section" id="why" data-tone="light" aria-labelledby="dp-why-title">
+  <div class="mp-head reveal">
+    <h2 class="sec-title" id="dp-why-title">{{ w.title }}</h2>
+  </div>
+  <div class="mp-split reveal reveal-d1">
+    <div class="mp-phrases">
+      <p class="mp-phrase">{{ w.phrases[0] }}</p>
+      <p class="mp-phrase is-strong">{{ w.phrases[1] }}</p>
+    </div>
+    <ul class="dp-cols dp-cols-2 dp-why-areas">
+{%- for id in dataPartners.areas %}{% set item = w.areas[loop.index0] %}
+      <li class="dp-col">
+        <span class="dp-glyph">{{ icons.glyph(id) }}</span>
+        <h3 class="dp-col-title">{{ item.name }}</h3>
+        <p class="dp-col-line">{{ item.line }}</p>
+      </li>
+{%- endfor %}
+    </ul>
+  </div>
+</section>

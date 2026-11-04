@@ -28,10 +28,12 @@ test("a stored OpenCode pin on a row pi dropped still resolves to a runnable mod
   // Each row is a dropped id with a same-price successor: pi 0.87.1 dropped
   // opencode's `mimo-v2.5-free`, pi 0.99.1 the three OpenCode Go rows, pi
   // 1.1.0 OpenCode Go's `space-bunny-free` preview, pi 1.3.0 four more
-  // OpenCode Go rows, pi 1.4.0 `space-bunny` and opencode's `claude-sonnet-4`.
+  // OpenCode Go rows, pi 1.4.0 `space-bunny` and opencode's `claude-sonnet-4`,
+  // pi 1.5.0 opencode's `nemotron-3-ultra-free` and two OpenCode Go previews.
   for (const [provider, stale, successor] of [
     ["opencode", "mimo-v2.5-free", "mimo-v2.6-flash-free"],
     ["opencode", "claude-sonnet-4", "claude-sonnet-4-6"],
+    ["opencode", "nemotron-3-ultra-free", "nemotron-3.5-super-vl-free"],
     ["opencode-go", "glm-5.1", "glm-5.2"],
     ["opencode-go", "kimi-k2.6", "kimi-k2.7-code"],
     ["opencode-go", "qwen3.7-max", "qwen3.8-max"],
@@ -41,6 +43,8 @@ test("a stored OpenCode pin on a row pi dropped still resolves to a runnable mod
     ["opencode-go", "deepseek-v4-flash-vision-exp", "deepseek-v4.1-flash"],
     ["opencode-go", "minimax-m2.7", "minimax-m3"],
     ["opencode-go", "grok-4.6", "grok-4.7"],
+    ["opencode-go", "minimax-m3.1-flash-free", "minimax-m3.1-flash"],
+    ["opencode-go", "gemini-4-argon-contributor", "gemini-4-argon"],
   ] as const) {
     expect(piModelIds(provider), stale).not.toContain(stale);
     const pinned = canonicalModelId(provider, stale);
@@ -55,13 +59,17 @@ test("a stored OpenCode pin on a row pi dropped still resolves to a runnable mod
 });
 
 test("a pin on a dropped row with no successor gets a runnable switch target", () => {
-  // pi 1.4.0 dropped free previews with no same-price successor. A pinned turn
+  // pi 1.4.0 and 1.5.0 dropped rows with no same-price successor. A pinned turn
   // on one fails as model_unavailable, never a crash, and the card offers the
   // provider default.
   for (const [provider, stale] of [
     ["opencode", "cat-jam-free"],
     ["opencode", "deepseek-v4-flash-vision-exp"],
     ["opencode-go", "step-5-preview-free"],
+    ["opencode", "deepseek-v4-flash"],
+    ["opencode", "minimax-m3.1-flash-free"],
+    ["opencode", "longcat-2.5-preview-free"],
+    ["opencode-go", "longcat-2.5-preview-free"],
   ] as const) {
     expect(canonicalModelId(provider, stale), stale).toBe(stale);
     let thrown: unknown;

@@ -110,11 +110,43 @@ RUN mkdir -p /data/workspaces /data/db && chown -R node:node /app /data
 # runtime's "Playwright headless shell" launch candidate find it. Installed
 # AFTER the chown on purpose: root-owned and world-readable is all the
 # runtime needs, and a chown -R over it would copy ~280 MB into another layer.
+#
+# The build then swaps that revision's binary for Chrome for Testing
+# 156.0.8078.80, newer than the 156.0.8078.4 that Playwright 1.64 ships
+# (revision 1248). Playwright's own download is the same CfT zip, so the
+# layout and the marker files in the revision directory stay valid. The
+# revision check fails the build when a Playwright bump moves the revision,
+# so a newer bundled build is never swapped for this one. Drop the swap once
+# playwright-core's chromium-headless-shell browserVersion is >= 156.0.8078.80
+# (packages/runtime/src/session/tools/browser/headless-shell-pin.test.ts fails
+# in CI before that), together with the version the smoke launch in
+# .github/workflows/engine-pod-image.yml expects.
 ENV PLAYWRIGHT_BROWSERS_PATH=/app/ms-playwright
-RUN node /app/node_modules/.pnpm/node_modules/playwright-core/cli.js \
-      install --with-deps --no-progress chromium-headless-shell \
- && ls -d /app/ms-playwright/chromium_headless_shell-* \
- && rm -rf /var/lib/apt/lists/*
+ARG TARGETARCH
+RUN set -eu; \
+    node /app/node_modules/.pnpm/node_modules/playwright-core/cli.js \
+      install --with-deps --no-progress chromium-headless-shell; \
+    SHELL_DIR=/app/ms-playwright/chromium_headless_shell-1248; \
+    if [ "$(ls -d /app/ms-playwright/chromium_headless_shell-*)" != "$SHELL_DIR" ]; then \
+      echo "ERROR: Playwright no longer installs $SHELL_DIR; update or drop the Chrome for Testing swap" >&2; \
+      exit 1; \
+    fi; \
+    CFT_VERSION=156.0.8078.80; \
+    case "${TARGETARCH:-$(dpkg --print-architecture)}" in \
+      amd64) CFT_PLATFORM=linux64; \
+             CFT_SHA256=547dcd374e02961bf998f6046a267644f8502225c36bb78ca307dab32a0b3eb4 ;; \
+      arm64) CFT_PLATFORM=linux-arm64; \
+             CFT_SHA256=5bb6a00a4285c13303d3f72c5afdb70f144ea7a93eed462365a52b69631c9607 ;; \
+      *) echo "ERROR: no Chrome for Testing headless shell for this architecture" >&2; exit 1 ;; \
+    esac; \
+    apt-get install -y --no-install-recommends unzip; \
+    curl -fsSL --retry 3 -o /tmp/headless-shell.zip \
+      "https://storage.googleapis.com/chrome-for-testing-public/$CFT_VERSION/$CFT_PLATFORM/chrome-headless-shell-$CFT_PLATFORM.zip"; \
+    echo "$CFT_SHA256  /tmp/headless-shell.zip" | sha256sum -c -; \
+    rm -rf "$SHELL_DIR/chrome-headless-shell-$CFT_PLATFORM"; \
+    unzip -q /tmp/headless-shell.zip -d "$SHELL_DIR"; \
+    rm -f /tmp/headless-shell.zip; \
+    rm -rf /var/lib/apt/lists/*
 
 # Chromium's own sandbox is OFF in this image, an accepted risk: Docker's
 # default seccomp profile blocks the unprivileged user namespaces it needs, so
@@ -185,68 +217,5 @@ ENV SENTRY_DSN=$SENTRY_DSN \
 # null. The selfhost target deliberately gets none, same stance as Sentry.
 ARG BUILD_SHA=""
 ENV BUILD_SHA=$BUILD_SHA
-
-# ---------- Gondolin guest image (pool code micro-VM) ----------
-# The Alpine guest a pool worker in `vm` code execution boots once per turn
-# (packages/runtime/src/code-vm). The VM has no network, so every library
-# run_code promises (packages/code-sandbox/requirements.txt) is baked in here,
-# at Alpine's versions (close to, not exactly, the Cloud Run sandbox's pins). Built natively with the published sandbox helpers: no KVM, no
-# container runtime and no Zig needed on the build machine.
-FROM node:24.22.1-bookworm-slim AS gondolin-guest
-
-ARG GONDOLIN_VERSION=0.14.0
-ARG SANDBOX_HELPERS_URL=https://github.com/earendil-works/gondolin/releases/download/sandbox-helpers--0.14.0/gondolin-sandbox-helpers-0.14.0-x86_64.tar.gz
-ARG SANDBOX_HELPERS_SHA256=9921563c3da80b7fe746efbb73e23559d35eb9203c686c34054eeb7bd92ce8b9
-
-RUN apt-get update \
-    && apt-get install -y --no-install-recommends \
-        ca-certificates cpio curl debianutils e2fsprogs findutils lz4 python3-pip \
-    && rm -rf /var/lib/apt/lists/*
-
-RUN npm install --global --omit=optional "@earendil-works/gondolin@${GONDOLIN_VERSION}"
-
-RUN mkdir -p /opt/gondolin-helpers \
-    && curl --fail --location --retry 3 "$SANDBOX_HELPERS_URL" --output /tmp/helpers.tar.gz \
-    && echo "$SANDBOX_HELPERS_SHA256  /tmp/helpers.tar.gz" | sha256sum --check --strict \
-    && tar -xzf /tmp/helpers.tar.gz -C /opt/gondolin-helpers \
-    && rm /tmp/helpers.tar.gz
-
-# Alpine v3.23 (Gondolin's own tested default: its kernel modules load, the
-# 3.21 ones do not) packages every library but python-pptx, which comes as a
-# pure-Python wheel for the guest's CPython 3.12. --no-deps: Alpine supplies
-# lxml, Pillow and XlsxWriter.
-RUN python3 -m pip install \
-        --break-system-packages --only-binary=:all: --no-compile --no-deps \
-        --platform musllinux_1_2_x86_64 --python-version 3.12 \
-        --implementation cp --abi cp312 \
-        --target /opt/gondolin-python/site-packages \
-        python-pptx==1.0.2
-
-COPY selfhost/gondolin-guest.json /build/guest-config.json
-ENV GONDOLIN_SANDBOX_HELPERS_DIR=/opt/gondolin-helpers
-RUN gondolin build --config /build/guest-config.json --output /out \
-    && gondolin build --verify /out \
-    && for module in pandas openpyxl pptx matplotlib PIL requests; do \
-         debugfs -R "stat /usr/lib/python3.12/site-packages/$module" /out/rootfs.ext4 2>&1 \
-           | grep -q "Type: directory" \
-           || { echo "guest image lacks Python module: $module" >&2; exit 1; }; \
-       done
-
-# ---------- Pool worker with the code micro-VM (staging trial) ----------
-# The engine plus QEMU and the guest above. Runs as a pool worker with
-# HOUSTON_CODE_EXECUTION=vm (cloud's pool.yaml): every turn allowed to run code
-# gets its own disposable micro-VM with no NIC, destroyed when the turn ends.
-# Needs /dev/kvm (a privileged pod on a nested-virtualization node).
-FROM engine-pod AS engine-pool-vm
-USER root
-RUN apt-get update \
-    && apt-get install -y --no-install-recommends qemu-system-x86 \
-    && rm -rf /var/lib/apt/lists/*
-COPY --from=gondolin-guest /out /opt/gondolin/guest
-# Gondolin keeps a session registry under XDG_CACHE_HOME; the pool's uid has
-# no home directory to default to.
-ENV GONDOLIN_GUEST_DIR=/opt/gondolin/guest \
-    XDG_CACHE_HOME=/tmp/gondolin-cache
-USER node
 
 FROM host-base AS selfhost

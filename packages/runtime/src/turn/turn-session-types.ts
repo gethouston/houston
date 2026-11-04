@@ -81,19 +81,11 @@ export interface TurnSessionRequest {
    * the same process.
    */
   role?: AssistantRuntimeRole;
-  /**
-   * Turn-local routing closure; it owns all grant-bearing calls. `warmCode`
-   * starts the turn's code VM booting (`vm` mode only).
-   */
-  sandbox?: TurnSandboxHandle;
+  /** Turn-local routing closure; it owns all grant-bearing calls. */
+  sandbox?: { call: SandboxFetch };
   timings?: Record<string, number>;
   /** Setup begun after layout resolution and before bulk hydration completes. */
   startup?: TurnSessionStartupTask;
-}
-
-export interface TurnSandboxHandle {
-  call: SandboxFetch;
-  warmCode?: () => void;
 }
 
 export interface TurnDirectories {

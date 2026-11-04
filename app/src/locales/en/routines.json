@@ -4,10 +4,13 @@
   "wizard": {
     "wakeTitle": "When should this run?",
     "scheduleOptionTitle": "On a schedule",
+    "scheduleOptionDescription": "At set times, like every weekday at 9 AM.",
     "eventOptionTitle": "When something happens in an app",
+    "eventOptionDescription": "A connected app like Gmail starts it, for example when a new email arrives.",
     "triggerDescription": "Pick the app to watch. You'll say what should happen in it in the chat.",
     "build": "Create it with your AI Employee",
     "webhookOptionTitle": "From an external app",
+    "webhookOptionDescription": "Another system starts it by calling a unique web address you get.",
     "webhookTitle": "Wake it from a web address",
     "webhookDescription": "You'll get a unique web address that wakes this routine whenever anything calls it."
   },

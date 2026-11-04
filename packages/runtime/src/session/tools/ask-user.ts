@@ -36,8 +36,15 @@ const AskUserParams = Type.Object({
               description: "A short stable identifier for this choice.",
             }),
             label: Type.String({
-              description: "The short user-facing label for this choice.",
+              description:
+                "A short user-facing label, distinguishable from the other options on its own.",
             }),
+            description: Type.Optional(
+              Type.String({
+                description:
+                  "One short plain-language line, only when the label alone could be confused with another option or uses a term the user may not know. Most options need none.",
+              }),
+            ),
             recommended: Type.Optional(
               Type.Boolean({
                 description:

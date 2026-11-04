@@ -1,5 +1,9 @@
 import { defineTool } from "@earendil-works/pi-coding-agent";
-import { recordConversationKind } from "@houston/domain";
+import {
+  canonicalProviderId,
+  modelDisplayName,
+  recordConversationKind,
+} from "@houston/domain";
 import { currentActingContext } from "../acting-context";
 import { currentConversationId } from "../conversation-context";
 import { currentTurnMode } from "../turn-mode-context";
@@ -57,6 +61,9 @@ function inRoutineRun(): boolean {
 interface SavedRoutine {
   id: string;
   name: string;
+  provider?: string | null;
+  model?: string | null;
+  effort?: string | null;
 }
 
 export function makeSaveRoutineTool(opts: SaveRoutineToolOptions) {
@@ -112,14 +119,26 @@ export function makeSaveRoutineTool(opts: SaveRoutineToolOptions) {
         );
       }
       const saved = (await res.json()) as SavedRoutine;
+      const modelName =
+        saved.provider && saved.model
+          ? modelDisplayName(
+              canonicalProviderId(saved.provider) ?? saved.provider,
+              saved.model,
+            )
+          : undefined;
       return {
         content: [
           {
             type: "text" as const,
-            text: `Saved the scheduled task '${saved.name}'. Tell the user it is set up, in plain words.`,
+            text: `Saved the scheduled task '${saved.name}'. It will run on ${modelName ?? saved.model ?? "the agent's current model"}. Tell the user it is set up in plain words. Name the model only if the user asks or it matters, using plain everyday words such as "a faster, lower-cost model", never the raw model id.`,
           },
         ],
-        details: { id: saved.id },
+        details: {
+          id: saved.id,
+          provider: saved.provider ?? null,
+          model: saved.model ?? null,
+          effort: saved.effort ?? null,
+        },
       };
     },
   });

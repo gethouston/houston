@@ -66,9 +66,6 @@ async function prepareTurnSession(
     turnCodeExecutionMode(config.codeExecution, config.poolSingleUse),
   );
   const toolSelection = buildTurnToolSelection(turn, codeExecution);
-  // The code VM's ~4 s boot starts now, behind model setup and the first
-  // model call. A turn without run_code never boots one.
-  if (toolSelection.includeRunCode) turn.sandbox?.warmCode?.();
   const sdkLoad =
     turn.provider === "anthropic"
       ? preloadClaudeSdk(deps.claudeSdk).then((result) => {
@@ -85,8 +82,7 @@ async function prepareTurnSession(
   );
   if (sdkLoad) await sdkLoad;
   // The worker holds no sandbox URL, app token or GCP identity: the call rides
-  // this turn's sandbox facade, which relays it under the grant or, in `vm`
-  // mode, runs it in the turn's own micro-VM.
+  // this turn's sandbox facade, which relays it under the grant.
   const codeSandbox =
     toolSelection.includeRunCode && turn.sandbox
       ? makeRunCodeTool({

@@ -1,27 +1,18 @@
-{#- The Guides hub is per locale (Spanish has its own at /guides/es/), so the
-    path travels in the copy tree. Anything that is not a path falls back to the
-    English hub, so a locale without its own guides never emits a broken link. -#}
-{%- set guidesHref = t.nav.links.guides -%}
+{#- The three things Houston offers, each its own page: the app (this landing),
+    Enterprise and Data partnerships. The landing's sections, Guides, Vision,
+    the Changelog and the Agent Store live in the footer. -#}
+{%- set links = [
+  [localeRoot, t.nav.app],
+  [localeRoot + enterprise.path, t.nav.enterprise],
+  [localeRoot + dataPartners.path, t.nav.dataPartners]
+] -%}
 <a class="skip-link" href="#main">{{ t.nav.skip }}</a>
 <nav class="lnav{% if subpage %} lnav-solid{% endif %}" id="lnav" aria-label="{{ t.nav.primary }}">
   <a class="lnav-brand" href="{{ localeRoot }}">Houston</a>
   <div class="lnav-links">
-    <a href="{{ root }}#multiplayer">{{ t.nav.multiplayer }}</a>
-    <a href="{{ root }}#agents">{{ t.nav.agents }}</a>
-    <a href="{{ root }}#compound">{{ t.nav.features }}</a>
-    <a href="{{ root }}#pricing">{{ t.nav.pricing }}</a>
-    <a href="{{ localeRoot }}{{ enterprise.path }}">{{ t.nav.enterprise }}</a>
-    <a href="{{ root }}#faq">{{ t.nav.faq }}</a>
-    {# Resources: everything that leaves the page, one quiet menu. #}
-    <div class="lnav-res" id="lnav-res" data-menu>
-      <button class="lnav-res-btn" id="lnav-res-btn" aria-haspopup="true" aria-expanded="false" aria-controls="lnav-res-menu">{{ t.nav.resources }}<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" width="14" height="14" aria-hidden="true"><path d="m6 9 6 6 6-6"/></svg></button>
-      <div class="lnav-res-menu" id="lnav-res-menu" role="menu">
-        <a role="menuitem" href="https://agents.gethouston.ai">{{ t.nav.agentStore }}</a>
-        <a role="menuitem" href="{{ guidesHref }}">{{ t.nav.guides }}</a>
-        <a role="menuitem" href="/vision/">{{ t.nav.vision }}</a>
-        <a role="menuitem" href="/changelog/">{{ t.nav.changelog }}</a>
-      </div>
-    </div>
+    {%- for link in links %}
+    <a href="{{ link[0] }}"{% if page.url == link[0] %} aria-current="page"{% endif %}>{{ link[1] }}</a>
+    {%- endfor %}
   </div>
   <div class="lnav-right">
     <a class="lnav-icon" href="https://github.com/gethouston/houston" target="_blank" rel="noopener noreferrer" aria-label="{{ t.nav.githubLabel }}">
@@ -44,16 +35,9 @@
   </div>
 </nav>
 <div class="lnav-drop" id="lnav-drop">
-  <a href="{{ root }}#multiplayer">{{ t.nav.multiplayer }}</a>
-  <a href="{{ root }}#agents">{{ t.nav.agents }}</a>
-  <a href="{{ root }}#compound">{{ t.nav.features }}</a>
-  <a href="{{ root }}#pricing">{{ t.nav.pricing }}</a>
-  <a href="{{ localeRoot }}{{ enterprise.path }}">{{ t.nav.enterprise }}</a>
-  <a href="{{ root }}#faq">{{ t.nav.faq }}</a>
-  <a href="https://agents.gethouston.ai">{{ t.nav.agentStore }}</a>
-  <a href="{{ guidesHref }}">{{ t.nav.guides }}</a>
-  <a href="/vision/">{{ t.nav.vision }}</a>
-  <a href="/changelog/">{{ t.nav.changelog }}</a>
+  {%- for link in links %}
+  <a href="{{ link[0] }}"{% if page.url == link[0] %} aria-current="page"{% endif %}>{{ link[1] }}</a>
+  {%- endfor %}
   <a href="https://github.com/gethouston/houston" target="_blank" rel="noopener noreferrer">{{ t.nav.github }}</a>
   {# Same three languages as the desktop menu, flattened into the sheet. #}
   {%- for code in locales.order %}

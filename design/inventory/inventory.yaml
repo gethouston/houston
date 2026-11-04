@@ -36,7 +36,7 @@
 #   a11y     roles / labels / focus expectations the surface must honor
 #   since    inventory version this component first appeared in
 
-version: 150
+version: 152
 
 components:
   - id: agent-delegation-settings
@@ -370,8 +370,8 @@ components:
   - id: composer
     title: Composer
     purpose: The signature message-input surface -- text, attachments, send/stop.
-    anatomy: [leading-attach, attachment-chips, textarea, footer-slot, queued-list, trailing-send-stop]
-    states: [ready, submitted, streaming, has-attachments, drag-over, disabled, replaced-by-override, plan-usage-hint, plan-limit]
+    anatomy: [resize-handle, leading-attach, attachment-chips, textarea, footer-slot, queued-list, trailing-send-stop]
+    states: [ready, submitted, streaming, has-attachments, drag-over, disabled, replaced-by-override, plan-usage-hint, plan-limit, manually-resized]
     variants: [single-line, multiline-expanded, phone]
     behavior: >-
       Send is gated on non-empty text/attachments; while streaming the trailing
@@ -397,7 +397,14 @@ components:
       file-type tone, the SAME mark the Files list rows and chat's file chips
       wear, so a chip and a row never disagree about what a file is. A folder
       keeps the monochrome folder glyph, since a folder has no file type.
-    a11y: labeled textarea; send/stop button state-labeled; drop zone announced; phone pickers are titled dialogs.
+      (v150) At and above the one breakpoint, a grabber on the composer's top
+      edge drags the message box taller than auto-grow (up to the viewport
+      minus room for the chat's chrome) and back down; under about two lines
+      it lets go to auto-grow, and a double-click resets it. The dragged size
+      is a floor (text past a small one still grows the box) and lasts as
+      long as the composer, never persisted. Phones have no handle and ignore
+      the dragged size. Shrinking the viewport re-clamps the manual height.
+    a11y: labeled textarea; send/stop button state-labeled; drop zone announced; phone pickers are titled dialogs; the resize handle is a labeled, focusable separator whose up and down arrow keys resize in steps, starting upward from at least the manual minimum; in auto mode its value announces the measured textarea height.
     since: 1
 
   - id: mention-autocomplete
@@ -518,8 +525,8 @@ components:
       each carry a LEFT circular number badge (the digit is the keyboard shortcut
       — pressing it selects the row whenever focus is not in a text field), a
       regular-weight label, and an optional soft "Recommended" chip (at most one
-      option). The option's wire `description` is TOLERATED but NOT rendered — the
-      label + chip say enough. The row surface is transparent until hover/selected,
+      option). (v150) An option's optional `description` shows as a small muted
+      line under the label, always visible; a row without one is unchanged. The row surface is transparent until hover/selected,
       when it fills a soft grey and reveals a trailing arrow; clicking answers and
       advances. Below the option rows is the free-text ESCAPE FIELD — an honest
       input: a hairline field border (the design system's border-input/bg-transparent
@@ -527,8 +534,11 @@ components:
       whole surface, and a border-ring focus state, so its resting look promises
       the text input it becomes. A pencil adornment sits at left and a placeholder
       ("None of these..." when options are present, else a neutral answer prompt);
-      clicking anywhere in the field focuses it, typing expands it and Enter
-      submits. The card-wide decline is NOT in this field — it lives in the
+      clicking anywhere in the field focuses it, typing grows it line by line up
+      to a cap past which it scrolls, with its send button and the skip beside
+      it held at the bottom edge (v150), and Enter submits. Below the one
+      breakpoint the skip drops its Esc keycap hint so the field keeps the
+      width. The card-wide decline is NOT in this field — it lives in the
       FOOTER. Every step kind shares ONE unified decline word ("Not now") + Esc
       keycap hint in the footer: a question's footer is that decline ALONE (no
       primary CTA — clicking an option is the advance), while a signin/connect
@@ -633,7 +643,7 @@ components:
       stays with that question), the box staying clickable to add more. The
       answer row always keeps the free-text field ("Or type your answer...")
       and Skip, without its own "+".
-    a11y: one step announced at a time, its question read as the modal title; option rows are role=radio in a radiogroup, keyboard-selectable by the left number badge's position digit and visible at rest (no hover gate), showing label + optional Recommended chip only (no description); the free-text escape field (a bordered text input with a leading pencil adornment; on a composer-replacing question it leads instead with the labeled attach button, and each attached file's chip has a labeled remove button; a wantsFiles question drops that attach button for its upload area, a real button named by its visible "Upload your files" label that Enter or Space activates) is always present on question steps and follows the fixed footer on signin/connect/credential steps; the pager's Back/Forward chevrons, collapse chevron, and dismiss X are labeled icon buttons; collapsed cards retain one muted, truncated context line; the footer's unified decline is a labeled button with an Esc keycap hint on every kind, and signin/connect add a labeled filled CTA (Enter fires it, Esc declines); a hands-on step adds TWO labeled footer buttons beside that decline, an outline "Done" confirm and a filled "Open" CTA carrying the return-key glyph (Enter opens the screen the card's title names), both absent when the screen is unrecognised or not this person's to open, so the decline is the only way on; the Manager's inline API-key card instead pairs an outline "Done" with a filled "Create key" submit (Enter in the labeled "Key name" field creates), then a filled "Done" alone once the key is shown, and the inline API access card has a single filled "Done" beside the decline. While collapsed, step shortcuts are inert; while a turn runs, every action except the collapse chevron is disabled. The "N of M" pager copy is visible text.
+    a11y: one step announced at a time, its question read as the modal title; option rows are role=radio in a radiogroup, keyboard-selectable by the left number badge's position digit and visible at rest (no hover gate), showing label + optional Recommended chip + optional muted description line; the free-text escape field (a bordered text input with a leading pencil adornment; on a composer-replacing question it leads instead with the labeled attach button, and each attached file's chip has a labeled remove button; a wantsFiles question drops that attach button for its upload area, a real button named by its visible "Upload your files" label that Enter or Space activates) is always present on question steps and follows the fixed footer on signin/connect/credential steps; the pager's Back/Forward chevrons, collapse chevron, and dismiss X are labeled icon buttons; collapsed cards retain one muted, truncated context line; the footer's unified decline is a labeled button with an Esc keycap hint on every kind, and signin/connect add a labeled filled CTA (Enter fires it, Esc declines); a hands-on step adds TWO labeled footer buttons beside that decline, an outline "Done" confirm and a filled "Open" CTA carrying the return-key glyph (Enter opens the screen the card's title names), both absent when the screen is unrecognised or not this person's to open, so the decline is the only way on; the Manager's inline API-key card instead pairs an outline "Done" with a filled "Create key" submit (Enter in the labeled "Key name" field creates), then a filled "Done" alone once the key is shown, and the inline API access card has a single filled "Done" beside the decline. While collapsed, step shortcuts are inert; while a turn runs, every action except the collapse chevron is disabled. The "N of M" pager copy is visible text.
     since: 4
 
   - id: interaction-approval-card
@@ -735,7 +745,7 @@ components:
   - id: suggest-actions
     title: Suggested action bubbles
     purpose: Optional clickable next steps shown above the composer after a mission finishes cleanly.
-    anatomy: [heading, horizontal-pill-scroller, dismiss]
+    anatomy: [heading, wrapping-pill-list, dismiss]
     states: [default]
     variants: [actions-only, actions-with-reusable]
     behavior: >-
@@ -745,6 +755,9 @@ components:
       needs_you. Dismiss hides the bubbles and clears the persisted offer;
       clicking an action starts its follow-up turn. It may appear before the
       optional suggest-reusable card on the same clean-finish frame.
+      (v150) The pills wrap onto more lines instead of scrolling sideways, so
+      every label is readable whole; a label wider than the row wraps inside
+      its pill. The heading and the dismiss X sit on the first line.
     a11y: heading and all pill buttons are visible at rest, keyboard reachable, and the dismiss control has an accessible label.
     since: 43
 
@@ -2386,7 +2399,7 @@ components:
       and disables while saving. Turning it off removes the suggestions tool,
       prompt mandate and recovery request from subsequent turns.
     a11y: The switch has a localized accessible name and supports keyboard activation.
-    since: 150
+    since: 152
 
   - id: messaging-channels-settings
     title: Messaging channels settings

@@ -55,6 +55,9 @@ export async function listRoutines(
  *   binding. Exactly one of the two. `schedule` is a cron expression, or
  *   `@every <N>m` / `@every <N>h` for every N minutes or hours when N does not
  *   divide 60 (or 24) evenly (`@every 16m`; never mixed units like `1h30m`).
+ *   Without an explicit model, Anthropic uses claude-sonnet-5-5 and
+ *   openai-codex uses gpt-6.1-terra, with an effort that model serves.
+ *   Other providers inherit the agent's model. An explicit model wins.
  * @assistant group:routines
  * @assistant confirm: money. A routine keeps firing on its own schedule once it exists, spending model budget on every run until someone stops it.
  * @assistant unschematized: a trigger binding carries the outside app's own event config, whose shape belongs to that app.

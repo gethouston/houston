@@ -1,0 +1,62 @@
+{% from "enterprise/icons.njk" import arrow %}
+{% from "refer/icons.njk" import glyph %}
+{%- set r = t.refer -%}
+{%- set b = t.referBoard.board -%}
+{%- set count = referListings.items.length -%}
+{# The request board, on the black band: industry tabs and a search over
+   every open request, each a card that opens the request's own page
+   (refer/listing-*.njk). Every card stands in the markup, so without JS the
+   board is the full list; assets/refer-board.js only filters it. #}
+<section id="companies" class="section is-dark ent-section rf-companies" data-tone="dark">
+  <div class="ent-head reveal">
+    <h2 class="sec-title">{{ r.companies.title }}</h2>
+    <p class="sec-lead">{{ r.companies.lead }}</p>
+  </div>
+
+  <div class="rf-board reveal reveal-d1" data-board data-count-one="{{ b.countOne }}" data-count-other="{{ b.countOther }}">
+    <div class="rf-board-bar">
+      <div class="rf-tabs" role="group" aria-label="{{ b.filterLabel }}">
+        <button class="rf-tab" type="button" aria-pressed="true" data-cat="">{{ glyph("all") }}<span>{{ b.all }}</span></button>
+{%- for id in referListings.categories %}
+        <button class="rf-tab" type="button" aria-pressed="false" data-cat="{{ id }}">{{ glyph(id) }}<span>{{ r.companies.categories[refer.categories.indexOf(id)] }}</span></button>
+{%- endfor %}
+      </div>
+      <label class="rf-search">{{ glyph("search") }}<input type="search" placeholder="{{ b.search }}" aria-label="{{ b.search }}" data-search></label>
+    </div>
+
+    <p class="rf-count" aria-live="polite" data-count>{{ (b.countOne if count == 1 else b.countOther) | replace("{count}", count) }}</p>
+
+    <ul class="rf-listings">
+{%- for item in referListings.items %}{% set c = t.referListings[item.slug] %}{% set f = item.fmt[locale.code] %}{% set cat = r.companies.categories[item.categoryIndex] %}
+      <li class="rf-listing" data-cat="{{ item.category }}" data-text="{{ [c.title, c.summary, cat, c.kinds] | join(' ') | lower }}">
+        <a class="rf-listing-link" href="{{ localeRoot }}{{ refer.path }}{{ item.slug }}/">
+          <p class="rf-listing-meta">{{ glyph(item.category) }}<span>{{ cat }}{% if c.size %} · {{ c.size }}{% endif %}</span></p>
+          <h3 class="rf-listing-title">{{ c.title }}</h3>
+          <p class="rf-listing-summary">{{ c.summary }}</p>
+          <div class="rf-listing-pay">
+            <div>
+              <p class="rf-listing-label">{{ b.earnUpTo }}</p>
+              <p class="rf-listing-earn">{{ f.earn }}</p>
+{%- if item.bonusUsd %}
+              <p class="rf-chip">{{ glyph("bonus") }}{{ b.includesBonus | replace("{amount}", f.bonus) }}</p>
+{%- endif %}
+            </div>
+            <span class="rf-listing-go" aria-hidden="true">{{ arrow() }}</span>
+          </div>
+          <p class="rf-listing-company">{{ glyph("company") }}<span>{{ b.companyEarns }}</span> <strong>{{ b.range | replace("{min}", f.dealMin) | replace("{max}", f.dealMax) }}</strong></p>
+        </a>
+      </li>
+{%- endfor %}
+    </ul>
+
+    <div class="rf-empty" data-empty hidden>
+      <p>{{ b.empty }}</p>
+      <button class="btn btn-ink rf-tone-btn" type="button" data-show-all>{{ b.showAll }}</button>
+    </div>
+  </div>
+
+  <div class="rf-unlisted reveal">
+    <p>{{ r.companies.notListed }}</p>
+    <a class="btn btn-ink rf-tone-btn" href="#refer">{{ r.companies.cta }}{{ arrow() }}</a>
+  </div>
+</section>

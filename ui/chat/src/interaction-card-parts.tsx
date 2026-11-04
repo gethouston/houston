@@ -72,8 +72,9 @@ export function QuestionStepBody({
  *  in the same right slot, so nothing shifts. Selection is carried by that same
  *  fill, not a border. A label longer than the row WRAPS onto more lines —
  *  never an ellipsis: the user is choosing between these sentences, so every
- *  word must be readable at any panel width (PRODUCT-1769). The option's wire
- *  `description` is intentionally NOT rendered: the label + chip say enough. */
+ *  word must be readable at any panel width (PRODUCT-1769). An option's
+ *  `description`, when present, sits under the label as a muted second line
+ *  that wraps the same way. */
 export function OptionRow({
   option,
   selected,
@@ -105,15 +106,22 @@ export function OptionRow({
       role="radio"
       type="button"
     >
-      <span className="flex min-w-0 flex-1 flex-wrap items-center gap-x-2 gap-y-1">
-        <span className="min-w-0 break-words text-ink text-sm leading-snug">
-          {option.label}
-        </span>
-        {option.recommended && (
-          <span className="shrink-0 rounded-full bg-chip px-2 py-0.5 font-medium text-[11px] text-ink-muted">
-            {recommendedLabel}
+      <span className="flex min-w-0 flex-1 flex-col gap-0.5">
+        <span className="flex min-w-0 flex-wrap items-center gap-x-2 gap-y-1">
+          <span className="min-w-0 break-words text-ink text-sm leading-snug">
+            {option.label}
           </span>
-        )}
+          {option.recommended && (
+            <span className="shrink-0 rounded-full bg-chip px-2 py-0.5 font-medium text-[11px] text-ink-muted">
+              {recommendedLabel}
+            </span>
+          )}
+        </span>
+        {option.description ? (
+          <span className="min-w-0 break-words text-ink-muted text-xs leading-snug">
+            {option.description}
+          </span>
+        ) : null}
       </span>
       {/* One right slot: the number badge at rest, the advance arrow on
           hover/selected — a crossfade in place, so the row never reflows. */}

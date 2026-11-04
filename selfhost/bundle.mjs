@@ -20,16 +20,13 @@ import { build } from "esbuild";
 //    beside the bundle ("/app/dist/runtime/openai-codex.js") and every pi
 //    OAuth derivation for a chunked provider dies at turn time. External,
 //    pi resolves its own chunks from its package directory as designed.
-//  - @earendil-works/gondolin: finds its guest assets and QEMU helpers from
-//    its own package directory (import.meta.dirname). Lazily imported, and
-//    only by a pool worker in `vm` code-execution mode.
 //  - playwright-core: reads its own package.json through __dirname (absent
 //    in this ESM bundle), requires optional chromium-bidi modules esbuild
 //    cannot resolve, and locates its browsers relative to its package.
 //    Lazily imported by the browser tool on first use only.
 //  - *.node native addons load via the filesystem by design.
 const externalImport =
-  /^@anthropic-ai\/claude-agent-sdk(?:\/|$)|^@silvia-odwyer\/photon-node(?:\/|$)|^@earendil-works\/pi-coding-agent(?:\/|$)|^@earendil-works\/gondolin(?:\/|$)|^playwright-core(?:\/|$)|\.node$/;
+  /^@anthropic-ai\/claude-agent-sdk(?:\/|$)|^@silvia-odwyer\/photon-node(?:\/|$)|^@earendil-works\/pi-coding-agent(?:\/|$)|^playwright-core(?:\/|$)|\.node$/;
 
 const externalNodeModules = {
   name: "external-unbundleables",
@@ -96,7 +93,6 @@ await Promise.all([
   for (const specifier of [
     "@anthropic-ai/claude-agent-sdk",
     "@earendil-works/pi-coding-agent",
-    "@earendil-works/gondolin",
     "playwright-core",
   ]) {
     if (!emitted.includes(`"${specifier}"`)) {

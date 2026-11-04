@@ -1,0 +1,185 @@
+/*
+ * /data-partners/refer — the sections between the fold and the form: the
+ * four steps, the open door under the request board, the key terms. Every
+ * rule has its light dress and its .is-dark one, because the page's tone
+ * flow (enterprise-flow.js) turns each section dark or light as you scroll.
+ */
+
+/* ── How referrals work: four steps on one hairline ──────────────────────── */
+.rf-steps {
+  list-style: none;
+  display: grid;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  gap: 0 clamp(20px, 3vw, 40px);
+  margin-top: clamp(48px, 7vw, 96px);
+}
+.rf-step {
+  position: relative;
+}
+/* The hairline from this glyph to the next one. */
+.rf-step:not(:last-child)::after {
+  content: "";
+  position: absolute;
+  top: 24px;
+  left: 64px;
+  right: calc(-1 * clamp(20px, 3vw, 40px) + 16px);
+  height: 1px;
+  background: var(--line-strong);
+}
+.rf-step-mark {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 48px;
+  height: 48px;
+  border-radius: 999px;
+  border: 1px solid var(--line-strong);
+  background: var(--card);
+  color: var(--ink-strong);
+}
+.rf-step-mark svg {
+  width: 20px;
+  height: 20px;
+}
+.rf-step-n {
+  display: block;
+  margin-top: 22px;
+  font-size: 13px;
+  font-weight: 600;
+  color: var(--ink-subtle);
+  font-variant-numeric: tabular-nums;
+}
+.rf-step-title {
+  margin-top: 6px;
+  font-size: clamp(19px, 1.7vw, 22px);
+  font-weight: 500;
+  letter-spacing: -0.015em;
+  color: var(--ink-strong);
+}
+.rf-step-line {
+  margin-top: 8px;
+  font-size: 15.5px;
+  line-height: 1.5;
+  color: var(--ink-muted);
+  max-width: 30ch;
+}
+.is-dark .rf-step-mark {
+  border-color: var(--line-on-ink);
+  background: transparent;
+  color: #fff;
+}
+.is-dark .rf-step:not(:last-child)::after {
+  background: var(--line-on-ink);
+}
+.is-dark .rf-step-title {
+  color: #fff;
+}
+.is-dark .rf-step-n,
+.is-dark .rf-step-line {
+  color: var(--on-ink-muted);
+}
+/* Phones and narrow tablets: a column, the hairline running down. */
+@media (max-width: 880px) {
+  .rf-steps {
+    grid-template-columns: 1fr;
+    gap: 32px;
+  }
+  .rf-step {
+    display: grid;
+    grid-template-columns: 48px minmax(0, 1fr);
+    column-gap: 18px;
+  }
+  .rf-step-mark {
+    grid-row: 1 / span 3;
+  }
+  .rf-step-n {
+    margin-top: 2px;
+  }
+  .rf-step:not(:last-child)::after {
+    top: 56px;
+    bottom: -24px;
+    left: 24px;
+    right: auto;
+    width: 1px;
+    height: auto;
+  }
+}
+
+/* The open door under the grid: one line, one pill. */
+.rf-unlisted {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: space-between;
+  gap: 20px 32px;
+  margin-top: clamp(32px, 4vw, 48px);
+  padding-top: clamp(24px, 3vw, 32px);
+  border-top: 1px solid var(--line);
+}
+.rf-unlisted p {
+  max-width: 52ch;
+  font-size: clamp(16px, 1.4vw, 18px);
+  line-height: 1.5;
+  color: var(--ink-muted);
+}
+.is-dark .rf-unlisted {
+  border-color: var(--line-on-ink);
+}
+.is-dark .rf-unlisted p {
+  color: var(--on-ink-muted);
+}
+@media (max-width: 640px) {
+  .rf-unlisted .btn {
+    width: 100%;
+  }
+}
+
+/* ── Key terms: three columns under a hairline ─────────────────────────── */
+.rf-terms-title {
+  max-width: 20ch;
+}
+.rf-terms-grid {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 32px clamp(24px, 4vw, 56px);
+  margin-top: clamp(40px, 6vw, 72px);
+}
+.rf-terms-group {
+  padding-top: 20px;
+  border-top: 1px solid var(--line-strong);
+}
+.rf-terms-group h3 {
+  font-size: 17px;
+  font-weight: 600;
+  color: var(--ink-strong);
+}
+.rf-terms-group ul {
+  list-style: none;
+  display: grid;
+  gap: 14px;
+  margin-top: 16px;
+}
+.rf-terms-group li {
+  font-size: 15px;
+  line-height: 1.55;
+  color: var(--ink-muted);
+}
+.is-dark .rf-terms-group {
+  border-color: var(--line-on-ink);
+}
+.is-dark .rf-terms-group h3 {
+  color: #fff;
+}
+.is-dark .rf-terms-group li {
+  color: var(--on-ink-muted);
+}
+@media (max-width: 880px) {
+  .rf-terms-grid {
+    grid-template-columns: 1fr;
+  }
+}
+
+/* ── FAQ: the landing's list, a little more air above ─────────────────── */
+.rf-faq .faq-head .sec-title {
+  max-width: none;
+}

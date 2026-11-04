@@ -1,0 +1,29 @@
+{%- set r = t.refer -%}
+{%- set lp = t.referBoard.listing -%}
+{# A request's own page: the form card (refer/form-card.njk) on the right,
+   and on the left what happens to a referral once it is sent, the four
+   states the team emails about. /data-partners/refer carries the same card
+   in its fold instead (refer/hero.njk). #}
+<section id="refer" class="section ent-section rf-refer" data-tone="light">
+  <div class="rf-refer-grid">
+    <div class="rf-refer-copy reveal">
+      <h2 class="sec-title">{{ lp.formTitle }}</h2>
+      <p class="sec-lead">{{ lp.formLead }}</p>
+      <h3 class="rf-track-title">{{ r.track.title }}</h3>
+      <ol class="rf-track">
+{%- for state in r.track.states %}
+        <li class="rf-track-step" data-state="{{ refer.states[loop.index0] }}">
+          <span class="rf-track-dot" aria-hidden="true"></span>
+          <p class="rf-track-label">{{ state.label }}</p>
+          <p class="rf-track-line">{{ state.line }}</p>
+        </li>
+{%- endfor %}
+      </ol>
+      <p class="rf-track-note">{{ r.track.note }}</p>
+    </div>
+
+    <div class="reveal reveal-d1">
+{% include "refer/form-card.njk" %}
+    </div>
+  </div>
+</section>

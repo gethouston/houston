@@ -17,16 +17,9 @@ import { type LiveTurnPin, liveTurns } from "./live-turn";
 import { handleSandboxRoutines } from "./routines-sandbox";
 
 /**
- * The agent's `save_routine` write route. Under test here: WHICH PROVIDER a
- * routine the agent creates ends up running on (PRODUCT-1842).
- *
- * The agent never names a provider (its tool schema has none), so every routine
- * it saved was unpinned and fired on the runtime's last-used provider - a local
- * model the user had picked once and never connected, while the chat that
- * authored the routine ran on Claude. A new routine now inherits the pair the
- * authoring turn was sent with (recorded on the live turn by the host, never
- * taken from the runtime's own word); an explicit pin and an update are left
- * alone, and a save with no recorded turn stays unpinned as before.
+ * Chat-created routines inherit the authoring provider, with cheaper defaults
+ * for unattended Anthropic and Codex runs. Explicit models and updates retain
+ * the user's choice; a save without a recorded turn stays unpinned.
  */
 
 const paths = new LocalPaths();
@@ -271,15 +264,15 @@ beforeEach(async () => {
   root = paths.agentRoot(ws, agent);
 });
 
-test("a new routine runs on the pair the authoring chat runs on", async () => {
+test("a new Anthropic routine uses Sonnet instead of its authoring Opus model", async () => {
   const r = await save(BASE, {
-    pin: { provider: "anthropic", model: "claude-sonnet-5", effort: "medium" },
+    pin: { provider: "anthropic", model: "claude-opus-5-5", effort: "medium" },
   });
   expect(r.status).toBe(201);
   const [routine] = await onDisk();
   expect(routine).toMatchObject({
     provider: "anthropic",
-    model: "claude-sonnet-5",
+    model: "claude-sonnet-5-5",
     effort: "medium",
   });
   expect(events).toEqual([{ type: "RoutinesChanged", agentPath: agent.id }]);
@@ -290,18 +283,18 @@ test("the stamped provider is stored in pi's canonical dialect", async () => {
   await save(BASE, { pin: { provider: "openai", model: "gpt-5.5" } });
   expect((await onDisk())[0]).toMatchObject({
     provider: "openai-codex",
-    model: "gpt-5.5",
+    model: "gpt-6.1-terra",
   });
 });
 
 test("a provider the agent named explicitly is kept", async () => {
   await save(
-    { ...BASE, provider: "google", model: "gemini-3.5-pro" },
+    { ...BASE, provider: "google", model: "gemini-3.8-flash" },
     { pin: { provider: "anthropic", model: "claude-sonnet-5" } },
   );
   expect((await onDisk())[0]).toMatchObject({
     provider: "google",
-    model: "gemini-3.5-pro",
+    model: "gemini-3.8-flash",
     effort: null,
   });
 });
@@ -395,4 +388,114 @@ test("limits the runtime puts in the save body itself are ignored", async () => 
   expect(r.status).toBe(201);
   expect(await onDisk()).toHaveLength(1);
   expect((await onDisk())[0]).not.toHaveProperty("limits");
+});
+
+test.each([
+  ["medium", "low"],
+  ["high", "low"],
+  ["xhigh", "max"],
+  ["max", "max"],
+  ["low", "low"],
+])("a Codex routine uses Terra with valid effort instead of Astra's %s", async (effort, expected) => {
+  await save(BASE, {
+    pin: { provider: "openai-codex", model: "gpt-6-astra", effort },
+  });
+  expect((await onDisk())[0]).toMatchObject({
+    provider: "openai-codex",
+    model: "gpt-6.1-terra",
+    effort: expected,
+  });
+});
+
+test("another provider keeps its authoring model and effort", async () => {
+  await save(BASE, {
+    pin: { provider: "google", model: "gemini-3.5-pro", effort: "high" },
+  });
+  expect((await onDisk())[0]).toMatchObject({
+    provider: "google",
+    model: "gemini-3.5-pro",
+    effort: "high",
+  });
+});
+
+test("an explicit model overrides the new routine default", async () => {
+  await save(
+    { ...BASE, model: "claude-opus-5-5" },
+    {
+      pin: { provider: "anthropic", model: "claude-opus-5-5", effort: "high" },
+    },
+  );
+  expect((await onDisk())[0]).toMatchObject({
+    provider: "anthropic",
+    model: "claude-opus-5-5",
+    effort: "high",
+  });
+});
+
+test("chat model and effort edits change only the passed fields", async () => {
+  const pin = {
+    provider: "anthropic",
+    model: "claude-opus-5-5",
+    effort: "high",
+  };
+  const created = await save(
+    { ...BASE, model: "claude-opus-5-5", effort: "max" },
+    { pin },
+  );
+  expect(created.status).toBe(201);
+  const id = (created.body as Routine).id;
+  expect((await onDisk())[0]).toMatchObject({
+    provider: "anthropic",
+    model: "claude-opus-5-5",
+    effort: "max",
+  });
+  expect((await save({ id, model: "claude-sonnet-5-5" }, { pin })).status).toBe(
+    200,
+  );
+  expect((await onDisk())[0]).toMatchObject({
+    model: "claude-sonnet-5-5",
+    effort: "max",
+  });
+  expect((await save({ id, effort: "low" }, { pin })).status).toBe(200);
+  expect((await save({ id, prompt: "Only unread" }, { pin })).status).toBe(200);
+  expect((await onDisk())[0]).toMatchObject({
+    model: "claude-sonnet-5-5",
+    effort: "low",
+  });
+});
+
+test("chat refuses a model outside its provider on create and update", async () => {
+  const pin = { provider: "anthropic", model: "claude-opus-5-5" };
+  const refused = await save({ ...BASE, model: "gpt-6.1-terra" }, { pin });
+  expect(refused.status).toBe(400);
+  expect(await onDisk()).toEqual([]);
+  const created = await save(BASE, { pin });
+  const id = (created.body as Routine).id;
+  const original = await onDisk();
+  expect((await save({ id, model: "made-up-model" }, { pin })).status).toBe(
+    400,
+  );
+  expect(await onDisk()).toEqual(original);
+});
+
+test("updating an existing Opus routine never changes its model", async () => {
+  await save({
+    ...BASE,
+    provider: "anthropic",
+    model: "claude-opus-5-5",
+    effort: "high",
+  });
+  const [original] = await onDisk();
+  await save(
+    { id: original?.id, prompt: "Only unread emails." },
+    {
+      pin: { provider: "openai-codex", model: "gpt-6-astra", effort: "xhigh" },
+    },
+  );
+  expect((await onDisk())[0]).toMatchObject({
+    provider: "anthropic",
+    model: "claude-opus-5-5",
+    effort: "high",
+    prompt: "Only unread emails.",
+  });
 });

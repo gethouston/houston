@@ -137,7 +137,9 @@ if (!env.FIREBASE_API_KEY)
 const PORTS = [
   [5433, "postgres"],
   [9080, "gateway"],
+  [9091, "gateway metrics"],
   [8081, "control-plane"],
+  [9092, "control-plane metrics"],
   [4318, "local host"],
   [1430, "web app"],
   [1420, "desktop app dev server"],
