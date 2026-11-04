@@ -1,4 +1,8 @@
-import type { ChatMessage, RoutineRun } from "@houston/protocol";
+import {
+  type ChatMessage,
+  isCompactionSummary,
+  type RoutineRun,
+} from "@houston/protocol";
 import type { Agent, Workspace } from "../domain/types";
 import { conversationKey, type WorkspacePaths } from "../paths";
 import type { Vfs } from "../vfs";
@@ -31,7 +35,12 @@ function replyAfter(
   for (let i = conversation.messages.length - 1; i >= 0; i--) {
     const m = conversation.messages[i];
     if (!m) continue;
-    if (m.role === "assistant" && m.ts >= startedAtMs) return m;
+    if (
+      m.role === "assistant" &&
+      m.ts >= startedAtMs &&
+      !isCompactionSummary(m, conversation.messages[i + 1])
+    )
+      return m;
   }
   return null;
 }
@@ -42,8 +51,12 @@ function turnReply(
   conversation: StoredConversation | null,
   run: RoutineRun,
 ): ChatMessage | null {
-  const own = conversation?.messages.findLast(
-    (m) => m.role === "assistant" && m.turnId === run.id,
+  const messages = conversation?.messages ?? [];
+  const own = messages.findLast(
+    (m, i) =>
+      m.role === "assistant" &&
+      m.turnId === run.id &&
+      !isCompactionSummary(m, messages[i + 1]),
   );
   return own ?? replyAfter(conversation, Date.parse(run.started_at));
 }

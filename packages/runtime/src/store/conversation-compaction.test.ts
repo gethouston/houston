@@ -25,6 +25,8 @@ test("checkpoint and summary marker are durable in the conversation file", () =>
   expect(stored.messages.at(-1)).toMatchObject({
     content: "The real summary",
     compaction: { trigger: "native" },
+    // The model's memory, not a reply: the chat shows only the divider.
+    compactionSummary: true,
   });
   expect(createCompactionCheckpoints(dir).read("c")).toEqual(checkpoint);
 });
@@ -39,6 +41,7 @@ test("the command's marker updates the summary marker without an empty duplicate
     expect.objectContaining({
       content: "The real summary",
       compaction: { trigger: "manual", pre_tokens: 100 },
+      compactionSummary: true,
       turnId: "compact",
     }),
   ]);

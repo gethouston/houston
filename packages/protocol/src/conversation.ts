@@ -386,6 +386,13 @@ export interface ChatMessage {
     pre_tokens?: number | null;
   };
   /**
+   * Set on the message holding a Claude compaction's summary. The summary is
+   * the model's memory of the turns before it: a transcript replay carries it,
+   * the chat never shows it (only the `compaction` divider). See
+   * `isCompactionSummary` for summaries stored before this flag existed.
+   */
+  compactionSummary?: true;
+  /**
    * Set on the marker message a `/clear` command writes. Two jobs: the chat
    * replays the boundary divider from it after a reload, and the transcript
    * replay that rebuilds a backend session starts AFTER the newest one — which
