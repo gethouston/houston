@@ -21,16 +21,25 @@ import { HOUSTON_MCP_SERVER_NAME } from "./custom-tools";
  *    missing or non-`connected` `houston` entry means no Houston tool will
  *    answer this turn;
  *  - a tool_result whose error names a `mcp__houston__*` tool as unavailable,
- *    for an SDK that reports `connected` yet never routes the call.
+ *    for an SDK that reports `connected` yet never routes the call. It counts
+ *    only for a tool this turn offered (`offered`, the turn's allowedTools):
+ *    the set changes between turns (Next-step suggestions switched off drops
+ *    `suggest_actions`), and a resumed session still calls a tool it used on an
+ *    earlier turn. That call gets the error back and the turn goes on; reading
+ *    it as a lost server would rerun the turn fresh for nothing.
  *
  * The session treats either as a lost resume: abandon the attempt, drop the
  * SDK session mapping, and rerun the prompt as a fresh session carrying the
  * canonical history — the same path a rejected resume already takes.
  */
 
-const MISSING_HOUSTON_TOOL = /No such tool available:\s*mcp__houston__/;
+const MISSING_HOUSTON_TOOL = /No such tool available:\s*(mcp__houston__[\w-]+)/;
 
-export function houstonToolServerLost(msg: SDKMessage): boolean {
+/** `offered` undefined: the turn's tool list is unknown, so any houston tool counts. */
+export function houstonToolServerLost(
+  msg: SDKMessage,
+  offered?: readonly string[],
+): boolean {
   if (msg.type === "system" && msg.subtype === "init") {
     const servers = (msg as { mcp_servers?: unknown }).mcp_servers;
     if (!Array.isArray(servers)) return false;
@@ -45,9 +54,10 @@ export function houstonToolServerLost(msg: SDKMessage): boolean {
   if (msg.type === "user") {
     const content = (msg as { message?: { content?: unknown } }).message
       ?.content;
-    return toolResultTexts(content).some((text) =>
-      MISSING_HOUSTON_TOOL.test(text),
-    );
+    return toolResultTexts(content).some((text) => {
+      const tool = MISSING_HOUSTON_TOOL.exec(text)?.[1];
+      return tool !== undefined && (!offered || offered.includes(tool));
+    });
   }
   return false;
 }
