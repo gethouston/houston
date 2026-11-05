@@ -255,7 +255,11 @@ export function useMissionControl(agents: Agent[]) {
             buildPrompt:
               files.length > 0
                 ? async () => {
-                    const saved = await tauriAttachments.save(scopeId, files);
+                    const saved = await tauriAttachments.save(
+                      agentPath,
+                      scopeId,
+                      files,
+                    );
                     return buildAttachmentPrompt(text, files, saved);
                   }
                 : undefined,
@@ -271,7 +275,7 @@ export function useMissionControl(agents: Agent[]) {
         return;
       }
       try {
-        const paths = await tauriAttachments.save(scopeId, files);
+        const paths = await tauriAttachments.save(agentPath, scopeId, files);
         const prompt = buildAttachmentPrompt(text, files, paths);
         // Mission Control is cross-agent: the mission's stored provider/model
         // is the per-activity override the chat picker shows, and the engine
@@ -356,6 +360,7 @@ export function useMissionControl(agents: Agent[]) {
             titleText: visible,
             buildPrompt: async (activityId) => {
               const saved = await tauriAttachments.save(
+                agentPath,
                 `activity-${activityId}`,
                 files,
               );

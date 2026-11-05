@@ -637,7 +637,11 @@ export const tauriChat = {
 // ─── Composer attachments ─────────────────────────────────────────────
 
 export const tauriAttachments = {
-  save: async (scopeId: string, files: File[]): Promise<string[]> => {
+  save: async (
+    agentPath: string,
+    scopeId: string,
+    files: File[],
+  ): Promise<string[]> => {
     if (files.length === 0) return [];
     // A stale composer attachment (the backing file changed on disk before
     // send) is the user's environment, not a Houston bug: logged, but no
@@ -645,7 +649,7 @@ export const tauriAttachments = {
     // `showSendFailedToast`.
     return call<string[]>(
       "save_attachments",
-      () => getEngine().saveAttachments(scopeId, files),
+      () => getEngine().saveAttachments(agentPath, scopeId, files),
       undefined,
       { silence: isStaleAttachmentError },
     );

@@ -73,7 +73,7 @@ export function useSendInteractionMessage(args: {
         { text, mode: mode ?? turnMode, approvals, files },
         {
           resolvePin: resolveSendPin,
-          save: (picked) => tauriAttachments.save(sessionKey, picked),
+          save: (picked) => tauriAttachments.save(path, sessionKey, picked),
           send: (prompt, opts) =>
             tauriChat.send(path, prompt, sessionKey, opts),
           onSent: (sent) => {

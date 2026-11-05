@@ -43,7 +43,7 @@ afterEach(() => {
 const client = () =>
   new HoustonClient({ baseUrl: BASE, token: "t", controlPlane: true });
 
-/** A cloud client with `agentId` selected — what `saveAttachments` uploads into. */
+/** A cloud client whose selected agent can differ from the upload target. */
 const clientWithAgent = (agentId: string) => {
   const c = client();
   localStorage.setItem(LAST_AGENT_PREF, agentId);
@@ -201,13 +201,13 @@ test("uploadProjectFiles asks nothing when handed no files", async () => {
   expect(calls).toEqual([]);
 });
 
-test("saveAttachments posts the selected agent's attachments route", async () => {
+test("saveAttachments posts the target agent's route while another agent is selected", async () => {
   stubFetch(() => json(200, { paths: ["uploads/a.txt"] }));
-  const c = clientWithAgent("a 1");
+  const c = clientWithAgent("b1");
   c.setActiveOrg(ORG);
 
   await expect(
-    c.saveAttachments("conv-1", [webFile("a.txt", "a", "folder/a.txt")]),
+    c.saveAttachments("a 1", "conv-1", [webFile("a.txt", "a", "folder/a.txt")]),
   ).resolves.toEqual(["uploads/a.txt"]);
 
   expect(calls).toHaveLength(1);
@@ -225,15 +225,19 @@ test("saveAttachments posts the selected agent's attachments route", async () =>
   expectGatewayHeaders(post);
 });
 
-test("saveAttachments collects the paths of every batch it sends", async () => {
+test("saveAttachments targets every batch without a selected agent", async () => {
   let n = 0;
   stubFetch(() => json(200, { paths: [`uploads/${n++}.txt`] }));
   const files = Array.from({ length: 26 }, (_, i) => webFile(`f${i}.txt`, "x"));
 
-  const paths = await clientWithAgent("a1").saveAttachments("conv-1", files);
+  const paths = await client().saveAttachments("a1", "conv-1", files);
 
   expect(calls).toHaveLength(2);
   expect(paths).toEqual(["uploads/0.txt", "uploads/1.txt"]);
+  expect(calls.map((call) => `${call.method} ${call.url}`)).toEqual([
+    "POST http://host/agents/a1/attachments",
+    "POST http://host/agents/a1/attachments",
+  ]);
 });
 
 // ---- what stayed in the adapter ----
