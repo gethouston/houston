@@ -21,7 +21,9 @@ const configured = {
 };
 
 async function fixture(
-  pin: Pick<TurnRequest, "provider" | "model" | "effort"> = {},
+  pin: Partial<
+    Pick<TurnRequest, "provider" | "model" | "effort" | "credential">
+  > = {},
   routines?: unknown[],
 ) {
   const agent = await agentStore(routines);
@@ -74,6 +76,32 @@ test("a pooled turn following the configured agent uses Sonnet for new routines"
     });
     expect(await storedRoutines(agent)).toMatchObject([
       { provider: "anthropic", model: "claude-sonnet-5-5", effort: "high" },
+    ]);
+  } finally {
+    await sandbox.dispose();
+  }
+});
+
+test.each([
+  [undefined, "gpt-6.1-terra"],
+  ["gpt-6-astra", "gpt-6-astra"],
+])("a legacy Codex credential overrides the Anthropic config with explicit model %s", async (model, expectedModel) => {
+  const { agent, sandbox, save } = await fixture({
+    credential: {
+      provider: "openai-codex",
+      access: "test-access",
+      expires: 4102444800,
+      accountId: null,
+      kind: "oauth",
+    },
+    model: "gpt-6-astra",
+    effort: "max",
+  });
+  try {
+    const response = await save({ ...daily, ...(model ? { model } : {}) });
+    expect(response.status).toBe(201);
+    expect(await storedRoutines(agent)).toMatchObject([
+      { provider: "openai-codex", model: expectedModel, effort: "max" },
     ]);
   } finally {
     await sandbox.dispose();

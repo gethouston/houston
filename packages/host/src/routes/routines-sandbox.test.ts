@@ -541,6 +541,16 @@ test.each([
   ],
   ["openai", "gpt-6-astra", "medium", "openai-codex", "gpt-6.1-terra", "low"],
   ["google", "gemini-3.5-pro", "high", "google", "gemini-3.5-pro", "high"],
+  ["qwen", "qwen3.7-max", "high", "qwen", "qwen3.7-max", "high"],
+  ["xai", "grok-4", "high", "xai", "grok-4", "high"],
+  [
+    "groq",
+    "llama-3.3-70b-versatile",
+    "high",
+    "groq",
+    "llama-3.3-70b-versatile",
+    "high",
+  ],
 ])("an unpinned chat uses configured %s/%s at %s for routine creation", async (provider, model, effort, expectedProvider, expectedModel, expectedEffort) => {
   await saveConfig(vfs, root, { provider, model, effort });
   const result = await save(BASE);
@@ -551,6 +561,25 @@ test.each([
     effort: expectedEffort,
   });
   expect(events).toEqual([{ type: "RoutinesChanged", agentPath: agent.id }]);
+});
+
+test.each([
+  "qwen",
+  "xai",
+  "groq",
+])("a turn pinned to %s can create a routine", async (provider) => {
+  expect((await save(BASE, { pin: { provider } })).status).toBe(201);
+  expect((await onDisk())[0]?.provider).toBe(provider);
+});
+
+test("an explicit typo provider is refused without saving or emitting", async () => {
+  const response = await save({ ...BASE, provider: "anthorpic" });
+  expect(response).toMatchObject({
+    status: 400,
+    body: { error: "unknown provider: anthorpic" },
+  });
+  expect(await onDisk()).toEqual([]);
+  expect(events).toEqual([]);
 });
 
 test.each([
