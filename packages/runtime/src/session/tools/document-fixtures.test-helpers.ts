@@ -1,5 +1,7 @@
 import { deflateSync } from "node:zlib";
+import type { ExtensionToolContext } from "@earendil-works/pi-coding-agent";
 import { strToU8, zipSync } from "fflate";
+import { makeClampedFileTools } from "./clamped-fs";
 
 export const spanishSentence = "Política de honorarios y facturación";
 
@@ -40,16 +42,37 @@ export function pdfWithPages(pages: string[]): Buffer {
   return Buffer.from(pdf, "latin1");
 }
 
-export function docxWithBody(body: string): Uint8Array {
+export function docxWithBody(
+  body: string,
+  mainPart = "word/document.xml",
+): Uint8Array {
   return zipSync({
     "[Content_Types].xml": strToU8(
-      '<Types xmlns="http://schemas.openxmlformats.org/package/2006/content-types"><Override PartName="/word/document.xml" ContentType="application/vnd.openxmlformats-officedocument.wordprocessingml.document.main+xml"/></Types>',
+      `<Types xmlns="http://schemas.openxmlformats.org/package/2006/content-types"><Override PartName="/${mainPart.replace(/^\//, "")}" ContentType="application/vnd.openxmlformats-officedocument.wordprocessingml.document.main+xml"/></Types>`,
     ),
     "_rels/.rels": strToU8(
-      '<Relationships xmlns="http://schemas.openxmlformats.org/package/2006/relationships"><Relationship Id="rId1" Type="http://schemas.openxmlformats.org/officeDocument/2006/relationships/officeDocument" Target="word/document.xml"/></Relationships>',
+      `<Relationships xmlns="http://schemas.openxmlformats.org/package/2006/relationships"><Relationship Id="rId1" Type="http://schemas.openxmlformats.org/officeDocument/2006/relationships/officeDocument" Target="${mainPart}"/></Relationships>`,
     ),
-    "word/document.xml": strToU8(
+    [mainPart.replace(/^\//, "")]: strToU8(
       `<w:document xmlns:w="http://schemas.openxmlformats.org/wordprocessingml/2006/main"><w:body>${body}</w:body></w:document>`,
     ),
   });
+}
+
+export async function readDocument(
+  workspace: string,
+  path: string,
+  paging: { offset?: number; limit?: number } = {},
+) {
+  const tool = makeClampedFileTools(workspace).find(
+    (tool) => tool.name === "read",
+  );
+  if (!tool) throw new Error("Missing read tool");
+  return tool.execute(
+    "read-document",
+    { path, ...paging },
+    undefined,
+    undefined,
+    {} as ExtensionToolContext,
+  );
 }

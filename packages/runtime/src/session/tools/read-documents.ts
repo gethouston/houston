@@ -5,69 +5,55 @@ import {
   detectSupportedImageMimeTypeFromFile,
   type ReadOperations,
 } from "@earendil-works/pi-coding-agent";
-import { strFromU8, unzipSync } from "fflate";
-import { SaxesParser } from "saxes";
-import { extractText } from "unpdf";
-
-function docxText(xml: string): string {
-  const parser = new SaxesParser({ xmlns: true });
-  const parts: string[] = [];
-  let inText = false;
-  parser.on("opentag", (tag) => {
-    if (
-      tag.uri !==
-        "http://schemas.openxmlformats.org/wordprocessingml/2006/main" &&
-      tag.uri !== "http://purl.oclc.org/ooxml/wordprocessingml/main"
-    )
-      return;
-    if (tag.local === "t") inText = true;
-    if (tag.local === "tab") parts.push("\t");
-    if (tag.local === "br" || tag.local === "cr") parts.push("\n");
-  });
-  parser.on("text", (text) => {
-    if (inText) parts.push(text);
-  });
-  parser.on("closetag", (tag) => {
-    if (tag.local === "t") inText = false;
-    if (tag.local === "p") parts.push("\n");
-  });
-  parser.write(xml).close();
-  return parts.join("");
-}
+import { extractText, getDocumentProxy } from "unpdf";
+import { readWordDocument } from "./read-word-document";
 
 export const documentReadOperations: ReadOperations = {
   access: (path) => access(path, constants.R_OK),
   detectImageMimeType: detectSupportedImageMimeTypeFromFile,
   async readFile(path) {
     const buffer = await readFile(path);
+    // PDF magic is distinctive; Word needs its extension because DOCX is a generic ZIP, like XLSX/PPTX.
     if (buffer.subarray(0, 5).toString("latin1") === "%PDF-") {
       try {
-        const { text, totalPages } = await extractText(new Uint8Array(buffer));
-        if (!text.some((page) => page.trim())) {
+        const pdf = await getDocumentProxy(new Uint8Array(buffer), {
+          verbosity: 0,
+        });
+        try {
+          const { text, totalPages } = await extractText(pdf);
+          if (!text.some((page) => page.trim())) {
+            return Buffer.from(
+              `PDF has ${totalPages} ${totalPages === 1 ? "page" : "pages"} and no extractable text. It may contain scanned images; an OCR copy is needed to read it.`,
+            );
+          }
           return Buffer.from(
-            `PDF has ${totalPages} pages and no extractable text. It may contain scanned images; an OCR copy is needed to read it.`,
+            text
+              .map((page, i) => `--- Page ${i + 1} ---\n${page}`)
+              .join("\n\n"),
           );
+        } finally {
+          await pdf.loadingTask.destroy();
         }
-        return Buffer.from(
-          text.map((page, i) => `--- Page ${i + 1} ---\n${page}`).join("\n\n"),
-        );
       } catch (error) {
         if (error instanceof Error && error.name === "PasswordException") {
           return Buffer.from(
             "This PDF is locked. Its text cannot be read until the person shares an unlocked copy.",
           );
         }
+        if (
+          error instanceof Error &&
+          (error.name === "InvalidPDFException" || error.name === "FormatError")
+        ) {
+          return Buffer.from(
+            "This PDF file looks damaged, so its text can't be read. Ask the person for a fresh copy.",
+          );
+        }
         throw error;
       }
     }
-    if (
-      extname(path).toLowerCase() === ".docx" &&
-      buffer.subarray(0, 4).toString("latin1") === "PK\x03\x04"
-    ) {
-      const document = unzipSync(buffer, {
-        filter: (file) => file.name === "word/document.xml",
-      })["word/document.xml"];
-      if (document) return Buffer.from(docxText(strFromU8(document)));
+    const extension = extname(path).toLowerCase();
+    if (extension === ".docx" || extension === ".doc") {
+      return Buffer.from(readWordDocument(buffer));
     }
     return buffer;
   },
