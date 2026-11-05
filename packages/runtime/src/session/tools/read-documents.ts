@@ -40,10 +40,7 @@ export const documentReadOperations: ReadOperations = {
             "This PDF is locked. Its text cannot be read until the person shares an unlocked copy.",
           );
         }
-        if (
-          error instanceof Error &&
-          (error.name === "InvalidPDFException" || error.name === "FormatError")
-        ) {
+        if (isDamagedPdfError(error)) {
           return Buffer.from(
             "This PDF file looks damaged, so its text can't be read. Ask the person for a fresh copy.",
           );
@@ -53,8 +50,28 @@ export const documentReadOperations: ReadOperations = {
     }
     const extension = extname(path).toLowerCase();
     if (extension === ".docx" || extension === ".doc") {
-      return Buffer.from(readWordDocument(buffer));
+      const text = readWordDocument(buffer);
+      if (text !== undefined) return Buffer.from(text);
     }
     return buffer;
   },
 };
+
+// pdf.js rethrows parser errors from its worker as UnknownErrorException and
+// keeps the original class only as the prefix of `details`. Anything else
+// wrapped that way (a TypeError, say) is a pdf.js bug and must still throw.
+const PDF_FORMAT_ERRORS = [
+  "FormatError",
+  "XRefEntryException",
+  "XRefParseException",
+  "ParserEOFException",
+];
+
+function isDamagedPdfError(error: unknown): boolean {
+  if (!(error instanceof Error)) return false;
+  if (error.name === "InvalidPDFException") return true;
+  if (error.name !== "UnknownErrorException" || !("details" in error))
+    return false;
+  const details = String(error.details);
+  return PDF_FORMAT_ERRORS.some((name) => details.startsWith(name));
+}

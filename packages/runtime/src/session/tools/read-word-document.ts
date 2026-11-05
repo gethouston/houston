@@ -7,8 +7,11 @@ const WORD_NAMESPACES = new Set([
   "http://purl.oclc.org/ooxml/wordprocessingml/main",
 ]);
 const MAX_PART_SIZE = 64 * 1024 * 1024;
-const UNREADABLE_WORD =
+const CFB_MAGIC = Buffer.from("d0cf11e0a1b11ae1", "hex");
+const LOCKED_OR_LEGACY_WORD =
   "This Word file is locked or in the old .doc format, so its text can't be read here. Ask the person for an unlocked .docx or a PDF.";
+const NOT_WORD =
+  "This file has a Word extension but no Word document inside, so its text can't be read here. Ask the person for the original .docx or a PDF.";
 const LARGE_WORD =
   "This Word document is too large to read here. Ask the person for a smaller copy or a PDF.";
 const DAMAGED_ZIP_CODES: ReadonlySet<number> = new Set([
@@ -63,8 +66,14 @@ function docxText(xml: string): string {
   return parts.join("");
 }
 
-export function readWordDocument(buffer: Buffer): string {
-  if (buffer.subarray(0, 2).toString("latin1") !== "PK") return UNREADABLE_WORD;
+/**
+ * Text of a .docx/.doc, a note when it can't be read, or undefined for content
+ * that isn't a Word container at all: RTF or HTML saved as .doc is already
+ * text, so pi's plain read handles it.
+ */
+export function readWordDocument(buffer: Buffer): string | undefined {
+  if (buffer.subarray(0, 8).equals(CFB_MAGIC)) return LOCKED_OR_LEGACY_WORD;
+  if (buffer.subarray(0, 2).toString("latin1") !== "PK") return undefined;
   try {
     let oversized = false;
     const readPart = (name: string) =>
@@ -99,7 +108,7 @@ export function readWordDocument(buffer: Buffer): string {
     }
     const document = readPart(mainPart);
     if (oversized) return LARGE_WORD;
-    return document ? docxText(strFromU8(document)) : UNREADABLE_WORD;
+    return document ? docxText(strFromU8(document)) : NOT_WORD;
   } catch (error) {
     if (
       error instanceof DamagedWordXml ||

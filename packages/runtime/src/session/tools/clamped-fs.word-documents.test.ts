@@ -62,16 +62,25 @@ test.each([
   );
 });
 
-test.each([
-  ["archive.docx", zipSync({ "notes.txt": strToU8("ordinary archive") })],
-  ["plain.docx", strToU8("ordinary text")],
-  ["short.docx", strToU8("x")],
-  ["empty.docx", new Uint8Array()],
-])("returns a note for Word files without a main document part: %s", async (path, data) => {
-  await writeFile(join(workspace, path), data);
-  expect((await readDocument(workspace, path)).structuredContent).toBe(
-    "This Word file is locked or in the old .doc format, so its text can't be read here. Ask the person for an unlocked .docx or a PDF.",
+test("returns a note for a zip with a Word extension but no Word document", async () => {
+  await writeFile(
+    join(workspace, "archive.docx"),
+    zipSync({ "notes.txt": strToU8("ordinary archive") }),
   );
+  expect(
+    (await readDocument(workspace, "archive.docx")).structuredContent,
+  ).toBe(
+    "This file has a Word extension but no Word document inside, so its text can't be read here. Ask the person for the original .docx or a PDF.",
+  );
+});
+
+test.each([
+  ["export.doc", "<html><body><p>Exportado desde la web</p></body></html>"],
+  ["saved.doc", "{\\rtf1\\ansi Texto en RTF}"],
+  ["plain.docx", "ordinary text"],
+])("reads text saved with a Word extension as plain text: %s", async (path, text) => {
+  await writeFile(join(workspace, path), text);
+  expect((await readDocument(workspace, path)).structuredContent).toBe(text);
 });
 
 test.each([

@@ -73,8 +73,19 @@ test("returns a note for locked PDFs without exposing their bytes", async () => 
   expect(JSON.stringify(result.content)).not.toContain("%PDF");
 });
 
-test("returns a fixed note for a damaged PDF", async () => {
-  await writeFile(join(workspace, "broken.pdf"), "%PDF-1.4\nbroken");
+test.each([
+  ["no structure", Buffer.from("%PDF-1.4\nbroken")],
+  [
+    "a page object missing its obj keyword",
+    Buffer.from(
+      pdfWithPages(["Uno", "Dos", "Tres"])
+        .toString("latin1")
+        .replace("\n6 0 obj\n", "\n6 0 \n"),
+      "latin1",
+    ),
+  ],
+])("returns a fixed note for a damaged PDF: %s", async (_, data) => {
+  await writeFile(join(workspace, "broken.pdf"), data);
   const log = vi.spyOn(console, "log");
   const warn = vi.spyOn(console, "warn");
   try {
