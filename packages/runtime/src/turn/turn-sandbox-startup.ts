@@ -1,3 +1,4 @@
+import { liveTurnPin } from "@houston/host/src/routes/live-turn-pin";
 import type { TurnServerDeps } from "./server-types";
 import { startTurnCoordinator } from "./turn-coordinator";
 import type { TurnFilesystem } from "./turn-filesystem";
@@ -49,6 +50,7 @@ export function createTurnSandbox(input: {
     conversationId: turn.conversationId,
     ...(turn.actingAs ? { actingAs: turn.actingAs } : {}),
     ...(turn.limits ? { limits: turn.limits } : {}),
+    authoringPin: liveTurnPin(turn),
     orgSlug: identity.org,
     agentSlug: identity.agent,
     ...(input.deps.fetchImpl ? { fetchImpl: input.deps.fetchImpl } : {}),

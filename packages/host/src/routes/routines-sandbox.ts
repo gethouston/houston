@@ -1,9 +1,5 @@
 import type { IncomingMessage, ServerResponse } from "node:http";
-import {
-  loadActivities,
-  loadConfig,
-  missionConversationKey,
-} from "@houston/domain";
+import { loadActivities, missionConversationKey } from "@houston/domain";
 import type { HoustonEvent } from "@houston/protocol";
 import { actingDelegatorFromHeader, actingSubFromHeader } from "../auth/acting";
 import type { EventHub } from "../events/hub";
@@ -14,12 +10,12 @@ import { DEFAULT_PATHS } from "./agent-authz";
 import { bearer, header, json, readJson } from "./http";
 import { CONVERSATION_ID_HEADER } from "./learnings-sandbox";
 import { liveTurns } from "./live-turn";
-import { liveTurnPin } from "./live-turn-pin";
 import {
   DELEGATED_ROUTINE_REFUSAL,
   isRoutinePause,
 } from "./mission-delegation-refusals";
 import { defineRoute } from "./registry";
+import { routineAuthoringPin } from "./routine-creation-pin";
 import { createRoutineChecked, updateRoutineChecked } from "./routine-write";
 
 /**
@@ -149,11 +145,14 @@ export async function handleSandboxRoutines(
   // `id` selects update-in-place; it is never a routine field itself.
   const { id, ...fields } = body;
   const creating = typeof id !== "string" || id === "";
-  let authoringPin = turn?.pin;
-  if (creating && !fields.provider && !authoringPin) {
-    // Chats following the agent's model have no composer pin to inherit.
-    authoringPin = liveTurnPin((await loadConfig(deps.vfs, root)).config);
-  }
+  const authoringPin = creating
+    ? await routineAuthoringPin({
+        vfs: deps.vfs,
+        root,
+        fields,
+        turnPin: turn?.pin,
+      })
+    : undefined;
   // The person's plan floor rides the turn the host recorded (gateway-stamped
   // `limits`), never this request: the runtime could name any limit here.
   const minIntervalMinutes = turn?.limits?.routineMinIntervalMinutes;
