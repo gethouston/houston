@@ -12,6 +12,7 @@ import { fileURLToPath } from "node:url";
 import landing from "../src/_data/landing.js";
 import refer from "../src/_data/refer.js";
 import {
+  MAX_COUNTRY_LENGTH,
   MAX_SIZE_LENGTH,
   MAX_YEARS,
   siteHost,
@@ -86,6 +87,7 @@ const valid = {
   size: "about 120",
   years: "12",
   industry: "finance",
+  country: "Colombia",
 };
 
 test("a complete referral passes", () => {
@@ -95,6 +97,7 @@ test("a complete referral passes", () => {
 test("an empty form names every field the visitor fills, and not the request", () => {
   assert.deepEqual(Object.keys(validate({})).sort(), [
     "companyName",
+    "country",
     "industry",
     "size",
     "website",
@@ -125,6 +128,11 @@ test("the company size is the referrer's own words, within reason", () => {
     assert.deepEqual(validate({ ...valid, size }), {}, size);
   for (const size of ["", "   ", "x".repeat(MAX_SIZE_LENGTH + 1)])
     assert.deepEqual(validate({ ...valid, size }), { size: "size" });
+});
+
+test("the country is required and stays a country name's length", () => {
+  for (const country of ["", "   ", "x".repeat(MAX_COUNTRY_LENGTH + 1)])
+    assert.deepEqual(validate({ ...valid, country }), { country: "country" });
 });
 
 test("years in business is a whole number of years", () => {

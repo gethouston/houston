@@ -37,6 +37,7 @@ const COLUMNS = [
   ["Language", "locale"],
   ["Page", "page"],
   ["Industry", "industry"],
+  ["Country", "company_country"],
 ];
 
 // Longest value a cell takes, so a junk post can't flood the sheet.

@@ -12,6 +12,7 @@ const YEARS = /^\d{1,3}$/;
 export const MAX_YEARS = 300;
 // Company size is the referrer's own words ("about 120", "200-500").
 export const MAX_SIZE_LENGTH = 60;
+export const MAX_COUNTRY_LENGTH = 100;
 
 export const FIELDS = [
   "yourName",
@@ -21,6 +22,9 @@ export const FIELDS = [
   "size",
   "years",
   "industry",
+  // The English country name from the country menu (refer-country.js), the
+  // value the download and "Book a call" forms store.
+  "country",
   // Set by the page, not typed: the request a request's page answers.
   "listing",
 ];
@@ -54,6 +58,9 @@ export function validate(input) {
     errors.years = "years";
   }
   if (!v.industry) errors.industry = "industry";
+  if (!v.country || v.country.length > MAX_COUNTRY_LENGTH) {
+    errors.country = "country";
+  }
   // Your own company is a partner, not a referral. Caught when your email
   // sits on the company's own domain.
   const mine = emailHost(v.yourEmail);
@@ -80,6 +87,7 @@ export function referralRow(input, { locale, page }) {
     company_size: v.size,
     years_in_business: Number(v.years),
     industry: v.industry,
+    company_country: v.country,
     locale,
     page,
   };

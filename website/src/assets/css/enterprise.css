@@ -231,11 +231,22 @@
   display: flex;
   margin-bottom: 32px;
 }
+/* Complete on its own: /data-partners/refer does not load
+   landing-app-window.css, where the base .face circle and crop live. */
 .ent-contact-faces .face {
   width: 56px;
   height: 56px;
+  flex: 0 0 56px;
   margin-left: -12px;
+  overflow: hidden;
+  border-radius: 50%;
   box-shadow: 0 0 0 3px var(--ground);
+}
+.ent-contact-faces .face img {
+  display: block;
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
 }
 .ent-contact-faces .face:first-child {
   margin-left: 0;

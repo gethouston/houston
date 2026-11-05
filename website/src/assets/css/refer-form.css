@@ -192,6 +192,34 @@
   outline-offset: 1px;
   border-color: transparent;
 }
+/* The country menu's button (dl-dropdown.css) dressed as this form's fields. */
+.rf-field .dl-dd-toggle {
+  height: auto;
+  min-height: 42px;
+  padding: 9px 12px;
+  border-radius: 10px;
+  background: var(--card);
+  color: var(--ink-strong);
+  font: 400 15px/1.35 var(--sans);
+}
+.rf-field .dl-dd-toggle:focus-visible {
+  outline: 2px solid var(--focus);
+  outline-offset: 1px;
+  border-color: transparent;
+  box-shadow: none;
+}
+.rf-field .dl-dd-value.is-placeholder {
+  color: var(--ink-subtle);
+}
+/* Set by refer-country.js on the form's entrance wrappers: a transform left
+   on them would hold the fixed country menu inside the card and clip it. */
+html.js .hero-load.rf-settled,
+html.js .reveal.rf-settled {
+  animation: none;
+  opacity: 1;
+  transform: none;
+  will-change: auto;
+}
 .rf-field [aria-invalid="true"] {
   border-color: #b42318;
 }

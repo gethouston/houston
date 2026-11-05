@@ -44,16 +44,37 @@
 {{ field("size", f.size, "text", "off", f.sizePlaceholder) }}
 {{ field("years", f.years, "text", "off", f.yearsPlaceholder, "numeric") }}
           </div>
-          <div class="rf-field">
-            <label for="rf-industry">{{ f.industry }}</label>
-            <select id="rf-industry" name="industry" required aria-describedby="rf-industry-error">
-              <option value="">{{ f.industryPlaceholder }}</option>
+          <div class="rf-row">
+            <div class="rf-field">
+              <label for="rf-industry">{{ f.industry }}</label>
+              <select id="rf-industry" name="industry" required aria-describedby="rf-industry-error">
+                <option value="">{{ f.industryPlaceholder }}</option>
 {%- for id in refer.categories %}
-              <option value="{{ id }}"{% if id == industry %} selected{% endif %}>{{ r.companies.categories[loop.index0] }}</option>
+                <option value="{{ id }}"{% if id == industry %} selected{% endif %}>{{ r.companies.categories[loop.index0] }}</option>
 {%- endfor %}
-              <option value="other">{{ f.industryOther }}</option>
-            </select>
-            <p class="rf-error" id="rf-industry-error" hidden></p>
+                <option value="other">{{ f.industryOther }}</option>
+              </select>
+              <p class="rf-error" id="rf-industry-error" hidden></p>
+            </div>
+            {#- The "Book a call" popup's searchable country menu
+                (data-partners/call-modal.njk, download-gate-dropdown.js),
+                filled by assets/refer-country.js. -#}
+            <div class="rf-field">
+              <label for="rf-country-toggle">{{ f.country }}</label>
+              <div class="dl-dd" id="rf-country-dd">
+                <button type="button" class="dl-dd-toggle" id="rf-country-toggle" aria-describedby="rf-country-error">
+                  <span class="dl-dd-value is-placeholder" id="rf-country-value" data-placeholder="{{ f.countryPlaceholder }}">{{ f.countryPlaceholder }}</span>
+                  <svg class="dl-dd-caret" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true"><path d="M6 9l6 6 6-6"/></svg>
+                </button>
+                <div class="dl-dd-menu" id="rf-country-menu">
+                  <div class="dl-dd-search"><input type="text" id="rf-country-search" autocomplete="off" placeholder="{{ f.countrySearch }}" aria-label="{{ f.countrySearch }}"></div>
+                  <ul class="dl-dd-list" id="rf-country-list" aria-label="{{ f.country }}"></ul>
+                  <p class="dl-dd-empty" id="rf-country-empty" hidden>{{ f.countryEmpty }}</p>
+                </div>
+              </div>
+              <input type="hidden" id="rf-country" name="country" value="">
+              <p class="rf-error" id="rf-country-error" hidden></p>
+            </div>
           </div>
           <input type="hidden" name="listing" value="{{ listing }}">
         </fieldset>
