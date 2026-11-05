@@ -66,8 +66,9 @@ test("effectiveContextWindow: a cross-provider peak no longer snaps the new wind
     finalResult(19_197),
   ]);
   const window = effectiveContextWindow(gpt, peakContextTokens);
-  assert.equal(window, 258_400);
-  assert.equal(contextFillPercent(latest, window), 7); // 19_197 / 258_400 ≈ 7%
+  // GPT-5.5's 258_400 default, cut to the room before compaction (200k / 93%).
+  assert.equal(window, 215_054);
+  assert.equal(contextFillPercent(latest, window), 9); // 19_197 / 215_054 ≈ 9%
 });
 
 test("effectiveContextWindow: still snaps up within the SAME provider when its own usage proves a larger window", () => {
@@ -77,5 +78,6 @@ test("effectiveContextWindow: still snaps up within the SAME provider when its o
     finalResult(120_000),
     finalResult(240_000),
   ]);
-  assert.equal(effectiveContextWindow(sonnet, peakContextTokens), 1_000_000);
+  // Snapped to 1M, then cut to the room before compaction.
+  assert.equal(effectiveContextWindow(sonnet, peakContextTokens), 215_054);
 });

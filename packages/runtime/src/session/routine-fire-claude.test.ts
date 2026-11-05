@@ -1,4 +1,4 @@
-import { mkdirSync, mkdtempSync, writeFileSync } from "node:fs";
+import { mkdirSync, mkdtempSync, readFileSync, writeFileSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { dirname, join } from "node:path";
 import type { createSdkMcpServer } from "@anthropic-ai/claude-agent-sdk";
@@ -7,26 +7,22 @@ import { beforeEach, expect, test, vi } from "vitest";
 import type { ResolvedModel } from "../backends/types";
 
 /**
- * THE PRODUCTION FAILURE, reproduced through the standing server's real turn
- * path and the real Claude Agent SDK backend: a shared routine chat (one
- * conversation, every fire) whose resumed SDK session has outgrown the model's
- * window. Every later run resumed that session, was refused "Prompt is too
- * long", and the routine failed on every fire (~23,000 routine runs in 30
- * days, 98% of them on Anthropic). Autocompact never saved it: a freshly built
- * Claude session reports no context fill, and a summarization inside the
- * overflowing session is itself too long.
- *
- * Only the Anthropic API is simulated (simulated-api.test-support.ts): the
- * session cache, the sessions store, the resume decision and the transcript
- * are the production code.
+ * The routine context rule on the standing server's real turn path and the
+ * real Claude Agent SDK backend: every fire of a shared routine chat starts on
+ * a fresh SDK session carrying a short digest of the latest runs, and a
+ * person's turn resumes the session the last fire opened. Only the Anthropic
+ * API is simulated (simulated-api.test-support.ts).
  */
 
 process.env.HOUSTON_HOME = mkdtempSync(join(tmpdir(), "houston-rovf-home-"));
-process.env.HOUSTON_DATA_DIR = mkdtempSync(
-  join(tmpdir(), "houston-rovf-data-"),
-);
+// The standing layout: the runtime's data lives inside the agent's folder.
 process.env.HOUSTON_WORKSPACE_DIR = mkdtempSync(
   join(tmpdir(), "houston-rovf-ws-"),
+);
+process.env.HOUSTON_DATA_DIR = join(
+  process.env.HOUSTON_WORKSPACE_DIR,
+  ".houston",
+  "runtime",
 );
 
 // claude-opus-5: 1M in pi's registry, 200k on the standard plan — Houston's
@@ -53,17 +49,15 @@ const { runTurn, disposeConversation } = await import("./chat");
 const { registerBackend } = await import("../backends/registry");
 const { createClaudeBackend } = await import("../backends/claude/backend");
 const { serverClaudeLayout } = await import("../backends/claude/paths");
-const { simulatedClaudeApi } = await import(
+const { SIMULATED_REPLY, simulatedClaudeApi } = await import(
   "../backends/claude/simulated-api.test-support"
 );
 const { toolSelection } = await import("./session-tools");
 const { config } = await import("../config");
-const {
-  appendAssistantMessage,
-  appendUserMessage,
-  getHistory,
-  getRoutineTranscript,
-} = await import("../store/conversations");
+const { appendAssistantMessage, appendUserMessage, getHistory } = await import(
+  "../store/conversations"
+);
+const { estimateTokens } = await import("./token-estimate");
 
 const WINDOW = 200_000;
 const PIN = {
@@ -160,91 +154,80 @@ beforeEach(() => {
   vi.spyOn(console, "info").mockImplementation(() => {});
 });
 
-test("a routine run whose shared chat outgrew the window starts fresh and fits", async () => {
+const DIGEST_HEAD = "[Earlier runs of this automation, newest first.";
+
+/** The workspace path the digest points the agent at, read from the prompt. */
+const pointerIn = (prompt: string) =>
+  /in the file (\S+), newest first/.exec(prompt)?.[1];
+
+test("a fire after forty runs starts a fresh session on the instructions and a short digest", async () => {
   const id = "routine-invoice-watch";
   const api = useSimulatedApi();
-  seedRoutineChat(id, 40, 191_000);
-  seedSdkSession(api, id, 191_000);
+  seedRoutineChat(id, 40, 91_000);
+  seedSdkSession(api, id, 91_000);
 
   await fireRoutine(id);
 
-  const first = api.calls.at(-1);
-  // The overgrown SDK session is never resumed again...
-  expect(first?.resume).toBeUndefined();
-  expect(first?.refused).toBe(false);
-  // ...and the fresh one starts well inside the window, carrying the recent
-  // runs as its memory — each earlier run's instructions collapsed to a line.
-  expect(first?.requestTokens).toBeLessThan(WINDOW / 2);
-  expect(first?.prompt).toContain("This automation has run before");
-  expect(first?.prompt).toContain("invoice INV-1039 is overdue");
-  expect(first?.prompt.split("Check the billing inbox")).toHaveLength(2);
-  expect(lastAssistant(id)?.providerError).toBeUndefined();
-  // The boundary is on the record, so the routine's chat draws the divider.
-  expect(lastAssistant(id)?.compaction).toMatchObject({
-    trigger: "proactive",
-    pre_tokens: 191_300,
-  });
-});
-
-test("the run after a reset resumes the fresh session with nothing replayed", async () => {
-  const id = "routine-after-reset";
-  const api = useSimulatedApi();
-  seedRoutineChat(id, 40, 191_000);
-  seedSdkSession(api, id, 191_000);
-
-  await fireRoutine(id);
-  // A fresh process (idle eviction, pod restart) must resume it from disk too.
-  await disposeConversation(id);
-  await fireRoutine(id);
-
-  const second = api.calls.at(-1);
-  expect(second?.resume).toBe("sim-1");
-  expect(second?.refused).toBe(false);
-  expect(second?.prompt).toBe(PROMPT);
+  const call = api.calls.at(-1);
+  expect(call?.resume).toBeUndefined();
+  expect(call?.refused).toBe(false);
+  const prompt = call?.prompt ?? "";
+  expect(prompt.startsWith(DIGEST_HEAD)).toBe(true);
+  // The routine's own instructions ride every fire, once.
+  expect(prompt.endsWith(PROMPT)).toBe(true);
+  expect(prompt.split("Check the billing inbox")).toHaveLength(2);
+  const digest = prompt.slice(0, -PROMPT.length);
+  expect(digest).toContain(
+    "run, finished: Run 39: invoice INV-1039 is overdue.",
+  );
+  expect(digest).not.toContain("INV-1034");
+  expect(estimateTokens(digest)).toBeLessThanOrEqual(2_000);
+  // No divider: a fresh start is every fire's normal, not a compaction.
   expect(lastAssistant(id)?.compaction).toBeUndefined();
+  expect(lastAssistant(id)?.providerError).toBeUndefined();
 });
 
-test("a routine chat still inside its budget keeps resuming its session", async () => {
-  const id = "routine-small";
+test("the digest's pointer opens the full replies of runs the digest left out", async () => {
+  const id = "routine-pointer";
   const api = useSimulatedApi();
-  seedRoutineChat(id, 5, 40_000);
+  seedRoutineChat(id, 12, 40_000);
+
+  await fireRoutine(id);
+
+  const pointer = pointerIn(api.calls.at(-1)?.prompt ?? "");
+  expect(pointer).toBe(`.houston/runtime/sessions/${id}/routine-results.md`);
+  const results = readFileSync(
+    join(config.workspaceDir, pointer ?? ""),
+    "utf8",
+  );
+  expect(results).toContain("Run 11: invoice INV-1011 is overdue.");
+  expect(results).toContain("Run 0: invoice INV-1000 is overdue.");
+});
+
+test("every fire drops the session the previous fire opened; a person's turn resumes it", async () => {
+  const id = "routine-every-fire";
+  const api = useSimulatedApi();
+  seedRoutineChat(id, 3, 40_000);
   seedSdkSession(api, id, 40_000);
 
   await fireRoutine(id);
-
-  expect(api.calls.at(-1)?.resume).toBe("sim-old");
-  expect(api.calls.at(-1)?.prompt).toBe(PROMPT);
-  expect(lastAssistant(id)?.compaction).toBeUndefined();
-});
-
-test("a routine whose last run overflowed recovers on the next fire", async () => {
-  const id = "routine-overflowed";
-  const api = useSimulatedApi();
-  // Small at the start of the last run, which then read enough to overflow
-  // mid-run: the fill alone would not call for a reset, the overflow does.
-  seedRoutineChat(id, 3, 30_000);
-  appendUserMessage(id, PROMPT, { turnId: "overflowed-run" });
-  appendAssistantMessage(id, "", {
-    turnId: "overflowed-run",
-    providerError: {
-      kind: "context_overflow",
-      provider: "anthropic",
-      model: "claude-opus-5",
-      context_window_tokens: WINDOW,
-      prompt_tokens: 204_000,
-      message: "Prompt is too long: 204000 tokens > 200000 maximum",
-    },
-  });
-  seedSdkSession(api, id, 204_000);
-
+  const first = api.calls.at(-1);
+  // A fresh process (idle eviction, pod restart) must not resume it either.
+  await disposeConversation(id);
   await fireRoutine(id);
+  const second = api.calls.at(-1);
+  await runTurn(id, "Draft the follow-up email.", undefined, PIN);
+  const chat = api.calls.at(-1);
 
-  expect(api.calls.at(-1)?.resume).toBeUndefined();
-  expect(api.calls.at(-1)?.refused).toBe(false);
-  expect(lastAssistant(id)?.providerError).toBeUndefined();
+  expect(first?.resume).toBeUndefined();
+  expect(second?.resume).toBeUndefined();
+  // The second fire remembers the first through the digest alone.
+  expect(second?.prompt).toContain(`run, finished: ${SIMULATED_REPLY}`);
+  expect(chat?.resume).toBe("sim-2");
+  expect(chat?.prompt).toBe("Draft the follow-up email.");
 });
 
-test("a person chatting in a routine's chat past the fire budget keeps the session", async () => {
+test("a person chatting in a routine's chat keeps the session, whatever its size", async () => {
   const id = "routine-person-chatting";
   const api = useSimulatedApi();
   seedRoutineChat(id, 40, 150_000);
@@ -253,7 +236,17 @@ test("a person chatting in a routine's chat past the fire budget keeps the sessi
   await runTurn(id, "Draft the follow-up email.", undefined, PIN);
 
   expect(api.calls.at(-1)?.resume).toBe("sim-old");
-  expect(lastAssistant(id)?.compaction).toBeUndefined();
+  expect(api.calls.at(-1)?.prompt).toBe("Draft the follow-up email.");
+});
+
+test("the first fire of a per-run routine sends the instructions alone", async () => {
+  const id = "routine-per-run-a1b2";
+  const api = useSimulatedApi();
+
+  await fireRoutine(id);
+
+  expect(api.calls.at(-1)?.resume).toBeUndefined();
+  expect(api.calls.at(-1)?.prompt).toBe(PROMPT);
 });
 
 test("an ordinary chat is left on its session, whatever its size", async () => {
@@ -265,23 +258,4 @@ test("an ordinary chat is left on its session, whatever its size", async () => {
   await runTurn(id, "What changed today?", undefined, PIN);
 
   expect(api.calls.at(-1)?.resume).toBe("sim-old");
-  expect(lastAssistant(id)?.compaction).toBeUndefined();
-});
-
-test("every routine run records the context it left its session holding", async () => {
-  const id = "routine-recorded";
-  const api = useSimulatedApi();
-  seedRoutineChat(id, 5, 40_000);
-  seedSdkSession(api, id, 40_000);
-
-  await fireRoutine(id);
-
-  const call = api.calls.at(-1);
-  const turnId = lastAssistant(id)?.turnId;
-  expect(getRoutineTranscript(id).carry).toEqual({
-    turnId,
-    tokens: (call?.requestTokens ?? 0) + 20,
-    overflowed: false,
-    namedWindow: null,
-  });
 });

@@ -1,15 +1,15 @@
 import { normalizeTurnMode, parseMentions } from "@houston/protocol";
+import { NextStepSuggestionsSchema } from "@houston/wire-types";
 import { actingFromHeaders } from "../session/acting-context";
 import { ensureProviderForTurn, runTurn } from "../session/chat";
 import { parseConversationCommand } from "../session/conversation-command";
 import {
-  conversationCommandBusy,
   conversationCommandInFlight,
   holdConversationTurn,
 } from "../session/conversation-command-gate";
-import { runConversationCommand } from "../session/conversation-command-run";
 import { isDraining } from "../session/drain";
 import { parseMissionTitle } from "../session/mission-title";
+import { startConversationCommand } from "./conversation-command-start";
 import { engineUnavailable } from "./engine-unavailable";
 import { json, type RouteContext, readJson } from "./http-helpers";
 import {
@@ -60,6 +60,13 @@ export async function handleStartTurn(ctx: RouteContext, id: string) {
     json(ctx.res, 400, { error: "missing 'text'" });
     return;
   }
+  const suggestions = NextStepSuggestionsSchema.safeParse(
+    body.nextStepSuggestions,
+  );
+  if (!suggestions.success) {
+    json(ctx.res, 400, { error: "invalid nextStepSuggestions" });
+    return;
+  }
   const admission = admissionInput(ctx, body);
   if (admission === false || replyExistingAdmission(ctx, id, admission)) return;
   // While a card is live, only the person it is for may answer it, `/clear`
@@ -75,35 +82,14 @@ export async function handleStartTurn(ctx: RouteContext, id: string) {
   // else, `/unknown` included, falls through as an ordinary message.
   const command = parseConversationCommand(text);
   if (command) {
-    // Same refusal as the edit-and-resend rewind: a command tears this
-    // conversation's context down, which must never happen behind a turn the
-    // user is waiting on. Clients hold sends while a turn runs, so a 409 here
-    // means the caller raced one.
-    if (conversationCommandBusy(id)) {
-      json(ctx.res, 409, { error: "turn running" });
-      return;
-    }
-    // Fire-and-forget like `runTurn`: the outcome (and a compaction can take a
-    // model call's worth of seconds) arrives on the conversation's event
-    // stream, never on this request. The command marks the conversation held
-    // synchronously, so the refusal below is already true for the next send.
-    const turnId = acceptAdmission(ctx, id, admission);
-    if (turnId === false) return;
-    holdConversationTurn(
+    startConversationCommand(
+      ctx,
       id,
-      trackAdmission(
-        id,
-        admission,
-        runConversationCommand(
-          id,
-          command,
-          text,
-          typeof nonce === "string" ? nonce : undefined,
-          turnId,
-        ),
-      ),
+      command,
+      text,
+      typeof nonce === "string" ? nonce : undefined,
+      admission,
     );
-    json(ctx.res, 202, { ok: true, id, ...(turnId ? { turnId } : {}) });
     return;
   }
   // Never trust the wire: only the known mode literals ("plan", "auto") pass;
@@ -173,6 +159,7 @@ export async function handleStartTurn(ctx: RouteContext, id: string) {
           model: pinnedModel,
           effort: typeof effort === "string" ? effort : undefined,
           mode: turnMode,
+          nextStepSuggestions: suggestions.data,
         },
         acting,
         context,

@@ -11,11 +11,12 @@ import { config } from "../../config";
 import { buildAssistantRulesSection } from "../../session/assistant-rules-context";
 import { buildLearningsSection } from "../../session/learnings-context";
 import { withModeOverlay } from "../../session/mode-overlays";
-import { sortSkillsForPrompt } from "../../session/prompt-skills";
+import { skillsForPrompt } from "../../session/prompt-skills";
 import {
   buildWorkspaceContextSection,
   type ProvidedContext,
 } from "../../session/workspace-context";
+import { HOUSTON_MCP_SERVER_NAME } from "./custom-tools";
 
 /**
  * Build the full-replace `systemPrompt` string for a Claude session: Houston's
@@ -34,6 +35,13 @@ import {
  */
 const CONTEXT_CANDIDATES = ["AGENTS.md", "AGENTS.MD", "CLAUDE.md", "CLAUDE.MD"];
 
+/**
+ * Houston's tools reach this backend through an MCP server, so the model sees
+ * them namespaced while the shared prompt names them bare. Said once here
+ * rather than in every tool description.
+ */
+const TOOL_NAMES_NOTE = `Houston's own tools reach you as \`mcp__${HOUSTON_MCP_SERVER_NAME}__<name>\`, for example \`mcp__${HOUSTON_MCP_SERVER_NAME}__ask_user\`; these instructions call each one by its plain name.`;
+
 export function buildSystemPrompt(
   cwd: string,
   systemPrompt: string,
@@ -43,7 +51,8 @@ export function buildSystemPrompt(
   role?: AssistantRuntimeRole | null,
 ): string {
   const context = loadWorkspaceContextFile(cwd);
-  const base = context ? `${systemPrompt}\n\n${context}` : systemPrompt;
+  const product = `${systemPrompt}\n\n${TOOL_NAMES_NOTE}`;
+  const base = context ? `${product}\n\n${context}` : product;
   // Workspace + user context section next (HOU-711), injected exactly as the pi
   // backend does (session/resource-loader.ts) so both engines see the same slots.
   // `provided` is the gateway's Supabase copy (cloud), else the cwd files (local).
@@ -88,7 +97,7 @@ function buildSkillsSection(cwd: string): string {
   const dir = config.skillsDirOverride || join(cwd, ".agents", "skills");
   if (!existsSync(dir)) return "";
   const { skills } = loadSkillsFromDir({ dir, source: "path" });
-  return formatSkillsForPrompt(sortSkillsForPrompt(skills));
+  return formatSkillsForPrompt(skillsForPrompt(skills));
 }
 
 /**

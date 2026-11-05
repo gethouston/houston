@@ -62,6 +62,11 @@ test("records the credential step for a slug the host knows (normalized to lower
   });
   const text = (out.content[0] as { text: string }).text;
   expect(text).toMatch(/end your turn/i);
+  // The check that closes the setup rides on this result, because the turn
+  // that starts when the key arrives has no other copy of it.
+  expect(text).toContain(
+    "verify it with one harmless read-only action (find one with integration_search, run it with integration_execute",
+  );
 });
 
 test("refuses a slug with NO definition — the exact PRODUCT-1292 family — and records nothing", async () => {

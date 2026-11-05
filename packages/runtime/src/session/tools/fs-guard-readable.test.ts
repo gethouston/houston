@@ -10,10 +10,11 @@ import { join } from "node:path";
 import { expect, test } from "vitest";
 import { fileToolGuardOptions } from "../coordinator-policy";
 import { learningsDocPath } from "../learnings-context";
+import { spillToolResult } from "../tool-results/spill";
 import {
-  AttachmentReadOnlyError,
   PathDeniedError,
   PathNotAllowedError,
+  ReadOnlyFolderError,
   WorkspaceGuard,
 } from "./fs-guard";
 
@@ -86,17 +87,17 @@ test("a folder that appears after the guard was built is readable", () => {
 test("nothing in the folder can be written, edited or created", () => {
   const { uploads, guard } = coordinator();
   for (const path of ["uploads/image.png", "uploads/new.md", "uploads/x/y.md"])
-    expect(() => guard.clampWrite(path), path).toThrow(AttachmentReadOnlyError);
+    expect(() => guard.clampWrite(path), path).toThrow(ReadOnlyFolderError);
   expect(() => guard.assertWritable(join(uploads, "image.png"))).toThrow(
-    AttachmentReadOnlyError,
+    ReadOnlyFolderError,
   );
   // Before the folder exists too: creating it is a write like any other.
   const fresh = coordinator({ uploads: false });
   expect(() => fresh.guard.clampWrite("uploads/a.png")).toThrow(
-    AttachmentReadOnlyError,
+    ReadOnlyFolderError,
   );
   expect(() => fresh.guard.assertWritable(fresh.uploads)).toThrow(
-    AttachmentReadOnlyError,
+    ReadOnlyFolderError,
   );
 });
 
@@ -238,7 +239,17 @@ test("a workspace named through a symlinked path still finds its folder", () => 
   const real = join(realpathSync(workspace), "uploads", "a.png");
   expect(guard.clamp("uploads/a.png")).toBe(real);
   expect(guard.clamp(join(workspace, "uploads", "a.png"))).toBe(real);
-  expect(() => guard.clampWrite("uploads/a.png")).toThrow(
-    AttachmentReadOnlyError,
+  expect(() => guard.clampWrite("uploads/a.png")).toThrow(ReadOnlyFolderError);
+});
+
+test("a tool result too big for context is readable where its pointer says, never writable", () => {
+  const { workspace, guard } = coordinator();
+  const spilled = spillToolResult(
+    { workspaceDir: workspace, conversationId: "c1" },
+    "houston_recall",
+    "x".repeat(30_000),
   );
+  expect(guard.clamp(spilled)).toBe(join(workspace, spilled));
+  expect(() => guard.clampWrite(spilled)).toThrow(ReadOnlyFolderError);
+  expect(() => guard.clamp(".tool-results/../WORKSPACE.md")).toThrow();
 });

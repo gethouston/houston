@@ -4,6 +4,7 @@ import {
   parseTurnLimits,
 } from "@houston/protocol";
 import { parsePrefetchedObjects } from "@houston/runtime-client/object-sync";
+import { NextStepSuggestionsSchema } from "@houston/wire-types";
 import { parseMissionTitle } from "../session/mission-title";
 import { assertRoutineEventBounds } from "./parse-routine-events";
 import { parseTurnCoordinator } from "./parse-turn-coordinator";
@@ -161,6 +162,7 @@ export function parseTurnRequest(body: unknown): TurnRequest {
     // Never trust the wire: only the known mode literals ("plan", "auto") pass;
     // anything else normalizes to "execute".
     mode: normalizeTurnMode(b.mode),
+    nextStepSuggestions: NextStepSuggestionsSchema.parse(b.nextStepSuggestions),
     displayText: typeof b.displayText === "string" ? b.displayText : undefined,
     // Same "never trust the wire" posture: junk entries are dropped and an
     // empty list becomes nothing, so a bad sidecar never costs the user a turn.

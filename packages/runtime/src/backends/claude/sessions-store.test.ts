@@ -72,7 +72,7 @@ test("resolveResume returns the id when its transcript exists", () => {
   const store = sessionsStore(dir);
   store.setSessionId("c1", "sess-1");
   writeTranscript("sess-1");
-  expect(store.resolveResume("c1")).toBe("sess-1");
+  expect(store.resolveResume("c1")?.sessionId).toBe("sess-1");
 });
 
 test("resolveResume with no mapping returns undefined", () => {
@@ -128,7 +128,7 @@ test("a transcript stranded under a stale cwd slug is relocated so the SDK can r
   store.setSessionId("c1", "sess-1");
   writeTranscript("sess-1"); // lands under the unrelated "proj" slug dir
 
-  expect(store.resolveResume("c1")).toBe("sess-1");
+  expect(store.resolveResume("c1")?.sessionId).toBe("sess-1");
 
   const slugDir = join(claudeProjectsDir(), "-ws-Personal-new-name");
   expect(existsSync(join(slugDir, "sess-1.jsonl"))).toBe(true);
@@ -137,7 +137,7 @@ test("a transcript stranded under a stale cwd slug is relocated so the SDK can r
   );
   // Mapping survives — the next turn resumes normally with zero moves.
   expect(store.getSessionId("c1")).toBe("sess-1");
-  expect(store.resolveResume("c1")).toBe("sess-1");
+  expect(store.resolveResume("c1")?.sessionId).toBe("sess-1");
 });
 
 test("a transcript already under the current cwd slug is returned without moving", () => {
@@ -148,7 +148,7 @@ test("a transcript already under the current cwd slug is returned without moving
   mkdirSync(slugDir, { recursive: true });
   writeFileSync(join(slugDir, "sess-1.jsonl"), "{}");
 
-  expect(store.resolveResume("c1")).toBe("sess-1");
+  expect(store.resolveResume("c1")?.sessionId).toBe("sess-1");
   expect(existsSync(join(slugDir, "sess-1.jsonl"))).toBe(true);
 });
 
@@ -167,7 +167,7 @@ test("duplicate transcripts relocate the newest copy by mtime", () => {
   utimesSync(oldCopy, new Date(1_000), new Date(1_000));
   utimesSync(newCopy, new Date(2_000), new Date(2_000));
 
-  expect(store.resolveResume("c1")).toBe("sess-1");
+  expect(store.resolveResume("c1")?.sessionId).toBe("sess-1");
 
   const current = join(
     claudeProjectsDir(),
@@ -182,7 +182,7 @@ test("without a cwd (purge-only store) resolveResume never relocates", () => {
   const store = sessionsStore(dataDir());
   store.setSessionId("c1", "sess-1");
   writeTranscript("sess-1");
-  expect(store.resolveResume("c1")).toBe("sess-1");
+  expect(store.resolveResume("c1")?.sessionId).toBe("sess-1");
   // Untouched in place.
   expect(existsSync(join(claudeProjectsDir(), "proj", "sess-1.jsonl"))).toBe(
     true,
@@ -197,7 +197,7 @@ test("two agents' transcripts under the shared projects dir don't collide", () =
   a.setSessionId("c", "sess-a");
   b.setSessionId("c", "sess-b");
   writeTranscript("sess-a");
-  expect(a.resolveResume("c")).toBe("sess-a");
+  expect(a.resolveResume("c")?.sessionId).toBe("sess-a");
   // b's transcript isn't on disk yet → b starts fresh, doesn't pick up sess-a.
   expect(b.resolveResume("c")).toBeUndefined();
 });

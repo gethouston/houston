@@ -78,3 +78,28 @@ test("other tool errors and successful results are left alone", () => {
     } as unknown as SDKMessage),
   ).toBe(false);
 });
+
+test("a houston tool this turn never offered is the model's mistake, not a lost server", () => {
+  const offered = [
+    "mcp__houston__ask_user",
+    "mcp__houston__integration_execute",
+  ];
+  // Next-step suggestions were switched off, so suggest_actions was left out;
+  // a resumed session that used it on an earlier turn still calls it.
+  expect(
+    houstonToolServerLost(
+      toolResult(
+        "<tool_use_error>Error: No such tool available: mcp__houston__suggest_actions</tool_use_error>",
+      ),
+      offered,
+    ),
+  ).toBe(false);
+  expect(
+    houstonToolServerLost(
+      toolResult(
+        "<tool_use_error>Error: No such tool available: mcp__houston__ask_user</tool_use_error>",
+      ),
+      offered,
+    ),
+  ).toBe(true);
+});

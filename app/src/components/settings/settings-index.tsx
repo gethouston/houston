@@ -25,6 +25,7 @@ import { AppearanceSection } from "./sections/appearance";
 import { DangerSection } from "./sections/danger";
 import { DeleteAccountSection } from "./sections/delete-account";
 import { LanguageSection } from "./sections/language";
+import { NextStepSuggestionsSection } from "./sections/next-step-suggestions";
 import { NotificationsSection } from "./sections/notifications";
 import { SettingsCard, SettingsRow } from "./settings-row";
 
@@ -104,6 +105,7 @@ export function SettingsIndex({
           <AppearanceSection />
           <LanguageSection />
           <NotificationsSection />
+          <NextStepSuggestionsSection />
           {settingsSectionAvailable("morningBriefing", capabilities) && (
             <SettingsRow
               icon={Sunrise}

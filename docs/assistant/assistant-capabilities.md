@@ -127,7 +127,9 @@ Calling an operation returns the host's raw response. Where the adapter function
 - `getHeartbeat`: Shows the morning briefing settings: whether the AI Manager sends one, from what time, and how the last one went.
 - `getMyProfile`: Reads the user's own name and photo.
 - `getPlan`: Read the person's plan across all spaces.
+- `preferences.getNextStepSuggestions`: Reads whether follow-up action bubbles are enabled for you. Defaults to on.
 - `preferences.setLocale`: Sets the language the app's own screens are shown in, for one workspace.
+- `preferences.setNextStepSuggestions`: Turns follow-up action bubbles on or off. Turning them off uses less of your AI plan.
 - `setContext`: Replaces the background notes given to an agent on every conversation. **Confirmation required.**
 - `setHeartbeat`: Turns the morning briefing on or off, or changes the time it arrives.
 - `setMyProfile`: Updates the user's own name or photo.

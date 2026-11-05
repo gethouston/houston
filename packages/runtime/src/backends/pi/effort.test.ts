@@ -13,6 +13,7 @@ vi.mock("@earendil-works/pi-coding-agent", async (importOriginal) => ({
 }));
 vi.mock("../../session/resource-loader", () => ({
   makeAgentLoader: () => ({ reload: async () => {} }),
+  SYSTEM_PROMPT: "",
 }));
 vi.mock("./session-files", () => ({ resumeSessionManager: vi.fn() }));
 vi.mock("./transport-settings", () => ({ piTransportSettings: () => ({}) }));
@@ -46,6 +47,7 @@ test.each([
   const setThinkingLevel = vi.fn();
   const underlying = {
     model,
+    agent: {},
     subscribe: () => () => {},
     setThinkingLevel,
   } as unknown as AgentSession;

@@ -15,7 +15,6 @@ import {
   type HistoryWindow,
   listConversationsAt,
   loadFullConversation,
-  type RoutineCarryRecord,
   renameConversationMutationAt,
   type UserMessageMeta,
 } from "./conversation-file";
@@ -25,7 +24,6 @@ import {
   stampSessionReplayAt,
   truncateConversationMutationAt,
 } from "./conversation-truncate";
-import { readRoutineTranscriptAt, writeRoutineCarryAt } from "./routine-carry";
 import { snapshotMessage, type TranscriptShadow } from "./transcript-shadow";
 import { SandboxTranscriptShadowTransport } from "./transcript-shadow-http";
 import { TranscriptShadowQueue } from "./transcript-shadow-queue";
@@ -177,14 +175,6 @@ export function getHistory(
 ): ConversationHistory | null {
   return store.getHistory(id, window);
 }
-
-/** The routine budget's view of a chat (store/routine-carry.ts). */
-export const getRoutineTranscript = (id: string) =>
-  readRoutineTranscriptAt(dir, id);
-
-/** Record the context a finished routine run left its session holding. */
-export const setRoutineCarry = (id: string, carry: RoutineCarryRecord) =>
-  writeRoutineCarryAt(dir, id, carry);
 
 export function listConversations(): ConversationSummary[] {
   return store.listConversations();

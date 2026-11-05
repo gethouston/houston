@@ -3,17 +3,13 @@ import { type Static, Type } from "typebox";
 import { currentActingContext } from "../acting-context";
 import { recordConnection, recordSignin } from "../interaction";
 import { assertNotPlanMode } from "../live-mode-gate";
-import {
-  ACCOUNT_SELECTION_GUIDANCE,
-  multiAccountNote,
-} from "./integrations-accounts";
-import {
-  type AppStatus,
-  renderSearchItems,
-  statusOf,
-  type ToolMatch,
-} from "./integrations-render";
+import { layoutJson } from "./integrations-json";
+import type { ToolMatch } from "./integrations-render";
 import { searchEmptyText, searchLeadNote } from "./integrations-search-notes";
+import {
+  REQUEST_CONNECTION_GUIDANCE,
+  searchResultText,
+} from "./integrations-search-result";
 import type { SandboxFetch } from "./sandbox-fetch";
 
 /**
@@ -171,49 +167,22 @@ export interface IntegrationToolOptions {
 }
 
 /**
- * The instruction appended to search results (and connection-shaped execute
- * failures) that teaches the model the in-chat connect hand-off: call the
- * `request_connection` tool, which records the pending connection so Houston
- * renders a one-click connect card in place of the chat input.
- */
-const REQUEST_CONNECTION_GUIDANCE =
-  "To let the user connect an app, call the request_connection tool with that app's toolkit (the slug shown in the results). The user gets a one-click connect card in place of the chat input, and you automatically get a message once the connection is live so you can continue - do not ask the user to confirm.";
-
-/**
  * Ceiling for one integration EXECUTE result. App APIs return unbounded
  * documents — a single GMAIL_FETCH_EMAILS with include_payload can exceed 1 MB
- * of JSON, which alone overflows a model's context window and terminally
- * errors the turn (every event-trigger run on a newsletter inbox died this
- * way, HOU-893). Truncate with an instructive marker instead: the model
- * re-runs the action with tighter parameters rather than the turn dying.
+ * of JSON (HOU-893). Past this the result is cut with an instructive marker,
+ * and the model re-runs the action with tighter parameters.
  *
- * 64 KB (~16k tokens), down from the original 256 KB: every result lands in
- * the conversation permanently and is RE-SENT on every subsequent request, so
- * one 256 KB dump (~65k tokens) kept burning a quarter of a model window per
- * turn for the rest of the chat — the dominant driver of subscription-limit
- * exhaustion on ChatGPT/Codex accounts. Fleet data: p99 of real execute
- * results is ~29 KB; only the pathological full-payload dumps exceed 64 KB,
- * and those are exactly the ones the recovery marker exists for.
+ * The model never sees this much at once: both backends cut a capped tool's
+ * result to its first 8k characters and save the whole of it in the agent
+ * folder for the model to read (session/tool-results/cap.ts). This ceiling
+ * only bounds that file and the session record.
  */
-const MAX_RESULT_CHARS = 64 * 1024;
-
-/**
- * Search results get a MUCH tighter ceiling than execute data: they are a
- * pick-list, and past ~24 KB they stop fitting the backend's tool-result
- * budget at all (the 67 KB Croma search spilled to a file and rotted the
- * turn). renderSearchItems' own budgets keep typical results a few KB; this
- * is the backstop.
- */
-const MAX_SEARCH_RESULT_CHARS = 24 * 1024;
+const MAX_RESULT_CHARS = 512 * 1024;
 
 /** Bound a tool-result text; the marker tells the model how to recover. */
-function boundResultText(
-  text: string,
-  guidance: string,
-  maxChars: number = MAX_RESULT_CHARS,
-): string {
-  if (text.length <= maxChars) return text;
-  return `${text.slice(0, maxChars)}\n[result truncated: it exceeded the ${Math.floor(maxChars / 1024)} KB tool-result limit and is cut off mid-document. ${guidance}]`;
+function boundResultText(text: string, guidance: string): string {
+  if (text.length <= MAX_RESULT_CHARS) return text;
+  return `${text.slice(0, MAX_RESULT_CHARS)}\n[result truncated: it exceeded the ${MAX_RESULT_CHARS / 1024} KB tool-result limit and is cut off mid-document. ${guidance}]`;
 }
 interface ActionResult {
   successful: boolean;
@@ -390,47 +359,17 @@ export function makeIntegrationTools(opts: IntegrationToolOptions) {
           details: { matches: 0, actions: [] as string[] },
         };
       }
-      const list = renderSearchItems(items);
       // Results that are NOT certainly the named app's (an unscoped retry, or
       // a provider that ignored the scope) lead with a note saying so — or
       // the model would present another app's action as the named app's.
-      const fallbackNote = searchLeadNote(
+      const leadNote = searchLeadNote(
         params.app,
         unscopedFallback,
         scopeIgnored,
       );
-
-      // Teach each speech act inline, only for the statuses actually present.
-      const slugsWith = (s: AppStatus) => [
-        ...new Set(
-          items.filter((m) => statusOf(m) === s).map((m) => m.toolkit),
-        ),
-      ];
-      const parts = [list];
-      const accountNote = multiAccountNote(items);
-      if (accountNote) parts.push(accountNote);
-      const connectable = slugsWith("connectable");
-      if (connectable.length > 0) {
-        parts.push(
-          `These apps exist but are not connected yet (${connectable.join(", ")}). ${REQUEST_CONNECTION_GUIDANCE}`,
-        );
-      }
-      const blocked = slugsWith("blocked");
-      if (blocked.length > 0) {
-        parts.push(
-          `These apps are turned off for this agent (${blocked.join(", ")}). Tell the user they can be switched on in this agent's Settings, under Apps (someone who manages the agent can do it; otherwise they should ask whoever does). Do NOT call request_connection for these, and never imply they are unsupported.`,
-        );
-      }
       return {
         content: [
-          {
-            type: "text" as const,
-            text: boundResultText(
-              fallbackNote + parts.join("\n\n"),
-              "Search again with a more specific query to see the actions that were cut off.",
-              MAX_SEARCH_RESULT_CHARS,
-            ),
-          },
+          { type: "text" as const, text: searchResultText(items, leadNote) },
         ],
         details: {
           matches: items.length,
@@ -455,8 +394,7 @@ export function makeIntegrationTools(opts: IntegrationToolOptions) {
     name: "integration_execute",
     label: "Run an app action",
     description:
-      "Run an action on one of the user's connected apps - e.g. send an email, create a calendar event, add a task. Pass the action slug from integration_search and its parameters. The user's own account is used automatically; you never handle credentials. " +
-      ACCOUNT_SELECTION_GUIDANCE,
+      "Run an action on one of the user's connected apps - e.g. send an email, create a calendar event, add a task. Pass the action slug from integration_search and its parameters. The user's own account is used automatically; you never handle credentials. When the app has several connected accounts, always pass `account`; when the right one is unclear, ask the user before acting, and never guess.",
     promptSnippet: "Run an action on one of the user's connected apps",
     parameters: ExecuteParams,
     executionMode: "sequential",
@@ -535,7 +473,7 @@ export function makeIntegrationTools(opts: IntegrationToolOptions) {
         throw new Error(`"${params.action}" did not succeed: ${reason}${hint}`);
       }
       const text = boundResultText(
-        result.data ? JSON.stringify(result.data, null, 2) : "Done.",
+        result.data ? layoutJson(result.data) : "Done.",
         "Do not rely on the cut-off tail. Re-run the action with tighter parameters - fewer results, specific ids or fields, and without full payloads/bodies - to get what you need within the limit.",
       );
       return {

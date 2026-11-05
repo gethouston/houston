@@ -103,7 +103,7 @@ export async function runTurnAttempt(
       if (isAssistantMessageStart(msg)) state.emitAssistantMessageStart();
       const beat = replyBeatOf(msg);
       if (hasSessionId(msg)) capturedSessionId = msg.session_id;
-      if (houstonToolServerLost(msg)) {
+      if (houstonToolServerLost(msg, state.deps.baseOptions.allowedTools)) {
         // The turn is running without Houston's tools (PRODUCT-1706). On a
         // resume, abandon this attempt and rerun fresh with the canonical
         // history — never let the model finish a tool-less turn and report

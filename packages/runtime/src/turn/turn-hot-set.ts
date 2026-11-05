@@ -1,6 +1,7 @@
 import { readFileSync } from "node:fs";
 import { join } from "node:path";
 import type { HydrateListedObject } from "@houston/runtime-client/object-sync";
+import { ROUTINE_RESULTS_FILE } from "../store/routine-results";
 import { CLAUDE_FLAGS_DIR, claudeFlagsFileName } from "./claude-flags-path";
 import { newestArchiveSegments } from "./turn-hot-set-archive";
 
@@ -132,11 +133,14 @@ export function ownConversationOnly(
       const sessionAt = runtimeAt + 2;
       const sessionRel = segments.slice(0, sessionAt).join("/");
       const tail = segments.slice(sessionAt);
-      // Houston's own per-conversation markers: the harness that last ran it
-      // and a failed autocompact's cooldown (turn-autocompact.ts).
+      // Houston's own per-conversation files: the harness that last ran it, a
+      // failed autocompact's cooldown (turn-autocompact.ts), and a routine
+      // chat's earlier replies its digest points at (store/routine-results.ts).
       if (
         tail.length === 1 &&
-        (tail[0] === "harness.json" || tail[0] === "autocompact.json")
+        (tail[0] === "harness.json" ||
+          tail[0] === "autocompact.json" ||
+          tail[0] === ROUTINE_RESULTS_FILE)
       )
         return true;
       if (tail.length === 1 && tail[0]?.endsWith(".jsonl")) {
@@ -170,8 +174,8 @@ export function ownConversationOnly(
         );
       }
       // Pi's SessionManager writes and discovers only direct `*.jsonl` files;
-      // backend.ts enforces the same resume filter, and the two markers above
-      // are Houston's only other direct-file writers.
+      // backend.ts enforces the same resume filter, and the files above are
+      // Houston's only other direct-file writers.
       return false;
     }
     return true;

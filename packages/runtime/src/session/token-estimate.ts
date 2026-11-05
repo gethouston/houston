@@ -1,15 +1,13 @@
 /**
- * A deliberately conservative token count for text Houston sizes itself: a
- * routine chat's carried context and the replay a fresh routine session opens
- * with (routine-carry.ts, routine-replay.ts).
+ * A deliberately conservative token count for text Houston sizes itself: the
+ * digest a fresh routine session opens with (routine-digest.ts).
  *
  * Four characters a token holds for English prose only. Digits, punctuation
  * and identifiers (logs, ids, JSON) run nearer two, CJK and most other
  * non-Latin scripts nearer one, and high-entropy strings (base64, hex digests,
  * opaque ids) nearer one to two, since no tokenizer has seen them whole. An
- * undercount is the failure that matters here: a replay sized by it lands past
- * the carry line, and then every run resets or overflows. So each class is
- * charged at its dense end.
+ * undercount is the failure that matters here: a digest sized by it outgrows
+ * its budget on every fire. So each class is charged at its dense end.
  */
 export function estimateTokens(text: string): number {
   let tokens = 0;

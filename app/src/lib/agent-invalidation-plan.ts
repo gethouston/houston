@@ -105,6 +105,11 @@ export function planInvalidation(
     case "HeartbeatChanged":
       plan.invalidate.push(queryKeys.heartbeat());
       break;
+    // No open-workspace check: locale and next-step suggestions are the
+    // person's in every space, and refetching a per-space key is harmless.
+    case "PreferencesChanged":
+      plan.invalidate.push(queryKeys.preferences());
+      break;
     // SessionStatus triggers activity invalidation (agent finished → status).
     case "SessionStatus":
       if (ev.data.status === "completed" || ev.data.status === "error") {

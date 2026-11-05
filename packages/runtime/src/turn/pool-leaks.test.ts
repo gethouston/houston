@@ -77,10 +77,18 @@ const provider = createServer((req, res) => {
       /^Bearer (\S+)$/.exec(req.headers.authorization ?? "")?.[1] ?? "";
     const prompt = lastPrompt(body);
     seen.push({ prompt, token });
+    const reply = prompt.startsWith('{"user":')
+      ? JSON.stringify({
+          actions: [
+            { id: "review", label: "Review", message: "Review it." },
+            { id: "extend", label: "Extend", message: "Extend it." },
+          ],
+        })
+      : `echo:${prompt}`;
     await new Promise((resolve) => setTimeout(resolve, 10));
     res.writeHead(200, { "content-type": "text/event-stream" });
     res.write(
-      `data: ${JSON.stringify({ choices: [{ index: 0, delta: { content: `echo:${prompt}` }, finish_reason: null }] })}\n\n`,
+      `data: ${JSON.stringify({ choices: [{ index: 0, delta: { content: reply }, finish_reason: null }] })}\n\n`,
     );
     res.write(
       `data: ${JSON.stringify({ choices: [{ index: 0, delta: {}, finish_reason: "stop" }] })}\n\n`,
@@ -173,6 +181,8 @@ test("alternating agents leave no credential, conversation, auth, root, or confi
   await run("s", 0);
   await run("s", 1);
 
+  // One request per turn: a custom endpoint gets no follow-up pass
+  // (backends/pi/follow-up-models.ts).
   expect(seen.map(({ token }) => token)).toEqual([
     "token-a",
     "token-b",
@@ -181,6 +191,7 @@ test("alternating agents leave no credential, conversation, auth, root, or confi
     "token-s",
     "token-s",
   ]);
+  expect(seen.some(({ prompt }) => prompt.startsWith('{"user":'))).toBe(false);
   expect(seen.some(({ token }) => token === "process-global-token")).toBe(
     false,
   );

@@ -9,7 +9,7 @@ export interface AccountDeps {
   store: WorkspaceStore;
   /** Backs the per-workspace preferences doc; absent → preference routes 503. */
   vfs?: Vfs;
-  /** Global reactivity fan-out; a sidebar-layout write emits on it. Absent → skipped. */
+  /** Global reactivity fan-out; sidebar-layout and preference writes emit on it. Absent → skipped. */
   events?: EventHub;
 }
 

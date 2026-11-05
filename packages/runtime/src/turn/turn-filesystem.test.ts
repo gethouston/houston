@@ -292,7 +292,7 @@ test("a claimed turn hydrates live session tails and leaves skips untouched", as
     sessionsFile: join(configDir, "sessions.json"),
     cwd: fs.workspaceDir,
   });
-  expect(sessions.resolveResume("c1")).toBe("session-new");
+  expect(sessions.resolveResume("c1")?.sessionId).toBe("session-new");
 
   await syncTurnFilesystem({
     store,

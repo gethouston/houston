@@ -19,9 +19,6 @@ test.each([
     expect(copy).toContain("A new chat for each email");
     expect(copy).toContain("All in one chat");
     expect(copy).toContain(
-      "Option labels must be distinguishable on their own",
-    );
-    expect(copy).toContain(
       'Never ask about "results", "history", or "organizing"',
     );
     expect(copy).toContain("Each email gets a separate conversation.");

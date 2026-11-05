@@ -71,9 +71,8 @@ export function suggestActionsProblem(
 }
 
 /**
- * Raw call arguments as usable actions, or null. A forced call's arguments
- * never pass pi's tool validation (the tool does not run), so the schema and
- * the rules above are checked here.
+ * Raw actions from a tool-free recovery response, checked against the same
+ * schema and rules as an in-band call.
  */
 export function parseSuggestedActions(args: unknown): SuggestedAction[] | null {
   if (!Value.Check(SuggestActionsParams, args)) return null;

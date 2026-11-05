@@ -3,6 +3,11 @@
 Every `version` bump in `inventory.yaml` needs a matching entry here (enforced by
 `pnpm check:parity`). Newest first. Use `## vN` headings.
 
+## v152 - 2026-11-04
+
+Settings includes a Next-step suggestions switch on phone and desktop. It
+persists the person's choice through the SDK and defaults on.
+
 ## v151 - 2026-11-02
 
 The composer ignores a desktop manual height on phones and re-clamps it when

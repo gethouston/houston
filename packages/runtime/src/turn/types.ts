@@ -88,6 +88,7 @@ export interface TurnRequest {
    * paths set "auto" so scheduled work never waits for user intervention.
    */
   mode?: TurnMode;
+  nextStepSuggestions?: boolean;
   /**
    * Presentation-only bubble text, when it must differ from `text` (the real
    * prompt the model runs on). Persisted alongside the user message so a

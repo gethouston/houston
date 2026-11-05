@@ -24,7 +24,7 @@ import {
  * So a failed autocompact never fails the turn. It is reported ONCE, the
  * conversation is held off compaction for a cooldown, and the turn runs on
  * against the still-full context — which usually succeeds (the threshold fires
- * at 93% of the window, so there is headroom), and when it does not the user
+ * at 93% of the window or 200k tokens, so there is headroom), and when it does not the user
  * gets the provider's own honest error instead of a summarization failure.
  *
  * The report's SEVERITY follows the provider-error taxonomy, exactly as the

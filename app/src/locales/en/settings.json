@@ -342,5 +342,9 @@
       "title": "Couldn't save your briefing setting",
       "description": "It's back to what it was. Try again in a moment."
     }
+  },
+  "nextStepSuggestions": {
+    "title": "Next-step suggestions",
+    "description": "Suggest follow-up actions after each reply. Uses a little of your AI plan."
   }
 }

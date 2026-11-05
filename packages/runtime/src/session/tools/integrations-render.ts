@@ -99,7 +99,7 @@ export function schemaSignature(schema: unknown): string | null {
  * Render the ranked matches under the budgets above: full schemas for the top
  * {@link FULL_SCHEMA_ITEMS} action rows, signatures beyond that, at most
  * {@link MAX_ITEMS} rows with a count of the rest, and clipped descriptions —
- * plus the recovery notes that teach the model how to get what was elided.
+ * led by the recovery notes that teach the model how to get what was elided.
  */
 export function renderSearchItems(items: ToolMatch[]): string {
   const shown = items.slice(0, MAX_ITEMS);
@@ -128,15 +128,17 @@ export function renderSearchItems(items: ToolMatch[]): string {
     }
     return `- ${m.action} (${m.toolkit}${tag}): ${description}${schema}`;
   });
+  // Notes lead: both backends keep only a long result's first 8k characters.
+  const notes: string[] = [];
   if (items.length > shown.length) {
-    lines.push(
+    notes.push(
       `(+${items.length - shown.length} more matched but are not shown - narrow the query, or set \`app\` to the one you need.)`,
     );
   }
   if (signatures) {
-    lines.push(
+    notes.push(
       "(Some actions show a short params signature instead of the full schema. The listed parameters are usually enough to run them; if a run fails on parameters, search again with `app` set to that action's app and a narrower query to get its full schema.)",
     );
   }
-  return lines.join("\n");
+  return [...notes, ...lines].join("\n");
 }

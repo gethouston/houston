@@ -7,12 +7,11 @@ import { routineRunPreamble } from "@houston/domain";
 import { afterAll, beforeEach, expect, test, vi } from "vitest";
 
 /**
- * The pi half of the routine overflow: a shared routine chat on a pi provider
- * whose session holds more than the model's window, driven through the
- * standing server's real turn path and the REAL pi session store. Only the
- * provider is simulated — an OpenAI-compatible endpoint that sizes every
- * request (4 characters ≈ 1 token) and refuses one over its window with
- * llama.cpp's own overflow body, the way a small local model does.
+ * The pi half of the routine context rule, through the standing server's real
+ * turn path and the REAL pi session store: every fire opens a new pi session
+ * carrying the digest, and a person's turn resumes the last one. Only the
+ * provider is simulated, an OpenAI-compatible endpoint that records every
+ * request (4 characters ≈ 1 token).
  */
 
 process.env.HOUSTON_DATA_DIR = mkdtempSync(
@@ -137,36 +136,45 @@ const piSessionFiles = (id: string) =>
     f.endsWith(".jsonl"),
   );
 
-test("a pi routine run after a run bigger than the window starts fresh and fits", async () => {
+test("every pi fire opens a new session on the digest; a person's turn resumes it", async () => {
   const id = "routine-stock-report";
-  // One run exported ~36k tokens into the chat: it fit when it ran, but the
-  // chat now holds most of the window, so the next run would carry it all.
+  // One run exported ~36k tokens into the chat, which a resumed session
+  // would re-send on every later call.
   endpoint.replyChars = 144_000;
   await fireRoutine(id);
-  expect(assistants(id).at(-1)?.providerError).toBeUndefined();
-  const before = piSessionFiles(id);
+  const first = piSessionFiles(id);
 
   endpoint.replyChars = 400;
   endpoint.requests.length = 0;
   await fireRoutine(id);
+  const second = piSessionFiles(id);
   await fireRoutine(id);
+  const third = piSessionFiles(id);
+  await runTurn(id, "Which SKUs were low yesterday?", undefined, {
+    mode: "auto",
+  });
 
-  // Every request of both later runs fit the window...
-  expect(endpoint.requests.every((r) => !r.refused)).toBe(true);
   expect(assistants(id).map((m) => m.providerError?.kind)).toEqual([
     undefined,
     undefined,
     undefined,
+    undefined,
   ]);
-  // ...because the first of them started a fresh pi session carrying a
-  // bounded tail of the chat, and the second resumed that fresh session.
-  const [reset, next] = assistants(id).slice(1);
-  expect(reset?.compaction).toMatchObject({ trigger: "proactive" });
-  expect(next?.compaction).toBeUndefined();
-  const after = piSessionFiles(id);
-  expect(after).toHaveLength(1);
-  expect(after).not.toEqual(before);
-  const resetRequest = endpoint.requests[0];
-  expect(resetRequest?.body).toContain("This automation has run before");
-  expect(resetRequest?.tokens).toBeLessThan(WINDOW / 2);
+  // One live session at a time, a new one per fire.
+  expect([first, second, third].map((files) => files.length)).toEqual([
+    1, 1, 1,
+  ]);
+  expect(new Set([...first, ...second, ...third]).size).toBe(3);
+  expect(piSessionFiles(id)).toEqual(third);
+  const [fire2, fire3, chat] = endpoint.requests;
+  for (const fire of [fire2, fire3]) {
+    expect(fire?.body).toContain("[Earlier runs of this automation");
+    expect(fire?.body).toContain("Export today's stock levels");
+    // The 36k-token export never rides along again: only its excerpt does.
+    expect(fire?.tokens).toBeLessThan(15_000);
+  }
+  // The person's turn carries the last fire's session, digest included.
+  expect(chat?.body).toContain("Which SKUs were low yesterday?");
+  expect(chat?.body).toContain("[Earlier runs of this automation");
+  expect(endpoint.requests).toHaveLength(3);
 });

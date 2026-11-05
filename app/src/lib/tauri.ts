@@ -1190,6 +1190,14 @@ export const tauriConfig = {
 // ─── Preferences ──────────────────────────────────────────────────────
 
 export const tauriPreferences = {
+  getNextStepSuggestions: () =>
+    call<boolean>("get_next_step_suggestions", () =>
+      getEngine().getNextStepSuggestions(),
+    ),
+  setNextStepSuggestions: (enabled: boolean) =>
+    call<boolean>("set_next_step_suggestions", () =>
+      getEngine().setNextStepSuggestions(enabled),
+    ),
   resolveWorkspace: (
     workspaces: readonly Workspace[] | Promise<readonly Workspace[]>,
   ) => getEngine().resolveWorkspaceSelection(workspaces),

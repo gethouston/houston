@@ -69,7 +69,7 @@ test("returns the generic tools plus request_connection, correctly named", () =>
   ]);
 });
 
-test("search appends account descriptions and execute repeats the account-selection rule", async () => {
+test("search leads with account descriptions and the account-selection rule; execute keeps one sentence of it", async () => {
   mockFetch(() => ({
     body: {
       items: [
@@ -91,8 +91,16 @@ test("search appends account descriptions and execute repeats the account-select
     "never ask when the app has a single account",
   ]) {
     expect(text).toContain(guidance);
-    expect(execute.description).toContain(guidance);
   }
+  expect(text.indexOf("MULTIPLE accounts")).toBeLessThan(
+    text.indexOf("GOOGLEDRIVE_LIST_FILES"),
+  );
+  // A tagged skill step runs execute with no search, so the always-sent
+  // description carries the rule in one sentence.
+  expect(execute.description).toContain(
+    "always pass `account`; when the right one is unclear, ask the user before acting, and never guess.",
+  );
+  expect(execute.description).not.toContain("you MUST ask ONE ask_user");
 });
 
 test("search POSTs to the host proxy with the sandbox token + formats matches", async () => {
@@ -339,11 +347,32 @@ test("a giant execute result is truncated with recovery guidance, never fed whol
     params: { include_payload: true },
   });
   const text = (out.content[0] as { text: string }).text;
-  // 64 KB budget + the recovery marker: a bloated result must never re-bill
-  // tens of thousands of context tokens on every later request in the chat.
-  expect(text.length).toBeLessThan(66 * 1024);
+  // The stored ceiling + the recovery marker; the model itself only ever
+  // sees the first 8k characters (backends/*/ cap the result again).
+  expect(text.length).toBeLessThan(514 * 1024);
   expect(text).toContain("[result truncated");
   expect(text).toContain("Re-run the action with tighter parameters");
+});
+
+test("an execute result comes back one record per line, without indent padding", async () => {
+  const a = "a".repeat(300);
+  const b = "b".repeat(300);
+  mockFetch(() => ({
+    body: {
+      successful: true,
+      data: {
+        messages: [
+          { id: "m1", subject: a },
+          { id: "m2", subject: b },
+        ],
+        next: "t",
+      },
+    },
+  }));
+  const out = await run(execute, { action: "GMAIL_FETCH_EMAILS", params: {} });
+  expect((out.content[0] as { text: string }).text).toBe(
+    `{\n "messages": [\n  {"id":"m1","subject":"${a}"},\n  {"id":"m2","subject":"${b}"}\n ],\n "next": "t"\n}`,
+  );
 });
 
 test("a small execute result passes through untouched", async () => {

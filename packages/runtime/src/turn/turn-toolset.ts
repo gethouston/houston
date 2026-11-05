@@ -1,4 +1,5 @@
 import type { PiBackendDeps } from "../backends/pi/backend";
+import { withNextStepSuggestionTools } from "../session/next-step-suggestions";
 import {
   buildToolSelection,
   type CodeExecutionMode,
@@ -124,15 +125,18 @@ export function buildTurnCommonTools(
   dataDir: string,
   loadArchive?: ArchiveLoader,
 ): PiBackendDeps["customTools"] {
-  return [
-    makeAskUserTool(),
-    makePlanReadyTool(),
-    makeSuggestReusableTool(),
-    makeSuggestActionsTool(),
-    ...(codeSandbox ? [codeSandbox] : []),
-    ...buildTurnHostTools(turn),
-    ...buildTurnCoordinatorTools(turn, dataDir, loadArchive),
-  ];
+  return withNextStepSuggestionTools(
+    [
+      makeAskUserTool(),
+      makePlanReadyTool(),
+      makeSuggestReusableTool(),
+      makeSuggestActionsTool(),
+      ...(codeSandbox ? [codeSandbox] : []),
+      ...buildTurnHostTools(turn),
+      ...buildTurnCoordinatorTools(turn, dataDir, loadArchive),
+    ],
+    turn.nextStepSuggestions,
+  );
 }
 
 /**

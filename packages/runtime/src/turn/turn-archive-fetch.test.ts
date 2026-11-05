@@ -129,7 +129,7 @@ test("a segment the store lost fails the fetch loudly, reported once", async () 
   }
 });
 
-test("a routine replay reads past a segment the store lost; any other failure fails the turn", async () => {
+test("a routine digest reads past a segment the store lost; any other failure fails the turn", async () => {
   const { load, agent } = fixture();
   rmSync(join(agent, ...ARCHIVE.split("/"), "1.json"));
   const errors = vi.spyOn(console, "error").mockImplementation(() => {});

@@ -31,11 +31,11 @@ The runtime moving a conversation to a different provider mid-session, detected 
 _Avoid_: provider handoff (the deleted client-staged mechanism)
 
 **Autocompact**:
-The runtime's always-on decision to summarize and reseed a conversation before a turn when its context is nearly full. A guarantee owned where the ground truth lives (live token fill, active model window), never a user setting or a client flag.
+The runtime's always-on decision to summarize and reseed a conversation before a turn when its context reaches 93% of the model's window or 200k tokens, whichever is lower. A guarantee owned where the ground truth lives (live token fill, active model window), never a user setting or a client flag.
 _Avoid_: compaction flag
 
 **Routine reset**:
-The runtime starting a routine run on a fresh session, carrying only a bounded transcript of the chat's recent runs, because the context the previous run ended on reached the routine's carry line (half the window, at most 100k tokens) or that run overflowed. The routine chat's form of autocompact: it needs no model call, so it cannot fail the way a summary can.
+The runtime starting every routine fire (schedule, trigger, Run now) on a fresh session, carrying only a short digest of the chat's latest runs and the path of a file with their full replies, which the agent reads only when the run needs it. A person's turn in the routine's chat resumes the session the last fire opened, like any chat. It needs no model call, so it cannot fail the way a summary can.
 _Avoid_: routine compaction, per-run chat (that is the `per_run` chat mode)
 
 **First response**:

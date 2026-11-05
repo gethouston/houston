@@ -1,5 +1,7 @@
 import type { ExtensionToolContext } from "@earendil-works/pi-coding-agent";
 import { expect, test } from "vitest";
+import type { TurnSessionRequest } from "../../turn/turn-session-types";
+import { buildTurnCommonTools } from "../../turn/turn-toolset";
 import {
   newInteractionHolder,
   runWithInteractionCapture,
@@ -87,11 +89,41 @@ test("after the closing message it ends the turn like suggest_actions", async ()
   expect(text).toMatch(/This ended your turn/);
 });
 
-test("the description says the call ends the turn next to suggest_actions", () => {
-  const d = suggestReusable.description ?? "";
-  expect(d).toContain("together with suggest_actions");
-  expect(d).toContain("it ends your turn");
-  expect(d).not.toContain("This does not end your turn");
+const DESCRIPTION =
+  "Offer, on a dismissible card, to save the just-finished work as a reusable Skill, a scheduled Routine, or a Learning. Call it only when the work is clearly worth keeping (not a simple or one-off request), in your final message after your closing text, instead of asking in plain text or via ask_user. If you also offer next steps, make both offers in that same message. At most once per turn. It ends your turn, so put nothing after it.";
+
+test("a turn's suggest_reusable never names suggest_actions, whatever the setting", () => {
+  for (const nextStepSuggestions of [false, true]) {
+    const tools = buildTurnCommonTools(
+      { nextStepSuggestions } as TurnSessionRequest,
+      null,
+      "/tmp/data",
+    );
+    expect(tools.map((t) => t.name).includes("suggest_actions")).toBe(
+      nextStepSuggestions,
+    );
+    expect(tools.find((t) => t.name === "suggest_reusable")?.description).toBe(
+      DESCRIPTION,
+    );
+  }
+});
+
+test("called before any closing text, it asks for the closing message without naming suggest_actions", async () => {
+  const holder = newInteractionHolder();
+  const out = await runWithInteractionCapture(holder, () =>
+    makeSuggestReusableTool().execute(
+      "id",
+      { reusableKind: "skill", title: "T", rationale: "R" } as never,
+      undefined,
+      undefined,
+      ctx,
+    ),
+  );
+  const text = (out.content[0] as { text: string }).text;
+  expect(text).toContain(
+    "Write your closing message now, then end, with any next-step offer in that same message.",
+  );
+  expect(text).not.toContain("suggest_actions");
 });
 
 test("carries the routine kind through unchanged", async () => {

@@ -135,8 +135,8 @@ test("a long-lived session and its compaction carry the guard", async () => {
   await session.prompt("hi");
   await expectGuarded(calls[0]);
 
-  // Compaction runs on the session's own options with its tools closed; fed
-  // the options this backend really built, the guard must survive it.
+  // Compaction runs on the session's own options; fed the options this
+  // backend really built, no file call may get through it.
   const { sdk: summarizer, calls: summarized } = capturingSdk();
   let resume: string | undefined = "sdk-session-1";
   const compacting = new ClaudeSession({
@@ -154,16 +154,27 @@ test("a long-lived session and its compaction carry the guard", async () => {
       purge: () => {
         resume = undefined;
       },
-      resolveResume: () => resume,
+      resolveResume: () =>
+        resume === undefined
+          ? undefined
+          : { sessionId: resume, clearedTokens: 0 },
     },
     compactions: createCompactionCheckpoints(conversations),
     model: "claude-sonnet-4-6",
     refreshAuth: () => ({ env: calls[0]?.env ?? {} }),
   });
   await compacting.compact();
-  expect(summarized[0]?.resume).toBe("sdk-session-1");
-  expect(summarized[0]?.tools).toEqual([]);
-  await expectGuarded(summarized[0]);
+  const summary = summarized[0];
+  expect(summary?.resume).toBe("sdk-session-1");
+  // The summary keeps the turn's tools (the cached prefix) and runs none of
+  // them: a call the guard would allow is refused too.
+  expect(summary?.tools).toEqual(calls[0]?.tools);
+  for (const path of [".houston/runtime/auth.json", "notes.md"])
+    expect(await preToolUse(summary, path)).toMatchObject({
+      hookSpecificOutput: { permissionDecision: "deny" },
+    });
+  expect(summary?.disallowedTools).toContain("Read(**/auth.json)");
+  expect(summary?.env?.CLAUDE_CODE_DISABLE_ATTACHMENTS).toBe("1");
 });
 
 test("a pooled turn carries the guard", async () => {

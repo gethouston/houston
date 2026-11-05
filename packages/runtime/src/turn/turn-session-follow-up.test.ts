@@ -3,7 +3,6 @@ import { tmpdir } from "node:os";
 import { join } from "node:path";
 import type { WireEvent, WireFrame } from "@houston/runtime-client";
 import { beforeEach, expect, test, vi } from "vitest";
-import type { ForcedToolCall } from "../backends/forced-tool-call";
 import type { HarnessBackend, HarnessSession } from "../backends/types";
 import { recordSuggestActions } from "../session/interaction";
 import { runTurn, type TurnDirectories } from "./turn-session";
@@ -34,11 +33,8 @@ const ACTIONS = [
 
 function backend(calledInBand: boolean) {
   const wire = new Set<(e: WireEvent) => void>();
-  const forceToolCall = vi.fn(
-    async (): Promise<ForcedToolCall> => ({
-      outcome: "called",
-      args: { actions: ACTIONS },
-    }),
+  const oneShotText = vi.fn(
+    async (): Promise<string> => JSON.stringify({ actions: ACTIONS }),
   );
   const session = {
     subscribe(l: (e: WireEvent) => void) {
@@ -49,7 +45,8 @@ function backend(calledInBand: boolean) {
       for (const l of wire) l({ type: "text", data: "Listo." });
       if (calledInBand) recordSuggestActions({ actions: ACTIONS });
     },
-    forceToolCall,
+    oneShotText,
+    followUpPassServed: () => true,
     abort: async () => undefined,
     dispose: () => undefined,
     setModel: async () => undefined,
@@ -61,10 +58,10 @@ function backend(calledInBand: boolean) {
     id: "pi",
     createSession: async () => session,
   };
-  return { created, forceToolCall };
+  return { created, oneShotText };
 }
 
-async function run(calledInBand: boolean) {
+async function run(calledInBand: boolean, nextStepSuggestions?: boolean) {
   const turnRoot = await mkdtemp(join(tmpdir(), "turn-fu-"));
   const dirs: TurnDirectories = {
     turnRoot,
@@ -74,12 +71,13 @@ async function run(calledInBand: boolean) {
   await mkdir(dirs.workspaceDir, { recursive: true });
   await mkdir(dirs.dataDir, { recursive: true });
   const frames: WireFrame[] = [];
-  const { created, forceToolCall } = backend(calledInBand);
+  const { created, oneShotText } = backend(calledInBand);
   const outcome = await runTurn(
     dirs,
     {
       conversationId: "activity-c1",
       text: "hola",
+      nextStepSuggestions,
       provider: "openai-codex",
       emit: (frame) => frames.push(frame),
       signal: undefined,
@@ -87,12 +85,12 @@ async function run(calledInBand: boolean) {
     },
     { createBackend: () => created },
   );
-  return { outcome, frames, forceToolCall };
+  return { outcome, frames, oneShotText };
 }
 
 test("a reply that skipped suggest_actions returns the recovered bubbles, with no extra frame", async () => {
-  const { outcome, frames, forceToolCall } = await run(false);
-  expect(forceToolCall).toHaveBeenCalledTimes(1);
+  const { outcome, frames, oneShotText } = await run(false);
+  expect(oneShotText).toHaveBeenCalledTimes(1);
   expect(outcome.pendingInteraction).toEqual({
     steps: [{ kind: "suggest_actions", id: "a1", actions: ACTIONS }],
   });
@@ -100,7 +98,13 @@ test("a reply that skipped suggest_actions returns the recovered bubbles, with n
 });
 
 test("an in-band suggest_actions call never pays for the pass", async () => {
-  const { outcome, forceToolCall } = await run(true);
-  expect(forceToolCall).not.toHaveBeenCalled();
+  const { outcome, oneShotText } = await run(true);
+  expect(oneShotText).not.toHaveBeenCalled();
   expect(outcome.pendingInteraction?.steps[0]?.kind).toBe("suggest_actions");
+});
+
+test("off never runs the recovery one-shot", async () => {
+  const { outcome, oneShotText } = await run(false, false);
+  expect(oneShotText).not.toHaveBeenCalled();
+  expect(outcome.pendingInteraction).toBeUndefined();
 });

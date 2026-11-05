@@ -7,7 +7,11 @@ import {
   loadSkillsFromDir,
 } from "@earendil-works/pi-coding-agent";
 import { expect, test } from "vitest";
-import { agentSkillsOverride, sortSkillsForPrompt } from "./prompt-skills";
+import {
+  agentSkillsOverride,
+  indexLine,
+  skillsForPrompt,
+} from "./prompt-skills";
 import { buildAgentLoader } from "./resource-loader";
 
 function seedSkill(skillsDir: string, slug: string, name: string): void {
@@ -86,10 +90,10 @@ test("the shared-skill filter still applies before the sort", () => {
 
 test("skills that share a name are ordered by path", () => {
   const skills = [
-    { name: "same", filePath: "/b/SKILL.md" },
-    { name: "same", filePath: "/a/SKILL.md" },
+    { name: "same", filePath: "/b/SKILL.md", description: "B." },
+    { name: "same", filePath: "/a/SKILL.md", description: "A." },
   ];
-  expect(sortSkillsForPrompt(skills).map((skill) => skill.filePath)).toEqual([
+  expect(skillsForPrompt(skills).map((skill) => skill.filePath)).toEqual([
     "/a/SKILL.md",
     "/b/SKILL.md",
   ]);
@@ -113,4 +117,113 @@ test("the agent loader hands pi its skills in name order", async () => {
     "mid-intake",
     "zeta-report",
   ]);
+});
+
+test("the index carries a skill's first sentence, its full text left on disk", () => {
+  const skills = [
+    {
+      name: "close-my-month",
+      filePath: "/s/close-my-month/SKILL.md",
+      description:
+        "Run a full monthly close end-to-end.\n  Reconciles every account. Drafts entries.",
+    },
+  ];
+  expect(skillsForPrompt(skills)[0]?.description).toBe(
+    "Run a full monthly close end-to-end.",
+  );
+  expect(skills[0]?.description).toContain("Drafts entries.");
+});
+
+test("a sentence break needs a capital after it, so abbreviations and lists stay whole", () => {
+  expect(
+    indexLine("Tag spend for Section 174 (e.g. contractors). Then file."),
+  ).toBe("Tag spend for Section 174 (e.g. contractors).");
+  expect(indexLine("Revisa tus gastos. ¿Qué cambió?")).toBe(
+    "Revisa tus gastos.",
+  );
+});
+
+test("an overlong first sentence is cut at a word boundary under 200 characters", () => {
+  const long = `Assemble a board-ready pack: ${"cash, burn, runway, revenue, ".repeat(10)}and more.`;
+  const line = indexLine(long);
+  expect(line.length).toBeLessThanOrEqual(201);
+  expect(line.endsWith("…")).toBe(true);
+  expect(line).toMatch(
+    /^Assemble a board-ready pack: cash, burn, runway, revenue/,
+  );
+  expect(line).not.toMatch(/[\s,]…$/);
+});
+
+test("an outcome-first description keeps its first sentence", () => {
+  expect(
+    indexLine(
+      "Log a single expense from a forwarded receipt — image, PDF, or email — and produce one categorized expense. I extract vendor and date.",
+    ),
+  ).toBe(
+    "Log a single expense from a forwarded receipt — image, PDF, or email — and produce one categorized expense.",
+  );
+});
+
+test("a description that leads with trigger phrases is indexed by what the skill does", () => {
+  expect(
+    indexLine(
+      "Use when the user says 'book the accrual journal entry' / 'draft the depreciation journal entry for Q1' / 'stock-comp journal entry'  -  I draft a balanced double-entry journal entry that branches on `type`: `accrual` | `prepaid` | `payroll` | `revrec` | `depreciation` | `stock-comp` | `adjustment` | `reclass`. Every journal entry is validated balanced to 1 cent.",
+    ),
+  ).toBe(
+    "I draft a balanced double-entry journal entry that branches on `type`: `accrual` | `prepaid` | `payroll` | `revrec` | `depreciation` | `stock-comp` | `adjustment` | `reclass`.",
+  );
+  expect(
+    indexLine(
+      "Use this skill when the user asks to reconcile accounts. Matches bank lines to the ledger and flags gaps. Writes a report.",
+    ),
+  ).toBe("Matches bank lines to the ledger and flags gaps.");
+});
+
+test("a description that is only trigger phrases keeps its first sentence", () => {
+  expect(
+    indexLine(
+      "Use when the user says 'close the month' / 'run month-end' / 'are the books closed'.",
+    ),
+  ).toBe(
+    "Use when the user says 'close the month' / 'run month-end' / 'are the books closed'.",
+  );
+  expect(indexLine("Use when the user says 'close the month'  -  ")).toBe(
+    "Use when the user says 'close the month' -",
+  );
+});
+
+test("a trigger lead followed by more trigger phrases keeps its first sentence", () => {
+  expect(
+    indexLine(
+      'Use when the user provides a LinkedIn post URL and wants to run the full pipeline from commenters to a live cold outreach campaign on Instantly, storing leads in Google Sheets instead of Airtable. Triggers on phrases like "linkedin comment to outreach gsheets", "scrape and email with sheets".',
+    ),
+  ).toBe(
+    "Use when the user provides a LinkedIn post URL and wants to run the full pipeline from commenters to a live cold outreach campaign on Instantly, storing leads in Google Sheets instead of Airtable.",
+  );
+});
+
+test("trigger as a verb is what the skill does, not a trigger lead", () => {
+  expect(
+    indexLine(
+      "Triggers a payroll run in Gusto and emails the summary. Needs the Gusto connection.",
+    ),
+  ).toBe("Triggers a payroll run in Gusto and emails the summary.");
+  expect(
+    indexLine(
+      "Trigger a Zapier webhook - with the payload the user describes.",
+    ),
+  ).toBe("Trigger a Zapier webhook - with the payload the user describes.");
+});
+
+test("trigger phrase and trigger include leads are skipped too", () => {
+  expect(
+    indexLine(
+      "Trigger phrases: 'close the month', 'month-end'. I close the books for the month.",
+    ),
+  ).toBe("I close the books for the month.");
+  expect(
+    indexLine(
+      "Triggers include 'pay run' and 'run payroll'. I run payroll in Gusto.",
+    ),
+  ).toBe("I run payroll in Gusto.");
 });

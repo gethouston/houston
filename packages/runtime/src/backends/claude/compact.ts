@@ -1,6 +1,8 @@
 import type { Options } from "@anthropic-ai/claude-agent-sdk";
 import type { CompactionCheckpoints } from "../../store/conversation-compaction";
 import type { CompactionOutcome } from "../types";
+import type { SdkEffort } from "./effort";
+import { denyEveryTool } from "./file-guard-hook";
 import type { ClaudeQuery, TurnAuth } from "./session";
 import type { SessionsStore } from "./sessions-store";
 import { createStreamTranslator } from "./translate";
@@ -22,9 +24,14 @@ import { createStreamTranslator } from "./translate";
  * FAILURE NEVER COSTS HISTORY. The mapping is dropped only after a non-empty
  * summary is in hand; a provider failure, an abort, or an empty answer throws
  * with the session mapping untouched, so the conversation keeps every turn it
- * had. The summarization turn itself runs tool-less and emits nothing on the
- * session's wire stream: it is Houston talking to the model about the
- * conversation, never a turn the user asked for.
+ * had. The summarization turn runs no tool and emits nothing on the session's
+ * wire stream: it is Houston talking to the model about the conversation,
+ * never a turn the user asked for.
+ *
+ * The request keeps the turn's tools, system prompt and effort: those, then the
+ * history, are the prompt-cache prefix, so a summary sent with the same prefix
+ * reads the conversation from the cache instead of paying for all of it again.
+ * Tool calls are refused by the hooks instead of by removing the tools.
  */
 
 /** What one compaction needs; assembled by `ClaudeSession.compact`. */
@@ -37,6 +44,8 @@ export interface ClaudeCompactionDeps {
   compactions: CompactionCheckpoints;
   /** SDK model string the summarization runs on (the session's current model). */
   model: string;
+  /** The turn's thinking and effort, which the cached prefix was written with. */
+  effort?: SdkEffort;
   /** The subprocess env carrying the CURRENT stored credential. */
   env: TurnAuth["env"];
   /** Cancels the summarization when the session is aborted or disposed. */
@@ -85,7 +94,9 @@ export async function compactClaudeSession(
   deps: ClaudeCompactionDeps,
   customInstructions?: string,
 ): Promise<CompactionOutcome> {
-  const resume = deps.sessionsStore.resolveResume(deps.conversationId);
+  const resume = deps.sessionsStore.resolveResume(
+    deps.conversationId,
+  )?.sessionId;
   // No SDK session yet (a conversation whose first turn has not run, or one
   // already compacted with nothing said since): there is no history in the
   // model's window to summarize.
@@ -97,12 +108,13 @@ export async function compactClaudeSession(
     model: deps.model,
     abortController: deps.abortController,
     resume,
+    ...(deps.effort
+      ? { thinking: deps.effort.thinking, effort: deps.effort.effort }
+      : {}),
     // A summarizer that reaches for a tool is a summarizer that stops
-    // summarizing: both surfaces are closed for this one turn (the built-ins
-    // and the MCP tools Houston registers), leaving prose as the only output.
-    tools: [],
+    // summarizing, so every call is denied, auto-approved ones included.
     allowedTools: [],
-    mcpServers: {},
+    hooks: { PreToolUse: [{ hooks: [denyEveryTool] }] },
     canUseTool: async () => ({
       behavior: "deny",
       message: "Tools are unavailable during summarization.",

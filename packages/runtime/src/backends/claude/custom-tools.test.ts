@@ -366,16 +366,14 @@ test("an explicit tool list replaces the server defaults and remains mode-filter
 
 // --- naming ----------------------------------------------------------------
 
-test("each tool's description restates its bare name for the prompt mandate", () => {
+test("each tool's description is the pi tool's own, with no per-tool preamble", () => {
   const { tools } = build(INTEGRATIONS);
-  for (const t of tools) {
-    expect(t.description.startsWith(`This is the \`${t.name}\` tool`)).toBe(
-      true,
-    );
-  }
-  // The shared prompt names ask_user/request_connection bare — the restated name
-  // is what maps that mandate onto the mcp__houston__ namespaced tool.
-  expect(byName(tools, "ask_user").description).toContain("`ask_user`");
+  // The mapping from bare to mcp__houston__ names is said once, in the system
+  // prompt (system-prompt.ts), not repeated in every advertised description.
+  expect(byName(tools, "ask_user").description).toBe(
+    makeAskUserTool().description,
+  );
+  for (const t of tools) expect(t.description).not.toContain("This is the `");
 });
 
 // --- schema fidelity -------------------------------------------------------

@@ -11,7 +11,12 @@ import {
   hedgedModelRuntime,
 } from "../../ai/hedged-runtime";
 import { isManagedBridgeModel } from "../../ai/openai-compatible-model";
-import { makeAgentLoader } from "../../session/resource-loader";
+import { config } from "../../config";
+import {
+  withNextStepSuggestions,
+  withNextStepSuggestionTools,
+} from "../../session/next-step-suggestions";
+import { makeAgentLoader, SYSTEM_PROMPT } from "../../session/resource-loader";
 import { toolNamesForMode } from "../../session/tool-selection";
 import type {
   CreateSessionOptions,
@@ -22,6 +27,7 @@ import { SentRequests } from "./model-phase";
 import { PiSession } from "./session";
 import { resumeSessionManager } from "./session-files";
 import { piThinkingLevel } from "./thinking-level";
+import { makeToolResultContext } from "./tool-result-context";
 import { piTransportSettings } from "./transport-settings";
 
 /**
@@ -83,7 +89,10 @@ export function createPiBackend(deps: PiBackendDeps): HarnessBackend {
         deps.workspaceDir,
         opts.mode,
         opts.context,
-        deps.systemPrompt,
+        withNextStepSuggestions(
+          deps.systemPrompt || config.systemPrompt || SYSTEM_PROMPT,
+          opts.nextStepSuggestions,
+        ),
         deps.sharedSkillsDir,
         deps.role,
       );
@@ -114,10 +123,25 @@ export function createPiBackend(deps: PiBackendDeps): HarnessBackend {
         ),
         resourceLoader: loader,
         ...piTransportSettings(deps.workspaceDir, deps.dataDir, deps.transport),
-        tools: toolNamesForMode(opts.mode, deps.tools),
-        customTools: deps.customTools,
+        tools: toolNamesForMode(opts.mode, deps.tools).filter(
+          (name) =>
+            opts.nextStepSuggestions !== false || name !== "suggest_actions",
+        ),
+        customTools: withNextStepSuggestionTools(
+          deps.customTools,
+          opts.nextStepSuggestions,
+        ),
       });
       if (isManagedBridgeModel(opts.model)) session.setAutoRetryEnabled(false);
+      // Runs after pi's own projections, on what is about to be sent; the
+      // session keeps every tool result whole (./tool-result-context.ts).
+      const projected = session.agent.transformContext;
+      const toolResults = makeToolResultContext({
+        workspaceDir: deps.workspaceDir,
+        conversationId: opts.conversationId,
+      });
+      session.agent.transformContext = async (messages, signal) =>
+        toolResults(projected ? await projected(messages, signal) : messages);
       return new PiSession(session, requests);
     },
   };

@@ -46,7 +46,7 @@ const DESKTOP_ONLY = [
 function rustSkillsGuidance(): string {
   const literal = RUST.indexOf('r#"');
   const start = RUST.indexOf("## How-To Guidance", literal);
-  const end = RUST.indexOf('\n"#;');
+  const end = RUST.lastIndexOf('"#;');
   expect(
     start,
     "the Rust mirror must still open with the How-To Guidance heading",

@@ -1,10 +1,10 @@
 import { isAbsolute, join, relative, resolve, sep } from "node:path";
 import { isCredential } from "./fs-guard-containment";
 import {
-  AttachmentReadOnlyError,
   PathDeniedError,
   PathEscapeError,
   PathNotAllowedError,
+  ReadOnlyFolderError,
 } from "./fs-guard-errors";
 import {
   contains,
@@ -107,7 +107,7 @@ export function assertNotReadOnly(
   narrowing: Narrowing | null,
 ): void {
   if (narrowing?.readable.some((rel) => contains(proven, join(root, rel))))
-    throw new AttachmentReadOnlyError();
+    throw new ReadOnlyFolderError();
 }
 
 /**

@@ -5,7 +5,6 @@ import { config } from "../config";
 import { framePrompt } from "../session/attribution";
 import { newInteractionHolder } from "../session/interaction";
 import { snapshotWhenReady } from "./turn-deferred-files";
-import { recordPooledRoutineCarry } from "./turn-routine-context";
 import { openTurnBackendSession } from "./turn-session-backend";
 import { runInTurnContext } from "./turn-session-context";
 import { handleTurnSessionFailure } from "./turn-session-failure";
@@ -70,10 +69,9 @@ export async function runTurn(
    * still name the failed token.
    */
   const usedTokens = newUsedTokenCapture();
-  // Set when a routine run starts fresh (turn-routine-context.ts): announced
-  // before the prompt and persisted on the reply, like the standing server's.
+  // Set when the session autocompacted before the prompt: announced before
+  // the prompt and persisted on the reply, like the standing server's.
   let compaction: ChatMessage["compaction"];
-  let routineResetBase: number | undefined;
   let title: PooledTurnTitle | null = null;
   try {
     const opened = await openTurnBackendSession({
@@ -85,7 +83,6 @@ export async function runTurn(
     });
     const { replay, session, model, modelRuntime } = opened;
     compaction = opened.compaction;
-    routineResetBase = opened.routineResetBase;
     if (compaction) emit({ type: "context_compacted", data: compaction });
 
     // Snapshot the hydrated workspace so the turn's created/modified files can
@@ -197,14 +194,5 @@ export async function runTurn(
       ...(stopReason ? { stopReason } : {}),
       ...modelCallsOutcome(frames, turnId),
     };
-  } finally {
-    // A routine run records what it left its session holding, before the
-    // caller's sync-back ships the conversation file (turn-routine-context.ts).
-    recordPooledRoutineCarry({
-      dataDir,
-      conversationId,
-      turnId,
-      resetBaseTokens: routineResetBase,
-    });
   }
 }

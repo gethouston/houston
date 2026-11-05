@@ -9,6 +9,7 @@ import {
   repoRoot,
   type SdkMethod,
 } from "./inputs.ts";
+import { ANY_KEY_PATHS } from "./route-paths.ts";
 
 export type Rule =
   | "sdk-route-unbound"
@@ -130,16 +131,21 @@ export function checkRules(
 
   // R2 — an SDK method no server answers. ANY of its keys answering is enough:
   // a method whose path parameter is closed to a set issues one call per call
-  // site, not one per member, so a deployment that serves `composio` and not
-  // `custom` serves the method. What a member costs is only ever the OTHER
-  // direction — R1 still reports a literal no member names.
+  // site, not one per member. A literal key also meets an any-key route.
+  const anyKey = [...hostKeys, ...gatewayKeys].filter((key) =>
+    ANY_KEY_PATHS.has(pathOf(key)),
+  );
+  const servesLiteral = (served: string, key: string) =>
+    served.split("/").length === key.split("/").length &&
+    key.startsWith(served.slice(0, -"{}".length));
   for (const method of sdk) {
     if (
       method.keys.some(
         (key) =>
           hostKeys.has(key) ||
           gatewayKeys.has(key) ||
-          gatewayPaths.has(pathOf(key)),
+          gatewayPaths.has(pathOf(key)) ||
+          anyKey.some((served) => servesLiteral(served, key)),
       )
     )
       continue;

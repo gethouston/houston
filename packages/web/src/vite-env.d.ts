@@ -16,10 +16,8 @@ declare const __HOUSTON_AUTH_STORAGE_SCOPE__: string;
 declare const __SENTRY_DSN__: string;
 declare const __SENTRY_SEND_IN_DEV__: string;
 
-// Augments (does not replace) Vite's built-in ImportMetaEnv — needed by
-// app/src/lib/autocompact.ts.
+// Augments (does not replace) Vite's built-in ImportMetaEnv.
 interface ImportMetaEnv {
-  readonly VITE_AUTOCOMPACT_THRESHOLD?: string;
   /** Dev-only Firebase config overrides (identity/config.ts), no rebuild. */
   readonly VITE_FIREBASE_API_KEY?: string;
   readonly VITE_FIREBASE_AUTH_DOMAIN?: string;

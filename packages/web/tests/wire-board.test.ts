@@ -145,6 +145,8 @@ test("a failed mission update propagates — never swallowed", async () => {
 
 test("a provider-refused send stamps start but never its error settle", async () => {
   stubRouted((call) => {
+    if (call.url.endsWith("/v1/preferences/next_step_suggestions"))
+      return json(200, { value: null });
     if (call.url.includes("/activities"))
       return call.method === "GET"
         ? json(200, { items: [mission] })

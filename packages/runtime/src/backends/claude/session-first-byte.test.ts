@@ -17,7 +17,10 @@ function store(resume: string | undefined): SessionsStore {
     setSessionId: () => {},
     remove: () => {},
     purge: () => {},
-    resolveResume: () => resume,
+    resolveResume: () =>
+      resume === undefined
+        ? undefined
+        : { sessionId: resume, clearedTokens: 0 },
   };
 }
 

@@ -47,13 +47,14 @@ const SuggestReusableParams = Type.Object({
 type SuggestReusableParams = Static<typeof SuggestReusableParams>;
 
 /** The result once the closing message is written: the offer ends the turn
- *  together with `suggest_actions` (both carry pi's terminate hint). */
+ *  (with a next-step offer in the same message, both carry pi's terminate
+ *  hint). No text here names `suggest_actions`, which a turn may not have. */
 const ENDED_INSTRUCTION =
   "Your suggestion was recorded. The app shows the user a dismissible card offering to save this work, under the message you already wrote. This ended your turn.";
 
 /** The result when the model called the tool before writing anything visible. */
 function needsMessageInstruction(visibleText: string): string {
-  return `Your suggestion was recorded. The app will show the user a dismissible card offering to save this work. Do not repeat the suggestion in plain text and do not ask about it again. You called this before writing anything the user can read in this message, so this did NOT end your turn. Write your closing message now, with suggest_actions, then end. ${unreadReplyInstruction(visibleText)}`;
+  return `Your suggestion was recorded. The app will show the user a dismissible card offering to save this work. Do not repeat the suggestion in plain text and do not ask about it again. You called this before writing anything the user can read in this message, so this did NOT end your turn. Write your closing message now, then end, with any next-step offer in that same message. ${unreadReplyInstruction(visibleText)}`;
 }
 
 /** The reusable-suggestion tool (execute + auto; never plan). */
@@ -61,8 +62,7 @@ export function makeSuggestReusableTool() {
   return defineTool({
     name: "suggest_reusable",
     label: "Suggest saving as reusable",
-    description:
-      "Suggest saving the just-completed work as a reusable Skill, a scheduled Routine, or a Learning to remember. Call this when you finish a task and the work is clearly worth keeping (a genuinely reusable multi-step procedure, work that should recur on a schedule, or a stable fact worth remembering - not a simple or one-off request), in your final message after your closing text and together with suggest_actions, INSTEAD OF asking about it in plain text or via ask_user. The app shows the user a dismissible card offering to save it. Call it at most once per turn. Like suggest_actions it ends your turn, so put nothing after it.",
+    description: `Offer, on a dismissible card, to save the just-finished work as a reusable Skill, a scheduled Routine, or a Learning. Call it only when the work is clearly worth keeping (not a simple or one-off request), in your final message after your closing text, instead of asking in plain text or via ask_user. If you also offer next steps, make both offers in that same message. At most once per turn. It ends your turn, so put nothing after it.`,
     promptSnippet:
       "Suggest saving the completed work as a Skill, Routine, or Learning",
     parameters: SuggestReusableParams,

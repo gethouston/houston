@@ -68,7 +68,7 @@ test("admits the turn's own archive segments, never another conversation's", () 
 });
 
 test("hydrates only the two newest of the turn's own archive segments", () => {
-  // The rest stay remote: a routine run replays ROUTINE_REPLAY_TAIL
+  // The rest stay remote: a routine digest reads ROUTINE_REPLAY_TAIL
   // messages, and an older segment is fetched only when a reader reaches
   // back (turn-archive-fetch.ts).
   const root = rootWithSessions();
@@ -88,7 +88,11 @@ test("hydrates only the two newest of the turn's own archive segments", () => {
 test("hydrates the conversation's own markers, never another's", () => {
   const root = rootWithSessions();
   const admit = ownConversationOnly("c1");
-  for (const marker of ["harness.json", "autocompact.json"]) {
+  for (const marker of [
+    "harness.json",
+    "autocompact.json",
+    "routine-results.md",
+  ]) {
     expect(admit(`${session}/${marker}`, listed(), root)).toBe(true);
     expect(admit(`${standing}/sessions/c2/${marker}`, listed(), root)).toBe(
       false,

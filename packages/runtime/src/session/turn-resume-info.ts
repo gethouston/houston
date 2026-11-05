@@ -125,6 +125,8 @@ function parsePin(raw: Record<string, unknown>): TurnPin | undefined {
     const value = raw[key];
     if (typeof value === "string" || value === null) out[key] = value;
   }
+  if (typeof raw.nextStepSuggestions === "boolean")
+    out.nextStepSuggestions = raw.nextStepSuggestions;
   if (TURN_MODES.includes(raw.mode as TurnMode))
     out.mode = raw.mode as TurnMode;
   return Object.keys(out).length > 0 ? out : undefined;

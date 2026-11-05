@@ -396,9 +396,11 @@ export function getPreference(key: string): string | null {
   return state.preferences.get(key) ?? null;
 }
 
+/** Persist a preference and fan out `PreferencesChanged`, as the host does. */
 export function setPreference(key: string, value: string | null): void {
   if (value === null) state.preferences.delete(key);
   else state.preferences.set(key, value);
+  emitDomain("PreferencesChanged");
 }
 
 /** A workspace's stored sidebar layout, or the default when unset (GET). */

@@ -59,6 +59,7 @@ test("a pooled turn whose first request is never answered completes with no card
     {
       conversationId: "c1",
       text: "hello",
+      nextStepSuggestions: false,
       provider: "faux",
       emit: (frame) => frames.push(frame),
       signal: undefined,

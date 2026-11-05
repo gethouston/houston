@@ -33,7 +33,10 @@ function fakeStore(
     },
     remove: () => {},
     purge: () => {},
-    resolveResume: () => resume,
+    resolveResume: () =>
+      resume === undefined
+        ? undefined
+        : { sessionId: resume, clearedTokens: 0 },
   };
 }
 
@@ -101,11 +104,12 @@ function make(deps: {
   model?: string;
   refreshAuth?: () => { env: Record<string, string>; accessDigest?: string };
   freshRetryPromptPrefix?: () => string;
+  baseOptions?: Options;
 }): ClaudeSession {
   return new ClaudeSession({
     query: deps.query,
     conversationId: "c1",
-    baseOptions: {} as Options,
+    baseOptions: deps.baseOptions ?? ({} as Options),
     sessionsStore: deps.store ?? fakeStore(),
     model: deps.model ?? "claude-sonnet-4-6",
     refreshAuth: deps.refreshAuth ?? (() => ({ env: {} })),
@@ -433,6 +437,26 @@ test("getContextUsage is undefined before a turn, then reflects the last usage",
   expect(session.getContextUsage()).toEqual({ tokens: 100 });
 });
 
+test("clearing stale results takes what it freed off the fill the next check reads", async () => {
+  let cleared = 60;
+  const store: SessionsStore = {
+    ...fakeStore("s"),
+    resolveResume: () => {
+      const clearedTokens = cleared;
+      cleared = 0;
+      return { sessionId: "s", clearedTokens };
+    },
+  };
+  const session = make({ query: arrayQuery([usageMsg()]), store });
+  await session.prompt("go");
+  // The prompt's own resume cleared the first batch; a new one went stale.
+  cleared = 60;
+  expect(session.clearStaleToolResults()).toBe(60);
+  expect(session.getContextUsage()).toEqual({ tokens: 40 });
+  expect(session.clearStaleToolResults()).toBe(0);
+  expect(session.getContextUsage()).toEqual({ tokens: 40 });
+});
+
 function toolInputDeltaMsg(partialJson: string, sessionId = "s"): SDKMessage {
   return {
     type: "stream_event",
@@ -660,6 +684,54 @@ test("the live signature (a houston tool answered 'No such tool') also reruns fr
   expect(events.filter((e) => e.type === "text")).toEqual([
     { type: "text", data: "recovered" },
   ]);
+});
+
+test("a resume that calls a houston tool this turn left out keeps going, without a rerun", async () => {
+  const store = fakeStore("sess-old");
+  let call = 0;
+  const query: ClaudeQuery = (params) => {
+    call++;
+    return arrayQuery([
+      initMsg([{ name: "houston", status: "connected" }], "sess-old"),
+      textMsg("Here are three more.", "sess-old"),
+      {
+        type: "user",
+        message: {
+          role: "user",
+          content: [
+            {
+              type: "tool_result",
+              tool_use_id: "t1",
+              is_error: true,
+              content:
+                "<tool_use_error>Error: No such tool available: mcp__houston__suggest_actions</tool_use_error>",
+            },
+          ],
+        },
+        session_id: "sess-old",
+      } as unknown as SDKMessage,
+      usageMsg("sess-old"),
+    ])(params);
+  };
+  const session = make({
+    query,
+    store,
+    // Next-step suggestions are off this turn: suggest_actions is not offered.
+    baseOptions: {
+      allowedTools: ["mcp__houston__ask_user"],
+    } as Options,
+    freshRetryPromptPrefix: () => "[canonical replay]\n",
+  });
+  const events: WireEvent[] = [];
+  session.subscribe((e) => events.push(e));
+
+  await session.prompt("Give me three more.");
+
+  expect(call).toBe(1);
+  expect(events.filter((e) => e.type === "text")).toEqual([
+    { type: "text", data: "Here are three more." },
+  ]);
+  expect(store.setCalls).toEqual([["c1", "sess-old"]]);
 });
 
 test("a FRESH session without the houston server fails the turn visibly, no retry loop", async () => {

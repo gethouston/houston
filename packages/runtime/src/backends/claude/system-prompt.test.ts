@@ -50,10 +50,12 @@ test("the section renders with empty markers even when no context is written", (
   expect(prompt).toContain("(empty so far");
 });
 
-test("a non-workspace cwd gets only the base prompt (no context section)", () => {
+test("a non-workspace cwd gets only the base prompt and the tool-name note (no context section)", () => {
   const dir = freshWorkspace(false);
   const prompt = buildSystemPrompt(dir, "You are Houston.");
-  expect(prompt).toBe("You are Houston.");
+  expect(prompt).toBe(
+    "You are Houston.\n\nHouston's own tools reach you as `mcp__houston__<name>`, for example `mcp__houston__ask_user`; these instructions call each one by its plain name.",
+  );
 });
 
 function writeSkill(dir: string, slug: string, frontmatter: string): void {

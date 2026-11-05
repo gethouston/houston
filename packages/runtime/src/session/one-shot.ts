@@ -5,10 +5,12 @@ import {
   DefaultResourceLoader,
   type ModelRuntime,
   SessionManager,
+  SettingsManager,
 } from "@earendil-works/pi-coding-agent";
 import type { PiThinkingLevel } from "../ai/effort";
 import { isManagedBridgeModel } from "../ai/openai-compatible-model";
-import { piTransportSettings } from "../backends/pi/transport-settings";
+import { createPiCallTimer } from "../backends/pi/model-calls";
+import type { HarnessTimingEvent } from "../backends/types";
 
 export interface OneShotOptions {
   cwd: string;
@@ -23,6 +25,8 @@ export interface OneShotOptions {
   signal?: AbortSignal;
   /** pi's provider transport. Omit for pi's own setting (`auto`). */
   transport?: Transport;
+  autoRetry?: boolean;
+  onModelCall?: (event: HarnessTimingEvent) => void;
 }
 
 /**
@@ -45,6 +49,12 @@ export async function oneShotText(opts: OneShotOptions): Promise<string> {
   });
   await loader.reload();
 
+  // A throwaway request must not persist retry or model settings in the workspace.
+  const settingsManager = SettingsManager.inMemory(
+    SettingsManager.create(opts.cwd, opts.cwd).getSettings(),
+  );
+  if (opts.transport)
+    settingsManager.applyOverrides({ transport: opts.transport });
   const { session } = await createAgentSession({
     cwd: opts.cwd,
     agentDir: opts.cwd,
@@ -52,14 +62,18 @@ export async function oneShotText(opts: OneShotOptions): Promise<string> {
     modelRuntime: opts.modelRuntime,
     sessionManager: SessionManager.inMemory(opts.cwd),
     resourceLoader: loader,
-    ...piTransportSettings(opts.cwd, opts.cwd, opts.transport),
+    settingsManager,
     tools: [],
     ...(opts.thinkingLevel ? { thinkingLevel: opts.thinkingLevel } : {}),
   });
 
-  if (isManagedBridgeModel(opts.model)) session.setAutoRetryEnabled(false);
+  if (opts.autoRetry === false || isManagedBridgeModel(opts.model))
+    session.setAutoRetryEnabled(false);
   let text = "";
+  const timer = createPiCallTimer();
   const unsub = session.subscribe((e: AgentSessionEvent) => {
+    const call = timer(e);
+    if (call) opts.onModelCall?.({ type: "call", call });
     if (
       e.type === "message_update" &&
       e.assistantMessageEvent?.type === "text_delta"
