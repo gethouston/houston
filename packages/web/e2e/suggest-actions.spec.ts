@@ -242,7 +242,10 @@ test("the user's move to Done retires a blocking question, live", async ({
     timeout: 15_000,
   });
 
-  await closeActivityPanel(page);
+  // Not closeActivityPanel: Escape on a live question step skips it, which
+  // would retire the question before the move to Done this test is about.
+  await page.getByRole("button", { name: "Close panel" }).click();
+  await expect(page.getByPlaceholder("Type your answer...")).toBeHidden();
   const card = missionCard(page, "send the deck");
   await card.hover();
   await card.getByRole("button", { name: "Move to done" }).click();
