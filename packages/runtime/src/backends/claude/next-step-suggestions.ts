@@ -1,6 +1,7 @@
 import { readFileSync } from "node:fs";
 import { join } from "node:path";
 import { z } from "zod";
+import { currentTurnFinish } from "../../session/interaction";
 import { makeSuggestActionsTool } from "../../session/tools/suggest-actions";
 import type { ClaudeLayout } from "./paths";
 import { createSessionsStore } from "./sessions-store";
@@ -42,21 +43,31 @@ export function hasPreviousSuggestionCalls(
   return false;
 }
 
-/** A resumed model sees success without creating offers or ending the turn. */
+/**
+ * A resumed model sees success and no offers are recorded. After a closing
+ * message it still ends the turn like the real tool, because the SDK would
+ * otherwise call the model again and it repeats its reply.
+ */
 export function makeSilentSuggestActionsTool() {
   return {
     ...makeSuggestActionsTool(),
     description:
       "Do not call this tool. Finish your reply normally without follow-up actions.",
     async execute() {
+      const finish = currentTurnFinish();
+      const ended = Boolean(finish?.closingMessageSeen);
+      if (finish && ended) finish.turnEndedByTool = true;
       return {
         content: [
           {
             type: "text" as const,
-            text: "Success. Your turn is complete. Do not repeat your reply.",
+            text: ended
+              ? "Success. Your turn is complete."
+              : "Success. Write your reply to the user now, then end your turn.",
           },
         ],
         details: {},
+        terminate: ended,
       };
     },
   };

@@ -209,14 +209,13 @@ for (const profile of ["local", "pooled"] as const) {
             expect(holder.finish.turnEndedByTool).toBe(true);
           } else {
             expect(result.content).toEqual([
-              {
-                type: "text",
-                text: "Success. Your turn is complete. Do not repeat your reply.",
-              },
+              { type: "text", text: "Success. Your turn is complete." },
             ]);
             expect(holder.suggestActions).toBeUndefined();
             expect(holder.pending).toBeUndefined();
-            expect(holder.finish.turnEndedByTool).toBe(false);
+            // The reply is already written: the turn must end here, or the
+            // SDK calls the model again and it repeats the reply.
+            expect(holder.finish.turnEndedByTool).toBe(true);
             expect(
               await endTurnIfRequested(
                 {
@@ -229,7 +228,19 @@ for (const profile of ["local", "pooled"] as const) {
                 undefined,
                 { signal: new AbortController().signal },
               ),
-            ).toEqual({});
+            ).toMatchObject({ continue: false });
+            const early = newInteractionHolder();
+            await runWithInteractionCapture(early, async () => {
+              const before = await tool.handler({ actions }, {});
+              expect(before.content).toEqual([
+                {
+                  type: "text",
+                  text: "Success. Write your reply to the user now, then end your turn.",
+                },
+              ]);
+              expect(early.finish.turnEndedByTool).toBe(false);
+              expect(early.suggestActions).toBeUndefined();
+            });
             const oneShotText = vi.fn(async () => JSON.stringify({ actions }));
             await recoverFollowUpActions({
               session: {
