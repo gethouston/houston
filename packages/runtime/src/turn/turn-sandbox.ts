@@ -1,5 +1,6 @@
 import { CustomIntegrationError } from "@houston/host/src/integrations/custom/types";
 import { IntegrationUpstreamError } from "@houston/host/src/integrations/types";
+import type { LiveTurnPin } from "@houston/host/src/routes/live-turn-pin";
 import type { TurnLimits } from "@houston/protocol";
 import type { WireFrame } from "@houston/runtime-client";
 import type { ObjectStore } from "@houston/runtime-client/object-sync";
@@ -33,6 +34,7 @@ export interface TurnSandboxDeps {
   actingAs?: { userId: string; name?: string };
   /** The acting person's plan limits (TurnRequest.limits). */
   limits?: TurnLimits;
+  authoringPin?: LiveTurnPin;
   orgSlug: string;
   agentSlug: string;
   fetchImpl?: typeof fetch;

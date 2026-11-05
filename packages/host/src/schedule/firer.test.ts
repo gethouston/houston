@@ -207,6 +207,21 @@ test("an unresolvable provider pin fails the fire with the real reason, before a
   expect(cloudrun.calls).toHaveLength(0);
 });
 
+test("a provider outside the curated list that the runtime can run still fires", async () => {
+  // Saves accept any provider the runtime knows (providerPinError), so both
+  // firers must too, or a routine that saved fine errors on every run.
+  for (const provider of ["xai", "groq", "qwen"]) {
+    const cloudrun = recordingChannel();
+    const routine = { ...job().routine, provider };
+    await new ChannelRoutineFirer({ cloudrun }).fire(job({ routine }));
+    await new TriggerRoutineFirer({ cloudrun }, []).fire(job({ routine }));
+    expect(cloudrun.calls.map((call) => call.pin?.provider)).toEqual([
+      provider,
+      provider,
+    ]);
+  }
+});
+
 test("a missing channel for the workspace's runtime throws (→ errored run)", async () => {
   const firer = new ChannelRoutineFirer({}); // nothing wired
   await expect(firer.fire(job({ workspace: ws("cloudrun") }))).rejects.toThrow(

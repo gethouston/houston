@@ -1,6 +1,21 @@
-import { canonicalProviderId } from "@houston/domain";
+import { canonicalProviderId, loadConfig } from "@houston/domain";
 import type { NewRoutine } from "@houston/protocol";
-import type { LiveTurnPin } from "./live-turn-pin";
+import type { Vfs } from "../vfs";
+import { type LiveTurnPin, liveTurnPin } from "./live-turn-pin";
+
+/** Resolve authoring context only for agent-made creations without a provider. */
+export async function routineAuthoringPin(input: {
+  vfs: Vfs;
+  root: string;
+  fields: Record<string, unknown>;
+  turnPin?: LiveTurnPin;
+}): Promise<LiveTurnPin | undefined> {
+  if (input.fields.provider) return undefined;
+  return (
+    input.turnPin ??
+    liveTurnPin((await loadConfig(input.vfs, input.root)).config)
+  );
+}
 
 const EFFORT_ORDER = [
   "none",

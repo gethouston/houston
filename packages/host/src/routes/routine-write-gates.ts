@@ -7,7 +7,7 @@ import {
   PLAN_MIN_INTERVAL,
   type PlanMinIntervalRefusal,
 } from "@houston/protocol";
-import { hostProvider } from "../providers";
+import { isKnownProvider } from "../providers";
 
 /**
  * The gates a routine write passes before it is persisted (routine-write.ts).
@@ -56,7 +56,7 @@ export const providerPinError = (
 ): string | null => {
   if (typeof body.provider !== "string" || !body.provider) return null;
   const canonical = canonicalProviderId(body.provider);
-  return canonical && hostProvider(canonical)
+  return canonical && isKnownProvider(canonical)
     ? null
     : `unknown provider: ${body.provider}`;
 };

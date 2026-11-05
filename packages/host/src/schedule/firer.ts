@@ -1,7 +1,7 @@
 import { routinePin, routinePrompt } from "@houston/domain";
 import type { WorkspaceRuntime } from "../domain/types";
 import type { RuntimeChannel } from "../ports";
-import { hostProvider, routineProviderUnavailable } from "../providers";
+import { isKnownProvider, routineProviderUnavailable } from "../providers";
 import type { FiringJob, RoutineFirer } from "./scheduler";
 
 /**
@@ -42,7 +42,7 @@ export class ChannelRoutineFirer implements RoutineFirer {
     // it. Firing it anyway would die inside the runtime as an ephemeral stream
     // error nobody persists, and the run would wait out the 15-minute timeout
     // with a vague message.
-    if (pin.provider && !hostProvider(pin.provider))
+    if (pin.provider && !isKnownProvider(pin.provider))
       throw new Error(routineProviderUnavailable(pin.provider));
     await channel.fireTurn(
       { workspace: job.workspace, agent: job.agent },

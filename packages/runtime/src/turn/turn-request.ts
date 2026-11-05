@@ -6,6 +6,17 @@ import type { TurnSessionStartupTask } from "./turn-session-startup";
 import type { TurnOutcome } from "./turn-session-types";
 import type { TurnRequest } from "./types";
 
+/**
+ * A dispatched pin outranks the credential so a mismatched credential fails
+ * on the provider the user chose. Legacy dispatches have no provider pin and
+ * run on the credential's provider.
+ */
+export function turnProvider(
+  turn: Pick<TurnRequest, "provider" | "credential">,
+): string {
+  return turn.provider || turn.credential?.provider || "";
+}
+
 /** Project the accepted envelope onto the provider-agnostic turn session. */
 export function turnSessionRequest(
   turn: TurnRequest,
@@ -20,12 +31,7 @@ export function turnSessionRequest(
   return {
     conversationId: turn.conversationId,
     text: turn.text,
-    // The turn's PIN outranks the attached credential: a dispatcher that
-    // serves a different provider's credential must fail as the PINNED
-    // provider's auth error, never silently run (and bill) the turn on a
-    // provider the user did not pick. Legacy dispatches carry
-    // no pin, so the credential's provider stays the selection there.
-    provider: turn.provider || turn.credential?.provider || "",
+    provider: turnProvider(turn),
     emit,
     signal,
     nonce: turn.nonce,

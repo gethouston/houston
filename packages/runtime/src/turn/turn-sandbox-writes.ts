@@ -5,10 +5,12 @@ import {
   missionConversationKey,
 } from "@houston/domain";
 import { appendLearningChecked } from "@houston/host/src/routes/learning-write";
+import type { LiveTurnPin } from "@houston/host/src/routes/live-turn-pin";
 import {
   DELEGATED_ROUTINE_REFUSAL,
   isRoutinePause,
 } from "@houston/host/src/routes/mission-delegation-refusals";
+import { routineAuthoringPin } from "@houston/host/src/routes/routine-creation-pin";
 import {
   createRoutineChecked,
   updateRoutineChecked,
@@ -28,6 +30,7 @@ export interface TurnWriteRoutesDeps {
   actingAs?: { userId: string; name?: string };
   /** The acting person's plan limits; a routine save is held to its floor. */
   limits?: TurnLimits;
+  authoringPin?: LiveTurnPin;
 }
 
 const json = (status: number, body: unknown): Response =>
@@ -56,6 +59,14 @@ async function saveRoutine(
   }
   const { id, ...fields } = body;
   const creating = typeof id !== "string" || id === "";
+  const authoringPin = creating
+    ? await routineAuthoringPin({
+        vfs: deps.filesystem.vfs,
+        root: deps.filesystem.workspaceRel,
+        fields,
+        turnPin: deps.authoringPin,
+      })
+    : undefined;
   const stableId = creating ? randomUUID() : id;
   const nowIso = new Date().toISOString();
   const minIntervalMinutes = deps.limits?.routineMinIntervalMinutes;
@@ -79,6 +90,7 @@ async function saveRoutine(
               nowIso,
               id: stableId,
               createdBy: deps.actingAs?.userId,
+              authoringPin,
               ...floor,
             },
           )

@@ -1,7 +1,7 @@
 import { routinePin, routineTriggerPrompt } from "@houston/domain";
 import type { WorkspaceRuntime } from "../domain/types";
 import type { RuntimeChannel } from "../ports";
-import { hostProvider, routineProviderUnavailable } from "../providers";
+import { isKnownProvider, routineProviderUnavailable } from "../providers";
 import type { FiringJob, RoutineFirer } from "../schedule/scheduler";
 import type { TriggerEvent } from "./fire";
 
@@ -30,7 +30,7 @@ export class TriggerRoutineFirer implements RoutineFirer {
     // A pin resolving to no known provider fails the run HERE with the real
     // reason (parity with ChannelRoutineFirer) rather than as an opaque
     // runtime stream error nobody persists.
-    if (pin.provider && !hostProvider(pin.provider))
+    if (pin.provider && !isKnownProvider(pin.provider))
       throw new Error(routineProviderUnavailable(pin.provider));
     // The minted token replaces the bare creator header (ChannelRoutineFirer
     // parity): the runtime reads acting-as for the credential scope.

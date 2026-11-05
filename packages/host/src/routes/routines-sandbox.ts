@@ -15,6 +15,7 @@ import {
   isRoutinePause,
 } from "./mission-delegation-refusals";
 import { defineRoute } from "./registry";
+import { routineAuthoringPin } from "./routine-creation-pin";
 import { createRoutineChecked, updateRoutineChecked } from "./routine-write";
 
 /**
@@ -144,6 +145,14 @@ export async function handleSandboxRoutines(
   // `id` selects update-in-place; it is never a routine field itself.
   const { id, ...fields } = body;
   const creating = typeof id !== "string" || id === "";
+  const authoringPin = creating
+    ? await routineAuthoringPin({
+        vfs: deps.vfs,
+        root,
+        fields,
+        turnPin: turn?.pin,
+      })
+    : undefined;
   // The person's plan floor rides the turn the host recorded (gateway-stamped
   // `limits`), never this request: the runtime could name any limit here.
   const minIntervalMinutes = turn?.limits?.routineMinIntervalMinutes;
@@ -159,7 +168,7 @@ export async function handleSandboxRoutines(
         triggersEnabled,
         nowIso,
         createdBy,
-        authoringPin: turn?.pin,
+        authoringPin,
         ...floor,
       });
 
