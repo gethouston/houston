@@ -372,6 +372,27 @@ describe("an admitted briefing counts once its turn finishes", () => {
 });
 
 describe("brief me now", () => {
+  test.each([
+    "tick",
+    "runNow",
+  ] as const)("%s reads the suggestion setting for each briefing", async (method) => {
+    await seedWaitingMission();
+    await setPreference(vfs, WS.id, "next_step_suggestions", "false");
+    const r = runner();
+    expect(await r[method]()).toEqual({ kind: "delivered" });
+    expect(channel.fireTurn.mock.calls[0]?.[2]).not.toContain(
+      "suggest_actions",
+    );
+    expect(channel.fireTurn.mock.calls[0]?.[2]).toContain(
+      "5. End with a short closing line",
+    );
+    await setPreference(vfs, WS.id, "next_step_suggestions", "true");
+    expect(await r.runNow()).toEqual({ kind: "delivered" });
+    expect(channel.fireTurn.mock.calls[1]?.[2]).toContain(
+      "5. End with suggest_actions",
+    );
+  });
+
   test("ignores the time, today's run and the news rule, still honours the busy guard", async () => {
     now = new Date("2026-10-10T03:00:00Z");
     await seedWaitingMission();

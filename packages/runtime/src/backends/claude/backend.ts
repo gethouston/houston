@@ -9,6 +9,7 @@ import type { ClaudeBackendDeps } from "./backend-types";
 import { resolveClaudeExecutable } from "./binary-path";
 import { buildHoustonMcpServer, HOUSTON_MCP_SERVER_NAME } from "./custom-tools";
 import { toSdkModel } from "./model";
+import { hasPreviousSuggestionCalls } from "./next-step-suggestions";
 import { CLAUDE_QUERY_DEFAULTS } from "./query-defaults";
 import { makeRefreshAuth } from "./refresh-auth";
 import { assertAnthropicScopeCredential } from "./scope-guard";
@@ -92,6 +93,10 @@ export function createClaudeBackend(deps: ClaudeBackendDeps): HarnessBackend {
           // tools but keeps the integration tools, so Autopilot never waits.
           mode: opts.mode,
           nextStepSuggestions: opts.nextStepSuggestions,
+          silentNextStepSuggestions:
+            opts.nextStepSuggestions === false &&
+            !opts.fresh &&
+            hasPreviousSuggestionCalls(deps.layout, opts.conversationId),
           spill: {
             workspaceDir: deps.workspaceDir,
             conversationId: opts.conversationId,

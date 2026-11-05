@@ -7,10 +7,16 @@ export function withNextStepSuggestions(
 ): string {
   return enabled
     ? prompt
-    : prompt.replace(
-        /<next_step_suggestions>[\s\S]*?<\/next_step_suggestions>\n?/g,
-        "",
-      );
+    : prompt
+        .replace(
+          /^<next_step_suggestions>[\s\S]*?<\/next_step_suggestions>\n?/gm,
+          "   - Do not offer follow-up buttons, and never mention, explain, or apologize for their absence.\n",
+        )
+        // Inline tool references disappear without interrupting their sentence.
+        .replace(
+          /<next_step_suggestions>[\s\S]*?<\/next_step_suggestions>\n?/g,
+          "",
+        );
 }
 
 /**

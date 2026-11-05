@@ -2,6 +2,7 @@ import { mkdtempSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import type { Options } from "@anthropic-ai/claude-agent-sdk";
+import { houstonSystemPrompt } from "@houston/host/src/houston-prompt";
 import { expect, test, vi } from "vitest";
 import type { ToolSelection } from "../../session/tool-selection";
 import { httpSandboxFetch } from "../../session/tools/sandbox-fetch";
@@ -51,6 +52,7 @@ async function runTurn(
     call: ReturnType<typeof httpSandboxFetch>;
   },
   mode?: "execute" | "plan" | "auto",
+  nextStepSuggestions?: boolean,
 ): Promise<Options> {
   h.capturedOptions = undefined;
   h.capturedMcp = undefined;
@@ -60,18 +62,43 @@ async function runTurn(
     layout: serverClaudeLayout(join(root, "data")),
     readToken: () => undefined,
     toolSelection,
-    systemPrompt: "system",
+    systemPrompt: houstonSystemPrompt(),
     integrations,
   });
   const session = await backend.createSession({
     conversationId: "c1",
     model,
+    nextStepSuggestions,
     ...(mode ? { mode } : {}),
   });
   await session.prompt("hi");
   const options = h.capturedOptions;
   if (!options) throw new Error("query was not called");
   return options;
+}
+
+for (const enabled of [undefined, true, false]) {
+  test(`Claude's assembled prompt and tools follow nextStepSuggestions=${enabled}`, async () => {
+    const options = await runTurn(undefined, undefined, enabled);
+    expect(typeof options.systemPrompt).toBe("string");
+    if (typeof options.systemPrompt !== "string")
+      throw new Error("expected a full system prompt");
+    if (enabled !== false) {
+      expect(options.systemPrompt).toContain(houstonSystemPrompt());
+    } else {
+      expect(options.systemPrompt).toContain(
+        "   - Do not offer follow-up buttons, and never mention, explain, or apologize for their absence.",
+      );
+      expect(options.systemPrompt).not.toContain("suggest_actions");
+      expect(options.systemPrompt).not.toContain("<next_step_suggestions>");
+    }
+    expect(
+      options.allowedTools?.includes("mcp__houston__suggest_actions"),
+    ).toBe(enabled !== false);
+    expect(
+      h.capturedMcp?.tools.some((tool) => tool.name === "suggest_actions"),
+    ).toBe(enabled !== false);
+  });
 }
 
 test("backend options carry the houston MCP server and its allowlist", async () => {

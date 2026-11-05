@@ -11,9 +11,15 @@ import {
 const prompt =
   "Keep this.\n<next_step_suggestions>\nCall suggest_actions.\n</next_step_suggestions>\nAlso this.";
 
-test("off removes only the product suggestion section, on keeps it", () => {
-  expect(withNextStepSuggestions(prompt, false)).toBe("Keep this.\nAlso this.");
+test("off replaces the product suggestion mandate with a silent opt-out", () => {
+  expect(withNextStepSuggestions(prompt, false)).toBe(
+    "Keep this.\n   - Do not offer follow-up buttons, and never mention, explain, or apologize for their absence.\nAlso this.",
+  );
+});
+
+test("on keeps the prompt byte-identical", () => {
   expect(withNextStepSuggestions(prompt)).toBe(prompt);
+  expect(withNextStepSuggestions(prompt, true)).toBe(prompt);
 });
 
 for (const enabled of [undefined, true, false]) {
@@ -81,7 +87,7 @@ test("on, the tools pass through unchanged", () => {
   expect(withNextStepSuggestionTools(tools, true)).toEqual(tools);
 });
 
-test("off omits the actual host and desktop product mandates", () => {
+test("off replaces the host and desktop mandates with a finish sub-bullet", () => {
   const desktop = readFileSync(
     new URL(
       "../../../../app/src-tauri/src/houston_prompt/base.rs",
@@ -90,7 +96,18 @@ test("off omits the actual host and desktop product mandates", () => {
     "utf8",
   );
   for (const product of [houstonSystemPrompt(), desktop]) {
+    expect(withNextStepSuggestions(product)).toBe(product);
+    expect(withNextStepSuggestions(product, true)).toBe(product);
     expect(product).toContain("Finish every non-blocking turn with");
+    expect(withNextStepSuggestions(product, false)).toContain(
+      "   - Do not offer follow-up buttons, and never mention, explain, or apologize for their absence.",
+    );
+    expect(withNextStepSuggestions(product, false)).toContain(
+      "   - If blocked, state the next thing needed.\n   - Do not offer follow-up buttons, and never mention, explain, or apologize for their absence.\n6. Consider memory.",
+    );
+    expect(withNextStepSuggestions(product, false)).not.toContain(
+      "<next_step_suggestions>",
+    );
     expect(withNextStepSuggestions(product, false)).not.toContain(
       "Finish every non-blocking turn with",
     );

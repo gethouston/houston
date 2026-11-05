@@ -7,6 +7,7 @@ import {
   type TranscriptContext,
 } from "@earendil-works/pi-ai";
 import { ModelRuntime } from "@earendil-works/pi-coding-agent";
+import { houstonSystemPrompt } from "@houston/host/src/houston-prompt";
 import { expect, test } from "vitest";
 import { HoustonAuthStore } from "../../auth/credential-store";
 import { recoverFollowUpActions } from "../../session/follow-up-pass";
@@ -130,7 +131,7 @@ test("the real recovery request is tool-free, small, on the turn model, and leav
   }
 });
 
-for (const enabled of [true, false]) {
+for (const enabled of [undefined, true, false]) {
   test(`a real pi session's prompt and schema follow nextStepSuggestions=${enabled}`, async () => {
     const cwd = mkdtempSync(join(tmpdir(), "suggestions-gate-"));
     const faux = fauxProvider();
@@ -146,8 +147,7 @@ for (const enabled of [true, false]) {
       modelRuntime: runtime,
       tools: ["suggest_actions"],
       customTools: [makeSuggestActionsTool()],
-      systemPrompt:
-        "Keep this.\n<next_step_suggestions>Call suggest_actions.</next_step_suggestions>",
+      systemPrompt: houstonSystemPrompt(),
     });
     const session = await backend.createSession({
       conversationId: "c",
@@ -166,13 +166,20 @@ for (const enabled of [true, false]) {
       const message = requests[0]?.messages.find(
         (message) => message.role === "system",
       );
-      expect(JSON.stringify(message).includes("Call suggest_actions.")).toBe(
-        enabled,
-      );
+      const content = Object.values(message?.sections ?? {}).join("\n\n");
+      if (enabled !== false) {
+        expect(content).toContain(houstonSystemPrompt());
+      } else {
+        expect(content).toContain(
+          "   - Do not offer follow-up buttons, and never mention, explain, or apologize for their absence.",
+        );
+        expect(content).not.toContain("suggest_actions");
+        expect(content).not.toContain("<next_step_suggestions>");
+      }
       expect(
         message?.toolsAdded?.some((tool) => tool.name === "suggest_actions") ??
           false,
-      ).toBe(enabled);
+      ).toBe(enabled !== false);
     } finally {
       session.dispose();
       rmSync(cwd, { recursive: true, force: true });

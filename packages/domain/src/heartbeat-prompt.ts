@@ -13,6 +13,7 @@ export interface HeartbeatPromptInput {
   localTime: string;
   timezone: string;
   snapshot: HeartbeatSnapshot;
+  nextStepSuggestions?: boolean;
 }
 
 const WAITING_ON: Record<InteractionStep["kind"], string> = {
@@ -81,7 +82,9 @@ export function heartbeatPrompt(input: HeartbeatPromptInput): string {
     "2. Then summarize, briefly, what got done.",
     "3. Use plain, warm, non-technical language and keep it short. Write in the language the person usually uses with you.",
     "4. Do NOT start, retry, pause or change anything yourself. This is a report, not a to-do list you act on.",
-    "5. End with suggest_actions offering to hand the top items to the right AI Employee (for example, to retry a failed routine or to answer a waiting question).",
+    input.nextStepSuggestions === false
+      ? "5. End with a short closing line offering to hand the top items to the right AI Employee."
+      : "5. End with suggest_actions offering to hand the top items to the right AI Employee (for example, to retry a failed routine or to answer a waiting question).",
     "",
     "You may use your read-only tools (list_agents, list_missions, houston_call for listRoutineRuns or integrationStatus) to check details before you write.",
     "",
