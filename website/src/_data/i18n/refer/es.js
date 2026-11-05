@@ -105,6 +105,10 @@ export default {
     industry: "Industria",
     industryPlaceholder: "Selecciona la industria",
     industryOther: "Otra",
+    country: "País",
+    countryPlaceholder: "Selecciona el país",
+    countrySearch: "Buscar país",
+    countryEmpty: "Sin resultados",
     consent:
       "Nosotros contactamos a la empresa y te mantenemos al tanto a medida que avanza.",
     submit: "Enviar recomendación",
@@ -120,6 +124,7 @@ export default {
       size: "Dinos más o menos cuántas personas trabajan ahí.",
       years: "Escribe los años en operación como un número entero, como 12.",
       industry: "Elige la industria de la empresa.",
+      country: "Elige el país donde está la empresa.",
       yourName: "Tu nombre es obligatorio.",
       yourEmail: "Escribe un correo válido.",
       companyName: "El nombre de la empresa es obligatorio.",

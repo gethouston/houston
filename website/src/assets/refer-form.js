@@ -5,6 +5,7 @@
 // so the visitor can send again. Nothing is ever sent by email: the button
 // ships disabled and is enabled here, so without JS the form sends nothing.
 
+import { createCountryField } from "./refer-country.js";
 import { FIELDS, referralRow, validate } from "./refer-model.js";
 import { sendReferral } from "./refer-send.js";
 
@@ -26,9 +27,15 @@ if (form && done && copyNode) {
       FIELDS.map((name) => [name, form.elements[name]?.value ?? ""]),
     );
 
+  // The country is a hidden input behind a menu button: the button is what
+  // shows the error and takes focus.
+  const countryToggle = document.getElementById("rf-country-toggle");
+  const control = (name) =>
+    name === "country" ? countryToggle : form.elements[name];
+
   const show = (errors) => {
     for (const name of FIELDS) {
-      const input = form.elements[name];
+      const input = control(name);
       const line = document.getElementById(`rf-${name}-error`);
       if (!input || !line) continue;
       const key = errors[name];
@@ -40,8 +47,13 @@ if (form && done && copyNode) {
   };
 
   // After the first attempt, errors clear as the visitor fixes them.
-  form.addEventListener("input", () => {
+  const recheck = () => {
     if (tried) show(validate(values()));
+  };
+  form.addEventListener("input", recheck);
+  const country = createCountryField({
+    locale: copy.locale,
+    onChange: recheck,
   });
 
   const finish = () => {
@@ -65,7 +77,7 @@ if (form && done && copyNode) {
     show(errors);
     const first = FIELDS.find((name) => errors[name]);
     if (first) {
-      form.elements[first].focus();
+      control(first).focus();
       return;
     }
     // A filled trap is a bot: it sees success, nothing is stored.
@@ -96,6 +108,7 @@ if (form && done && copyNode) {
     const keep = [yourName.value, yourEmail.value];
     form.reset();
     [yourName.value, yourEmail.value] = keep;
+    country?.clear();
     tried = false;
     show({});
     done.hidden = true;

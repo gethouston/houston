@@ -106,6 +106,10 @@ export default {
     industry: "Industry",
     industryPlaceholder: "Select industry",
     industryOther: "Other",
+    country: "Country",
+    countryPlaceholder: "Select country",
+    countrySearch: "Search country",
+    countryEmpty: "No results",
     consent:
       "We reach out to the company ourselves and keep you posted as it moves.",
     submit: "Send referral",
@@ -121,6 +125,7 @@ export default {
       size: "Tell us roughly how many people work there.",
       years: "Enter the years in business as a whole number, like 12.",
       industry: "Pick the company's industry.",
+      country: "Pick the country the company is based in.",
       yourName: "Your name is required.",
       yourEmail: "Enter a valid email address.",
       companyName: "Company name is required.",

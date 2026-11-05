@@ -36,6 +36,7 @@ const input = {
   size: " about 120 ",
   years: "12",
   industry: "services",
+  country: " Colombia ",
 };
 const where = { locale: "es", page: "/es/data-partners/refer/" };
 const row = referralRow(input, where);
@@ -75,6 +76,7 @@ test("the row is trimmed, the website is its host, empty optionals are null", ()
   assert.equal(row.company_size, "about 120");
   assert.equal(row.years_in_business, 12);
   assert.equal(row.industry, "services");
+  assert.equal(row.company_country, "Colombia");
   assert.equal(row.locale, "es");
   assert.equal(row.page, "/es/data-partners/refer/");
   assert.equal(referralRow({ ...input, listing: "" }, where).listing, null);
