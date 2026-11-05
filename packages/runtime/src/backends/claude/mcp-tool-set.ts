@@ -31,6 +31,7 @@ import { makeSaveRoutineTool } from "../../session/tools/save-routine";
 import { makeSuggestActionsTool } from "../../session/tools/suggest-actions";
 import { makeSuggestReusableTool } from "../../session/tools/suggest-reusable";
 import type { BridgedPiTool } from "./mcp-tool-adapter";
+import { makeSilentSuggestActionsTool } from "./next-step-suggestions";
 
 /** Which pi tools a runtime bridges onto the Claude backend, and under what gates. */
 export interface BridgedToolSetInput {
@@ -81,6 +82,8 @@ export interface BridgedToolSetInput {
    */
   mode?: TurnMode;
   nextStepSuggestions?: boolean;
+  /** A resumed Claude session has already called suggest_actions. */
+  silentNextStepSuggestions?: boolean;
 }
 
 /**
@@ -178,8 +181,11 @@ export function buildBridgedToolSet(
       scoped.map((t) => t.name),
     ),
   );
-  return withNextStepSuggestionTools(
+  const tools = withNextStepSuggestionTools(
     scoped.filter((t) => allowed.has(t.name)),
     input.nextStepSuggestions,
   );
+  if (input.nextStepSuggestions === false && input.silentNextStepSuggestions)
+    tools.push(makeSilentSuggestActionsTool());
+  return tools;
 }
