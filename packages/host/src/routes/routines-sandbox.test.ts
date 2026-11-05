@@ -1,5 +1,10 @@
 import type { IncomingMessage, ServerResponse } from "node:http";
-import { loadRoutines, saveActivities, saveRoutines } from "@houston/domain";
+import {
+  loadRoutines,
+  saveActivities,
+  saveConfig,
+  saveRoutines,
+} from "@houston/domain";
 import type {
   Activity,
   HoustonEvent,
@@ -14,12 +19,13 @@ import { MemoryWorkspaceStore } from "../store/memory";
 import { MemoryVfs } from "../vfs";
 import { CONVERSATION_ID_HEADER } from "./learnings-sandbox";
 import { type LiveTurnPin, liveTurns } from "./live-turn";
+import { createRoutineChecked } from "./routine-write";
 import { handleSandboxRoutines } from "./routines-sandbox";
 
 /**
  * Chat-created routines inherit the authoring provider, with cheaper defaults
  * for unattended Anthropic and Codex runs. Explicit models and updates retain
- * the user's choice; a save without a recorded turn stays unpinned.
+ * the user's choice; unpinned chats fall back to the agent configuration.
  */
 
 const paths = new LocalPaths();
@@ -299,7 +305,7 @@ test("a provider the agent named explicitly is kept", async () => {
   });
 });
 
-test("a send that pinned no provider leaves the routine unpinned", async () => {
+test("a send with no pin or configured provider leaves the routine unpinned", async () => {
   await save(BASE);
   expect((await onDisk())[0]).toMatchObject({
     provider: null,
@@ -497,5 +503,125 @@ test("updating an existing Opus routine never changes its model", async () => {
     model: "claude-opus-5-5",
     effort: "high",
     prompt: "Only unread emails.",
+  });
+});
+
+test.each([
+  [
+    "anthropic",
+    "claude-opus-5-5",
+    "medium",
+    "anthropic",
+    "claude-sonnet-5-5",
+    "medium",
+  ],
+  [
+    "openai-codex",
+    "gpt-6-astra",
+    "high",
+    "openai-codex",
+    "gpt-6.1-terra",
+    "low",
+  ],
+  [
+    "openai-codex",
+    "gpt-6-astra",
+    "xhigh",
+    "openai-codex",
+    "gpt-6.1-terra",
+    "max",
+  ],
+  [
+    "claude",
+    "claude-opus-5-5",
+    "high",
+    "anthropic",
+    "claude-sonnet-5-5",
+    "high",
+  ],
+  ["openai", "gpt-6-astra", "medium", "openai-codex", "gpt-6.1-terra", "low"],
+  ["google", "gemini-3.5-pro", "high", "google", "gemini-3.5-pro", "high"],
+])("an unpinned chat uses configured %s/%s at %s for routine creation", async (provider, model, effort, expectedProvider, expectedModel, expectedEffort) => {
+  await saveConfig(vfs, root, { provider, model, effort });
+  const result = await save(BASE);
+  expect(result.status).toBe(201);
+  expect((await onDisk())[0]).toMatchObject({
+    provider: expectedProvider,
+    model: expectedModel,
+    effort: expectedEffort,
+  });
+  expect(events).toEqual([{ type: "RoutinesChanged", agentPath: agent.id }]);
+});
+
+test.each([
+  ["anthropic", "claude-opus-5-5"],
+  ["openai-codex", "gpt-6-astra"],
+])("an explicit model wins over the configured %s routine default", async (provider, model) => {
+  await saveConfig(vfs, root, { provider, model, effort: "high" });
+  expect((await save({ ...BASE, model })).status).toBe(201);
+  expect((await onDisk())[0]).toMatchObject({
+    provider,
+    model,
+    effort: "high",
+  });
+});
+
+test("an explicit provider or turn pin takes precedence over the configured agent", async () => {
+  await saveConfig(vfs, root, {
+    provider: "google",
+    model: "gemini-3.5-pro",
+    effort: "high",
+  });
+  await save(BASE, {
+    pin: { provider: "anthropic", model: "claude-opus-5-5", effort: "medium" },
+  });
+  await save({ ...BASE, provider: "openai-codex" });
+  expect(await onDisk()).toMatchObject([
+    { provider: "anthropic", model: "claude-sonnet-5-5", effort: "medium" },
+    { provider: "openai-codex", model: "gpt-6.1-terra", effort: "low" },
+  ]);
+});
+
+test("configured defaults never re-pin an existing routine on update", async () => {
+  await save({
+    ...BASE,
+    provider: "anthropic",
+    model: "claude-opus-5-5",
+    effort: "high",
+  });
+  await save(BASE);
+  const originals = await onDisk();
+  await saveConfig(vfs, root, {
+    provider: "openai-codex",
+    model: "gpt-6-astra",
+    effort: "xhigh",
+  });
+  for (const original of originals) {
+    expect(
+      (await save({ id: original.id, prompt: "Only unread" })).status,
+    ).toBe(200);
+  }
+  expect(await onDisk()).toMatchObject(
+    originals.map(({ provider, model, effort }) => ({
+      provider,
+      model,
+      effort,
+      prompt: "Only unread",
+    })),
+  );
+});
+
+test("UI creation without a provider stays unpinned despite the configured agent", async () => {
+  await saveConfig(vfs, root, {
+    provider: "anthropic",
+    model: "claude-opus-5-5",
+    effort: "high",
+  });
+  const result = await createRoutineChecked(vfs, root, ws.id, BASE, {
+    triggersEnabled: false,
+    nowIso: "2026-01-01T00:00:00Z",
+  });
+  expect(result).toMatchObject({
+    routine: { provider: null, model: null, effort: null },
   });
 });
