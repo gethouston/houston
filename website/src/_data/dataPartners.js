@@ -47,7 +47,10 @@ export default {
   // The URL segment under every locale root ("/data-partners/", "/es/...").
   path: "data-partners/",
 
-  // Every booking action on the page opens this, in a new tab.
+  // The calendar. Every booking action on the page opens the call form
+  // (data-partners/call-modal.njk) instead, and only a company at the
+  // program's bar is then handed this link. Without JS the links open it
+  // directly, in a new tab.
   booking: "https://calendly.com/gethouston/30min",
   people: ["felipe", "julian"],
 

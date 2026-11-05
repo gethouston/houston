@@ -37,7 +37,7 @@
       <p class="dp-est-label">{{ est.result }}</p>
       <p class="dp-est-figure" aria-live="polite"><span data-out="low">{{ ex.low }}</span><span class="dp-est-to">{{ est.to }}</span><span data-out="high">{{ ex.high }}</span></p>
       <p class="dp-est-note">{{ est.note }}</p>
-      <a class="btn btn-ink dp-est-cta" href="{{ dataPartners.booking }}" target="_blank" rel="noopener">{{ est.cta }}{{ arrow() }}</a>
+      <a class="btn btn-ink dp-est-cta" href="{{ dataPartners.booking }}" data-call-trigger="estimate" target="_blank" rel="noopener">{{ est.cta }}{{ arrow() }}</a>
     </div>
     <script type="application/json" data-model>{{ dataPartners.model | jsonScript | safe }}</script>
   </div>
