@@ -19,6 +19,7 @@ import {
   type HeartbeatLast,
   HeartbeatRunStatus,
 } from "@houston/protocol";
+import { nextStepSuggestionsReader } from "../channel/next-step-suggestions";
 import type { AgentId, Workspace } from "../domain/types";
 import type { EventHub } from "../events/hub";
 import type { RuntimeChannel } from "../ports";
@@ -54,16 +55,11 @@ const reasonOf = (err: unknown) =>
   (err instanceof Error ? err.message : String(err)).slice(0, 300);
 
 /**
- * The AI Manager's daily morning briefing: one turn on the manager's own
- * `assistant` conversation, never one per agent. A deterministic snapshot runs
- * first; one with nothing new since the last finished briefing (or, for
- * "brief me now", an empty one) records "quiet" without a model call. An
- * accepted turn shows "delivered" at once, but moves the news baseline and
- * tells the person only when a later tick sees it finish (settle.ts).
- *
- * Attempts run one at a time: a "brief me now" landing on the minute tick
- * waits for it, then meets the turn it started (busy) instead of racing a
- * second turn into the chat.
+ * The AI Manager's daily briefing runs on its own `assistant` conversation.
+ * Empty snapshots, or no news on a scheduled tick, record "quiet" without
+ * calling the model. Admission records "delivered"; a later tick settles
+ * the finished turn, advances the news baseline, and notifies the person.
+ * Attempts run one at a time so a manual run cannot race the daily tick.
  */
 export class HeartbeatRunner {
   private queue: Promise<unknown> = Promise.resolve();
@@ -143,6 +139,11 @@ export class HeartbeatRunner {
       localTime: clock.time,
       timezone: clock.timezone,
       snapshot,
+      nextStepSuggestions: await nextStepSuggestionsReader(
+        deps.vfs,
+        deps.store,
+        deps.userId,
+      )(),
     });
     // The nonce rides the persisted user message: settle.ts finds the turn by it.
     const nonce = `heartbeat-${randomUUID()}`;

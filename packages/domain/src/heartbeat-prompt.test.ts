@@ -170,11 +170,66 @@ describe("prompt", () => {
     ],
     SINCE,
   );
-  const prompt = heartbeatPrompt({
+  const input = {
     localDate: "2026-10-10",
     localTime: "08:00",
     timezone: "Europe/Madrid",
     snapshot,
+  };
+  const prompt = heartbeatPrompt(input);
+
+  test("the enabled prompt stays byte-identical", () => {
+    expect(prompt).toMatchInlineSnapshot(`
+      "This is your automatic morning check-in. The person did not type this message. It is 2026-10-10, 08:00 where they live (Europe/Madrid).
+
+      Write them a short morning briefing about their team:
+      1. Open with what needs their attention first, naming the AI Employee each item belongs to.
+      2. Then summarize, briefly, what got done.
+      3. Use plain, warm, non-technical language and keep it short. Write in the language the person usually uses with you.
+      4. Do NOT start, retry, pause or change anything yourself. This is a report, not a to-do list you act on.
+      5. End with suggest_actions offering to hand the top items to the right AI Employee (for example, to retry a failed routine or to answer a waiting question).
+
+      You may use your read-only tools (list_agents, list_missions, houston_call for listRoutineRuns or integrationStatus) to check details before you write.
+
+      What Houston saw since the last briefing:
+
+      Waiting on the person:
+      - Ana: "Invoice" (waiting on a sign-in)"
+    `);
+    expect(heartbeatPrompt({ ...input, nextStepSuggestions: true })).toBe(
+      prompt,
+    );
+  });
+
+  test("off closes in words without naming the unavailable tool", () => {
+    const off = heartbeatPrompt({ ...input, nextStepSuggestions: false });
+    expect(off).not.toContain("suggest_actions");
+    expect(off).toContain(
+      "5. End with a short closing line offering to hand the top items to the right AI Employee.",
+    );
+    expect(off.match(/^\d\. /gm)).toEqual(["1. ", "2. ", "3. ", "4. ", "5. "]);
+  });
+
+  test("an earlier suggestion offer is described without its tool name", () => {
+    const off = heartbeatPrompt({
+      ...input,
+      nextStepSuggestions: false,
+      snapshot: {
+        ...snapshot,
+        needsYou: {
+          items: [
+            {
+              agent: "Assistant",
+              title: "Report",
+              waitingOn: "suggest_actions",
+            },
+          ],
+          more: 0,
+        },
+      },
+    });
+    expect(off).toContain('Assistant: "Report" (offering next steps)');
+    expect(off).not.toContain("suggest_actions");
   });
 
   test("carries the local date, the zone and the snapshot", () => {

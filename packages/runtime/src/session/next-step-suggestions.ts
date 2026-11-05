@@ -10,7 +10,7 @@ export function withNextStepSuggestions(
     : prompt
         .replace(
           /^<next_step_suggestions>[\s\S]*?<\/next_step_suggestions>\n?/gm,
-          "The user turned next-step suggestions off. Do not offer follow-up buttons or mention, explain, or apologize for their absence.\n",
+          "   - Do not offer follow-up buttons, and never mention, explain, or apologize for their absence.\n",
         )
         // Inline tool references disappear without interrupting their sentence.
         .replace(

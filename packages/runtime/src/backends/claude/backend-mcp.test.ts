@@ -87,7 +87,7 @@ for (const enabled of [undefined, true, false]) {
       expect(options.systemPrompt).toContain(houstonSystemPrompt());
     } else {
       expect(options.systemPrompt).toContain(
-        "The user turned next-step suggestions off. Do not offer follow-up buttons or mention, explain, or apologize for their absence.",
+        "   - Do not offer follow-up buttons, and never mention, explain, or apologize for their absence.",
       );
       expect(options.systemPrompt).not.toContain("suggest_actions");
       expect(options.systemPrompt).not.toContain("<next_step_suggestions>");
