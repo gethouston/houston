@@ -21,15 +21,17 @@
     "@houston/protocol": "workspace:*",
     "@houston/runtime-client": "workspace:*",
     "@houston/wire-types": "workspace:*",
+    "fflate": "0.8.3",
     "playwright-core": "1.64.0",
+    "saxes": "6.0.0",
     "tsx": "4.23.0",
     "typebox": "1.1.38",
+    "unpdf": "1.9.1",
     "zod": "4.6.6"
   },
   "devDependencies": {
     "@types/node": "22.20.0",
     "@typescript/native-preview": "7.0.0-dev.20260607.1",
-    "fflate": "0.8.3",
     "vitest": "4.1.12"
   },
   "optionalDependencies": {
