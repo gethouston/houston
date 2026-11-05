@@ -29,9 +29,28 @@ export function hasPreviousSuggestionCalls(
     sessionId,
   );
   if (!transcript) return false;
-  for (const line of readFileSync(transcript, "utf8").split("\n")) {
+  let text: string;
+  try {
+    text = readFileSync(transcript, "utf8");
+  } catch (error) {
+    // Removed mid-read or too large for one string: the turn still runs, with
+    // the tool absent as in a fresh chat.
+    console.warn(
+      "[claude] could not scan the transcript for suggestions:",
+      error,
+    );
+    return false;
+  }
+  for (const line of text.split("\n")) {
     if (!line.includes("mcp__houston__suggest_actions")) continue;
-    const entry = AssistantEntry.safeParse(JSON.parse(line));
+    let parsed: unknown;
+    try {
+      parsed = JSON.parse(line);
+    } catch {
+      // A line torn by a quit mid-append stays in the file; skip it.
+      continue;
+    }
+    const entry = AssistantEntry.safeParse(parsed);
     if (
       entry.success &&
       entry.data.message.content.some(

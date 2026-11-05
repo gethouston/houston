@@ -46,7 +46,14 @@ const actions = [
 ];
 
 for (const profile of ["local", "pooled"] as const) {
-  for (const history of ["calls", "text-only", "sidechain", "fresh"] as const) {
+  for (const history of [
+    "calls",
+    "calls-then-torn",
+    "torn-only",
+    "text-only",
+    "sidechain",
+    "fresh",
+  ] as const) {
     for (const enabled of [false, true]) {
       test(`${profile}: ${history}, suggestions ${enabled}`, async () => {
         const root = mkdtempSync(join(tmpdir(), "claude-suggestions-"));
@@ -72,25 +79,35 @@ for (const profile of ["local", "pooled"] as const) {
             sdkProjectSlug("/old/workspace"),
           );
           mkdirSync(transcriptDir, { recursive: true });
+          // A quit mid-append leaves a torn last line that names the tool.
+          const torn =
+            '{"type":"assistant","message":{"content":[{"type":"tool_use","name":"mcp__houston__suggest_actions"';
           writeFileSync(
             join(transcriptDir, "s.jsonl"),
-            `${JSON.stringify({
-              type: "assistant",
-              isSidechain: history === "sidechain",
-              message: {
-                content:
-                  history === "text-only"
-                    ? [{ type: "text", text: "mcp__houston__suggest_actions" }]
-                    : [
-                        {
-                          type: "tool_use",
-                          id: "t",
-                          name: "mcp__houston__suggest_actions",
-                          input: { actions },
-                        },
-                      ],
-              },
-            })}\n`,
+            history === "torn-only"
+              ? torn
+              : `${JSON.stringify({
+                  type: "assistant",
+                  isSidechain: history === "sidechain",
+                  message: {
+                    content:
+                      history === "text-only"
+                        ? [
+                            {
+                              type: "text",
+                              text: "mcp__houston__suggest_actions",
+                            },
+                          ]
+                        : [
+                            {
+                              type: "tool_use",
+                              id: "t",
+                              name: "mcp__houston__suggest_actions",
+                              input: { actions },
+                            },
+                          ],
+                  },
+                })}\n${history === "calls-then-torn" ? torn : ""}`,
           );
         }
         const sdk = await loadedClaudeSdk(preloadClaudeSdk());
@@ -162,7 +179,9 @@ for (const profile of ["local", "pooled"] as const) {
           nextStepSuggestions: enabled,
         });
         const tool = tools.find((t) => t.name === "suggest_actions");
-        expect(!!tool).toBe(enabled || history === "calls");
+        expect(!!tool).toBe(
+          enabled || history === "calls" || history === "calls-then-torn",
+        );
         if (!tool) return;
         const normal = makeSuggestActionsTool();
         if (enabled) expect(tool.description).toBe(normal.description);
