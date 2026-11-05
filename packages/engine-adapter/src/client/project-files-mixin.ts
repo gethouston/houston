@@ -27,19 +27,19 @@ export function ProjectFilesMixin<TBase extends BaseCtor>(Base: TBase) {
     // here (the sender encodes those paths into the message), in this turn or any
     // later conversation. Standalone web has no workspace to write into — fail loud.
     async saveAttachments(
-      agentId: string,
+      agentPath: string,
       scopeId: string,
       files: File[],
     ): Promise<string[]> {
       if (files.length === 0) return [];
       if (!this.ctx.cp) throw new Error("Attachments need a cloud workspace.");
-      const path = `${controlPlane.agentPath(agentId)}/attachments`;
+      const route = `${controlPlane.agentPath(agentPath)}/attachments`;
       const paths: string[] = [];
       for (const batch of planAttachmentBatches(files)) {
         const frames = await frameBatch(batch);
         paths.push(
-          ...(await viaSdk(path, () =>
-            this.ctx.sdk.files.saveAttachments(agentId, scopeId, frames),
+          ...(await viaSdk(route, () =>
+            this.ctx.sdk.files.saveAttachments(agentPath, scopeId, frames),
           )),
         );
       }
