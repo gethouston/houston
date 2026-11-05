@@ -19,6 +19,7 @@ import {
 import type { TSchema } from "typebox";
 import { assertNotPlanMode } from "../live-mode-gate";
 import { WorkspaceGuard, type WorkspaceGuardOptions } from "./fs-guard";
+import { documentReadOperations } from "./read-documents";
 
 /**
  * Workspace-clamped file tools (cloud security Gate #1).
@@ -38,10 +39,10 @@ import { WorkspaceGuard, type WorkspaceGuardOptions } from "./fs-guard";
  *     constrains them.
  *  2. INNER (defense in depth): edit/write/ls/grep run their filesystem access
  *     through guarded `operations` that re-validate every absolute path pi
- *     hands them. read keeps pi's default operations (its image-sniffing
- *     pipeline is internal to pi and the outer wall fully constrains its one
- *     path param); find keeps its fd engine (an operations.glob override would
- *     replace the engine, not guard it).
+ *     hands them. read extracts PDF/Word text before pi's paging, preserving
+ *     pi's image detection; the outer wall constrains its one path param.
+ *     find keeps its fd engine (an operations.glob override would replace
+ *     the engine, not guard it).
  *
  * rg and fd are spawned without --follow, so neither traverses symlinks during
  * a search; a symlink given directly as `path` is rejected by the outer wall.
@@ -141,7 +142,12 @@ export function makeClampedFileTools(
   };
 
   return [
-    withClampedPath(createReadToolDefinition(workspaceDir), guard),
+    withClampedPath(
+      createReadToolDefinition(workspaceDir, {
+        operations: documentReadOperations,
+      }),
+      guard,
+    ),
     withClampedPath(
       createLsToolDefinition(workspaceDir, { operations: lsOps }),
       guard,
