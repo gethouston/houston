@@ -77,6 +77,7 @@ export async function createBoardConversation(
       titleText: visible,
       buildPrompt: async (activityId) => {
         const saved = await tauriAttachments.save(
+          path,
           `activity-${activityId}`,
           files,
         );

@@ -21,22 +21,25 @@ import { viaSdk } from "./sdk-error";
 export function ProjectFilesMixin<TBase extends BaseCtor>(Base: TBase) {
   class ProjectFiles extends Base {
     // ---- composer attachments ----
-    // Upload the dropped files into the selected agent's workspace (its durable
+    // Upload the dropped files into the target agent's workspace (its durable
     // `uploads/` folder) via the host's /agents/:id/attachments route; the
     // runtime's clamped file tools then Read them at the relative paths returned
     // here (the sender encodes those paths into the message), in this turn or any
     // later conversation. Standalone web has no workspace to write into — fail loud.
-    async saveAttachments(scopeId: string, files: File[]): Promise<string[]> {
+    async saveAttachments(
+      agentPath: string,
+      scopeId: string,
+      files: File[],
+    ): Promise<string[]> {
       if (files.length === 0) return [];
       if (!this.ctx.cp) throw new Error("Attachments need a cloud workspace.");
-      const agentId = this.ctx.requireAgentId();
-      const path = `${controlPlane.agentPath(agentId)}/attachments`;
+      const route = `${controlPlane.agentPath(agentPath)}/attachments`;
       const paths: string[] = [];
       for (const batch of planAttachmentBatches(files)) {
         const frames = await frameBatch(batch);
         paths.push(
-          ...(await viaSdk(path, () =>
-            this.ctx.sdk.files.saveAttachments(agentId, scopeId, frames),
+          ...(await viaSdk(route, () =>
+            this.ctx.sdk.files.saveAttachments(agentPath, scopeId, frames),
           )),
         );
       }

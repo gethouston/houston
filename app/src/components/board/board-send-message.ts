@@ -73,7 +73,7 @@ export async function sendBoardMessage(
           ? async () => {
               const saved =
                 files.length > 0
-                  ? await tauriAttachments.save(scopeId, files)
+                  ? await tauriAttachments.save(path, scopeId, files)
                   : [];
               return buildAttachmentPrompt(text, files, saved, promptContext);
             }
@@ -109,7 +109,7 @@ export async function sendBoardMessage(
     const { prompt, queuedPreview } = await prepareAttachmentSend(
       text,
       files,
-      (picked) => tauriAttachments.save(scopeId, picked),
+      (picked) => tauriAttachments.save(path, scopeId, picked),
       promptContext,
     );
     await tauriChat.send(path, prompt, sessionKey, {

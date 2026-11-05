@@ -43,6 +43,7 @@ export function useMissionControlArchivedSend({
       const missionId = selectedItem.id;
       try {
         const paths = await tauriAttachments.save(
+          agentPath,
           `activity-${missionId}`,
           files,
         );

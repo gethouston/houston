@@ -1336,7 +1336,11 @@ export function useAgentChatPanel({
         // Mid-conversation: optimistic feed push + send, mirrors the
         // text-send pipeline.
         const scopeId = sessionKey;
-        const attachmentPaths = await tauriAttachments.save(scopeId, files);
+        const attachmentPaths = await tauriAttachments.save(
+          path,
+          scopeId,
+          files,
+        );
         const prompt = withAttachmentPaths(claudePrompt, attachmentPaths);
         const encodedWithAttachments = encodeSkillMessage(
           skill,
@@ -1382,6 +1386,7 @@ export function useAgentChatPanel({
             mentions,
             buildPrompt: async (activityId) => {
               const paths = await tauriAttachments.save(
+                path,
                 `activity-${activityId}`,
                 files,
               );
