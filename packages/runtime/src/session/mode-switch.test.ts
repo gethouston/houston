@@ -66,6 +66,7 @@ class HistSession implements HarnessSession {
     readonly builtMode: TurnMode,
     readonly prompts: string[],
     readonly builtSuggestions = true,
+    readonly timezone?: string,
   ) {}
   subscribe(l: (e: WireEvent) => void): () => void {
     this.listeners.add(l);
@@ -105,6 +106,7 @@ function histBackend(
         opts.mode ?? "execute",
         transcript,
         opts.nextStepSuggestions,
+        opts.timezone,
       );
       built.push(s);
       return s;
@@ -349,4 +351,76 @@ test("changing the suggestion preference rebuilds the cached session and keeps h
       .rebuilt,
   ).toBe(true);
   expect(built[2].builtSuggestions).toBe(true);
+});
+
+test("a changed workspace timezone rebuilds the prompt while keeping conversation history", async () => {
+  const disk = new Map<string, string[]>([["timezone", ["earlier turn"]]]);
+  const built: HistSession[] = [];
+  setDefaultBackend(histBackend("pi", disk, built));
+  modelState.model = OPENAI;
+  const conv = await getConversation("timezone", {
+    timezone: "America/Bogota",
+  });
+  expect(built[0].timezone).toBe("America/Bogota");
+  expect(
+    (
+      await switchModeIfNeeded(
+        conv,
+        "timezone",
+        OPENAI,
+        "execute",
+        true,
+        "Europe/Paris",
+      )
+    ).rebuilt,
+  ).toBe(true);
+  expect(built[1].timezone).toBe("Europe/Paris");
+  expect(built[1].prompts).toEqual(["earlier turn"]);
+  expect(
+    (
+      await switchModeIfNeeded(
+        conv,
+        "timezone",
+        OPENAI,
+        "execute",
+        true,
+        "Europe/Paris",
+      )
+    ).rebuilt,
+  ).toBe(false);
+});
+
+test.each([
+  "UTC",
+  "America/New_York",
+])("alternating pod sends and host fires in %s keep the same cached session", async (timezone) => {
+  const disk = new Map<string, string[]>();
+  const built: HistSession[] = [];
+  setDefaultBackend(histBackend("pi", disk, built));
+  modelState.model = OPENAI;
+  const conv = await getConversation("pod-zone", { timezone });
+  const session = conv.session;
+  for (const text of [
+    "user send",
+    "host fire",
+    "user follow-up",
+    "host fire again",
+  ]) {
+    await execTurn(
+      conv,
+      "pod-zone",
+      text,
+      text,
+      { author: undefined, priorAuthors: [] },
+      { timezone },
+    );
+    expect(conv.session).toBe(session);
+  }
+  expect(built).toHaveLength(1);
+  expect(built[0].prompts).toEqual([
+    "user send",
+    "host fire",
+    "user follow-up",
+    "host fire again",
+  ]);
 });

@@ -136,6 +136,7 @@ export async function openTurnBackendSession(input: {
     conversationId,
     model,
     nextStepSuggestions: turn.nextStepSuggestions,
+    timezone: turn.timezone,
     ...(thinkingLevel ? { thinkingLevel } : {}),
     ...(turn.context ? { context: turn.context } : {}),
     ...(turn.mode ? { mode: turn.mode } : {}),

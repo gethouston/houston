@@ -7,6 +7,7 @@ import { expect, test } from "vitest";
 import { buildBridgedToolSet } from "../backends/claude/mcp-tool-set";
 import { buildSystemPrompt } from "../backends/claude/system-prompt";
 import { makeAgentLoader } from "./resource-loader";
+import { withRoutineTimezone } from "./routine-timezone";
 
 /**
  * The fixed prefix every model request re-sends, for an agent with twenty
@@ -46,13 +47,17 @@ function fixtureAgent(): string {
 }
 
 const product = houstonSystemPrompt({ triggers: true });
+const zonedProduct = withRoutineTimezone(
+  product,
+  "America/Argentina/Buenos_Aires",
+);
 
 test("the product prompt stays within its budget", () => {
   expect(product.length).toBeLessThanOrEqual(BUDGET.productPrompt);
 });
 
 test("the Claude system prompt for a twenty-skill agent stays within its budget", () => {
-  const prompt = buildSystemPrompt(fixtureAgent(), product, "execute");
+  const prompt = buildSystemPrompt(fixtureAgent(), zonedProduct, "execute");
   expect(prompt).toContain("<name>do-task-number-19</name>");
   expect(prompt.length).toBeLessThanOrEqual(BUDGET.claudeSystemPrompt);
 });
@@ -62,7 +67,7 @@ test("the pi system prompt for a twenty-skill agent stays within its budget", as
     fixtureAgent(),
     "execute",
     undefined,
-    product,
+    zonedProduct,
     "",
     null,
   );

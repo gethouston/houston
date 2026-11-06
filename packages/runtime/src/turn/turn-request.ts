@@ -38,6 +38,7 @@ export function turnSessionRequest(
     pin: { model: turn.model, effort: turn.effort },
     mode: turn.mode,
     nextStepSuggestions: turn.nextStepSuggestions,
+    timezone: turn.timezone,
     liveMode: turn.liveMode,
     turnId,
     displayText: turn.displayText,

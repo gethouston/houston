@@ -1,5 +1,6 @@
 import type { Options } from "@anthropic-ai/claude-agent-sdk";
 import { withNextStepSuggestions } from "../../session/next-step-suggestions";
+import { withRoutineTimezone } from "../../session/routine-timezone";
 import type {
   CreateSessionOptions,
   HarnessBackend,
@@ -140,7 +141,10 @@ export function createClaudeBackend(deps: ClaudeBackendDeps): HarnessBackend {
         canUseTool: makeCanUseTool(deps.workspaceDir, deps.fileGuard),
         systemPrompt: buildSystemPrompt(
           deps.workspaceDir,
-          withNextStepSuggestions(deps.systemPrompt, opts.nextStepSuggestions),
+          withNextStepSuggestions(
+            withRoutineTimezone(deps.systemPrompt, opts.timezone, deps.role),
+            opts.nextStepSuggestions,
+          ),
           opts.mode,
           opts.context,
           deps.role,

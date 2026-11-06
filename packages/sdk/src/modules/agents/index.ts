@@ -93,6 +93,7 @@ function toItem(a: WireAgent): AgentsViewModel["items"][number] {
     workspaceId: a.workspaceId,
     createdAt: a.createdAt,
     ...(a.role ? { role: a.role } : {}),
+    ...(a.timezone ? { timezone: a.timezone } : {}),
   };
 }
 

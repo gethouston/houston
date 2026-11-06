@@ -538,6 +538,9 @@ importers:
       '@houston/runtime-client':
         specifier: workspace:*
         version: link:../runtime-client
+      '@houston/wire-types':
+        specifier: workspace:*
+        version: link:../wire-types
       '@modelcontextprotocol/sdk':
         specifier: 1.32.0
         version: 1.32.0(@cfworker/json-schema@4.1.1)(zod@4.6.7)

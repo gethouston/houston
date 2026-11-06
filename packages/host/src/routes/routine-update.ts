@@ -1,0 +1,100 @@
+import {
+  applyRoutineUpdate,
+  isValidTriggerBinding,
+  loadRoutines,
+  saveRoutines,
+  upsertById,
+} from "@houston/domain";
+import type { Routine, RoutineUpdate } from "@houston/protocol";
+import type { Vfs } from "../vfs";
+import { withDocLock } from "./doc-lock";
+import { checkedRoutineModel } from "./routine-model";
+import { checkedSchedule } from "./routine-schedule";
+import type { RoutineWriteError, RoutineWriteOptions } from "./routine-write";
+import {
+  NO_TRIGGER_BACKEND_WRITE_ERROR,
+  planFloorRefusal,
+  providerPinError,
+  wakeMechanismError,
+} from "./routine-write-gates";
+
+/**
+ * Update a routine by id merge-safely. Reads the file, applies the partial update
+ * to the matching entry, re-checks the exactly-one-wake invariant on the APPLIED
+ * result (e.g. `{trigger: null}` on a trigger routine clears its only wake), the
+ * trigger-backend gate, the schedule, and the provider pin, then writes the
+ * whole set back. `{ notFound: true }` when no routine has that id; else the
+ * updated routine or a plain-language error.
+ */
+export async function updateRoutineChecked(
+  vfs: Vfs,
+  root: string,
+  workspaceId: string,
+  itemId: string,
+  update: Record<string, unknown>,
+  opts: RoutineWriteOptions & { actorSub?: string },
+): Promise<{ routine: Routine } | RoutineWriteError | { notFound: true }> {
+  return await withDocLock(`${root}#routines`, async () => {
+    const { items } = await loadRoutines(vfs, root);
+    const current = items.find((r) => r.id === itemId);
+    if (!current) return { notFound: true };
+    // An update may switch a routine to an event trigger; reject a malformed
+    // binding before it is persisted (normalizeRoutines would drop it).
+    if (update.trigger != null && !isValidTriggerBinding(update.trigger)) {
+      return { error: "invalid 'trigger' binding" };
+    }
+    let next = applyRoutineUpdate(
+      current,
+      update as RoutineUpdate,
+      opts.nowIso,
+      opts.actorSub,
+    );
+    // The APPLIED result must still hold the exactly-one-wake invariant — persisting
+    // a wake-less routine loses it silently (normalizeRoutines drops it on read).
+    const nextWakeErr = wakeMechanismError(
+      next as unknown as Record<string, unknown>,
+    );
+    if (nextWakeErr) return { error: nextWakeErr };
+    // The APPLIED result carries a trigger, but this deployment cannot fire one →
+    // refuse. Converting the routine to a schedule (trigger cleared) passes.
+    if (
+      (next as { trigger?: unknown }).trigger != null &&
+      !opts.triggersEnabled
+    ) {
+      return { error: NO_TRIGGER_BACKEND_WRITE_ERROR };
+    }
+    if (typeof next.schedule === "string") {
+      const checked = await checkedSchedule(
+        vfs,
+        workspaceId,
+        next.schedule,
+        opts.timezone,
+      );
+      if ("error" in checked) return checked;
+      next = { ...next, schedule: checked.schedule };
+    }
+    // Every update re-stamps `created_by` to the editor (applyRoutineUpdate),
+    // whose plan then judges the fires, so even a prompt-only edit is checked.
+    // A routine left disabled never fires, so it is exempt; re-enabling is not.
+    if (next.enabled !== false) {
+      // "Kept": the schedule is the one already stored, so the refusal says
+      // the schedule itself has to move first.
+      const refusal = planFloorRefusal(
+        next.schedule,
+        opts.minIntervalMinutes,
+        current.schedule === next.schedule,
+      );
+      if (refusal) return refusal;
+    }
+    const providerErr = providerPinError(update);
+    if (providerErr) return { error: providerErr };
+    if (update.model != null) {
+      const checked = await checkedRoutineModel(vfs, root, next);
+      if ("error" in checked) return checked;
+      next = { ...next, model: checked.model };
+    }
+
+    await saveRoutines(vfs, root, upsertById(items, next));
+    return { routine: next };
+  });
+}

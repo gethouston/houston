@@ -89,6 +89,8 @@ export interface TurnRequest {
    */
   mode?: TurnMode;
   nextStepSuggestions?: boolean;
+  /** IANA zone in which the deployment fires routines. */
+  timezone?: string;
   /**
    * Presentation-only bubble text, when it must differ from `text` (the real
    * prompt the model runs on). Persisted alongside the user message so a

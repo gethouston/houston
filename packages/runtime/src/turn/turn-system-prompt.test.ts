@@ -33,3 +33,9 @@ test("the code-execution sentence still follows this turn's own capability", () 
     "You cannot run shell commands",
   );
 });
+
+test("an unknown routine zone keeps main's prompt byte-identical", async () => {
+  await expect(turnSystemPrompt("local", {})).toMatchFileSnapshot(
+    "./__snapshots__/turn-system-prompt-main.txt",
+  );
+});

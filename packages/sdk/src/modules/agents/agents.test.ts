@@ -432,3 +432,40 @@ describe("agents module — 401 → session tokenExpired", () => {
     expect(h.events.some((e) => e.type === TOKEN_EXPIRED_EVENT)).toBe(false);
   });
 });
+
+it("the SDK list used by the AI Manager and its snapshot carry each employee's own timezone", async () => {
+  const agents = [
+    { ...A("a1", "Helper"), timezone: "Asia/Tokyo" },
+    { ...A("a2", "Assistant"), timezone: "America/Bogota" },
+    A("a3", "Unstamped"),
+  ];
+  const h = makeHarness({ agents, reactivity: false });
+  disposeCurrent = h.sdk.agents.dispose;
+  expect(await h.sdk.agents.list()).toEqual(agents);
+  await h.sdk.agents.refresh();
+  expect(snapshot(h.sdk)?.items.map((a) => a.timezone)).toEqual([
+    "Asia/Tokyo",
+    "America/Bogota",
+    undefined,
+  ]);
+});
+
+it("refreshes employee timezones when the workspace preference changes", async () => {
+  const sse = makeSse();
+  const h = makeHarness({
+    agents: [{ ...A("a1", "Helper"), timezone: "Asia/Tokyo" }],
+    eventsResponder: () => sse.response,
+  });
+  disposeCurrent = () => {
+    sse.close();
+    h.sdk.agents.dispose();
+  };
+  await vi.waitFor(() =>
+    expect(snapshot(h.sdk)?.items[0]?.timezone).toBe("Asia/Tokyo"),
+  );
+  h.state.agents = [{ ...A("a1", "Helper"), timezone: "America/Bogota" }];
+  sse.push({ type: "PreferencesChanged", workspaceId: "w1" });
+  await vi.waitFor(() =>
+    expect(snapshot(h.sdk)?.items[0]?.timezone).toBe("America/Bogota"),
+  );
+});

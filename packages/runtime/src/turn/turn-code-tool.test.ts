@@ -119,7 +119,9 @@ async function startTurnOn(
         dataDir: join(root, "data"),
         turnRoot: root,
       },
-      turn(input.provider, input.scopes, input.call),
+      {
+        ...turn(input.provider, input.scopes, input.call),
+      },
       deps,
     ),
   );

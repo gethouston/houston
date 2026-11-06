@@ -189,8 +189,12 @@ it("message stamps survive status changes and reach the AI Manager's VM", async 
     null,
     "last_message",
   );
-  expect(vm()?.items.find((item) => item.id === "act-1")?.lastMessageAt).toBe(
-    "2024-01-01T00:00:00.000Z",
+  // A background refetch can land after the write; wait for the VM to settle.
+  await until(
+    () =>
+      vm()?.items.find((item) => item.id === "act-1")?.lastMessageAt ===
+      "2024-01-01T00:00:00.000Z",
+    "act-1 stamp in the VM",
   );
   await h.sdk.activities.setStatus(SEED_AGENT_ID, "act-1", "done");
   expect(
@@ -204,8 +208,10 @@ it("message stamps survive status changes and reach the AI Manager's VM", async 
     "needs_you",
     null,
   );
-  expect(vm()?.items.find((item) => item.id === "act-2")).toHaveProperty(
-    "lastMessageAt",
-    "2024-01-01T00:00:00.000Z",
+  await until(
+    () =>
+      vm()?.items.find((item) => item.id === "act-2")?.lastMessageAt ===
+      "2024-01-01T00:00:00.000Z",
+    "act-2 stamp in the VM",
   );
 });

@@ -10,6 +10,7 @@ import {
   PREFERENCE_ONLY_IF_ABSENT_FIELD,
   type Workspace as WireWorkspace,
 } from "@houston/protocol";
+import { TurnTimezoneSchema } from "@houston/wire-types";
 import type { Workspace } from "../domain/types";
 import { type AccountDeps, ownedWorkspace } from "./account-access";
 import { json, readJson } from "./http";
@@ -106,6 +107,14 @@ defineRoute({
       body.value === null || body.value === undefined
         ? null
         : String(body.value);
+    if (
+      key === "timezone" &&
+      value !== null &&
+      !TurnTimezoneSchema.safeParse(body.value).success
+    )
+      return json(res, 400, {
+        error: "invalid timezone: expected an IANA name",
+      });
     // Create-only (`onlyIfAbsent`, @houston/protocol preference-create): the
     // flag holds whatever the value, null included, and the check and the
     // write share the preferences doc lock (createPreference).

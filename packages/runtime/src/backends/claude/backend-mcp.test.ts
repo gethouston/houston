@@ -53,6 +53,8 @@ async function runTurn(
   },
   mode?: "execute" | "plan" | "auto",
   nextStepSuggestions?: boolean,
+  timezone?: string,
+  role?: "coordinator" | null,
 ): Promise<Options> {
   h.capturedOptions = undefined;
   h.capturedMcp = undefined;
@@ -64,11 +66,13 @@ async function runTurn(
     toolSelection,
     systemPrompt: houstonSystemPrompt(),
     integrations,
+    role,
   });
   const session = await backend.createSession({
     conversationId: "c1",
     model,
     nextStepSuggestions,
+    timezone,
     ...(mode ? { mode } : {}),
   });
   await session.prompt("hi");
@@ -211,4 +215,32 @@ test("auto mode builds the MCP with integrations ON and ask_user OFF", async () 
   );
   // Built-ins keep the full execute policy — auto acts with everything else.
   expect(options.tools).toEqual(["Read", "Edit", "Write", "Glob", "Grep"]);
+});
+
+test("Claude routine guidance includes the turn zone and omits an unknown zone", async () => {
+  const withZone = await runTurn(
+    undefined,
+    undefined,
+    undefined,
+    "America/Bogota",
+  );
+  expect(withZone.systemPrompt).toContain(
+    "Routines run in America/Bogota. Write the cron in that local time and never add a time zone to it.",
+  );
+  const withoutZone = await runTurn();
+  expect(withoutZone.systemPrompt).not.toContain("Routines run in");
+});
+
+test("Claude tells the coordinator to use each employee's listed zone", async () => {
+  const options = await runTurn(
+    undefined,
+    undefined,
+    undefined,
+    "America/Bogota",
+    "coordinator",
+  );
+  expect(options.systemPrompt).toContain(
+    "Each AI employee's routines run in its own time zone, shown on the employee",
+  );
+  expect(options.systemPrompt).not.toContain("Routines run in America/Bogota");
 });

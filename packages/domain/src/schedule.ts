@@ -23,6 +23,9 @@ export function validateSchedule(
   schedule: string,
   timezone?: string | null,
 ): string | null {
+  if (/^(?:CRON_TZ|TZ)=/.test(schedule.trimStart())) {
+    return `Leave the time zone out of the schedule: routines run in ${timezone || "the deployment's local time zone"}. Write the cron in that local time.`;
+  }
   if (isIntervalForm(schedule)) return intervalScheduleError(schedule);
   try {
     // Construction throws on a bad pattern; the timezone is only resolved when a

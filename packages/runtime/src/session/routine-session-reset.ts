@@ -46,6 +46,7 @@ export async function resetRoutineSessionIfNeeded(
     model,
     mode,
     nextStepSuggestions: conv.nextStepSuggestions,
+    timezone: conv.timezone,
     fresh: true,
     ...(conv.context ? { context: conv.context } : {}),
   });

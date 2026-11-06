@@ -97,6 +97,35 @@ describe("seeding the timezone", () => {
     );
   });
 
+  it("never writes a zone the server would refuse", async () => {
+    // Chromium on some Linux hosts reports Etc/Unknown; a 400 would repeat
+    // on every app open and the zone would never land.
+    const { sdk, calls } = makeSdk(() => json({ value: null }));
+    expect(
+      await sdk.preferences.seedTimezone({ detected: "Etc/Unknown" }),
+    ).toEqual({ kind: "unseeded", timezone: "Etc/Unknown" });
+    expect(calls.map((c) => c.method)).toEqual(["GET"]);
+  });
+
+  it("skips an invalid old zone and seeds the detected one", async () => {
+    const { sdk, calls } = makeSdk((method) =>
+      json({ value: method === "GET" ? null : "America/Bogota" }),
+    );
+    expect(
+      await sdk.preferences.seedTimezone({
+        detected: "America/Bogota",
+        legacy: "Mars/Olympus",
+      }),
+    ).toEqual({
+      kind: "seeded",
+      timezone: "America/Bogota",
+      source: "detected",
+    });
+    expect(calls[1]?.body).toBe(
+      JSON.stringify({ value: "America/Bogota", onlyIfAbsent: true }),
+    );
+  });
+
   it("any other failure still throws", async () => {
     const { sdk } = makeSdk(() => json({ error: "boom" }, 500));
     await expect(

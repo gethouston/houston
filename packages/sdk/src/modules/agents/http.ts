@@ -19,6 +19,7 @@
  */
 
 import { type AgentColorId, withInitialConfigSeed } from "@houston/domain";
+import { WireAgentSchema } from "@houston/wire-types";
 import {
   type HttpScope,
   httpRequest,
@@ -44,12 +45,13 @@ export interface AgentsHttp {
 }
 
 /**
- * Lists the user's agents.
+ * Lists the user's agents, including each employee's `timezone`. Write a routine's
+ * cron in that employee's local time and never add a time zone to the schedule.
  * @assistant group:agents
  */
 export async function listAgents(scope: HttpScope): Promise<WireAgent[]> {
   const res = await httpRequest(scope, "/agents");
-  return (await res.json()) as WireAgent[];
+  return WireAgentSchema.array().parse(await res.json());
 }
 
 /**
@@ -95,7 +97,7 @@ export async function createAgent(
       seeds: seed?.seeds,
     }),
   });
-  return (await res.json()) as WireAgent;
+  return WireAgentSchema.parse(await res.json());
 }
 
 /**
@@ -129,7 +131,7 @@ export async function createMigratedAgent(
       migration: true,
     }),
   });
-  return (await res.json()) as WireAgent;
+  return WireAgentSchema.parse(await res.json());
 }
 
 /**
@@ -153,7 +155,7 @@ export async function renameAgent(
     method: "PATCH",
     body: JSON.stringify({ name }),
   });
-  return (await res.json()) as WireAgent;
+  return WireAgentSchema.parse(await res.json());
 }
 
 /**

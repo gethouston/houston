@@ -126,6 +126,7 @@ describe("local clock", () => {
 
   test("an unknown zone falls back to the host's own", () => {
     expect(resolveTimezone("Mars/Olympus")).toBe(resolveTimezone(null));
+    expect(resolveTimezone("+01:00")).toBe(resolveTimezone(null));
     expect(resolveTimezone("Asia/Tokyo")).toBe("Asia/Tokyo");
   });
 });

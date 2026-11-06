@@ -12,7 +12,7 @@ Calling an operation returns the host's raw response. Where the adapter function
 - `getAgentDelegation`: Reads which AI Employees an agent may work with and whether it takes missions.
 - `getAgentModelChoice`: Reads which AI model the user picked for an agent.
 - `installAgentFromGithub`: Installs an agent from a GitHub repository. **Confirmation required.**
-- `listAgents`: Lists the user's agents.
+- `listAgents`: Lists the user's agents, including each employee's `timezone`. Write a routine's cron in that employee's local time and never add a time zone to the schedule.
 - `listInstalledConfigs`: Lists the agent templates installed for this account.
 - `renameAgent`: Renames an agent. **Confirmation required.**
 - `setAgentDelegation`: Sets which AI Employees an agent may work with and whether it takes missions. **Confirmation required.**

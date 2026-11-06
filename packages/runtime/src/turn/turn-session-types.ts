@@ -49,6 +49,8 @@ export interface TurnSessionRequest {
   pin?: TurnModelPin;
   mode?: TurnMode;
   nextStepSuggestions?: boolean;
+  /** IANA zone in which the deployment fires routines. */
+  timezone?: string;
   liveMode?: import("../session/turn-mode-context").TurnModeRef;
   turnId: string;
   displayText?: string;

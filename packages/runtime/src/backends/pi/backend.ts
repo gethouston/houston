@@ -17,6 +17,7 @@ import {
   withNextStepSuggestionTools,
 } from "../../session/next-step-suggestions";
 import { makeAgentLoader, SYSTEM_PROMPT } from "../../session/resource-loader";
+import { withRoutineTimezone } from "../../session/routine-timezone";
 import { toolNamesForMode } from "../../session/tool-selection";
 import type {
   CreateSessionOptions,
@@ -90,7 +91,11 @@ export function createPiBackend(deps: PiBackendDeps): HarnessBackend {
         opts.mode,
         opts.context,
         withNextStepSuggestions(
-          deps.systemPrompt || config.systemPrompt || SYSTEM_PROMPT,
+          withRoutineTimezone(
+            deps.systemPrompt || config.systemPrompt || SYSTEM_PROMPT,
+            opts.timezone,
+            deps.role,
+          ),
           opts.nextStepSuggestions,
         ),
         deps.sharedSkillsDir,
