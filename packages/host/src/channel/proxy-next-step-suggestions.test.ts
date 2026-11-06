@@ -1,6 +1,6 @@
 import { createServer, type Server } from "node:http";
 import type { AddressInfo } from "node:net";
-import { setPreference } from "@houston/domain";
+import { getPreference, setPreference } from "@houston/domain";
 import { afterAll, beforeAll, beforeEach, expect, test, vi } from "vitest";
 import { MemoryCredentialStore } from "../credentials/store";
 import type { Agent, Workspace } from "../domain/types";
@@ -157,4 +157,26 @@ test("an unreadable preference keeps suggestions on and warns", async () => {
     expect.any(Error),
   );
   warn.mockRestore();
+});
+
+test("local turns carry the scheduler's workspace timezone, including routine fires", async () => {
+  const vfs = new MemoryVfs();
+  await setPreference(vfs, ws.id, "timezone", "America/Bogota");
+  const channel = new ProxyChannel({
+    launcher: new FakeLauncher({ baseUrl: runtimeUrl, token: "sbx" }),
+    proxy: { forward },
+    credentials: new MemoryCredentialStore(),
+    forwardActingHeader: false,
+    timezone: (workspaceId) => getPreference(vfs, workspaceId, "timezone"),
+  });
+  const sent = JSON.parse(
+    await send(channel, '{"text":"hi","timezone":"Europe/Paris"}'),
+  );
+  expect(sent.timezone).toBe("America/Bogota");
+  await channel.fireTurn(ctx, "c1", "run it", undefined, { routine: true });
+  expect(JSON.parse(bodies.at(-1) ?? "{}").timezone).toBe("America/Bogota");
+  await setPreference(vfs, ws.id, "timezone", "Europe/Paris");
+  expect(JSON.parse(await send(channel, '{"text":"again"}')).timezone).toBe(
+    "Europe/Paris",
+  );
 });

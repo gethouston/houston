@@ -107,6 +107,8 @@ export interface CleanTurn {
 /** A turn's pinned provider/model/effort/mode. Absent = keep current/default. */
 export interface TurnPin {
   nextStepSuggestions?: boolean;
+  /** IANA zone in which the deployment fires routines. */
+  timezone?: string;
   provider?: string | null;
   model?: string | null;
   effort?: string | null;
@@ -477,12 +479,20 @@ export async function execTurn(
         model,
         mode,
         pin?.nextStepSuggestions,
+        pin?.timezone,
       );
     // MODE FLIP: a plan⇄execute change on the SAME backend rebuilds the session
     // read-only (or back). History rehydrates from disk; no provider_switched
     // frame (same provider/model). No-op when the mode is unchanged — including
     // right after a cross-backend rebuild that already landed on `mode`.
-    await switchModeIfNeeded(conv, id, model, mode, pin?.nextStepSuggestions);
+    await switchModeIfNeeded(
+      conv,
+      id,
+      model,
+      mode,
+      pin?.nextStepSuggestions,
+      pin?.timezone,
+    );
     // Attach the turn's listeners to the SETTLED session (the rebuilt one when we
     // crossed a backend or flipped mode, else the session we entered with).
     subscribeSession();

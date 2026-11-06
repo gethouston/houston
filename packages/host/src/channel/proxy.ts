@@ -33,6 +33,7 @@ import {
   stampNextStepSuggestions,
 } from "./next-step-suggestions";
 import { wakeForDispatch } from "./probe-wake";
+import { stampTurnTimezone } from "./turn-timezone";
 
 /**
  * Forwards one authorized request to a standing runtime and streams the reply
@@ -89,6 +90,7 @@ export class ProxyChannel implements RuntimeChannel {
       beforeTurn?: (agent: ChannelCtx["agent"]) => Promise<void>;
       /** The person's suggestions setting, on unfronted hosts (./next-step-suggestions.ts). */
       nextStepSuggestions?: NextStepSuggestionsReader;
+      timezone?: (workspaceId: string) => Promise<string | null>;
       /** Detached standing-runtime SSE capture for durable turnlog ingest. */
       turnLogCapture?: {
         capture(
@@ -196,6 +198,11 @@ export class ProxyChannel implements RuntimeChannel {
     const turnStart = rest.match(/^conversations\/([^/]+)\/messages$/);
     let capturedConversationId: string | undefined;
     if (method === "POST" && turnStart) {
+      if (body && this.opts.timezone)
+        body = stampTurnTimezone(
+          body,
+          await this.opts.timezone(ctx.agent.workspaceId),
+        );
       if (body && this.opts.nextStepSuggestions)
         body = await stampNextStepSuggestions(
           body,
@@ -296,6 +303,7 @@ export class ProxyChannel implements RuntimeChannel {
     const endpoint = await this.opts.launcher.ensureAwake(ctx.agent);
     await this.opts.beforeTurn?.(ctx.agent);
     const suggestions = (await this.opts.nextStepSuggestions?.()) ?? true;
+    const timezone = await this.opts.timezone?.(ctx.agent.workspaceId);
     await this.attachTurnLogCapture(endpoint, ctx.agent.id, conversationId);
     let res: Response;
     try {
@@ -324,6 +332,7 @@ export class ProxyChannel implements RuntimeChannel {
             ...(pin?.effort ? { effort: pin.effort } : {}),
             ...(pin?.mode ? { mode: pin.mode } : {}),
             ...(suggestions ? {} : { nextStepSuggestions: false }),
+            ...(timezone ? { timezone } : {}),
           }),
         },
       );

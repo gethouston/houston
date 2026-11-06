@@ -34,6 +34,8 @@ export interface TurnSandboxDeps {
   actingAs?: { userId: string; name?: string };
   /** The acting person's plan limits (TurnRequest.limits). */
   limits?: TurnLimits;
+  /** IANA zone in which the deployment fires routines. */
+  timezone?: string;
   authoringPin?: LiveTurnPin;
   orgSlug: string;
   agentSlug: string;

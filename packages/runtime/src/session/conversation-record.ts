@@ -38,6 +38,8 @@ export type Conversation = {
    */
   mode: TurnMode;
   nextStepSuggestions?: boolean;
+  /** IANA zone in which the deployment fires routines. */
+  timezone?: string;
   /**
    * The EXECUTING turn's live-mode ref (set by exec-turn for the turn's
    * duration, cleared when it settles). `POST /conversations/:id/mode` mutates

@@ -15,6 +15,7 @@ async function fixture(
   scopes: TurnGrantScope[] = ["integrations", "agent-writes"],
   conversationId = "c1",
   limits?: TurnLimits,
+  timezone?: string,
 ) {
   const root = await mkdtemp(join(tmpdir(), "turn-sandbox-"));
   const store: ObjectStore = {
@@ -51,6 +52,7 @@ async function fixture(
     filesystem,
     workspaceId: "w1",
     conversationId,
+    timezone,
     orgSlug: "org",
     agentSlug: "agent",
     fetchImpl,
@@ -380,5 +382,24 @@ test("a cancelled tool call aborts the pending code run", async () => {
   });
   controller.abort(new Error("tool call cancelled"));
   await expect(pending).rejects.toThrow("tool call cancelled");
+  await sandbox.dispose();
+});
+
+test("pooled schedule validation uses the turn zone instead of unavailable workspace preferences", async () => {
+  const sandbox = await fixture(
+    fetch,
+    ["agent-writes"],
+    "c1",
+    undefined,
+    "America/Bogota",
+  );
+  const { setPreference } = await import("@houston/domain");
+  await setPreference(sandbox.filesystem.vfs, "w1", "timezone", "Invalid/Zone");
+  const response = await post(sandbox.call, "/sandbox/routines/save", {
+    name: "Morning",
+    prompt: "Check it",
+    schedule: "0 9 * * *",
+  });
+  expect(response.status).toBe(201);
   await sandbox.dispose();
 });

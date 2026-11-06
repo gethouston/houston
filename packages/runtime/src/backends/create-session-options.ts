@@ -6,6 +6,8 @@ import type { ResolvedModel, ThinkingLevel } from "./types";
 export interface CreateSessionOptions {
   conversationId: string;
   nextStepSuggestions?: boolean;
+  /** IANA zone in which the deployment fires routines. */
+  timezone?: string;
   model: ResolvedModel;
   thinkingLevel?: ThinkingLevel;
   /**

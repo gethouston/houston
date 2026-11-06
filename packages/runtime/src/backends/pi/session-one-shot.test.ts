@@ -153,6 +153,7 @@ for (const enabled of [undefined, true, false]) {
       conversationId: "c",
       model: faux.getModel(),
       nextStepSuggestions: enabled,
+      timezone: "America/Bogota",
     });
     const requests: TranscriptContext[] = [];
     faux.setResponses([
@@ -167,6 +168,9 @@ for (const enabled of [undefined, true, false]) {
         (message) => message.role === "system",
       );
       const content = Object.values(message?.sections ?? {}).join("\n\n");
+      expect(content).toContain(
+        "Routines run in America/Bogota. Write the cron in that local time and never add a time zone to it.",
+      );
       if (enabled !== false) {
         expect(content).toContain(houstonSystemPrompt());
       } else {

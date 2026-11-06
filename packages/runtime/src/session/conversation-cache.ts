@@ -108,6 +108,7 @@ export async function getConversation(
     model: builtModel,
     mode,
     nextStepSuggestions: pin?.nextStepSuggestions,
+    timezone: pin?.timezone,
     // Only used when the session is FIRST built (new conversation) — a later
     // message in the same conversation reuses this session, so context edits
     // take effect on the next chat, matching the local file behavior (HOU-711).
@@ -122,6 +123,7 @@ export async function getConversation(
     backendId: backend.id,
     mode,
     nextStepSuggestions: pin?.nextStepSuggestions,
+    timezone: pin?.timezone,
     pending: 0,
     ...(carriedContext ? { context: carriedContext } : {}),
   };

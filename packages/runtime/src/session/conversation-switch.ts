@@ -47,6 +47,7 @@ export async function switchBackendIfNeeded(
   model: ResolvedModel,
   mode: TurnMode,
   nextStepSuggestions = true,
+  timezone?: string,
 ): Promise<{ rebuilt: boolean; preTokens: number | null }> {
   const backend = serverBackendFor(model.provider);
   if (backend.id === conv.backendId) return { rebuilt: false, preTokens: null };
@@ -72,6 +73,7 @@ export async function switchBackendIfNeeded(
     model,
     mode,
     nextStepSuggestions,
+    timezone,
     // Never resume the new backend's own stale pre-switch session: the history
     // arrives as a transcript replay on the first prompt (HOU-951).
     fresh: true,
@@ -83,6 +85,7 @@ export async function switchBackendIfNeeded(
   conv.model = model.id;
   conv.mode = mode;
   conv.nextStepSuggestions = nextStepSuggestions;
+  conv.timezone = timezone;
   return { rebuilt: true, preTokens };
 }
 
@@ -108,10 +111,12 @@ export async function switchModeIfNeeded(
   model: ResolvedModel,
   mode: TurnMode,
   nextStepSuggestions = true,
+  timezone?: string,
 ): Promise<{ rebuilt: boolean }> {
   if (
     conv.mode === mode &&
-    (conv.nextStepSuggestions ?? true) === nextStepSuggestions
+    (conv.nextStepSuggestions ?? true) === nextStepSuggestions &&
+    conv.timezone === timezone
   )
     return { rebuilt: false };
   conv.session.dispose();
@@ -122,11 +127,13 @@ export async function switchModeIfNeeded(
       model,
       mode,
       nextStepSuggestions,
+      timezone,
       // Preserve the conversation's startup context across the rebuild (HOU-711).
       ...(conv.context ? { context: conv.context } : {}),
     },
   );
   conv.mode = mode;
   conv.nextStepSuggestions = nextStepSuggestions;
+  conv.timezone = timezone;
   return { rebuilt: true };
 }

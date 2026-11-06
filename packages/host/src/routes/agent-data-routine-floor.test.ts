@@ -198,3 +198,28 @@ test("a raw routines-document write is refused on and off the gateway", async ()
     }
   }
 });
+
+test.each([
+  "CRON_TZ=America/New_York",
+  "TZ=America/New_York",
+])("app and AI Manager writers refuse %s on create and update", async (prefix) => {
+  const { setPreference } = await import("@houston/domain");
+  const agent = await store.getAgent(agentId);
+  if (!agent) throw new Error("missing test agent");
+  await setPreference(vfs, agent.workspaceId, "timezone", "America/Bogota");
+  const created = await create(local, "0 9 * * *");
+  const { id } = await created.json();
+  for (const base of [local, fronted]) {
+    const schedule = `${prefix} 0 9 * * *`;
+    for (const response of [
+      await create(base, schedule),
+      await patch(base, id, { schedule }),
+    ]) {
+      expect(response.status).toBe(400);
+      expect(await response.json()).toEqual({
+        error:
+          "invalid schedule: Leave the time zone out of the schedule: routines run in America/Bogota. Write the cron in that local time.",
+      });
+    }
+  }
+});

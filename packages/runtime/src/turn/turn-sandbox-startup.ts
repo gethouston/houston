@@ -49,6 +49,7 @@ export function createTurnSandbox(input: {
     filesystem: input.filesystem,
     workspaceId: turn.workspaceId,
     conversationId: turn.conversationId,
+    timezone: turn.timezone,
     ...(turn.actingAs ? { actingAs: turn.actingAs } : {}),
     ...(turn.limits ? { limits: turn.limits } : {}),
     authoringPin: liveTurnPin({ ...turn, provider: turnProvider(turn) }),

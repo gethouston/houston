@@ -131,3 +131,15 @@ test("the session carries when the turn's host token expires, read from its exp"
   );
   expect(turn.tokenExpiresAt).toBe(exp * 1000);
 });
+
+test("a turn preserves the planner's IANA timezone", () => {
+  const parsed = parseTurnRequest({ ...base, timezone: "America/New_York" });
+  expect(parsed.timezone).toBe("America/New_York");
+  expect(turnSessionRequest(parsed, "t1", emit, signal).timezone).toBe(
+    "America/New_York",
+  );
+  expect(parseTurnRequest(base).timezone).toBeUndefined();
+  for (const timezone of ["", "Mars/Olympus", 42, null]) {
+    expect(() => parseTurnRequest({ ...base, timezone })).toThrow(/timezone/);
+  }
+});

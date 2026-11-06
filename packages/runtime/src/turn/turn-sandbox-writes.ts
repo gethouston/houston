@@ -30,6 +30,8 @@ export interface TurnWriteRoutesDeps {
   actingAs?: { userId: string; name?: string };
   /** The acting person's plan limits; a routine save is held to its floor. */
   limits?: TurnLimits;
+  /** IANA zone in which the deployment fires routines. */
+  timezone?: string;
   authoringPin?: LiveTurnPin;
 }
 
@@ -71,9 +73,8 @@ async function saveRoutine(
   const nowIso = new Date().toISOString();
   const minIntervalMinutes = deps.limits?.routineMinIntervalMinutes;
   const floor = minIntervalMinutes ? { minIntervalMinutes } : {};
-  // Turn requests do not carry the account timezone, and the agent-scoped
-  // store cannot read account preferences. Pooled cron validation therefore
-  // keeps the null-zone fallback until dispatch includes that context.
+  // The agent-scoped store cannot read workspace preferences. Dispatch's
+  // planner zone makes pooled validation agree with the routine's next fire.
   const result = await mutateTurnDocument({
     ...deps,
     relativePath: docKey(deps.filesystem.workspaceRel, "routines"),
@@ -87,6 +88,7 @@ async function saveRoutine(
             fields,
             {
               triggersEnabled: true,
+              timezone: deps.timezone,
               nowIso,
               id: stableId,
               createdBy: deps.actingAs?.userId,
@@ -102,6 +104,7 @@ async function saveRoutine(
             fields,
             {
               triggersEnabled: true,
+              timezone: deps.timezone,
               nowIso,
               actorSub: deps.actingAs?.userId,
               ...floor,

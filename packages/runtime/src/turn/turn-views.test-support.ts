@@ -290,7 +290,7 @@ export async function claimedTurn(
   agent: AgentStore,
   docs: PodDocs,
   conversationId = "c1",
-  opts: { routine?: boolean; limits?: TurnLimits } = {},
+  opts: { routine?: boolean; limits?: TurnLimits; timezone?: string } = {},
 ) {
   const root = await mkdtemp(join(tmpdir(), "turn-views-root-"));
   const filesystem = await prepareTurnFilesystem({
@@ -326,6 +326,7 @@ export async function claimedTurn(
       workspaceId: "W",
       conversationId,
       ...(opts.limits ? { limits: opts.limits } : {}),
+      timezone: opts.timezone,
     });
   /** The agent's save_learning tool: a CAS write straight to the store. */
   const saveLearning = async (text: string) => {

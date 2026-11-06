@@ -25,15 +25,7 @@ import {
   wakeMechanismError,
 } from "./routine-write-gates";
 
-/**
- * The merge-safe routine write path, shared by the authenticated agent-data
- * route (routes/agent-data.ts) and the runtime `save_routine` tool's sandbox
- * route (routes/routines-sandbox.ts). BOTH mutate the SAME routines.json through
- * a read-modify-write (loadRoutines -> create/apply -> upsertById -> saveRoutines)
- * so a second write never clobbers a routine a first one persisted. The runtime
- * must NEVER wholesale-replace the file (the isolated-setup-chat bug that deleted
- * task #1 when task #2 was created); this is the one blessed write path.
- */
+/** Both app edits and save_routine merge into the same routines document. */
 
 /** Common gate options for both write paths. */
 export interface RoutineWriteOptions {
@@ -50,6 +42,8 @@ export interface RoutineWriteOptions {
    * no floor (Plus, the desktop, self-host).
    */
   minIntervalMinutes?: number;
+  /** A pooled turn carries the planner zone instead of workspace preferences. */
+  timezone?: string;
 }
 
 /** A refused write: the reason the caller relays, plus a code when it has one. */
@@ -78,7 +72,6 @@ export async function createRoutineChecked(
       return { error: `missing '${field}'` };
     }
   }
-  // Exactly one wake mechanism (a cron schedule OR an event trigger).
   const wakeErr = wakeMechanismError(body);
   if (wakeErr) return { error: wakeErr };
   // No trigger backend here -> a trigger-bound routine could never wake.
@@ -89,9 +82,13 @@ export async function createRoutineChecked(
     body as unknown as NewRoutine,
     opts.authoringPin,
   );
-  // Trigger routines have no schedule to check.
   if (typeof input.schedule === "string") {
-    const checked = await checkedSchedule(vfs, workspaceId, input.schedule);
+    const checked = await checkedSchedule(
+      vfs,
+      workspaceId,
+      input.schedule,
+      opts.timezone,
+    );
     if ("error" in checked) return checked;
     input = { ...input, schedule: checked.schedule };
   }
@@ -167,7 +164,12 @@ export async function updateRoutineChecked(
       return { error: NO_TRIGGER_BACKEND_WRITE_ERROR };
     }
     if (typeof next.schedule === "string") {
-      const checked = await checkedSchedule(vfs, workspaceId, next.schedule);
+      const checked = await checkedSchedule(
+        vfs,
+        workspaceId,
+        next.schedule,
+        opts.timezone,
+      );
       if ("error" in checked) return checked;
       next = { ...next, schedule: checked.schedule };
     }

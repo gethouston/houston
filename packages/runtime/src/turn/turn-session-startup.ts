@@ -4,6 +4,7 @@ import type { HarnessBackend } from "../backends/types";
 import { config } from "../config";
 import { fileToolGuardOptions } from "../session/coordinator-policy";
 import type { MissionTitleRunner } from "../session/mission-title";
+import { withRoutineTimezone } from "../session/routine-timezone";
 import { turnCodeExecutionMode } from "../session/tool-selection";
 import { makeRunCodeTool } from "../session/tools/run-code";
 import { sandboxFetchRunCodeTransport } from "../session/tools/run-code-transport";
@@ -100,7 +101,9 @@ async function prepareTurnSession(
     modelRuntime,
     toolSelection,
     codeSandbox,
-    systemPrompt: config.systemPrompt || turnSystemPrompt(codeExecution),
+    systemPrompt: config.systemPrompt
+      ? withRoutineTimezone(config.systemPrompt, turn.timezone)
+      : turnSystemPrompt(codeExecution, process.env, turn.timezone),
     // The ROLE's file wall, the same policy the long-lived runtime builds
     // (session-tools.ts): a coordinator turn is held to its memory document
     // (plus read-only attachments), so the shared skills mirror it must never
