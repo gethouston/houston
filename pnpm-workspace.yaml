@@ -13,9 +13,11 @@ onlyBuiltDependencies:
   - "@sentry/cli"
 
 # Resolve only versions published at least 7 days ago (in minutes). A hijacked
-# release is usually caught and pulled within that window. Installs from the
-# lockfile are unaffected. When an override or bump genuinely needs a newer
-# version, list the package under `minimumReleaseAgeExclude` for that change.
+# release is usually caught and pulled within that window. Installs from an
+# up-to-date lockfile skip the check, but `pnpm add` re-checks even a version
+# the lockfile already has. When a bump or override genuinely needs a newer
+# version, list the package under `minimumReleaseAgeExclude` until it is 7
+# days old.
 minimumReleaseAge: 10080
 
 # Security override (uuid <11.1.1 advisory): gaxios 6 and teeny-request 9

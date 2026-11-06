@@ -1,0 +1,27 @@
+# Read by the Credential scan workflow (.github/workflows/credential-scan.yml).
+# Each allowlist below covers a false positive the default rules raised on
+# existing code.
+
+[extend]
+useDefault = true
+
+# Firebase client config ships inside the mobile app by design; the key is
+# restricted on the Google Cloud side, not secret.
+[[allowlists]]
+description = "Firebase client config"
+targetRules = ["gcp-api-key"]
+paths = ['''packages/mobile/android/app/google-services\.json$''']
+
+# The rule takes any 16 letters after "LinkedIn" for a client secret, which
+# matches code identifiers like `useLinkedInPosts`. Real secrets contain digits.
+[[allowlists]]
+description = "Identifiers next to LinkedIn names"
+targetRules = ["linkedin-client-secret"]
+regexTarget = "secret"
+regexes = ['''^(?:[a-z]+|[A-Z][a-z]+)(?:[A-Z][a-z]+)+$''']
+
+[[allowlists]]
+description = "IANA time zone names"
+targetRules = ["generic-api-key"]
+regexTarget = "secret"
+regexes = ['''^[A-Z][a-z]+/[A-Za-z_]+$''']
