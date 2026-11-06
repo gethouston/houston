@@ -26,7 +26,7 @@ export interface AgentsStreamHandlers {
   /** (Re)connected — refetch the list to catch up any events missed while down. */
   onConnect(): void;
   /** A frame that changes the list arrived on a live connection:
-   *  `AgentsChanged`, or `AgentRoleChanged` (one agent's listed role). */
+   *  Agent writes, job descriptions, or the workspace's firing zone changed. */
   onAgentsChanged(): void;
   /** A `401` proved the Houston session token lapsed. */
   onUnauthorized(): void;
@@ -66,7 +66,12 @@ export function startAgentsEventStream(deps: AgentsStreamDeps): () => void {
 function changesTheList(data: unknown): boolean {
   if (typeof data !== "object" || data === null) return false;
   const { type } = data as { type?: unknown };
-  return type === AGENTS_CHANGED_EVENT || type === AGENT_ROLE_CHANGED_EVENT;
+  // Local listings derive the firing zone from the workspace preference.
+  return (
+    type === AGENTS_CHANGED_EVENT ||
+    type === AGENT_ROLE_CHANGED_EVENT ||
+    type === "PreferencesChanged"
+  );
 }
 
 /** Backoff sleep on the injected clock, resolved early if the signal aborts. */

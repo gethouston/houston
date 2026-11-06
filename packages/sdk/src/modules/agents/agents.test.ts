@@ -449,3 +449,23 @@ it("the SDK list used by the AI Manager and its snapshot carry each employee's o
     undefined,
   ]);
 });
+
+it("refreshes employee timezones when the workspace preference changes", async () => {
+  const sse = makeSse();
+  const h = makeHarness({
+    agents: [{ ...A("a1", "Helper"), timezone: "Asia/Tokyo" }],
+    eventsResponder: () => sse.response,
+  });
+  disposeCurrent = () => {
+    sse.close();
+    h.sdk.agents.dispose();
+  };
+  await vi.waitFor(() =>
+    expect(snapshot(h.sdk)?.items[0]?.timezone).toBe("Asia/Tokyo"),
+  );
+  h.state.agents = [{ ...A("a1", "Helper"), timezone: "America/Bogota" }];
+  sse.push({ type: "PreferencesChanged", workspaceId: "w1" });
+  await vi.waitFor(() =>
+    expect(snapshot(h.sdk)?.items[0]?.timezone).toBe("America/Bogota"),
+  );
+});
