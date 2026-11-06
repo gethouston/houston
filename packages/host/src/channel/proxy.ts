@@ -198,7 +198,7 @@ export class ProxyChannel implements RuntimeChannel {
     const turnStart = rest.match(/^conversations\/([^/]+)\/messages$/);
     let capturedConversationId: string | undefined;
     if (method === "POST" && turnStart) {
-      if (body && this.opts.timezone)
+      if (body && this.opts.timezone && !this.opts.forwardActingHeader)
         body = stampTurnTimezone(
           body,
           await this.opts.timezone(ctx.agent.workspaceId),

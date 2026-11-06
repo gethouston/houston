@@ -389,3 +389,38 @@ test("a changed workspace timezone rebuilds the prompt while keeping conversatio
     ).rebuilt,
   ).toBe(false);
 });
+
+test.each([
+  "UTC",
+  "America/New_York",
+])("alternating pod sends and host fires in %s keep the same cached session", async (timezone) => {
+  const disk = new Map<string, string[]>();
+  const built: HistSession[] = [];
+  setDefaultBackend(histBackend("pi", disk, built));
+  modelState.model = OPENAI;
+  const conv = await getConversation("pod-zone", { timezone });
+  const session = conv.session;
+  for (const text of [
+    "user send",
+    "host fire",
+    "user follow-up",
+    "host fire again",
+  ]) {
+    await execTurn(
+      conv,
+      "pod-zone",
+      text,
+      text,
+      { author: undefined, priorAuthors: [] },
+      { timezone },
+    );
+    expect(conv.session).toBe(session);
+  }
+  expect(built).toHaveLength(1);
+  expect(built[0].prompts).toEqual([
+    "user send",
+    "host fire",
+    "user follow-up",
+    "host fire again",
+  ]);
+});

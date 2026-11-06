@@ -200,3 +200,26 @@ test("updateAgent still writes the overlay and re-reads the list, one request", 
     calls.filter((call) => call.url !== PREF_URL).map((call) => call.url),
   ).toEqual([`${BASE}/agents`]);
 });
+
+test("each employee's timezone survives the SDK list and the surface mapping", async () => {
+  listAndPrefs([
+    { ...WIRE_AGENT, timezone: "Asia/Tokyo" },
+    { ...WIRE_AGENT, id: "bbbb111122223333", timezone: "America/Bogota" },
+    { ...WIRE_AGENT, id: "cccc111122223333" },
+  ]);
+  const c = client();
+  c.setActiveOrg(ORG);
+  expect((await c.listAgents("Houston")).map((a) => a.timezone)).toEqual([
+    "Asia/Tokyo",
+    "America/Bogota",
+    undefined,
+  ]);
+  expect(calls.map((c) => [c.method, c.url, c.body])).toEqual([
+    ["GET", `${BASE}/agents`, null],
+    ["GET", PREF_URL, null],
+  ]);
+  const read = calls[0];
+  expect(read.headers.get("Content-Type")).toBe("application/json");
+  expect(read.headers.get("Authorization")).toBe("Bearer t");
+  expect(read.headers.get("x-houston-org")).toBe(ORG);
+});

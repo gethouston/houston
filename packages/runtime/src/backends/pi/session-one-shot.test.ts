@@ -131,62 +131,70 @@ test("the real recovery request is tool-free, small, on the turn model, and leav
   }
 });
 
-for (const enabled of [undefined, true, false]) {
-  test(`a real pi session's prompt and schema follow nextStepSuggestions=${enabled}`, async () => {
-    const cwd = mkdtempSync(join(tmpdir(), "suggestions-gate-"));
-    const faux = fauxProvider();
-    const auth = new HoustonAuthStore(join(cwd, "auth.json"));
-    const runtime = await ModelRuntime.create({
-      credentials: auth,
-      modelsPath: join(cwd, "models.json"),
-    });
-    runtime.registerNativeProvider(faux.provider);
-    const backend = createPiBackend({
-      workspaceDir: cwd,
-      dataDir: cwd,
-      modelRuntime: runtime,
-      tools: ["suggest_actions"],
-      customTools: [makeSuggestActionsTool()],
-      systemPrompt: houstonSystemPrompt(),
-    });
-    const session = await backend.createSession({
-      conversationId: "c",
-      model: faux.getModel(),
-      nextStepSuggestions: enabled,
-      timezone: "America/Bogota",
-    });
-    const requests: TranscriptContext[] = [];
-    faux.setResponses([
-      (context) => {
-        requests.push(structuredClone(context));
-        return fauxAssistantMessage("All set.");
-      },
-    ]);
-    try {
-      await session.prompt("hello");
-      const message = requests[0]?.messages.find(
-        (message) => message.role === "system",
-      );
-      const content = Object.values(message?.sections ?? {}).join("\n\n");
-      expect(content).toContain(
-        "Routines run in America/Bogota. Write the cron in that local time and never add a time zone to it.",
-      );
-      if (enabled !== false) {
-        expect(content).toContain(houstonSystemPrompt());
-      } else {
-        expect(content).toContain(
-          "   - Do not offer follow-up buttons, and never mention, explain, or apologize for their absence.",
+for (const role of [null, "coordinator"] as const) {
+  for (const enabled of [undefined, true, false]) {
+    test(`a real pi session's prompt and schema follow nextStepSuggestions=${enabled}, role=${role}`, async () => {
+      const cwd = mkdtempSync(join(tmpdir(), "suggestions-gate-"));
+      const faux = fauxProvider();
+      const auth = new HoustonAuthStore(join(cwd, "auth.json"));
+      const runtime = await ModelRuntime.create({
+        credentials: auth,
+        modelsPath: join(cwd, "models.json"),
+      });
+      runtime.registerNativeProvider(faux.provider);
+      const backend = createPiBackend({
+        workspaceDir: cwd,
+        dataDir: cwd,
+        modelRuntime: runtime,
+        tools: ["suggest_actions"],
+        customTools: [makeSuggestActionsTool()],
+        systemPrompt: houstonSystemPrompt(),
+        role,
+      });
+      const session = await backend.createSession({
+        conversationId: "c",
+        model: faux.getModel(),
+        nextStepSuggestions: enabled,
+        timezone: "America/Bogota",
+      });
+      const requests: TranscriptContext[] = [];
+      faux.setResponses([
+        (context) => {
+          requests.push(structuredClone(context));
+          return fauxAssistantMessage("All set.");
+        },
+      ]);
+      try {
+        await session.prompt("hello");
+        const message = requests[0]?.messages.find(
+          (message) => message.role === "system",
         );
-        expect(content).not.toContain("suggest_actions");
-        expect(content).not.toContain("<next_step_suggestions>");
+        const content = Object.values(message?.sections ?? {}).join("\n\n");
+        expect(content).toContain(
+          role === "coordinator"
+            ? "Each AI employee's routines run in its own time zone, shown on the employee"
+            : "Routines run in America/Bogota. Write the cron in that local time and never add a time zone to it.",
+        );
+        if (role === "coordinator")
+          expect(content).not.toContain("Routines run in America/Bogota");
+        if (enabled !== false) {
+          expect(content).toContain(houstonSystemPrompt());
+        } else {
+          expect(content).toContain(
+            "   - Do not offer follow-up buttons, and never mention, explain, or apologize for their absence.",
+          );
+          expect(content).not.toContain("suggest_actions");
+          expect(content).not.toContain("<next_step_suggestions>");
+        }
+        expect(
+          message?.toolsAdded?.some(
+            (tool) => tool.name === "suggest_actions",
+          ) ?? false,
+        ).toBe(enabled !== false);
+      } finally {
+        session.dispose();
+        rmSync(cwd, { recursive: true, force: true });
       }
-      expect(
-        message?.toolsAdded?.some((tool) => tool.name === "suggest_actions") ??
-          false,
-      ).toBe(enabled !== false);
-    } finally {
-      session.dispose();
-      rmSync(cwd, { recursive: true, force: true });
-    }
-  });
+    });
+  }
 }

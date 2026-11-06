@@ -54,6 +54,7 @@ async function runTurn(
   mode?: "execute" | "plan" | "auto",
   nextStepSuggestions?: boolean,
   timezone?: string,
+  role?: "coordinator" | null,
 ): Promise<Options> {
   h.capturedOptions = undefined;
   h.capturedMcp = undefined;
@@ -65,6 +66,7 @@ async function runTurn(
     toolSelection,
     systemPrompt: houstonSystemPrompt(),
     integrations,
+    role,
   });
   const session = await backend.createSession({
     conversationId: "c1",
@@ -227,4 +229,18 @@ test("Claude routine guidance includes the turn zone and omits an unknown zone",
   );
   const withoutZone = await runTurn();
   expect(withoutZone.systemPrompt).not.toContain("Routines run in");
+});
+
+test("Claude tells the coordinator to use each employee's listed zone", async () => {
+  const options = await runTurn(
+    undefined,
+    undefined,
+    undefined,
+    "America/Bogota",
+    "coordinator",
+  );
+  expect(options.systemPrompt).toContain(
+    "Each AI employee's routines run in its own time zone, shown on the employee",
+  );
+  expect(options.systemPrompt).not.toContain("Routines run in America/Bogota");
 });

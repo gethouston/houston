@@ -673,32 +673,27 @@ test("routines: an invalid cron is rejected at create (400), never saved to fail
     "invalid schedule",
   );
 
-  // The schedule is validated against the single account-wide zone (HOU-470),
-  // not a per-routine one: an invalid account timezone rejects the create.
-  await fetch(`${base}/v1/preferences/timezone`, {
+  // A bad preference is refused at the write boundary, so it cannot stop
+  // otherwise valid routine writes.
+  const badPreference = await fetch(`${base}/v1/preferences/timezone`, {
     method: "PUT",
     headers: auth("alice"),
     body: JSON.stringify({ value: "Mars/Phobos" }),
   });
-  try {
-    const badTz = await fetch(`${base}/agents/${agentId}/routines`, {
-      method: "POST",
-      headers: auth("alice"),
-      body: JSON.stringify({
-        name: "BadTz",
-        prompt: "p",
-        schedule: "0 9 * * *",
-      }),
-    });
-    expect(badTz.status).toBe(400);
-  } finally {
-    // Restore so later tests see a clean (unset) account zone.
-    await fetch(`${base}/v1/preferences/timezone`, {
-      method: "PUT",
-      headers: auth("alice"),
-      body: JSON.stringify({ value: null }),
-    });
-  }
+  expect(badPreference.status).toBe(400);
+  expect(await badPreference.json()).toEqual({
+    error: "invalid timezone: expected an IANA name",
+  });
+  const valid = await fetch(`${base}/agents/${agentId}/routines`, {
+    method: "POST",
+    headers: auth("alice"),
+    body: JSON.stringify({
+      name: "Morning",
+      prompt: "p",
+      schedule: "0 9 * * *",
+    }),
+  });
+  expect(valid.status).toBe(201);
 });
 
 test("routines: an unknown provider pin is rejected (400), a Rust-era alias round-trips", async () => {

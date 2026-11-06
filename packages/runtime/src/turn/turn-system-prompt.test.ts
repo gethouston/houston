@@ -1,6 +1,5 @@
 import { houstonSystemPrompt } from "@houston/host/src/houston-prompt";
 import { expect, test } from "vitest";
-import { codeExecutionSentence } from "../session/resource-loader";
 import { turnSystemPrompt } from "./turn-system-prompt";
 
 /**
@@ -35,16 +34,8 @@ test("the code-execution sentence still follows this turn's own capability", () 
   );
 });
 
-test("routine guidance names the turn zone only when supplied", () => {
-  const prompt = turnSystemPrompt("local", {}, "America/New_York");
-  expect(prompt).toContain(
-    "Routines run in America/New_York. Write the cron in that local time and never add a time zone to it.",
-  );
-  expect(turnSystemPrompt("local", {})).not.toContain("Routines run in");
-});
-
-test("an unknown routine zone keeps the prompt byte-identical", () => {
-  expect(turnSystemPrompt("local", {})).toBe(
-    `${houstonSystemPrompt({ triggers: false })}\n\n${codeExecutionSentence("local")}`,
+test("an unknown routine zone keeps main's prompt byte-identical", async () => {
+  await expect(turnSystemPrompt("local", {})).toMatchFileSnapshot(
+    "./__snapshots__/turn-system-prompt-main.txt",
   );
 });

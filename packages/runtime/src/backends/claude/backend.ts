@@ -142,7 +142,7 @@ export function createClaudeBackend(deps: ClaudeBackendDeps): HarnessBackend {
         systemPrompt: buildSystemPrompt(
           deps.workspaceDir,
           withNextStepSuggestions(
-            withRoutineTimezone(deps.systemPrompt, opts.timezone),
+            withRoutineTimezone(deps.systemPrompt, opts.timezone, deps.role),
             opts.nextStepSuggestions,
           ),
           opts.mode,

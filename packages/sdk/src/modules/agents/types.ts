@@ -10,6 +10,7 @@
 
 import type { AgentColorId } from "@houston/domain";
 import type { AgentInitialConfig } from "@houston/protocol";
+import type { WireAgent } from "@houston/wire-types";
 
 /** Teams v2: how much of a shared agent the caller may do. */
 export type AgentAccess = "manager" | "user";
@@ -20,42 +21,7 @@ export interface AgentAssignment {
   access: AgentAccess;
 }
 
-/**
- * One agent exactly as the host's `GET /agents` returns it (protocol v3, the
- * `Agent` record in `packages/host/src/domain/types.ts`), plus the fields only
- * a richer deployment attaches: `dir` where the host is co-located with the
- * files, and the teams-v2 assignment fields the hosted gateway adds. All are
- * optional because the base host route serves the first four and nothing else.
- */
-export interface WireAgent {
-  id: string;
-  workspaceId: string;
-  name: string;
-  createdAt: number;
-  /**
-   * Rust-era legacy color, read by the host from the agent's
-   * `.houston/agent.json` (local/self-host profiles only; the hosted gateway
-   * omits it). A client's own color overlay outranks it — this only fills the
-   * gap for agents whose color was picked before the engine cutover.
-   */
-  color?: string;
-  /** The role the agent's job description names (its `CLAUDE.md` `role`
-   *  field), normalized. Absent when the description names none, and on a
-   *  gateway whose agent has not published one yet. */
-  role?: string;
-  /** Absolute on-disk directory, present only when the host holds the files
-   *  (local profile). Feeds the OS reveal/open commands. */
-  dir?: string;
-  /** Teams v2: whether this agent is assigned to anyone at all. */
-  assigned?: boolean;
-  /** Teams v2: the assignees' user ids, mirroring {@link assignments}. */
-  assignedUserIds?: string[];
-  /** Teams v2: the caller's own effective access to this agent. */
-  access?: AgentAccess;
-  /** Teams v2: the full assignee list with per-person access. Served only to
-   *  callers who may manage the agent (its owner, or a managing admin). */
-  assignments?: AgentAssignment[];
-}
+export type { WireAgent } from "@houston/wire-types";
 
 /** One agent template installed into the account's library. */
 export interface InstalledConfig {
@@ -73,6 +39,8 @@ export interface AgentListItem {
   createdAt: number;
   /** The role its job description names, when it names one. */
   role?: string;
+  /** The zone this employee's routines run in. */
+  timezone?: string;
 }
 
 /**

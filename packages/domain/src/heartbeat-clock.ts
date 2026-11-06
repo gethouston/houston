@@ -22,10 +22,10 @@ export function hostTimezone(): string {
 /**
  * The account-wide `timezone` preference (the one the routine scheduler
  * reads), or the host's zone when it is unset or names no real zone. A bad
- * value must not stop the briefing: Intl throws a RangeError on it.
+ * value must not stop a turn or briefing: Intl throws a RangeError on it.
  */
 export function resolveTimezone(preference: string | null | undefined): string {
-  if (!preference) return hostTimezone();
+  if (!preference || /^[+-]/.test(preference)) return hostTimezone();
   try {
     new Intl.DateTimeFormat("en-US", { timeZone: preference });
     return preference;

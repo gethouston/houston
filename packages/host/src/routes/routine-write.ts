@@ -1,7 +1,5 @@
 import {
-  applyRoutineUpdate,
   createRoutine,
-  isValidTriggerBinding,
   loadRoutines,
   saveRoutines,
   upsertById,
@@ -10,7 +8,6 @@ import type {
   NewRoutine,
   PlanMinIntervalRefusal,
   Routine,
-  RoutineUpdate,
 } from "@houston/protocol";
 import type { Vfs } from "../vfs";
 import { withDocLock } from "./doc-lock";
@@ -25,7 +22,16 @@ import {
   wakeMechanismError,
 } from "./routine-write-gates";
 
-/** Both app edits and save_routine merge into the same routines document. */
+/**
+ * The merge-safe routine write path, shared by the authenticated agent-data
+ * route (routes/agent-data.ts) and the runtime `save_routine` tool's sandbox
+ * route (routes/routines-sandbox.ts). BOTH mutate the SAME routines.json through
+ * a read-modify-write (loadRoutines -> create/apply -> upsertById -> saveRoutines)
+ * so a second write never clobbers a routine a first one persisted. The runtime
+ * must NEVER wholesale-replace the file (the isolated-setup-chat bug that deleted
+ * task #1 when task #2 was created); this is the one blessed write path.
+ */
+export { updateRoutineChecked } from "./routine-update";
 
 /** Common gate options for both write paths. */
 export interface RoutineWriteOptions {
@@ -72,6 +78,7 @@ export async function createRoutineChecked(
       return { error: `missing '${field}'` };
     }
   }
+  // Exactly one wake mechanism (a cron schedule OR an event trigger).
   const wakeErr = wakeMechanismError(body);
   if (wakeErr) return { error: wakeErr };
   // No trigger backend here -> a trigger-bound routine could never wake.
@@ -82,6 +89,7 @@ export async function createRoutineChecked(
     body as unknown as NewRoutine,
     opts.authoringPin,
   );
+  // Trigger routines have no schedule to check.
   if (typeof input.schedule === "string") {
     const checked = await checkedSchedule(
       vfs,
@@ -115,86 +123,5 @@ export async function createRoutineChecked(
     );
     await saveRoutines(vfs, root, upsertById(items, routine));
     return { routine };
-  });
-}
-
-/**
- * Update a routine by id merge-safely. Reads the file, applies the partial update
- * to the matching entry, re-checks the exactly-one-wake invariant on the APPLIED
- * result (e.g. `{trigger: null}` on a trigger routine clears its only wake), the
- * trigger-backend gate, the schedule, and the provider pin, then writes the
- * whole set back. `{ notFound: true }` when no routine has that id; else the
- * updated routine or a plain-language error.
- */
-export async function updateRoutineChecked(
-  vfs: Vfs,
-  root: string,
-  workspaceId: string,
-  itemId: string,
-  update: Record<string, unknown>,
-  opts: RoutineWriteOptions & { actorSub?: string },
-): Promise<{ routine: Routine } | RoutineWriteError | { notFound: true }> {
-  return await withDocLock(`${root}#routines`, async () => {
-    const { items } = await loadRoutines(vfs, root);
-    const current = items.find((r) => r.id === itemId);
-    if (!current) return { notFound: true };
-    // An update may switch a routine to an event trigger; reject a malformed
-    // binding before it is persisted (normalizeRoutines would drop it).
-    if (update.trigger != null && !isValidTriggerBinding(update.trigger)) {
-      return { error: "invalid 'trigger' binding" };
-    }
-    let next = applyRoutineUpdate(
-      current,
-      update as RoutineUpdate,
-      opts.nowIso,
-      opts.actorSub,
-    );
-    // The APPLIED result must still hold the exactly-one-wake invariant — persisting
-    // a wake-less routine loses it silently (normalizeRoutines drops it on read).
-    const nextWakeErr = wakeMechanismError(
-      next as unknown as Record<string, unknown>,
-    );
-    if (nextWakeErr) return { error: nextWakeErr };
-    // The APPLIED result carries a trigger, but this deployment cannot fire one →
-    // refuse. Converting the routine to a schedule (trigger cleared) passes.
-    if (
-      (next as { trigger?: unknown }).trigger != null &&
-      !opts.triggersEnabled
-    ) {
-      return { error: NO_TRIGGER_BACKEND_WRITE_ERROR };
-    }
-    if (typeof next.schedule === "string") {
-      const checked = await checkedSchedule(
-        vfs,
-        workspaceId,
-        next.schedule,
-        opts.timezone,
-      );
-      if ("error" in checked) return checked;
-      next = { ...next, schedule: checked.schedule };
-    }
-    // Every update re-stamps `created_by` to the editor (applyRoutineUpdate),
-    // whose plan then judges the fires, so even a prompt-only edit is checked.
-    // A routine left disabled never fires, so it is exempt; re-enabling is not.
-    if (next.enabled !== false) {
-      // "Kept": the schedule is the one already stored, so the refusal says
-      // the schedule itself has to move first.
-      const refusal = planFloorRefusal(
-        next.schedule,
-        opts.minIntervalMinutes,
-        current.schedule === next.schedule,
-      );
-      if (refusal) return refusal;
-    }
-    const providerErr = providerPinError(update);
-    if (providerErr) return { error: providerErr };
-    if (update.model != null) {
-      const checked = await checkedRoutineModel(vfs, root, next);
-      if ("error" in checked) return checked;
-      next = { ...next, model: checked.model };
-    }
-
-    await saveRoutines(vfs, root, upsertById(items, next));
-    return { routine: next };
   });
 }

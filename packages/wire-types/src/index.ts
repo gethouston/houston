@@ -46,3 +46,4 @@ export * from "./turn-setup";
 export * from "./turn-timezone";
 export * from "./types";
 export * from "./unreadable-wire";
+export * from "./wire-agent";

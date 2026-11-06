@@ -36,6 +36,7 @@ export function toUiAgent(a: WireAgent, colors = colorOverlay()): Agent {
     // everything-turned-purple migration bug).
     color: colors[a.id] ?? a.color ?? DEFAULT_AGENT_COLOR,
     role: a.role,
+    timezone: a.timezone,
     createdAt: iso,
     lastOpenedAt: iso,
     assigned: a.assigned,

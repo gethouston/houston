@@ -1,5 +1,10 @@
 import { join } from "node:path";
-import { getPreference, sharedSkillsDirKey } from "@houston/domain";
+import {
+  getPreference,
+  hostTimezone,
+  resolveTimezone,
+  sharedSkillsDirKey,
+} from "@houston/domain";
 import { captureRuntimeCredential } from "../channel/capture-credential";
 import { nextStepSuggestionsReader } from "../channel/next-step-suggestions";
 import { ProxyChannel } from "../channel/proxy";
@@ -116,10 +121,13 @@ export function createHostRuntime(
     anthropicServedHere: opts.gatewayFronted ?? false,
     beforeTurn: sharedMirror ? () => sharedMirror.beforeTurn() : undefined,
     turnLogCapture: standingFrameCapture,
-    // Behind a gateway, preferences are the gateway's and it stamps the turn.
-    timezone: opts.gatewayFronted
-      ? undefined
-      : (workspaceId) => getPreference(base.vfs, workspaceId, "timezone"),
+    // Forwarded sends keep the gateway stamp; host-built fires use the pod zone.
+    timezone: async (workspaceId) =>
+      opts.gatewayFronted
+        ? hostTimezone()
+        : resolveTimezone(
+            await getPreference(base.vfs, workspaceId, "timezone"),
+          ),
     nextStepSuggestions: opts.gatewayFronted
       ? undefined
       : nextStepSuggestionsReader(base.vfs, store, LOCAL_USER),

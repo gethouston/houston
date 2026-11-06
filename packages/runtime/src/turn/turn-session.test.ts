@@ -14,6 +14,7 @@ import type {
   HarnessBackend,
   HarnessSession,
 } from "../backends/types";
+import { config } from "../config";
 import {
   appendAssistantMessageAt,
   appendUserMessageAt,
@@ -395,4 +396,52 @@ test("a corrupt harness marker degrades to unknown instead of failing the turn",
   expect(readTurnHarness(dataDir, "c1")).toBeUndefined();
   writeTurnHarness(dataDir, "c1", "claude");
   expect(readTurnHarness(dataDir, "c1")).toBe("claude");
+});
+
+test.each([
+  { role: null, timezone: "America/Bogota" },
+  { role: null, timezone: undefined },
+  { role: "coordinator", timezone: "America/Bogota" },
+  { role: "coordinator", timezone: undefined },
+] as const)("pooled prompt appends routine guidance once for $role/$timezone, including custom prompts", async ({
+  role,
+  timezone,
+}) => {
+  const prior = config.systemPrompt;
+  try {
+    for (const systemPrompt of ["", "Custom product prompt"]) {
+      config.systemPrompt = systemPrompt;
+      let prompt = "";
+      await runTurn(
+        await directories(),
+        {
+          conversationId: "c1",
+          text: "hello",
+          provider: "anthropic",
+          role: role ?? undefined,
+          timezone,
+          emit: () => undefined,
+          signal: undefined,
+          turnId: "t-zone",
+        },
+        {
+          claudeSdk: sdk(
+            scriptedQuery((_text, options) => {
+              prompt = String(options.systemPrompt);
+            }),
+          ),
+        },
+      );
+      const line =
+        role === "coordinator"
+          ? "Each AI employee's routines run in its own time zone, shown on the employee; write the cron in that zone's local time and never add a time zone to it."
+          : "Routines run in America/Bogota. Write the cron in that local time and never add a time zone to it.";
+      expect(prompt.split(line).length - 1).toBe(role || timezone ? 1 : 0);
+      if (role === "coordinator")
+        expect(prompt).not.toContain("Routines run in America/Bogota");
+      if (systemPrompt) expect(prompt).toContain(systemPrompt);
+    }
+  } finally {
+    config.systemPrompt = prior;
+  }
 });

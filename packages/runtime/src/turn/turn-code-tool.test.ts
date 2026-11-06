@@ -83,7 +83,6 @@ async function startTurnOn(
     provider: string;
     scopes: TurnGrantScope[] | null;
     call?: SandboxFetch;
-    timezone?: string;
   },
 ): Promise<TurnBackendDeps> {
   const { startTurnSession, finishTurnSessionStartup } = startup;
@@ -122,7 +121,6 @@ async function startTurnOn(
       },
       {
         ...turn(input.provider, input.scopes, input.call),
-        timezone: input.timezone,
       },
       deps,
     ),
@@ -238,21 +236,4 @@ test("the run_code budget belongs to the WORKER, not to one turn", async () => {
   await expect(run(second, "r2")).rejects.toThrow(/code-execution budget/);
   pending.release?.();
   await inFlight;
-});
-
-test.each([
-  "anthropic",
-  "openai-codex",
-])("a pooled %s turn's prompt names its own planner zone", async (provider) => {
-  const startup = await loadStartup("disabled");
-  const known = await startTurnOn(startup, {
-    provider,
-    scopes: null,
-    timezone: "America/New_York",
-  });
-  expect(known.systemPrompt).toContain(
-    "Routines run in America/New_York. Write the cron in that local time and never add a time zone to it.",
-  );
-  const unknown = await startTurnOn(startup, { provider, scopes: null });
-  expect(unknown.systemPrompt).not.toContain("Routines run in");
 });

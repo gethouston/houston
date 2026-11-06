@@ -86,7 +86,12 @@ test("install creates the agent with the package as its seed payload", async () 
   const { packageId } = previewUpload(archive());
   const calls = stubFetch(
     new Response(
-      JSON.stringify({ id: "abcd1234abcd1234", name: "Sales", createdAt: 0 }),
+      JSON.stringify({
+        id: "abcd1234abcd1234",
+        workspaceId: "Houston",
+        name: "Sales",
+        createdAt: 0,
+      }),
       { status: 201, headers: { "Content-Type": "application/json" } },
     ),
   );

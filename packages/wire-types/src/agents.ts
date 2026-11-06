@@ -18,6 +18,8 @@ export interface Agent {
    * reading every job description. Absent when none is named.
    */
   role?: string;
+  /** The time zone this employee's routines run in. */
+  timezone?: string;
   createdAt: string;
   lastOpenedAt?: string;
   /**

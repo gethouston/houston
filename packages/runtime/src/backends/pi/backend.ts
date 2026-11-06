@@ -94,6 +94,7 @@ export function createPiBackend(deps: PiBackendDeps): HarnessBackend {
           withRoutineTimezone(
             deps.systemPrompt || config.systemPrompt || SYSTEM_PROMPT,
             opts.timezone,
+            deps.role,
           ),
           opts.nextStepSuggestions,
         ),

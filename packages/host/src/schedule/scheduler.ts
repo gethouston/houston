@@ -1,4 +1,4 @@
-import { getPreference } from "@houston/domain";
+import { getPreference, resolveTimezone } from "@houston/domain";
 import type { Workspace } from "../domain/types";
 import type { EventHub } from "../events/hub";
 import type { WorkspacePaths } from "../paths";
@@ -153,7 +153,9 @@ export class Scheduler {
       // One account-wide zone governs every routine in the workspace (HOU-470:
       // no per-routine override). Re-read it each tick, so when the preference
       // changes the next scan re-times every routine.
-      const timezone = await getPreference(this.deps.vfs, ws.id, "timezone");
+      const timezone = resolveTimezone(
+        await getPreference(this.deps.vfs, ws.id, "timezone"),
+      );
       const agents = await this.deps.store.listAgents(ws.id);
       for (const agent of agents) {
         await scanAgent(
