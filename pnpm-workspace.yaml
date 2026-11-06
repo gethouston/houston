@@ -12,6 +12,12 @@ packages:
 onlyBuiltDependencies:
   - "@sentry/cli"
 
+# Resolve only versions published at least 7 days ago (in minutes). A hijacked
+# release is usually caught and pulled within that window. Installs from the
+# lockfile are unaffected. When an override or bump genuinely needs a newer
+# version, list the package under `minimumReleaseAgeExclude` for that change.
+minimumReleaseAge: 10080
+
 # Security override (uuid <11.1.1 advisory): gaxios 6 and teeny-request 9
 # (both pulled by @google-cloud/storage, which has no gaxios-7-based release
 # yet) declare uuid ^9. Both only call the still-present `v4()` (multipart
