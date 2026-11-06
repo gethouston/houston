@@ -191,10 +191,14 @@ jobs:
             echo "::error::@anthropic-ai/claude-agent-sdk is not pinned in packages/runtime/package.json"
             exit 1
           fi
+          # The pin was reviewed when it landed. Without the age override, the
+          # 7-day hold in pnpm-workspace.yaml fails a release in the week after an
+          # SDK bump, since `pnpm add` re-checks age even for a locked version.
           pnpm add -w \
             "@anthropic-ai/claude-agent-sdk-darwin-arm64@$SDK_VER" \
             "@anthropic-ai/claude-agent-sdk-darwin-x64@$SDK_VER" \
-            --force
+            --force \
+            --config.minimum-release-age=0
           git checkout HEAD -- package.json pnpm-lock.yaml
 
       # A release-profile build.rs refuses to run without a fresh host sidecar

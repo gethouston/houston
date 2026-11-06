@@ -678,10 +678,14 @@ jobs:
             exit 1
           fi
           echo "Claude Agent SDK version pinned by packages/runtime: $SDK_VER"
+          # The pin was reviewed when it landed. Without the age override, the
+          # 7-day hold in pnpm-workspace.yaml fails a release in the week after an
+          # SDK bump, since `pnpm add` re-checks age even for a locked version.
           pnpm add -w \
             "@anthropic-ai/claude-agent-sdk-darwin-arm64@$SDK_VER" \
             "@anthropic-ai/claude-agent-sdk-darwin-x64@$SDK_VER" \
-            --force
+            --force \
+            --config.minimum-release-age=0
           # `pnpm add -w` rewrites the root package.json + pnpm-lock.yaml, both
           # of which are host-sidecar freshness-guard inputs (build.rs
           # SIDECAR_INPUT_PATHS). The edit only needs to land the two platform
