@@ -1,5 +1,4 @@
 import { z } from "zod";
-import { TurnTimezoneSchema } from "./turn-timezone";
 
 /** The host/gateway agent record, before the adapter maps it for a surface. */
 export const WireAgentSchema = z.object({
@@ -18,8 +17,13 @@ export const WireAgentSchema = z.object({
    *  field), normalized. Absent when the description names none, and on a
    *  gateway whose agent has not published one yet. */
   role: z.string().optional(),
-  /** The zone the scheduler fires this employee's routines in. */
-  timezone: TurnTimezoneSchema,
+  /**
+   * The zone the scheduler fires this employee's routines in. The server
+   * validated it; it is not re-checked here because a device with older time
+   * zone data (e.g. a WebKit that predates `Europe/Kyiv`) would otherwise
+   * reject the whole agent list.
+   */
+  timezone: z.string().optional(),
   /** Absolute on-disk directory, present only when the host holds the files
    *  (local profile). Feeds the OS reveal/open commands. */
   dir: z.string().optional(),

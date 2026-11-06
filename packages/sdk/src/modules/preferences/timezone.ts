@@ -1,3 +1,4 @@
+import { TurnTimezoneSchema } from "@houston/wire-types";
 /**
  * Seeding the account `timezone` preference. The cloud scheduler fires
  * routines and the morning briefing in it, so every surface seeds it for every
@@ -22,10 +23,20 @@ export interface TimezoneSeedInput {
   legacy?: string | null;
 }
 
-/** `seeded`: written now. `stored`: the account already had one, untouched. */
+/**
+ * `seeded`: written now. `stored`: the account already had one, untouched.
+ * `unseeded`: neither candidate is a real IANA zone (Chromium on some Linux
+ * hosts reports `Etc/Unknown`), so nothing was written; `timezone` is the
+ * detected value to render.
+ */
 export type TimezoneSeedResult =
   | { kind: "seeded"; timezone: string; source: "legacy" | "detected" }
-  | { kind: "stored"; timezone: string };
+  | { kind: "stored"; timezone: string }
+  | { kind: "unseeded"; timezone: string };
+
+/** The server refuses an invalid zone with a 400, so never send one. */
+const usableZone = (zone: string | undefined): zone is string =>
+  Boolean(zone) && TurnTimezoneSchema.safeParse(zone).success;
 
 export async function seedTimezone(
   io: {
@@ -40,11 +51,14 @@ export async function seedTimezone(
   const stored = (await io.get(TIMEZONE_PREFERENCE))?.trim();
   if (stored) return { kind: "stored", timezone: stored };
   const legacy = input.legacy?.trim();
-  const out = await io.create(TIMEZONE_PREFERENCE, legacy || input.detected);
+  const detected = input.detected.trim();
+  const pick = usableZone(legacy)
+    ? { zone: legacy, source: "legacy" as const }
+    : usableZone(detected)
+      ? { zone: detected, source: "detected" as const }
+      : null;
+  if (!pick) return { kind: "unseeded", timezone: detected };
+  const out = await io.create(TIMEZONE_PREFERENCE, pick.zone);
   if (!out.created) return { kind: "stored", timezone: out.value };
-  return {
-    kind: "seeded",
-    timezone: out.value,
-    source: legacy ? "legacy" : "detected",
-  };
+  return { kind: "seeded", timezone: out.value, source: pick.source };
 }
