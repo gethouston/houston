@@ -225,4 +225,68 @@ export default {
     cta: "Book a call",
     peopleLabel: "The team you will talk to",
   },
+
+  // The "Book a call" popup every booking button opens
+  // (data-partners/call-modal.njk).
+  call: {
+    title: "Book a call",
+    lead: "Tell us a little about you and your company. It takes a minute.",
+    close: "Close",
+    name: {
+      label: "Full name",
+      placeholder: "Jane Smith",
+      error: "Enter your full name.",
+    },
+    country: {
+      label: "Country",
+      placeholder: "Select your country",
+      search: "Search countries",
+      empty: "No matches",
+      error: "Select your country.",
+    },
+    phone: {
+      label: "Phone",
+      hint: "The best number to reach you on WhatsApp or SMS. Pick its country code first.",
+      placeholder: "555 123 4567",
+      codeLabel: "Country code",
+      codeSearch: "Search country or code",
+      error: "Enter a phone number we can reach you on.",
+    },
+    email: {
+      label: "Email",
+      placeholder: "jane@company.com",
+      error: "Enter a valid email address.",
+    },
+    company: {
+      label: "Company name",
+      placeholder: "Acme Inc.",
+      error: "Enter your company's name.",
+    },
+    website: {
+      label: "Company website",
+      placeholder: "acme.com",
+      error: "Enter your company's website, like acme.com.",
+    },
+    employees: {
+      label: "Number of employees",
+      placeholder: "120",
+      error: "Enter a whole number.",
+    },
+    years: {
+      label: "Years in business",
+      placeholder: "8",
+      error: "Enter a whole number of years.",
+    },
+    submit: "Continue",
+    sending: "Sending…",
+    sendError: "We couldn't send your details. Please try again.",
+    consent:
+      "We use these details to contact you about the Data Partners program.",
+    privacy: "Privacy Policy",
+    thanks: {
+      title: "Thanks for reaching out",
+      lead: "We have your details. Our team will review them and get in touch if we see a fit.",
+      done: "Close",
+    },
+  },
 };

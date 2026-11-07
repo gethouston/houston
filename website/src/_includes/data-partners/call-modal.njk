@@ -1,0 +1,100 @@
+{%- set c = t.dataPartners.call -%}
+{#- The "Book a call" popup. It wears the download popup's card, fields and
+    country menus (landing/download-modals.njk, download-gate.css,
+    dl-dropdown.css) under its own ids, and assets/data-partners-call.js runs
+    it. Every booking link on the page opens it; without JS those links go
+    straight to the calendar.
+
+    Sending stores the request (Supabase public.data_partner_calls plus the
+    team's sheet tab). A company at the program's bar is then taken to the calendar;
+    anyone else is thanked and the team follows up. -#}
+{%- macro field(name, label, type, auto, placeholder, error, mode) %}
+        <div class="dl-field" id="dpc-f-{{ name }}">
+          <label for="dpc-{{ name }}">{{ label }}</label>
+          <input id="dpc-{{ name }}" name="{{ name }}" type="{{ type }}"{% if mode %} inputmode="{{ mode }}"{% endif %} autocomplete="{{ auto }}" placeholder="{{ placeholder }}" aria-describedby="dpc-{{ name }}-error">
+          <span class="dl-err" id="dpc-{{ name }}-error">{{ error }}</span>
+        </div>
+{%- endmacro -%}
+<div class="dl-overlay" id="dpc-overlay" role="dialog" aria-modal="true" aria-labelledby="dpc-title">
+  <div class="dl-card" data-lenis-prevent>
+    <button type="button" class="dl-close" id="dpc-close" aria-label="{{ c.close }}">
+      <svg viewBox="0 0 24 24" width="24" height="24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true"><path d="M6 6l12 12M18 6L6 18"/></svg>
+    </button>
+
+    <div id="dpc-step-form">
+      <h3 id="dpc-title">{{ c.title }}</h3>
+      <p>{{ c.lead }}</p>
+      <form id="dpc-form" novalidate>
+{{ field("name", c.name.label, "text", "name", c.name.placeholder, c.name.error) }}
+        <div class="dl-field" id="dpc-f-country">
+          <label for="dpc-country-toggle">{{ c.country.label }}</label>
+          <div class="dl-dd" id="dpc-country-dd">
+            <button type="button" class="dl-dd-toggle" id="dpc-country-toggle">
+              <span class="dl-dd-value is-placeholder" id="dpc-country-value">{{ c.country.placeholder }}</span>
+              <svg class="dl-dd-caret" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true"><path d="M6 9l6 6 6-6"/></svg>
+            </button>
+            <div class="dl-dd-menu" id="dpc-country-menu">
+              <div class="dl-dd-search"><input type="text" id="dpc-country-search" autocomplete="off" placeholder="{{ c.country.search }}" aria-label="{{ c.country.search }}"></div>
+              <ul class="dl-dd-list" id="dpc-country-list" aria-label="{{ c.country.label }}"></ul>
+              <p class="dl-dd-empty" id="dpc-country-empty" hidden>{{ c.country.empty }}</p>
+            </div>
+          </div>
+          <input type="hidden" id="dpc-country" name="country" value="">
+          <span class="dl-err">{{ c.country.error }}</span>
+        </div>
+        <div class="dl-field" id="dpc-f-phone">
+          <label for="dpc-phone">{{ c.phone.label }}</label>
+          <div class="dl-phone-group">
+            <div class="dl-dd dl-cc" id="dpc-cc">
+              <button type="button" class="dl-cc-toggle" id="dpc-cc-toggle" aria-label="{{ c.phone.codeLabel }}">
+                <span class="dl-cc-flag" id="dpc-cc-flag">🇺🇸</span>
+                <span class="dl-cc-abbr" id="dpc-cc-abbr">US</span>
+                <span class="dl-cc-dial" id="dpc-cc-dial">+1</span>
+                <svg class="dl-cc-caret" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true"><path d="M6 9l6 6 6-6"/></svg>
+              </button>
+              <div class="dl-dd-menu" id="dpc-cc-menu">
+                <div class="dl-dd-search"><input type="text" id="dpc-cc-search" autocomplete="off" placeholder="{{ c.phone.codeSearch }}" aria-label="{{ c.phone.codeSearch }}"></div>
+                <ul class="dl-dd-list" id="dpc-cc-list" aria-label="{{ c.phone.codeLabel }}"></ul>
+                <p class="dl-dd-empty" id="dpc-cc-empty" hidden>{{ c.country.empty }}</p>
+              </div>
+            </div>
+            <span class="dl-phone-divider"></span>
+            <input id="dpc-phone" name="phone" type="tel" autocomplete="tel-national" placeholder="{{ c.phone.placeholder }}" aria-describedby="dpc-phone-hint dpc-phone-error">
+            <input id="dpc-phone-code" name="phoneCode" type="hidden" value="+1">
+          </div>
+          <span class="dpc-hint" id="dpc-phone-hint">{{ c.phone.hint }}</span>
+          <span class="dl-err" id="dpc-phone-error">{{ c.phone.error }}</span>
+        </div>
+{{ field("email", c.email.label, "email", "email", c.email.placeholder, c.email.error) }}
+{{ field("company", c.company.label, "text", "organization", c.company.placeholder, c.company.error) }}
+{{ field("website", c.website.label, "text", "url", c.website.placeholder, c.website.error, "url") }}
+        <div class="dpc-row">
+{{ field("employees", c.employees.label, "text", "off", c.employees.placeholder, c.employees.error, "numeric") }}
+{{ field("years", c.years.label, "text", "off", c.years.placeholder, c.years.error, "numeric") }}
+        </div>
+        {#- Left empty by people; a bot that fills every field is dropped. -#}
+        <div class="dpc-trap" aria-hidden="true"><label for="dpc-trap">Leave this empty</label><input id="dpc-trap" name="trap" type="text" tabindex="-1" autocomplete="off"></div>
+        <button type="submit" id="dpc-submit" class="btn btn-ink btn-disabled" data-sending="{{ c.sending }}" disabled>{{ c.submit }}</button>
+        <p class="dl-form-err" id="dpc-form-err" role="alert" hidden>{{ c.sendError }}</p>
+        <p class="dl-fineprint">{{ c.consent }} <a href="/privacy/#data-partner-calls" target="_blank" rel="noopener">{{ c.privacy }}</a></p>
+      </form>
+    </div>
+
+    <div id="dpc-step-thanks" role="status" tabindex="-1" hidden>
+      <h3>{{ c.thanks.title }}</h3>
+      <p>{{ c.thanks.lead }}</p>
+      <div class="dl-actions">
+        <button type="button" class="btn btn-outline" data-dpc-close>{{ c.thanks.done }}</button>
+      </div>
+    </div>
+  </div>
+</div>
+<script type="application/json" id="dpc-config">{{ {
+  locale: locale.code,
+  booking: dataPartners.booking,
+  store: {
+    supabaseUrl: env.supabaseUrl,
+    supabaseAnonKey: env.supabaseAnonKey,
+    sheetEndpoint: env.dataPartnerCallsSheetEndpoint
+  }
+} | jsonScript | safe }}</script>

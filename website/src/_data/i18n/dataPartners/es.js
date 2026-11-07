@@ -222,4 +222,66 @@ export default {
     cta: "Agenda una llamada",
     peopleLabel: "El equipo con el que hablarás",
   },
+
+  call: {
+    title: "Agenda una llamada",
+    lead: "Cuéntanos un poco sobre ti y tu empresa. Toma un minuto.",
+    close: "Cerrar",
+    name: {
+      label: "Nombre completo",
+      placeholder: "Ana Pérez",
+      error: "Escribe tu nombre completo.",
+    },
+    country: {
+      label: "País",
+      placeholder: "Selecciona tu país",
+      search: "Buscar país",
+      empty: "Sin resultados",
+      error: "Selecciona tu país.",
+    },
+    phone: {
+      label: "Teléfono",
+      hint: "El mejor número para contactarte por WhatsApp o SMS. Elige primero su código de país.",
+      placeholder: "300 123 4567",
+      codeLabel: "Código de país",
+      codeSearch: "Buscar país o código",
+      error: "Escribe un teléfono donde podamos contactarte.",
+    },
+    email: {
+      label: "Correo electrónico",
+      placeholder: "ana@empresa.com",
+      error: "Escribe un correo válido.",
+    },
+    company: {
+      label: "Nombre de la empresa",
+      placeholder: "Acme S.A.",
+      error: "Escribe el nombre de tu empresa.",
+    },
+    website: {
+      label: "Sitio web de la empresa",
+      placeholder: "acme.com",
+      error: "Escribe el sitio web de tu empresa, por ejemplo acme.com.",
+    },
+    employees: {
+      label: "Número de empleados",
+      placeholder: "120",
+      error: "Escribe un número entero.",
+    },
+    years: {
+      label: "Años en el mercado",
+      placeholder: "8",
+      error: "Escribe un número entero de años.",
+    },
+    submit: "Continuar",
+    sending: "Enviando…",
+    sendError: "No pudimos enviar tus datos. Inténtalo de nuevo.",
+    consent:
+      "Usamos estos datos para contactarte sobre el programa Data Partners.",
+    privacy: "Política de privacidad",
+    thanks: {
+      title: "Gracias por escribirnos",
+      lead: "Ya tenemos tus datos. Nuestro equipo los revisará y te contactará si vemos que encajas.",
+      done: "Cerrar",
+    },
+  },
 };

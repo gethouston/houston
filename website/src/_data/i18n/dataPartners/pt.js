@@ -222,4 +222,66 @@ export default {
     cta: "Agende uma conversa",
     peopleLabel: "A equipe com quem você vai falar",
   },
+
+  call: {
+    title: "Agende uma conversa",
+    lead: "Conte um pouco sobre você e sua empresa. Leva um minuto.",
+    close: "Fechar",
+    name: {
+      label: "Nome completo",
+      placeholder: "Ana Souza",
+      error: "Digite seu nome completo.",
+    },
+    country: {
+      label: "País",
+      placeholder: "Selecione seu país",
+      search: "Buscar país",
+      empty: "Nenhum resultado",
+      error: "Selecione seu país.",
+    },
+    phone: {
+      label: "Telefone",
+      hint: "O melhor número para falar com você por WhatsApp ou SMS. Escolha primeiro o código do país.",
+      placeholder: "11 91234 5678",
+      codeLabel: "Código do país",
+      codeSearch: "Buscar país ou código",
+      error: "Digite um telefone em que possamos falar com você.",
+    },
+    email: {
+      label: "E-mail",
+      placeholder: "ana@empresa.com",
+      error: "Digite um e-mail válido.",
+    },
+    company: {
+      label: "Nome da empresa",
+      placeholder: "Acme Ltda.",
+      error: "Digite o nome da sua empresa.",
+    },
+    website: {
+      label: "Site da empresa",
+      placeholder: "acme.com.br",
+      error: "Digite o site da sua empresa, por exemplo acme.com.br.",
+    },
+    employees: {
+      label: "Número de funcionários",
+      placeholder: "120",
+      error: "Digite um número inteiro.",
+    },
+    years: {
+      label: "Anos de mercado",
+      placeholder: "8",
+      error: "Digite um número inteiro de anos.",
+    },
+    submit: "Continuar",
+    sending: "Enviando…",
+    sendError: "Não conseguimos enviar seus dados. Tente de novo.",
+    consent:
+      "Usamos esses dados para falar com você sobre o programa Data Partners.",
+    privacy: "Política de privacidade",
+    thanks: {
+      title: "Obrigado pelo contato",
+      lead: "Já temos seus dados. Nossa equipe vai analisá-los e entrar em contato se houver encaixe.",
+      done: "Fechar",
+    },
+  },
 };

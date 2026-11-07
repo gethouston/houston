@@ -1,0 +1,36 @@
+/* The /data-partners "Book a call" popup (data-partners/call-modal.njk). The
+   card, fields and country menus are the download popup's own
+   (download-gate.css, dl-dropdown.css); this file only adds what that form
+   does not have. */
+
+/* Head count and years side by side: both are short numbers. */
+.dpc-row {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 12px;
+}
+.dpc-hint {
+  display: block;
+  margin-top: 5px;
+  color: var(--ink-subtle);
+  font-size: 12px;
+  line-height: 1.4;
+}
+.dl-field.invalid .dpc-hint {
+  display: none;
+}
+#dpc-submit {
+  width: 100%;
+  margin-top: 6px;
+}
+/* Off-screen for people; a bot that fills it is dropped. */
+.dpc-trap {
+  position: absolute;
+  left: -10000px;
+  width: 1px;
+  height: 1px;
+  overflow: hidden;
+}
+#dpc-step-thanks:focus {
+  outline: none;
+}

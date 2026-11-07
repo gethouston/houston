@@ -18,6 +18,11 @@ export default function () {
     // (scripts/apps-script/data-partnerships-referrals.gs). Public like the
     // one below; empty turns the referral sheet copy off.
     dataReferralsSheetEndpoint: process.env.DATA_REFERRALS_SHEET_ENDPOINT || "",
+    // The "Data Partnerships - Calls" tab's web app
+    // (scripts/apps-script/data-partnerships-calls.gs), for the /data-partners
+    // "Book a call" form. Empty turns that sheet copy off.
+    dataPartnerCallsSheetEndpoint:
+      process.env.DATA_PARTNER_CALLS_SHEET_ENDPOINT || "",
     waitlistSheetEndpoint:
       process.env.WAITLIST_SHEET_ENDPOINT ||
       "https://script.google.com/macros/s/AKfycbyDkiNQtnEO9XqmAoOXyA_WmS2fs7e0ehqiDvjgYBwXV1vY2V-C4KiDCQ5GHfDJ3kgfdg/exec",

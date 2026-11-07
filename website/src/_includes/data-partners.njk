@@ -36,6 +36,7 @@
 <link rel="stylesheet" href="/assets/css/data-partners.css">
 <link rel="stylesheet" href="/assets/css/data-partners-sections.css">
 <link rel="stylesheet" href="/assets/css/refer-board.css">
+<link rel="stylesheet" href="/assets/css/data-partners-call.css">
 {% endblock %}
 {% block body %}
 {% include "data-partners/nav.njk" %}
@@ -53,9 +54,13 @@
 </main>
 {% include "landing/footer.njk" %}
 {% include "landing/download-modals.njk" %}
+{% include "data-partners/call-modal.njk" %}
 {% include "landing/subpage-scripts.njk" %}
 {% include "enterprise/scripts.njk" %}
 <script type="module" src="/assets/data-partners-estimator.js"></script>
+{# After subpage-scripts.njk: the popup reuses the download form's country
+   menus, which those deferred scripts define first. #}
+<script type="module" src="/assets/data-partners-call.js"></script>
 <script defer src="/assets/enterprise-reel.js"></script>
 <script defer src="/assets/vendor/lenis.min.js"></script>
 <script defer src="/assets/enterprise-flow.js"></script>
