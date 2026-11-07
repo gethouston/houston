@@ -325,6 +325,42 @@
       "version": "0.1.2",
       "content_hash": "ae4837507f367e5f6bc44af094d5b5eea1a16d1c45a8a4bbd0836d1a12f624ee",
       "bundled": true
+    },
+    {
+      "id": "research",
+      "name": "Research",
+      "description": "Run competitive analysis, market research, and due diligence. Monitor competitors, summarize trends, build prospect dossiers, and surface signals from the web. Outputs structured briefs, comparison tables, and watchlists — never posts or sends anything on your behalf.",
+      "category": "business",
+      "author": "Houston",
+      "tags": [
+        "research",
+        "competitive-intelligence",
+        "market-research",
+        "due-diligence",
+        "prospect-research",
+        "trend-monitoring"
+      ],
+      "icon_url": "telescope",
+      "integrations": [
+        "ahrefs",
+        "firecrawl",
+        "gmail",
+        "googledocs",
+        "googledrive",
+        "googlesheets",
+        "linkedin",
+        "notion",
+        "perplexityai",
+        "reddit",
+        "slack",
+        "twitter"
+      ],
+      "repo": "houston-store/research",
+      "installs": 0,
+      "registered_at": "2026-06-28",
+      "version": "0.1.0",
+      "content_hash": "",
+      "bundled": false
     }
   ]
 }
