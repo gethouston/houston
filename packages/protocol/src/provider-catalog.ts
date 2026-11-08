@@ -63,6 +63,37 @@ export interface CatalogProvider {
   /** How the provider authenticates: OAuth sign-in vs a pasted API key. */
   auth: "oauth" | "apiKey";
   models: CatalogModelEntry[];
+  /**
+   * What the host's `start_mission` pin resolution reads for this provider
+   * (host routes/missions-provider.ts), so the hosted gateway resolves a pin
+   * from these values rather than a copy of the host's tables. Every provider
+   * of a catalog that carries it is one the resolver knows.
+   */
+  pin?: CatalogProviderPin;
+}
+
+/** The pin-resolution facts of one catalog provider. */
+export interface CatalogProviderPin {
+  /**
+   * The host's curated display name, which a pin may name the provider by and
+   * a refusal lists it under. Absent for a provider the host does not curate
+   * (a refusal lists it under its id).
+   */
+  name?: string;
+  /**
+   * The rows a spoken model name resolves against, in the order a bare family
+   * name picks from (newest first within a family). Empty when no name of this
+   * provider's models resolves.
+   */
+  models: CatalogSpokenModel[];
+}
+
+/** One model a spoken name resolves to. */
+export interface CatalogSpokenModel {
+  /** The model id a pin carries. */
+  id: string;
+  /** The display name a spoken phrase is matched against. */
+  name: string;
 }
 
 /** The `GET /v1/catalog` response: every runnable provider, each with its models. */

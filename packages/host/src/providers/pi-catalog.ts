@@ -23,6 +23,7 @@ import {
   withAnthropicLineup,
 } from "./anthropic-catalog";
 import { BEDROCK_PROVIDER_ID, invokableBedrockModels } from "./bedrock-catalog";
+import { withMissionPin } from "./catalog-pin";
 import { piOAuthProviders } from "./pi-oauth";
 import { QWEN_PROVIDER_ID, qwenModels } from "./qwen-dashscope";
 
@@ -180,5 +181,5 @@ export function buildProviderCatalog(): ProviderCatalog {
   catalog.push(
     piProviderToCatalog(QWEN_PROVIDER_ID, qwenModels(), false, "Qwen"),
   );
-  return catalog;
+  return catalog.map(withMissionPin);
 }

@@ -50,7 +50,7 @@ export function resolveSpokenModel(
 ): SpokenModel | null {
   const spoken = words(raw);
   if (!spoken.length) return null;
-  const rows = displayRows(provider, offered);
+  const rows = spokenModelRows(provider, offered);
   const exact = rows.find((r) => sameWords(words(r.name), spoken));
   if (exact) return { id: exact.id, name: exact.name, ambiguous: false };
   const matches = rows.filter((r) => hasRun(words(r.name), spoken));
@@ -89,8 +89,10 @@ export function namedModelList(
 }
 
 /** The provider's named rows, minus any the provider can no longer run (the
- *  table drifts against pi's catalog; a name must never resolve to a dead id). */
-function displayRows(
+ *  table drifts against pi's catalog; a name must never resolve to a dead id).
+ *  Exported so the host's catalog can publish the rows a spoken name resolves
+ *  against, in this order, to the hosted gateway's own pin resolution. */
+export function spokenModelRows(
   provider: ProviderId,
   offered?: readonly string[],
 ): { id: string; name: string }[] {

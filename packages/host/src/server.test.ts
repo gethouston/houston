@@ -1,5 +1,5 @@
 import type { Server } from "node:http";
-import type { Capabilities } from "@houston/protocol";
+import type { Capabilities, ProviderCatalog } from "@houston/protocol";
 import { afterAll, beforeAll, expect, test, vi } from "vitest";
 import { version as HOST_VERSION } from "../package.json";
 import { SingleUserVerifier } from "./auth/verify";
@@ -662,6 +662,20 @@ test("/v1/version and /v1/capabilities are public and serve the v3 contract", as
   expect(caps.profile).toBe("cloud");
   expect(caps.codeExecution).toBe("remote-sandbox");
   expect(caps.providers).toEqual(["openai-codex"]);
+});
+
+test("/v1/catalog carries the pin facts the gateway resolves mission pins from", async () => {
+  const r = await fetch(`${base}/v1/catalog`);
+  expect(r.status).toBe(200);
+  const catalog = (await r.json()) as ProviderCatalog;
+  const codex = catalog.find((p) => p.id === "openai-codex");
+  expect(codex?.pin?.name).toBe("ChatGPT / Codex (Plus / Pro)");
+  expect(codex?.pin?.models[0]).toEqual({
+    id: "gpt-6-luna",
+    name: "GPT-6 Luna",
+  });
+  expect(catalog.find((p) => p.id === "nvidia")?.pin).toEqual({ models: [] });
+  expect(catalog.every((p) => p.pin !== undefined)).toBe(true);
 });
 
 test("/v1/version serves the package semver and the baked build SHA (null when unbaked)", async () => {
