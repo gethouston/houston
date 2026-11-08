@@ -67,7 +67,10 @@ export interface CatalogProvider {
    * What the host's `start_mission` pin resolution reads for this provider
    * (host routes/missions-provider.ts), so the hosted gateway resolves a pin
    * from these values rather than a copy of the host's tables. Every provider
-   * of a catalog that carries it is one the resolver knows.
+   * of a catalog that carries it is one the resolver knows. The converse has
+   * one gap: a pi provider with no chat model (pi's `typesafe`) is left out
+   * of the catalog, so a pin naming it, which the host refuses as not
+   * connected, the gateway refuses as unknown.
    */
   pin?: CatalogProviderPin;
 }
