@@ -25,8 +25,15 @@ import { decodeAttachmentMessage } from "./attachment-message.ts";
 import { decodeInteractionAnswersMessage } from "./interaction-answers-message.ts";
 import { decodeSkillMessage } from "./skill-message.ts";
 
+/** A sent message's file-comments envelope, whose format `@houston/wire-types`
+ *  owns (citations): a preview shows the words around it, never the list. */
+const CITATIONS_ENVELOPE_RE =
+  /\n*<!--houston:citations \[[\s\S]*?\]-->[\s\S]*?<!--\/houston:citations-->/g;
+
 export function messagePreviewText(body: string | null | undefined): string {
   if (!body) return "";
+  if (body.includes("<!--houston:citations "))
+    return messagePreviewText(body.replace(CITATIONS_ENVELOPE_RE, "").trim());
 
   const skill = decodeSkillMessage(body);
   if (skill) {

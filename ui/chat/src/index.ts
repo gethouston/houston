@@ -298,6 +298,12 @@ export {
   ChatThinkingIndicator,
   type ChatThinkingIndicatorProps,
 } from "./chat-thinking-indicator";
+export {
+  type CitationChipData,
+  CitationChipRow,
+  type CitationChipRowLabels,
+  CitationNumber,
+} from "./citation-chips";
 export { ConversationActionsMenu } from "./conversation-actions-menu";
 export type {
   ConversationMapActions,
@@ -440,4 +446,8 @@ export {
   UserAttachmentBadge,
   UserAttachmentMessage,
 } from "./user-attachment-message";
+export {
+  UserCitationMessage,
+  type UserCitationMessageProps,
+} from "./user-citation-message";
 export { UserInteractionAnswersMessage } from "./user-interaction-answers-message";

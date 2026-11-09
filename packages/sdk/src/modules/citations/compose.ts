@@ -74,6 +74,7 @@ export function sentCitations(
 ): SentCitation[] {
   return citations.map((c, i) => ({
     n: i + 1,
+    filePath: c.filePath,
     fileName: c.fileName,
     page: c.page,
     kind: c.anchor.kind,

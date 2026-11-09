@@ -96,6 +96,7 @@ describe("citations", () => {
       citations: [
         {
           n: 1,
+          filePath: "decks/propuesta.pptx",
           fileName: "propuesta.pptx",
           page: 3,
           kind: "text",
@@ -105,6 +106,7 @@ describe("citations", () => {
         },
         {
           n: 2,
+          filePath: "decks/propuesta.pptx",
           fileName: "propuesta.pptx",
           page: 5,
           kind: "area",

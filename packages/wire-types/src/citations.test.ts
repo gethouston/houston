@@ -8,6 +8,7 @@ import {
 
 const first: SentCitation = {
   n: 1,
+  filePath: "decks/deck.pptx",
   fileName: "deck.pptx",
   page: 3,
   kind: "text",
@@ -17,6 +18,7 @@ const first: SentCitation = {
 };
 const second: SentCitation = {
   n: 2,
+  filePath: "decks/deck.pptx",
   fileName: "deck.pptx",
   page: 5,
   kind: "area",

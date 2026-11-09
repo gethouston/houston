@@ -105,3 +105,14 @@ describe("messagePreviewText", () => {
     assert.equal(messagePreviewText(undefined), "");
   });
 });
+
+describe("messagePreviewText with file comments", () => {
+  it("previews the words, never the comment list", () => {
+    const envelope =
+      '<!--houston:citations [{"n":1}]-->\n[The user left comments]\n<!--/houston:citations-->';
+    assert.equal(
+      messagePreviewText(`Fix the deck\n\n${envelope}`),
+      "Fix the deck",
+    );
+  });
+});

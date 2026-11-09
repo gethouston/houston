@@ -321,7 +321,16 @@ describe("removeQueuedSend", () => {
 describe("file comments on held sends", () => {
   const cited = (words: string, n: number, comment: string) =>
     `${words}\n\n${encodeCitationsEnvelope(
-      [{ n, fileName: "deck.pptx", page: n + 2, kind: "area", comment }],
+      [
+        {
+          n,
+          filePath: "deck.pptx",
+          fileName: "deck.pptx",
+          page: n + 2,
+          kind: "area",
+          comment,
+        },
+      ],
       `[comment ${n}]`,
     )}`;
 

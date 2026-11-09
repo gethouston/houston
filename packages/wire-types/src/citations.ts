@@ -38,6 +38,7 @@ export type CitationAnchor = z.infer<typeof citationAnchorSchema>;
 /** One comment as the sent message's marker carries it: what a pill shows. */
 export const sentCitationSchema = z.object({
   n: z.number().int().positive(),
+  filePath: z.string().min(1),
   fileName: z.string().min(1),
   page: z.number().int().positive(),
   kind: z.enum(["text", "area"]),
