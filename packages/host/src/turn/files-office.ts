@@ -9,9 +9,11 @@ import {
   OFFICE_MAX_BYTES,
   officeExtensionSchema,
   officePdfMetadataSchema,
+  officePreviewLanguage,
 } from "@houston/wire-types";
 import { json } from "./deps";
 import { contentDisposition } from "./files-mime";
+import { pruneOfficeCache } from "./office-cache";
 import type { OfficeConverter, OfficePdf } from "./office-converter";
 
 export interface OfficePreview {
@@ -40,6 +42,7 @@ export function createOfficePreview(
           "too_large",
           "Office preview input exceeds 50 MiB",
         );
+      lang = officePreviewLanguage(lang);
       const version = await converter.version();
       const key = keyFor(source, version, lang);
       try {
@@ -77,6 +80,7 @@ export function createOfficePreview(
         await writeFile(temp, bytes);
         await rename(temp, destination);
       }
+      await pruneOfficeCache(cacheDir);
       return converted;
     },
   };

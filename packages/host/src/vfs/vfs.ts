@@ -109,7 +109,7 @@ export interface Vfs {
   /** File contents as UTF-8, or null when the key does not exist. */
   readText(key: string): Promise<string | null>;
   /** Raw bytes, or null when the key does not exist (binary downloads). */
-  readBytes(key: string): Promise<Buffer | null>;
+  readBytes(key: string, maxBytes?: number): Promise<Buffer | null>;
   writeText(key: string, content: string): Promise<void>;
   /** Raw-bytes write (binary uploads/seeds). Content type inferred by consumers. */
   writeBytes(key: string, content: Buffer): Promise<void>;
@@ -125,6 +125,12 @@ export interface Vfs {
   move(fromKey: string, toKey: string): Promise<void>;
   /** Delete every key under `prefix/` (agent deletion). */
   deletePrefix(prefix: string): Promise<void>;
+}
+
+export class VfsReadLimitError extends Error {
+  constructor() {
+    super("File exceeds the bounded read limit");
+  }
 }
 
 /**

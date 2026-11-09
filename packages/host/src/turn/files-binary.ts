@@ -1,5 +1,6 @@
 import type { ServerResponse } from "node:http";
-import type { Vfs } from "../vfs";
+import { OFFICE_MAX_BYTES } from "@houston/wire-types";
+import { type Vfs, VfsReadLimitError } from "../vfs";
 import { json } from "./deps";
 import { archiveWorkspace } from "./files-archive";
 import { contentDisposition, mimeFor } from "./files-mime";
@@ -29,7 +30,20 @@ export async function serveFileDownload(
   officePreview?: OfficePreview,
 ): Promise<void> {
   const rel = workspaceRel(root, query.get("path") ?? "");
-  const buf = await vfs.readBytes(fileKey(root, rel));
+  let buf: Buffer | null;
+  try {
+    buf = await vfs.readBytes(
+      fileKey(root, rel),
+      query.get("as") === "pdf" ? OFFICE_MAX_BYTES : undefined,
+    );
+  } catch (error) {
+    if (!(error instanceof VfsReadLimitError)) throw error;
+    json(res, 413, {
+      code: "too_large",
+      error: "Office preview input exceeds 50 MiB",
+    });
+    return;
+  }
   if (buf === null) {
     await logMissingFile(vfs, root, rel, agentId);
     json(res, 404, { error: "file not found" });

@@ -48,8 +48,8 @@ export class PrefixedVfs implements Vfs {
     return this.inner.readText(this.key(key));
   }
 
-  readBytes(key: string): Promise<Buffer | null> {
-    return this.inner.readBytes(this.key(key));
+  readBytes(key: string, maxBytes?: number): Promise<Buffer | null> {
+    return this.inner.readBytes(this.key(key), maxBytes);
   }
 
   writeText(key: string, content: string): Promise<void> {

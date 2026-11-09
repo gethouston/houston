@@ -17,7 +17,7 @@ import { expect, test } from "vitest";
 import { runVfsContract } from "../testing/vfs-contract";
 import { LazyStoreVfs } from "./lazy-store";
 import { LazyReadRefusedError, UNREAD_HASH } from "./lazy-store-types";
-import { VfsExistsError } from "./vfs";
+import { VfsExistsError, VfsReadLimitError } from "./vfs";
 
 const PREFIX = "ws/w1/agent-1";
 
@@ -250,4 +250,27 @@ test("a folder dropped on a NON-EMPTY folder refuses the way the Files tab reads
   ).rejects.toBeInstanceOf(VfsExistsError);
   expect(await vfs.readText("workspaces/P/Bob/archive/old.md")).toBe("old");
   expect(await vfs.readText("workspaces/P/Bob/docs/notes.md")).toBe("notes");
+});
+
+test("a bounded preview refuses remote and rewritten local bytes before reading them", async () => {
+  const { vfs, store, root, storeRoot } = await seeded();
+  try {
+    await expect(
+      vfs.readBytes("workspaces/P/Bob/report.csv", 4),
+    ).rejects.toBeInstanceOf(VfsReadLimitError);
+    expect(store.downloads).toEqual([]);
+    expect(
+      (await vfs.readBytes("workspaces/P/Bob/report.csv", 8))?.toString(),
+    ).toBe("a,b\n1,2\n");
+    await vfs.writeText("workspaces/P/Bob/report.csv", "rewritten bytes");
+    await expect(
+      vfs.readBytes("workspaces/P/Bob/report.csv", 8),
+    ).rejects.toBeInstanceOf(VfsReadLimitError);
+    expect(
+      (await vfs.readBytes("workspaces/P/Bob/report.csv"))?.toString(),
+    ).toBe("rewritten bytes");
+  } finally {
+    rmSync(root, { recursive: true, force: true });
+    rmSync(storeRoot, { recursive: true, force: true });
+  }
 });

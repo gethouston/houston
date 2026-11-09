@@ -36,6 +36,7 @@ async function setup() {
     Buffer.from("first Office source"),
   );
   let version = "v1";
+  let probes = 0;
   let refusal: string | null = null;
   const conversions: {
     bytes: Buffer;
@@ -45,6 +46,7 @@ async function setup() {
   const service = await listen(
     createServer(async (req, res) => {
       if (req.url === "/health") {
+        probes++;
         res.setHeader("content-type", "application/json");
         res.end(JSON.stringify({ status: "ok", version }));
         return;
@@ -92,6 +94,7 @@ async function setup() {
     }),
   );
   return {
+    probes: () => probes,
     home,
     vfs,
     preview,
@@ -118,7 +121,7 @@ test("cache miss, hit, locale, revision, and rewritten source all use authoritat
     expect(await response.text()).toBe("%PDF-converted");
   }
   expect(s.conversions).toEqual([
-    { bytes: Buffer.from("first Office source"), ext: "pptx", lang: "es-CO" },
+    { bytes: Buffer.from("first Office source"), ext: "pptx", lang: "es" },
   ]);
   await s.vfs.writeBytes(
     "Work/Agent/deck.pptx",
@@ -127,9 +130,17 @@ test("cache miss, hit, locale, revision, and rewritten source all use authoritat
   await s.download();
   expect(s.conversions[1]?.bytes.toString()).toBe("rewritten Office source");
   await s.download("path=deck.pptx&as=pdf&lang=pt-BR");
-  expect(s.conversions[2]?.lang).toBe("pt-BR");
+  expect(s.conversions[2]?.lang).toBe("pt");
+  expect(s.probes()).toBe(1);
   s.version("v2");
-  await s.download();
+  const now = Date.now();
+  const clock = vi.spyOn(Date, "now").mockReturnValue(now + 5 * 60_000 + 1);
+  try {
+    await s.download();
+  } finally {
+    clock.mockRestore();
+  }
+  expect(s.probes()).toBe(2);
   expect(s.conversions).toHaveLength(4);
   const entries = await listWorkspace(s.vfs, "Work/Agent");
   expect(entries.map((entry) => entry.path)).toEqual(["deck.pptx"]);
@@ -205,6 +216,51 @@ test("transport failure is conversion_unavailable", async () => {
     await expect(
       httpOfficeConverter("http://converter").version(),
     ).rejects.toBeInstanceOf(FilePreviewError);
+  } finally {
+    request.mockRestore();
+  }
+});
+
+test("equivalent and unknown locale tags share one converted cache entry", async () => {
+  const s = await setup();
+  for (const lang of ["en", "en-US", "unknown"]) {
+    expect(
+      (await s.download(`path=deck.pptx&as=pdf&lang=${lang}`)).status,
+    ).toBe(200);
+  }
+  expect(s.conversions).toHaveLength(1);
+  expect(s.conversions[0]?.lang).toBe("en");
+  expect(s.probes()).toBe(1);
+});
+
+test.each([
+  "html",
+  "invalid-json",
+  "broken-stream",
+])("%s converter response becomes conversion_failed", async (kind) => {
+  const response =
+    kind === "broken-stream"
+      ? new Response(
+          new ReadableStream({
+            start(controller) {
+              controller.enqueue(new TextEncoder().encode("%PDF-"));
+              controller.error(new Error("connection closed"));
+            },
+          }),
+          { headers: { "x-page-count": "1", "x-converter-version": "v1" } },
+        )
+      : new Response(kind === "html" ? "<html>unavailable</html>" : "{", {
+          status: 502,
+        });
+  const request = vi.spyOn(globalThis, "fetch").mockResolvedValueOnce(response);
+  try {
+    await expect(
+      httpOfficeConverter("http://converter").convert(
+        Buffer.from("source"),
+        "pptx",
+        "en",
+      ),
+    ).rejects.toMatchObject({ code: "conversion_failed" });
   } finally {
     request.mockRestore();
   }
