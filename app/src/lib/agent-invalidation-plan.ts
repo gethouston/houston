@@ -52,6 +52,7 @@ export function planInvalidation(
       break;
     case "FilesChanged":
       plan.invalidate.push(queryKeys.files(ev.data.agent_path));
+      plan.invalidate.push(queryKeys.filePreviewPdfs(ev.data.agent_path));
       break;
     case "ConfigChanged":
       plan.invalidate.push(queryKeys.config(ev.data.agent_path));

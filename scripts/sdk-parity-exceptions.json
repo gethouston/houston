@@ -1,6 +1,6 @@
 {
   "$comment": "Written exceptions for scripts/check-sdk-parity.ts, which FAILS the process on any violation not listed here. An entry is { rule, key, reason } and nothing else; `key` is the violation identity the report prints, and `reason` must be at least 20 characters saying WHY parity stops here. An entry whose violation no longer reproduces fails the gate as stale: the PR that binds the route is the one that deletes its excuse and lowers `baseline`. Keys read as the report prints them: `host|gateway METHOD /path` for a route, `proxy METHOD /path` for a runtime-proxy member, and `client <adapter method>` for a method of the shipped client's mixin chain that reaches a server with no @houston/sdk method behind it. `baseline` may only go down on its own; raising it is a visible diff a reviewer must accept, because it means a new route shipped with no client behind it.",
-  "baseline": 102,
+  "baseline": 101,
   "entries": [
     {
       "rule": "sdk-route-unbound",
@@ -436,11 +436,6 @@
       "rule": "client-route-unbound",
       "key": "client getAssistant",
       "reason": "permanent: the assistant address probe owns its retry ladder in the adapter (CALLER_OWNED_RETRY_PATHS) and reads Retry-After, which viaSdk drops"
-    },
-    {
-      "rule": "client-route-unbound",
-      "key": "client downloadProjectFile",
-      "reason": "permanent: a binary download the SDK does not carry, because a Blob cannot cross its dispatch boundary; it stays in project-files-mixin"
     },
     {
       "rule": "client-route-unbound",

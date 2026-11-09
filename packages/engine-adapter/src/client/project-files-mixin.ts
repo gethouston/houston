@@ -11,18 +11,9 @@ import type { BaseCtor } from "./mixin";
 import { viaSdk } from "./sdk-error";
 
 /**
- * The agent's REAL workspace, and the two ways bytes get into it.
- *
- * In cloud the workspace is a GCS prefix the control plane serves at
- * `/agents/:id/files*`; `agentPath` IS the agent id here (folderPath = agent.id).
- * In synthetic/local web mode there is no real workspace, so these are inert —
- * every method keeps that guard, because `sdk.files` throws on every non-2xx
- * and would turn "there is nothing to list" into an error.
- *
- * Uploads are split at the DOM line: the batching and base64 framing of browser
- * `File`s stay here (`./attachment-batches`), while the requests they produce
- * ride `sdk.files`. The two BINARY reads keep their own transport — they answer
- * a `Blob`, which a JSON envelope cannot carry, so there is no SDK twin.
+ * Workspace file transport. JSON operations bind sdk.files; binary downloads
+ * return Blobs here and use the SDK's preview retry policy.
+ * Browser uploads are framed and batched before reaching the SDK.
  */
 export function ProjectFilesMixin<TBase extends BaseCtor>(Base: TBase) {
   class ProjectFiles extends Base {
@@ -95,19 +86,28 @@ export function ProjectFilesMixin<TBase extends BaseCtor>(Base: TBase) {
       preview?: FilePreviewOptions,
     ): Promise<{ blob: Blob; contentType: string }> {
       if (!this.ctx.cp) throw new Error("downloads need a cloud workspace");
-      const res = await this.cpFilesFetch(
-        agentPath,
-        `files/download?path=${encodeURIComponent(relPath)}`,
-        undefined,
-        preview,
-      ).catch((error: unknown) => {
-        const refusal =
-          preview && error instanceof HoustonEngineError
-            ? parseFilePreviewRefusal(error.body)
-            : null;
-        if (refusal) throw new FilePreviewError(refusal.code, refusal.error);
-        throw error;
-      });
+      const download = () =>
+        this.cpFilesFetch(
+          agentPath,
+          `files/download?path=${encodeURIComponent(relPath)}`,
+          undefined,
+          preview,
+        ).catch((error: unknown) => {
+          const refusal =
+            preview && error instanceof HoustonEngineError
+              ? parseFilePreviewRefusal(error.body)
+              : null;
+          if (refusal && error instanceof HoustonEngineError)
+            throw new FilePreviewError(
+              refusal.code,
+              refusal.error,
+              error.status === 503 ? error.retryAfterMs : undefined,
+            );
+          throw error;
+        });
+      const res = await (preview
+        ? this.ctx.sdk.files.loadPreview(download)
+        : download());
       return {
         blob: await res.blob(),
         contentType:

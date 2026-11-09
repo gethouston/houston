@@ -39,6 +39,7 @@ export class FilePreviewError extends Error {
   constructor(
     readonly code: FilePreviewRefusalCode,
     message: string,
+    readonly retryAfterMs?: number,
   ) {
     super(message);
     this.name = "FilePreviewError";

@@ -7,6 +7,10 @@ import {
 import type { ReactNode } from "react";
 import { createFilesModule } from "../../packages/sdk/src/modules/files/index.ts";
 import { planInvalidation } from "../src/lib/agent-invalidation-plan.ts";
+import { removalEdit } from "../src/lib/file-list-patches.ts";
+import { isNetworkTransportError } from "../src/lib/network-transport-error.ts";
+import { runOptimisticWrite } from "../src/lib/optimistic-core.ts";
+import { queryKeys } from "../src/lib/query-keys.ts";
 import "./support/dom-env.ts";
 
 const React = await import("react");
@@ -20,6 +24,18 @@ const { QueryClient, QueryClientProvider, notifyManager } = await import(
 notifyManager.setScheduler(queueMicrotask);
 
 let enabled = true;
+let modified = 1;
+let retryAfterMs: number | undefined;
+const quietReports: unknown[] = [];
+const entry = () => ({
+  path: "deck.pptx",
+  name: "deck.pptx",
+  extension: "pptx",
+  size: 20,
+  is_directory: false,
+  dateModified: modified,
+  dateCreated: 1,
+});
 let refusal: FilePreviewRefusalCode | Error | null = null;
 const original = new Blob(["original Office bytes"]);
 let pdf = new Blob(["%PDF-converted"], { type: "application/pdf" });
@@ -55,6 +71,9 @@ mock.module("@houston-ai/core", {
 mock.module("@houston-ai/chat", {
   namedExports: { MessageResponse: passthrough },
 });
+mock.module(new URL("../src/lib/i18n.ts", import.meta.url).href, {
+  defaultExport: { t },
+});
 mock.module("react-i18next", {
   namedExports: { useTranslation: () => ({ t, i18n: { language: "es-CO" } }) },
 });
@@ -86,10 +105,32 @@ mock.module(
 );
 const files = createFilesModule({
   registerCommand: () => {},
-  config: { baseUrl: "http://host", ports: {} },
+  config: {
+    baseUrl: "http://host",
+    ports: {
+      clock: {
+        now: () => 0,
+        setTimeout: (fn: () => void) => {
+          fn();
+          return 0;
+        },
+      },
+    },
+  },
 } as Parameters<typeof createFilesModule>[0]);
+mock.module(new URL("../src/lib/quiet-error-report.ts", import.meta.url).href, {
+  namedExports: {
+    reportQuietError: (
+      _kind: string,
+      _command: string,
+      _message: string,
+      error: unknown,
+    ) => quietReports.push(error),
+  },
+});
 mock.module(new URL("../src/lib/error-toast.ts", import.meta.url).href, {
   namedExports: {
+    showExpectedStateToast: () => {},
     showErrorToast: (command: string, _message: string, error: unknown) => {
       assert.equal(command, "office_preview");
       reports.push(error);
@@ -111,6 +152,7 @@ mock.module(new URL("../src/lib/error-report.ts", import.meta.url).href, {
 mock.module(new URL("../src/lib/tauri.ts", import.meta.url).href, {
   namedExports: {
     tauriFiles: {
+      list: async () => [entry()],
       previewPlan: files.previewPlan,
       classifyPreviewRefusal: files.classifyPreviewRefusal,
       download: async (
@@ -118,17 +160,25 @@ mock.module(new URL("../src/lib/tauri.ts", import.meta.url).href, {
         path: string,
         options?: { as?: string; lang?: string },
       ) => {
-        requests.push({ path, options });
-        if (options?.as === "pdf") {
-          if (refusal instanceof Error) throw refusal;
-          if (refusal) throw new FilePreviewError(refusal, "preview refused");
-          return { blob: pdf, contentType: "application/pdf" };
-        }
-        return {
-          blob: original,
-          contentType:
-            "application/vnd.openxmlformats-officedocument.presentationml.presentation",
+        const download = async () => {
+          requests.push({ path, options });
+          if (options?.as === "pdf") {
+            if (refusal instanceof Error) throw refusal;
+            if (refusal)
+              throw new FilePreviewError(
+                refusal,
+                "preview refused",
+                retryAfterMs,
+              );
+            return { blob: pdf, contentType: "application/pdf" };
+          }
+          return {
+            blob: original,
+            contentType:
+              "application/vnd.openxmlformats-officedocument.presentationml.presentation",
+          };
         };
+        return options?.as === "pdf" ? files.loadPreview(download) : download();
       },
     },
   },
@@ -154,6 +204,9 @@ afterEach(async () => {
     revoked.length =
       0;
   enabled = true;
+  modified = 1;
+  retryAfterMs = undefined;
+  quietReports.length = 0;
   refusal = null;
   pdf = new Blob(["%PDF-converted"], { type: "application/pdf" });
 });
@@ -164,26 +217,28 @@ async function mount() {
   const client = new QueryClient({
     defaultOptions: { queries: { retry: false } },
   });
-  await act(async () => {
-    root.render(
-      h(
-        QueryClientProvider,
-        { client },
-        h(FilePreviewDialog, {
-          agentPath: "a1",
-          filePath: "deck.pptx",
-          fileName: "deck.pptx",
-          onClose: () => {},
-        }),
-      ),
-    );
-  });
+  const render = async (open = true) =>
+    act(async () => {
+      root.render(
+        h(
+          QueryClientProvider,
+          { client },
+          h(FilePreviewDialog, {
+            agentPath: "a1",
+            filePath: open ? "deck.pptx" : null,
+            fileName: "deck.pptx",
+            onClose: () => {},
+          }),
+        ),
+      );
+    });
+  await render();
   unmount = async () => {
     await act(async () => root.unmount());
     container.remove();
     client.clear();
   };
-  return { container, client };
+  return { container, client, render };
 }
 
 describe("Office file preview dialog", () => {
@@ -281,9 +336,11 @@ describe("Office file preview dialog", () => {
         /files.preview.errorTitle/,
       );
       assert.equal(reports.length, 1);
-      assert.ok(reports[0] instanceof FilePreviewError);
-      assert.equal(reports[0].code, "conversion_failed");
-      assert.ok(reports[0].message.includes(error.message));
+      assert.equal(reports[0], error);
+      assert.equal(
+        isNetworkTransportError(reports[0]),
+        error instanceof TypeError,
+      );
       const download = [...container.querySelectorAll("button")].find(
         (button) => button.textContent === "files.preview.download",
       );
@@ -295,6 +352,7 @@ describe("Office file preview dialog", () => {
   it("refreshes the PDF when an agent rewrites the open deck", async () => {
     const { container, client } = await mount();
     const first = container.querySelector("iframe")?.getAttribute("src");
+    modified++;
     pdf = new Blob(["%PDF-rewritten"], { type: "application/pdf" });
     const plan = planInvalidation(
       { type: "FilesChanged", data: { agent_path: "a1" } },
@@ -327,4 +385,131 @@ describe("Office file preview dialog", () => {
     );
     assert.equal(urls.at(-1), pdf);
   });
+});
+
+it("an optimistic delete never applies file-list patches to cached PDFs", async () => {
+  const { client } = await mount();
+  assert.equal(requests.length, 1);
+  client.setQueryData(queryKeys.files("a1"), [entry()]);
+  await act(async () => {
+    await runOptimisticWrite(
+      {
+        qc: client,
+        command: "delete_file",
+        patches: [
+          { queryKey: queryKeys.files("a1"), ...removalEdit(["deck.pptx"]) },
+        ],
+        write: async () => {},
+        failure: { title: "failed", description: "failed" },
+        invalidate: [],
+      },
+      () => assert.fail("delete refused"),
+    );
+  });
+  assert.deepEqual(client.getQueryData(queryKeys.files("a1")), []);
+});
+
+it("unrelated file changes and finished turns preserve the open PDF", async () => {
+  const { container, client } = await mount();
+  const frame = container.querySelector("iframe");
+  for (const event of [
+    { type: "FilesChanged", data: { agent_path: "a1" } },
+    {
+      type: "SessionStatus",
+      data: {
+        agent_path: "a1",
+        session_key: "s",
+        status: "completed",
+        error: null,
+      },
+    },
+  ] as const) {
+    await act(async () => {
+      await Promise.all(
+        planInvalidation(event, {}).invalidate.map((queryKey) =>
+          client.invalidateQueries({ queryKey }),
+        ),
+      );
+    });
+    assert.equal(requests.length, 1);
+    assert.equal(container.querySelector("iframe"), frame);
+    assert.equal(urls.length, 1);
+  }
+});
+
+it("a failed rewrite keeps the previous PDF and URL", async () => {
+  const { container, client } = await mount();
+  const frame = container.querySelector("iframe");
+  const src = frame?.getAttribute("src");
+  modified++;
+  refusal = "conversion_failed";
+  await act(async () => {
+    await Promise.all(
+      planInvalidation(
+        { type: "FilesChanged", data: { agent_path: "a1" } },
+        {},
+      ).invalidate.map((queryKey) => client.invalidateQueries({ queryKey })),
+    );
+  });
+  assert.equal(requests.length, 2);
+  assert.equal(container.querySelector("iframe"), frame);
+  assert.equal(frame?.getAttribute("src"), src);
+  assert.equal(urls.length, 1);
+  assert.deepEqual(revoked, []);
+});
+
+it("reopening after a failure retries the PDF", async () => {
+  refusal = "conversion_failed";
+  const { container, client, render } = await mount();
+  assert.match(container.textContent ?? "", /unsupportedTitle/);
+  assert.ok(
+    client
+      .getQueryCache()
+      .getAll()
+      .some((query) => query.state.status === "error"),
+  );
+  await render(false);
+  refusal = null;
+  await render(true);
+  assert.equal(requests.length, 2);
+  assert.ok(container.querySelector("iframe"));
+});
+
+it("a missing Office file shows the existing gone-file state without a report", async () => {
+  refusal = Object.assign(new Error("file not found"), { status: 404 });
+  const { container } = await mount();
+  assert.match(container.textContent ?? "", /files.gone.description/);
+  assert.equal(reports.length, 0);
+});
+
+it("exhausted capacity retries report quietly and offer Download", async () => {
+  refusal = "conversion_unavailable";
+  retryAfterMs = 2000;
+  const { container } = await mount();
+  assert.match(container.textContent ?? "", /unsupportedTitle/);
+  assert.equal(requests.length, 3);
+  assert.equal(reports.length, 0);
+  assert.equal(quietReports.length, 1);
+});
+
+it("unchanged PDF data preserves the object URL", async () => {
+  const { container, client } = await mount();
+  const frame = container.querySelector("iframe");
+  const query = client
+    .getQueryCache()
+    .find({ queryKey: queryKeys.filePreviewPdfs("a1"), exact: false });
+  assert.ok(query);
+  await act(async () => {
+    await query.fetch();
+  });
+  assert.equal(requests.length, 2);
+  assert.equal(urls.length, 1);
+  assert.equal(container.querySelector("iframe"), frame);
+  assert.deepEqual(revoked, []);
+});
+
+it("closing the dialog releases its object URL", async () => {
+  const { render } = await mount();
+  await render(false);
+  assert.deepEqual(revoked, ["blob:preview-1"]);
 });

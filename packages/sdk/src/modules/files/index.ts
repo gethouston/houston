@@ -30,7 +30,7 @@ import {
   readProjectFile,
   renameFile,
 } from "./http";
-import { classifyPreviewRefusal, previewPlan } from "./preview";
+import { classifyPreviewRefusal, loadPreview, previewPlan } from "./preview";
 import {
   FilesCommand,
   type FileUpload,
@@ -57,6 +57,8 @@ export {
 export interface FilesModule {
   /** Choose the download representation this deployment can preview. */
   previewPlan: typeof previewPlan;
+  /** Download a PDF with the bounded capacity retry schedule. */
+  loadPreview<T>(download: () => Promise<T>): Promise<T>;
   /** Classify a PDF refusal for fallback and diagnostic reporting. */
   classifyPreviewRefusal: typeof classifyPreviewRefusal;
   /** Everything in the agent's workspace, one entry per file and folder. */
@@ -169,6 +171,10 @@ export function createFilesModule(ctx: ModuleContext): FilesModule {
     classifyPreviewRefusal(error, capabilities) {
       return classifyPreviewRefusal(error, capabilities);
     },
+    /** Retry a binary preview through its transport callback.
+     * @assistant group:files hidden: binary preview retry policy.
+     * @assistant unroutable: transport callback owns the download route. */
+    loadPreview: (download) => loadPreview(download, ctx.config.ports.clock),
     listProjectFiles: (agentPath) => listProjectFiles(scope, agentPath),
     readProjectFile: (agentPath, relPath) =>
       readProjectFile(scope, agentPath, relPath),

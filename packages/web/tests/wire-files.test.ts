@@ -337,3 +337,53 @@ test.each([
   ).rejects.toMatchObject({ name: "FilePreviewError", code });
   expect(calls).toHaveLength(1);
 });
+
+test("Office capacity keeps Retry-After through the SDK's bounded retries", async () => {
+  vi.useFakeTimers();
+  try {
+    stubFetch(
+      () =>
+        new Response(
+          JSON.stringify({ code: "conversion_unavailable", error: "busy" }),
+          {
+            status: 503,
+            headers: { "Content-Type": "application/json", "Retry-After": "2" },
+          },
+        ),
+    );
+    const c = client();
+    c.setActiveOrg(ORG);
+    const rejected = expect(
+      c.downloadProjectFile("a1", "deck.pptx", { as: "pdf", lang: "es-CO" }),
+    ).rejects.toMatchObject({
+      name: "FilePreviewError",
+      code: "conversion_unavailable",
+      retryAfterMs: 2000,
+    });
+    await vi.runAllTimersAsync();
+    await rejected;
+    expect(calls).toHaveLength(3);
+    for (const call of calls) {
+      expect(call.method).toBe("GET");
+      expect(call.url).toBe(
+        `${BASE}/agents/a1/files/download?path=deck.pptx&as=pdf&lang=es-CO`,
+      );
+      expect(call.body).toBeNull();
+      expectGatewayHeaders(call);
+    }
+  } finally {
+    vi.useRealTimers();
+  }
+});
+
+test("a missing Office source keeps the file-not-found transport error", async () => {
+  stubFetch(() => json(404, { error: "file not found" }));
+  await expect(
+    client().downloadProjectFile("a1", "deck.pptx", { as: "pdf", lang: "en" }),
+  ).rejects.toMatchObject({
+    name: "HoustonEngineError",
+    status: 404,
+    body: { error: "file not found" },
+  });
+  expect(calls).toHaveLength(1);
+});
