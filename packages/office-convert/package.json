@@ -1,0 +1,20 @@
+{
+  "name": "@houston/office-convert",
+  "version": "0.0.0",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "dev": "bun src/main.ts",
+    "test": "vitest run",
+    "test:docker": "vitest run src/docker.test.ts",
+    "typecheck": "tsgo -p tsconfig.json"
+  },
+  "dependencies": {
+    "@houston/wire-types": "workspace:*"
+  },
+  "devDependencies": {
+    "@types/node": "22.20.0",
+    "@typescript/native-preview": "7.0.0-dev.20260607.1",
+    "vitest": "4.1.12"
+  }
+}

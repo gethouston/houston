@@ -28,6 +28,7 @@ Every coding agent reads this file (Claude Code through the one-line `CLAUDE.md`
 | `packages/fake-host` | In-memory v3 host for UI and e2e tests, built on the real streaming pieces |
 | `packages/web` | Web build of `app/src` + Playwright e2e/visual suites (`packages/web/e2e/README.md`) |
 | `packages/mobile` | Capacitor 8 iOS + Android shell around the `packages/web` build (cloud-only). Native glue only |
+| `packages/office-convert` | Stateless LibreOffice service for Office-to-PDF previews |
 | `packages/code-sandbox` | Cloud Run service where an agent's `run_code` tool executes untrusted code |
 | `ui/` | `@houston-ai/*` React packages, props-only |
 | `packages/design-tokens` | Visual values. Tokens win over any hardcoded literal |
