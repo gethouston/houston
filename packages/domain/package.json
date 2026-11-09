@@ -51,6 +51,10 @@
       "types": "./src/model-display-names.ts",
       "import": "./src/model-display-names.ts"
     },
+    "./provider-model-display": {
+      "types": "./src/provider-model-display.ts",
+      "import": "./src/provider-model-display.ts"
+    },
     "./model-humanized-name": {
       "types": "./src/model-humanized-name.ts",
       "import": "./src/model-humanized-name.ts"
