@@ -88,9 +88,9 @@ async function setup() {
         new URL(req.url || "/", "http://host").searchParams,
         res,
         preview,
-      ).catch((error) => {
+      ).catch(() => {
         res.writeHead(500);
-        res.end(String(error));
+        res.end();
       });
     }),
   );
@@ -191,9 +191,9 @@ test("no configured converter returns conversion_unavailable, while originals ar
         "Work/Agent",
         new URL(req.url || "/", "http://host").searchParams,
         res,
-      ).catch((error) => {
+      ).catch(() => {
         res.writeHead(500);
-        res.end(String(error));
+        res.end();
       });
     }),
   );
