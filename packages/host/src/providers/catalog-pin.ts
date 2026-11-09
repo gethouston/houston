@@ -1,4 +1,4 @@
-import { spokenModelRows } from "@houston/domain";
+import { spokenModelRows } from "@houston/domain/provider-model-display";
 import type { CatalogProvider } from "@houston/protocol";
 import { hostProvider, isKnownProvider } from "./lookup";
 
