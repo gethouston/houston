@@ -2,8 +2,8 @@
 #
 # This workflow only builds and publishes the image. It does not touch Cloud Run
 # or the cluster. The private gethouston/cloud repo deploys the dispatched digest
-# to staging. Production promotion uses staging's digest through a manual,
-# environment-gated cloud workflow. That handoff is the trust boundary.
+# to staging. Production promotion is a manual cloud workflow run requiring
+# cloud repo write access. It promotes the digest staging already serves.
 
 name: Office Convert Image
 

@@ -29,6 +29,6 @@ The Docker tests convert `fixtures/sheets.xlsx`, a generated one-sheet workbook 
 
 ## Deployment
 
-`.github/workflows/office-convert-image.yml` publishes `us-east1-docker.pkg.dev/gethouston/houston/office-convert`. Only main publishes images and dispatches `office-convert-published` for staging. Cloud promotes staging's digest to production through a manual, environment-gated workflow. The payload contains `image`, `digest`, and `sha`. Cloud owns deployment and invokes the service with an ID token. Use concurrency 1, IAM invocation, scale to zero, and deny-all egress. The service runs as a non-root user and holds no secrets.
+`.github/workflows/office-convert-image.yml` publishes `us-east1-docker.pkg.dev/gethouston/houston/office-convert`. Only main publishes images and dispatches `office-convert-published` for staging. Production promotion is a manual cloud workflow run requiring cloud repo write access. It promotes the digest staging already serves. The payload contains `image`, `digest`, and `sha`. Cloud owns deployment and invokes the service with an ID token. Use concurrency 1, IAM invocation, scale to zero, and deny-all egress. The service runs as a non-root user and holds no secrets.
 
 Self-host sets `HOUSTON_OFFICE_CONVERT_URL` to the sidecar URL. Without that URL the host advertises `officePreview: false`.
