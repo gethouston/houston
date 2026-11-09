@@ -25,8 +25,10 @@ import type { RoutineRun, WebhookKeyReveal } from "./types";
  * `delivery_failure` (it never started: `pool_delivery_expired` means it ran
  * out of time, so run it again with runRoutineNow; `creator_no_access` means
  * the person it runs as can no longer use the agent, and any updateRoutine
- * call, even one that changes nothing, makes the caller that person); any
- * other failure tells its story in `summary` only.
+ * call, even one that changes nothing, makes the caller that person;
+ * `agent_data_needs_repair` means the agent's saved data needs a repair only
+ * support can make, so running it again fails the same way); any other
+ * failure tells its story in `summary` only.
  * @param agentId The agent this acts on, by the id listAgents returns. An
  *   agent's name is not its id, so read the id from listAgents first.
  * @assistant group:routines

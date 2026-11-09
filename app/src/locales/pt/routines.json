@@ -148,7 +148,8 @@
       "usageLimit": "O plano {{provider}} atingiu o limite de uso. As execuções continuam a partir de {{time}}.",
       "usageLimitNoReset": "O plano {{provider}} atingiu o limite de uso. As execuções continuam quando ele for restabelecido.",
       "poolDeliveryExpired": "Esta execução não pôde iniciar a tempo e foi ignorada. Você pode executar a rotina novamente.",
-      "creatorNoAccess": "Esta rotina foi criada por alguém que não pode mais usar este funcionário de IA. Pause a rotina e retome-a para que ela seja executada como você."
+      "creatorNoAccess": "Esta rotina foi criada por alguém que não pode mais usar este funcionário de IA. Pause a rotina e retome-a para que ela seja executada como você.",
+      "agentDataNeedsRepair": "Esta execução não pôde começar porque os dados salvos deste funcionário de IA precisam de um reparo. Entre em contato com o suporte do Houston. As execuções voltam a funcionar assim que for resolvido."
     },
     "autoPause": {
       "chip": "Pausada",

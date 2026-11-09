@@ -81,6 +81,22 @@ describe("routine history failure copy", () => {
     });
   }
 
+  for (const language of ["en", "es", "pt"] as const) {
+    it(`renders authored data-repair copy in ${language}`, async () => {
+      const blocked: RoutineRun = {
+        ...failed,
+        summary: "cloud's English summary",
+        delivery_failure: { code: "agent_data_needs_repair" },
+      };
+      const html = await render([blocked], language);
+      ok(
+        html.includes(resources[language].details.failure.agentDataNeedsRepair),
+        html,
+      );
+      equal(html.includes("cloud's English summary"), false);
+    });
+  }
+
   it("keeps account failure copy and ordinary run summaries", async () => {
     const { delivery_failure: _, ...base } = failed;
     const accountRun: RoutineRun = {
