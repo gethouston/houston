@@ -22,7 +22,7 @@ import { providerDefaultModel, safeGetModel, safeModelIds } from "./providers";
 const LINEUP = [
   "claude-sonnet-5-5",
   "claude-opus-5-5",
-  "claude-fable-5-1",
+  "claude-fable-5-2",
   "claude-haiku-5-5",
 ];
 
@@ -34,7 +34,9 @@ const RETIRED: Record<string, string> = {
   "claude-sonnet-5": "claude-sonnet-5-5",
   "claude-sonnet-4-6": "claude-sonnet-5-5",
   sonnet: "claude-sonnet-5-5",
-  "claude-fable-5": "claude-fable-5-1",
+  "claude-fable-5": "claude-fable-5-2",
+  "claude-fable-5-1": "claude-fable-5-2",
+  fable: "claude-fable-5-2",
   "claude-haiku-4-5": "claude-haiku-5-5",
   "claude-haiku-4-5-20251001": "claude-haiku-5-5",
   haiku: "claude-haiku-5-5",

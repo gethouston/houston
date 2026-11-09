@@ -85,7 +85,7 @@ export const VISIBLE_MODELS: Readonly<Record<string, ReadonlySet<string>>> = {
   anthropic: new Set([
     "claude-sonnet-5-5",
     "claude-opus-5-5",
-    "claude-fable-5-1",
+    "claude-fable-5-2",
     "claude-haiku-5-5",
   ]),
   // NOTE: pi-ai ships no plain `gemini-3.1-flash` (only the Lite tier), so the

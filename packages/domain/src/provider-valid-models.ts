@@ -22,7 +22,7 @@ export const VALID_MODELS: Partial<Record<ProviderId, ReadonlySet<string>>> = {
   // lists older Claude rows, and each one resolves to its own family's lineup
   // model instead of running as itself.
   anthropic: new Set([
-    "claude-fable-5-1",
+    "claude-fable-5-2",
     "claude-haiku-5-5",
     "claude-opus-5-5",
     "claude-sonnet-5-5",
