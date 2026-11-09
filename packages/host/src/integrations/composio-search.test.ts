@@ -1,4 +1,4 @@
-import { expect, test } from "vitest";
+import { expect, test, vi } from "vitest";
 import { multiAccountsByToolkit } from "./composio-annotate";
 import {
   normalizeAppName,
@@ -245,6 +245,40 @@ test("a slug-shaped scoped query fetches that action directly and ranks it first
   expect(plain.calls.some((q) => "tool_slugs" in q)).toBe(false);
 });
 
+test("a failed exact lookup falls back to the scoped page instead of failing the search", async () => {
+  const catalog: Toolkit[] = [{ slug: "whatsapp", name: "WhatsApp" }];
+  const page: ToolMatch[] = [
+    { action: "WHATSAPP_BLOCK_USERS", toolkit: "whatsapp", description: "b" },
+  ];
+  const warn = vi.spyOn(console, "warn").mockImplementation(() => {});
+  const { deps } = fakeDeps({
+    catalog,
+    reply: (q) => {
+      if (q.tool_slugs) throw new Error("composio 500");
+      return page;
+    },
+  });
+  const out = await searchComposio(deps, "WHATSAPP_SEND_MESSAGE", "whatsapp");
+  expect(out.items.map((m) => m.action)).toEqual(["WHATSAPP_BLOCK_USERS"]);
+  expect(warn).toHaveBeenCalled();
+  warn.mockRestore();
+});
+
+test("an exact lookup never pulls another toolkit's action into a scoped result", async () => {
+  // zoho's prefix also matches ZOHO_BOOKS_* actions, which belong to zoho_books.
+  const { deps } = fakeDeps({
+    catalog: [{ slug: "zoho", name: "Zoho" }],
+    reply: (q) =>
+      q.tool_slugs
+        ? [{ action: q.tool_slugs, toolkit: "zoho_books", description: "x" }]
+        : [],
+  });
+  const out = await searchComposio(deps, "ZOHO_BOOKS_CREATE_INVOICE", "zoho");
+  expect(out.items.map((m) => m.action)).not.toContain(
+    "ZOHO_BOOKS_CREATE_INVOICE",
+  );
+});
+
 test("actionSlugOf: only an UPPER_SNAKE slug prefixed by the toolkit counts", () => {
   expect(actionSlugOf("WHATSAPP_SEND_MESSAGE", "whatsapp")).toBe(
     "WHATSAPP_SEND_MESSAGE",
@@ -259,6 +293,26 @@ test("actionSlugOf: only an UPPER_SNAKE slug prefixed by the toolkit counts", ()
   expect(actionSlugOf("GOOGLESHEETS_BATCH_GET", "google-sheets")).toBe(
     "GOOGLESHEETS_BATCH_GET",
   );
+});
+
+test.each([
+  "google_maps",
+  "google-maps",
+  "google maps",
+])("exact lookup accepts compact and underscored action prefixes for %s", async (toolkit) => {
+  for (const action of ["GOOGLE_MAPS_SEARCH", "GOOGLEMAPS_SEARCH"]) {
+    expect(actionSlugOf(action, toolkit)).toBe(action);
+    const target = { action, toolkit, description: "Search places" };
+    const { deps, calls } = fakeDeps({
+      catalog: [{ slug: toolkit, name: "Google Maps" }],
+      reply: (q) => (q.tool_slugs === action ? [target] : []),
+    });
+    const result = await searchComposio(deps, action, toolkit);
+    expect(calls).toContainEqual({ tool_slugs: action, toolkit_slug: toolkit });
+    expect(result.items[0]?.action).toBe(action);
+  }
+  expect(actionSlugOf("GOOGLE_MAPS_", toolkit)).toBeNull();
+  expect(actionSlugOf("GOOGLE_MAPS_OTHER_SEARCH", "google-map")).toBeNull();
 });
 
 test("explicit app scope with no action match still returns the app row", async () => {
