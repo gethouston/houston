@@ -335,6 +335,117 @@ test("execute runs an action and returns its data; a failed action surfaces", as
   ).rejects.toThrow(/did not succeed: missing recipient/);
 });
 
+test.each(
+  [
+    "Invalid request data provided",
+    "Following fields are missing: recipients",
+    "Input should be 'SET' or 'CLEAR'",
+    "Unsupported field text: use markdown_text",
+    "Field required",
+    "Extra inputs are not permitted",
+    "value is not a valid integer",
+    "Input should be a valid dictionary or object to extract fields from on parameter `sorts.N`",
+  ].flatMap((error) =>
+    [200, 500].flatMap((status) =>
+      ["GOOGLE_MAPS_SEARCH", "tools.croma.org.default.op1"].map((action) => ({
+        error,
+        status,
+        action,
+      })),
+    ),
+  ),
+)("parameter rejection gives exact recovery for $action, HTTP $status: $error", async ({
+  error,
+  status,
+  action,
+}) => {
+  mockFetch(() => ({ status, body: { successful: false, error } }));
+  const failure = run(execute, { action, params: {} });
+  await expect(failure).rejects.toThrow(error);
+  await expect(failure).rejects.toThrow(
+    `the exact action name "${action}" as \`query\``,
+  );
+  await expect(failure).rejects.toThrow(
+    "the app the action belongs to (as shown next to it in your earlier search results)",
+  );
+  await expect(failure).rejects.toThrow("retry with corrected arguments");
+  await expect(failure).rejects.toThrow(
+    "Never mention slugs or technical details to the user",
+  );
+  await expect(failure).rejects.not.toThrow("request_connection");
+  await expect(failure).rejects.not.toThrow("first result");
+});
+
+test("a thrown parameter rejection retains its original error as the cause", async () => {
+  const original = new Error("Invalid request data provided: recipients");
+  const tools = makeIntegrationTools({
+    call: async () => {
+      throw original;
+    },
+  });
+  const tool = tools.find((tool) => tool.name === "integration_execute");
+  if (!tool) throw new Error("missing execute tool");
+  await expect(
+    run(tool, { action: "GMAIL_FORWARD_MESSAGE" }),
+  ).rejects.toMatchObject({ cause: original });
+});
+
+test.each([
+  "Slack API error: channel_not_found",
+  "Quota exceeded for this app",
+])("unrelated execute errors get no parameter hint: %s", async (error) => {
+  for (const status of [200, 500]) {
+    mockFetch(() => ({ status, body: { successful: false, error } }));
+    const failure = run(execute, { action: "SLACK_SEND_MESSAGE" });
+    await expect(failure).rejects.toThrow(error);
+    await expect(failure).rejects.not.toThrow("integration_search");
+  }
+});
+
+test("an exact MCP lookup recovers a required parameter beyond the broad signature", async () => {
+  const action = "tools.croma.org.default.op1";
+  const inputParams = {
+    required: [
+      ...Array.from({ length: 45 }, (_, i) => `field_${i}`),
+      "required_last",
+    ],
+    properties: {
+      ...Object.fromEntries(
+        Array.from({ length: 45 }, (_, i) => [
+          `field_${i}`,
+          { type: "string", description: "Description ".repeat(20) },
+        ]),
+      ),
+      required_last: {
+        type: "integer",
+        description: "The required identifier",
+      },
+    },
+  };
+  const target = {
+    action,
+    toolkit: "croma",
+    description: "Lookup",
+    inputParams,
+  };
+  mockFetch(() => ({ body: { items: [target, target, target] } }));
+  const broad = await run(search, { app: "croma", query: "lookup records" });
+  const tail = broad.content.filter((part) => part.type === "text").at(-1);
+  expect(
+    tail?.type === "text" && tail.text.split(`- ${action}`).at(-1),
+  ).not.toContain("required_last");
+  const calls = mockFetch(() => ({ body: { items: [target] } }));
+  const exact = await run(search, { app: "croma", query: action });
+  expect(calls[0]?.body).toEqual({ app: "croma", query: action });
+  const text = exact.content.find((part) => part.type === "text");
+  expect(text?.type === "text" && text.text).toContain(
+    "\n    field_44: string",
+  );
+  expect(text?.type === "text" && text.text).toContain(
+    "\n    required_last: integer",
+  );
+});
+
 test("a giant execute result is truncated with recovery guidance, never fed whole", async () => {
   // A single Gmail fetch with full payloads exceeds 1 MB of JSON — enough to
   // overflow a model context window on its own (HOU-893: every event-trigger
@@ -391,6 +502,7 @@ test("a no-connected-account failure hands off to request_connection", async () 
   await expect(failure).rejects.toThrow(/has not connected this app/);
   await expect(failure).rejects.toThrow(/request_connection tool/);
   await expect(failure).rejects.not.toThrow(/#houston_toolkit=/);
+  await expect(failure).rejects.not.toThrow(/integration_search/);
 
   // An ordinary app rejection stays hint-free — no false connect offers.
   mockFetch(() => ({

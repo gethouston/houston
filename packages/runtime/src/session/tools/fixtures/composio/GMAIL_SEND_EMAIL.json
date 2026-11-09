@@ -1,0 +1,104 @@
+{
+  "type": "object",
+  "properties": {
+    "cc": {
+      "type": "array",
+      "items": {
+        "type": "string"
+      },
+      "default": [],
+      "description": "Carbon Copy (CC) recipients' email addresses. At least one of 'to'/'recipient_email', 'cc', or 'bcc' must be provided."
+    },
+    "bcc": {
+      "type": "array",
+      "items": {
+        "type": "string"
+      },
+      "default": [],
+      "description": "Blind Carbon Copy (BCC) recipients' email addresses. At least one of 'to'/'recipient_email', 'cc', or 'bcc' must be provided."
+    },
+    "body": {
+      "type": "string",
+      "description": "Email content (plain text or HTML). Either subject or body must be provided for the email to be sent. If HTML, `is_html` must be `True`."
+    },
+    "is_html": {
+      "type": "boolean",
+      "default": false,
+      "description": "Set to `True` if the email body contains HTML tags."
+    },
+    "subject": {
+      "type": "string",
+      "description": "Subject line of the email. Either subject or body must be provided for the email to be sent."
+    },
+    "user_id": {
+      "type": "string",
+      "default": "me",
+      "description": "User's email address; the literal 'me' refers to the authenticated user."
+    },
+    "attachment": {
+      "anyOf": [
+        {
+          "type": "object",
+          "required": ["name", "mimetype", "s3key"],
+          "properties": {
+            "name": {
+              "type": "string",
+              "description": "The filename that will be used when uploading the file to the destination service"
+            },
+            "s3key": {
+              "type": "string",
+              "description": "The S3 key of a publicly accessible file, typically returned from a previous download action that stored the file in S3. This key references an existing file that can be uploaded to another service."
+            },
+            "mimetype": {
+              "type": "string",
+              "description": "The MIME type of the file"
+            }
+          }
+        },
+        {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "required": ["name", "mimetype", "s3key"],
+            "properties": {
+              "name": {
+                "type": "string",
+                "description": "The filename that will be used when uploading the file to the destination service"
+              },
+              "s3key": {
+                "type": "string",
+                "description": "The S3 key of a publicly accessible file, typically returned from a previous download action that stored the file in S3. This key references an existing file that can be uploaded to another service."
+              },
+              "mimetype": {
+                "type": "string",
+                "description": "The MIME type of the file"
+              }
+            }
+          }
+        }
+      ],
+      "description": "File(s) to attach. Accepts a single file or a list of files. IMPORTANT: mimetype MUST contain a '/' separator - single words like 'pdf' or 'new' are invalid. Gmail API limits: total message size must not exceed ~25 MB after base64 encoding. Omit or set to null for no attachment. Empty attachment objects (with all fields empty/whitespace) are treated as no attachment."
+    },
+    "from_email": {
+      "type": "string",
+      "description": "Sender email address for the 'From' header. Provide the connected account's primary email address or a verified alias configured in Gmail's 'Send mail as' settings. When omitted, the action attempts to resolve the primary email address from the authenticated Gmail profile."
+    },
+    "recipient_email": {
+      "type": "string",
+      "description": "Primary recipient's email address. You can also use 'to' as an alias for this parameter. At least one of 'to'/'recipient_email', 'cc', or 'bcc' must be provided. Use extra_recipients if you want to send to multiple recipients. Use the special value 'me' to send to your own authenticated email address. Must be a full user@domain address; 'me' is not valid here and will fail."
+    },
+    "extra_recipients": {
+      "type": "array",
+      "items": {
+        "type": "string"
+      },
+      "default": [],
+      "description": "Additional 'To' recipients' email addresses (not Cc or Bcc). Should only be used if recipient_email is also provided."
+    },
+    "include_signature": {
+      "type": "boolean",
+      "default": true,
+      "description": "Append the sender's Gmail signature (the 'Send mail as' signature configured in Gmail settings) to the message body, ahead of any quoted or forwarded content. Skipped when the body already ends with that signature, when no signature is configured, or when the connection lacks permission to read Gmail settings. Set to false to send the body exactly as provided."
+    }
+  }
+}

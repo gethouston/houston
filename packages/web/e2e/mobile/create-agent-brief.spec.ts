@@ -17,7 +17,7 @@ test('"Something else" answers in the row, with a way back for a thumb', async (
   // The seeded roster gives the dialog its opening choice; hiring is the door
   // the guided brief lives behind.
   const dialog = page.getByRole("dialog");
-  await dialog.getByRole("button", { name: "Hire a new AI Employee" }).tap();
+  await dialog.getByRole("button", { name: "Create a new AI Employee" }).tap();
 
   const filter = dialog.getByRole("textbox", { name: "Search industries" });
   const door = dialog.getByRole("button", { name: "Something else" });

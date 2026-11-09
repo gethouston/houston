@@ -148,7 +148,8 @@
       "usageLimit": "El plan de {{provider}} llegó a su límite de uso. Las ejecuciones continúan a partir de {{time}}.",
       "usageLimitNoReset": "El plan de {{provider}} llegó a su límite de uso. Las ejecuciones continúan cuando se restablezca.",
       "poolDeliveryExpired": "Esta ejecución no pudo iniciar a tiempo y se omitió. Puedes ejecutar la rutina de nuevo.",
-      "creatorNoAccess": "Esta rutina la creó alguien que ya no puede usar este empleado de IA. Pausa la rutina y reanúdala para que se ejecute como tú."
+      "creatorNoAccess": "Esta rutina la creó alguien que ya no puede usar este empleado de IA. Pausa la rutina y reanúdala para que se ejecute como tú.",
+      "agentDataNeedsRepair": "Esta ejecución no pudo iniciar porque los datos guardados de este empleado de IA necesitan repararse. Contacta al soporte de Houston. Las ejecuciones se reanudan cuando esté resuelto."
     },
     "autoPause": {
       "chip": "En pausa",

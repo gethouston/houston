@@ -1,0 +1,45 @@
+{
+  "type": "object",
+  "required": ["message_id", "recipients"],
+  "properties": {
+    "cc": {
+      "type": "array",
+      "items": {
+        "type": "string"
+      },
+      "description": "List of email addresses to CC."
+    },
+    "bcc": {
+      "type": "array",
+      "items": {
+        "type": "string"
+      },
+      "description": "List of email addresses to BCC."
+    },
+    "user_id": {
+      "type": "string",
+      "default": "me",
+      "description": "User's email address or 'me' for the authenticated user."
+    },
+    "message_id": {
+      "type": "string",
+      "description": "Gmail message ID (hexadecimal string, e.g., '17f45ec49a9c3f1b'). Must contain only hex characters [0-9a-fA-F]. Obtain this from actions like 'List Messages' or 'Fetch Emails'."
+    },
+    "recipients": {
+      "type": "array",
+      "items": {
+        "type": "string"
+      },
+      "description": "List of email addresses to forward the message to."
+    },
+    "additional_text": {
+      "type": "string",
+      "description": "Optional additional text to include before the forwarded content."
+    },
+    "include_signature": {
+      "type": "boolean",
+      "default": true,
+      "description": "Append the sender's Gmail signature (the 'Send mail as' signature configured in Gmail settings) to the message body, ahead of any quoted or forwarded content. Skipped when the body already ends with that signature, when no signature is configured, or when the connection lacks permission to read Gmail settings. Set to false to send the body exactly as provided."
+    }
+  }
+}

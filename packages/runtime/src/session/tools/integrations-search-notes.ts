@@ -46,3 +46,24 @@ export function searchLeadNote(
   }
   return "";
 }
+
+export function parameterFailureHint(reason: string, action: string): string {
+  if (
+    /connected account|not connected/i.test(reason) ||
+    !/invalid request data provided|following fields are missing|input should be|field required|extra inputs are not permitted|value is not a valid|unsupported[^\n]*\bfield\b/i.test(
+      reason,
+    )
+  )
+    return "";
+  return ` ${parameterLookupInstruction(action)} Then retry with corrected arguments. Never mention slugs or technical details to the user.`;
+}
+
+export function parameterLookupInstruction(action?: string): string {
+  return `Call integration_search with \`app\` set to the app the action belongs to (as shown next to it in your earlier search results) and ${action ? `the exact action name "${action}"` : "the exact action name"} as \`query\`; the results then include that action with its parameters described.`;
+}
+
+export function parameterFailureError(error: unknown, action: string): unknown {
+  if (!(error instanceof Error)) return error;
+  const hint = parameterFailureHint(error.message, action);
+  return hint ? new Error(error.message + hint, { cause: error }) : error;
+}

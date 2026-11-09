@@ -72,7 +72,11 @@
         "properties": {
           "code": {
             "type": "string",
-            "enum": ["pool_delivery_expired", "creator_no_access"]
+            "enum": [
+              "pool_delivery_expired",
+              "creator_no_access",
+              "agent_data_needs_repair"
+            ]
           }
         },
         "additionalProperties": false

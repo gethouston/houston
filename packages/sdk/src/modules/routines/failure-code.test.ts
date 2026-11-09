@@ -14,6 +14,14 @@ test("a fire refused for its creator's access is its own delivery code", () => {
   ).toBe("creator_no_access");
 });
 
+test("a fire refused until the agent's data is repaired is its own delivery code", () => {
+  expect(
+    routineFailureCode({
+      delivery_failure: { code: "agent_data_needs_repair" },
+    }),
+  ).toBe("agent_data_needs_repair");
+});
+
 const accountCodes: RoutineAccountFailureCode[] = [
   "creator_not_connected",
   "team_not_connected",
