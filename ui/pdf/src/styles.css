@@ -206,10 +206,14 @@
 .pdf-thumb-frame {
   box-shadow: 0 0 0 1px var(--ht-line);
 }
+/* The frame pins the light theme (it holds paper), so the ring's colour is
+   resolved on the button, in the rail's own theme, and inherited resolved. */
+.pdf-thumb {
+  --pdf-thumb-ring: var(--ht-ink);
+}
 .pdf-thumb[aria-current="page"] .pdf-thumb-frame {
-  box-shadow:
-    0 0 0 2px var(--ht-base),
-    0 0 0 4px var(--ht-ink);
+  outline: 2px solid var(--pdf-thumb-ring);
+  outline-offset: 2px;
 }
 .pdf-count {
   display: grid;

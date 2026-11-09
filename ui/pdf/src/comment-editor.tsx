@@ -86,7 +86,8 @@ export function CommentEditor({
       </Sheet>
     );
   return (
-    <Popover open={open} onOpenChange={(next) => !next && onCancel()}>
+    // Modal: focus stays in the form until it is answered or dismissed.
+    <Popover modal open={open} onOpenChange={(next) => !next && onCancel()}>
       <PopoverAnchor virtualRef={virtual} />
       <PopoverContent
         side="bottom"

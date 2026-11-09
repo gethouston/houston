@@ -11,6 +11,7 @@ const Thumb = memo(function Thumb({
   active,
   count,
   label,
+  strip,
   onPick,
   onError,
 }: {
@@ -19,6 +20,7 @@ const Thumb = memo(function Thumb({
   active: boolean;
   count: number;
   label: string;
+  strip: boolean;
   onPick: (page: number) => void;
   onError: (error: unknown) => void;
 }) {
@@ -48,7 +50,8 @@ const Thumb = memo(function Thumb({
     };
   }, [handle, page, onError]);
   useEffect(() => {
-    if (active) button.current?.scrollIntoView({ block: "nearest" });
+    if (active)
+      button.current?.scrollIntoView({ block: "nearest", inline: "nearest" });
   }, [active]);
   return (
     <button
@@ -59,14 +62,16 @@ const Thumb = memo(function Thumb({
       onClick={() => onPick(page)}
       className="pdf-thumb group flex items-start gap-2 rounded-lg p-1 text-left"
     >
-      <span
-        className={cn(
-          "w-3 shrink-0 pt-0.5 text-right text-[11px] tabular-nums text-ink-muted",
-          active && "font-semibold text-ink",
-        )}
-      >
-        {page}
-      </span>
+      {!strip && (
+        <span
+          className={cn(
+            "w-3 shrink-0 pt-0.5 text-right text-[11px] tabular-nums text-ink-muted",
+            active && "font-semibold text-ink",
+          )}
+        >
+          {page}
+        </span>
+      )}
       <span
         ref={host}
         data-theme="light"
@@ -93,6 +98,9 @@ export interface ThumbnailRailProps {
   thumbLabel: (page: number, count: number) => string;
   onPick: (page: number) => void;
   onError: (error: unknown) => void;
+  /** A horizontal strip (the phone's, under the page counter) instead of
+   *  the labelled column. */
+  strip?: boolean;
   className?: string;
 }
 
@@ -106,6 +114,7 @@ export function ThumbnailRail({
   thumbLabel,
   onPick,
   onError,
+  strip = false,
   className,
 }: ThumbnailRailProps) {
   return (
@@ -113,19 +122,32 @@ export function ThumbnailRail({
       aria-label={heading}
       className={cn("flex min-h-0 flex-col", className)}
     >
-      <p className="px-3 pt-3 pb-1.5 text-xs text-ink-muted">{heading}</p>
-      <div className="flex min-h-0 flex-1 flex-col gap-1.5 overflow-y-auto px-2 pb-4">
+      {!strip && (
+        <p className="px-3 pt-3 pb-1.5 text-xs text-ink-muted">{heading}</p>
+      )}
+      <div
+        className={cn(
+          "flex min-h-0 flex-1",
+          strip
+            ? "flex-row gap-2 overflow-x-auto px-3 py-2 [scrollbar-width:none]"
+            : "flex-col gap-1.5 overflow-y-auto px-2 pt-1 pb-4",
+        )}
+      >
         {handle.sizes.map((_, i) => {
           const page = i + 1;
           const count = counts.get(page) ?? 0;
           return (
-            <div key={page} className="relative">
+            <div
+              key={page}
+              className={cn("relative", strip && "w-21 shrink-0")}
+            >
               <Thumb
                 handle={handle}
                 page={page}
                 active={page === active}
                 count={count}
                 label={thumbLabel(page, count)}
+                strip={strip}
                 onPick={onPick}
                 onError={onError}
               />
