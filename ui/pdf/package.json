@@ -1,0 +1,26 @@
+{
+  "name": "@houston-ai/pdf",
+  "version": "0.5.41",
+  "type": "module",
+  "main": "src/index.ts",
+  "types": "src/index.ts",
+  "files": [
+    "src"
+  ],
+  "peerDependencies": {
+    "@houston-ai/core": "workspace:*",
+    "react": "^19.0.0",
+    "react-dom": "^19.0.0"
+  },
+  "dependencies": {
+    "lucide-react": "0.577.0",
+    "pdfjs-dist": "6.4.299"
+  },
+  "devDependencies": {
+    "tsx": "4.23.0"
+  },
+  "scripts": {
+    "test": "node --import tsx --test tests/*.test.ts",
+    "typecheck": "tsgo --noEmit"
+  }
+}

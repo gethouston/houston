@@ -20,6 +20,11 @@ onlyBuiltDependencies:
 # days old.
 minimumReleaseAge: 10080
 
+# pdfjs-dist (ui/pdf) lists a Node canvas binding as optional; the browser
+# build never loads it, so it is not installed.
+ignoredOptionalDependencies:
+  - "@napi-rs/canvas"
+
 # Security override (uuid <11.1.1 advisory): gaxios 6 and teeny-request 9
 # (both pulled by @google-cloud/storage, which has no gaxios-7-based release
 # yet) declare uuid ^9. Both only call the still-present `v4()` (multipart

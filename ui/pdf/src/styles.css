@@ -1,0 +1,304 @@
+/* @houston-ai/pdf: the page column, pdf.js's text layer, comment marks and
+   the comment editor's motion. Pages pin data-theme="light" (paper is light
+   in every app theme), so the tokens below resolve to their light values. */
+
+.pdf-page {
+  position: relative;
+  overflow: hidden;
+  border-radius: var(--radius);
+  background: var(--ht-background);
+  box-shadow:
+    0 0 0 1px var(--ht-line),
+    var(--ht-shadow-card);
+  cursor: crosshair;
+  user-select: none;
+  -webkit-user-select: none;
+  -webkit-touch-callout: none;
+  touch-action: pan-x pan-y;
+}
+.pdf-page-skeleton {
+  background: var(--ht-hover);
+  box-shadow: none;
+  animation: pdf-pulse 1.6s var(--ht-easing-standard) infinite;
+}
+@keyframes pdf-pulse {
+  50% {
+    opacity: 0.6;
+  }
+}
+
+.pdf-canvas-host,
+.pdf-canvas {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+}
+.pdf-canvas {
+  display: block;
+  transition: opacity var(--ht-duration-fast) var(--ht-easing-standard);
+}
+.pdf-canvas[data-incoming] {
+  opacity: 0;
+}
+
+/* pdf.js 6 text layer (pdf_viewer.css), trimmed to what selection needs. The
+   width and height are forced to the page box: pdf.js sizes it with CSS
+   round(), which older Android WebViews do not parse. */
+.pdf-page .textLayer {
+  position: absolute;
+  inset: 0;
+  width: 100% !important;
+  height: 100% !important;
+  overflow: clip;
+  opacity: 1;
+  line-height: 1;
+  letter-spacing: normal;
+  word-spacing: normal;
+  text-align: initial;
+  text-size-adjust: none;
+  -webkit-text-size-adjust: none;
+  forced-color-adjust: none;
+  transform-origin: 0 0;
+  caret-color: transparent;
+  z-index: 1;
+  --min-font-size: 1;
+  --text-scale-factor: calc(var(--total-scale-factor) * var(--min-font-size));
+  --min-font-size-inv: calc(1 / var(--min-font-size));
+}
+.pdf-page .textLayer :is(span, br) {
+  color: transparent;
+  position: absolute;
+  white-space: pre;
+  cursor: text;
+  transform-origin: 0% 0%;
+  user-select: text;
+  -webkit-user-select: text;
+}
+.pdf-page .textLayer > :not(.markedContent),
+.pdf-page .textLayer .markedContent span:not(.markedContent) {
+  z-index: 1;
+  --font-height: 0;
+  font-size: calc(var(--text-scale-factor) * var(--font-height));
+  --scale-x: 1;
+  --rotate: 0deg;
+  transform: rotate(var(--rotate)) scaleX(var(--scale-x))
+    scale(var(--min-font-size-inv));
+}
+.pdf-page .textLayer .markedContent {
+  display: contents;
+}
+.pdf-page .textLayer ::selection {
+  background: color-mix(in srgb, var(--ht-link) 30%, transparent);
+  color: transparent;
+}
+.pdf-page .textLayer br::selection {
+  background: transparent;
+}
+.pdf-page .textLayer .endOfContent {
+  display: block;
+  position: absolute;
+  inset: 100% 0 0;
+  z-index: 0;
+  cursor: crosshair;
+  user-select: none;
+  -webkit-user-select: none;
+}
+.pdf-page .textLayer.selecting .endOfContent {
+  top: 0;
+}
+
+/* Marks: a highlighter wash over quoted text, an outline round an area, and
+   the numbered pin. Only the pins take pointer events. */
+.pdf-marks {
+  position: absolute;
+  inset: 0;
+  z-index: 2;
+  pointer-events: none;
+}
+.pdf-hl {
+  position: absolute;
+  border-radius: 2px;
+  background: var(--ht-highlight);
+  mix-blend-mode: multiply;
+}
+.pdf-hl-pending {
+  background: color-mix(in srgb, var(--ht-link) 28%, transparent);
+  mix-blend-mode: normal;
+}
+.pdf-area {
+  position: absolute;
+  border-radius: 6px;
+  background: color-mix(in srgb, var(--ht-ink) 6%, transparent);
+  box-shadow:
+    0 0 0 1px var(--ht-background),
+    0 0 0 2px var(--ht-ink);
+}
+.pdf-area-pending {
+  background: color-mix(in srgb, var(--ht-background) 12%, transparent);
+  box-shadow: none;
+  outline: 1.5px dashed var(--ht-ink);
+}
+.pdf-mark[data-hot] .pdf-hl {
+  background: color-mix(in srgb, var(--ht-highlight) 100%, var(--ht-warning));
+}
+.pdf-mark[data-hot] .pdf-area {
+  box-shadow:
+    0 0 0 1px var(--ht-background),
+    0 0 0 3px var(--ht-ink);
+}
+.pdf-pin {
+  position: absolute;
+  pointer-events: auto;
+  width: 22px;
+  height: 22px;
+  margin: -11px 0 0 -11px;
+  display: grid;
+  place-items: center;
+  border-radius: 9999px;
+  background: var(--ht-action);
+  color: var(--ht-action-text);
+  font-size: 12px;
+  font-weight: 600;
+  font-variant-numeric: tabular-nums;
+  line-height: 1;
+  box-shadow:
+    0 0 0 2px var(--ht-background),
+    var(--ht-shadow-card);
+  transition: transform var(--ht-duration-press) var(--ht-easing-entrance);
+}
+.pdf-pin::before {
+  content: "";
+  position: absolute;
+  inset: -10px;
+}
+.pdf-pin:active {
+  transform: scale(0.92);
+}
+.pdf-pin:focus-visible {
+  outline: 2px solid var(--ht-focus);
+  outline-offset: 2px;
+}
+.pdf-mark[data-hot] .pdf-pin {
+  transform: scale(1.15);
+}
+.pdf-mark[data-flash] .pdf-pin::after {
+  content: "";
+  position: absolute;
+  inset: -2px;
+  border-radius: 9999px;
+  box-shadow: 0 0 0 2px var(--ht-ink);
+  animation: pdf-ring 700ms var(--ht-easing-entrance) 2;
+}
+@keyframes pdf-ring {
+  to {
+    transform: scale(2.2);
+    opacity: 0;
+  }
+}
+
+/* Thumbnails */
+.pdf-thumb-canvas {
+  display: block;
+  width: 100%;
+  height: 100%;
+}
+.pdf-thumb-frame {
+  box-shadow: 0 0 0 1px var(--ht-line);
+}
+.pdf-thumb[aria-current="page"] .pdf-thumb-frame {
+  box-shadow:
+    0 0 0 2px var(--ht-base),
+    0 0 0 4px var(--ht-ink);
+}
+.pdf-count {
+  display: grid;
+  place-items: center;
+  min-width: 18px;
+  height: 18px;
+  padding: 0 4px;
+  border-radius: 9999px;
+  background: var(--ht-action);
+  color: var(--ht-action-text);
+  font-size: 11px;
+  font-weight: 600;
+  font-variant-numeric: tabular-nums;
+  box-shadow: 0 0 0 2px var(--ht-background);
+}
+
+/* Press feedback on everything pressable here. */
+.pdf-press,
+.pdf-thumb {
+  transition: transform var(--ht-duration-press) var(--ht-easing-entrance);
+}
+.pdf-press:active,
+.pdf-thumb:active {
+  transform: scale(0.97);
+}
+@media (hover: hover) and (pointer: fine) {
+  .pdf-thumb:not([aria-current="page"]):hover .pdf-thumb-frame {
+    box-shadow: 0 0 0 1px var(--ht-ink-muted);
+  }
+}
+
+/* The comment popover scales from the selection's edge; a keyboard close
+   skips the exit entirely. */
+.pdf-pop[data-state="open"] {
+  animation: pdf-pop-in 180ms var(--ht-easing-entrance);
+}
+.pdf-pop[data-state="closed"] {
+  animation: pdf-pop-out 120ms var(--ht-easing-standard);
+}
+@keyframes pdf-pop-in {
+  from {
+    opacity: 0;
+    transform: scale(0.96);
+  }
+}
+@keyframes pdf-pop-out {
+  to {
+    opacity: 0;
+    transform: scale(0.96);
+  }
+}
+.pdf-sheet[data-state="open"] {
+  animation: pdf-sheet-in 260ms var(--ht-easing-entrance);
+}
+.pdf-sheet[data-state="closed"] {
+  animation: pdf-sheet-out var(--ht-duration-press) var(--ht-easing-entrance);
+}
+@keyframes pdf-sheet-in {
+  from {
+    transform: translateY(100%);
+  }
+}
+@keyframes pdf-sheet-out {
+  to {
+    transform: translateY(100%);
+  }
+}
+.pdf-pop[data-instant],
+.pdf-sheet[data-instant] {
+  animation: none;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .pdf-page-skeleton,
+  .pdf-mark[data-flash] .pdf-pin::after {
+    animation: none;
+  }
+  .pdf-pin,
+  .pdf-press,
+  .pdf-thumb {
+    transition: none;
+  }
+  .pdf-pop[data-state],
+  .pdf-sheet[data-state] {
+    animation-name: pdf-fade;
+  }
+  @keyframes pdf-fade {
+    from {
+      opacity: 0;
+    }
+  }
+}
