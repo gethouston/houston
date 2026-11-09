@@ -38,6 +38,7 @@ services:
       - houston-data:/data
     networks:
       - houston
+      - office
     # No `ports:` — deliberately. Reachable only via Caddy, never directly.
 
   office-convert:
@@ -45,8 +46,16 @@ services:
       context: ..
       dockerfile: packages/office-convert/Dockerfile
     restart: unless-stopped
+    mem_limit: 2g
+    pids_limit: 128
+    read_only: true
+    tmpfs:
+      - /tmp:rw,nosuid,size=1g
+      - /home/converter:rw,nosuid,size=64m,uid=1000,gid=1000
+    cap_drop: [ALL]
+    security_opt: [no-new-privileges:true]
     networks:
-      - houston
+      - office
 
   caddy:
     image: caddy:2
@@ -72,6 +81,8 @@ services:
       - houston
 
 networks:
+  office:
+    internal: true
   houston:
     driver: bridge
 

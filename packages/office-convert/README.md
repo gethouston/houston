@@ -22,6 +22,8 @@ pnpm --filter @houston/office-convert test
 OFFICE_CONVERT_TEST_URL=http://127.0.0.1:8080 pnpm --filter @houston/office-convert test:docker
 ```
 
+For an internal-only Compose converter, set `OFFICE_CONVERT_TEST_CONTAINER` to its container name instead of `OFFICE_CONVERT_TEST_URL`. The test sends HTTP requests through `docker exec`.
+
 The Docker test converts `fixtures/sheets.xlsx`, a generated one-sheet workbook from the LibreOffice spike. Unit tests exercise HTTP responses, process failures, locale selection, and export options.
 
 ## Deployment

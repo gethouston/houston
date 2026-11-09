@@ -1,4 +1,9 @@
+import { watch } from "node:fs";
+import { mkdtemp, readFile, rm } from "node:fs/promises";
 import { request, type Server } from "node:http";
+import { tmpdir } from "node:os";
+import { join } from "node:path";
+import { setImmediate } from "node:timers/promises";
 import { FilePreviewError } from "@houston/wire-types/file-preview";
 import { afterEach, expect, test, vi } from "vitest";
 import { conversionLocale, pdfFilter, runOffice } from "./convert";
@@ -102,9 +107,76 @@ test("a real child with a nonzero exit refuses conversion", async () => {
   ).rejects.toMatchObject({ code: "conversion_failed" });
 });
 test("timeout terminates a real process group", async () => {
-  await expect(
-    runOffice(["-c", "sleep 100 & wait"], "/tmp", "en", 25, "/bin/sh"),
+  const work = await mkdtemp(join(tmpdir(), "office-group-"));
+  const pidFile = join(work, "grandchild.pid");
+  let pid: number | undefined;
+  const watcher = watch(work);
+  const ready = new Promise<number>((resolve, reject) => {
+    watcher.on("error", reject);
+    watcher.on("change", () => {
+      readFile(pidFile, "utf8").then(
+        (value) => resolve(Number(value)),
+        (error) => {
+          if (
+            !(
+              error instanceof Error &&
+              "code" in error &&
+              error.code === "ENOENT"
+            )
+          )
+            reject(error);
+        },
+      );
+    });
+  });
+  vi.useFakeTimers();
+  const finished = expect(
+    runOffice(
+      [
+        "-c",
+        'sleep 100 & echo $! > "$1.tmp"; mv "$1.tmp" "$1"; wait',
+        "--",
+        pidFile,
+      ],
+      work,
+      "en",
+      30_000,
+      "/bin/sh",
+    ),
   ).rejects.toMatchObject({ code: "timeout" });
+  try {
+    pid = await ready;
+    expect(pid).toBeGreaterThan(0);
+    await vi.advanceTimersByTimeAsync(30_000);
+    await finished;
+    vi.useRealTimers();
+    // The parent's exit event can precede the descendant's removal from the process table.
+    const deadline = Date.now() + 1_000;
+    for (;;) {
+      try {
+        process.kill(pid, 0);
+      } catch (error) {
+        expect(error).toMatchObject({ code: "ESRCH" });
+        break;
+      }
+      expect(Date.now()).toBeLessThan(deadline);
+      await setImmediate();
+    }
+    expect(() => process.kill(pid ?? 0, 0)).toThrowError(
+      expect.objectContaining({ code: "ESRCH" }),
+    );
+  } finally {
+    vi.useRealTimers();
+    watcher.close();
+    if (pid) {
+      try {
+        process.kill(pid, "SIGKILL");
+      } catch (error) {
+        expect(error).toMatchObject({ code: "ESRCH" });
+      }
+    }
+    await rm(work, { recursive: true, force: true });
+  }
 });
 
 test("chunked uploads enforce the size cap without a Content-Length", async () => {

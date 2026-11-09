@@ -7,10 +7,11 @@ import { promisify } from "node:util";
 import {
   FilePreviewError,
   type OfficeExtension,
+  officePreviewLanguage,
 } from "@houston/wire-types/file-preview";
 
 export function conversionLocale(lang: string): string {
-  switch (lang.toLowerCase().split("-")[0]) {
+  switch (officePreviewLanguage(lang)) {
     case "es":
       return "es_ES.UTF-8";
     case "pt":
@@ -72,7 +73,7 @@ export function runOffice(
     });
     child.once("exit", (code) => {
       clearTimeout(timer);
-      killGroup(child.pid);
+      if (!timedOut) killGroup(child.pid);
       if (timedOut)
         reject(new FilePreviewError("timeout", "Office conversion timed out"));
       else if (code !== 0)

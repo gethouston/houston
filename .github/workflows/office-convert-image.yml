@@ -1,3 +1,11 @@
+# Office Convert Image builds and publishes the stateless converter image.
+#
+# This workflow only builds and publishes the image. It does not touch Cloud Run
+# or the cluster. This repo is public, so a compromised third-party Action or
+# dependency here must not be able to reach production. The actual deploy happens
+# in the private gethouston/cloud repo, triggered by repository_dispatch below.
+# That handoff is the trust boundary.
+
 name: Office Convert Image
 
 on:
