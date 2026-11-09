@@ -133,6 +133,7 @@ export function createWebViteConfig(
         "@houston-ai/events",
         "@houston-ai/routines",
         "@houston-ai/skills",
+        "@houston-ai/pdf",
         "@houston-ai/review",
         "@houston-ai/agent",
       ],

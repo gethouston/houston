@@ -36,6 +36,7 @@ import {
   ChatSuggestReusableCard,
   type ChatSuggestReusableLabels,
   decodeAttachmentMessage,
+  decodeCitedMessage,
   decodeInteractionAnswersMessage,
   UserAttachmentMessage,
   type UserAttachmentMessageLabels,
@@ -71,6 +72,7 @@ import {
   useConversationVm,
 } from "../hooks/use-conversation-vm";
 import { useFileToolRenderer } from "../hooks/use-file-tool-renderer";
+import { useOpenAgentHref } from "../hooks/use-open-agent-file";
 import { useProviderStatuses } from "../hooks/use-provider-statuses";
 import { useSendPin } from "../hooks/use-send-pin";
 import { useSession } from "../hooks/use-session";
@@ -174,6 +176,9 @@ import { NOTICE_COPY } from "./chat-notice-copy";
 import { ContextCompactedDivider } from "./context-compacted-divider";
 import { ContextIndicator } from "./context-indicator";
 import { DictationSetupDialog } from "./dictation-setup-dialog";
+import { submitWithCitations } from "./file-preview/cited-submit";
+import { CitedUserMessage } from "./file-preview/cited-user-message";
+import { useCitationComposer } from "./file-preview/use-citation-composer";
 import { IntegrationConnectCard } from "./integration-connect-card";
 import { parseToolkitFromHref } from "./integration-connect-card-state";
 import { integrationsSupported } from "./integrations/model";
@@ -300,6 +305,9 @@ interface AgentChatPanelProps {
   copyMessageLabel: AIBoardProps["copyMessageLabel"];
   /** Renders agent-authored `#houston_toolkit=` links as connect cards. */
   renderLink: AIBoardProps["renderLink"];
+  /** Opens a link the chat's prose holds: a URL in the browser, a workspace
+   *  file in the preview panel, bound to this chat for comments. */
+  openHref: (href: string) => void;
   /** Forwarded to AIBoard / ChatPanel for tool rendering. */
   isSpecialTool: ChatPanelProps["isSpecialTool"];
   renderToolResult: ChatPanelProps["renderToolResult"];
@@ -447,6 +455,15 @@ export function useAgentChatPanel({
   // see if they typed instead.
   const newConversationKey = useNewConversationDraftKey(draftScope);
   const draftKey = selectedSessionKey ?? newConversationKey;
+  // File comments ride the composer of the chat their file was opened from.
+  const citationComposer = useCitationComposer(
+    agent?.folderPath ?? null,
+    draftKey,
+  );
+  const openHref = useOpenAgentHref(
+    agent?.folderPath ?? null,
+    selectedSessionKey,
+  );
   const handleDictationTranscript = useCallback(
     (text: string) => {
       const current = useDraftStore.getState().drafts[draftKey]?.text ?? "";
@@ -1174,7 +1191,7 @@ export function useAgentChatPanel({
 
   // ── File-tool rendering (per-agent path) ──────────────────────────────
   const { isSpecialTool, renderToolResult, renderTurnSummary } =
-    useFileToolRenderer(path ?? "");
+    useFileToolRenderer(path ?? "", selectedSessionKey);
 
   // ── Skills + selected-skill state ─────────────────────────────────────
   const { data: allSkills } = useSkills(path ?? undefined);
@@ -1279,6 +1296,7 @@ export function useAgentChatPanel({
       // answers) are not, and in a shared thread only your own messages are
       // yours to rewrite.
       if (msg.source) return false;
+      if (hasCitations(msg.content)) return false;
       if (decodeSkillMessage(msg.content)) return false;
       if (decodeAttachmentMessage(msg.content)) return false;
       if (decodeInteractionAnswersMessage(msg.content)) return false;
@@ -1291,6 +1309,7 @@ export function useAgentChatPanel({
   // the raw content IS what the bubble shows — marker-encoded sends render a
   // card, and copying their wire encoding would paste gibberish.
   const canCopyMessage = useCallback((msg: ChatMessage) => {
+    if (hasCitations(msg.content)) return false;
     if (decodeSkillMessage(msg.content)) return false;
     if (decodeAttachmentMessage(msg.content)) return false;
     if (decodeInteractionAnswersMessage(msg.content)) return false;
@@ -1978,12 +1997,17 @@ export function useAgentChatPanel({
   const onComposerSubmit = useCallback<
     NonNullable<AIBoardProps["onComposerSubmit"]>
   >(
-    (ctx) => {
+    async (ctx) => {
       if (activeInteraction && interactionKey !== abandonedInteractionKey)
         setAbandonedInteractionKey(interactionKey);
-      return handleSkillComposerSubmit(ctx);
+      return submitWithCitations(
+        ctx,
+        citationComposer.prepare,
+        handleSkillComposerSubmit,
+      );
     },
     [
+      citationComposer.prepare,
       handleSkillComposerSubmit,
       activeInteraction,
       interactionKey,
@@ -1994,6 +2018,16 @@ export function useAgentChatPanel({
   // ── Built JSX bundles ─────────────────────────────────────────────────
   const renderUserMessage = useCallback(
     (msg: { content: string }) => {
+      const cited = decodeCitedMessage(msg.content);
+      if (cited && path)
+        return (
+          <CitedUserMessage
+            cited={cited}
+            attachmentLabels={attachmentLabels}
+            agentPath={path}
+            draftKey={selectedSessionKey}
+          />
+        );
       const invocation = decodeSkillMessage(msg.content);
       if (invocation) {
         return (
@@ -2018,7 +2052,7 @@ export function useAgentChatPanel({
       }
       return undefined;
     },
-    [attachmentLabels],
+    [attachmentLabels, path, selectedSessionKey],
   );
   // What an UNLABELED provider-error card may be attributed to: evidence
   // only, never the composer's "anthropic" last resort — a guessed label sends
@@ -2210,9 +2244,11 @@ export function useAgentChatPanel({
   // for callers who receive it (owner / agent-managers).
   const composerHeader = useMemo<AIBoardProps["composerHeader"]>(() => {
     if (!agent) return undefined;
-    if (!activeSkill && !planComposer.hint) return undefined;
+    if (!activeSkill && !planComposer.hint && !citationComposer.header)
+      return undefined;
     return (
       <div className="flex flex-col gap-1.5">
+        {citationComposer.header}
         {activeSkill && (
           <SelectedSkillChip
             skill={activeSkill}
@@ -2222,7 +2258,7 @@ export function useAgentChatPanel({
         {planComposer.hint}
       </div>
     );
-  }, [agent, activeSkill, planComposer.hint]);
+  }, [agent, activeSkill, planComposer.hint, citationComposer.header]);
 
   const chatEmptyState = useMemo<AIBoardProps["chatEmptyState"]>(() => {
     if (!agent) return undefined;
@@ -2418,7 +2454,8 @@ export function useAgentChatPanel({
     composerOverride,
     composerOverrideMode,
     offersComposerOverride,
-    canSendEmpty: activeSkill != null,
+    // A message can be just comments on a file.
+    canSendEmpty: activeSkill != null || citationComposer.count > 0,
     onComposerSubmit,
     footer,
     attachMenu,
@@ -2434,6 +2471,7 @@ export function useAgentChatPanel({
     canCopyMessage,
     copyMessageLabel: t("chat:copyMessage.copy"),
     renderLink,
+    openHref,
     isSpecialTool,
     renderToolResult,
     processLabels,
@@ -2463,3 +2501,7 @@ export function useAgentChatPanel({
     dictation,
   };
 }
+
+/** Whether a sent message carried file comments (rendered as pills, so its
+ *  raw text is neither what the bubble shows nor something to edit). */
+const hasCitations = (content: string) => decodeCitedMessage(content) !== null;

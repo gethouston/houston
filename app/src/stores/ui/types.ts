@@ -14,12 +14,18 @@ export interface ToastItem {
   count?: number;
 }
 
-/** A workspace file queued for the global in-app preview dialog (chat file
- * cards, turn summaries, prose file pills — HOU: preview files from chat). */
+/** A workspace file shown in the preview panel (chat file cards, turn
+ *  summaries, prose file links, the Files tab). */
 export interface FilePreviewTarget {
   /** The agent's `folderPath` (route key / directory, per engine). */
   agentPath: string;
   /** Workspace-relative path of the file. */
   filePath: string;
   fileName: string;
+  /** The conversation comments on this file go to (its draft key), or null
+   *  when it was opened outside a chat (the Files tab), where commenting is
+   *  off. */
+  chat: { draftKey: string } | null;
+  /** Open on this page (a sent comment's pill), rather than the first. */
+  page?: number;
 }

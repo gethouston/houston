@@ -1,7 +1,10 @@
 import { isAutoContinue } from "@houston/protocol";
 import type { ChatMessage } from "@houston/runtime-client";
 import { conversationScope, type QueuedMessageVM } from "@houston/sdk";
-import type { SessionStartRequest } from "@houston/wire-types";
+import {
+  decodeCitationsEnvelopes,
+  type SessionStartRequest,
+} from "@houston/wire-types";
 import { conversationBusy } from "./conversation-busy";
 import { armQueueWatchdog, disarmQueueWatchdog } from "./queue-watchdog";
 import { mergeSendFields } from "./send-queue-merge";
@@ -110,7 +113,9 @@ export function maybeQueueSend(
       // Prefer an explicit queued preview, then the display bubble text (a
       // hidden-directive / attachment-path send shows the clean line, never the
       // real prompt), falling back to the prompt when the two are the same.
-      text: req.queuedPreview?.text ?? req.displayText ?? req.prompt,
+      text: queuedText(
+        req.queuedPreview?.text ?? req.displayText ?? req.prompt,
+      ),
       attachmentNames: req.queuedPreview?.attachmentNames,
     },
     req,
@@ -135,20 +140,24 @@ export function maybeQueueSend(
   return true;
 }
 
-/** Drop one queued send (the composer's remove affordance). */
+/** Drop one queued send (the composer's remove affordance). Returns the
+ *  dropped request, so what it carried can go back to its draft. */
 export function removeQueuedSend(
   agentPath: string,
   sessionKey: string,
   id: string,
-): void {
+): SessionStartRequest | undefined {
   const k = queueKey(agentPath, sessionKey);
-  const entries = (queues.get(k) ?? []).filter((e) => e.vm.id !== id);
+  const all = queues.get(k) ?? [];
+  const removed = all.find((e) => e.vm.id === id)?.req;
+  const entries = all.filter((e) => e.vm.id !== id);
   if (entries.length === 0) {
     queues.delete(k);
     disarmSettleWatcher(k);
     disarmQueueWatchdog(k);
   } else queues.set(k, entries);
   publishQueued(agentPath, sessionKey);
+  return removed;
 }
 
 /**
@@ -187,4 +196,15 @@ export function flushQueuedSends(
     ...mergeSendFields(entries.map((e) => e.req)),
     queuedPreview: undefined,
   });
+}
+
+/** A held send's line: the person's words without the comments envelope, or
+ *  the comments themselves when they sent nothing else. */
+function queuedText(shown: string): string {
+  const cited = decodeCitationsEnvelopes(shown);
+  if (!cited) return shown;
+  return (
+    cited.text ||
+    cited.citations.map((c) => c.comment || c.quote || "").join(" · ")
+  );
 }

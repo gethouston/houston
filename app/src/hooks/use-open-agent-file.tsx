@@ -21,15 +21,19 @@ import { useCapabilities } from "./use-capabilities";
  *   - Co-located desktop engine → hand the file to the OS's default app,
  *     rooted at the host-reported REAL directory (on the TS engine
  *     `folderPath` is a route key, never a path).
- *   - Everything else (web build, cloud pods, remote hosts) → the in-app
- *     preview dialog, whose footer offers Download (native save dialog on
- *     desktop, browser download on web). Before this hook, these clicks
- *     dead-ended: the web shim rejects `open_file` outright.
+ *   - Everything else (web build, cloud pods, remote hosts) → the preview
+ *     panel beside the chat (a full-screen sheet on the phone), which offers
+ *     Download and, opened from a chat, comments for the agent.
  *
  * Accepts every path shape the engine emits (absolute native, workspace-
  * relative, bare) — see lib/agent-file-paths.ts.
  */
-export function useOpenAgentFile(agentPath: string | null): {
+export function useOpenAgentFile(
+  agentPath: string | null,
+  /** The conversation the file is opened from: comments on it go to this
+   *  draft. Omitted outside a chat. */
+  draftKey?: string | null,
+): {
   openFile: (rawPath: string) => void;
   /** True when clicks hand off to the OS (used to pick the card affordance icon). */
   opensLocally: boolean;
@@ -68,10 +72,16 @@ export function useOpenAgentFile(agentPath: string | null): {
         folderPath: agentPath,
         localDir: agent?.localDir,
       });
-      setFilePreview({ agentPath, filePath, fileName: fileNameOf(filePath) });
+      setFilePreview({
+        agentPath,
+        filePath,
+        fileName: fileNameOf(filePath),
+        chat: draftKey ? { draftKey } : null,
+      });
     },
     [
       agentPath,
+      draftKey,
       agent?.localDir,
       opensLocally,
       osDir,
@@ -99,8 +109,9 @@ export function useOpenAgentFile(agentPath: string | null): {
  */
 export function useOpenAgentHref(
   agentPath: string | null,
+  draftKey?: string | null,
 ): (href: string) => void {
-  const { openFile } = useOpenAgentFile(agentPath);
+  const { openFile } = useOpenAgentFile(agentPath, draftKey);
   return useCallback(
     (href: string) => {
       const trimmed = href.trim();

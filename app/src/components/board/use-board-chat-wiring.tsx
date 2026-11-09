@@ -2,7 +2,6 @@ import type { AIBoardProps, MessageMention } from "@houston-ai/board";
 import { useCallback, useMemo } from "react";
 import { useTranslation } from "react-i18next";
 import { useMessageTime } from "../../hooks/use-message-time";
-import { useOpenAgentHref } from "../../hooks/use-open-agent-file";
 import { isAgentPathWarming } from "../../lib/agent-warming-guard";
 import { childMissionsOf, parentMissionOf } from "../../lib/child-missions";
 import { modelAcceptsImages } from "../../lib/providers";
@@ -129,9 +128,7 @@ export function useBoardChatWiring(source: BoardSource) {
     (message: string) => addToast({ title: message }),
     [addToast],
   );
-  const handleOpenLink = useOpenAgentHref(
-    source.activeAgent?.folderPath ?? null,
-  );
+  const handleOpenLink = panel.openHref;
 
   const attachmentValidation = useAttachmentRejectionDialog({
     modelAcceptsImages: modelAcceptsImages(

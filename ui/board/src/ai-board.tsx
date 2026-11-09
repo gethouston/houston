@@ -25,6 +25,7 @@ import {
 } from "./board-labels";
 import type { BulkActionBarLabels, BulkMoveTarget } from "./bulk-action-bar";
 import { BulkActionBar } from "./bulk-action-bar";
+import { type ComposerSendRoutes, routeComposerSend } from "./composer-send";
 import { KanbanBoard } from "./kanban-board";
 import type { KanbanCardLabels } from "./kanban-card";
 import { showsCardAction } from "./kanban-card-actions";
@@ -199,16 +200,9 @@ export interface AIBoardProps {
       }) => ReactNode);
   /** Enables submit even when the composer has no text or files. */
   canSendEmpty?: boolean;
-  /** Lets consumers handle a submit before the board creates/sends a normal chat message. */
-  onComposerSubmit?: (ctx: {
-    sessionKey: string | null;
-    text: string;
-    files: File[];
-    hasMessages: boolean;
-    /** Teammates the composer named (HOU-944); `[]` when there are none. An
-     *  interceptor that builds its own send must carry these through. */
-    mentions: MessageMention[];
-  }) => boolean | Promise<boolean>;
+  /** Lets consumers take over a submit, or rewrite its text, before the
+   *  board creates or sends a normal chat message (`ComposerSubmitOutcome`). */
+  onComposerSubmit?: ComposerSendRoutes["onComposerSubmit"];
   /** Called when the user renames a card. */
   onRename?: (item: KanbanItem, newTitle: string) => void;
   /** Render prop for extra action buttons on each card (e.g. "Run" button). */
@@ -631,34 +625,25 @@ export function AIBoard({
       }
       sendInFlightRef.current = true;
       try {
-        const handled = await onComposerSubmit?.({
-          sessionKey: activeSessionKey,
-          text,
-          files,
-          hasMessages: activeFeed.length > 0,
-          mentions,
-        });
-        if (handled) {
-          onDraftChange?.(activeDraftKey, "");
-          return;
-        }
-        if (activeSessionKey && onSendMessage) {
-          // Keyed off `activeSessionKey` (derived from `selectedId`), not
-          // `selectedItem`: a send fired while the created activity is
-          // still absent from `items` must go to the existing session,
-          // never fall through and create a duplicate conversation.
-          await onSendMessage(activeSessionKey, text, files, mentions);
-          onDraftChange?.(activeDraftKey, "");
-        } else if (effectiveNewPanelOpen && onCreateConversation) {
-          const activityId = await onCreateConversation(text, files, mentions);
-          onDraftChange?.(activeDraftKey, "");
-          // Select the new activity so the feed renders. The freshly-created
-          // activity may take a while to appear in `items` (the parent
-          // invalidates the activity query asynchronously; against a warming
-          // engine the row only lands when it wakes) — the panel stays open
-          // regardless, keyed off this selection (see resolvePanelState).
-          setSelectedId(activityId);
-        }
+        const result = await routeComposerSend(
+          { onComposerSubmit, onSendMessage, onCreateConversation },
+          {
+            activeSessionKey,
+            canCreate: effectiveNewPanelOpen,
+            hasMessages: activeFeed.length > 0,
+            text,
+            files,
+            mentions,
+          },
+        );
+        if (result.kind === "dropped") return;
+        onDraftChange?.(activeDraftKey, "");
+        // Select the new activity so the feed renders. The freshly-created
+        // activity may take a while to appear in `items` (the parent
+        // invalidates the activity query asynchronously; against a warming
+        // engine the row only lands when it wakes) — the panel stays open
+        // regardless, keyed off this selection (see resolvePanelState).
+        if (result.kind === "created") setSelectedId(result.activityId);
       } finally {
         sendInFlightRef.current = false;
       }

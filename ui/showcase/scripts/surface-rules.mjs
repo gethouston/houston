@@ -70,8 +70,7 @@ export const SURFACE_RULES = {
   // remains under this path, and it is the settings page's Apps section.
   "app/src/components/agent/agent-integrations/": "Agent Settings",
 
-  "app/src/components/agent-file-preview-host": "Files",
-  "app/src/components/file-preview-dialog": "Files",
+  "app/src/components/file-preview/": "Files",
   "app/src/components/move-conflict-dialog": "Files",
   "app/src/components/agent/files-": "Files",
   "app/src/components/agent/agent-files/": "Files",

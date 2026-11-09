@@ -121,3 +121,53 @@
     animation: browser-live-fade-out 100ms linear forwards;
   }
 }
+
+/* File comments waiting in the composer, and their pills in a sent bubble.
+   A chip slides up and fades in; keyboard-free pointer feedback only. */
+.citation-row {
+  scrollbar-width: none;
+}
+.citation-row::-webkit-scrollbar {
+  display: none;
+}
+.citation-row-fade {
+  mask-image: linear-gradient(90deg, var(--ht-ink) calc(100% - 24px), transparent);
+}
+.citation-chip {
+  transition:
+    opacity var(--ht-duration-fast) var(--ht-easing-entrance),
+    transform var(--ht-duration-fast) var(--ht-easing-entrance);
+  @starting-style {
+    opacity: 0;
+    transform: translateY(4px);
+  }
+}
+.citation-chip[data-hot] {
+  --tw-ring-color: var(--ht-ink);
+}
+.citation-press {
+  transition: transform var(--ht-duration-press) var(--ht-easing-entrance);
+}
+.citation-press:active {
+  transform: scale(0.97);
+}
+@media (hover: hover) and (pointer: fine) {
+  .citation-chip:not([data-hot]):hover {
+    --tw-ring-color: var(--ht-ink-muted);
+  }
+  .citation-chip button:last-child:hover {
+    background: var(--ht-hover);
+    color: var(--ht-ink);
+  }
+}
+@media (prefers-reduced-motion: reduce) {
+  .citation-chip {
+    transition-property: opacity;
+    @starting-style {
+      transform: none;
+    }
+  }
+  .citation-press {
+    transition: none;
+  }
+}

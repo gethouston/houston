@@ -77,9 +77,10 @@
   "chat-attachment-message": {
     "surfaces": [
       "Chat",
+      "Files",
       "Skills"
     ],
-    "fileCount": 2
+    "fileCount": 3
   },
   "chat-conversation": {
     "surfaces": [
@@ -95,7 +96,7 @@
   },
   "chat-message": {
     "surfaces": [
-      "app/src/components",
+      "Files",
       "ui/chat (internal)"
     ],
     "fileCount": 4
@@ -221,11 +222,12 @@
       "ui/agent (library)",
       "ui/board (library)",
       "ui/chat (library)",
+      "ui/pdf (library)",
       "ui/review (library)",
       "ui/routines (library)",
       "ui/store (library)"
     ],
-    "fileCount": 161
+    "fileCount": 163
   },
   "core-button-group": {
     "surfaces": [
@@ -326,7 +328,7 @@
       "app/src/components",
       "ui/store (library)"
     ],
-    "fileCount": 35
+    "fileCount": 34
   },
   "core-dropdown-menu": {
     "surfaces": [
@@ -345,7 +347,7 @@
       "ui/routines (library)",
       "ui/store (library)"
     ],
-    "fileCount": 33
+    "fileCount": 34
   },
   "core-empty": {
     "surfaces": [
@@ -466,9 +468,10 @@
       "App shell",
       "ui/board (library)",
       "ui/chat (library)",
+      "ui/pdf (library)",
       "ui/routines (library)"
     ],
-    "fileCount": 10
+    "fileCount": 11
   },
   "core-progress": {
     "surfaces": [
@@ -483,7 +486,7 @@
       "ui/chat (library)",
       "ui/layout (library)"
     ],
-    "fileCount": 6
+    "fileCount": 5
   },
   "core-select": {
     "surfaces": [
@@ -506,9 +509,10 @@
     "surfaces": [
       "App shell",
       "Organization",
-      "app/src/components"
+      "app/src/components",
+      "ui/pdf (library)"
     ],
-    "fileCount": 5
+    "fileCount": 6
   },
   "core-skeleton": {
     "surfaces": [
@@ -566,7 +570,7 @@
       "app/src/components",
       "ui/routines (library)"
     ],
-    "fileCount": 9
+    "fileCount": 10
   },
   "core-tabs": {
     "surfaces": [
@@ -596,13 +600,14 @@
     "surfaces": [
       "Activity",
       "App shell",
+      "Files",
       "app/src/components",
       "ui/board (library)",
       "ui/chat (library)",
       "ui/layout (library)",
       "ui/routines (library)"
     ],
-    "fileCount": 16
+    "fileCount": 18
   },
   "core-verified-badge": {
     "surfaces": [

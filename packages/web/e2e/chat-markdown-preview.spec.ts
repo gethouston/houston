@@ -1,4 +1,5 @@
 import { FAKE_HOST_URL } from "@houston/fake-host";
+import { FOLLOW_UP_PLACEHOLDER } from "./support/composer";
 import { expect, test } from "./support/fixtures";
 
 /**
@@ -8,12 +9,12 @@ import { expect, test } from "./support/fixtures";
  * every link destination through micromark's `normalizeUri`, so a name with a
  * space in it reaches the `a` handler as `Tropical%20Food%20-%20….md`. Handed
  * to the host's download route verbatim that names a file which does not
- * exist, so the preview dialog opened straight into "Couldn't load the file"
+ * exist, so the preview opened straight into "Couldn't load the file"
  * and titled itself with the escaped text.
  *
  * Seeded through `/__test__/chat-history` + the files import route, so this
  * runs the REAL pipeline end to end: history → Streamdown → the `a` override
- * in `ui/chat` → `useOpenAgentHref` → the download route → the dialog.
+ * in `ui/chat` → `useOpenAgentHref` → the download route → the panel.
  */
 
 const MISSION_ID = "act-product-1231";
@@ -166,7 +167,7 @@ test("a markdown file whose name has spaces previews as rendered prose (PRODUCT-
   await expect(pill).toBeVisible({ timeout: 15_000 });
   await pill.click();
 
-  const dialog = page.getByRole("dialog");
+  const dialog = page.getByRole("region", { name: `Preview of ${FILE_NAME}` });
   await expect(dialog).toBeVisible();
 
   // The title is the DECODED name — the regression showed "%20" here.
@@ -182,7 +183,7 @@ test("a markdown file whose name has spaces previews as rendered prose (PRODUCT-
   await expect(dialog.getByText("# Estrategia Integral")).toHaveCount(0);
 });
 
-test("previewed markdown never overflows the dialog (PRODUCT-1231)", async ({
+test("previewed markdown never overflows the panel (PRODUCT-1231)", async ({
   page,
   request,
 }) => {
@@ -191,13 +192,12 @@ test("previewed markdown never overflows the dialog (PRODUCT-1231)", async ({
   await page.getByText("Estrategia").first().click();
   await page.getByRole("button", { name: LABEL }).click();
 
-  const dialog = page.getByRole("dialog");
+  const dialog = page.getByRole("region", { name: `Preview of ${FILE_NAME}` });
   await expect(dialog).toBeVisible();
   await expect(dialog.locator("table")).toBeVisible();
 
-  // Nothing inside the dialog may paint past its own box. The dialog is a
-  // grid; before the fix an unbreakable word and a nowrap title blew the
-  // track out past the surface's max-width and the content bled onto the page.
+  // Nothing inside the panel may paint past its own box: an unbreakable word
+  // or a nowrap title must not blow the column out onto the chat.
   const overflow = await dialog.evaluate((root) => {
     const box = root.getBoundingClientRect();
     const escapees: string[] = [];
@@ -222,7 +222,7 @@ test("previewed markdown never overflows the dialog (PRODUCT-1231)", async ({
   expect(overflow.width).toBeLessThanOrEqual(overflow.viewport);
 });
 
-test("the preview grows to full screen and shrinks back (PRODUCT-1231)", async ({
+test("the preview takes the whole row and gives the chat back (PRODUCT-1231)", async ({
   page,
   request,
 }) => {
@@ -231,39 +231,30 @@ test("the preview grows to full screen and shrinks back (PRODUCT-1231)", async (
   await page.getByText("Estrategia").first().click();
   await page.getByRole("button", { name: LABEL }).click();
 
-  const dialog = page.getByRole("dialog");
-  await expect(dialog.locator("table")).toBeVisible();
-  const compact = (await dialog.boundingBox())?.width ?? 0;
+  const panel = page.getByRole("region", { name: `Preview of ${FILE_NAME}` });
+  await expect(panel.locator("table")).toBeVisible();
+  const beside = (await panel.boundingBox())?.width ?? 0;
+  const composer = page.getByPlaceholder(FOLLOW_UP_PLACEHOLDER);
+  await expect(composer).toBeVisible();
 
-  // A long document is unreadable through a 60vh porthole, so the reader can
-  // claim the viewport — and get the small window back.
-  // Poll on the way OUT too, for the same reason the shrink half below does:
-  // `DialogContent` carries `duration-200` with CSS's default
-  // `transition-property: all`, so `max-width` interpolates from the compact
-  // width. The toggle flips on frame 0 of that animation, and a single sample
-  // taken right after it reads the START value, not the settled one.
-  await dialog.getByRole("button", { name: "Expand" }).click();
-  await expect(dialog.getByRole("button", { name: "Shrink" })).toBeVisible();
-  // Poll rather than sample once, same as the shrink leg below: the toggle
-  // flips before the 200ms width transition has settled, so a single sample
-  // can still read the compact width.
+  // A long document wants the room: the chat steps out, then comes back.
+  await panel.getByRole("button", { name: "Expand" }).click();
+  await expect(composer).toBeHidden();
   await expect
-    .poll(async () => (await dialog.boundingBox())?.width ?? 0)
-    .toBeGreaterThan(compact);
-
-  // Expanding must not clip what it was expanded to show: the frame still
-  // scrolls, it is only taller.
-  const scrollable = await dialog
+    .poll(async () => (await panel.boundingBox())?.width ?? 0)
+    .toBeGreaterThan(beside);
+  // Expanding must not clip what it was expanded to show: the body scrolls.
+  const scrollable = await panel
     .locator("div.overflow-y-auto")
     .first()
     .evaluate((el) => getComputedStyle(el).overflowY);
   expect(scrollable).toBe("auto");
 
-  // Poll rather than sample once: the surface animates back over the dialog's
-  // 200ms transition, so the toggle flips before the box has settled.
-  await dialog.getByRole("button", { name: "Shrink" }).click();
-  await expect(dialog.getByRole("button", { name: "Expand" })).toBeVisible();
-  await expect
-    .poll(async () => Math.round((await dialog.boundingBox())?.width ?? 0))
-    .toBe(Math.round(compact));
+  await panel.getByRole("button", { name: "Show the chat beside it" }).click();
+  await expect(composer).toBeVisible();
+
+  // Esc closes the panel; the chat stays.
+  await page.keyboard.press("Escape");
+  await expect(panel).toBeHidden();
+  await expect(composer).toBeVisible();
 });

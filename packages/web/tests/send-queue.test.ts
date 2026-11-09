@@ -8,6 +8,10 @@ import {
 } from "@houston/engine-adapter/send-queue";
 import { conversationStore, conversationVm } from "@houston/engine-adapter/vm";
 import { conversationScope } from "@houston/sdk";
+import {
+  decodeCitationsEnvelopes,
+  encodeCitationsEnvelope,
+} from "@houston/wire-types";
 import { beforeEach, describe, expect, it } from "vitest";
 
 /**
@@ -311,5 +315,41 @@ describe("removeQueuedSend", () => {
 
     setRunning(false);
     expect(dispatched[0]?.prompt).toBe("keep me");
+  });
+});
+
+describe("file comments on held sends", () => {
+  const cited = (words: string, n: number, comment: string) =>
+    `${words}\n\n${encodeCitationsEnvelope(
+      [
+        {
+          n,
+          filePath: "deck.pptx",
+          fileName: "deck.pptx",
+          page: n + 2,
+          kind: "area",
+          comment,
+        },
+      ],
+      `[comment ${n}]`,
+    )}`;
+
+  it("shows the words, and keeps every comment through the merged flush", () => {
+    setRunning(true);
+    maybeQueueSend(AGENT, req(key, cited("first", 1, "a")), dispatch);
+    maybeQueueSend(AGENT, req(key, cited("", 1, "only comment")), dispatch);
+    expect(queuedOf(key)?.map((q) => q.text)).toEqual([
+      "first",
+      "only comment",
+    ]);
+    setRunning(false);
+    flushQueuedSends(AGENT, key, dispatch);
+    expect(dispatched).toHaveLength(1);
+    const merged = decodeCitationsEnvelopes(dispatched[0]?.prompt ?? "");
+    expect(merged?.text).toBe("first");
+    expect(merged?.citations.map((c) => c.comment)).toEqual([
+      "a",
+      "only comment",
+    ]);
   });
 });

@@ -22,11 +22,19 @@
  */
 
 import { decodeAttachmentMessage } from "./attachment-message.ts";
+import { decodeCitedMessage } from "./cited-message.ts";
 import { decodeInteractionAnswersMessage } from "./interaction-answers-message.ts";
 import { decodeSkillMessage } from "./skill-message.ts";
 
 export function messagePreviewText(body: string | null | undefined): string {
   if (!body) return "";
+  // File comments preview as the words around them, never the list. The
+  // decoded words hold no complete envelope, so this recursion ends.
+  const cited = decodeCitedMessage(body);
+  if (cited)
+    return (
+      messagePreviewText(cited.text) || cited.skill?.description.trim() || ""
+    );
 
   const skill = decodeSkillMessage(body);
   if (skill) {

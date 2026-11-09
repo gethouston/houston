@@ -2,7 +2,6 @@ import { AIBoard } from "@houston-ai/board";
 import type { FeedItem } from "@houston-ai/chat";
 import { useCallback, useMemo, useRef } from "react";
 import { useTranslation } from "react-i18next";
-import { useOpenAgentHref } from "../../hooks/use-open-agent-file";
 import { useOpenConversationFeed } from "../../hooks/use-open-conversation-feed";
 import { useStartedMissionSummary } from "../../hooks/use-started-mission-summary";
 import { useVisualViewportInset } from "../../hooks/use-visual-viewport-inset";
@@ -52,7 +51,6 @@ export function AssistantChat({ handle }: { handle: AssistantHandle }) {
   const agent = useMemo(() => assistantAgent(handle, t("title")), [handle, t]);
   const path = agent.folderPath;
 
-  const openHref = useOpenAgentHref(path);
   const queuedLabels = useQueuedMessageLabels();
   const { labels, cardLabels, composerLabels } = useBoardLabels("assistant");
   const { drafts, onDraftChange } = useBoardDrafts();
@@ -149,7 +147,7 @@ export function AssistantChat({ handle }: { handle: AssistantHandle }) {
         onStopSession={send.stopSession}
         drafts={drafts}
         onDraftChange={onDraftChange}
-        onOpenLink={openHref}
+        onOpenLink={panel.openHref}
         onNotice={(message) => addToast({ title: message })}
         labels={labels}
         composerAsksOpeningWhenEmpty

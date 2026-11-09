@@ -8,7 +8,6 @@ import { useUsageAccrual } from "./hooks/use-usage-accrual";
 import { IdentityKeyedApp } from "./identity-keyed-app";
 import { queryClient } from "./lib/query-client";
 import "./styles/globals.css";
-import { AgentFilePreviewHost } from "./components/agent-file-preview-host";
 import { EngineGate } from "./components/shell/engine-gate";
 import { LanguageGate } from "./components/shell/language-gate";
 import { QueryPersistenceProvider } from "./components/shell/query-persistence-provider";
@@ -176,10 +175,6 @@ createRoot(rootElement).render(
               <QueryPersistenceProvider>
                 <LanguageGate>
                   <IdentityKeyedApp />
-                  {/* Global workspace-file preview (chat file clicks) — a
-                      sibling of App so it overlays every screen, onboarding
-                      included. Mirrored in packages/web/src/app-tree.tsx. */}
-                  <AgentFilePreviewHost />
                 </LanguageGate>
               </QueryPersistenceProvider>
             </EngineGate>

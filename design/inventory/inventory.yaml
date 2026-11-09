@@ -36,7 +36,7 @@
 #   a11y     roles / labels / focus expectations the surface must honor
 #   since    inventory version this component first appeared in
 
-version: 152
+version: 153
 
 components:
   - id: agent-delegation-settings
@@ -2741,3 +2741,46 @@ components:
       Personal included, which needs no invite.
     a11y: The reason is text, the action a visible labelled button.
     since: 139
+  - id: file-preview-panel
+    title: File preview panel
+    purpose: Show a workspace file beside the chat it was opened from, and take comments on its pages for the agent.
+    anatomy: [header, file-name, status, page-counter, zoom, download, expand-toggle, close, thumbnail-rail, pages, resize-grip, hint, comment-editor, ready-bar, fallback-card]
+    states: [converting, ready, updated, failed, unsupported, error, commenting, no-chat]
+    variants: [desktop-side-card, desktop-expanded, phone-sheet]
+    behavior: >-
+      Every file opener (chat file cards, turn summaries, prose file links and
+      the Files tab) opens the one panel; another file replaces its content.
+      On the desktop it is a card beside the chat with a draggable grip, can
+      take the whole row, and closes with its X or Esc; below the breakpoint
+      it is a full-screen sheet in the navigation stack, so back closes it.
+      Office files show their converted PDF and plain PDFs render through the
+      same page viewer, with the thumbnail rail (a strip under the counter on
+      the phone). When the agent rewrites the file the pages reload in place
+      on the same page and the header says Updated. Opened from a chat, a
+      text selection or a drawn area (a long press on touch) asks what the
+      agent should change; without a chat the hint says to open the file from
+      one. A failed conversion keeps Download and offers Try again.
+    a11y: >-
+      The panel is a labelled region; every icon button has a name and a
+      tooltip; the grip is a focusable separator moved by the arrow keys; the
+      comment popover traps focus and gives it back; nothing animates on Esc.
+    since: 153
+  - id: file-comment
+    title: File comment
+    purpose: A comment on a region of a previewed file, waiting in the composer and then shown on the sent message.
+    anatomy: [number, crop-thumbnail, location, quote, comment, remove-action, page-mark]
+    states: [draft, hot, detached, sent]
+    variants: [composer-chip, sent-pill, page-mark]
+    behavior: >-
+      The SDK citations module keeps each chat draft's comments (up to ten),
+      so they survive switching chats and clear only once a send carrying
+      them is accepted. Chip and mark share a number; hovering either lights
+      the other, a chip scrolls the preview to its mark, and a mark reopens
+      its comment to edit or delete. A send folds them into the message with
+      each region's crop uploaded for the agent; the sent bubble decodes them
+      into pills that open the file at that page. A comment whose page a
+      rewrite removed is flagged, not dropped.
+    a11y: >-
+      The chip row is a labelled region; each chip and pill is a button named
+      with its location and comment; remove has its own name.
+    since: 153

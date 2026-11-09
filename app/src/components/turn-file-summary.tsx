@@ -21,14 +21,20 @@ import { useActionBrandResolver } from "./use-action-brand-resolver";
 interface TurnFileSummaryProps {
   items: TurnSummaryItem[];
   agentPath: string;
+  /** The chat the summary sits in (its draft key). */
+  draftKey?: string | null;
 }
 
-export function TurnFileSummary({ items, agentPath }: TurnFileSummaryProps) {
+export function TurnFileSummary({
+  items,
+  agentPath,
+  draftKey,
+}: TurnFileSummaryProps) {
   const { t } = useTranslation("chat");
   const { capabilities } = useCapabilities();
   const [openUpdates, setOpenUpdates] = useState(true);
   const [openFiles, setOpenFiles] = useState(false);
-  const { openFile } = useOpenAgentFile(agentPath);
+  const { openFile } = useOpenAgentFile(agentPath, draftKey);
   const agent = useAgentStore((s) =>
     s.agents.find((candidate) => candidate.folderPath === agentPath),
   );

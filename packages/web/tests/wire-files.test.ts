@@ -240,6 +240,46 @@ test("saveAttachments targets every batch without a selected agent", async () =>
   ]);
 });
 
+test("composeCitations posts each crop to the attachments route and folds the paths in", async () => {
+  stubFetch(() => json(200, { paths: ["uploads/deck-slide3-x.png"] }));
+  const c = clientWithAgent("b1");
+  c.setActiveOrg(ORG);
+  const added = c.engineSdk.citations.add("conv-1", {
+    filePath: "deck.pptx",
+    fileName: "deck.pptx",
+    page: 3,
+    pageCount: 8,
+    anchor: { kind: "area", box: { x: 10, y: 20, w: 30, h: 40 } },
+    comment: "Brand green",
+    cropBase64: "iVBO",
+  });
+  if (!added.ok) throw new Error("add refused");
+  const name = `deck-slide3-${added.citation.id.slice(0, 6)}.png`;
+
+  const sent = await c.composeCitations("a 1", "conv-1", "Fix it");
+
+  expect(calls).toHaveLength(1);
+  const [post] = calls;
+  expect(`${post.method} ${post.url}`).toBe(
+    `POST ${BASE}/agents/a%201/attachments`,
+  );
+  expect(post.body).toBe(
+    JSON.stringify({
+      scopeId: "conv-1",
+      files: [{ name, contentBase64: "iVBO" }],
+    }),
+  );
+  expectGatewayHeaders(post);
+  expect(sent).toContain("   Crop: uploads/deck-slide3-x.png]");
+});
+
+test("composeCitations sends nothing for a draft without comments", async () => {
+  await expect(client().composeCitations("a1", "conv-2", "hi")).resolves.toBe(
+    "hi",
+  );
+  expect(calls).toEqual([]);
+});
+
 // ---- what stayed in the adapter ----
 
 test("the binary reads still ride cpFetch and answer a Blob", async () => {

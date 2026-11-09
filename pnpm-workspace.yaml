@@ -20,6 +20,11 @@ onlyBuiltDependencies:
 # days old.
 minimumReleaseAge: 10080
 
+# pdfjs-dist (ui/pdf) lists a Node canvas binding as optional; the browser
+# build never loads it, so it is not installed.
+ignoredOptionalDependencies:
+  - "@napi-rs/canvas"
+
 # Drop after 2026-11-16, once Claude Agent SDK 0.3.321 is seven days old.
 minimumReleaseAgeExclude:
   - "@anthropic-ai/claude-agent-sdk"

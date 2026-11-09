@@ -3,6 +3,14 @@
 Every `version` bump in `inventory.yaml` needs a matching entry here (enforced by
 `pnpm check:parity`). Newest first. Use `## vN` headings.
 
+## v153 - 2026-11-09
+
+Files open in a preview panel beside the chat (a full-screen sheet on the
+phone) instead of a dialog, with pages, thumbnails, zoom and a resize grip.
+Opened from a chat, a page takes comments for the agent: they wait as chips
+in the composer, ride the next send with crops of their regions, and show as
+pills on the sent message.
+
 ## v152 - 2026-11-04
 
 Settings includes a Next-step suggestions switch on phone and desktop. It

@@ -57,6 +57,9 @@ export const useUIStore = create<UIState>()(
           // Keep the per-machine layout prefs (not identity-scoped).
           sidebarCollapsed: s.sidebarCollapsed,
           chatWide: s.chatWide,
+          previewWidth: s.previewWidth,
+          previewRail: s.previewRail,
+          previewHintSeen: s.previewHintSeen,
         }));
       },
     }),
@@ -68,6 +71,9 @@ export const useUIStore = create<UIState>()(
       partialize: (state) => ({
         sidebarCollapsed: state.sidebarCollapsed,
         chatWide: state.chatWide,
+        previewWidth: state.previewWidth,
+        previewRail: state.previewRail,
+        previewHintSeen: state.previewHintSeen,
       }),
     },
   ),

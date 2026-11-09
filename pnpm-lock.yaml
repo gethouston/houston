@@ -192,6 +192,9 @@ importers:
       '@houston-ai/layout':
         specifier: workspace:*
         version: link:../ui/layout
+      '@houston-ai/pdf':
+        specifier: workspace:*
+        version: link:../ui/pdf
       '@houston-ai/review':
         specifier: workspace:*
         version: link:../ui/review
@@ -840,6 +843,9 @@ importers:
       '@houston-ai/layout':
         specifier: workspace:*
         version: link:../../ui/layout
+      '@houston-ai/pdf':
+        specifier: workspace:*
+        version: link:../../ui/pdf
       '@houston-ai/review':
         specifier: workspace:*
         version: link:../../ui/review
@@ -1031,6 +1037,9 @@ importers:
       '@houston-ai/core':
         specifier: workspace:*
         version: link:../core
+      '@houston/wire-types':
+        specifier: workspace:*
+        version: link:../../packages/wire-types
       '@radix-ui/react-use-controllable-state':
         specifier: 1.2.3
         version: 1.2.3(@types/react@19.2.17)(react@19.2.7)
@@ -1196,6 +1205,28 @@ importers:
       jsdom:
         specifier: 29.1.1
         version: 29.1.1(@noble/hashes@2.2.0)
+
+  ui/pdf:
+    dependencies:
+      '@houston-ai/core':
+        specifier: workspace:*
+        version: link:../core
+      lucide-react:
+        specifier: 0.577.0
+        version: 0.577.0(react@19.2.7)
+      pdfjs-dist:
+        specifier: 6.4.299
+        version: 6.4.299
+      react:
+        specifier: ^19.0.0
+        version: 19.2.7
+      react-dom:
+        specifier: ^19.0.0
+        version: 19.2.7(react@19.2.7)
+    devDependencies:
+      tsx:
+        specifier: 4.23.0
+        version: 4.23.0
 
   ui/review:
     dependencies:
@@ -7136,6 +7167,10 @@ packages:
   pathe@2.0.3:
     resolution: {integrity: sha512-WUjGcAqP1gQacoQe+OBJsFA7Ld4DyXuUIjZ5cc75cLHvJ7dtNsTugphxIADwspS+AraAUePCKrSVtPLFj/F88w==}
 
+  pdfjs-dist@6.4.299:
+    resolution: {integrity: sha512-AVl138zALtfaAPvADulE0PZThbYzCBS79nL4pOSL/6Sm/4AH5A21BD9VHt97OlCuzJuCpmeZtAtkinisF4Vb1g==}
+    engines: {node: '>=22.13.0 || >=24'}
+
   pend@1.2.0:
     resolution: {integrity: sha512-F3asv42UuXchdzt+xXqfW1OGlVBe+mxa2mqI0pg5yAHZPvFmY3Y6drSf/GQ1A86WgWEN9Kzh/WrgKa6iGcHXLg==}
 
@@ -8441,6 +8476,9 @@ packages:
 
   zwitch@2.0.4:
     resolution: {integrity: sha512-bXE4cR/kVZhKZX/RjPEflHaKVhUVl85noU3v6b8apfQEc1x4A+zBxjZ4lN8LqGd6WZ3dl98pY4o717VFmoPp+A==}
+
+ignoredOptionalDependencies:
+  - '@napi-rs/canvas'
 
 snapshots:
 
@@ -15176,6 +15214,8 @@ snapshots:
       util: 0.10.4
 
   pathe@2.0.3: {}
+
+  pdfjs-dist@6.4.299: {}
 
   pend@1.2.0: {}
 

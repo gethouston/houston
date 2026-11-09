@@ -12,7 +12,11 @@ import { isUserVisibleFilePath } from "../lib/user-visible-files";
  * callbacks for rendering clickable file cards on Write/Edit tool results
  * and an aggregated end-of-turn file summary.
  */
-export function useFileToolRenderer(agentPath: string) {
+export function useFileToolRenderer(
+  agentPath: string,
+  /** The chat these render in: a file opened from it takes comments there. */
+  draftKey: string | null,
+) {
   const isSpecialTool = useCallback(
     (toolName: string) => isFileWriteTool(toolName),
     [],
@@ -29,12 +33,16 @@ export function useFileToolRenderer(agentPath: string) {
         <div key={index} className="space-y-2">
           <ToolBlock tool={tool} isActive={false} />
           {filePath && !isError && isUserVisibleFilePath(filePath) && (
-            <FileCard filePath={filePath} agentPath={agentPath} />
+            <FileCard
+              filePath={filePath}
+              agentPath={agentPath}
+              draftKey={draftKey}
+            />
           )}
         </div>
       );
     },
-    [agentPath],
+    [agentPath, draftKey],
   );
 
   const renderTurnSummary = useCallback(
@@ -45,9 +53,15 @@ export function useFileToolRenderer(agentPath: string) {
         summary.fileChanges,
       );
       if (items.length === 0) return null;
-      return <TurnFileSummary items={items} agentPath={agentPath} />;
+      return (
+        <TurnFileSummary
+          items={items}
+          agentPath={agentPath}
+          draftKey={draftKey}
+        />
+      );
     },
-    [agentPath],
+    [agentPath, draftKey],
   );
 
   return useMemo(

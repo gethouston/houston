@@ -75,6 +75,14 @@ export * from "./modules/billing/seat-refusal";
 export * from "./modules/billing/trigger-skip-notice";
 export * from "./modules/billing/upgrade-model";
 export {
+  type AddCitationResult,
+  CITATION_LIMIT,
+  type CitationsModule,
+  type DecodedCitations,
+  type DraftCitation,
+  type NewCitation,
+} from "./modules/citations";
+export {
   DelegationCommand,
   type DelegationCommandType,
   DelegationHttpError,

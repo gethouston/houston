@@ -3,7 +3,7 @@ import {
   setPanelOwner,
 } from "../../components/shell/detail-panel-owners.ts";
 import { navigated } from "../../lib/nav-stack.ts";
-import { noChat } from "./nav-slice.ts";
+import { noChat, noPreview } from "./nav-slice.ts";
 import type { UISliceCreator } from "./state.ts";
 
 /** The shell detail panel, the activity panel, and the callbacks the
@@ -113,9 +113,12 @@ export const createPanelActions: UISliceCreator<PanelActions> = (set) => ({
       // closes any pushed chat — the two chat surfaces must never
       // coexist, and a resize dance could otherwise stack them.
       if (missionPanelOpen === s.missionPanelOpen) return partial;
+      // The preview beside a chat shuts with it.
       return navigated(
         s,
-        missionPanelOpen ? { ...partial, ...noChat } : partial,
+        missionPanelOpen
+          ? { ...partial, ...noChat }
+          : { ...partial, ...noPreview },
         missionPanelOpen ? "push" : "retreat",
       );
     }),
@@ -124,7 +127,9 @@ export const createPanelActions: UISliceCreator<PanelActions> = (set) => ({
       const partial = { missionPanelOwners: [], missionPanelOpen: false };
       // Same retreat as the last owner's release: closing the panel is a
       // "back" when the previous entry is this view without it.
-      return s.missionPanelOpen ? navigated(s, partial, "retreat") : partial;
+      return s.missionPanelOpen
+        ? navigated(s, { ...partial, ...noPreview }, "retreat")
+        : partial;
     }),
   setOnBoardNavigate: (onBoardNavigate) => set({ onBoardNavigate }),
   setOnBoardOpen: (onBoardOpen) => set({ onBoardOpen }),

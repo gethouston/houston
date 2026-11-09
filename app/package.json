@@ -21,6 +21,7 @@
     "@houston-ai/core": "workspace:*",
     "@houston-ai/events": "workspace:*",
     "@houston-ai/layout": "workspace:*",
+    "@houston-ai/pdf": "workspace:*",
     "@houston-ai/review": "workspace:*",
     "@houston-ai/routines": "workspace:*",
     "@houston-ai/skills": "workspace:*",

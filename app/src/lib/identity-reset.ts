@@ -7,7 +7,8 @@ import { useInteractionDraftStore } from "../stores/interaction-drafts";
 import { useUIStore } from "../stores/ui";
 import { useWorkspaceStore } from "../stores/workspaces";
 import { sliceCoverage } from "./all-conversations-coverage";
-import { setActiveOrg } from "./engine";
+import { citationsFacade } from "./citations-facade";
+import { isEngineReady, setActiveOrg } from "./engine";
 import { resetQueryCacheForIdentityChange } from "./identity-cache-reset";
 import { resetPlanSessionForIdentityChange } from "./plan-session";
 import { queryClient } from "./query-client";
@@ -46,6 +47,10 @@ export function resetForIdentityChange(): void {
   useWorkspaceStore.getState().reset();
   useUIStore.getState().reset();
   useDraftStore.getState().reset();
+  // File comments carry crops of the outgoing person's files. They live in
+  // the engine's SDK, which outlives a token swap; before an engine exists
+  // there are none to drop.
+  if (isEngineReady()) citationsFacade.module().clearAll();
   useInteractionDraftStore.getState().reset();
   useAgentProvisioningStore.getState().reset();
   useLinkedInPosts.getState().reset();

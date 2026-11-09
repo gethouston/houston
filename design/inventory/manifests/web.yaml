@@ -13,7 +13,7 @@
 
 surface: web
 enforced: true
-inventoryVersion: 152
+inventoryVersion: 153
 
 components:
   manager-avatar:
@@ -386,3 +386,9 @@ components:
     status: partial
     ref: "app/src/components/shell/org-locked-card.tsx via plan-composer-state.tsx; write gating through hooks/use-org-write-lock.ts and shell/org-locked-fieldset.tsx; moving out through agent-settings/agent-settings-org-move.tsx over SDK canMoveAgentsOut and moveOutDestinations"
     notes: Renders in app and is not extracted as a reusable ui component.
+  file-preview-panel:
+    status: implemented
+    ref: "app/src/components/file-preview/ (panel, header, slot, pdf body) over ui/pdf (@houston-ai/pdf) pages, rail and comment editor"
+  file-comment:
+    status: implemented
+    ref: "ui/chat citation-chips.tsx and user-citation-message.tsx, ui/pdf page-marks.tsx; state in packages/sdk/src/modules/citations"

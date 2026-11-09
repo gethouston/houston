@@ -92,4 +92,25 @@ describe("board keys", () => {
     assert.equal(press("ArrowDown", swatch), false);
     assert.equal(moved, 0);
   });
+
+  it("an arrow on the file preview's pages scrolls them, not the chat", () => {
+    useUIStore.setState({ missionPanelOpen: true });
+    const scrolled: number[] = [];
+    const pane = {
+      clientHeight: 500,
+      scrollBy: ({ top }: { top: number }) => scrolled.push(top),
+    };
+    const g = globalThis as { document?: unknown };
+    const previous = g.document;
+    g.document = { querySelector: () => pane, activeElement: null };
+    try {
+      const pages = node([["[tabindex]"], ["[data-file-preview]"]]);
+      assert.equal(press("ArrowDown", pages), false);
+      assert.deepEqual(scrolled, []);
+      assert.equal(press("ArrowDown", BODY), true);
+      assert.deepEqual(scrolled, [200]);
+    } finally {
+      g.document = previous;
+    }
+  });
 });

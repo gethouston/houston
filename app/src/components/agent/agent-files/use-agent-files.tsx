@@ -1,5 +1,5 @@
 import type { FileEntry, FilesBrowserProps } from "@houston-ai/agent";
-import { type ReactNode, useCallback, useState } from "react";
+import { type ReactNode, useCallback } from "react";
 import { useTranslation } from "react-i18next";
 import {
   useFiles,
@@ -11,10 +11,9 @@ import { useMoveWithConflict } from "../../../hooks/use-move-with-conflict";
 import { useOrgWriteLock } from "../../../hooks/use-org-write-lock";
 import { useRenameWithConflict } from "../../../hooks/use-rename-with-conflict";
 import { newEngineActive } from "../../../lib/engine";
-import { sharedBytesKey } from "../../../lib/file-bytes-cache";
 import { tauriFiles } from "../../../lib/tauri";
 import type { Agent } from "../../../lib/types";
-import { FilePreviewDialog } from "../../file-preview-dialog";
+import { useUIStore } from "../../../stores/ui";
 import { MoveConflictDialog } from "../../move-conflict-dialog";
 import { useFilesDeleteConfirm } from "../files-delete-confirm";
 import { buildBrowserLabels, buildMenuLabels } from "../files-tab-labels";
@@ -57,7 +56,7 @@ export interface AgentFiles {
     reveal?: () => void;
     downloadAll?: () => void;
   };
-  /** The hidden upload inputs + preview / move-conflict / delete dialogs.
+  /** The hidden upload inputs + move-conflict / delete dialogs.
    *  Render once, anywhere inside the surface. */
   overlays: ReactNode;
   /** `useFiles`' error, so the surface can SAY the read failed rather than
@@ -75,7 +74,7 @@ export function useAgentFiles(
 ): AgentFiles {
   const { t, i18n } = useTranslation("agents");
   const { osDir, canUseLocalFiles } = useLocalFilesAccess(agent);
-  const [preview, setPreview] = useState<FileEntry | null>(null);
+  const setFilePreview = useUIStore((s) => s.setFilePreview);
   const browserLabels = buildBrowserLabels(t);
   const menuLabels = buildMenuLabels(t, canUseLocalFiles);
   const path = agent.folderPath;
@@ -120,7 +119,14 @@ export function useAgentFiles(
     onOpen: (file) =>
       canUseLocalFiles && osDir
         ? tauriFiles.open(osDir, file.path)
-        : setPreview(file),
+        : setFilePreview({
+            agentPath: path,
+            filePath: file.path,
+            fileName: file.name,
+            // The Files tab belongs to no conversation, so the preview takes
+            // no comments here (it says to open the file from a chat).
+            chat: null,
+          }),
     onReveal:
       canUseLocalFiles && osDir
         ? (file) => tauriFiles.reveal(osDir, file.path)
@@ -161,17 +167,6 @@ export function useAgentFiles(
   const overlays = (
     <>
       {inputs}
-      <FilePreviewDialog
-        agentPath={path}
-        filePath={preview?.path ?? null}
-        fileName={preview?.name ?? ""}
-        // Same cache key the grid thumbnail used, so a previewed file opens
-        // from memory instead of downloading its bytes twice. Undefined for
-        // anything the grid never thumbnails, which then streams straight
-        // through instead of being held in the cache.
-        bytesCacheKey={preview ? sharedBytesKey(preview) : undefined}
-        onClose={() => setPreview(null)}
-      />
       <MoveConflictDialog
         name={move.pending?.name ?? null}
         onReplace={move.replace}

@@ -105,3 +105,27 @@ describe("messagePreviewText", () => {
     assert.equal(messagePreviewText(undefined), "");
   });
 });
+
+describe("messagePreviewText with file comments", () => {
+  it("previews the words, never the comment list", () => {
+    const envelope =
+      '<!--houston:citations [{"n":1}]-->\n[The user left comments]\n<!--/houston:citations-->';
+    assert.equal(
+      messagePreviewText(`Fix the deck\n\n${envelope}`),
+      "Fix the deck",
+    );
+  });
+});
+
+describe("messagePreviewText with a broken comments marker", () => {
+  it("keeps an opener with nothing after it as text", () => {
+    const body = "see <!--houston:citations oops";
+    assert.equal(messagePreviewText(body), body);
+  });
+
+  it("keeps a marker whose list never closes as text", () => {
+    const body =
+      'Fix <!--houston:citations [{"n":1}]-->\n[The user left comments]';
+    assert.equal(messagePreviewText(body), body);
+  });
+});

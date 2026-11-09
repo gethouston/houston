@@ -12,6 +12,7 @@ const entry = (fields: Partial<NavEntry>): NavEntry => ({
   chatAgentId: null,
   chatMissionId: null,
   panelOpen: false,
+  previewOpen: false,
   ...fields,
 });
 

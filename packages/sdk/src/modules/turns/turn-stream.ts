@@ -121,6 +121,13 @@ export interface StreamTurnOptions {
    */
   missionTitle?: { fallback: string; text: string };
   grants?: GrantableOperation[];
+  /**
+   * Called once, the moment the engine accepts this send (its 202, or the
+   * turn seen running after an ambiguous transport failure). Never called for
+   * a refused, stopped or lost send, so what the send carried stays the
+   * caller's to give back.
+   */
+  onAccepted?: () => void;
 }
 
 /**
@@ -395,7 +402,16 @@ export async function streamTurn(
     firstResponse,
     board,
   });
-  if (sent) sink.sendAccepted();
+  let acceptedOnce = false;
+  const noteAccepted = () => {
+    if (acceptedOnce) return;
+    acceptedOnce = true;
+    opts.onAccepted?.();
+  };
+  if (sent) {
+    sink.sendAccepted();
+    noteAccepted();
+  }
   // A teardown ends the sink at once: a history reload still out publishes
   // nothing while the rest of this turn unwinds.
   ac.signal.addEventListener("abort", () => sink.dispose(), { once: true });
@@ -464,6 +480,7 @@ export async function streamTurn(
         });
         sendOut = false;
         sink.sendAccepted(accepted.turnId);
+        noteAccepted();
       } catch (e) {
         sendOut = false;
         // A definitive failure (engine verdict / our abort) settles below.
@@ -472,6 +489,7 @@ export async function streamTurn(
         // Keep the subscription as the arbiter: evidence of the turn settles
         // it normally; a verdict window with no evidence fails it as lost.
         sink.sendMaybeAccepted();
+        sink.whenStarted(noteAccepted);
         sendVerdict = setTimeout(() => {
           if (sink.failUnlessStarted(SEND_LOST_MESSAGE)) ac.abort();
         }, opts.tuning?.sendVerdictMs ?? SEND_VERDICT_MS);

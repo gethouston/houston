@@ -23,6 +23,7 @@ const at = (viewMode: string, panelOpen = false): NavSourceFields => ({
   chatAgentId: null,
   chatMissionId: null,
   missionPanelOpen: panelOpen,
+  filePreview: null,
 });
 
 /** A source state sitting on `stack[index]`, ready for `navigated`. */
