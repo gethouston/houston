@@ -82,6 +82,24 @@ describe("citations envelope", () => {
     ).toEqual({ text: "see <!--houston:citations oops", citations: [second] });
   });
 
+  it("decodes long runs of openers, marker ends and newlines in linear time", () => {
+    const started = performance.now();
+    expect(
+      decodeCitationsEnvelopes("<!--houston:citations [".repeat(50_000)),
+    ).toBeNull();
+    expect(
+      decodeCitationsEnvelopes(
+        `<!--houston:citations []-->${"]-->".repeat(50_000)}`,
+      ),
+    ).toBeNull();
+    expect(
+      decodeCitationsEnvelopes(
+        `${"\n".repeat(100_000)}<!--houston:citations [`,
+      ),
+    ).toBeNull();
+    expect(performance.now() - started).toBeLessThan(1_000);
+  });
+
   it("prints list text on one line, capped and escaped", () => {
     expect(citationListText('  a "b"\n\n [c] <d>  ', 50)).toBe(
       'a \\"b\\" \\[c\\] \\<d\\>',

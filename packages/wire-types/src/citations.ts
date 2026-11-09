@@ -55,8 +55,7 @@ export const CITATION_COMMENT_MAX = 2000;
 
 const OPEN = "<!--houston:citations ";
 const CLOSE = "<!--/houston:citations-->";
-const ENVELOPE_RE =
-  /\n*<!--houston:citations (\[[\s\S]*?\])-->[\s\S]*?<!--\/houston:citations-->/g;
+const MARKER_END = "]-->";
 
 /** Wrap the model-facing `readable` list and its pill data in one envelope. */
 export function encodeCitationsEnvelope(
@@ -92,16 +91,38 @@ export function citationListText(text: string, max: number): string {
 export function decodeCitationsEnvelopes(
   text: string,
 ): { text: string; citations: SentCitation[] } | null {
-  if (!text.includes(OPEN)) return null;
+  // A scan, not a regex: the text is whatever the person or the model wrote,
+  // and a backtracking pattern goes quadratic on many openers or newlines.
+  // An envelope is the opener, a "[" marker ending at the first "]-->", then
+  // everything up to the first closer, plus the newlines just before it.
   const citations: SentCitation[] = [];
+  let stripped = "";
+  let from = 0;
   let found = false;
-  const stripped = text.replace(ENVELOPE_RE, (_all, json: string) => {
+  let at = text.indexOf(OPEN);
+  while (at !== -1) {
+    const jsonStart = at + OPEN.length;
+    if (text[jsonStart] !== "[") {
+      at = text.indexOf(OPEN, jsonStart);
+      continue;
+    }
+    // No marker end or closer after this opener means none after a later one.
+    const markerEnd = text.indexOf(MARKER_END, jsonStart + 1);
+    if (markerEnd === -1) break;
+    const close = text.indexOf(CLOSE, markerEnd + MARKER_END.length);
+    if (close === -1) break;
+    let start = at;
+    while (start > from && text[start - 1] === "\n") start--;
+    stripped += text.slice(from, start);
     found = true;
+    const json = text.slice(jsonStart, markerEnd + 1);
     const parsed = z.array(sentCitationSchema).safeParse(safeJson(json));
     if (parsed.success) citations.push(...parsed.data);
-    return "";
-  });
-  return found ? { text: stripped.trim(), citations } : null;
+    from = close + CLOSE.length;
+    at = text.indexOf(OPEN, from);
+  }
+  if (!found) return null;
+  return { text: (stripped + text.slice(from)).trim(), citations };
 }
 
 function safeJson(json: string): unknown {
