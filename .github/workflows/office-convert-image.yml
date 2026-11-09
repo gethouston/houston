@@ -1,17 +1,15 @@
 # Office Convert Image builds and publishes the stateless converter image.
 #
 # This workflow only builds and publishes the image. It does not touch Cloud Run
-# or the cluster. This repo is public, so a compromised third-party Action or
-# dependency here must not be able to reach production. The actual deploy happens
-# in the private gethouston/cloud repo, triggered by repository_dispatch below.
-# That handoff is the trust boundary.
+# or the cluster. The private gethouston/cloud repo deploys the dispatched digest
+# to staging. Production promotion uses staging's digest through a manual,
+# environment-gated cloud workflow. That handoff is the trust boundary.
 
 name: Office Convert Image
 
 on:
   push:
     branches: [main]
-    tags: ["office-convert-v*"]
   workflow_dispatch:
 
 concurrency:
@@ -25,6 +23,7 @@ env:
 
 jobs:
   build:
+    if: github.ref == 'refs/heads/main'
     environment: release-tokens
     name: Build & push office-convert
     runs-on: ubuntu-latest
@@ -39,7 +38,7 @@ jobs:
       - name: Determine whether to build
         id: gate
         run: |
-          if [ "$GITHUB_REF_TYPE" = "tag" ] || [ "$GITHUB_EVENT_NAME" = "workflow_dispatch" ]; then
+          if [ "$GITHUB_EVENT_NAME" = "workflow_dispatch" ]; then
             echo "build=true" >> "$GITHUB_OUTPUT"
             exit 0
           fi
@@ -103,16 +102,14 @@ jobs:
           echo "  digest $DIGEST"
 
       - name: Notify cloud repo
-        if: steps.gate.outputs.build == 'true' && (github.ref_type == 'tag' || github.ref == 'refs/heads/main')
+        if: steps.gate.outputs.build == 'true'
         env:
           GH_TOKEN: ${{ secrets.CLOUD_DISPATCH_TOKEN }}
           DIGEST: ${{ steps.build.outputs.digest }}
         run: |
           IMAGE="$REGISTRY/office-convert@$DIGEST"
-          EVENT_TYPE="office-convert-published"
-          [ "$GITHUB_REF_TYPE" = "tag" ] && EVENT_TYPE="office-convert-published-prod"
           gh api repos/gethouston/cloud/dispatches \
-            -f event_type="$EVENT_TYPE" \
+            -f event_type="office-convert-published" \
             -F "client_payload[digest]=$DIGEST" \
             -F "client_payload[image]=$IMAGE" \
             -F "client_payload[sha]=$GITHUB_SHA"
