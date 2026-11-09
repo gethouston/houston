@@ -62,6 +62,7 @@ async function setup(opts?: {
   storeSync?: LocalHostOptions["storeSync"];
   shutdownDrainMs?: number;
   sharedMirror?: LocalHostOptions["sharedMirror"];
+  officeConvertUrl?: string;
   waitForStart?: boolean;
 }) {
   const houstonHome = mkdtempSync(join(tmpdir(), "houston-localhost-"));
@@ -69,6 +70,12 @@ async function setup(opts?: {
   mkdirSync(join(workspacesRoot, "Work", "Sales"), { recursive: true });
   const port = await freePort();
   const host = buildLocalHost({
+    officeConvert: opts?.officeConvertUrl
+      ? {
+          url: opts.officeConvertUrl,
+          cacheDir: join(houstonHome, "cache", "office-previews"),
+        }
+      : undefined,
     workspacesRoot,
     credentialsPath: join(houstonHome, "credentials.json"),
     port,
@@ -763,5 +770,17 @@ test("eagerRuntime spawns the stored agents' runtimes at start, lazily otherwise
   } finally {
     managed.host.stop();
     await new Promise<void>((r) => health.close(() => r()));
+  }
+});
+
+test("Office previews are advertised only with a configured converter URL", async () => {
+  for (const officeConvertUrl of [undefined, "http://converter:8080"]) {
+    const s = await setup({ officeConvertUrl });
+    try {
+      const caps = await (await fetch(`${s.base}/v1/capabilities`)).json();
+      expect(caps.officePreview).toBe(officeConvertUrl !== undefined);
+    } finally {
+      await s.host.stop();
+    }
   }
 });

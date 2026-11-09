@@ -7,6 +7,8 @@ import { type ControlPlaneDeps, createControlPlaneServer } from "../server";
 import { StoreSyncDaemon } from "../store-sync";
 import { createModelCallForwarder } from "../telemetry/model-call-report";
 import { createPushReporter } from "../telemetry/push-report";
+import { createOfficePreview } from "../turn/files-office";
+import { httpOfficeConverter } from "../turn/office-converter";
 import { FsVfs } from "../vfs";
 import type { createHostBase } from "./host-base";
 import { servedCapabilities } from "./host-capabilities";
@@ -98,6 +100,12 @@ export function createHostServer(
     events,
     channels: { local: channel },
     capabilities,
+    officePreview: opts.officeConvert
+      ? createOfficePreview(
+          opts.officeConvert.cacheDir,
+          httpOfficeConverter(opts.officeConvert.url),
+        )
+      : undefined,
     chatHistoryMigrated,
     integrations,
     customIntegrations,

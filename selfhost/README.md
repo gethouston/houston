@@ -15,6 +15,8 @@ the same container. Use it two ways:
 > the container** over loopback, exactly like the desktop. That's the convergence
 > paying off: "local = the cloud shrunk to one machine" is literally the same code.
 
+Compose includes an `office-convert` sidecar for Office previews. `HOUSTON_OFFICE_CONVERT_URL` points the host at it. The image revision changes when the service or its installed packages change, so rebuilt previews use a new cache key.
+
 Do not publish port `4318` on a remote VPS. The compose setup keeps it private
 and exposes only Caddy on ports `80` and `443`.
 

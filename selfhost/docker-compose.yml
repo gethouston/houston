@@ -25,6 +25,7 @@ services:
       # Optional: your own Composio project key (platform-mode integrations).
       # Empty → the host runs with integrations off.
       COMPOSIO_API_KEY: "${COMPOSIO_API_KEY:-}"
+      HOUSTON_OFFICE_CONVERT_URL: "http://office-convert:8080"
       # Optional: your own Sentry DSN for engine crash reporting (host + the
       # runtimes it spawns). Empty → crash reporting stays off; nothing is
       # baked into the self-host image.
@@ -38,6 +39,14 @@ services:
     networks:
       - houston
     # No `ports:` — deliberately. Reachable only via Caddy, never directly.
+
+  office-convert:
+    build:
+      context: ..
+      dockerfile: packages/office-convert/Dockerfile
+    restart: unless-stopped
+    networks:
+      - houston
 
   caddy:
     image: caddy:2

@@ -14,6 +14,7 @@ import type { CustomIntegrationManager } from "../integrations/custom/manager";
 import { CloudPaths, type WorkspacePaths } from "../paths";
 import type { RuntimeChannel, WorkspaceStore } from "../ports";
 import type { PushReporter } from "../telemetry/push-report";
+import type { OfficePreview } from "../turn/files-office";
 import type { Vfs } from "../vfs";
 import { json } from "./http";
 
@@ -30,6 +31,7 @@ export interface AgentRouteDeps {
   channels: Partial<Record<WorkspaceRuntime, RuntimeChannel>>;
   /** Workspace file store backing the typed .houston families; absent → those routes 503. */
   vfs?: Vfs;
+  officePreview?: OfficePreview;
   /** Where agent files live in the vfs (cloud prefixes vs local tree). Default: cloud. */
   paths?: WorkspacePaths;
   /** Global reactivity fan-out; absent → mutations succeed but emit nothing. */

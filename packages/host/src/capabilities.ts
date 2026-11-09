@@ -46,6 +46,7 @@ const HOSTED_PROVIDERS: readonly string[] = [
 /** What a desktop deployment can do — the Tauri shell handles OS-native bits. */
 export const LOCAL_CAPABILITIES: Capabilities = {
   profile: "local",
+  officePreview: false,
   revealInOs: true,
   terminal: true,
   // Mobile pairing is gone — phones use the web app now (no tunnel/relay).
@@ -69,6 +70,7 @@ export const LOCAL_CAPABILITIES: Capabilities = {
 /** What the cloud deployment can do (served at /v1/capabilities). */
 export const CLOUD_CAPABILITIES: Capabilities = {
   profile: "cloud",
+  officePreview: false,
   revealInOs: false,
   terminal: false,
   tunnel: false,
@@ -92,6 +94,7 @@ export const CLOUD_CAPABILITIES: Capabilities = {
  */
 export const MANAGED_CLOUD_CAPABILITIES: Capabilities = {
   profile: "cloud",
+  officePreview: false,
   revealInOs: false,
   terminal: false,
   tunnel: false,

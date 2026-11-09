@@ -12,6 +12,7 @@ import {
 } from "./files-import";
 import { logMissingFile } from "./files-missing";
 import { moveWorkspaceEntry } from "./files-move";
+import type { OfficePreview } from "./files-office";
 import {
   createWorkspaceFolder,
   deleteWorkspaceFile,
@@ -66,6 +67,7 @@ export async function handleFiles(
   res: ServerResponse,
   query: URLSearchParams,
   emit?: (event: HoustonEvent) => void,
+  officePreview?: OfficePreview,
 ): Promise<boolean> {
   if (rest !== "files" && !rest.startsWith("files/")) return false;
   if (!vfs) {
@@ -81,7 +83,14 @@ export async function handleFiles(
       return true;
     }
     if (method === "GET" && rest === "files/download") {
-      await serveFileDownload(vfs, root, ctx.agent.id, query, res);
+      await serveFileDownload(
+        vfs,
+        root,
+        ctx.agent.id,
+        query,
+        res,
+        officePreview,
+      );
       return true;
     }
     if (method === "GET" && rest === "files/archive") {

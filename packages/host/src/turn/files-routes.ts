@@ -42,5 +42,6 @@ defineRouteFamily({
       res,
       url.searchParams,
       emit,
+      deps.officePreview,
     ),
 });

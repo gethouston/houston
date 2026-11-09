@@ -22,6 +22,7 @@ import type { MissionsDeps } from "./routes/missions-sandbox";
 import type { FireOutcomeLedger } from "./schedule/fire-outcome";
 import type { TranscriptShadow } from "./transcripts/http-shadow";
 import type { TriggerEventLock } from "./triggers/fire";
+import type { OfficePreview } from "./turn/files-office";
 import type { Vfs } from "./vfs";
 
 /**
@@ -57,6 +58,7 @@ export interface ControlPlaneDeps extends ControlPlaneAssistantDeps {
   channels: Partial<Record<WorkspaceRuntime, RuntimeChannel>>;
   /** Workspace file store backing the typed .houston families; absent → those routes 503. */
   vfs?: Vfs;
+  officePreview?: OfficePreview;
   /** Where agent files live in the vfs (cloud prefixes vs local tree). Default: cloud. */
   paths?: WorkspacePaths;
   /** Global reactivity fan-out (the `/v1/events` channel); absent → that route 503s. */

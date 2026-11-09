@@ -44,7 +44,10 @@ function applyCors(deps: ControlPlaneDeps, res: ServerResponse): void {
   // again in N seconds" hint this host attaches to its 503s (channel/
   // probe-wake.ts, local/host.ts's drain). The client captures it as
   // `HoustonEngineError.retryAfterMs` and schedules its retry on it.
-  res.setHeader("Access-Control-Expose-Headers", "Retry-After");
+  res.setHeader(
+    "Access-Control-Expose-Headers",
+    "Retry-After, X-Houston-Page-Count",
+  );
 }
 
 /** Resolve the caller to a verified user id, or null if unauthenticated. */
