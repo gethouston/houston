@@ -175,9 +175,6 @@ createRoot(rootElement).render(
               <QueryPersistenceProvider>
                 <LanguageGate>
                   <IdentityKeyedApp />
-                  {/* Global workspace-file preview (chat file clicks) — a
-                      sibling of App so it overlays every screen, onboarding
-                      included. Mirrored in packages/web/src/app-tree.tsx. */}
                 </LanguageGate>
               </QueryPersistenceProvider>
             </EngineGate>

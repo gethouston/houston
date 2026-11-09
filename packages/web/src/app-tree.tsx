@@ -139,13 +139,7 @@ export default function AppTree() {
   // browser and the account's stored preference applies after sign-in
   // (SignedInLocaleSync); Settings keeps its picker for changes.
   const cloudWeb = isIdentityConfigured();
-  const app = (
-    <>
-      <IdentityKeyedApp />
-      {/* Global workspace-file preview (chat file clicks) —
-          mirrors app/src/main.tsx. */}
-    </>
-  );
+  const app = <IdentityKeyedApp />;
 
   return (
     <QueryClientProvider client={queryClient}>
