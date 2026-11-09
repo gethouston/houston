@@ -16,6 +16,16 @@ import { contentDisposition } from "./files-mime";
 import { pruneOfficeCache } from "./office-cache";
 import type { OfficeConverter, OfficePdf } from "./office-converter";
 
+// The response names the refusal with a fixed sentence per code. The thrown
+// message can carry converter or filesystem detail meant for logs only.
+const REFUSAL_MESSAGE = {
+  unsupported_type: "This file type has no PDF preview",
+  too_large: "The file is too large to preview",
+  conversion_unavailable: "File preview is unavailable right now",
+  timeout: "The preview took too long to prepare",
+  conversion_failed: "The file could not be converted for preview",
+} satisfies Record<keyof typeof FILE_PREVIEW_STATUS, string>;
+
 export interface OfficePreview {
   preview(source: Buffer, ext: string, lang: string): Promise<OfficePdf>;
 }
@@ -115,7 +125,7 @@ export async function serveOfficePreview(
   } catch (error) {
     if (!(error instanceof FilePreviewError)) throw error;
     json(res, FILE_PREVIEW_STATUS[error.code], {
-      error: error.message,
+      error: REFUSAL_MESSAGE[error.code],
       code: error.code,
     });
   }
