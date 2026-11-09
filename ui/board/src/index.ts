@@ -17,6 +17,7 @@ export type {
   BulkMoveTarget,
 } from "./bulk-action-bar";
 export { BulkActionBar } from "./bulk-action-bar";
+export type { ComposerSubmitOutcome } from "./composer-send";
 export type { ConversationListProps } from "./conversation-list";
 export { ConversationList } from "./conversation-list";
 export type { ColumnDragRole } from "./dnd";
