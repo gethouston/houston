@@ -23,6 +23,10 @@
     "./file-preview": {
       "types": "./src/file-preview.ts",
       "import": "./src/file-preview.ts"
+    },
+    "./citations": {
+      "types": "./src/citations.ts",
+      "import": "./src/citations.ts"
     }
   },
   "files": [

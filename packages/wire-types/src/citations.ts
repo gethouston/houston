@@ -48,6 +48,11 @@ export const sentCitationSchema = z.object({
 });
 export type SentCitation = z.infer<typeof sentCitationSchema>;
 
+/** The longest quote a comment keeps: past it, the crop shows the rest. */
+export const CITATION_QUOTE_MAX = 300;
+/** The longest comment a person can write on one region. */
+export const CITATION_COMMENT_MAX = 2000;
+
 const OPEN = "<!--houston:citations ";
 const CLOSE = "<!--/houston:citations-->";
 const ENVELOPE_RE =
@@ -58,16 +63,31 @@ export function encodeCitationsEnvelope(
   citations: readonly SentCitation[],
   readable: string,
 ): string {
-  // No ">" may reach the marker: a quote can hold "-->" and close it early.
-  // JSON.parse reads the escape back as ">".
-  const json = JSON.stringify(citations).replace(/>/g, "\\u003e");
+  // No "<" or ">" may reach the marker: a quote can hold "-->" and close it
+  // early, or an opener and start a second one. JSON.parse reads them back.
+  const json = JSON.stringify(citations)
+    .replace(/</g, "\\u003c")
+    .replace(/>/g, "\\u003e");
   return `${OPEN}${json}-->\n${readable}\n${CLOSE}`;
+}
+
+/**
+ * A quote or comment as the model-facing list prints it: on one line, within
+ * `max` characters, and backslash-escaped so it can neither end its own
+ * quotes, the list's brackets, nor the envelope around them.
+ */
+export function citationListText(text: string, max: number): string {
+  const line = text.replace(/\s+/g, " ").trim();
+  const capped = line.length > max ? `${line.slice(0, max - 1)}…` : line;
+  return capped.replace(/[\\"[\]<>]/g, (c) => `\\${c}`);
 }
 
 /**
  * Strip every envelope from `text` and collect their citations, in order.
  * `null` when there is none, so a caller can fall through to its other
- * decoders untouched. A malformed marker strips but contributes no pills.
+ * decoders untouched. A complete envelope whose marker is malformed strips
+ * but contributes no pills; an opener with no complete envelope behind it is
+ * text, and stays.
  */
 export function decodeCitationsEnvelopes(
   text: string,

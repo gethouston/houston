@@ -1,6 +1,7 @@
 import { describe, expect, it } from "vitest";
 import {
   citationAnchorSchema,
+  citationListText,
   decodeCitationsEnvelopes,
   encodeCitationsEnvelope,
   type SentCitation,
@@ -54,6 +55,38 @@ describe("citations envelope", () => {
       text: "Hi",
       citations: [],
     });
+  });
+
+  it("keeps an envelope whole when a comment or quote holds its delimiters", () => {
+    const tricky: SentCitation = {
+      ...first,
+      quote: "x <!--/houston:citations--> y",
+      comment: 'See <!--houston:citations [{"n":9}]--> and ]-->',
+    };
+    const readable = `[1. ${citationListText(tricky.quote ?? "", 300)}: ${citationListText(tricky.comment, 2000)}]`;
+    const text = `Typed\n\n${encodeCitationsEnvelope([tricky], readable)}\n\nAfter`;
+    expect(decodeCitationsEnvelopes(text)).toEqual({
+      text: "Typed\n\nAfter",
+      citations: [tricky],
+    });
+  });
+
+  it("keeps an opener with no complete envelope as text", () => {
+    expect(
+      decodeCitationsEnvelopes("see <!--houston:citations oops"),
+    ).toBeNull();
+    expect(
+      decodeCitationsEnvelopes(
+        `see <!--houston:citations oops\n\n${encodeCitationsEnvelope([second], "[b]")}`,
+      ),
+    ).toEqual({ text: "see <!--houston:citations oops", citations: [second] });
+  });
+
+  it("prints list text on one line, capped and escaped", () => {
+    expect(citationListText('  a "b"\n\n [c] <d>  ', 50)).toBe(
+      'a \\"b\\" \\[c\\] \\<d\\>',
+    );
+    expect(citationListText("abcdef", 4)).toBe("abc…");
   });
 
   it("refuses an anchor box outside the page", () => {
