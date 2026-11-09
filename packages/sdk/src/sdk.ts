@@ -71,6 +71,7 @@ export class HoustonSdk implements SdkModules {
   readonly routines: SdkModules["routines"];
   readonly skills: SdkModules["skills"];
   readonly files: SdkModules["files"];
+  readonly citations: SdkModules["citations"];
   readonly migration: SdkModules["migration"];
   readonly browser: SdkModules["browser"];
   /** The per-agent engine client every module resolves its calls through — the
@@ -144,6 +145,11 @@ export class HoustonSdk implements SdkModules {
     this.routines = moduleFactories.createRoutinesModule(ctx);
     this.skills = moduleFactories.createSkillsModule(ctx);
     this.files = moduleFactories.createFilesModule(ctx);
+    // After files: a send's crops ride the composer attachments route.
+    this.citations = moduleFactories.createCitationsModule(
+      ctx,
+      this.files.saveAttachments,
+    );
     this.migration = moduleFactories.createMigrationModule(ctx);
     this.browser = moduleFactories.createBrowserModule(ctx);
     // =====================================================================

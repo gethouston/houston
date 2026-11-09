@@ -15,6 +15,7 @@ import { createAppearanceModule } from "./modules/appearance";
 import { createBillingModule } from "./modules/billing";
 import { createBrowserModule } from "./modules/browser";
 import { createChannelsModule } from "./modules/channels";
+import { createCitationsModule } from "./modules/citations";
 import { createConversationsModule } from "./modules/conversations";
 import { createDelegationModule } from "./modules/delegation";
 import { createFilesModule } from "./modules/files";
@@ -86,6 +87,8 @@ export interface SdkModules {
   readonly skills: ReturnType<typeof createSkillsModule>;
   /** Files facade (an agent's workspace listing, reads, moves + uploads). */
   readonly files: ReturnType<typeof createFilesModule>;
+  /** Citations facade (comments pinned to a previewed file, sent with a message). */
+  readonly citations: ReturnType<typeof createCitationsModule>;
   /** Migration facade (an agent's data out as zip chunks, and into another). */
   readonly migration: ReturnType<typeof createMigrationModule>;
   /** Browser hand-off facade (the live view a person drives a handed-over website in). */
@@ -109,6 +112,7 @@ export const moduleFactories = {
   createPlanModule,
   createPushModule,
   createChannelsModule,
+  createCitationsModule,
   createConversationsModule,
   createDelegationModule,
   createFilesModule,
