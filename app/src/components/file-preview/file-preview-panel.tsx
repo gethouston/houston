@@ -1,6 +1,7 @@
 import { cn, useIsMobile } from "@houston-ai/core";
 import { useCallback, useEffect, useRef, useState } from "react";
 import { useTranslation } from "react-i18next";
+import { FILE_PREVIEW_ATTR } from "../../hooks/board-keys";
 import { useOpenAgentHref } from "../../hooks/use-open-agent-file";
 import { useUIStore } from "../../stores/ui";
 import type { FilePreviewTarget } from "../../stores/ui/types";
@@ -68,7 +69,6 @@ export function FilePreviewPanel({
     agentPath,
     filePath,
     fileName,
-    target.bytesCacheKey,
   );
   const openHref = useOpenAgentHref(agentPath, target.chat?.draftKey ?? null);
   const [zoom, setZoom] = useState(1);
@@ -148,6 +148,7 @@ export function FilePreviewPanel({
 
   return (
     <section
+      {...{ [FILE_PREVIEW_ATTR]: "" }}
       aria-label={t("files.preview.panelLabel", { fileName })}
       data-leaving={leaving ? "true" : undefined}
       style={{ "--preview-w": width } as React.CSSProperties}

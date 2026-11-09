@@ -49,6 +49,14 @@ function isComposerFocused(): boolean {
   return active.getAttribute("name") === "message";
 }
 
+/** The file preview panel marks its root; focus inside it owns the arrows. */
+export const FILE_PREVIEW_ATTR = "data-file-preview";
+
+function inFilePreview(e: KeyboardEvent): boolean {
+  const target = e.target as { closest?: (s: string) => unknown } | null;
+  return !!target?.closest?.(`[${FILE_PREVIEW_ATTR}]`);
+}
+
 type ArrowDir = "up" | "down" | "left" | "right";
 
 function arrowDirection(e: KeyboardEvent): ArrowDir | null {
@@ -61,8 +69,9 @@ function arrowDirection(e: KeyboardEvent): ArrowDir | null {
 
 function handleArrow(e: KeyboardEvent, dir: ArrowDir): void {
   // A dialog or popover over the board or the panel answers its own arrows
-  // (a color palette's radios, a menu's items).
-  if (isOverlayTarget(e)) return;
+  // (a color palette's radios, a menu's items), and the file preview scrolls
+  // its own pages.
+  if (isOverlayTarget(e) || inFilePreview(e)) return;
   const ui = useUIStore.getState();
   // Chat panel is open → arrows are a chat-reading affordance,
   // BUT only when focus is in the composer or outside any
