@@ -22,8 +22,12 @@ export interface DraftCitation {
   detached: boolean;
 }
 
-/** What a surface hands `add`: the comment minus what the module assigns. */
-export type NewCitation = Omit<DraftCitation, "id" | "detached">;
+/** What a surface hands `add`: the comment minus what the module assigns.
+ *  `cropBase64` is the crop to show at once; `sharpCrop`, when given, is the
+ *  sharper one still rendering, which replaces it and which a send waits for. */
+export type NewCitation = Omit<DraftCitation, "id" | "detached"> & {
+  sharpCrop?: Promise<string>;
+};
 
 export type AddCitationResult =
   | { ok: true; citation: DraftCitation }

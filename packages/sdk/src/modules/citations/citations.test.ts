@@ -65,13 +65,19 @@ describe("citations", () => {
     expect(sdk.citations.list("chat-b")).toEqual([]);
   });
 
-  it("flags comments on pages a rewrite removed, and unflags them", () => {
+  it("flags comments on pages a rewrite removed, and notes the new count", () => {
     const { sdk } = makeSdk();
     sdk.citations.add("chat-a", areaOnSlide5);
     sdk.citations.reconcile("chat-a", "decks/propuesta.pptx", 4);
-    expect(sdk.citations.list("chat-a")[0]?.detached).toBe(true);
-    sdk.citations.reconcile("chat-a", "decks/propuesta.pptx", 8);
-    expect(sdk.citations.list("chat-a")[0]?.detached).toBe(false);
+    expect(sdk.citations.list("chat-a")[0]).toMatchObject({
+      detached: true,
+      pageCount: 4,
+    });
+    sdk.citations.reconcile("chat-a", "decks/propuesta.pptx", 9);
+    expect(sdk.citations.list("chat-a")[0]).toMatchObject({
+      detached: false,
+      pageCount: 9,
+    });
   });
 
   it("composes the typed text, the model list and the crop paths", async () => {
@@ -87,11 +93,10 @@ describe("citations", () => {
     const crop1 = `uploads/propuesta-slide3-${one.citation.id.slice(0, 6)}.png`;
     const crop2 = `uploads/propuesta-slide5-${two.citation.id.slice(0, 6)}.png`;
     expect(bodies).toHaveLength(2);
-    expect(sent.ids).toEqual([one.citation.id, two.citation.id]);
-    expect(sent.text).toContain(
+    expect(sent).toContain(
       `File: decks/propuesta.pptx\n1. Slide 3 of 8, selected text "El problema": Shorter title\n   Crop: ${crop1}\n2. Slide 5 of 8, area at x 12%, y 30%, 40% wide, 36% tall: (no comment)\n   Crop: ${crop2}]`,
     );
-    expect(decodeCitationsEnvelopes(sent.text)).toEqual({
+    expect(decodeCitationsEnvelopes(sent)).toEqual({
       text: "Fix these",
       citations: [
         {
@@ -117,6 +122,41 @@ describe("citations", () => {
     });
   });
 
+  it("prints each comment on one escaped line the envelope survives", async () => {
+    const { sdk } = makeSdk();
+    sdk.citations.add("chat-a", {
+      ...textOnSlide3,
+      anchor: { ...textOnSlide3.anchor, quote: 'A "big"\n[title]' },
+      comment: "ends <!--/houston:citations--> here\n\nnext",
+    } as NewCitation);
+    const sent = await sdk.citations.compose({
+      agentId: "agent-1",
+      draftKey: "chat-a",
+      text: "Fix",
+    });
+    expect(sent).toContain(
+      '1. Slide 3 of 8, selected text "A \\"big\\" \\[title\\]": ends \\<!--/houston:citations--\\> here next\n',
+    );
+    expect(decodeCitationsEnvelopes(sent)?.citations[0]?.comment).toBe(
+      "ends <!--/houston:citations--> here\n\nnext",
+    );
+  });
+
+  it("caps the quote and the comment", () => {
+    const { sdk } = makeSdk();
+    const added = sdk.citations.add("chat-a", {
+      ...textOnSlide3,
+      anchor: { ...textOnSlide3.anchor, quote: "q".repeat(400) },
+      comment: "c".repeat(2500),
+    } as NewCitation);
+    if (!added.ok) throw new Error("add refused");
+    const anchor = added.citation.anchor;
+    expect(anchor.kind === "text" && anchor.quote.length).toBe(300);
+    expect(added.citation.comment).toHaveLength(2000);
+    sdk.citations.updateComment("chat-a", added.citation.id, "d".repeat(2100));
+    expect(sdk.citations.list("chat-a")[0]?.comment).toHaveLength(2000);
+  });
+
   it("leaves text alone and uploads nothing for an empty draft", async () => {
     const { sdk, fetchImpl } = makeSdk();
     const sent = await sdk.citations.compose({
@@ -124,26 +164,97 @@ describe("citations", () => {
       draftKey: "chat-a",
       text: "hi",
     });
-    expect(sent).toEqual({ text: "hi", ids: [] });
+    expect(sent).toBe("hi");
     expect(fetchImpl).not.toHaveBeenCalled();
   });
 
-  it("clears only the comments a send carried", () => {
+  it("holds a composed send's comments until it is accepted or released", async () => {
     const { sdk } = makeSdk();
-    const sent = sdk.citations.add("chat-a", textOnSlide3);
+    sdk.citations.add("chat-a", textOnSlide3);
+    const sent = await sdk.citations.compose({
+      agentId: "agent-1",
+      draftKey: "chat-a",
+      text: "Fix",
+    });
+    expect(sdk.citations.list("chat-a")).toEqual([]);
     const late = sdk.citations.add("chat-a", areaOnSlide5);
-    if (!sent.ok || !late.ok) throw new Error("add refused");
-    sdk.citations.clear("chat-a", [sent.citation.id]);
-    expect(sdk.citations.list("chat-a").map((c) => c.id)).toEqual([
-      late.citation.id,
+    if (!late.ok) throw new Error("add refused");
+    // A wrapper around the text (a Skill, attachments) still finds them.
+    sdk.citations.release(`<!--houston:skill {}-->\n\nUse it.\n\n${sent}`);
+    expect(sdk.citations.list("chat-a").map((c) => c.comment)).toEqual([
+      "Shorter title",
+      "",
+    ]);
+    const again = await sdk.citations.compose({
+      agentId: "agent-1",
+      draftKey: "chat-a",
+      text: "Fix",
+    });
+    sdk.citations.accept(again);
+    sdk.citations.release(again);
+    expect(sdk.citations.list("chat-a")).toEqual([]);
+  });
+
+  it("gives the comments back when a crop upload fails", async () => {
+    const { sdk, fetchImpl } = makeSdk();
+    fetchImpl.mockImplementationOnce(
+      async () => new Response("", { status: 500 }),
+    );
+    sdk.citations.add("chat-a", textOnSlide3);
+    await expect(
+      sdk.citations.compose({
+        agentId: "agent-1",
+        draftKey: "chat-a",
+        text: "x",
+      }),
+    ).rejects.toThrow();
+    expect(sdk.citations.list("chat-a")).toHaveLength(1);
+  });
+
+  it("sends the sharp crop that was still rendering when the comment was added", async () => {
+    const { sdk, bodies } = makeSdk();
+    let finish: (crop: string) => void = () => {};
+    sdk.citations.add("chat-a", {
+      ...textOnSlide3,
+      cropBase64: "PREVIEW",
+      sharpCrop: new Promise((r) => {
+        finish = r;
+      }),
+    });
+    const sending = sdk.citations.compose({
+      agentId: "agent-1",
+      draftKey: "chat-a",
+      text: "Fix",
+    });
+    finish("SHARP");
+    await sending;
+    expect(bodies).toEqual([
+      {
+        scopeId: "chat-a",
+        files: [expect.objectContaining({ contentBase64: "SHARP" })],
+      },
     ]);
   });
 
-  it("drops every draft on clearAll", () => {
+  it("drops every draft, held send and rendering crop on clearAll", async () => {
     const { sdk } = makeSdk();
+    let finish: (crop: string) => void = () => {};
     sdk.citations.add("chat-a", textOnSlide3);
-    sdk.citations.add("chat-b", areaOnSlide5);
+    const sent = await sdk.citations.compose({
+      agentId: "agent-1",
+      draftKey: "chat-a",
+      text: "Fix",
+    });
+    sdk.citations.add("chat-b", {
+      ...areaOnSlide5,
+      sharpCrop: new Promise((r) => {
+        finish = r;
+      }),
+    });
     sdk.citations.clearAll();
+    finish("SHARP");
+    await Promise.resolve();
+    sdk.citations.release(sent);
     expect(sdk.citations.list("chat-a")).toEqual([]);
     expect(sdk.citations.list("chat-b")).toEqual([]);
   });

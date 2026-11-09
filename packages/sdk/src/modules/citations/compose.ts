@@ -1,4 +1,7 @@
 import {
+  CITATION_COMMENT_MAX,
+  CITATION_QUOTE_MAX,
+  citationListText,
   encodeCitationsEnvelope,
   type SentCitation,
 } from "@houston/wire-types";
@@ -34,7 +37,7 @@ function anchorLine(c: DraftCitation): string {
   const where = `${unit} ${c.page} of ${c.pageCount}`;
   const what =
     c.anchor.kind === "text"
-      ? `selected text "${c.anchor.quote}"`
+      ? `selected text "${citationListText(c.anchor.quote, CITATION_QUOTE_MAX)}"`
       : `area at x ${pct(c.anchor.box.x)}, y ${pct(c.anchor.box.y)}, ${pct(c.anchor.box.w)} wide, ${pct(c.anchor.box.h)} tall`;
   const gone = c.detached
     ? ` (this ${unit.toLowerCase()} no longer exists in the current file; the comment is about an earlier version)`
@@ -59,7 +62,8 @@ export function readableCitations(
       file = c.filePath;
       lines.push(`File: ${c.filePath}`);
     }
-    const comment = c.comment.trim() || "(no comment)";
+    const comment =
+      citationListText(c.comment, CITATION_COMMENT_MAX) || "(no comment)";
     lines.push(`${i + 1}. ${anchorLine(c)}: ${comment}`);
     if (cropPaths[i]) lines.push(`   Crop: ${cropPaths[i]}`);
   });
@@ -86,16 +90,16 @@ export function sentCitations(
   }));
 }
 
-/** The typed text followed by the citations envelope. */
+/** The typed text followed by the citations envelope, and the envelope. */
 export function citedText(
   text: string,
   citations: readonly DraftCitation[],
   cropPaths: readonly string[],
-): string {
+): { text: string; envelope: string } {
   const envelope = encodeCitationsEnvelope(
     sentCitations(citations, cropPaths),
     readableCitations(citations, cropPaths),
   );
   const typed = text.trim();
-  return typed ? `${typed}\n\n${envelope}` : envelope;
+  return { text: typed ? `${typed}\n\n${envelope}` : envelope, envelope };
 }

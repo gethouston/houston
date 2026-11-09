@@ -1,4 +1,5 @@
 import type { DraftCitation } from "@houston/sdk";
+import type { SentCitation } from "@houston/wire-types";
 import type { CitationChipData } from "@houston-ai/chat";
 import type { TFunction } from "i18next";
 
@@ -51,4 +52,33 @@ export function draftChip(t: T, c: DraftCitation, n: number): CitationChipData {
         })
       : undefined,
   };
+}
+
+/** A sent message's pills, one group per file. Two files can share a name
+ *  in different folders, so the path keys the group. */
+export function sentPillGroups(
+  t: T,
+  citations: readonly SentCitation[],
+  thumbnails: readonly (string | undefined)[],
+): { filePath: string; fileName: string; citations: CitationChipData[] }[] {
+  const byFile = new Map<
+    string,
+    { filePath: string; fileName: string; citations: CitationChipData[] }
+  >();
+  citations.forEach((c, i) => {
+    const group = byFile.get(c.filePath) ?? {
+      filePath: c.filePath,
+      fileName: c.fileName,
+      citations: [],
+    };
+    group.citations.push({
+      id: String(i),
+      n: c.n,
+      context: citationContext(t, c),
+      comment: c.comment,
+      thumbnailSrc: thumbnails[i],
+    });
+    byFile.set(c.filePath, group);
+  });
+  return [...byFile.values()];
 }

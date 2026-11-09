@@ -1,7 +1,5 @@
-import type { DecodedCitations } from "@houston/sdk";
 import {
-  type AttachmentReference,
-  type CitationChipData,
+  type CitedMessage,
   UserAttachmentBadge,
   type UserAttachmentMessageLabels,
   UserCitationMessage,
@@ -14,7 +12,8 @@ import { logAndReportError } from "../../lib/error-report";
 import { isFileGoneError } from "../../lib/file-gone";
 import { tauriFiles } from "../../lib/tauri";
 import { useUIStore } from "../../stores/ui";
-import { citationContext, pageName } from "./citation-labels";
+import { UserSkillMessage } from "../user-skill-message";
+import { pageName, sentPillGroups } from "./citation-labels";
 
 /** The crops a sent message points at, as object URLs, from the workspace. */
 function useCropUrls(
@@ -58,19 +57,18 @@ function useCropUrls(
 }
 
 /**
- * A sent message that carried file comments: pills (grouped by file) above
- * what the person typed, and the attachment badge if files rode along. A pill
- * opens the file at its page in the preview panel.
+ * A sent message that carried file comments: the Skill it ran, if any, then
+ * pills (grouped by file) above what the person typed, and the attachment
+ * badge if files rode along. A pill opens the file at its page in the
+ * preview panel.
  */
 export function CitedUserMessage({
   cited,
-  attachments,
   attachmentLabels,
   agentPath,
   draftKey,
 }: {
-  cited: DecodedCitations;
-  attachments?: readonly AttachmentReference[];
+  cited: CitedMessage;
   attachmentLabels?: UserAttachmentMessageLabels;
   agentPath: string;
   draftKey: string | null;
@@ -81,24 +79,10 @@ export function CitedUserMessage({
     agentPath,
     cited.citations.map((c) => c.cropPath),
   );
-  const groups = useMemo(() => {
-    const byFile = new Map<string, CitationChipData[]>();
-    cited.citations.forEach((c, i) => {
-      const list = byFile.get(c.fileName) ?? [];
-      list.push({
-        id: String(i),
-        n: c.n,
-        context: citationContext(t, c),
-        comment: c.comment,
-        thumbnailSrc: urls[i],
-      });
-      byFile.set(c.fileName, list);
-    });
-    return [...byFile].map(([fileName, citations]) => ({
-      fileName,
-      citations,
-    }));
-  }, [cited, urls, t]);
+  const groups = useMemo(
+    () => sentPillGroups(t, cited.citations, urls),
+    [cited, urls, t],
+  );
   const open = (id: string) => {
     const c = cited.citations[Number(id)];
     if (!c) return;
@@ -110,8 +94,14 @@ export function CitedUserMessage({
       page: c.page,
     });
   };
+  const { skill, attachments } = cited;
   return (
     <div className="flex flex-col items-end gap-2">
+      {skill && (
+        <UserSkillMessage
+          invocation={{ ...skill, message: "", attachments: [] }}
+        />
+      )}
       <UserCitationMessage
         groups={groups}
         onOpen={open}
@@ -128,7 +118,7 @@ export function CitedUserMessage({
           <span className="whitespace-pre-wrap break-words">{cited.text}</span>
         )}
       </UserCitationMessage>
-      {attachments && attachments.length > 0 && (
+      {attachments.length > 0 && (
         <UserAttachmentBadge files={attachments} labels={attachmentLabels} />
       )}
     </div>

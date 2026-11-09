@@ -16,12 +16,12 @@ const args = (activeSessionKey: string | null) => ({
 
 function recorder(rewrite: { text: string } | boolean) {
   const sent: string[] = [];
-  const onSent: string[] = [];
+  const unsent: string[] = [];
   const routes: ComposerSendRoutes = {
     onComposerSubmit: () =>
       typeof rewrite === "boolean"
         ? rewrite
-        : { text: rewrite.text, onSent: () => onSent.push(rewrite.text) },
+        : { text: rewrite.text, onUnsent: () => unsent.push(rewrite.text) },
     onSendMessage: async (_key, text) => {
       sent.push(`send:${text}`);
     },
@@ -30,15 +30,15 @@ function recorder(rewrite: { text: string } | boolean) {
       return "new-1";
     },
   };
-  return { routes, sent, onSent };
+  return { routes, sent, unsent };
 }
 
-test("a rewrite reaches a follow-up send, then reports it sent", async () => {
+test("a rewrite reaches a follow-up send and keeps its context out", async () => {
   const r = recorder({ text: "typed + comments" });
   const result = await routeComposerSend(r.routes, args("activity-1"));
   assert.deepEqual(result, { kind: "sent" });
   assert.deepEqual(r.sent, ["send:typed + comments"]);
-  assert.deepEqual(r.onSent, ["typed + comments"]);
+  assert.deepEqual(r.unsent, []);
 });
 
 test("a rewrite reaches a new conversation too", async () => {
@@ -46,16 +46,26 @@ test("a rewrite reaches a new conversation too", async () => {
   const result = await routeComposerSend(r.routes, args(null));
   assert.deepEqual(result, { kind: "created", activityId: "new-1" });
   assert.deepEqual(r.sent, ["create:typed + comments"]);
-  assert.deepEqual(r.onSent, ["typed + comments"]);
+  assert.deepEqual(r.unsent, []);
 });
 
-test("a failed send keeps the rewrite's context (onSent never runs)", async () => {
+test("a failed send gives the rewrite's context back", async () => {
   const r = recorder({ text: "typed + comments" });
   r.routes.onSendMessage = async () => {
     throw new Error("offline");
   };
   await assert.rejects(routeComposerSend(r.routes, args("activity-1")));
-  assert.deepEqual(r.onSent, []);
+  assert.deepEqual(r.unsent, ["typed + comments"]);
+});
+
+test("a rewrite with nowhere to go gives its context back", async () => {
+  const r = recorder({ text: "typed + comments" });
+  const result = await routeComposerSend(
+    { onComposerSubmit: r.routes.onComposerSubmit },
+    args(null),
+  );
+  assert.deepEqual(result, { kind: "dropped" });
+  assert.deepEqual(r.unsent, ["typed + comments"]);
 });
 
 test("an interceptor that sends itself stops the routing", async () => {

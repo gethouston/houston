@@ -14,9 +14,9 @@ export function CitationsMixin<TBase extends BaseCtor>(Base: TBase) {
       agentPath: string,
       draftKey: string,
       text: string,
-    ): Promise<{ text: string; ids: string[] }> {
+    ): Promise<string> {
       const sdk = this.ctx.sdk;
-      if (sdk.citations.list(draftKey).length === 0) return { text, ids: [] };
+      if (sdk.citations.list(draftKey).length === 0) return text;
       if (!this.ctx.cp) throw new Error("Attachments need a cloud workspace.");
       return viaSdk(`${controlPlane.agentPath(agentPath)}/attachments`, () =>
         sdk.citations.compose({ agentId: agentPath, draftKey, text }),

@@ -77,9 +77,10 @@
   "chat-attachment-message": {
     "surfaces": [
       "Chat",
+      "Files",
       "Skills"
     ],
-    "fileCount": 2
+    "fileCount": 3
   },
   "chat-conversation": {
     "surfaces": [

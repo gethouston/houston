@@ -270,14 +270,13 @@ test("composeCitations posts each crop to the attachments route and folds the pa
     }),
   );
   expectGatewayHeaders(post);
-  expect(sent.ids).toEqual([added.citation.id]);
-  expect(sent.text).toContain("   Crop: uploads/deck-slide3-x.png]");
+  expect(sent).toContain("   Crop: uploads/deck-slide3-x.png]");
 });
 
 test("composeCitations sends nothing for a draft without comments", async () => {
-  await expect(
-    client().composeCitations("a1", "conv-2", "hi"),
-  ).resolves.toEqual({ text: "hi", ids: [] });
+  await expect(client().composeCitations("a1", "conv-2", "hi")).resolves.toBe(
+    "hi",
+  );
   expect(calls).toEqual([]);
 });
 

@@ -6,6 +6,7 @@ import { type CitationChipData, CitationNumber } from "./citation-chips";
 export interface UserCitationMessageProps {
   /** The comments per file, each file named once above its own. */
   groups: readonly {
+    filePath: string;
     fileName: string;
     citations: readonly CitationChipData[];
   }[];
@@ -32,7 +33,7 @@ export function UserCitationMessage({
   return (
     <div className="ml-auto flex w-fit max-w-[min(32.5rem,88%)] flex-col gap-2 rounded-[22px] bg-bubble px-3 py-2.5 text-base leading-6 font-medium text-bubble-text">
       {groups.map((group) => (
-        <div key={group.fileName} className="flex flex-col gap-1.5">
+        <div key={group.filePath} className="flex flex-col gap-1.5">
           <p className="flex items-center gap-1.5 px-1 text-xs font-normal text-bubble-chip-text">
             <FileText className="size-3.5 shrink-0" aria-hidden />
             <span className="truncate">{group.fileName}</span>

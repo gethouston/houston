@@ -82,24 +82,23 @@ export function usePreviewComments({
     if (editor.kind === "edit")
       return module.updateComment(draftKey, editor.id, comment.trim());
     const { selection } = editor;
-    const add = (cropBase64: string) => {
-      const added = module.add(draftKey, {
-        filePath,
-        fileName,
-        page: selection.page,
-        pageCount: selection.pageCount,
-        anchor: selection.anchor,
-        comment: comment.trim(),
-        cropBase64,
-      });
-      if (!added.ok) limitReached();
-    };
-    // The on-screen thumbnail still shows the agent what was meant when the
-    // sharp render fails (say, the file was rewritten under the selection).
-    selection.crop().then(add, (error: unknown) => {
-      logAndReportError("file_preview_crop", error);
-      add(selection.previewBase64);
+    // The comment lands now, with the on-screen crop. The sharp crop the agent
+    // reads renders behind it, and a send waits for it. A failed render keeps
+    // the on-screen one (say, the file was rewritten under the selection).
+    const added = module.add(draftKey, {
+      filePath,
+      fileName,
+      page: selection.page,
+      pageCount: selection.pageCount,
+      anchor: selection.anchor,
+      comment: comment.trim(),
+      cropBase64: selection.previewBase64,
+      sharpCrop: selection.crop().catch((error: unknown) => {
+        logAndReportError("file_preview_crop", error);
+        return selection.previewBase64;
+      }),
     });
+    if (!added.ok) limitReached();
   };
 
   const editing =

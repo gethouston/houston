@@ -68,6 +68,9 @@ export function ChatSendMixin<TBase extends BaseCtor>(Base: TBase) {
       // A dispatched auto-resume is bracketed so a duplicate resume (another
       // mounted reconnect card, same login event) is swallowed while it runs.
       if (req.autoResume) noteAutoResumeStarted(path, req.sessionKey);
+      // File comments folded into the prompt leave their draft for good only
+      // once the engine accepts it; a refused or stopped send gives them back.
+      const citations = this.ctx.sdk.citations;
       void streamTurn(
         engine,
         path,
@@ -89,8 +92,10 @@ export function ChatSendMixin<TBase extends BaseCtor>(Base: TBase) {
           // the reply (no separate title request).
           missionTitle: req.missionTitle,
           grants: req.grants,
+          onAccepted: () => citations.accept(req.prompt),
         },
       ).finally(() => {
+        citations.release(req.prompt);
         // The turn settled (or failed): release anything queued behind it.
         if (req.autoResume) noteAutoResumeEnded(path, req.sessionKey);
         flushQueuedSends(path, req.sessionKey, redispatch);
@@ -104,7 +109,12 @@ export function ChatSendMixin<TBase extends BaseCtor>(Base: TBase) {
       sessionKey: string,
       id: string,
     ): void {
-      removeQueuedSend(agentPath || DEFAULT_AGENT_PATH, sessionKey, id);
+      const removed = removeQueuedSend(
+        agentPath || DEFAULT_AGENT_PATH,
+        sessionKey,
+        id,
+      );
+      if (removed) this.ctx.sdk.citations.release(removed.prompt);
     }
   }
   return ChatSend;

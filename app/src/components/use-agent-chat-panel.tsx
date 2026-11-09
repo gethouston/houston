@@ -36,6 +36,7 @@ import {
   ChatSuggestReusableCard,
   type ChatSuggestReusableLabels,
   decodeAttachmentMessage,
+  decodeCitedMessage,
   decodeInteractionAnswersMessage,
   UserAttachmentMessage,
   type UserAttachmentMessageLabels,
@@ -89,7 +90,6 @@ import {
 import { isModelAllowed } from "../lib/ceiling-match";
 import { agentTierFromConfig } from "../lib/chat-agent-tier";
 import { coherentPinModel, resolveChatModelPin } from "../lib/chat-model-pin";
-import { citationsFacade } from "../lib/citations-facade";
 import { shouldShowConnectAiEmptyState } from "../lib/composer-connect-ai";
 import {
   effectiveContextWindow,
@@ -176,6 +176,7 @@ import { NOTICE_COPY } from "./chat-notice-copy";
 import { ContextCompactedDivider } from "./context-compacted-divider";
 import { ContextIndicator } from "./context-indicator";
 import { DictationSetupDialog } from "./dictation-setup-dialog";
+import { submitWithCitations } from "./file-preview/cited-submit";
 import { CitedUserMessage } from "./file-preview/cited-user-message";
 import { useCitationComposer } from "./file-preview/use-citation-composer";
 import { IntegrationConnectCard } from "./integration-connect-card";
@@ -1999,13 +2000,11 @@ export function useAgentChatPanel({
     async (ctx) => {
       if (activeInteraction && interactionKey !== abandonedInteractionKey)
         setAbandonedInteractionKey(interactionKey);
-      // Comments fold in first, so the Skill send carries them too.
-      const cited = await citationComposer.prepare(ctx.text);
-      const handled = await handleSkillComposerSubmit(
-        cited ? { ...ctx, text: cited.text } : ctx,
+      return submitWithCitations(
+        ctx,
+        citationComposer.prepare,
+        handleSkillComposerSubmit,
       );
-      if (handled) cited?.onSent();
-      return handled || (cited ?? false);
     },
     [
       citationComposer.prepare,
@@ -2019,15 +2018,11 @@ export function useAgentChatPanel({
   // ── Built JSX bundles ─────────────────────────────────────────────────
   const renderUserMessage = useCallback(
     (msg: { content: string }) => {
-      const attached = decodeAttachmentMessage(msg.content);
-      const cited = citationsFacade
-        .module()
-        .decode(attached ? attached.message : msg.content);
+      const cited = decodeCitedMessage(msg.content);
       if (cited && path)
         return (
           <CitedUserMessage
             cited={cited}
-            attachments={attached?.files}
             attachmentLabels={attachmentLabels}
             agentPath={path}
             draftKey={selectedSessionKey}
@@ -2509,10 +2504,4 @@ export function useAgentChatPanel({
 
 /** Whether a sent message carried file comments (rendered as pills, so its
  *  raw text is neither what the bubble shows nor something to edit). */
-function hasCitations(content: string): boolean {
-  const attached = decodeAttachmentMessage(content);
-  return (
-    citationsFacade.module().decode(attached ? attached.message : content) !==
-    null
-  );
-}
+const hasCitations = (content: string) => decodeCitedMessage(content) !== null;

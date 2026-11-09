@@ -140,20 +140,24 @@ export function maybeQueueSend(
   return true;
 }
 
-/** Drop one queued send (the composer's remove affordance). */
+/** Drop one queued send (the composer's remove affordance). Returns the
+ *  dropped request, so what it carried can go back to its draft. */
 export function removeQueuedSend(
   agentPath: string,
   sessionKey: string,
   id: string,
-): void {
+): SessionStartRequest | undefined {
   const k = queueKey(agentPath, sessionKey);
-  const entries = (queues.get(k) ?? []).filter((e) => e.vm.id !== id);
+  const all = queues.get(k) ?? [];
+  const removed = all.find((e) => e.vm.id === id)?.req;
+  const entries = all.filter((e) => e.vm.id !== id);
   if (entries.length === 0) {
     queues.delete(k);
     disarmSettleWatcher(k);
     disarmQueueWatchdog(k);
   } else queues.set(k, entries);
   publishQueued(agentPath, sessionKey);
+  return removed;
 }
 
 /**
