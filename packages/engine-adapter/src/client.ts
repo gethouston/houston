@@ -38,6 +38,7 @@ import { ChatControlsMixin } from "./client/chat-controls-mixin";
 import { ChatHistoryMixin } from "./client/chat-history-mixin";
 import { ChatPrewarmMixin } from "./client/chat-prewarm-mixin";
 import { ChatSendMixin } from "./client/chat-send-mixin";
+import { CitationsMixin } from "./client/citations-mixin";
 import { ConfigPrefsMixin } from "./client/config-prefs-mixin";
 import type { HoustonClientOptions } from "./client/context";
 import { CustomIntegrationsMixin } from "./client/custom-integrations-mixin";
@@ -100,6 +101,7 @@ export const MIXINS = [
   RoutinesMixin,
   SharedSkillsMixin,
   ProjectFilesMixin,
+  CitationsMixin,
   AgentFilesMixin,
   ActivitiesMixin,
   ConfigPrefsMixin,
