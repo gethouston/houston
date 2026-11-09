@@ -4,6 +4,15 @@ import { loadPdfJs } from "./pdfjs";
 /** WebKit refuses canvases past ~16.7M pixels; stay well under it. */
 const MAX_CANVAS_PIXELS = 12_000_000;
 
+/** Drop a canvas's pixels now. WebKit counts every live canvas against one
+ *  memory budget until it is collected, so a removed one is emptied first. */
+export function releaseCanvas(el: Element): void {
+  if (el.tagName !== "CANVAS") return;
+  const canvas = el as HTMLCanvasElement;
+  canvas.width = 0;
+  canvas.height = 0;
+}
+
 /**
  * Draw one page into a fresh canvas at `cssWidth` CSS pixels wide, at the
  * screen's pixel ratio. Resolves `null` when `signal` aborts first.
@@ -32,12 +41,15 @@ export async function renderPageCanvas(
   try {
     await task.promise;
   } catch (error) {
+    releaseCanvas(canvas);
     if (signal.aborted) return null;
     throw error;
   } finally {
     signal.removeEventListener("abort", abort);
   }
-  return signal.aborted ? null : canvas;
+  if (!signal.aborted) return canvas;
+  releaseCanvas(canvas);
+  return null;
 }
 
 /**

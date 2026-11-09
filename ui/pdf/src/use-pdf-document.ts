@@ -1,5 +1,6 @@
 import type { PDFDocumentProxy } from "pdfjs-dist/legacy/build/pdf.mjs";
 import { useEffect, useRef, useState } from "react";
+import { firstPaintSizes, measureAll } from "./page-sizes";
 import { loadPdfJs } from "./pdfjs";
 import type { PdfPageSize } from "./types";
 
@@ -21,13 +22,7 @@ async function open(data: Blob, version: number): Promise<PdfDocumentHandle> {
   const pdfjs = await loadPdfJs();
   const bytes = new Uint8Array(await data.arrayBuffer());
   const doc = await pdfjs.getDocument({ data: bytes }).promise;
-  const sizes = await Promise.all(
-    Array.from({ length: doc.numPages }, async (_, i) => {
-      const page = await doc.getPage(i + 1);
-      const { width, height } = page.getViewport({ scale: 1 });
-      return { width, height };
-    }),
-  );
+  const sizes = await firstPaintSizes(doc);
   return { doc, pageCount: doc.numPages, sizes, version };
 }
 
@@ -35,6 +30,7 @@ async function open(data: Blob, version: number): Promise<PdfDocumentHandle> {
  * Load `data` as a PDF. A new blob for a document already on screen (the agent
  * rewrote the file) loads in the background and swaps in when ready, so the
  * reader never sees the pages blank out; a failed reload keeps the old pages.
+ * Pages paint at page 1's size first; the rest are measured behind them.
  */
 export function usePdfDocument(
   data: Blob | null,
@@ -63,6 +59,10 @@ export function usePdfDocument(
         current.current = handle.doc;
         setState({ status: "ready", handle });
         if (previous) void previous.loadingTask.destroy();
+        measureAll(handle.doc, handle.sizes).then((sizes) => {
+          if (sizes && !cancelled && current.current === handle.doc)
+            setState({ status: "ready", handle: { ...handle, sizes } });
+        }, onErrorRef.current);
       },
       (error: unknown) => {
         if (cancelled) return;

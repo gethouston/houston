@@ -1,5 +1,6 @@
 import type { PDFDocumentProxy } from "pdfjs-dist/legacy/build/pdf.mjs";
 import { anchorBounds, type CropFrame, cropFrame } from "./geometry";
+import { releaseCanvas } from "./page-render";
 import type { PdfAnchor, PdfBox, PdfPageSize } from "./types";
 
 /** The crop's long side: enough for the agent to read body text. */
@@ -30,7 +31,10 @@ function finish(
   ink: Ink,
 ): string {
   const ctx = out.getContext("2d");
-  if (!ctx) return "";
+  if (!ctx) {
+    releaseCanvas(out);
+    return "";
+  }
   const at = (b: PdfBox) =>
     [
       (b.x / 100) * size.width * frame.scale - frame.x,
@@ -47,7 +51,9 @@ function finish(
     ctx.strokeStyle = ink.outline;
     ctx.strokeRect(...at(anchor.box));
   }
-  return out.toDataURL("image/png").slice("data:image/png;base64,".length);
+  const png = out.toDataURL("image/png");
+  releaseCanvas(out);
+  return png.slice("data:image/png;base64,".length);
 }
 
 function blank(frame: CropFrame): HTMLCanvasElement {
@@ -100,10 +106,15 @@ export async function renderCrop(
   const size = { width, height };
   const frame = cropFrame(anchorBounds(anchor), size, MAX_SIDE);
   const out = blank(frame);
-  await pdfPage.render({
-    canvas: out,
-    viewport: pdfPage.getViewport({ scale: frame.scale }),
-    transform: [1, 0, 0, 1, -frame.x, -frame.y],
-  }).promise;
+  try {
+    await pdfPage.render({
+      canvas: out,
+      viewport: pdfPage.getViewport({ scale: frame.scale }),
+      transform: [1, 0, 0, 1, -frame.x, -frame.y],
+    }).promise;
+  } catch (error) {
+    releaseCanvas(out);
+    throw error;
+  }
   return finish(out, anchor, size, frame, ink);
 }

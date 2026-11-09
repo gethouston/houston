@@ -2,7 +2,11 @@ import { cn } from "@houston-ai/core";
 import { memo, useEffect, useRef, useState } from "react";
 import { toBox } from "./geometry";
 import { PageMarks, type PageMarksProps } from "./page-marks";
-import { renderPageCanvas, renderTextLayer } from "./page-render";
+import {
+  releaseCanvas,
+  renderPageCanvas,
+  renderTextLayer,
+} from "./page-render";
 import { PAGE_ATTR } from "./text-selection";
 import type { PdfBox } from "./types";
 import type { PdfDocumentHandle } from "./use-pdf-document";
@@ -60,22 +64,36 @@ export const PdfPage = memo(function PdfPage({
         el.append(canvas);
         requestAnimationFrame(() => delete canvas.dataset.incoming);
         for (const old of previous)
-          setTimeout(() => old.remove(), previous.length ? 220 : 0);
+          setTimeout(() => {
+            old.remove();
+            releaseCanvas(old);
+          }, 220);
         onCanvasRef.current(page, canvas);
         setRendered(true);
       },
       (error: unknown) => onErrorRef.current(error),
     );
     return () => abort.abort();
-  }, [handle, page, renderWidth, near]);
+  }, [handle.doc, page, renderWidth, near]);
 
+  // Out of the render window: drop the pixels and the text, rebuilt on return.
   useEffect(() => {
     const el = host.current;
     if (near || !el) return;
+    for (const old of [...el.children]) releaseCanvas(old);
     el.replaceChildren();
+    textLayer.current?.replaceChildren();
+    setObstacles([]);
     onCanvasRef.current(page, null);
     setRendered(false);
   }, [near, page]);
+
+  useEffect(() => {
+    const el = host.current;
+    return () => {
+      for (const old of [...(el?.children ?? [])]) releaseCanvas(old);
+    };
+  }, []);
 
   useEffect(() => {
     const layer = textLayer.current;
@@ -92,7 +110,7 @@ export const PdfPage = memo(function PdfPage({
       );
     }, onErrorRef.current);
     return () => abort.abort();
-  }, [handle, page, near]);
+  }, [handle.doc, page, near]);
 
   const scale = width / (handle.sizes[page - 1]?.width ?? width);
   return (

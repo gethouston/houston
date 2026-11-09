@@ -1,6 +1,6 @@
 import { cn } from "@houston-ai/core";
 import { memo, useEffect, useRef } from "react";
-import { renderPageCanvas } from "./page-render";
+import { releaseCanvas, renderPageCanvas } from "./page-render";
 import type { PdfDocumentHandle } from "./use-pdf-document";
 
 const THUMB_WIDTH = 92;
@@ -38,6 +38,7 @@ const Thumb = memo(function Thumb({
         (canvas) => {
           if (!canvas) return;
           canvas.className = "pdf-thumb-canvas";
+          for (const old of [...el.children]) releaseCanvas(old);
           el.replaceChildren(canvas);
         },
         onError,
@@ -48,7 +49,13 @@ const Thumb = memo(function Thumb({
       observer.disconnect();
       abort.abort();
     };
-  }, [handle, page, onError]);
+  }, [handle.doc, page, onError]);
+  useEffect(() => {
+    const el = host.current;
+    return () => {
+      for (const old of [...(el?.children ?? [])]) releaseCanvas(old);
+    };
+  }, []);
   useEffect(() => {
     if (active)
       button.current?.scrollIntoView({ block: "nearest", inline: "nearest" });
