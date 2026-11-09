@@ -120,7 +120,7 @@ describe("pricing and subscription flags come from pi", () => {
       for (const offer of model.offers)
         if (offer.providerId === "anthropic") ids.add(offer.modelId);
     deepStrictEqual([...ids].sort(), [
-      "claude-fable-5-1",
+      "claude-fable-5-2",
       "claude-haiku-5-5",
       "claude-opus-5-5",
       "claude-sonnet-5-5",

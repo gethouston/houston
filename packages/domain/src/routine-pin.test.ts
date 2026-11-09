@@ -38,7 +38,9 @@ test("a routine pinned to a retired Claude id fires on its own family's lineup m
     "claude-opus-4-8": "claude-opus-5-5",
     "claude-sonnet-4-6": "claude-sonnet-5-5",
     "claude-sonnet-5": "claude-sonnet-5-5",
-    "claude-fable-5": "claude-fable-5-1",
+    "claude-fable-5": "claude-fable-5-2",
+    "claude-fable-5-1": "claude-fable-5-2",
+    fable: "claude-fable-5-2",
   };
   for (const [stored, model] of Object.entries(cases))
     expect(

@@ -10,7 +10,7 @@ import { piModelIds } from "./pi-catalog";
 /**
  * Claude Haiku 5.5 ships natively in pi-ai's anthropic catalog as of 1.1.0
  * (Houston carried it as a pi-ai patch row on 1.0.4). The guard stays, as for
- * Fable 5.1 and Opus 5.
+ * Fable 5.2 and Opus 5.
  */
 type ModelId = Parameters<typeof getModel>[1];
 const haiku = () => getModel("anthropic", "claude-haiku-5-5" as ModelId);

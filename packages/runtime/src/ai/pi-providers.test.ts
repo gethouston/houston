@@ -129,7 +129,7 @@ test("an agent saved on a retired Claude id runs and reports its family's lineup
   expect(row?.models).toEqual([
     "claude-sonnet-5-5",
     "claude-opus-5-5",
-    "claude-fable-5-1",
+    "claude-fable-5-2",
     "claude-haiku-5-5",
   ]);
 });

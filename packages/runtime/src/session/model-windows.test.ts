@@ -60,7 +60,7 @@ test("MODEL_WINDOW_OVERRIDES: the Claude lineup carries no row (native 1M)", () 
   for (const id of [
     "claude-sonnet-5-5",
     "claude-opus-5-5",
-    "claude-fable-5-1",
+    "claude-fable-5-2",
     "claude-haiku-5-5",
   ]) {
     expect(resolveModelWindow("anthropic", id, 1_000_000)).toEqual({

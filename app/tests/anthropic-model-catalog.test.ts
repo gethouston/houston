@@ -19,14 +19,14 @@ import {
 import { SAMPLE_CATALOG } from "./fixtures/sample-catalog.ts";
 
 // The Anthropic card offers exactly the Claude lineup: Sonnet 5.5 (the
-// default, first), Opus 5.5, Fable 5.1, Haiku 5.5. Its models come from pi (windows +
+// default, first), Opus 5.5, Fable 5.2, Haiku 5.5. Its models come from pi (windows +
 // effort) + the Houston override (labels, order); these lock in the hydrated
 // result the picker reads.
 
 const LINEUP = [
   "claude-sonnet-5-5",
   "claude-opus-5-5",
-  "claude-fable-5-1",
+  "claude-fable-5-2",
   "claude-haiku-5-5",
 ];
 
@@ -57,14 +57,14 @@ function anthropicPickerRows(): { id: string; name: string }[] {
 const PICKER_LINEUP = [
   { id: "anthropic::claude-sonnet-5-5", name: "Sonnet 5.5" },
   { id: "anthropic::claude-opus-5-5", name: "Opus 5.5" },
-  { id: "anthropic::claude-fable-5-1", name: "Fable 5.1" },
+  { id: "anthropic::claude-fable-5-2", name: "Fable 5.2" },
   { id: "anthropic::claude-haiku-5-5", name: "Haiku 5.5" },
 ];
 
 describe("the Anthropic picker offers exactly the Claude lineup", () => {
   before(() => hydrateProviderCatalog(SAMPLE_CATALOG));
 
-  it("lists Sonnet 5.5, Opus 5.5, Fable 5.1, Haiku 5.5, in that order", () => {
+  it("lists Sonnet 5.5, Opus 5.5, Fable 5.2, Haiku 5.5, in that order", () => {
     deepStrictEqual(anthropicPickerRows(), PICKER_LINEUP);
   });
 
@@ -80,8 +80,8 @@ describe("the Anthropic picker offers exactly the Claude lineup", () => {
       });
   });
 
-  it("derives Fable 5.1's effort straight from pi (low→xhigh)", () => {
-    deepStrictEqual(getEffortLevels("anthropic", "claude-fable-5-1"), [
+  it("derives Fable 5.2's effort straight from pi (low→xhigh)", () => {
+    deepStrictEqual(getEffortLevels("anthropic", "claude-fable-5-2"), [
       "low",
       "medium",
       "high",
@@ -105,7 +105,12 @@ describe("a stored retired Claude id reads as its family's lineup model", () => 
   before(() => hydrateProviderCatalog(SAMPLE_CATALOG));
 
   it("is no longer a row of its own", () => {
-    for (const id of ["claude-opus-5", "claude-opus-4-8", "claude-sonnet-4-6"])
+    for (const id of [
+      "claude-opus-5",
+      "claude-opus-4-8",
+      "claude-sonnet-4-6",
+      "claude-fable-5-1",
+    ])
       strictEqual(getModel("anthropic", id), undefined, id);
   });
 
@@ -115,7 +120,9 @@ describe("a stored retired Claude id reads as its family's lineup model", () => 
       "claude-opus-4-8": "claude-opus-5-5",
       "claude-sonnet-5": "claude-sonnet-5-5",
       "claude-sonnet-4-6": "claude-sonnet-5-5",
-      "claude-fable-5": "claude-fable-5-1",
+      "claude-fable-5": "claude-fable-5-2",
+      "claude-fable-5-1": "claude-fable-5-2",
+      fable: "claude-fable-5-2",
       "claude-haiku-4-5": "claude-haiku-5-5",
       "claude-haiku-4-5-20251001": "claude-haiku-5-5",
     };
@@ -132,7 +139,7 @@ describe("a stored retired Claude id reads as its family's lineup model", () => 
 });
 
 /**
- * pi 1.1.0's `anthropic` catalog: every row, in pi's order, under pi's own
+ * pi's patched `anthropic` catalog: every row, in pi's order, under pi's own
  * display names ("(latest)" suffixes included, which fold to the same
  * cross-provider key as their dated twins). The picker was reported missing
  * Sonnet 5.5 against a catalog that served it; this proves the data path keeps
@@ -141,6 +148,7 @@ describe("a stored retired Claude id reads as its family's lineup model", () => 
 const PI_ANTHROPIC: [string, string][] = [
   ["claude-fable-5", "Claude Fable 5"],
   ["claude-fable-5-1", "Claude Fable 5.1"],
+  ["claude-fable-5-2", "Claude Fable 5.2"],
   ["claude-haiku-4-5", "Claude Haiku 4.5 (latest)"],
   ["claude-haiku-4-5-20251001", "Claude Haiku 4.5"],
   ["claude-haiku-5-5", "Claude Haiku 5.5"],

@@ -41,6 +41,7 @@ export const MODEL_DISPLAY: Partial<
   Record<ProviderId, Record<string, string>>
 > = {
   anthropic: {
+    "claude-fable-5-2": "Fable 5.2",
     "claude-fable-5-1": "Fable 5.1",
     "claude-fable-5": "Fable 5",
     "claude-opus-5-5": "Opus 5.5",

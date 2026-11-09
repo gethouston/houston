@@ -91,7 +91,9 @@ describe("resolveAgentModelOverrides", () => {
       "claude-opus-4-8": "claude-opus-5-5",
       "claude-sonnet-5": "claude-sonnet-5-5",
       "claude-sonnet-4-6": "claude-sonnet-5-5",
-      "claude-fable-5": "claude-fable-5-1",
+      "claude-fable-5": "claude-fable-5-2",
+      "claude-fable-5-1": "claude-fable-5-2",
+      fable: "claude-fable-5-2",
     };
     for (const [model, lineup] of Object.entries(cases))
       deepStrictEqual(

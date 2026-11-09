@@ -34,7 +34,7 @@ import type { ProviderId } from "./provider-ids";
 export const ANTHROPIC_LINEUP = {
   sonnet: "claude-sonnet-5-5",
   opus: "claude-opus-5-5",
-  fable: "claude-fable-5-1",
+  fable: "claude-fable-5-2",
   haiku: "claude-haiku-5-5",
 } as const;
 

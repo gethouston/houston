@@ -92,7 +92,7 @@ test("saying a tier name lands on that tier's lineup model", () => {
   expect(resolveSpokenModel("anthropic", "sonnet")?.id).toBe(
     "claude-sonnet-5-5",
   );
-  expect(resolveSpokenModel("anthropic", "fable")?.id).toBe("claude-fable-5-1");
+  expect(resolveSpokenModel("anthropic", "fable")?.id).toBe("claude-fable-5-2");
   expect(resolveSpokenModel("anthropic", "haiku")?.id).toBe("claude-haiku-5-5");
 });
 

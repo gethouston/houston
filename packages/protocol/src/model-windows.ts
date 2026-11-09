@@ -54,7 +54,7 @@ interface WindowOverride {
  *   gpt-6.1-sol and gpt-6.1-terra have no rows: pi reports a 500k window for
  *   them, and no `/status` reading backs a different number yet.
  *
- * `anthropic` carries no row: its lineup (Sonnet 5.5, Opus 5.5, Fable 5.1,
+ * `anthropic` carries no row: its lineup (Sonnet 5.5, Opus 5.5, Fable 5.2,
  * Haiku 5.5) runs a native 1M window on every plan, Pro included, with no
  * `[1m]` variant and no usage credits, so pi's flat 1M stands.
  *

@@ -6,13 +6,12 @@
  */
 
 /**
- * Reasoning-effort levels, ordered low→high. `xhigh` is the top tier: it is the
- * deepest reasoning any provider actually exposes (pi's ceiling, which the
- * Claude backend maps to the SDK's `max` effort). Houston used to carry a fifth
- * `max` tier above `xhigh`, but the two produced the byte-identical API request
- * on every provider — a label with no effect — so it was removed. The set a
- * given model accepts is model-specific (see `ModelOption.effortLevels`),
- * derived from pi's per-model thinking levels (`deriveEffortLevels`).
+ * Reasoning-effort levels, ordered low→high. `xhigh` is the top tier the picker
+ * offers, and the Claude backend sends it as the SDK's `xhigh` effort. The API's
+ * `max` is not offered; a stored `max` normalizes to `xhigh` (`normalizeEffort`).
+ * The set a given model accepts is model-specific (see
+ * `ModelOption.effortLevels`), derived from pi's per-model thinking levels
+ * (`deriveEffortLevels`).
  */
 export type EffortLevel = "low" | "medium" | "high" | "xhigh";
 
