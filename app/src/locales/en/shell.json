@@ -546,7 +546,7 @@
   },
   "newAgent": {
     "chooseHeadline": "How do you want to start?",
-    "hireTitle": "Hire a new AI Employee",
+    "hireTitle": "Create a new AI Employee",
     "copyTitle": "Copy an existing AI Employee"
   },
   "engineGate": {

@@ -206,7 +206,9 @@ test('"Something else" answers in the row the filter stood in', async ({
   const dialog = page.getByRole("dialog");
   // The seeded roster gives the dialog its opening choice; the guided brief
   // lives behind the hire card.
-  await dialog.getByRole("button", { name: "Hire a new AI Employee" }).click();
+  await dialog
+    .getByRole("button", { name: "Create a new AI Employee" })
+    .click();
   const filter = dialog.getByRole("textbox", { name: "Search industries" });
   const door = dialog.getByRole("button", { name: "Something else" });
   const answer = dialog.getByRole("textbox", {
