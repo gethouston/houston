@@ -11,7 +11,6 @@ import { useMoveWithConflict } from "../../../hooks/use-move-with-conflict";
 import { useOrgWriteLock } from "../../../hooks/use-org-write-lock";
 import { useRenameWithConflict } from "../../../hooks/use-rename-with-conflict";
 import { newEngineActive } from "../../../lib/engine";
-import { sharedBytesKey } from "../../../lib/file-bytes-cache";
 import { tauriFiles } from "../../../lib/tauri";
 import type { Agent } from "../../../lib/types";
 import { useUIStore } from "../../../stores/ui";
@@ -127,9 +126,6 @@ export function useAgentFiles(
             // The Files tab belongs to no conversation, so the preview takes
             // no comments here (it says to open the file from a chat).
             chat: null,
-            // Same cache key the grid thumbnail used, so a previewed file
-            // opens from memory instead of downloading its bytes twice.
-            bytesCacheKey: sharedBytesKey(file),
           }),
     onReveal:
       canUseLocalFiles && osDir

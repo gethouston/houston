@@ -10,10 +10,11 @@
  *
  * 1. **Keyed per file + mtime, cached only when there IS an mtime.** Bytes are
  *    immutable for a given `dateModified`, so an edited file lands on a fresh
- *    key. Callers with no mtime to key on (chat-opened previews, which carry
- *    only a path) bypass the cache entirely: a placeholder key would serve
- *    stale bytes, and caching them as always-stale would pin blobs in memory
- *    for zero reuse.
+ *    key. The preview panel keys on the listing's current entry, never one
+ *    remembered from when it opened, or a rewrite would serve the old bytes.
+ *    Callers with no mtime to key on bypass the cache entirely: a placeholder
+ *    key would serve stale bytes, and caching them as always-stale would pin
+ *    blobs in memory for zero reuse.
  * 2. **Only files the grid could have thumbnailed.** `previewKind` bounds what
  *    a thumbnail ever fetches (small images, small text). Anything outside it,
  *    say an 80 MB deck opened for the dialog's "download to open" fallback, can

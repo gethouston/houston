@@ -1,29 +1,33 @@
 import { useQuery, useQueryClient } from "@tanstack/react-query";
-import { useEffect, useState } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
 import { useTranslation } from "react-i18next";
 import { useFiles } from "../../hooks/queries/use-files";
 import { useCapabilities } from "../../hooks/use-capabilities";
 import { useSaveDownload } from "../../hooks/use-save-download";
 import { genericErrorDescription } from "../../lib/error-report";
 import { showErrorToast } from "../../lib/error-toast";
-import { type FileBytes, fetchFileBytes } from "../../lib/file-bytes-cache";
+import {
+  type FileBytes,
+  fetchFileBytes,
+  sharedBytesKey,
+} from "../../lib/file-bytes-cache";
 import { isFileGoneError } from "../../lib/file-gone";
 import { queryKeys } from "../../lib/query-keys";
-import { reportQuietError } from "../../lib/quiet-error-report";
 import { tauriFiles } from "../../lib/tauri";
 import type { Loaded } from "./file-preview-body";
+import { reportPreviewRefusal, sameBytes, shownBytes } from "./preview-bytes";
 
 /**
  * A previewed file's bytes, as the panel renders them. Office files arrive as
  * their converted PDF, a .pdf as itself; both feed the page viewer as a blob.
- * The listing's modified time keys every load, so when the agent rewrites the
- * file the new bytes replace the old in place (no blank "loading" between).
+ * The listing's current entry keys every load, so when the agent rewrites the
+ * file the new bytes replace the old in place (no blank "loading" between),
+ * and a reload that brings the same bytes changes nothing on screen.
  */
 export function useFilePreviewLoad(
   agentPath: string,
   filePath: string | null,
   fileName: string,
-  bytesCacheKey?: number,
 ) {
   const { t, i18n } = useTranslation("agents");
   const { capabilities, isLoading } = useCapabilities();
@@ -34,10 +38,17 @@ export function useFilePreviewLoad(
   const queryClient = useQueryClient();
   const save = useSaveDownload();
   const [loaded, setLoaded] = useState<Loaded>({ state: "loading" });
+  // What is on screen right now, readable from a load still in flight.
+  const shown = useRef<Loaded>(loaded);
+  const show = useCallback((next: Loaded) => {
+    shown.current = next;
+    setLoaded(next);
+  }, []);
   const [attempt, setAttempt] = useState(0);
   const listing = useFiles(agentPath, !!filePath);
   const source = listing.data?.find((file) => file.path === filePath);
   const version = source?.dateModified;
+  const bytesKey = source ? sharedBytesKey(source) : undefined;
   const listingPending = listing.isPending;
   const pdf = useQuery({
     queryKey: queryKeys.filePreviewPdf(
@@ -68,40 +79,24 @@ export function useFilePreviewLoad(
     [url],
   );
   useEffect(() => {
-    if (!filePath || (agentPath && lang && plan))
-      setLoaded({ state: "loading" });
-  }, [agentPath, filePath, lang, plan]);
+    if (!filePath || (agentPath && lang && plan)) show({ state: "loading" });
+  }, [agentPath, filePath, lang, plan, show]);
   useEffect(() => {
     if (!pdf.error || plan !== "pdf" || !filePath) return;
     const refusal = files.classifyPreviewRefusal(pdf.error, { officePreview });
-    if (refusal.fallback && refusal.report) {
-      if (refusal.quiet)
-        reportQuietError(
-          refusal.quiet,
-          "office_preview",
-          refusal.error.message,
-          refusal.error,
-          { agentPath },
-        );
-      else
-        showErrorToast("office_preview", refusal.error.message, refusal.error);
-    } else if (!refusal.fallback && !isFileGoneError(refusal.error)) {
-      showErrorToast("office_preview", String(refusal.error), refusal.error);
-    }
-    setLoaded((current) =>
-      current.state === "pdf"
-        ? current
-        : !refusal.fallback && isFileGoneError(refusal.error)
+    reportPreviewRefusal(refusal, agentPath);
+    if (shown.current.state !== "pdf")
+      show(
+        !refusal.fallback && isFileGoneError(refusal.error)
           ? { state: "error", message: t("files.gone.description") }
           : { state: "binary" },
-    );
-  }, [pdf.error, plan, filePath, officePreview, agentPath, t]);
+      );
+  }, [pdf.error, plan, filePath, officePreview, agentPath, t, show]);
 
   // biome-ignore lint/correctness/useExhaustiveDependencies: `version` (the file was rewritten) and `attempt` (Try again) re-run the load
   useEffect(() => {
     if (!filePath || isLoading || listingPending) return;
     let cancelled = false;
-    let objectUrl: string | null = null;
     if (plan === "pdf" && !pdfBlob) return;
     const bytes =
       plan === "pdf" && pdfBlob
@@ -109,13 +104,16 @@ export function useFilePreviewLoad(
             blob: pdfBlob,
             contentType: "application/pdf",
           })
-        : fetchFileBytes(queryClient, agentPath, filePath, bytesCacheKey);
+        : fetchFileBytes(queryClient, agentPath, filePath, bytesKey);
     bytes
       .then(async (data) => {
         if (cancelled) return;
         const { blob, contentType } = data;
+        const previous = shownBytes(shown.current);
+        if (previous && (await sameBytes(previous, blob))) return;
+        if (cancelled) return;
         if (plan === "pdf" || contentType.includes("pdf")) {
-          setLoaded({
+          show({
             state: "pdf",
             data: blob,
             ...(plan === "bytes" ? { blob } : {}),
@@ -124,10 +122,9 @@ export function useFilePreviewLoad(
           contentType.startsWith("image/") ||
           contentType.includes("html")
         ) {
-          objectUrl = URL.createObjectURL(blob);
-          setLoaded({
+          show({
             state: contentType.startsWith("image/") ? "image" : "html",
-            url: objectUrl,
+            url: URL.createObjectURL(blob),
             blob,
           });
         } else if (
@@ -136,16 +133,16 @@ export function useFilePreviewLoad(
           contentType.includes("csv")
         ) {
           const text = await blob.slice(0, 256 * 1024).text();
-          if (!cancelled) setLoaded({ state: "text", text, blob });
+          if (!cancelled) show({ state: "text", text, blob });
         } else {
-          setLoaded({ state: "binary", blob });
+          show({ state: "binary", blob });
         }
       })
       .catch((error: unknown) => {
         if (cancelled) return;
         // A gone file is the user's state (PRODUCT-1780): authored copy, no
         // report. Anything else is a fault and keeps the generic + report path.
-        setLoaded({
+        show({
           state: "error",
           message: isFileGoneError(error)
             ? t("files.gone.description")
@@ -158,7 +155,7 @@ export function useFilePreviewLoad(
   }, [
     agentPath,
     filePath,
-    bytesCacheKey,
+    bytesKey,
     queryClient,
     t,
     plan,
@@ -167,6 +164,7 @@ export function useFilePreviewLoad(
     version,
     attempt,
     listingPending,
+    show,
   ]);
 
   const blob = "blob" in loaded ? loaded.blob : undefined;
@@ -184,7 +182,7 @@ export function useFilePreviewLoad(
   };
   const refetchPdf = pdf.refetch;
   const retry = () => {
-    setLoaded({ state: "loading" });
+    show({ state: "loading" });
     if (plan === "pdf") void refetchPdf();
     else setAttempt((n) => n + 1);
   };

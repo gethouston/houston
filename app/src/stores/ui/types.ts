@@ -26,8 +26,6 @@ export interface FilePreviewTarget {
    *  when it was opened outside a chat (the Files tab), where commenting is
    *  off. */
   chat: { draftKey: string } | null;
-  /** Key into the shared byte cache, when the opener holds the entry. */
-  bytesCacheKey?: number;
   /** Open on this page (a sent comment's pill), rather than the first. */
   page?: number;
 }
