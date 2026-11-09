@@ -127,9 +127,13 @@ function handleEscape(e: KeyboardEvent): void {
     e.preventDefault();
     return;
   }
-  // Second Escape (or any Escape when the composer isn't focused):
-  // close the chat panel entirely.
+  // Second Escape (or any Escape when the composer isn't focused): close
+  // the file preview beside the chat first, then the chat panel itself.
   e.preventDefault();
+  if (ui.filePreview) {
+    ui.setFilePreview(null);
+    return;
+  }
   ui.onPanelClose?.();
 }
 

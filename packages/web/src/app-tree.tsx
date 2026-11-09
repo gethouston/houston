@@ -16,7 +16,6 @@
  * account's stored locale applies after auth (see AppTree below, HOU-1014).
  */
 
-import { AgentFilePreviewHost } from "@houston/app/components/agent-file-preview-host";
 import { LanguageGate } from "@houston/app/components/shell/language-gate";
 import { QueryPersistenceProvider } from "@houston/app/components/shell/query-persistence-provider";
 import { WorkspaceLoading } from "@houston/app/components/shell/workspace-loading";
@@ -145,7 +144,6 @@ export default function AppTree() {
       <IdentityKeyedApp />
       {/* Global workspace-file preview (chat file clicks) —
           mirrors app/src/main.tsx. */}
-      <AgentFilePreviewHost />
     </>
   );
 

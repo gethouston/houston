@@ -18,6 +18,9 @@ export function PanelWidthToggle() {
   const { t } = useTranslation("board");
   const wide = useUIStore((s) => s.chatWide);
   const toggle = useUIStore((s) => s.toggleChatWide);
+  // Beside a file preview the chat is already as wide as it can be.
+  const previewing = useUIStore((s) => s.filePreview !== null);
+  if (previewing) return null;
   const label = wide ? t("panel.collapse") : t("panel.expand");
   const Icon = wide ? Minimize2 : Maximize2;
   return (

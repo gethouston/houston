@@ -9,6 +9,10 @@ import type { UISliceCreator } from "./state.ts";
  *  next screen. Spread into each nav-aware action's write. */
 export const noChat = { chatAgentId: null, chatMissionId: null };
 
+/** The same for the file preview: it belongs to the screen (and chat) it
+ *  was opened from, so moving to another place shuts it. */
+export const noPreview = { filePreview: null };
+
 export const createNavActions: UISliceCreator<NavActions> = (set, get) => ({
   navBack: () => get().navApplyHistory(get().navIndex - 1),
   navApplyHistory: (index) => {
@@ -22,6 +26,7 @@ export const createNavActions: UISliceCreator<NavActions> = (set, get) => ({
     // already at the panel-less entry, so they fold in as no-ops instead
     // of double-popping. An entry WITH a panel can't reopen it — the
     // selection it derived from is gone (see NavEntry.panelOpen).
+    if (!entry.previewOpen && get().filePreview) set({ filePreview: null });
     if (!entry.panelOpen && get().missionPanelOpen) {
       const close = get().onPanelClose;
       if (close) close();
@@ -29,12 +34,20 @@ export const createNavActions: UISliceCreator<NavActions> = (set, get) => ({
     }
   },
   setViewMode: (viewMode, opts) =>
-    set((s) => navigated(s, { viewMode, ...noChat }, opts?.nav ?? "push")),
+    set((s) =>
+      navigated(s, { viewMode, ...noChat, ...noPreview }, opts?.nav ?? "push"),
+    ),
   openAgentView: (activeAgentId, agentSection, opts) =>
     set((s) =>
       navigated(
         s,
-        { viewMode: AGENT_VIEW_ID, activeAgentId, agentSection, ...noChat },
+        {
+          viewMode: AGENT_VIEW_ID,
+          activeAgentId,
+          agentSection,
+          ...noChat,
+          ...noPreview,
+        },
         opts?.nav ?? "push",
       ),
     ),
@@ -52,7 +65,7 @@ export const createNavActions: UISliceCreator<NavActions> = (set, get) => ({
     set((s) =>
       navigated(
         s,
-        { viewMode: "settings", settingsSection, ...noChat },
+        { viewMode: "settings", settingsSection, ...noChat, ...noPreview },
         opts?.nav ?? "push",
       ),
     ),
@@ -60,14 +73,24 @@ export const createNavActions: UISliceCreator<NavActions> = (set, get) => ({
     set((s) =>
       navigated(
         s,
-        { viewMode: AGENTS_HOME_VIEW_ID, agentsHomeAgentId, ...noChat },
+        {
+          viewMode: AGENTS_HOME_VIEW_ID,
+          agentsHomeAgentId,
+          ...noChat,
+          ...noPreview,
+        },
         opts?.nav ?? "push",
       ),
     ),
   setAgentsHomeTeamId: (agentsHomeTeamId) => set({ agentsHomeTeamId }),
   openMissionChat: (chatAgentId, chatMissionId, opts) =>
     set((s) =>
-      navigated(s, { chatAgentId, chatMissionId }, opts?.nav ?? "push"),
+      navigated(
+        s,
+        { chatAgentId, chatMissionId, ...noPreview },
+        opts?.nav ?? "push",
+      ),
     ),
-  closeMissionChat: () => set((s) => navigated(s, { ...noChat }, "retreat")),
+  closeMissionChat: () =>
+    set((s) => navigated(s, { ...noChat, ...noPreview }, "retreat")),
 });

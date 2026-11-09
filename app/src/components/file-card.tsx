@@ -69,17 +69,19 @@ export function getFileIcon(ext?: string): LucideIcon {
 interface FileCardProps {
   filePath: string;
   agentPath: string;
+  /** The chat the card sits in (its draft key). */
+  draftKey?: string | null;
 }
 
-export function FileCard({ filePath, agentPath }: FileCardProps) {
+export function FileCard({ filePath, agentPath, draftKey }: FileCardProps) {
   const fileName = fileNameOf(filePath);
   const ext = fileName.includes(".")
     ? fileName.split(".").pop()?.toLowerCase()
     : undefined;
   const Icon = getFileIcon(ext);
-  const { openFile, opensLocally } = useOpenAgentFile(agentPath);
+  const { openFile, opensLocally } = useOpenAgentFile(agentPath, draftKey);
   // The affordance mirrors what the click does: hand off to the OS
-  // (external-link) or open the in-app preview dialog (eye).
+  // (external-link) or open the in-app preview panel (eye).
   const ActionIcon = opensLocally ? ExternalLinkIcon : EyeIcon;
 
   return (

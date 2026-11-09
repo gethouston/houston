@@ -43,7 +43,8 @@ export function ArchivedMissionBoard({
   setPanelOpen: ShellDetailPanel["setPanelOpen"];
 }) {
   const { t } = useTranslation("board");
-  const chatWide = useUIStore((s) => s.chatWide);
+  // A file preview beside the chat makes it wide: the board steps out.
+  const chatWide = useUIStore((s) => s.chatWide || s.filePreview !== null);
   const { chatProps, dialogs } = useArchivedChatProps(data, archivedPanel);
 
   return (

@@ -1,6 +1,5 @@
 import { useCallback } from "react";
 import { useArchivedHandoff } from "../../hooks/use-archived-handoff";
-import { useOpenAgentHref } from "../../hooks/use-open-agent-file";
 import { modelAcceptsImages } from "../../lib/providers";
 import { useAttachmentRejectionDialog } from "../attachment-rejection-dialog";
 import { useAgentChatPanel } from "../use-agent-chat-panel";
@@ -60,7 +59,7 @@ export function useMissionControlArchivedPanel(
       panel.effectiveModel,
     ),
   });
-  const openHref = useOpenAgentHref(activeAgent?.folderPath ?? null);
+  const openHref = panel.openHref;
   const onSendMessage = useMissionControlArchivedSend({
     activeAgent,
     selectedItem,

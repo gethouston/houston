@@ -51,6 +51,12 @@ export interface NavEntry {
    * closed.
    */
   panelOpen: boolean;
+  /**
+   * Whether the file preview panel is open beside the view (a full-screen
+   * sheet on the phone). Like `panelOpen` it can be popped, so back closes it,
+   * but not re-entered: forward restores the view without the file.
+   */
+  previewOpen: boolean;
 }
 
 /** The stack plus the cursor: entries above `navIndex` are the forward set. */
@@ -92,6 +98,7 @@ export interface NavSourceFields {
   chatAgentId: string | null;
   chatMissionId: string | null;
   missionPanelOpen: boolean;
+  filePreview: object | null;
 }
 
 export function navEntryOf(s: NavSourceFields): NavEntry {
@@ -104,6 +111,7 @@ export function navEntryOf(s: NavSourceFields): NavEntry {
     chatAgentId: s.chatAgentId,
     chatMissionId: s.chatMissionId,
     panelOpen: s.missionPanelOpen,
+    previewOpen: s.filePreview !== null,
   };
 }
 
@@ -116,17 +124,21 @@ export function sameNavEntry(a: NavEntry, b: NavEntry): boolean {
     a.agentsHomeAgentId === b.agentsHomeAgentId &&
     a.chatAgentId === b.chatAgentId &&
     a.chatMissionId === b.chatMissionId &&
-    a.panelOpen === b.panelOpen
+    a.panelOpen === b.panelOpen &&
+    a.previewOpen === b.previewOpen
   );
 }
 
 /**
- * The entry's fields as a store write, minus `panelOpen`: the panel is owned
- * by surface claims (`detail-panel-owners.ts`), so applying an entry writes the
- * view fields and lets the caller close the panel through its owner.
+ * The entry's fields as a store write, minus `panelOpen` and `previewOpen`:
+ * the panel is owned by surface claims (`detail-panel-owners.ts`) and the
+ * preview by its opener, so applying an entry writes the view fields and lets
+ * the caller close either.
  */
-export function viewFieldsOf(entry: NavEntry): Omit<NavEntry, "panelOpen"> {
-  const { panelOpen: _panelOpen, ...fields } = entry;
+export function viewFieldsOf(
+  entry: NavEntry,
+): Omit<NavEntry, "panelOpen" | "previewOpen"> {
+  const { panelOpen: _panelOpen, previewOpen: _previewOpen, ...fields } = entry;
   return fields;
 }
 
@@ -148,6 +160,7 @@ export function initialNavState(): NavState {
         chatAgentId: null,
         chatMissionId: null,
         missionPanelOpen: false,
+        filePreview: null,
       }),
     ],
     navIndex: 0,

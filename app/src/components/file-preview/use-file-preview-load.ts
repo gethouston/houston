@@ -1,18 +1,24 @@
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { useEffect, useState } from "react";
 import { useTranslation } from "react-i18next";
-import type { Loaded } from "../components/file-preview-body";
-import { genericErrorDescription } from "../lib/error-report";
-import { showErrorToast } from "../lib/error-toast";
-import { type FileBytes, fetchFileBytes } from "../lib/file-bytes-cache";
-import { isFileGoneError } from "../lib/file-gone";
-import { queryKeys } from "../lib/query-keys";
-import { reportQuietError } from "../lib/quiet-error-report";
-import { tauriFiles } from "../lib/tauri";
-import { useFiles } from "./queries/use-files";
-import { useCapabilities } from "./use-capabilities";
-import { useSaveDownload } from "./use-save-download";
+import { useFiles } from "../../hooks/queries/use-files";
+import { useCapabilities } from "../../hooks/use-capabilities";
+import { useSaveDownload } from "../../hooks/use-save-download";
+import { genericErrorDescription } from "../../lib/error-report";
+import { showErrorToast } from "../../lib/error-toast";
+import { type FileBytes, fetchFileBytes } from "../../lib/file-bytes-cache";
+import { isFileGoneError } from "../../lib/file-gone";
+import { queryKeys } from "../../lib/query-keys";
+import { reportQuietError } from "../../lib/quiet-error-report";
+import { tauriFiles } from "../../lib/tauri";
+import type { Loaded } from "./file-preview-body";
 
+/**
+ * A previewed file's bytes, as the panel renders them. Office files arrive as
+ * their converted PDF, a .pdf as itself; both feed the page viewer as a blob.
+ * The listing's modified time keys every load, so when the agent rewrites the
+ * file the new bytes replace the old in place (no blank "loading" between).
+ */
 export function useFilePreviewLoad(
   agentPath: string,
   filePath: string | null,
@@ -28,8 +34,11 @@ export function useFilePreviewLoad(
   const queryClient = useQueryClient();
   const save = useSaveDownload();
   const [loaded, setLoaded] = useState<Loaded>({ state: "loading" });
-  const listing = useFiles(agentPath, !!filePath && plan === "pdf");
+  const [attempt, setAttempt] = useState(0);
+  const listing = useFiles(agentPath, !!filePath);
   const source = listing.data?.find((file) => file.path === filePath);
+  const version = source?.dateModified;
+  const listingPending = listing.isPending;
   const pdf = useQuery({
     queryKey: queryKeys.filePreviewPdf(
       agentPath,
@@ -88,12 +97,12 @@ export function useFilePreviewLoad(
     );
   }, [pdf.error, plan, filePath, officePreview, agentPath, t]);
 
+  // biome-ignore lint/correctness/useExhaustiveDependencies: `version` (the file was rewritten) and `attempt` (Try again) re-run the load
   useEffect(() => {
-    if (!filePath || isLoading) return;
+    if (!filePath || isLoading || listingPending) return;
     let cancelled = false;
     let objectUrl: string | null = null;
     if (plan === "pdf" && !pdfBlob) return;
-    if (plan === "bytes") setLoaded({ state: "loading" });
     const bytes =
       plan === "pdf" && pdfBlob
         ? Promise.resolve({
@@ -106,10 +115,9 @@ export function useFilePreviewLoad(
         if (cancelled) return;
         const { blob, contentType } = data;
         if (plan === "pdf" || contentType.includes("pdf")) {
-          objectUrl = URL.createObjectURL(blob);
           setLoaded({
             state: "pdf",
-            url: objectUrl,
+            data: blob,
             ...(plan === "bytes" ? { blob } : {}),
           });
         } else if (
@@ -156,6 +164,9 @@ export function useFilePreviewLoad(
     plan,
     pdfBlob,
     isLoading,
+    version,
+    attempt,
+    listingPending,
   ]);
 
   const blob = "blob" in loaded ? loaded.blob : undefined;
@@ -171,5 +182,11 @@ export function useFilePreviewLoad(
       showErrorToast("download_file", "File download failed", error);
     }
   };
-  return { loaded, canDownload, download };
+  const refetchPdf = pdf.refetch;
+  const retry = () => {
+    setLoaded({ state: "loading" });
+    if (plan === "pdf") void refetchPdf();
+    else setAttempt((n) => n + 1);
+  };
+  return { loaded, canDownload, download, retry, converts: plan === "pdf" };
 }

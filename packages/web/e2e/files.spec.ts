@@ -154,12 +154,12 @@ test("Download in the file preview saves the bytes and never opens a tab", async
   context.on("page", (p) => extraPages.push(p));
 
   await row(page, "sales.csv").getByText("sales.csv").click();
-  const dialog = page.getByRole("dialog");
-  await expect(dialog.getByText("a,b")).toBeVisible();
+  const panel = page.getByRole("region", { name: "Preview of sales.csv" });
+  await expect(panel.getByText("a,b")).toBeVisible();
 
   const [download] = await Promise.all([
     page.waitForEvent("download"),
-    dialog.getByRole("button", { name: "Download" }).click(),
+    panel.getByRole("button", { name: "Download .csv" }).click(),
   ]);
   // Headless Chromium names blob downloads with a GUID — assert bytes, not
   // suggestedFilename().

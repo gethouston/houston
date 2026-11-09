@@ -11,6 +11,7 @@
    sits ON the canvas (the AI-Hub glow + modal motion). */
 @import "@houston-ai/core/src/canvas.css";
 @import "./futuristic.css";
+@import "./file-preview.css";
 
 /* Scan local source + @houston-ai packages for Tailwind classes */
 @source "../";

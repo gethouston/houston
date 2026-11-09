@@ -171,6 +171,7 @@ const ENGINE_CLIENT_OWNERS = new Set([
   "app/src/lib/conversation-import-facade.ts",
   "app/src/lib/delegation-facade.ts",
   "app/src/lib/agents-facade.ts",
+  "app/src/lib/citations-facade.ts",
   "app/src/lib/conversations-facade.ts",
   "app/src/lib/composer-prewarm-facade.ts",
   "app/src/lib/browser-live-facade.ts",

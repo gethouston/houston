@@ -1,5 +1,6 @@
 import type { CreateFlowDoor } from "../../components/shell/create-agent-steps-model.ts";
 import type { TeamMoveSource } from "../../lib/move-team";
+import { navigated } from "../../lib/nav-stack.ts";
 import type { UISliceCreator } from "./state.ts";
 import type { CreateFlowRequest, FilePreviewTarget } from "./types.ts";
 
@@ -34,7 +35,9 @@ export interface DialogFields {
   cheatsheetOpen: boolean;
   /** Whether the "From a friend" import wizard is open. */
   importFromFriendOpen: boolean;
-  /** File shown by the global preview dialog, or null when closed. */
+  /** File shown in the preview panel beside the chat (a full-screen sheet on
+   *  the phone), or null when it is shut. One file at a time: opening another
+   *  replaces it. */
   filePreview: FilePreviewTarget | null;
   /** Whether the C19 "choose the routines to keep" dialog is open. */
   planKeepDialogOpen: boolean;
@@ -87,6 +90,17 @@ export const createDialogActions: UISliceCreator<DialogActions> = (set) => ({
   setCheatsheetOpen: (cheatsheetOpen) => set({ cheatsheetOpen }),
   setImportFromFriendOpen: (importFromFriendOpen) =>
     set({ importFromFriendOpen }),
-  setFilePreview: (filePreview) => set({ filePreview }),
+  // Opening is a place the back button pops; swapping the file in an open
+  // panel is not a new place; closing retreats. A fresh opening sits beside
+  // the chat, whatever size the last one was left at.
+  setFilePreview: (filePreview) =>
+    set((s) => ({
+      ...navigated(
+        s,
+        { filePreview },
+        filePreview ? (s.filePreview ? "replace" : "push") : "retreat",
+      ),
+      ...(s.filePreview ? {} : { previewExpanded: false }),
+    })),
   setPlanKeepDialogOpen: (planKeepDialogOpen) => set({ planKeepDialogOpen }),
 });

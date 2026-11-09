@@ -13,6 +13,7 @@ import { useUIStore } from "../../stores/ui";
 import { useWorkspaceStore } from "../../stores/workspaces";
 import { LessonRunner } from "../academy/lessons/lesson-runner";
 import { CommandPalette } from "../command-palette";
+import { useFilePreviewSlot } from "../file-preview/preview-slot";
 import { MissionChatScreen } from "../mission-chat/mission-chat-screen";
 import { MobileNewMissionSheet } from "../mobile-new-mission-sheet";
 import { ImportAgentWizard } from "../portable/import-wizard";
@@ -88,9 +89,10 @@ export function WorkspaceShell({
   const mobileChatOpen = isMobile && chatAgentId !== null;
   const mobileBarsHidden =
     isMobile && phoneChromeHidden({ viewMode, chatAgentId, missionPanelOpen });
-  // The wide chat: the panel takes the row and `<main>` steps out of the
-  // layout (`use-panel-wide.ts` says when).
-  const panelWide = usePanelWide();
+  // The file preview beside the chat (or the screen), and the wide chat:
+  // either takes the row and `<main>` steps out of the layout.
+  const preview = useFilePreviewSlot();
+  const panelWide = usePanelWide() || (preview.open && missionPanelOpen);
 
   return (
     <DetailPanelProvider value={panelContainer}>
@@ -115,6 +117,7 @@ export function WorkspaceShell({
               panel overlay. In the macOS desktop window that gap is also a
               window drag region, like the gutter around it. */}
             <div
+              ref={preview.rowRef}
               data-tauri-drag-region={osIsTauri() && isMac ? true : undefined}
               className="relative flex min-w-0 flex-1 gap-0 overflow-hidden md:gap-2"
             >
@@ -126,7 +129,7 @@ export function WorkspaceShell({
                   // Out of the layout, not off-glass: the board stays mounted
                   // (kept alive like any hidden screen) with its selection,
                   // so shrinking the chat back lands on the same card.
-                  panelWide && "md:hidden",
+                  (panelWide || preview.expanded) && "md:hidden",
                 )}
               >
                 <TeamStatusBanner />
@@ -148,9 +151,11 @@ export function WorkspaceShell({
               {missionPanelOpen && (
                 <ShellPanelCard
                   wide={panelWide}
+                  stepsOut={preview.expanded}
                   containerRef={setPanelContainer}
                 />
               )}
+              {preview.slot}
               {mobileChatOpen && (
                 <div className="absolute inset-0 z-40 overflow-hidden rounded-none bg-background canvas-screen md:rounded-2xl">
                   <MissionChatScreen />

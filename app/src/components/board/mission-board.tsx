@@ -38,7 +38,8 @@ export function MissionBoard({ source }: { source: BoardSource }) {
   // A mission chat may go wide (PRODUCT-1722): the board is a place to come
   // back to, not a form the chat is helping to fill in.
   const { panelContainer, setPanelOpen } = useShellDetailPanel({ wide: true });
-  const chatWide = useUIStore((s) => s.chatWide);
+  // A file preview beside the chat makes it wide: the board steps out.
+  const chatWide = useUIStore((s) => s.chatWide || s.filePreview !== null);
   // Every board is the whole of a kept-alive top-level screen, so the
   // screen-level signal alone says whether this one is on the glass. It gates
   // the keyboard nav and the shell detail panel: a hidden-but-mounted screen
