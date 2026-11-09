@@ -55,6 +55,9 @@ export interface CitationsModule {
   /** Drop the draft's comments: all of them, or only `ids` (the ones a send
    *  just carried, so a comment added while it was in flight survives). */
   clear(draftKey: string, ids?: readonly string[]): void;
+  /** Drop every draft's comments (the crops are private to the person who
+   *  made them, so an identity change takes them all). */
+  clearAll(): void;
   /** Flag the comments on pages a rewrite of `filePath` removed, and unflag
    *  the ones whose page came back. */
   reconcile(draftKey: string, filePath: string, pageCount: number): void;
@@ -77,8 +80,12 @@ export function createCitationsModule(
   const list = (draftKey: string) =>
     (ctx.store.getSnapshot(scope(draftKey)) as DraftCitation[] | undefined) ??
     EMPTY;
-  const write = (draftKey: string, next: readonly DraftCitation[]) =>
+  const drafts = new Set<string>();
+  const write = (draftKey: string, next: readonly DraftCitation[]) => {
+    if (next.length) drafts.add(draftKey);
+    else drafts.delete(draftKey);
     ctx.store.publish(scope(draftKey), next.length ? next : EMPTY);
+  };
 
   return {
     limit: CITATION_LIMIT,
@@ -132,6 +139,12 @@ export function createCitationsModule(
       const current = list(draftKey);
       const keep = ids ? current.filter((c) => !ids.includes(c.id)) : EMPTY;
       if (keep.length !== current.length) write(draftKey, keep);
+    },
+    /** Drop every draft's comments.
+     * @assistant group:files hidden: composer draft state on this device.
+     * @assistant unroutable: no host request. */
+    clearAll() {
+      for (const draftKey of [...drafts]) write(draftKey, EMPTY);
     },
     /** Flag comments whose page a rewrite removed.
      * @assistant group:files hidden: composer draft state on this device.

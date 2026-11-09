@@ -138,4 +138,13 @@ describe("citations", () => {
       late.citation.id,
     ]);
   });
+
+  it("drops every draft on clearAll", () => {
+    const { sdk } = makeSdk();
+    sdk.citations.add("chat-a", textOnSlide3);
+    sdk.citations.add("chat-b", areaOnSlide5);
+    sdk.citations.clearAll();
+    expect(sdk.citations.list("chat-a")).toEqual([]);
+    expect(sdk.citations.list("chat-b")).toEqual([]);
+  });
 });
