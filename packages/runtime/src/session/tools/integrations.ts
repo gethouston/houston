@@ -5,7 +5,12 @@ import { recordConnection, recordSignin } from "../interaction";
 import { assertNotPlanMode } from "../live-mode-gate";
 import { layoutJson } from "./integrations-json";
 import type { ToolMatch } from "./integrations-render";
-import { searchEmptyText, searchLeadNote } from "./integrations-search-notes";
+import {
+  parameterFailureError,
+  parameterFailureHint,
+  searchEmptyText,
+  searchLeadNote,
+} from "./integrations-search-notes";
 import {
   REQUEST_CONNECTION_GUIDANCE,
   searchResultText,
@@ -460,7 +465,7 @@ export function makeIntegrationTools(opts: IntegrationToolOptions) {
             details: { action: params.action, actionNotFound: true },
           };
         }
-        throw err;
+        throw parameterFailureError(err, params.action);
       }
       // The action ran but the app rejected it → surface, don't pretend success.
       if (!result.successful) {
@@ -469,7 +474,7 @@ export function makeIntegrationTools(opts: IntegrationToolOptions) {
         // the model the connect-card instruction right in the error.
         const hint = /connected account|not connected/i.test(reason)
           ? ` The user has not connected this app. ${REQUEST_CONNECTION_GUIDANCE}`
-          : "";
+          : parameterFailureHint(reason, params.action);
         throw new Error(`"${params.action}" did not succeed: ${reason}${hint}`);
       }
       const text = boundResultText(

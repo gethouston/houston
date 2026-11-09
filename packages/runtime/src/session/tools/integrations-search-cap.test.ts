@@ -13,15 +13,17 @@ beforeEach(() => {
 });
 afterEach(() => rmSync(workspaceDir, { recursive: true, force: true }));
 
-// Six full-size schemas push the result past the 8k head both backends keep.
-const gmailItems: ToolMatch[] = Array.from({ length: 6 }, (_, i) => ({
+// Wide signatures push the result past the 8K head both backends keep.
+const gmailItems: ToolMatch[] = Array.from({ length: 20 }, (_, i) => ({
   action: `GMAIL_ACTION_${i}`,
   toolkit: "gmail",
   description: "Read emails",
   status: "connected",
   inputParams: {
     type: "object",
-    properties: { query: { type: "string", description: "x".repeat(1600) } },
+    properties: Object.fromEntries(
+      Array.from({ length: 50 }, (_, i) => [`field_${i}`, { type: "string" }]),
+    ),
   },
   accounts: [{ id: "ca_work", label: "work@example.test" }, { id: "ca_home" }],
 }));
@@ -47,11 +49,11 @@ const wideProperties = Object.fromEntries(
 const overCeilingItems: ToolMatch[] = Array.from({ length: 30 }, (_, i) => ({
   action: `SHEETS_ACTION_${i}`,
   toolkit: "googlesheets",
-  description: "Update a sheet",
+  description: "Update a sheet. ".repeat(20),
   status: "connected",
   inputParams: { type: "object", properties: wideProperties },
 }));
-// Past FULL_SCHEMA_ITEMS rows show signatures, and past MAX_ITEMS the rest are
+// Past the detailed tier rows show signatures, and past MAX_ITEMS the rest are
 // counted: both notes must survive the 8k head too.
 const manyItems: ToolMatch[] = Array.from({ length: 35 }, (_, i) => ({
   ...gmailItems[0],
@@ -155,8 +157,6 @@ test("a capped search keeps the elided-rows and short-signature notes, on both b
     expect(text).toContain(
       "(+5 more matched but are not shown - narrow the query, or set `app` to the one you need.)",
     );
-    expect(text).toContain(
-      "(Some actions show a short params signature instead of the full schema.",
-    );
+    expect(text).toContain("(Some actions show only a params signature.");
   }
 });
