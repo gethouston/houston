@@ -35,7 +35,7 @@ export function CitationNumber({
     <span
       aria-hidden
       className={cn(
-        "grid size-4 shrink-0 place-items-center rounded-full bg-action text-[10px] font-semibold text-action-text tabular-nums ring-2 ring-background",
+        "grid size-4 shrink-0 place-items-center rounded-full bg-action text-[10px] leading-none font-semibold text-action-text tabular-nums ring-2 ring-background",
         className,
       )}
     >
