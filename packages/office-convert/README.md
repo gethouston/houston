@@ -7,7 +7,8 @@ Stateless Office-to-PDF conversion with headless LibreOffice. Each request uses 
 - `GET /health` returns `{ "status": "ok", "version": "<image revision>" }`.
 - `POST /convert?ext=<extension>&lang=<BCP47>` accepts raw source bytes and returns `application/pdf`, `X-Page-Count`, and `X-Converter-Version`.
 - Supported extensions are pptx, docx, xlsx, ppt, doc, xls, odp, odt, and ods.
-- Input above 50 MiB returns 413 `too_large`. Unsupported extensions return 415 `unsupported_type`. A timeout returns 504 `timeout`. An unsuccessful conversion returns 422 `conversion_failed`.
+- Input above 30 MiB, or 31,457,280 bytes, returns 413 `too_large`. Unsupported extensions return 415 `unsupported_type`. A timeout returns 504 `timeout`. An unsuccessful conversion returns 422 `conversion_failed`.
+- PDF responses use chunked transfer without `Content-Length` to stay outside Cloud Run's 32 MiB non-streamed response limit. The source cap stays below its 32 MiB HTTP/1 request limit.
 - Spanish maps to `es_ES.UTF-8`, Portuguese to `pt_BR.UTF-8`, and other languages to `en_US.UTF-8`.
 - Impress includes hidden slides. Calc exports each sheet as one page.
 
@@ -24,7 +25,7 @@ OFFICE_CONVERT_TEST_URL=http://127.0.0.1:8080 pnpm --filter @houston/office-conv
 
 For an internal-only Compose converter, set `OFFICE_CONVERT_TEST_CONTAINER` to its container name instead of `OFFICE_CONVERT_TEST_URL`. The test sends HTTP requests through `docker exec`.
 
-The Docker test converts `fixtures/sheets.xlsx`, a generated one-sheet workbook from the LibreOffice spike. Unit tests exercise HTTP responses, process failures, locale selection, and export options.
+The Docker tests convert `fixtures/sheets.xlsx`, a generated one-sheet workbook from the LibreOffice spike, and `fixtures/deck.odp`, a generated two-slide deck. The deck test checks chunked transfer and the absence of `Content-Length`. Unit tests exercise HTTP responses, process failures, locale selection, and export options.
 
 ## Deployment
 

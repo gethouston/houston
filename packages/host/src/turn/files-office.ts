@@ -40,7 +40,7 @@ export function createOfficePreview(
       if (source.length > OFFICE_MAX_BYTES)
         throw new FilePreviewError(
           "too_large",
-          "Office preview input exceeds 50 MiB",
+          "Office preview input exceeds 30 MiB",
         );
       lang = officePreviewLanguage(lang);
       const version = await converter.version();

@@ -3,6 +3,8 @@ import {
   type IncomingMessage,
   type ServerResponse,
 } from "node:http";
+import { Readable } from "node:stream";
+import { pipeline } from "node:stream/promises";
 import {
   FILE_PREVIEW_STATUS,
   FilePreviewError,
@@ -82,14 +84,26 @@ export function createConverterServer(
       );
       res.writeHead(200, {
         "Content-Type": "application/pdf",
-        "Content-Length": pdf.length,
         "X-Page-Count": pageCount,
         "X-Converter-Version": version,
       });
-      res.end(pdf);
+      await pipeline(
+        Readable.from(
+          (function* () {
+            for (let offset = 0; offset < pdf.length; offset += 64 * 1024) {
+              yield pdf.subarray(offset, offset + 64 * 1024);
+            }
+          })(),
+        ),
+        res,
+      );
     };
     handle().catch((error: unknown) => {
       options.report?.(error);
+      if (res.headersSent || res.destroyed) {
+        res.destroy(error instanceof Error ? error : undefined);
+        return;
+      }
       const code =
         error instanceof FilePreviewError ? error.code : "conversion_failed";
       json(res, FILE_PREVIEW_STATUS[code], { code });

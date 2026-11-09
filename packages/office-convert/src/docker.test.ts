@@ -6,7 +6,7 @@ const base = process.env.OFFICE_CONVERT_TEST_URL;
 const container = process.env.OFFICE_CONVERT_TEST_CONTAINER;
 
 async function convert(
-  ext: "xlsx" | "pptx",
+  ext: "xlsx" | "pptx" | "odp",
   source: Uint8Array,
 ): Promise<unknown> {
   // Internal-only compose networks accept requests through docker exec.
@@ -67,5 +67,26 @@ test.skipIf(!base && !container)(
       status: 422,
       body: JSON.stringify({ code: "conversion_failed" }),
     });
+  },
+);
+
+test.skipIf(!base && !container)(
+  "LibreOffice streams a real deck without Content-Length",
+  async () => {
+    const source = await readFile(
+      new URL("../fixtures/deck.odp", import.meta.url),
+    );
+    const result = await convert("odp", source);
+    expect(result).toMatchObject({
+      status: 200,
+      headers: {
+        "content-type": "application/pdf",
+        "transfer-encoding": "chunked",
+        "x-page-count": "2",
+        "x-converter-version": expect.any(String),
+      },
+      body: expect.stringMatching(/^%PDF-/),
+    });
+    expect(result).not.toHaveProperty("headers.content-length");
   },
 );

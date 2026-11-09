@@ -2,7 +2,7 @@ import { mkdtemp, readdir, rm } from "node:fs/promises";
 import { createServer, type Server } from "node:http";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
-import { FilePreviewError, OFFICE_MAX_BYTES } from "@houston/wire-types";
+import { FilePreviewError } from "@houston/wire-types";
 import { afterEach, expect, test, vi } from "vitest";
 import { FsVfs } from "../vfs";
 import { listWorkspace } from "./files";
@@ -71,7 +71,8 @@ async function setup() {
         "x-page-count": "2",
         "x-converter-version": version,
       });
-      res.end("%PDF-converted");
+      res.write("%PDF-");
+      res.end("converted");
     }),
   );
   const preview = createOfficePreview(
@@ -174,10 +175,7 @@ test("unsupported and oversized inputs refuse before conversion", async () => {
   const unsupported = await s.download("path=file.txt&as=pdf");
   expect(unsupported.status).toBe(415);
   expect(await unsupported.json()).toMatchObject({ code: "unsupported_type" });
-  await s.vfs.writeBytes(
-    "Work/Agent/huge.pptx",
-    Buffer.alloc(OFFICE_MAX_BYTES + 1),
-  );
+  await s.vfs.writeBytes("Work/Agent/huge.pptx", Buffer.alloc(31_457_281));
   const large = await s.download("path=huge.pptx&as=pdf");
   expect(large.status).toBe(413);
   expect(await large.json()).toMatchObject({ code: "too_large" });
@@ -264,4 +262,25 @@ test.each([
   } finally {
     request.mockRestore();
   }
+});
+
+test("the converter client reads a chunked PDF without Content-Length", async () => {
+  const service = await listen(
+    createServer((_req, res) => {
+      res.writeHead(200, { "x-page-count": "2", "x-converter-version": "v1" });
+      res.write("%PDF-");
+      res.end("streamed");
+    }),
+  );
+  const response = await fetch(service);
+  expect(response.headers.get("content-length")).toBeNull();
+  expect(response.headers.get("transfer-encoding")).toBe("chunked");
+  await response.arrayBuffer();
+  await expect(
+    httpOfficeConverter(service).convert(Buffer.from("source"), "pptx", "en"),
+  ).resolves.toEqual({
+    pdf: Buffer.from("%PDF-streamed"),
+    pageCount: 2,
+    version: "v1",
+  });
 });

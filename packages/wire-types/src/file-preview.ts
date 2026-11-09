@@ -57,7 +57,7 @@ export interface FilePreviewOptions {
   lang: string;
 }
 
-export const OFFICE_MAX_BYTES = 50 * 1024 * 1024;
+export const OFFICE_MAX_BYTES = 30 * 1024 * 1024;
 
 export const officeConverterHealthSchema = z.object({
   status: z.literal("ok"),

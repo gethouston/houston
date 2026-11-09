@@ -1,5 +1,6 @@
 import { afterEach, beforeEach, expect, test } from "vitest";
 import { SEED_AGENT_ID } from "./config";
+import { fakeOfficePreview } from "./office-preview";
 import { type FakeHost, startFakeHost } from "./server";
 
 let host: FakeHost;
@@ -52,4 +53,17 @@ test("Office preview returns PDF while ordinary download preserves the source", 
   expect(
     (await fetch(`${files}/download?path=missing.pptx&as=pdf`)).status,
   ).toBe(404);
+});
+
+test("fake Office previews accept 30 MiB and refuse one extra byte", async () => {
+  expect(
+    fakeOfficePreview("deck.pptx", Buffer.alloc(31_457_280), true).status,
+  ).toBe(200);
+  const response = fakeOfficePreview(
+    "deck.pptx",
+    Buffer.alloc(31_457_281),
+    true,
+  );
+  expect(response.status).toBe(413);
+  expect(await response.json()).toMatchObject({ code: "too_large" });
 });

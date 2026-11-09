@@ -40,7 +40,7 @@ export async function serveFileDownload(
     if (!(error instanceof VfsReadLimitError)) throw error;
     json(res, 413, {
       code: "too_large",
-      error: "Office preview input exceeds 50 MiB",
+      error: "Office preview input exceeds 30 MiB",
     });
     return;
   }

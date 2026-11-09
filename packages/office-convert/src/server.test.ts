@@ -54,6 +54,8 @@ test("conversion passes the exact source, extension, and locale, then returns a 
   expect(convert).toHaveBeenCalledWith(Buffer.from("office"), "pptx", "es-CO");
   expect(res.status).toBe(200);
   expect(res.headers.get("content-type")).toBe("application/pdf");
+  expect(res.headers.get("content-length")).toBeNull();
+  expect(res.headers.get("transfer-encoding")).toBe("chunked");
   expect(res.headers.get("x-page-count")).toBe("3");
   expect(res.headers.get("x-converter-version")).toBe("test-v1");
   expect(await res.text()).toBe("%PDF-test");
@@ -210,4 +212,37 @@ test("chunked uploads enforce the size cap without a Content-Length", async () =
   expect(response.status).toBe(413);
   expect(JSON.parse(response.body)).toEqual({ code: "too_large" });
   expect(convert).not.toHaveBeenCalled();
+});
+
+test("the default source cap accepts 30 MiB and refuses one extra byte", async () => {
+  const convert = vi.fn(async () => ({
+    pdf: Buffer.from("%PDF-test"),
+    pageCount: 1,
+  }));
+  const base = await listen({ convert });
+  for (const [size, status] of [
+    [31_457_280, 200],
+    [31_457_281, 413],
+  ]) {
+    const response = await fetch(`${base}/convert?ext=pptx`, {
+      method: "POST",
+      body: new Uint8Array(size),
+    });
+    expect(response.status).toBe(status);
+    if (status === 413)
+      expect(await response.json()).toEqual({ code: "too_large" });
+    else expect(await response.text()).toBe("%PDF-test");
+  }
+  expect(convert).toHaveBeenCalledOnce();
+});
+
+test("PDF output above 32 MiB streams without Content-Length", async () => {
+  const pdf = Buffer.alloc(33 * 1024 * 1024, ".");
+  pdf.write("%PDF-");
+  const response = await post(
+    await listen({ convert: async () => ({ pdf, pageCount: 1 }) }),
+  );
+  expect(response.headers.get("content-length")).toBeNull();
+  expect(response.headers.get("transfer-encoding")).toBe("chunked");
+  expect(Buffer.from(await response.arrayBuffer()).equals(pdf)).toBe(true);
 });
