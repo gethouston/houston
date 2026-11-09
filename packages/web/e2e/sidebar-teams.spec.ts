@@ -195,7 +195,7 @@ test("the list's shortcut opens the create sheet on a new AI Employee", async ({
   );
   await expect(
     page
-      .getByRole("button", { name: "Hire a new AI Employee" })
+      .getByRole("button", { name: "Create a new AI Employee" })
       .or(page.getByRole("radio", { name: "Finance", exact: true }))
       .first(),
   ).toBeVisible();

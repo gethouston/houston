@@ -1,3 +1,5 @@
+import type { BillingCheckoutReturnOutcome } from "@houston/sdk";
+
 /**
  * The way back from an org seat checkout. Stripe returns the person to the web
  * app's shared page, `/checkout/complete?kind=org&org=<slug>` (or
@@ -17,7 +19,7 @@
  * DOM-free so the return page and the app share one grammar, node-testable.
  */
 
-export type CheckoutOutcome = "success" | "cancel";
+export type CheckoutOutcome = BillingCheckoutReturnOutcome;
 
 export interface OrgCheckoutReturn {
   org: string;

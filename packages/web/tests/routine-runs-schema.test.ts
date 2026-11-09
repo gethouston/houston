@@ -32,6 +32,14 @@ test("the schema accepts a fire refused for its creator's access", () => {
   expect(validate([refused]), JSON.stringify(validate.errors)).toBe(true);
 });
 
+test("the schema accepts a fire refused until the agent's data is repaired", () => {
+  const blocked = {
+    ...legacy,
+    delivery_failure: { code: "agent_data_needs_repair" as const },
+  } satisfies RoutineRun & WireRoutineRun;
+  expect(validate([blocked]), JSON.stringify(validate.errors)).toBe(true);
+});
+
 test("the schema accepts existing account failures and resumed runs", () => {
   expect(
     validate([

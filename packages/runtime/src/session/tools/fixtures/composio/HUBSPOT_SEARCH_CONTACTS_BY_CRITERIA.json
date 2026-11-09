@@ -1,0 +1,117 @@
+{
+  "type": "object",
+  "properties": {
+    "after": {
+      "type": "string",
+      "description": "The cursor token for pagination. Use the `after` value from the `paging.next` object of a previous response to fetch the next set of results. If `None` or an empty string, it fetches the first page."
+    },
+    "limit": {
+      "type": "integer",
+      "default": 5,
+      "description": "The maximum number of contacts to return."
+    },
+    "query": {
+      "type": "string",
+      "description": "A string to search across HubSpot's default searchable contact properties ONLY: firstname, lastname, email, phone, hs_additional_emails, hs_object_id, hs_searchable_calculated_phone_number, company. IMPORTANT: This does NOT search custom properties. To search/filter by custom properties (e.g., 'icp_segment', 'lead_source'), use filterGroups with specific property filters instead. At least one of 'query' or 'filterGroups' must be provided."
+    },
+    "sorts": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "required": ["propertyName", "direction"],
+        "properties": {
+          "direction": {
+            "enum": ["ASCENDING", "DESCENDING"],
+            "type": "string",
+            "description": "The direction for sorting (`ASCENDING` or `DESCENDING`). See `DirectionEnm` for options."
+          },
+          "propertyName": {
+            "type": "string",
+            "description": "The HubSpot contact property to sort by. Supports both standard and custom property internal names."
+          }
+        },
+        "description": "Defines a sorting criterion for search results, including the property name and sort direction."
+      },
+      "default": [],
+      "description": "A list of sort criteria to apply. Each criterion specifies a contact `propertyName` and a sort `direction`. Example: `[{'propertyName': 'lastname', 'direction': 'ASCENDING'}]` sorts contacts by last name."
+    },
+    "properties": {
+      "type": "array",
+      "items": {
+        "type": "string"
+      },
+      "default": [],
+      "description": "A list of contact property internal names to include in the response. Supports both standard properties (firstname, email, etc.) and custom properties. If omitted, a default set is returned."
+    },
+    "filterGroups": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "required": ["filters"],
+        "properties": {
+          "filters": {
+            "type": "array",
+            "items": {
+              "type": "object",
+              "required": ["propertyName", "operator"],
+              "properties": {
+                "value": {
+                  "type": "string",
+                  "description": "The value to compare the property against. Required for most operators (e.g., `EQ`, `LT`). Must NOT be set with `IN`, `NOT_IN`, `HAS_PROPERTY`, `NOT_HAS_PROPERTY` operators. For datetime properties (createdate, lastmodifieddate, etc.), use epoch milliseconds (e.g., '1609459200000'). Relative time strings like '24h', '7d', '24 hours ago' are automatically converted to epoch milliseconds."
+                },
+                "values": {
+                  "type": "array",
+                  "items": {
+                    "type": "string"
+                  },
+                  "description": "A list of values for `IN` or `NOT_IN` operations. Required and only used when `operator` is `IN` or `NOT_IN`. Maximum 100 values allowed per filter (HubSpot API constraint). If you need more than 100 values, split into multiple filter groups (groups are ORed, preserving the logic)."
+                },
+                "operator": {
+                  "enum": [
+                    "EQ",
+                    "NEQ",
+                    "LT",
+                    "LTE",
+                    "GT",
+                    "GTE",
+                    "BETWEEN",
+                    "IN",
+                    "NOT_IN",
+                    "HAS_PROPERTY",
+                    "NOT_HAS_PROPERTY",
+                    "CONTAINS_TOKEN",
+                    "NOT_CONTAINS_TOKEN"
+                  ],
+                  "type": "string",
+                  "description": "The operator to use for filtering (e.g., `EQ`, `NEQ`, `LT`, `BETWEEN`, `IN`). Determines how the `propertyName` is compared with `value`, `values`, or `highValue`. See `OperatorEnm` for all options."
+                },
+                "highValue": {
+                  "type": "string",
+                  "description": "The higher bound value for a `BETWEEN` operation. Required and only used when `operator` is `BETWEEN`."
+                },
+                "propertyName": {
+                  "type": "string",
+                  "description": "The HubSpot contact property to filter on. Supports both standard properties (email, lifecyclestage, etc.) and custom properties. IMPORTANT: To filter by contact ID, use 'hs_object_id' (not 'id')."
+                }
+              },
+              "description": "Represents a single filter criterion for searching contacts, specifying a property, operator, and value(s)."
+            },
+            "description": "A list of filter criteria objects. All filters within this list are combined using AND logic."
+          }
+        },
+        "description": "Defines a group of filters. Filters within a group are ANDed. Multiple filter groups in a search request are ORed."
+      },
+      "default": [],
+      "description": "A list of filter groups. HubSpot enforces strict limits: maximum 5 filterGroups and maximum 18 total filters across all groups combined. Filters within a group are ANDed. Multiple groups are ORed. Use filterGroups to search/filter by ANY property (including custom properties) with precise operators. At least one of 'query' or 'filterGroups' must be provided. For custom property filtering (e.g., icp_segment='Construction'), use filterGroups instead of query. Example: `[{'filters': [{'propertyName': 'icp_segment', 'operator': 'EQ', 'value': 'Construction'}]}]`. If you need more filter groups or filters, split your search into multiple requests."
+    },
+    "custom_properties": {
+      "type": "array",
+      "items": {
+        "type": "string"
+      },
+      "default": [],
+      "description": "A list of internal names for custom contact properties to retrieve (e.g., `custom_lead_score`). This is a convenience alias that gets merged into `properties` before the API call - you can also include custom properties directly in the `properties` field instead."
+    }
+  },
+  "description": "Defines the request parameters for searching contacts in HubSpot based on various criteria."
+}

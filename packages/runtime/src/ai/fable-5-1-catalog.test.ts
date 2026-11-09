@@ -3,10 +3,9 @@ import { expect, test } from "vitest";
 import { piModelIds } from "./pi-catalog";
 
 /**
- * Claude Fable 5.1 ships natively in pi-ai's baked Anthropic catalog as of
- * 0.85.0; Houston carried a local backport patch against 0.84.4, deleted with
- * that bump. The guard stays: a pi bump that dropped or reshaped its entry
- * would silently strip the headline model from the runnable set.
+ * Fable 5.1 is no longer in the lineup, but stored 5.1 pins and team ceilings
+ * naming it still read this row before they resolve to Fable 5.2 by family. A
+ * pi bump that dropped or reshaped it would break that resolution.
  */
 test("Claude Fable 5.1 is in pi's anthropic catalog", () => {
   const m = getModel(

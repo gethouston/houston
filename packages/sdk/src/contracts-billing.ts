@@ -29,12 +29,13 @@ export {
   BILLING_CHECKOUT_RETURN_MS,
   BILLING_CHECKOUT_WINDOW_MS,
   type BillingCheckoutPorts,
+  type BillingCheckoutReturnOutcome,
   type BillingCheckoutStart,
   type BillingCheckoutState,
-  BillingCheckoutTracker,
   billingCheckoutOutstanding,
   orgPaidUp,
-} from "./modules/billing/checkout-tracker";
+} from "./modules/billing/checkout-state";
+export { BillingCheckoutTracker } from "./modules/billing/checkout-tracker";
 export {
   planComposerMode,
   planDialog,

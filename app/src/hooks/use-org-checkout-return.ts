@@ -18,16 +18,22 @@ import { queryKeys } from "../lib/query-keys";
 import { useWorkspaceStore } from "../stores/workspaces";
 
 const linkGate = createCheckoutLinkGate(() => Date.now());
-/** The org return the web app booted on, taken out of the address bar. */
-let bootReturn: OrgCheckoutReturn | null | undefined;
+/** The address bar was read for the return the web app booted on. */
+let bootCaptured = false;
 /** A return that arrived before its org was in the workspace list. */
 let pending: OrgCheckoutReturn | null = null;
 
-function captureBootReturn(): OrgCheckoutReturn | null {
-  if (bootReturn !== undefined) return bootReturn;
-  bootReturn = orgReturnFromWebUrl(window.location.href);
-  if (bootReturn) window.history.replaceState(window.history.state, "", "/");
-  return bootReturn;
+/**
+ * The org return the web app booted on, taken out of the address bar, handed
+ * out once: replayed on a shell remount, a cancel would end a checkout the
+ * person started since. A boot return still waiting for its org is `pending`.
+ */
+function takeBootReturn(): OrgCheckoutReturn | null {
+  if (bootCaptured) return null;
+  bootCaptured = true;
+  const booted = orgReturnFromWebUrl(window.location.href);
+  if (booted) window.history.replaceState(window.history.state, "", "/");
+  return booted;
 }
 
 function refetchBilling(): void {
@@ -49,9 +55,15 @@ function land(r: OrgCheckoutReturn): void {
   openAdmin({ section: "billing" });
 }
 
+/** A fresh return: a cancel ends its checkout here, then it lands. */
+function take(r: OrgCheckoutReturn): void {
+  billingCheckout.returned(r.org, r.outcome);
+  land(r);
+}
+
 function landLink(link: string, via: "launch" | "live"): void {
   const r = orgReturnFromDeepLink(link);
-  if (r && linkGate[via](link)) land(r);
+  if (r && linkGate[via](link)) take(r);
 }
 
 /**
@@ -69,7 +81,7 @@ function listenForReturnPage(): () => void {
     if (!billingCheckout.claimReturn(message.org)) return;
     channel.postMessage({ type: "taken", org: message.org });
     window.focus();
-    land(message);
+    take(message);
   };
   return () => channel.close();
 }
@@ -84,8 +96,8 @@ function listenForReturnPage(): () => void {
 export function useOrgCheckoutReturn(): void {
   const workspaces = useWorkspaceStore((s) => s.workspaces);
   useEffect(() => {
-    const booted = captureBootReturn();
-    if (booted) land(booted);
+    const booted = takeBootReturn();
+    if (booted) take(booted);
     void osCurrentDeepLinks()
       .then((links) => {
         for (const link of links) landLink(link, "launch");

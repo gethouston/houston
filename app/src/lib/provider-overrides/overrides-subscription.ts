@@ -56,7 +56,7 @@ export const SUBSCRIPTION_OVERRIDES: Record<string, ProviderOverride> = {
       "claude-opus-5-5": {
         description: "Deeper reasoning for complex, long-running work.",
       },
-      "claude-fable-5-1": {
+      "claude-fable-5-2": {
         description:
           "Most capable. Uses up your Claude limits faster than Opus.",
       },

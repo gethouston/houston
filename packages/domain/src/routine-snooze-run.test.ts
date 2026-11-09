@@ -138,7 +138,7 @@ test("a run that answered on the creator's account lifts the snooze", () => {
 });
 
 test("a legacy pin is read through the same mapping its fires get", () => {
-  const fable = run({ failure: { ...LIMIT, model: "claude-fable-5-1" } });
+  const fable = run({ failure: { ...LIMIT, model: "claude-fable-5-2" } });
   // A Rust-era "claude" pin with a bare "fable" alias runs anthropic's Fable.
   expect(
     snoozeAfterRun(

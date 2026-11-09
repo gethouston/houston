@@ -12,7 +12,7 @@ test("the Claude lineup is exactly what the anthropic provider runs", () => {
   expect(Object.values(ANTHROPIC_LINEUP)).toEqual([
     "claude-sonnet-5-5",
     "claude-opus-5-5",
-    "claude-fable-5-1",
+    "claude-fable-5-2",
     "claude-haiku-5-5",
   ]);
   expect(new Set(Object.values(ANTHROPIC_LINEUP))).toEqual(
@@ -50,8 +50,8 @@ test("Sonnet and Fable ids land in their own family", () => {
     "claude-3-5-sonnet-20241022",
   ])
     expect(anthropicLineupModel(id), id).toBe("claude-sonnet-5-5");
-  for (const id of ["fable", "claude-fable-5"])
-    expect(anthropicLineupModel(id), id).toBe("claude-fable-5-1");
+  for (const id of ["fable", "claude-fable-5", "claude-fable-5-1"])
+    expect(anthropicLineupModel(id), id).toBe("claude-fable-5-2");
 });
 
 test("a Haiku id lands on Haiku 5.5, never up a tier", () => {

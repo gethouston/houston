@@ -39,7 +39,7 @@ test("retired Claude rows run as their own family's lineup model", () => {
     ["claude-opus-5", "claude-opus-5-5"],
     ["claude-opus-4-1-20250805", "claude-opus-5-5"],
     ["claude-sonnet-4-5-20250929", "claude-sonnet-5-5"],
-    ["claude-fable-5", "claude-fable-5-1"],
+    ["claude-fable-5", "claude-fable-5-2"],
     ["claude-opus-5-5", undefined],
   ]);
 });
@@ -51,14 +51,14 @@ test("lineup rows carry no runsAs and a row outside every family is dropped", ()
       "claude-sonnet-5-5",
       "claude-2.1",
       "claude-haiku-5-5",
-      "claude-fable-5-1",
+      "claude-fable-5-2",
     ]),
   );
   expect(shaped.models.map((m) => [m.id, m.runsAs])).toEqual([
     ["claude-haiku-4-5", "claude-haiku-5-5"],
     ["claude-sonnet-5-5", undefined],
     ["claude-haiku-5-5", undefined],
-    ["claude-fable-5-1", undefined],
+    ["claude-fable-5-2", undefined],
   ]);
 });
 

@@ -28,9 +28,11 @@ test("a retired Claude id pins its own family's lineup model", () => {
   expect(
     wireTurnPin({ provider: "anthropic", model: "claude-sonnet-5" }),
   ).toEqual({ provider: "anthropic", model: "claude-sonnet-5-5" });
-  expect(
-    wireTurnPin({ provider: "anthropic", model: "claude-fable-5" }),
-  ).toEqual({ provider: "anthropic", model: "claude-fable-5-1" });
+  for (const model of ["fable", "claude-fable-5", "claude-fable-5-1"])
+    expect(wireTurnPin({ provider: "anthropic", model })).toEqual({
+      provider: "anthropic",
+      model: "claude-fable-5-2",
+    });
 });
 
 test("modern engine ids pass through verbatim", () => {

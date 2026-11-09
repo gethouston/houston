@@ -28,6 +28,10 @@ function openCheckout(url: string) {
   return tauriSystem.openUrl(url, { command: "billing_checkout_open" });
 }
 
+function startOver(orgSlug: string) {
+  tracker.abandon(orgSlug);
+}
+
 function openPortal(url: string) {
   return tauriSystem.openUrl(url, { command: "billing_portal_open" });
 }
@@ -53,10 +57,11 @@ function reserveCheckoutTab(): ReservedTab | null {
  * same way so a webhook that lands late still clears the lock unprompted.
  * All three send nothing while a checkout is outstanding (`outstanding` disables
  * every trigger meanwhile) and resolve with the link to offer when no
- * browser opened, else null. `orgSlug` names the org the outstanding
- * checkout pays for, so a surface offers `fallbackUrl` only on that org's
- * screen; `succeeded` names the org this app saw become paid up. The store
- * apps never open Stripe (`refuseNativePurchase`).
+ * browser opened, else null. `open` is the checkout whose page is open (its
+ * org, its session URL to reopen, whether the browser took it), and
+ * `startOver(orgSlug)` ends it so the triggers come back; `succeeded` names
+ * the org this app saw become paid up. The store apps never open Stripe
+ * (`refuseNativePurchase`).
  *
  * A failure to create the session was already surfaced and reported by the
  * engine call; `logAndReportError` only adds this context to the log
@@ -149,8 +154,8 @@ export function useOrgCheckout() {
     /** Claim the tab a later `resume` opens checkout in, inside the click. */
     reserveTab: reserveCheckoutTab,
     outstanding: billingCheckoutOutstanding(state),
-    orgSlug: state.phase === "idle" ? null : state.orgSlug,
-    fallbackUrl: state.phase === "open" ? state.fallbackUrl : null,
+    open: state.phase === "open" ? state : null,
+    startOver,
     succeeded: state.phase === "succeeded" ? state.orgSlug : null,
   };
 }

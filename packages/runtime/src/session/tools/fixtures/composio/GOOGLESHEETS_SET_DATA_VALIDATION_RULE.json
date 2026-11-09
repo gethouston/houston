@@ -1,0 +1,120 @@
+{
+  "type": "object",
+  "required": [
+    "spreadsheet_id",
+    "sheet_id",
+    "mode",
+    "start_row_index",
+    "end_row_index",
+    "start_column_index",
+    "end_column_index"
+  ],
+  "properties": {
+    "mode": {
+      "enum": ["SET", "CLEAR"],
+      "type": "string",
+      "description": "Operation mode: 'SET' applies a validation rule to the range, 'CLEAR' removes any existing validation from the range."
+    },
+    "strict": {
+      "type": "boolean",
+      "default": true,
+      "description": "Whether to reject invalid data (true) or show a warning (false). Default is true."
+    },
+    "values": {
+      "type": "array",
+      "items": {
+        "type": "string"
+      },
+      "description": "List of allowed values for dropdown. Required when validation_type='ONE_OF_LIST'. Each item becomes a dropdown option."
+    },
+    "formula": {
+      "type": "string",
+      "description": "Custom formula for validation. Required when validation_type='CUSTOM_FORMULA'. Formula should evaluate to TRUE/FALSE. Example: '=A1>10'."
+    },
+    "sheet_id": {
+      "type": "integer",
+      "description": "The unique sheet ID (numeric identifier) where the validation rule will be applied. The first sheet created in a spreadsheet typically has ID 0, while additional sheets get unique IDs (e.g., 1534097477). If a sheet is deleted, its ID is never reused - so if the original first sheet (ID 0) was deleted, attempting to use 0 will fail. Always verify the actual sheet ID exists using GOOGLESHEETS_GET_SPREADSHEET_INFO action (check 'sheets[].properties.sheetId' field)."
+    },
+    "end_row_index": {
+      "type": "integer",
+      "description": "Ending row index (0-based, exclusive) for the validation range. To apply to row 1 only, use start_row_index=0 and end_row_index=1."
+    },
+    "input_message": {
+      "type": "string",
+      "description": "Optional message shown to the user when they select the cell. Helpful hint about what values are expected."
+    },
+    "show_custom_ui": {
+      "type": "boolean",
+      "default": true,
+      "description": "Whether to show a dropdown UI for list-based validation. Default is true. Set to true for dropdown lists."
+    },
+    "spreadsheet_id": {
+      "type": "string",
+      "description": "The unique identifier of the Google Sheets spreadsheet. Can be found in the spreadsheet URL between '/d/' and '/edit'."
+    },
+    "source_range_a1": {
+      "type": "string",
+      "description": "Source range in A1 notation for dropdown values. Required when validation_type='ONE_OF_RANGE'. Example: 'Sheet1!A1:A10' or 'A1:A10'."
+    },
+    "start_row_index": {
+      "type": "integer",
+      "description": "Starting row index (0-based, inclusive) for the validation range. Row 1 is index 0."
+    },
+    "validation_type": {
+      "enum": [
+        "ONE_OF_LIST",
+        "ONE_OF_RANGE",
+        "CUSTOM_FORMULA",
+        "NUMBER_GREATER",
+        "NUMBER_GREATER_THAN_EQ",
+        "NUMBER_LESS",
+        "NUMBER_LESS_THAN_EQ",
+        "NUMBER_EQ",
+        "NUMBER_NOT_EQ",
+        "NUMBER_BETWEEN",
+        "NUMBER_NOT_BETWEEN",
+        "TEXT_CONTAINS",
+        "TEXT_NOT_CONTAINS",
+        "TEXT_EQ",
+        "TEXT_NOT_EQ",
+        "TEXT_IS_EMAIL",
+        "TEXT_IS_URL",
+        "DATE_EQ",
+        "DATE_BEFORE",
+        "DATE_AFTER",
+        "DATE_ON_OR_BEFORE",
+        "DATE_ON_OR_AFTER",
+        "DATE_BETWEEN",
+        "DATE_NOT_BETWEEN",
+        "DATE_NOT_EQ",
+        "DATE_IS_VALID",
+        "BLANK",
+        "NOT_BLANK",
+        "BOOLEAN"
+      ],
+      "type": "string",
+      "description": "Type of validation rule to apply. Required when mode='SET'. Dropdown types: 'ONE_OF_LIST' (dropdown from list), 'ONE_OF_RANGE' (dropdown from range). Number validations: 'NUMBER_GREATER', 'NUMBER_GREATER_THAN_EQ', 'NUMBER_LESS', 'NUMBER_LESS_THAN_EQ', 'NUMBER_EQ', 'NUMBER_NOT_EQ', 'NUMBER_BETWEEN', 'NUMBER_NOT_BETWEEN'. Text validations: 'TEXT_CONTAINS', 'TEXT_NOT_CONTAINS', 'TEXT_EQ', 'TEXT_NOT_EQ', 'TEXT_IS_EMAIL', 'TEXT_IS_URL' (Note: TEXT_STARTS_WITH and TEXT_ENDS_WITH are only for conditional formatting, not data validation). Date validations: 'DATE_EQ', 'DATE_BEFORE', 'DATE_AFTER', 'DATE_ON_OR_BEFORE', 'DATE_ON_OR_AFTER', 'DATE_BETWEEN', 'DATE_NOT_BETWEEN', 'DATE_NOT_EQ', 'DATE_IS_VALID'. Other: 'BLANK', 'NOT_BLANK', 'BOOLEAN', 'CUSTOM_FORMULA'."
+    },
+    "condition_values": {
+      "type": "array",
+      "items": {
+        "type": "string"
+      },
+      "description": "Generic list of condition values for validation types that require specific values (e.g., NUMBER_GREATER requires one value, NUMBER_BETWEEN requires two values, TEXT_CONTAINS requires one value). For simple validations like TEXT_IS_EMAIL, BLANK, NOT_BLANK, BOOLEAN, DATE_IS_VALID, this can be omitted. Each value should be a string that will be parsed by Google Sheets."
+    },
+    "end_column_index": {
+      "type": "integer",
+      "description": "Ending column index (0-based, exclusive) for the validation range. To apply to column A only, use start_column_index=0 and end_column_index=1."
+    },
+    "start_column_index": {
+      "type": "integer",
+      "description": "Starting column index (0-based, inclusive) for the validation range. Column A is index 0."
+    },
+    "filtered_rows_included": {
+      "type": "boolean",
+      "default": false,
+      "description": "Whether to apply validation to rows hidden by filters. Default is false. Set to true to ensure validation applies to both visible and filtered rows."
+    }
+  },
+  "description": "Request to set or clear data validation rules on a range in a Google Sheet."
+}

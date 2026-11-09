@@ -133,7 +133,7 @@ const ANTHROPIC_LINEUP_OPTION: ProviderOption = {
   id: "anthropic",
   name: "Claude (Pro / Max)",
   connected: true,
-  models: ["claude-sonnet-5-5", "claude-opus-5-5", "claude-fable-5-1"],
+  models: ["claude-sonnet-5-5", "claude-opus-5-5", "claude-fable-5-2"],
 };
 
 test("a legacy or retired Claude id resolves in its own family instead of being refused", () => {
@@ -142,7 +142,9 @@ test("a legacy or retired Claude id resolves in its own family instead of being 
     "claude-opus-4-8": "claude-opus-5-5",
     "claude-opus-5": "claude-opus-5-5",
     "claude-sonnet-4-6": "claude-sonnet-5-5",
-    "claude-fable-5": "claude-fable-5-1",
+    "claude-fable-5": "claude-fable-5-2",
+    "claude-fable-5-1": "claude-fable-5-2",
+    fable: "claude-fable-5-2",
   };
   for (const [written, id] of Object.entries(cases))
     expect(resolveModelChoice(written, ANTHROPIC_LINEUP_OPTION, OP)).toEqual({
@@ -177,7 +179,7 @@ test("the name a user says for a model resolves to the id, per provider", () => 
   });
   expect(resolveModelChoice("Fable", ANTHROPIC_LINEUP_OPTION, OP)).toEqual({
     ok: true,
-    id: "claude-fable-5-1",
+    id: "claude-fable-5-2",
   });
 });
 
@@ -188,7 +190,7 @@ test("a name belonging to another provider is refused, never cross-pinned", () =
   // The refusal names the ids AND the names, so the next call can be right.
   expect(out.message).toContain("claude-sonnet-5-5 = Sonnet 5.5");
   expect(out.message).toContain("claude-opus-5-5 = Opus 5.5");
-  expect(out.message).toContain("claude-fable-5-1 = Fable 5.1");
+  expect(out.message).toContain("claude-fable-5-2 = Fable 5.2");
 });
 
 test("an open-catalog provider still resolves a name it has a table for", () => {
