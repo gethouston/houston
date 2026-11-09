@@ -6,6 +6,7 @@ import { useTeamStatusActions } from "../../hooks/use-team-status-actions";
 import { canPurchaseInApp } from "../../lib/purchase-policy";
 import { RowCard } from "../cards/row-card";
 import { RowCardButton } from "../cards/row-card-button";
+import { CheckoutOpenNote } from "./checkout-open-note";
 import { TeamStatusCheckoutDialog } from "./team-status-checkout-dialog";
 
 /**
@@ -47,6 +48,13 @@ export function OrgLockedCard() {
           ) : undefined
         }
       />
+      {pay && view.kind === "locked" && view.waiting && (
+        <CheckoutOpenNote
+          className="mt-2 px-1"
+          checkout={checkout}
+          orgSlug={org?.slug ?? null}
+        />
+      )}
       {org && billing && (
         <TeamStatusCheckoutDialog
           open={actions.checkoutOpen}

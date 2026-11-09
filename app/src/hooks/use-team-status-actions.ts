@@ -55,6 +55,5 @@ export function useTeamStatusActions(
     setCheckoutOpen,
     startCheckout,
     paying: checkout.outstanding,
-    fallbackUrl: checkout.fallbackUrl,
   };
 }

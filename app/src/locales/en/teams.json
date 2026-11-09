@@ -523,6 +523,14 @@
     },
     "upgrade": "Upgrade",
     "openCheckout": "Open checkout",
+    "pending": {
+      "open": "The payment page is open in your browser.",
+      "notOpened": "The payment page didn't open on its own.",
+      "elsewhere": "A payment page for another organization is open in your browser.",
+      "reopen": "Open it again",
+      "openPage": "Open the payment page",
+      "startOver": "Start over"
+    },
     "openPortal": "Open billing portal",
     "success": "Payment received. Everyone here can keep going.",
     "usageTitle": "This week's free tier usage",
@@ -817,7 +825,6 @@
       "locked": "Ask the owner who pays for it to unlock it."
     },
     "waiting": "Waiting for your payment. This updates by itself once it goes through.",
-    "openPaymentPage": "Open the payment page",
     "actions": {
       "upgrade": "Upgrade",
       "unlock": "Unlock",

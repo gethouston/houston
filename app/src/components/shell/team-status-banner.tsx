@@ -6,6 +6,7 @@ import { useTeamStatus } from "../../hooks/use-team-status";
 import { useTeamStatusActions } from "../../hooks/use-team-status-actions";
 import { canPurchaseInApp } from "../../lib/purchase-policy";
 import type { TeamStatusView } from "../../lib/team-status-model";
+import { CheckoutOpenNote } from "./checkout-open-note";
 import { PlanWebNote } from "./plan-web-note";
 import { TeamStatusButtons } from "./team-status-buttons";
 import { TeamStatusCheckoutDialog } from "./team-status-checkout-dialog";
@@ -91,15 +92,8 @@ export function TeamStatusBanner() {
         <div className="min-w-0 space-y-0.5">
           <p className="text-pretty text-ink">{sentences.join(" ")}</p>
           {view.tail === "web_note" && <PlanWebNote variant="manage" />}
-          {actions.fallbackUrl && (
-            <a
-              href={actions.fallbackUrl}
-              target="_blank"
-              rel="noreferrer"
-              className="text-link underline-offset-4 hover:underline"
-            >
-              {t("status.openPaymentPage")}
-            </a>
+          {view.waiting && (
+            <CheckoutOpenNote checkout={checkout} orgSlug={org.slug} />
           )}
         </div>
       </div>

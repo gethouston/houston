@@ -102,7 +102,7 @@ test("Admin > Billing on a paid org: seats, the total and Manage billing", async
   await expect.poll(() => openedUrls(page)).toEqual([PORTAL_URL]);
 });
 
-test("checkout: Upgrade disables while the checkout is outstanding", async ({
+test("checkout: Upgrade waits on an open checkout until it is started over", async ({
   page,
 }) => {
   await stubOpener(page, false);
@@ -115,10 +115,13 @@ test("checkout: Upgrade disables while the checkout is outstanding", async ({
   await expect(upgrade).toBeDisabled();
   await expect.poll(() => openedUrls(page)).toEqual([CHECKOUT_URL]);
   expect(await planCallCount("checkout")).toBe(1);
-  // The browser took the page: no fallback link to offer.
+  // The browser took the page: it can be reopened, or dropped to choose again.
   await expect(
-    billing.getByRole("link", { name: "Open checkout" }),
-  ).toHaveCount(0);
+    billing.getByRole("link", { name: "Open it again" }),
+  ).toHaveAttribute("href", CHECKOUT_URL);
+  await billing.getByRole("button", { name: "Start over" }).click();
+  await expect(upgrade).toBeEnabled();
+  await expect(billing.getByTestId("checkout-open-note")).toHaveCount(0);
 });
 
 test("checkout: a refused opener offers the checkout as a link", async ({
@@ -130,7 +133,9 @@ test("checkout: a refused opener offers the checkout as a link", async ({
   const billing = await openOrgBilling(page);
 
   await billing.getByRole("button", { name: "Upgrade" }).click();
-  const fallback = billing.getByRole("link", { name: "Open checkout" });
+  const fallback = billing.getByRole("link", {
+    name: "Open the payment page",
+  });
   await expect(fallback).toBeVisible();
   await expect(fallback).toHaveAttribute("href", CHECKOUT_URL);
   await expect(billing.getByRole("button", { name: "Upgrade" })).toBeDisabled();

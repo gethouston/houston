@@ -1,5 +1,6 @@
 import { equal, ok } from "node:assert/strict";
 import { afterEach, before, describe, it, mock } from "node:test";
+import type { BillingCheckoutState } from "@houston/sdk";
 import type { OrgBilling } from "@houston/wire-types";
 import { createElement, type ReactElement, type ReactNode } from "react";
 import enPlan from "../src/locales/en/plan.json" with { type: "json" };
@@ -16,10 +17,11 @@ import { enterNativeApp } from "./support/native-surface.ts";
 // price, a checkout or portal button, or a push to upgrade.
 
 let billing: OrgBilling | null = null;
+type OpenCheckout = Extract<BillingCheckoutState, { phase: "open" }>;
 const IDLE_CHECKOUT = {
   outstanding: false,
-  orgSlug: null as string | null,
-  fallbackUrl: null as string | null,
+  open: null as OpenCheckout | null,
+  startOver: (_orgSlug: string) => {},
   succeeded: null as string | null,
 };
 let checkout = IDLE_CHECKOUT;
@@ -260,16 +262,38 @@ describe("BillingPlanCard", () => {
     ok(planCard(paid({ isBillingOwner: false })).includes("3 seats"));
   });
 
-  it("offers a blocked checkout's link only on the org it pays for", () => {
-    checkout = {
-      outstanding: true,
+  it("says why Upgrade waits on an open payment page, and offers a way on", () => {
+    const pending = enTeams.billing.pending;
+    const open: OpenCheckout = {
+      phase: "open",
       orgSlug: "other",
-      fallbackUrl: "https://checkout.stripe.com/c/other",
-      succeeded: null,
+      startedAt: 0,
+      url: "https://checkout.stripe.com/c/other",
+      opened: true,
     };
-    equal(planCard(free()).includes(enTeams.billing.openCheckout), false);
-    checkout = { ...checkout, orgSlug: "acme" };
-    ok(planCard(free()).includes(enTeams.billing.openCheckout));
+    checkout = { ...IDLE_CHECKOUT, outstanding: true, open };
+    let html = planCard(free());
+    ok(html.includes(pending.elsewhere), html);
+    ok(html.includes(pending.startOver), html);
+    // Another org's session is never offered to reopen here.
+    equal(html.includes(pending.reopen), false, html);
+    checkout = { ...checkout, open: { ...open, orgSlug: "acme" } };
+    html = planCard(free());
+    ok(html.includes(pending.open), html);
+    ok(html.includes(pending.reopen), html);
+    ok(html.includes(pending.startOver), html);
+    checkout = {
+      ...checkout,
+      open: { ...open, orgSlug: "acme", opened: false },
+    };
+    html = planCard(free());
+    ok(html.includes(pending.notOpened), html);
+    ok(html.includes(pending.openPage), html);
+    ok(
+      markup(
+        h(surfaces.BillingPlanCard, { billing: free(), orgSlug: "acme" }),
+      ).includes(open.url),
+    );
   });
 
   it("tells every reader of a free org how many members share it", () => {

@@ -11,10 +11,12 @@ import {
 import { FormDialog } from "@houston-ai/core";
 import { useState } from "react";
 import { useTranslation } from "react-i18next";
+import type { useOrgCheckout } from "../../hooks/queries/use-org-checkout";
 import { canPurchaseInApp } from "../../lib/purchase-policy";
 import { BILLING_CURRENCY } from "../organization/billing-tab-model";
 import { CheckoutPriceLine } from "../organization/checkout-price-line";
 import { SeatIntervalChoice } from "../organization/seat-interval-choice";
+import { CheckoutOpenNote } from "./checkout-open-note";
 import type { PaidOrgOffer } from "./create-org-offer";
 
 /**
@@ -23,19 +25,21 @@ import type { PaidOrgOffer } from "./create-org-offer";
  * A new org has one member, so the line under the choice is one seat's bill.
  * Where the prices are unknown it offers the paid create, monthly, without a
  * figure. The store apps never sell, so there it only says the slot is taken.
+ * Another org's payment page still open holds the offer, and says so; the
+ * page this offer's own submit opens is not another org's, so it never does.
  */
 export function PaidOrgOfferDialog({
   open,
   onOpenChange,
   offer,
-  outstanding,
+  checkout,
   pending,
   onSubmit,
 }: {
   open: boolean;
   onOpenChange: (open: boolean) => void;
   offer: PaidOrgOffer;
-  outstanding: boolean;
+  checkout: ReturnType<typeof useOrgCheckout>;
   /** The create is in flight: the choice holds still. */
   pending: boolean;
   /** Resolves with the refused interval, if the gateway refused it. */
@@ -47,7 +51,10 @@ export function PaidOrgOfferDialog({
   const [picked, setPicked] = useState<BillingInterval>(
     DEFAULT_CHECKOUT_INTERVAL,
   );
+  // This submit opens the new org's checkout while the dialog is still up.
+  const [submitted, setSubmitted] = useState(false);
   const purchasable = canPurchaseInApp();
+  const { outstanding } = checkout;
   const prices = offer.seatPrices;
   const interval = prices ? sellableInterval(prices, picked) : "month";
   const choosing = purchasable && sellsYearly(prices);
@@ -75,8 +82,15 @@ export function PaidOrgOfferDialog({
               label: t("teams:createTeam.paidSubmit"),
               pendingLabel: t("teams:createTeam.creating"),
               onClick: async () => {
-                const refusal = await onSubmit(interval);
+                setSubmitted(true);
+                const refusal = await onSubmit(interval).catch(
+                  (error: unknown) => {
+                    setSubmitted(false);
+                    throw error;
+                  },
+                );
                 if (!refusal) return;
+                setSubmitted(false);
                 setPicked("month");
                 return false;
               },
@@ -116,6 +130,9 @@ export function PaidOrgOfferDialog({
                 })
               : t("teams:createTeam.paidInBrowser", { name: offer.name })}
         </p>
+        {purchasable && !submitted && (
+          <CheckoutOpenNote checkout={checkout} orgSlug={null} />
+        )}
       </div>
     </FormDialog>
   );

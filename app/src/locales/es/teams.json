@@ -523,6 +523,14 @@
     },
     "upgrade": "Mejorar plan",
     "openCheckout": "Abrir el pago",
+    "pending": {
+      "open": "La página de pago está abierta en tu navegador.",
+      "notOpened": "La página de pago no se abrió sola.",
+      "elsewhere": "Hay una página de pago de otra organización abierta en tu navegador.",
+      "reopen": "Abrirla de nuevo",
+      "openPage": "Abrir la página de pago",
+      "startOver": "Empezar de nuevo"
+    },
     "openPortal": "Abrir el portal de facturación",
     "success": "Recibimos el pago. Todos aquí pueden seguir.",
     "usageTitle": "Uso del nivel gratuito esta semana",
@@ -817,7 +825,6 @@
       "locked": "Pídele al propietario que paga la organización que la desbloquee."
     },
     "waiting": "Esperando tu pago. Esto se actualiza solo cuando se confirme.",
-    "openPaymentPage": "Abrir la página de pago",
     "actions": {
       "upgrade": "Mejorar plan",
       "unlock": "Desbloquear",

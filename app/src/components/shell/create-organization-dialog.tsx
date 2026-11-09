@@ -126,7 +126,7 @@ export function CreateOrganizationDialog({ open, onOpenChange }: Props) {
         open={open}
         onOpenChange={onOpenChange}
         offer={offer}
-        outstanding={checkout.outstanding}
+        checkout={checkout}
         pending={createOrganization.isPending}
         onSubmit={submitPaid}
       />

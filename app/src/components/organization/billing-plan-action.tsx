@@ -11,6 +11,7 @@ import { useTranslation } from "react-i18next";
 import { usePortal } from "../../hooks/queries/use-billing.ts";
 import { useOrgCheckout } from "../../hooks/queries/use-org-checkout.ts";
 import { canPurchaseInApp } from "../../lib/purchase-policy.ts";
+import { CheckoutOpenNote } from "../shell/checkout-open-note.tsx";
 import { FallbackLink } from "../shell/fallback-link.tsx";
 import { PlanWebNote } from "../shell/plan-web-note.tsx";
 import type { BillingTabAction } from "./billing-tab-model.ts";
@@ -89,15 +90,7 @@ export function BillingPlanAction({
               {t("billing.upgrade")}
             </Button>
           </div>
-          {checkout.orgSlug === orgSlug && checkout.fallbackUrl && (
-            <FallbackLink
-              className="self-start text-sm"
-              href={checkout.fallbackUrl}
-              command="billing_checkout_open"
-            >
-              {t("billing.openCheckout")}
-            </FallbackLink>
-          )}
+          <CheckoutOpenNote checkout={checkout} orgSlug={orgSlug} />
         </>
       )}
       {action === "portal" && (

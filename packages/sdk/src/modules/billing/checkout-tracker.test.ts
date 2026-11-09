@@ -4,10 +4,8 @@ import type {
   SeatCheckoutOutcome,
 } from "@houston/wire-types";
 import { describe, expect, it, vi } from "vitest";
-import {
-  BillingCheckoutTracker,
-  billingCheckoutOutstanding,
-} from "./checkout-tracker";
+import { billingCheckoutOutstanding } from "./checkout-state";
+import { BillingCheckoutTracker } from "./checkout-tracker";
 import { freeOrgBilling, paidOrgBilling } from "./org-billing-fixtures";
 
 const ORG = "00000000000000aa";
@@ -72,7 +70,8 @@ describe("a checkout is started once until it resolves", () => {
     expect(p.create).toHaveBeenCalledTimes(1);
     expect(tracker.getSnapshot()).toMatchObject({
       phase: "open",
-      fallbackUrl: null,
+      url: "https://checkout.stripe.test/s",
+      opened: true,
     });
   });
 
@@ -81,7 +80,8 @@ describe("a checkout is started once until it resolves", () => {
     await tracker.start(ORG, ports(false));
     expect(tracker.getSnapshot()).toMatchObject({
       phase: "open",
-      fallbackUrl: "https://checkout.stripe.test/s",
+      url: "https://checkout.stripe.test/s",
+      opened: false,
     });
   });
 
@@ -222,8 +222,67 @@ describe("an identity change forgets the checkout", () => {
     await oldStart;
     expect(tracker.getSnapshot()).toMatchObject({
       phase: "open",
-      fallbackUrl: null,
+      url: "https://checkout.stripe.test/new",
+      opened: true,
     });
+  });
+});
+
+describe("a checkout the person walked away from ends", () => {
+  it("ends on a cancel return for its own org, never on another's or a success", async () => {
+    const { tracker } = harness();
+    await tracker.start(ORG, ports());
+    tracker.returned("00000000000000bb", "cancel");
+    tracker.returned(ORG, "success");
+    expect(tracker.getSnapshot().phase).toBe("open");
+    tracker.returned(ORG, "cancel");
+    expect(tracker.getSnapshot().phase).toBe("idle");
+  });
+
+  it("starts over: idle at once, then a new start makes a fresh session", async () => {
+    const { tracker, advance } = harness();
+    const p = ports();
+    await tracker.start(ORG, p);
+    advance(300_000);
+    tracker.abandon("00000000000000bb");
+    expect(tracker.getSnapshot().phase).toBe("open");
+    tracker.abandon(ORG);
+    expect(tracker.getSnapshot().phase).toBe("idle");
+    expect(await tracker.start(ORG, p)).toBe("started");
+    expect(p.create).toHaveBeenCalledTimes(2);
+    // The abandoned checkout's window must not cut the new one short.
+    advance(300_000);
+    expect(tracker.getSnapshot().phase).toBe("open");
+  });
+
+  it("never lets a started-over page's failed open mark the next one", async () => {
+    const { tracker } = harness();
+    let settleOpen: (opened: boolean) => void = () => {};
+    // The gateway answers the same session URL within the hour.
+    const abandoned = {
+      create: vi.fn(async () => checkout("https://checkout.stripe.test/s")),
+      open: vi.fn(() => new Promise<boolean>((r) => (settleOpen = r))),
+    };
+    const oldStart = tracker.start(ORG, abandoned);
+    await vi.waitFor(() => expect(abandoned.open).toHaveBeenCalled());
+    tracker.abandon(ORG);
+    expect(await tracker.start(ORG, ports())).toBe("started");
+    settleOpen(false);
+    await oldStart;
+    expect(tracker.getSnapshot()).toMatchObject({
+      phase: "open",
+      url: "https://checkout.stripe.test/s",
+      opened: true,
+    });
+  });
+
+  it("leaves a success alone", async () => {
+    const { tracker } = harness();
+    await tracker.start(ORG, ports());
+    tracker.observe(plus);
+    tracker.returned(ORG, "cancel");
+    tracker.abandon(ORG);
+    expect(tracker.getSnapshot().phase).toBe("succeeded");
   });
 });
 
