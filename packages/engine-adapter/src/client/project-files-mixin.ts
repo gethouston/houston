@@ -1,6 +1,12 @@
-import type { ProjectFile } from "@houston/wire-types";
+import {
+  FilePreviewError,
+  type FilePreviewOptions,
+  type ProjectFile,
+  parseFilePreviewRefusal,
+} from "@houston/wire-types";
 import * as controlPlane from "../control-plane";
 import { frameBatch, planAttachmentBatches } from "./attachment-batches";
+import { HoustonEngineError } from "./errors";
 import type { BaseCtor } from "./mixin";
 import { viaSdk } from "./sdk-error";
 
@@ -84,12 +90,21 @@ export function ProjectFilesMixin<TBase extends BaseCtor>(Base: TBase) {
     async downloadProjectFile(
       agentPath: string,
       relPath: string,
+      preview?: FilePreviewOptions,
     ): Promise<{ blob: Blob; contentType: string }> {
       if (!this.ctx.cp) throw new Error("downloads need a cloud workspace");
+      const query = `path=${encodeURIComponent(relPath)}${preview ? `&as=pdf&lang=${encodeURIComponent(preview.lang)}` : ""}`;
       const res = await this.cpFilesFetch(
         agentPath,
-        `files/download?path=${encodeURIComponent(relPath)}`,
-      );
+        `files/download?${query}`,
+      ).catch((error: unknown) => {
+        const refusal =
+          preview && error instanceof HoustonEngineError
+            ? parseFilePreviewRefusal(error.body)
+            : null;
+        if (refusal) throw new FilePreviewError(refusal.code, refusal.error);
+        throw error;
+      });
       return {
         blob: await res.blob(),
         contentType:

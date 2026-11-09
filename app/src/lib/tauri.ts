@@ -908,6 +908,10 @@ export const tauriSkillDrafts = {
 
 // ─── Project files (browser) ──────────────────────────────────────────
 
+import {
+  FilePreviewError,
+  type FilePreviewOptions,
+} from "@houston/wire-types/file-preview";
 import { osOpenFile, osRevealAgent, osRevealFile } from "./os-bridge";
 
 export const tauriFiles = {
@@ -939,13 +943,25 @@ export const tauriFiles = {
   download: (
     agentPath: string,
     relativePath: string,
-    options?: { toast?: boolean },
+    options?: { toast?: boolean } & (
+      | FilePreviewOptions
+      | { as?: never; lang?: never }
+    ),
   ) =>
     call<{ blob: Blob; contentType: string }>(
       "download_project_file",
-      () => getEngine().downloadProjectFile(agentPath, relativePath),
+      () =>
+        getEngine().downloadProjectFile(
+          agentPath,
+          relativePath,
+          options?.as === "pdf" ? { as: "pdf", lang: options.lang } : undefined,
+        ),
       { agentPath, relativePath },
-      { ...options, silence: isFileGoneError },
+      {
+        ...options,
+        silence: (error) =>
+          isFileGoneError(error) || error instanceof FilePreviewError,
+      },
     ).catch(async (err: unknown) => {
       if (options?.toast !== false && isFileGoneError(err)) {
         const { showExpectedStateToast } = await import("./error-toast");

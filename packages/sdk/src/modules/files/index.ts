@@ -31,6 +31,7 @@ import {
   readProjectFile,
   renameFile,
 } from "./http";
+import { previewPlan } from "./preview";
 import {
   FilesCommand,
   type FileUpload,
@@ -55,6 +56,8 @@ export {
 
 /** The typed facade for an agent's workspace files. Every call throws on a non-2xx. */
 export interface FilesModule {
+  /** Choose the download representation this deployment can preview. */
+  previewPlan: typeof previewPlan;
   /** Everything in the agent's workspace, one entry per file and folder. */
   listProjectFiles(agentPath: string): Promise<ProjectFile[]>;
   /** One workspace file's contents, base64-framed bytes decoded to text. */
@@ -153,6 +156,7 @@ export function createFilesModule(ctx: ModuleContext): FilesModule {
   );
 
   return {
+    previewPlan,
     listProjectFiles: (agentPath) => listProjectFiles(scope, agentPath),
     readProjectFile: (agentPath, relPath) =>
       readProjectFile(scope, agentPath, relPath),

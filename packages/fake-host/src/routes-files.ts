@@ -8,6 +8,7 @@ import { mimeFor } from "@houston/host/src/turn/files";
 import { NAME_TAKEN, READ_ONLY } from "@houston/protocol";
 import { type Zippable, zipSync } from "fflate";
 import { CORS, json, noContent } from "./http";
+import { fakeOfficePreview } from "./office-preview";
 import * as state from "./state";
 
 /**
@@ -77,6 +78,12 @@ export function handleWorkspaceFiles(
     const path = query.get("path") ?? "";
     const f = state.readWorkspaceFile(id, path);
     if (!f) return json({ error: "file not found" }, 404);
+    if (query.get("as") === "pdf")
+      return fakeOfficePreview(
+        path,
+        f.bytes,
+        state.getCapabilities().officePreview === true,
+      );
     // The REAL host's `mimeFor`, imported rather than re-implemented: the
     // Files tab decides whether a row/card gets a thumbnail by sniffing this
     // header, so a mock that answered octet-stream for everything would have

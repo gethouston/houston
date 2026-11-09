@@ -134,6 +134,10 @@
     "./notice-ends-turn": {
       "types": "./src/modules/turns/notice-ends-turn.ts",
       "import": "./src/modules/turns/notice-ends-turn.ts"
+    },
+    "./files/preview": {
+      "types": "./src/modules/files/preview.ts",
+      "import": "./src/modules/files/preview.ts"
     }
   },
   "files": [

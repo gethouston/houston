@@ -8,6 +8,7 @@
  */
 
 import { assertRequestIdentity } from "@houston/sdk/auth-replay";
+import { parseFilePreviewRefusal } from "@houston/wire-types";
 import {
   classifyUnavailableBody,
   retryDelaysFor,
@@ -40,9 +41,8 @@ const CALLER_OWNED_RETRY_PATHS: ReadonlySet<string> = new Set([
   "/v1/events",
 ]);
 
-/** The request's path, or null when the input is not a parseable URL (a
- *  relative string in a non-browser context): unknown paths keep the ladder. */
-function pathOf(input: RequestInfo | URL): string | null {
+/** Unparseable request URLs keep the read-retry ladder. */
+function urlOf(input: RequestInfo | URL): URL | null {
   const raw =
     typeof input === "string"
       ? input
@@ -50,7 +50,7 @@ function pathOf(input: RequestInfo | URL): string | null {
         ? input.href
         : input.url;
   try {
-    return new URL(raw, "http://houston.invalid").pathname;
+    return new URL(raw, "http://houston.invalid");
   } catch {
     return null;
   }
@@ -109,7 +109,8 @@ function sleep(ms: number, signal?: AbortSignal | null): Promise<void> {
 export function transientRetryFetch(inner: typeof fetch): typeof fetch {
   return async (input, init) => {
     const method = (init?.method ?? "GET").toUpperCase();
-    const path = pathOf(input);
+    const url = urlOf(input);
+    const path = url?.pathname ?? null;
     const retriable =
       (method === "GET" ||
         method === "HEAD" ||
@@ -126,6 +127,20 @@ export function transientRetryFetch(inner: typeof fetch): typeof fetch {
         res = await inner(input, init);
       } catch (err) {
         failure = err;
+      }
+      if (
+        res &&
+        TRANSIENT_STATUSES.has(res.status) &&
+        url?.searchParams.get("as") === "pdf"
+      ) {
+        const text = await res.clone().text();
+        let body: unknown;
+        try {
+          body = JSON.parse(text);
+        } catch {
+          body = null;
+        }
+        if (parseFilePreviewRefusal(body)) break;
       }
       const transient = res === undefined || TRANSIENT_STATUSES.has(res.status);
       if (!transient || !retriable || givenUp()) break;

@@ -250,6 +250,7 @@ export interface TeamsSettings {
 
 /** Single-player local profile — the default the app boots on (no Teams). */
 export const DEFAULT_CAPABILITIES: FakeCapabilities = {
+  officePreview: true,
   profile: "local",
   revealInOs: false,
   terminal: false,

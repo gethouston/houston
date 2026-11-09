@@ -293,3 +293,47 @@ test("a failed workspace call surfaces as the adapter's engine error", async () 
     agentId: "a1",
   });
 });
+
+test("Office preview pins PDF representation, locale, and gateway headers", async () => {
+  stubFetch(
+    () =>
+      new Response("%PDF-test", {
+        headers: {
+          "Content-Type": "application/pdf",
+          "X-Houston-Page-Count": "2",
+        },
+      }),
+  );
+  const c = client();
+  c.setActiveOrg(ORG);
+  const result = await c.downloadProjectFile("a 1", "sub dir/deck.pptx", {
+    as: "pdf",
+    lang: "es-CO",
+  });
+  expect(result.contentType).toBe("application/pdf");
+  expect(await result.blob.text()).toBe("%PDF-test");
+  expect(calls).toHaveLength(1);
+  expect(calls[0].url).toBe(
+    `${BASE}/agents/a%201/files/download?path=sub%20dir%2Fdeck.pptx&as=pdf&lang=es-CO`,
+  );
+  expect(calls[0].method).toBe("GET");
+  expect(calls[0].body).toBeNull();
+  expectGatewayHeaders(calls[0]);
+});
+
+test.each([
+  ["unsupported_type", 415],
+  ["too_large", 413],
+  ["conversion_unavailable", 503],
+  ["timeout", 504],
+  ["conversion_failed", 422],
+] as const)("Office %s is a typed refusal without transport replay", async (code, status) => {
+  stubFetch(() => json(status, { code, error: "preview refused" }));
+  await expect(
+    client().downloadProjectFile("a1", "deck.pptx", {
+      as: "pdf",
+      lang: "pt-BR",
+    }),
+  ).rejects.toMatchObject({ name: "FilePreviewError", code });
+  expect(calls).toHaveLength(1);
+});
