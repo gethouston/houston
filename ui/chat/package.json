@@ -13,6 +13,7 @@
     "react-dom": "^19.0.0"
   },
   "dependencies": {
+    "@houston/wire-types": "workspace:*",
     "@radix-ui/react-use-controllable-state": "1.2.3",
     "@streamdown/cjk": "1.0.3",
     "@streamdown/code": "1.1.1",

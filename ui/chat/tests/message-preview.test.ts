@@ -116,3 +116,16 @@ describe("messagePreviewText with file comments", () => {
     );
   });
 });
+
+describe("messagePreviewText with a broken comments marker", () => {
+  it("keeps an opener with nothing after it as text", () => {
+    const body = "see <!--houston:citations oops";
+    assert.equal(messagePreviewText(body), body);
+  });
+
+  it("keeps a marker whose list never closes as text", () => {
+    const body =
+      'Fix <!--houston:citations [{"n":1}]-->\n[The user left comments]';
+    assert.equal(messagePreviewText(body), body);
+  });
+});
