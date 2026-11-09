@@ -64,12 +64,15 @@ export function actionSlugOf(
   toolkitSlug: string,
 ): string | null {
   const slug = query.trim().toUpperCase();
-  // Action slugs drop the toolkit slug's separators: google-sheets owns
-  // GOOGLESHEETS_BATCH_GET.
-  const prefix = `${toolkitSlug.toUpperCase().replace(/[^A-Z0-9]/g, "")}_`;
+  // Composio action prefixes either drop toolkit separators or keep them as underscores.
+  const prefixes = ["", "_"].map(
+    (separator) =>
+      `${toolkitSlug.toUpperCase().replace(/[^A-Z0-9]/g, separator)}_`,
+  );
   return /^[A-Z0-9_]+$/.test(slug) &&
-    slug.startsWith(prefix) &&
-    slug.length > prefix.length
+    prefixes.some(
+      (prefix) => slug.startsWith(prefix) && slug.length > prefix.length,
+    )
     ? slug
     : null;
 }
@@ -85,12 +88,27 @@ async function namedAppLookup(
   list: boolean,
 ): Promise<ToolMatch[]> {
   const actionSlug = actionSlugOf(query, slug);
-  const [direct, scoped] = await Promise.all([
+  const [hits, scoped] = await Promise.all([
     actionSlug
-      ? deps.queryTools({ tool_slugs: actionSlug, toolkit_slug: slug })
+      ? deps
+          .queryTools({ tool_slugs: actionSlug, toolkit_slug: slug })
+          // The exact lookup only improves ranking: its failure must not fail
+          // the search the scoped query can still answer.
+          .catch((err: unknown) => {
+            console.warn(
+              `[composio] exact action lookup failed for ${actionSlug}; using full-text results`,
+              err,
+            );
+            return [];
+          })
       : Promise.resolve<ToolMatch[]>([]),
     deps.queryTools({ query, limit: "10", toolkit_slug: slug }),
   ]);
+  // A short toolkit slug can prefix a longer one's actions (zoho vs
+  // ZOHO_BOOKS_*), and an explicit app is a hard filter.
+  const direct = hits.filter(
+    (m) => m.toolkit.toLowerCase() === slug.toLowerCase(),
+  );
   if (direct.length > 0 || scoped.length > 0 || !list)
     return [...direct, ...scoped];
   return deps.queryTools({ limit: "50", toolkit_slug: slug });

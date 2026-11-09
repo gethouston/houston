@@ -148,7 +148,8 @@
       "usageLimit": "The {{provider}} plan reached its usage limit. Runs continue after {{time}}.",
       "usageLimitNoReset": "The {{provider}} plan reached its usage limit. Runs continue once it resets.",
       "poolDeliveryExpired": "This run couldn't start in time and was skipped. You can run the routine again.",
-      "creatorNoAccess": "This routine was set up by someone who can no longer use this AI Employee. Pause the routine and resume it to run it as you."
+      "creatorNoAccess": "This routine was set up by someone who can no longer use this AI Employee. Pause the routine and resume it to run it as you.",
+      "agentDataNeedsRepair": "This run couldn't start because this AI Employee's saved data needs to be repaired. Contact Houston support. Runs start again once it's fixed."
     },
     "autoPause": {
       "chip": "Paused",

@@ -42,7 +42,7 @@ export async function openNewAgent(page: Page): Promise<void> {
  * product ships.
  */
 export async function fillAgentBrief(page: Page): Promise<void> {
-  const hire = page.getByRole("button", { name: "Hire a new AI Employee" });
+  const hire = page.getByRole("button", { name: "Create a new AI Employee" });
   const industry = page.getByRole("radio", { name: "Finance", exact: true });
   await hire.or(industry).first().waitFor({ state: "visible" });
   if (await hire.isVisible()) await hire.click();

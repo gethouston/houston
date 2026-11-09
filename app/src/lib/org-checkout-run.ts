@@ -40,8 +40,8 @@ export async function runOrgCheckout(
   const { orgSlug, tab } = run;
   const fallback = () => {
     const state = tracker.getSnapshot();
-    return state.phase === "open" && state.orgSlug === orgSlug
-      ? state.fallbackUrl
+    return state.phase === "open" && state.orgSlug === orgSlug && !state.opened
+      ? state.url
       : null;
   };
   const navigate = async (url: string) => {

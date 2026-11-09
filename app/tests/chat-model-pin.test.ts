@@ -180,7 +180,7 @@ describe("coherentPinModel (the Teams personal-choice guard)", () => {
   const LINEUP_CATALOG: PinCatalog = {
     runs: (provider, model) =>
       provider !== "anthropic" ||
-      ["claude-sonnet-5-5", "claude-opus-5-5", "claude-fable-5-1"].includes(
+      ["claude-sonnet-5-5", "claude-opus-5-5", "claude-fable-5-2"].includes(
         model,
       ),
     offers: () => false,
@@ -195,7 +195,7 @@ describe("coherentPinModel (the Teams personal-choice guard)", () => {
     );
     strictEqual(
       coherentPinModel("anthropic", "claude-fable-5", LINEUP_CATALOG),
-      "claude-fable-5-1",
+      "claude-fable-5-2",
     );
   });
 

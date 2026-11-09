@@ -22,7 +22,7 @@ const visible: Record<string, string[]> = {
   anthropic: [
     "claude-sonnet-5-5",
     "claude-opus-5-5",
-    "claude-fable-5-1",
+    "claude-fable-5-2",
     "claude-haiku-5-5",
   ],
   opencode: ["claude-opus-5", "claude-opus-5-5"],

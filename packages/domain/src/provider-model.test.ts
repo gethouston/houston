@@ -28,7 +28,7 @@ const PI_MODELS: Record<string, Set<string>> = {
   // family): a migration that lands anywhere else stores a model no picker
   // offers.
   anthropic: new Set([
-    "claude-fable-5-1",
+    "claude-fable-5-2",
     "claude-haiku-5-5",
     "claude-opus-5-5",
     "claude-sonnet-5-5",
@@ -113,7 +113,7 @@ test("bare tier aliases resolve to their family's lineup model", () => {
   assertValid(sonnet, "anthropic/sonnet");
 
   const fable = migrateProviderModel("anthropic", "fable");
-  expect(fable.model).toBe("claude-fable-5-1");
+  expect(fable.model).toBe("claude-fable-5-2");
   expect(fable.diagnostics).toEqual([]);
   assertValid(fable, "anthropic/fable");
 });
@@ -131,7 +131,9 @@ test("every retired Claude id stays in its own family", () => {
     "claude-sonnet-4-6": "claude-sonnet-5-5",
     "claude-sonnet-4-5-20250929": "claude-sonnet-5-5",
     "claude-3-7-sonnet-20250219": "claude-sonnet-5-5",
-    "claude-fable-5": "claude-fable-5-1",
+    "claude-fable-5": "claude-fable-5-2",
+    "claude-fable-5-1": "claude-fable-5-2",
+    fable: "claude-fable-5-2",
   };
   for (const [stored, lineup] of Object.entries(cases)) {
     const r = migrateProviderModel("anthropic", stored);

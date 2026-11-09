@@ -104,6 +104,13 @@ export const SAMPLE_CATALOG: ProviderCatalog = [
     }),
     reasoningModel("claude-opus-5", { contextWindow: 1_000_000 }),
     reasoningModel("claude-opus-4-8", { contextWindow: 1_000_000 }),
+    reasoningModel("claude-fable-5-2", {
+      contextWindow: 1_000_000,
+      maxTokens: 128_000,
+      vision: true,
+      pricing: { input: 8, output: 40, cacheRead: 0.2, cacheWrite: 10 },
+      thinkingLevels: ["low", "medium", "high", "xhigh", "max"],
+    }),
     reasoningModel("claude-fable-5-1", { contextWindow: 1_000_000 }),
     reasoningModel("claude-haiku-5-5", {
       contextWindow: 1_000_000,

@@ -98,6 +98,8 @@ export function RoutineRunsHistory({
         return t("details.failure.poolDeliveryExpired");
       case "creator_no_access":
         return t("details.failure.creatorNoAccess");
+      case "agent_data_needs_repair":
+        return t("details.failure.agentDataNeedsRepair");
       case "creator_not_connected":
         return t("details.failure.creatorNotConnected", { provider });
       case "team_not_connected":

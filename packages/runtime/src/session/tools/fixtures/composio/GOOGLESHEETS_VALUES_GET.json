@@ -1,0 +1,39 @@
+{
+  "type": "object",
+  "required": ["spreadsheet_id", "range"],
+  "properties": {
+    "range": {
+      "type": "string",
+      "description": "The A1 notation or R1C1 notation of the range to retrieve values from. If the sheet name contains spaces or special characters, wrap the sheet name in single quotes (e.g., \"'My Sheet'!A1:B2\"). Without single quotes, the API will return a 400 error for sheet names with spaces. Examples: 'Sheet1!A1:B3', \"'Sheet With Spaces'!A1:D5\", 'A1:D5' (no sheet name uses first visible sheet), 'Sheet1!A:A' (entire column), 'SheetName' (entire sheet)."
+    },
+    "end_row": {
+      "type": "integer",
+      "description": "1-based row number to stop reading at (inclusive). Use with start_row for pagination to avoid large response errors. Example: start_row=501, end_row=1000 fetches rows 501-1000."
+    },
+    "start_row": {
+      "type": "integer",
+      "description": "1-based row number to start reading from (inclusive). Use with end_row for pagination to avoid large response errors. Example: start_row=1, end_row=500 fetches the first 500 rows."
+    },
+    "spreadsheet_id": {
+      "type": "string",
+      "description": "The unique identifier of the Google Spreadsheet from which to retrieve values. This is the long alphanumeric string found in the spreadsheet URL between '/d/' and '/edit' (e.g., '1BxiMVs0XRA5nFMdKvBdBZjgmUUqptlbs74OgvE2upms'). WARNING: Do NOT use the spreadsheet name or title (e.g., 'My Sales Report'); you must use the actual ID from the URL."
+    },
+    "major_dimension": {
+      "enum": ["DIMENSION_UNSPECIFIED", "ROWS", "COLUMNS"],
+      "type": "string",
+      "description": "The major dimension for results."
+    },
+    "value_render_option": {
+      "enum": ["FORMATTED_VALUE", "UNFORMATTED_VALUE", "FORMULA"],
+      "type": "string",
+      "default": "FORMATTED_VALUE",
+      "description": "How values should be rendered in the output. FORMATTED_VALUE: Values are calculated and formatted (default). UNFORMATTED_VALUE: Values are calculated but not formatted. FORMULA: Values are not calculated; the formula is returned instead."
+    },
+    "date_time_render_option": {
+      "enum": ["SERIAL_NUMBER", "FORMATTED_STRING"],
+      "type": "string",
+      "default": "SERIAL_NUMBER",
+      "description": "How dates, times, and durations should be represented in the output. SERIAL_NUMBER: Dates are returned as serial numbers (default). FORMATTED_STRING: Dates returned as formatted strings."
+    }
+  }
+}

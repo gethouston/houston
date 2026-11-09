@@ -79,11 +79,15 @@ export interface RoutineSnooze {
  * fire before its deadline; running it again is the remedy.
  * `creator_no_access`: the person the routine runs as can no longer use the
  * agent; any save of the routine (pausing and resuming it included) makes
- * the saver its creator.
+ * the saver its creator. `agent_data_needs_repair`: the agent's saved data
+ * holds two copies of the agent, which only support can repair; until then
+ * every scheduled fire and trigger batch fails the same way (a Run now runs
+ * on the agent's own engine instead).
  */
 export type RoutineDeliveryFailureCode =
   | "pool_delivery_expired"
-  | "creator_no_access";
+  | "creator_no_access"
+  | "agent_data_needs_repair";
 
 export interface RoutineDeliveryFailure {
   code: RoutineDeliveryFailureCode;

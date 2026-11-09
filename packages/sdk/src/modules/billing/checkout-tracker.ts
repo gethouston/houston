@@ -1,70 +1,21 @@
-import type {
-  OrgBilling,
-  OrgsList,
-  SeatCheckoutOutcome,
-  SeatIntervalRefusal,
-} from "@houston/wire-types";
+import type { OrgsList, SeatCheckoutOutcome } from "@houston/wire-types";
 import type { Clock } from "../../ports";
-
-/**
- * How long a checkout this app opened stays outstanding: its triggers stay
- * disabled and the orgs list is polled until the org is paid for or this
- * elapses.
- */
-export const BILLING_CHECKOUT_WINDOW_MS = 600_000;
-
-/**
- * How long this app owns the return from a checkout it opened. Separate from
- * the poll window: Stripe's page can stay open long after the poll gives up.
- */
-export const BILLING_CHECKOUT_RETURN_MS = 86_400_000;
-
-export type BillingCheckoutState =
-  | { phase: "idle" }
-  | { phase: "creating"; orgSlug: string }
-  | {
-      phase: "open";
-      orgSlug: string;
-      startedAt: number;
-      fallbackUrl: string | null;
-    }
-  | { phase: "succeeded"; orgSlug: string };
-
-/** The two effects a checkout needs: the session from the gateway, a browser. */
-export interface BillingCheckoutPorts {
-  /** The session, or the interval the gateway refused (nothing opens). */
-  create(): Promise<SeatCheckoutOutcome>;
-  /** Opens the URL outside the app; false when nothing could open it. */
-  open(url: string): Promise<boolean>;
-}
-
-/** What one `start` did: opened a checkout, sent nothing, or was refused. */
-export type BillingCheckoutStart = "started" | "skipped" | SeatIntervalRefusal;
-
-/** A checkout is being created, or its page is open and the org is not paid yet. */
-export function billingCheckoutOutstanding(
-  state: BillingCheckoutState,
-): boolean {
-  return state.phase === "creating" || state.phase === "open";
-}
-
-/**
- * Whether an org is paid for: paid, active, and no lock scheduled. A paid tier
- * alone is not enough, since a payment that failed keeps the tier and sets a
- * lock, and that must never read as a checkout that succeeded.
- */
-export function orgPaidUp(billing: OrgBilling | null | undefined): boolean {
-  return (
-    billing?.tier === "paid" &&
-    billing.status === "active" &&
-    billing.lockAt === null
-  );
-}
+import {
+  BILLING_CHECKOUT_RETURN_MS,
+  BILLING_CHECKOUT_WINDOW_MS,
+  type BillingCheckoutPorts,
+  type BillingCheckoutReturnOutcome,
+  type BillingCheckoutStart,
+  type BillingCheckoutState,
+  billingCheckoutOutstanding,
+  orgPaidUp,
+} from "./checkout-state";
 
 /**
  * The ONE outstanding-checkout state of an app, shared by every entry point,
  * keyed by the org being paid for. A second start while one is outstanding is
- * refused, so a person can never open two Stripe sessions; the state outlives
+ * refused, so a person can never open two Stripe sessions unless they end the
+ * first themselves (`abandon`, or a cancel `returned`); the state outlives
  * whichever surface started it, so closing that surface neither stops the poll
  * nor loses the success. Subscribable in the `useSyncExternalStore` shape.
  */
@@ -74,7 +25,10 @@ export class BillingCheckoutTracker {
   #expiry: number | null = null;
   /** Org slug to the time its return stops being this app's to take. */
   #returns = new Map<string, number>();
-  /** Bumped by `reset`, so a start the previous identity began cannot land. */
+  /**
+   * Bumped by `reset` and `abandon`, so a start the previous identity or an
+   * abandoned checkout began cannot land on whichever start comes next.
+   */
   #generation = 0;
 
   constructor(private readonly clock: Clock) {}
@@ -91,8 +45,8 @@ export class BillingCheckoutTracker {
    * checkout is already outstanding (nothing is sent) or `reset` ran while the
    * session was being created (it is never opened), and the refusal, back to
    * idle, when the gateway refused the interval; rejects, back to idle, when
-   * the session cannot be created. A browser that did not open leaves the URL
-   * as `fallbackUrl` for the surface to offer as a link.
+   * the session cannot be created. The open state keeps the session's URL;
+   * a browser that did not open it sets `opened: false`.
    */
   async start(
     orgSlug: string,
@@ -119,7 +73,8 @@ export class BillingCheckoutTracker {
       phase: "open",
       orgSlug,
       startedAt: this.clock.now(),
-      fallbackUrl: null,
+      url,
+      opened: true,
     });
     this.#expiry = this.clock.setTimeout(() => {
       this.#expiry = null;
@@ -129,14 +84,16 @@ export class BillingCheckoutTracker {
     try {
       opened = await ports.open(url);
     } finally {
-      // A reset while the browser was opening belongs to the next identity:
-      // its checkout (if any) must never inherit this session's link.
+      // A reset or start over while the browser was opening hands the state
+      // to a later checkout, which must never inherit this session's flag.
+      // The URL cannot tell them apart: the gateway answers the same
+      // session within the hour.
       if (
         !opened &&
         generation === this.#generation &&
         this.#state.phase === "open"
       )
-        this.#set({ ...this.#state, fallbackUrl: url });
+        this.#set({ ...this.#state, opened: false });
     }
     return "started";
   }
@@ -171,6 +128,30 @@ export class BillingCheckoutTracker {
     const until = this.#returns.get(orgSlug);
     this.#returns.delete(orgSlug);
     return until !== undefined && until > this.clock.now();
+  }
+
+  /**
+   * Feed a return from Stripe's page for `orgSlug`. A cancel ends that org's
+   * open checkout, so its triggers come back at once; a success changes
+   * nothing, since only the orgs list (`observe`) says the org is paid.
+   */
+  returned(orgSlug: string, outcome: BillingCheckoutReturnOutcome): void {
+    if (outcome === "cancel") this.abandon(orgSlug);
+  }
+
+  /**
+   * End `orgSlug`'s open checkout (start over): back to idle, its poll and
+   * window stopped, so the next `start` makes a fresh session. The abandoned
+   * page stays payable in the browser, and `observe` no longer watches it;
+   * the orgs list still shows the org paid on its next read. Anything but an
+   * open checkout for `orgSlug` is left alone.
+   */
+  abandon(orgSlug: string): void {
+    const state = this.#state;
+    if (state.phase !== "open" || state.orgSlug !== orgSlug) return;
+    this.#generation += 1;
+    this.#clearExpiry();
+    this.#set({ phase: "idle" });
   }
 
   /**

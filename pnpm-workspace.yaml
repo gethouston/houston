@@ -25,6 +25,11 @@ minimumReleaseAge: 10080
 ignoredOptionalDependencies:
   - "@napi-rs/canvas"
 
+# Drop after 2026-11-16, once Claude Agent SDK 0.3.321 is seven days old.
+minimumReleaseAgeExclude:
+  - "@anthropic-ai/claude-agent-sdk"
+  - "@anthropic-ai/claude-agent-sdk-*"
+
 # Security override (uuid <11.1.1 advisory): gaxios 6 and teeny-request 9
 # (both pulled by @google-cloud/storage, which has no gaxios-7-based release
 # yet) declare uuid ^9. Both only call the still-present `v4()` (multipart

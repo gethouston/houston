@@ -7,7 +7,7 @@ import {
 
 /**
  * The Croma-incident guard: search results are a pick-list and must stay a
- * few KB — full schemas only for the top matches, signatures beyond, a hard
+ * few KB — parameter details only for the top matches, signatures beyond, a hard
  * item cap, clipped descriptions. A ~100-tool MCP server must never again
  * produce a result that blows the backend's tool-result ceiling.
  */
@@ -36,23 +36,21 @@ describe("schemaSignature", () => {
     expect(schemaSignature(schema)).toBe("{ name: string, page?: integer }");
   });
 
-  it("returns null for anything that is not an object schema", () => {
+  it("rejects non-schema values and keeps bare objects", () => {
     expect(schemaSignature(null)).toBeNull();
     expect(schemaSignature("nope")).toBeNull();
-    expect(schemaSignature({ type: "object" })).toBeNull();
+    expect(schemaSignature({ type: "object" })).toBe("object");
   });
 });
 
 describe("renderSearchItems", () => {
-  it("keeps full schemas for the top matches and signatures for the rest", () => {
+  it("details only the first two action rows", () => {
     const text = renderSearchItems(
       Array.from({ length: 10 }, (_, i) => action(i)),
     );
-    const full = text.match(/params: \{"type":"object"/g) ?? [];
-    const signatures = text.match(/params: \{ name: string/g) ?? [];
-    expect(full).toHaveLength(6);
-    expect(signatures).toHaveLength(4);
-    expect(text).toContain("short params signature");
+    expect(text.match(/params: \{"type":"object"/g)).toHaveLength(2);
+    expect(text.match(/params: \{ name: string/g)).toHaveLength(8);
+    expect(text).toContain("exact action name");
   });
 
   it("caps the rendered rows and counts the rest", () => {
@@ -74,7 +72,7 @@ describe("renderSearchItems", () => {
     expect(text).toContain("…");
   });
 
-  it("a pathological single schema falls back to its signature", () => {
+  it("clips verbose parameter descriptions while keeping their details", () => {
     const huge = {
       type: "object",
       properties: { name: { type: "string", description: "y".repeat(5000) } },
@@ -82,7 +80,8 @@ describe("renderSearchItems", () => {
     };
     const text = renderSearchItems([action(1, { inputParams: huge })]);
     expect(text).toContain("params: { name: string }");
-    expect(text.length).toBeLessThan(600);
+    expect(text).toContain(`name: string; ${"y".repeat(149)}…`);
+    expect(text.slice(text.indexOf("- tools.")).length).toBeLessThan(600);
   });
 
   it("a large realistic result stays a few KB, far under the backend ceiling", () => {

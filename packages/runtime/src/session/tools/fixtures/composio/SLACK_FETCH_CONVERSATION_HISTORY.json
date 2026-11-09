@@ -1,0 +1,36 @@
+{
+  "type": "object",
+  "required": ["channel"],
+  "properties": {
+    "limit": {
+      "type": "integer",
+      "default": 100,
+      "description": "Maximum number of messages to request in this single Slack API call (1-1000). Defaults to 100. Slack may return fewer than requested, especially for non-Marketplace apps where Slack can cap each page at 15 messages. This action does not internally paginate; use response_metadata.next_cursor in the cursor parameter of a follow-up call to fetch more messages."
+    },
+    "cursor": {
+      "type": "string",
+      "description": "Pagination cursor from `response_metadata.next_cursor` of a previous response. Omit this for the first page; pass the returned cursor in a follow-up call to fetch the next page."
+    },
+    "latest": {
+      "type": "string",
+      "description": "End of the time range of messages to include in results. Accepts a Unix timestamp or a Slack timestamp (e.g., '1234567890.000000'). NOTE: This filter only applies to main channel messages, not threaded replies. Use SLACK_FETCH_MESSAGE_THREAD_FROM_A_CONVERSATION to retrieve replies."
+    },
+    "oldest": {
+      "type": "string",
+      "description": "Start of the time range of messages to include in results. Accepts a Unix timestamp or a Slack timestamp (e.g., '1234567890.000000'). NOTE: This filter only applies to main channel messages, not threaded replies. Use SLACK_FETCH_MESSAGE_THREAD_FROM_A_CONVERSATION to retrieve replies."
+    },
+    "channel": {
+      "type": "string",
+      "description": "The ID of the public channel, private channel, direct message, or multi-person direct message to fetch history from."
+    },
+    "inclusive": {
+      "type": "boolean",
+      "description": "When true, includes messages at the exact 'oldest' or 'latest' boundary timestamps in results. When false (default), excludes boundary messages. Only applies when 'oldest' or 'latest' is specified."
+    },
+    "include_all_metadata": {
+      "type": "boolean",
+      "description": "Return all metadata associated with messages in the conversation history. When true, includes additional metadata fields that may be present on messages."
+    }
+  },
+  "description": "Request schema for fetching conversation history from Slack."
+}
