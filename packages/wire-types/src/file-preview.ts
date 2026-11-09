@@ -57,6 +57,10 @@ export interface FilePreviewOptions {
   lang: string;
 }
 
+export const officePreviewCapabilitiesSchema = z.object({
+  officePreview: z.boolean().default(false),
+});
+
 export const OFFICE_MAX_BYTES = 30 * 1024 * 1024;
 
 export const officeConverterHealthSchema = z.object({

@@ -115,7 +115,7 @@ export interface AssistantHandle {
 export type CustomIntegrationScope = "host" | "agent";
 
 export interface Capabilities {
-  /** Office-to-PDF previews are configured. Absent means unavailable. */
+  /** Office-to-PDF previews are configured. Absent means false. */
   officePreview?: boolean;
   /** Gateway remote push routes and delivery are configured. */
   push?: boolean;

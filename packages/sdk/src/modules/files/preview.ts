@@ -11,7 +11,7 @@ export function previewPlan(
   const ext = fileName.includes(".")
     ? fileName.split(".").pop()?.toLowerCase()
     : undefined;
-  return capabilities?.officePreview &&
+  return capabilities?.officePreview === true &&
     OFFICE_EXTENSIONS.some((candidate) => candidate === ext)
     ? "pdf"
     : "bytes";

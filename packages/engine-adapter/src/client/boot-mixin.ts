@@ -4,7 +4,10 @@ import type {
   HealthResponse,
   VersionResponse,
 } from "@houston/wire-types";
-import { retryAfterMsOf } from "@houston/wire-types";
+import {
+  officePreviewCapabilitiesSchema,
+  retryAfterMsOf,
+} from "@houston/wire-types";
 import * as controlPlane from "../control-plane";
 import type { AdapterContext } from "./context";
 import { HoustonEngineError } from "./errors";
@@ -30,7 +33,11 @@ export async function getCapabilities(
   ctx: AdapterContext,
 ): Promise<Capabilities> {
   const res = await controlPlane.cpFetch(ctx.prefConfig(), "/v1/capabilities");
-  return (await res.json()) as Capabilities;
+  const capabilities = (await res.json()) as Capabilities;
+  return {
+    ...capabilities,
+    ...officePreviewCapabilitiesSchema.parse(capabilities),
+  };
 }
 
 export function BootMixin<TBase extends BaseCtor>(Base: TBase) {

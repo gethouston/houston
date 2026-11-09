@@ -1,4 +1,8 @@
-import { FilePreviewError, OFFICE_EXTENSIONS } from "@houston/wire-types";
+import {
+  FilePreviewError,
+  OFFICE_EXTENSIONS,
+  officePreviewCapabilitiesSchema,
+} from "@houston/wire-types";
 import { expect, test } from "vitest";
 import { classifyPreviewRefusal, previewPlan } from "./preview";
 
@@ -53,4 +57,12 @@ test("preview failures always fall back, and only expected refusals remain silen
     report: true,
     error: { name: "FilePreviewError" },
   });
+});
+
+test("parsed capabilities without Office preview keep the bytes plan", () => {
+  const capabilities = officePreviewCapabilitiesSchema.parse(
+    JSON.parse('{"profile":"cloud"}'),
+  );
+  expect(capabilities.officePreview).toBe(false);
+  expect(previewPlan("deck.pptx", capabilities)).toBe("bytes");
 });

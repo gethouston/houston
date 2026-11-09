@@ -55,6 +55,7 @@ describe("the published capabilities read", () => {
 
     await expect(client().capabilities()).resolves.toEqual({
       profile: "cloud",
+      officePreview: false,
     });
 
     expect(calls).toHaveLength(1);

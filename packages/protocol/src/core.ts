@@ -52,7 +52,7 @@ export type CustomIntegrationScope = "host" | "agent";
  * NEVER on "am I web / desktop / cloud" branches — that's where drift breeds.
  */
 export interface Capabilities {
-  /** Office-to-PDF previews are configured. Absent means unavailable. */
+  /** Office-to-PDF previews are configured. Absent means false. */
   officePreview?: boolean;
   /** Deployment profile, for diagnostics only — never branch UI logic on it. */
   profile: "local" | "cloud";
