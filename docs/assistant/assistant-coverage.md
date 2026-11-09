@@ -8,9 +8,9 @@
 - Unschematized: 24
 - Hidden: 79
 - Confirmed: 58
-- Routable: 176
-- Unroutable: 23
-- Raw-response routes: 124
+- Routable: 177
+- Unroutable: 22
+- Raw-response routes: 125
 - Acknowledged exceptions: 121
 - Acknowledged debt: 0
 
@@ -378,7 +378,7 @@ None.
 - `getHostSidebarLayout`
 - `putHostSidebarLayout`
 
-## Unroutable operations (23)
+## Unroutable operations (22)
 
 No HTTP route could be derived conservatively from the function body, so the operation is not callable.
 
@@ -386,7 +386,6 @@ No HTTP route could be derived conservatively from the function body, so the ope
 - `captureSetupCredential`: non-assignment request option
 - `createMigratedAgent`: body value is not a parameter
 - `downloadProjectArchive`: unescaped path interpolation
-- `downloadProjectFile`: unescaped path interpolation
 - `generateAgentInstructions`: hop into HoustonEngineClient.generateAgent could not be resolved: the client comes from providerEngine(), which is not clientFor()
 - `getOrgProfiles`: unescaped path interpolation
 - `integrations.refresh`: multiple request calls

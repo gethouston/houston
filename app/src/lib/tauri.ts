@@ -36,6 +36,7 @@ import type {
 } from "@houston/protocol";
 import type {
   DismissInteractionOutcome,
+  FilesModule,
   TimezoneSeedResult,
 } from "@houston/sdk";
 import type {
@@ -915,6 +916,11 @@ import {
 import { osOpenFile, osRevealAgent, osRevealFile } from "./os-bridge";
 
 export const tauriFiles = {
+  previewPlan: (...args: Parameters<FilesModule["previewPlan"]>) =>
+    getEngine().engineSdk.files.previewPlan(...args),
+  classifyPreviewRefusal: (
+    ...args: Parameters<FilesModule["classifyPreviewRefusal"]>
+  ) => getEngine().engineSdk.files.classifyPreviewRefusal(...args),
   list: (agentPath: string) =>
     isAgentPathCreating(agentPath)
       ? Promise.resolve<FileEntry[]>([])
@@ -960,7 +966,9 @@ export const tauriFiles = {
       {
         ...options,
         silence: (error) =>
-          isFileGoneError(error) || error instanceof FilePreviewError,
+          options?.as === "pdf" ||
+          isFileGoneError(error) ||
+          error instanceof FilePreviewError,
       },
     ).catch(async (err: unknown) => {
       if (options?.toast !== false && isFileGoneError(err)) {

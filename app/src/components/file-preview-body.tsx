@@ -20,9 +20,10 @@ import { useTranslation } from "react-i18next";
 export type Loaded =
   | { state: "loading" }
   | { state: "error"; message: string }
-  | { state: "image" | "pdf" | "html"; url: string; blob: Blob }
+  | { state: "image" | "html"; url: string; blob: Blob }
+  | { state: "pdf"; url: string; blob?: Blob }
   | { state: "text"; text: string; blob: Blob }
-  | { state: "binary"; blob: Blob };
+  | { state: "binary"; blob?: Blob };
 
 /** Files whose text is prose to be rendered, not source to be read. */
 export function isMarkdownFile(fileName: string): boolean {

@@ -1,6 +1,6 @@
 import { FilePreviewError, OFFICE_EXTENSIONS } from "@houston/wire-types";
 import { expect, test } from "vitest";
-import { previewPlan, previewRefusalAction } from "./preview";
+import { classifyPreviewRefusal, previewPlan } from "./preview";
 
 test("only configured Office previews request a PDF", () => {
   for (const ext of OFFICE_EXTENSIONS) {
@@ -15,18 +15,42 @@ test("only configured Office previews request a PDF", () => {
     expect(previewPlan(name, { officePreview: true })).toBe("bytes");
   }
 });
-test("all refusals fall back, and failed conversions get reported", () => {
-  for (const code of ["timeout", "conversion_failed"] as const)
-    expect(previewRefusalAction(new FilePreviewError(code, "failed"))).toBe(
-      "report-and-fallback",
-    );
+test("preview failures always fall back, and only expected refusals remain silent", () => {
   for (const code of [
-    "unsupported_type",
-    "too_large",
+    "timeout",
+    "conversion_failed",
     "conversion_unavailable",
-  ] as const)
-    expect(previewRefusalAction(new FilePreviewError(code, "refused"))).toBe(
-      "fallback",
-    );
-  expect(previewRefusalAction(new Error("unrelated"))).toBeNull();
+  ] as const) {
+    expect(
+      classifyPreviewRefusal(new FilePreviewError(code, "failed"), {
+        officePreview: true,
+      }),
+    ).toMatchObject({
+      fallback: true,
+      report: true,
+      error: { name: "FilePreviewError" },
+    });
+  }
+  for (const code of ["unsupported_type", "too_large"] as const) {
+    expect(
+      classifyPreviewRefusal(new FilePreviewError(code, "refused"), {
+        officePreview: true,
+      }),
+    ).toEqual({ fallback: true, report: false });
+  }
+  expect(
+    classifyPreviewRefusal(
+      new FilePreviewError("conversion_unavailable", "off"),
+      { officePreview: false },
+    ),
+  ).toEqual({ fallback: true, report: false });
+  expect(
+    classifyPreviewRefusal(new Error("transport failed"), {
+      officePreview: true,
+    }),
+  ).toMatchObject({
+    fallback: true,
+    report: true,
+    error: { name: "FilePreviewError" },
+  });
 });

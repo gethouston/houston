@@ -17,11 +17,29 @@ export function previewPlan(
     : "bytes";
 }
 
-export function previewRefusalAction(
+export function classifyPreviewRefusal(
   error: unknown,
-): "fallback" | "report-and-fallback" | null {
-  if (!(error instanceof FilePreviewError)) return null;
-  return error.code === "timeout" || error.code === "conversion_failed"
-    ? "report-and-fallback"
-    : "fallback";
+  capabilities: Pick<Capabilities, "officePreview"> | null,
+):
+  | { fallback: true; report: false }
+  | { fallback: true; report: true; error: FilePreviewError } {
+  if (!(error instanceof FilePreviewError)) {
+    return {
+      fallback: true,
+      report: true,
+      error: new FilePreviewError(
+        "conversion_failed",
+        error instanceof Error
+          ? `${error.name}: ${error.message}`
+          : String(error),
+      ),
+    };
+  }
+  const report =
+    error.code === "conversion_unavailable"
+      ? capabilities?.officePreview === true
+      : error.code !== "unsupported_type" && error.code !== "too_large";
+  return report
+    ? { fallback: true, report: true, error }
+    : { fallback: true, report: false };
 }

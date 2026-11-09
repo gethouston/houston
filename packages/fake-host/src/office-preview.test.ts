@@ -10,6 +10,14 @@ afterEach(async () => {
   await host.stop();
 });
 test("Office preview returns PDF while ordinary download preserves the source", async () => {
+  expect(
+    (await (await fetch(`${host.url}/v1/capabilities`)).json()).officePreview,
+  ).toBe(false);
+  await fetch(`${host.url}/__test__/capabilities`, {
+    method: "POST",
+    headers: { "content-type": "application/json" },
+    body: JSON.stringify({ officePreview: true }),
+  });
   const files = `${host.url}/agents/${SEED_AGENT_ID}/files`;
   await fetch(`${files}/import`, {
     method: "POST",

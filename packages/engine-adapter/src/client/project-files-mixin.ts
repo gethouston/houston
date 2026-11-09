@@ -61,9 +61,11 @@ export function ProjectFilesMixin<TBase extends BaseCtor>(Base: TBase) {
       agentId: string,
       path: string,
       init?: RequestInit,
+      preview?: FilePreviewOptions,
     ): Promise<Response> {
       if (!this.ctx.cp)
         throw new Error("cpFilesFetch called without a control-plane config");
+      if (preview) path += `&as=pdf&lang=${encodeURIComponent(preview.lang)}`;
       return controlPlane.cpFetch(
         this.ctx.cp,
         `/agents/${encodeURIComponent(agentId)}/${path}`,
@@ -93,10 +95,11 @@ export function ProjectFilesMixin<TBase extends BaseCtor>(Base: TBase) {
       preview?: FilePreviewOptions,
     ): Promise<{ blob: Blob; contentType: string }> {
       if (!this.ctx.cp) throw new Error("downloads need a cloud workspace");
-      const query = `path=${encodeURIComponent(relPath)}${preview ? `&as=pdf&lang=${encodeURIComponent(preview.lang)}` : ""}`;
       const res = await this.cpFilesFetch(
         agentPath,
-        `files/download?${query}`,
+        `files/download?path=${encodeURIComponent(relPath)}`,
+        undefined,
+        preview,
       ).catch((error: unknown) => {
         const refusal =
           preview && error instanceof HoustonEngineError

@@ -14,9 +14,8 @@
  * seam. A 401 routes through the shared {@link ModuleContext.authExpiry}
  * notifier, which that seam signals.
  *
- * Degradations are the CALLER's: every request here throws on a non-2xx, so a
- * deployment with no workspace to serve says so and the surface — not this
- * layer — decides whether that reads as an empty Files section or a failure.
+ * Binary preview policy belongs to this facade; transport returns the bytes
+ * through the adapter while surfaces render the chosen fallback.
  */
 
 import type { ModuleContext } from "../../module-context";
@@ -31,7 +30,7 @@ import {
   readProjectFile,
   renameFile,
 } from "./http";
-import { previewPlan } from "./preview";
+import { classifyPreviewRefusal, previewPlan } from "./preview";
 import {
   FilesCommand,
   type FileUpload,
@@ -58,6 +57,8 @@ export {
 export interface FilesModule {
   /** Choose the download representation this deployment can preview. */
   previewPlan: typeof previewPlan;
+  /** Classify a PDF refusal for fallback and diagnostic reporting. */
+  classifyPreviewRefusal: typeof classifyPreviewRefusal;
   /** Everything in the agent's workspace, one entry per file and folder. */
   listProjectFiles(agentPath: string): Promise<ProjectFile[]>;
   /** One workspace file's contents, base64-framed bytes decoded to text. */
@@ -156,7 +157,18 @@ export function createFilesModule(ctx: ModuleContext): FilesModule {
   );
 
   return {
-    previewPlan,
+    /** Choose the preview representation.
+     * @assistant group:files hidden: local preview policy; no host request.
+     * @assistant unroutable: pure representation selection. */
+    previewPlan(fileName, capabilities) {
+      return previewPlan(fileName, capabilities);
+    },
+    /** Classify a preview failure.
+     * @assistant group:files hidden: local reporting policy; no host request.
+     * @assistant unroutable: pure refusal classification. */
+    classifyPreviewRefusal(error, capabilities) {
+      return classifyPreviewRefusal(error, capabilities);
+    },
     listProjectFiles: (agentPath) => listProjectFiles(scope, agentPath),
     readProjectFile: (agentPath, relPath) =>
       readProjectFile(scope, agentPath, relPath),
