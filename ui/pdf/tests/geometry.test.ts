@@ -2,6 +2,7 @@ import assert from "node:assert/strict";
 import { test } from "node:test";
 import {
   contextBox,
+  cropFrame,
   mergeLineBoxes,
   PIN_SIZE,
   placePin,
@@ -82,4 +83,23 @@ test("a crop around one line keeps context and stays on the page", () => {
   assert.ok(box.w >= 30);
   assert.ok(box.x + box.w <= 100 && box.y >= 0);
   assert.ok(box.x <= 90 && box.x + box.w >= 98);
+});
+
+test("a crop is drawn 1024 pixels on its long side, however small the page shows", () => {
+  const slide = { width: 960, height: 540 };
+  const frame = cropFrame({ x: 10, y: 20, w: 12, h: 4 }, slide, 1024);
+  assert.equal(Math.max(frame.width, frame.height), 1024);
+  assert.ok(frame.x >= 0 && frame.y >= 0);
+  assert.ok(frame.x + frame.width <= slide.width * frame.scale + 1);
+  assert.ok(frame.y + frame.height <= slide.height * frame.scale + 1);
+});
+
+test("a crop from the page on screen is never scaled up", () => {
+  const canvas = { width: 460, height: 259 };
+  const frame = cropFrame({ x: 70, y: 20, w: 28, h: 30 }, canvas, 1024, 1);
+  assert.equal(frame.scale, 1);
+  assert.deepEqual(
+    { width: frame.width, height: frame.height },
+    { width: 156, height: 98 },
+  );
 });

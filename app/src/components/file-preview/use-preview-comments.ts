@@ -2,6 +2,7 @@ import type { PdfMark, PdfSelectEvent, PdfSelection } from "@houston-ai/pdf";
 import { useMemo, useState } from "react";
 import { useTranslation } from "react-i18next";
 import { citationsFacade } from "../../lib/citations-facade";
+import { logAndReportError } from "../../lib/error-report";
 import { showExpectedStateToast } from "../../lib/error-toast";
 import { citationContext } from "./citation-labels";
 import { useDraftCitations } from "./use-draft-citations";
@@ -81,16 +82,24 @@ export function usePreviewComments({
     if (editor.kind === "edit")
       return module.updateComment(draftKey, editor.id, comment.trim());
     const { selection } = editor;
-    const added = module.add(draftKey, {
-      filePath,
-      fileName,
-      page: selection.page,
-      pageCount: selection.pageCount,
-      anchor: selection.anchor,
-      comment: comment.trim(),
-      cropBase64: selection.cropBase64,
+    const add = (cropBase64: string) => {
+      const added = module.add(draftKey, {
+        filePath,
+        fileName,
+        page: selection.page,
+        pageCount: selection.pageCount,
+        anchor: selection.anchor,
+        comment: comment.trim(),
+        cropBase64,
+      });
+      if (!added.ok) limitReached();
+    };
+    // The on-screen thumbnail still shows the agent what was meant when the
+    // sharp render fails (say, the file was rewritten under the selection).
+    selection.crop().then(add, (error: unknown) => {
+      logAndReportError("file_preview_crop", error);
+      add(selection.previewBase64);
     });
-    if (!added.ok) limitReached();
   };
 
   const editing =
@@ -132,7 +141,7 @@ export function usePreviewComments({
       initial: editing?.comment ?? "",
       cropBase64:
         editor.kind === "new"
-          ? editor.selection.cropBase64
+          ? editor.selection.previewBase64
           : editing?.cropBase64,
       context: subject ? citationContext(t, { fileName, ...subject }) : "",
     },

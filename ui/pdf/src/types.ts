@@ -17,9 +17,12 @@ export interface PdfSelection {
   page: number;
   pageCount: number;
   anchor: PdfAnchor;
-  /** PNG of the region with some page around it and the selection drawn on,
-   *  base64 without a `data:` prefix. Empty when the page had not rendered. */
-  cropBase64: string;
+  /** A thumbnail of the region copied from the page on screen, base64 PNG
+   *  without a `data:` prefix. Empty when the page had not rendered. */
+  previewBase64: string;
+  /** Draws the region with some page around it and the selection on it,
+   *  sharp enough for the agent to read, as base64 PNG without `data:`. */
+  crop: () => Promise<string>;
 }
 
 /** A numbered comment drawn on its page. */

@@ -1,4 +1,4 @@
-import type { PdfAnchor, PdfBox } from "./types";
+import type { PdfAnchor, PdfBox, PdfPageSize } from "./types";
 
 interface RectLike {
   left: number;
@@ -81,6 +81,38 @@ export function contextBox(bounds: PdfBox, pageAspect: number): PdfBox {
     y: clamp(cy - h / 2, 0, 100 - h),
     w,
     h,
+  };
+}
+
+/** A crop's place in its page drawn at `scale`, in pixels of that drawing. */
+export interface CropFrame {
+  scale: number;
+  x: number;
+  y: number;
+  width: number;
+  height: number;
+}
+
+/**
+ * Where the crop of `bounds` lands when the page (`page` in its own units) is
+ * drawn so the crop's long side is `maxSide` pixels, never past `maxScale`.
+ */
+export function cropFrame(
+  bounds: PdfBox,
+  page: PdfPageSize,
+  maxSide: number,
+  maxScale = Number.POSITIVE_INFINITY,
+): CropFrame {
+  const region = contextBox(bounds, page.width / page.height);
+  const w = (region.w / 100) * page.width;
+  const h = (region.h / 100) * page.height;
+  const scale = Math.min(maxScale, maxSide / Math.max(w, h));
+  return {
+    scale,
+    x: (region.x / 100) * page.width * scale,
+    y: (region.y / 100) * page.height * scale,
+    width: Math.max(1, Math.round(w * scale)),
+    height: Math.max(1, Math.round(h * scale)),
   };
 }
 

@@ -7,7 +7,7 @@ import {
   useRef,
   useState,
 } from "react";
-import { cropSelection } from "./crop";
+import { inkOf, previewCrop, renderCrop } from "./crop";
 import { anchorBounds } from "./geometry";
 import { PdfPage } from "./pdf-page";
 import type { PdfAnchor, PdfBox, PdfMark, PdfSelection } from "./types";
@@ -72,12 +72,17 @@ export const PdfPages = forwardRef<PdfPagesHandle, PdfPagesProps>(
       (hit: PageHit): PdfSelectEvent => {
         const canvas = canvases.current.get(hit.page);
         const bounds = anchorBounds(hit.anchor);
+        // Read now: the page may scroll out and unmount before the crop.
+        const ink = inkOf(hit.el);
         return {
           selection: {
             page: hit.page,
             pageCount: handle.pageCount,
             anchor: hit.anchor,
-            cropBase64: canvas ? cropSelection(canvas, hit.anchor, hit.el) : "",
+            previewBase64: canvas
+              ? previewCrop(canvas, hit.anchor, hit.el)
+              : "",
+            crop: () => renderCrop(handle.doc, hit.page, hit.anchor, ink),
           },
           rect: () => {
             const frame = hit.el.getBoundingClientRect();
@@ -90,7 +95,7 @@ export const PdfPages = forwardRef<PdfPagesHandle, PdfPagesProps>(
           },
         };
       },
-      [handle.pageCount],
+      [handle.doc, handle.pageCount],
     );
 
     useSelectionGestures(content, {
