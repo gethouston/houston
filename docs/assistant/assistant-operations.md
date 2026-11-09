@@ -63,7 +63,7 @@ A person's message can grant one `createAgent` call with the constrained name, c
 | `createFolder` | POST | unconfirmed: Creates an empty folder without replacing existing content. | visible | agentPath: resolved:agents; folderName: free text |
 | `deleteFile` | DELETE | confirmed: host approval required | visible | agentPath: resolved:agents; relPath: open: Files are not directory entries, so read the path from listProjectFiles. |
 | `downloadProjectArchive` | unroutable | unconfirmed: withheld from dispatch | binary download; returns a zip Blob no chat turn can carry. | agentPath: resolved:agents; path: free text |
-| `downloadProjectFile` | GET | unconfirmed: read-only HTTP GET | binary download; returns a Blob no chat turn can carry. | agentPath: resolved:agents; relPath: open: Files are not directory entries, so read the path from listProjectFiles. |
+| `downloadProjectFile` | GET | unconfirmed: read-only HTTP GET | binary download; returns a Blob no chat turn can carry. | agentPath: resolved:agents; relPath: open: Files are not directory entries, so read the path from listProjectFiles.; preview: free text |
 | `listProjectFiles` | GET | unconfirmed: read-only HTTP GET | visible | agentPath: resolved:agents |
 | `migrationComplete` | POST | unconfirmed: withheld from dispatch | the migration wizard stamps and reads this marker itself; it is bookkeeping about a transfer, not an errand a chat turn can run. | agentId: resolved:agents; source: free text; counts: free text |
 | `migrationExport` | POST | unconfirmed: withheld from dispatch | answers with a zip as raw bytes, which no chat turn can carry; the copy and migration flows drive it themselves. | agentId: resolved:agents; paths: free text |

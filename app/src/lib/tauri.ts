@@ -36,6 +36,7 @@ import type {
 } from "@houston/protocol";
 import type {
   DismissInteractionOutcome,
+  FilesModule,
   TimezoneSeedResult,
 } from "@houston/sdk";
 import type {
@@ -908,9 +909,18 @@ export const tauriSkillDrafts = {
 
 // ─── Project files (browser) ──────────────────────────────────────────
 
+import {
+  FilePreviewError,
+  type FilePreviewOptions,
+} from "@houston/wire-types/file-preview";
 import { osOpenFile, osRevealAgent, osRevealFile } from "./os-bridge";
 
 export const tauriFiles = {
+  previewPlan: (...args: Parameters<FilesModule["previewPlan"]>) =>
+    getEngine().engineSdk.files.previewPlan(...args),
+  classifyPreviewRefusal: (
+    ...args: Parameters<FilesModule["classifyPreviewRefusal"]>
+  ) => getEngine().engineSdk.files.classifyPreviewRefusal(...args),
   list: (agentPath: string) =>
     isAgentPathCreating(agentPath)
       ? Promise.resolve<FileEntry[]>([])
@@ -939,13 +949,27 @@ export const tauriFiles = {
   download: (
     agentPath: string,
     relativePath: string,
-    options?: { toast?: boolean },
+    options?: { toast?: boolean } & (
+      | FilePreviewOptions
+      | { as?: never; lang?: never }
+    ),
   ) =>
     call<{ blob: Blob; contentType: string }>(
       "download_project_file",
-      () => getEngine().downloadProjectFile(agentPath, relativePath),
+      () =>
+        getEngine().downloadProjectFile(
+          agentPath,
+          relativePath,
+          options?.as === "pdf" ? { as: "pdf", lang: options.lang } : undefined,
+        ),
       { agentPath, relativePath },
-      { ...options, silence: isFileGoneError },
+      {
+        ...options,
+        silence: (error) =>
+          options?.as === "pdf" ||
+          isFileGoneError(error) ||
+          error instanceof FilePreviewError,
+      },
     ).catch(async (err: unknown) => {
       if (options?.toast !== false && isFileGoneError(err)) {
         const { showExpectedStateToast } = await import("./error-toast");

@@ -1,15 +1,8 @@
 import type { Stats } from "node:fs";
-import {
-  lstat,
-  mkdir,
-  readFile,
-  rename,
-  rm,
-  stat,
-  writeFile,
-} from "node:fs/promises";
+import { lstat, mkdir, rename, rm, stat, writeFile } from "node:fs/promises";
 import { dirname, join } from "node:path";
 import { isVanished, statsUnder } from "./fs-listing";
+import { readBytes } from "./fs-read";
 import { probeKeyCase, scratchPath } from "./fs-scratch";
 import { writable } from "./fs-writable";
 import {
@@ -76,13 +69,8 @@ export class FsVfs implements Vfs {
     return buf ? decodeText(buf) : null;
   }
 
-  async readBytes(key: string): Promise<Buffer | null> {
-    try {
-      return await readFile(this.pathFor(key));
-    } catch (err) {
-      if ((err as { code?: string }).code === "ENOENT") return null;
-      throw err;
-    }
+  readBytes(key: string, maxBytes?: number): Promise<Buffer | null> {
+    return readBytes(this.pathFor(key), maxBytes);
   }
 
   async writeText(key: string, content: string): Promise<void> {

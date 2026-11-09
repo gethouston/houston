@@ -22,6 +22,15 @@ export const queryKeys = {
   skillDetail: (agentPath: string, name: string) =>
     ["skill-detail", agentPath, name] as const,
   files: (agentPath: string) => ["files", agentPath] as const,
+  filePreviewPdfs: (agentPath: string) =>
+    ["file-preview-pdf", agentPath] as const,
+  filePreviewPdf: (
+    agentPath: string,
+    filePath: string | null,
+    lang: string,
+    modified?: number,
+    size?: number,
+  ) => ["file-preview-pdf", agentPath, filePath, lang, modified, size] as const,
   instructions: (agentPath: string) => ["instructions", agentPath] as const,
   workspaceContext: (agentPath: string) =>
     ["workspace-context", agentPath] as const,

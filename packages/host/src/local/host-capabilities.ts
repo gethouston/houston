@@ -13,6 +13,7 @@ export function servedCapabilities(
 ): Capabilities {
   return {
     ...(opts.capabilities ?? LOCAL_CAPABILITIES),
+    officePreview: !!opts.officeConvert,
     ...managedBridgeCapability(opts.gatewayFronted, opts.credentials),
     // Served capabilities advertise the integrations actually wired, not the
     // profile's nominal list — an unconfigured deployment says [] honestly.

@@ -18,6 +18,7 @@ export * from "./channels-refusals";
 export * from "./channels-whatsapp";
 export * from "./compute-refusal";
 export * from "./delegation";
+export * from "./file-preview";
 export * from "./first-day-refusal";
 export * from "./heartbeat";
 export * from "./identity";

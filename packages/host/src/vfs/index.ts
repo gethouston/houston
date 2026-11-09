@@ -18,5 +18,6 @@ export {
   type ObjectStat,
   type Vfs,
   VfsExistsError,
+  VfsReadLimitError,
   VfsReadOnlyError,
 } from "./vfs";

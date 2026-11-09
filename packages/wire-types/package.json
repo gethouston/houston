@@ -19,6 +19,10 @@
     "./routine-refusal": {
       "types": "./src/routine-refusal.ts",
       "import": "./src/routine-refusal.ts"
+    },
+    "./file-preview": {
+      "types": "./src/file-preview.ts",
+      "import": "./src/file-preview.ts"
     }
   },
   "files": [

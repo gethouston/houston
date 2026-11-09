@@ -1,0 +1,86 @@
+import { z } from "zod";
+
+export const OFFICE_EXTENSIONS = [
+  "pptx",
+  "docx",
+  "xlsx",
+  "ppt",
+  "doc",
+  "xls",
+  "odp",
+  "odt",
+  "ods",
+] as const;
+export type OfficeExtension = (typeof OFFICE_EXTENSIONS)[number];
+export const officeExtensionSchema = z.enum(OFFICE_EXTENSIONS);
+export const filePreviewRefusalCodeSchema = z.enum([
+  "unsupported_type",
+  "too_large",
+  "conversion_unavailable",
+  "timeout",
+  "conversion_failed",
+]);
+export type FilePreviewRefusalCode = z.infer<
+  typeof filePreviewRefusalCodeSchema
+>;
+export const filePreviewRefusalSchema = z.object({
+  error: z.string(),
+  code: filePreviewRefusalCodeSchema,
+});
+export type FilePreviewRefusal = z.infer<typeof filePreviewRefusalSchema>;
+export function parseFilePreviewRefusal(
+  body: unknown,
+): FilePreviewRefusal | null {
+  const result = filePreviewRefusalSchema.safeParse(body);
+  return result.success ? result.data : null;
+}
+
+export class FilePreviewError extends Error {
+  constructor(
+    readonly code: FilePreviewRefusalCode,
+    message: string,
+    readonly retryAfterMs?: number,
+  ) {
+    super(message);
+    this.name = "FilePreviewError";
+  }
+}
+
+export const FILE_PREVIEW_STATUS = {
+  unsupported_type: 415,
+  too_large: 413,
+  conversion_unavailable: 503,
+  timeout: 504,
+  conversion_failed: 422,
+} satisfies Record<FilePreviewRefusalCode, number>;
+export interface FilePreviewOptions {
+  as: "pdf";
+  lang: string;
+}
+
+export const officePreviewCapabilitiesSchema = z.object({
+  officePreview: z.boolean().default(false),
+});
+
+export const OFFICE_MAX_BYTES = 30 * 1024 * 1024;
+
+export const officeConverterHealthSchema = z.object({
+  status: z.literal("ok"),
+  version: z.string().min(1),
+});
+export const officePdfMetadataSchema = z.object({
+  pageCount: z.number().int().positive(),
+  version: z.string().min(1),
+});
+
+/** The converter generates only these locales; equivalent tags share cached bytes. */
+export function officePreviewLanguage(lang: string): "en" | "es" | "pt" {
+  switch (lang.toLowerCase().split("-")[0]) {
+    case "es":
+      return "es";
+    case "pt":
+      return "pt";
+    default:
+      return "en";
+  }
+}

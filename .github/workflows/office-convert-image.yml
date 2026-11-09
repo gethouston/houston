@@ -1,0 +1,115 @@
+# Office Convert Image builds and publishes the stateless converter image.
+#
+# This workflow only builds and publishes the image. It does not touch Cloud Run
+# or the cluster. The private gethouston/cloud repo deploys the dispatched digest
+# to staging. Production promotion is a manual cloud workflow run requiring
+# cloud repo write access. It promotes the digest staging already serves.
+
+name: Office Convert Image
+
+on:
+  push:
+    branches: [main]
+  workflow_dispatch:
+
+concurrency:
+  group: office-convert-image
+  cancel-in-progress: false
+
+env:
+  GCP_PROJECT: gethouston
+  REGION: us-east1
+  REGISTRY: us-east1-docker.pkg.dev/gethouston/houston
+
+jobs:
+  build:
+    if: github.ref == 'refs/heads/main'
+    environment: release-tokens
+    name: Build & push office-convert
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    permissions:
+      contents: read
+      id-token: write # Workload Identity Federation
+
+    steps:
+      - uses: actions/checkout@v6
+
+      - name: Determine whether to build
+        id: gate
+        run: |
+          if [ "$GITHUB_EVENT_NAME" = "workflow_dispatch" ]; then
+            echo "build=true" >> "$GITHUB_OUTPUT"
+            exit 0
+          fi
+
+          BASE="${{ github.event.before }}"
+          BUILD=true
+          if [ -n "$BASE" ] && [ "$BASE" != "0000000000000000000000000000000000000000" ] \
+              && git fetch --depth=1 origin "$BASE" 2>/dev/null; then
+            if git diff --name-only "$BASE" "$GITHUB_SHA" -- \
+                packages/office-convert packages/wire-types packages/protocol package.json pnpm-lock.yaml pnpm-workspace.yaml \
+                patches .github/workflows/office-convert-image.yml | grep -q .; then
+              BUILD=true
+            else
+              BUILD=false
+            fi
+          fi
+          echo "build=$BUILD" >> "$GITHUB_OUTPUT"
+
+      - name: Auth to GCP
+        if: steps.gate.outputs.build == 'true'
+        uses: google-github-actions/auth@v3
+        with:
+          workload_identity_provider: projects/1056698080170/locations/global/workloadIdentityPools/github/providers/houston
+          service_account: github-deploy-engine@gethouston.iam.gserviceaccount.com
+
+      - name: Set up gcloud
+        if: steps.gate.outputs.build == 'true'
+        uses: google-github-actions/setup-gcloud@v3
+
+      - name: Configure Docker for Artifact Registry
+        if: steps.gate.outputs.build == 'true'
+        run: gcloud auth configure-docker ${{ env.REGION }}-docker.pkg.dev --quiet
+
+      - name: Build & push office-convert
+        id: build
+        if: steps.gate.outputs.build == 'true'
+        run: |
+          set -euo pipefail
+          SHA_TAG="${{ env.REGISTRY }}/office-convert:${{ github.sha }}"
+          LATEST_TAG="${{ env.REGISTRY }}/office-convert:latest"
+          docker build \
+            --platform linux/amd64 \
+            --build-arg CONVERTER_VERSION="${{ github.sha }}" \
+            -f packages/office-convert/Dockerfile \
+            -t "$SHA_TAG" -t "$LATEST_TAG" \
+            .
+          docker push "$SHA_TAG"
+          docker push "$LATEST_TAG"
+          DIGEST=$(gcloud artifacts docker images describe "$SHA_TAG" \
+            --format='value(image_summary.digest)')
+          echo "digest=$DIGEST" >> "$GITHUB_OUTPUT"
+
+      - name: Published tags
+        if: steps.gate.outputs.build == 'true'
+        env:
+          DIGEST: ${{ steps.build.outputs.digest }}
+        run: |
+          echo "Published:"
+          echo "  $REGISTRY/office-convert:$GITHUB_SHA"
+          echo "  $REGISTRY/office-convert:latest"
+          echo "  digest $DIGEST"
+
+      - name: Notify cloud repo
+        if: steps.gate.outputs.build == 'true'
+        env:
+          GH_TOKEN: ${{ secrets.CLOUD_DISPATCH_TOKEN }}
+          DIGEST: ${{ steps.build.outputs.digest }}
+        run: |
+          IMAGE="$REGISTRY/office-convert@$DIGEST"
+          gh api repos/gethouston/cloud/dispatches \
+            -f event_type="office-convert-published" \
+            -F "client_payload[digest]=$DIGEST" \
+            -F "client_payload[image]=$IMAGE" \
+            -F "client_payload[sha]=$GITHUB_SHA"

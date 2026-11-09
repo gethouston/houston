@@ -8,22 +8,19 @@ import {
   DialogHeader,
   DialogTitle,
 } from "@houston-ai/core";
-import { useQueryClient } from "@tanstack/react-query";
 import { Maximize2, Minimize2 } from "lucide-react";
 import { useEffect, useState } from "react";
 import { useTranslation } from "react-i18next";
+import { useFilePreviewLoad } from "../hooks/use-file-preview-load";
 import { useOpenAgentHref } from "../hooks/use-open-agent-file";
-import { useSaveDownload } from "../hooks/use-save-download";
-import { genericErrorDescription } from "../lib/error-report";
-import { fetchFileBytes } from "../lib/file-bytes-cache";
-import { isFileGoneError } from "../lib/file-gone";
-import { FilePreviewBody, type Loaded } from "./file-preview-body";
+import { FilePreviewBody } from "./file-preview-body";
 
 /**
  * In-app preview for a workspace file (web build, cloud pods, remote hosts).
  * Images, PDFs, HTML (rendered live in a sandboxed iframe — agent-built decks
  * preview as pages, not source), markdown (rendered as formatted prose) and
- * other text-ish files render inline; everything else (pptx, xlsx, …) gets a
+ * other text-ish files render inline. Office files use converted PDFs when
+ * available; everything else gets a
  * "download to open" fallback — see `file-preview-body.tsx` for the rendering.
  * Bytes come over the authenticated download route, so nothing here assumes a
  * local filesystem, and a file the Files grid already thumbnailed is served
@@ -31,8 +28,6 @@ import { FilePreviewBody, type Loaded } from "./file-preview-body";
  * twice. Opened from the Files section and from chat file surfaces (file cards,
  * turn summaries, prose file pills) via `useOpenAgentFile`.
  */
-
-const TEXT_PREVIEW_LIMIT = 256 * 1024;
 
 interface Props {
   agentPath: string;
@@ -55,62 +50,20 @@ export function FilePreviewDialog({
   onClose,
 }: Props) {
   const { t } = useTranslation("agents");
-  const save = useSaveDownload();
-  const queryClient = useQueryClient();
   const openHref = useOpenAgentHref(agentPath || null);
-  const [loaded, setLoaded] = useState<Loaded>({ state: "loading" });
+  const { loaded, canDownload, download } = useFilePreviewLoad(
+    agentPath,
+    filePath,
+    fileName,
+    bytesCacheKey,
+  );
   /** Reader-chosen full-viewport mode. A long document is unreadable in a
    *  60dvh window, so the modal can grow and shrink back (PRODUCT-1231). */
   const [expanded, setExpanded] = useState(false);
 
   useEffect(() => {
-    if (!filePath) return;
-    let cancelled = false;
-    let objectUrl: string | null = null;
-    setLoaded({ state: "loading" });
-    setExpanded(false);
-    // Failure renders inline below (the fetch is toast-free by design).
-    fetchFileBytes(queryClient, agentPath, filePath, bytesCacheKey)
-      .then(async ({ blob, contentType }) => {
-        if (cancelled) return;
-        if (contentType.startsWith("image/")) {
-          objectUrl = URL.createObjectURL(blob);
-          setLoaded({ state: "image", url: objectUrl, blob });
-        } else if (contentType.includes("pdf")) {
-          objectUrl = URL.createObjectURL(blob);
-          setLoaded({ state: "pdf", url: objectUrl, blob });
-        } else if (contentType.includes("html")) {
-          objectUrl = URL.createObjectURL(blob);
-          setLoaded({ state: "html", url: objectUrl, blob });
-        } else if (
-          contentType.startsWith("text/") ||
-          contentType.includes("json") ||
-          contentType.includes("csv")
-        ) {
-          const text = await blob.slice(0, TEXT_PREVIEW_LIMIT).text();
-          if (!cancelled) setLoaded({ state: "text", text, blob });
-        } else {
-          setLoaded({ state: "binary", blob });
-        }
-      })
-      .catch((err: unknown) => {
-        if (cancelled) return;
-        // A gone file is the user's state (PRODUCT-1780): authored copy, no
-        // report. Anything else is a fault and keeps the generic + report path.
-        setLoaded({
-          state: "error",
-          message: isFileGoneError(err)
-            ? t("files.gone.description")
-            : genericErrorDescription("preview_file", err),
-        });
-      });
-    return () => {
-      cancelled = true;
-      if (objectUrl) URL.revokeObjectURL(objectUrl);
-    };
-  }, [agentPath, filePath, bytesCacheKey, queryClient, t]);
-
-  const blob = "blob" in loaded ? loaded.blob : null;
+    if (filePath) setExpanded(false);
+  }, [filePath]);
 
   // HTML files are mostly agent-built presentations: give them the whole
   // viewport so a 16:9 deck lays out horizontally. Sized from the NAME, not
@@ -195,8 +148,8 @@ export function FilePreviewDialog({
           <Button type="button" variant="outline" onClick={onClose}>
             {t("files.preview.close")}
           </Button>
-          {blob && (
-            <Button type="button" onClick={() => void save(fileName, blob)}>
+          {canDownload && (
+            <Button type="button" onClick={() => void download()}>
               {t("files.preview.download")}
             </Button>
           )}

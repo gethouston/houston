@@ -55,6 +55,7 @@ import type { BridgeQuietClass } from "@houston/sdk/local-model-bridge/quiet";
  *  (`modules/identity`): the person stays signed in by email code and sees
  *  a notice. Support can join the accounts, so it is one counted warning. */
 export type QuietErrorClass =
+  | "office_preview_capacity"
   | "engine_waking"
   | "offline"
   | BridgeQuietClass

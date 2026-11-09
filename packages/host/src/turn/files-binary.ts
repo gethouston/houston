@@ -1,17 +1,19 @@
 import type { ServerResponse } from "node:http";
-import type { Vfs } from "../vfs";
+import { OFFICE_MAX_BYTES } from "@houston/wire-types";
+import { type Vfs, VfsReadLimitError } from "../vfs";
 import { json } from "./deps";
 import { archiveWorkspace } from "./files-archive";
 import { contentDisposition, mimeFor } from "./files-mime";
 import { logMissingFile } from "./files-missing";
+import { type OfficePreview, serveOfficePreview } from "./files-office";
 import { fileKey, safeRel, workspaceRel } from "./files-path";
 
 /**
  * The two workspace reads that answer BYTES rather than JSON — one file, or a
  * zip of a folder. They write their own head and body instead of going through
  * `json`, which is why they live apart from the route surface in `files.ts`.
- * Neither is cached: a file the agent rewrites mid-turn must never be served
- * from a stale copy.
+ * Both read the source on every request. Office previews cache only converted
+ * bytes, keyed by the source content so a rewrite cannot serve a stale PDF.
  */
 
 /**
@@ -25,15 +27,39 @@ export async function serveFileDownload(
   agentId: string,
   query: URLSearchParams,
   res: ServerResponse,
+  officePreview?: OfficePreview,
 ): Promise<void> {
   const rel = workspaceRel(root, query.get("path") ?? "");
-  const buf = await vfs.readBytes(fileKey(root, rel));
+  let buf: Buffer | null;
+  try {
+    buf = await vfs.readBytes(
+      fileKey(root, rel),
+      query.get("as") === "pdf" ? OFFICE_MAX_BYTES : undefined,
+    );
+  } catch (error) {
+    if (!(error instanceof VfsReadLimitError)) throw error;
+    json(res, 413, {
+      code: "too_large",
+      error: "Office preview input exceeds 30 MiB",
+    });
+    return;
+  }
   if (buf === null) {
     await logMissingFile(vfs, root, rel, agentId);
     json(res, 404, { error: "file not found" });
     return;
   }
   const name = rel.split("/").pop() ?? "";
+  if (query.get("as") === "pdf") {
+    await serveOfficePreview(
+      officePreview,
+      buf,
+      name,
+      query.get("lang") || "en",
+      res,
+    );
+    return;
+  }
   const kind = query.get("disposition") === "inline" ? "inline" : "attachment";
   res.writeHead(200, {
     "Content-Type": mimeFor(name),

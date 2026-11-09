@@ -12,6 +12,7 @@ import {
   type ObjectStat,
   type Vfs,
   VfsExistsError,
+  VfsReadLimitError,
 } from "./vfs";
 
 /**
@@ -89,12 +90,14 @@ export class LazyStoreVfs implements Vfs {
     return buf ? decodeText(buf) : null;
   }
 
-  async readBytes(key: string): Promise<Buffer | null> {
+  async readBytes(key: string, maxBytes?: number): Promise<Buffer | null> {
     assertSafeKey(key);
-    const local = await this.local.readBytes(key);
+    const local = await this.local.readBytes(key, maxBytes);
     if (local !== null) return local;
     const meta = this.state.visible(key);
     if (!meta) return null;
+    if (maxBytes !== undefined && meta.size > maxBytes)
+      throw new VfsReadLimitError();
     try {
       await this.downloads.fetch(key, meta);
     } catch (error) {
@@ -105,7 +108,7 @@ export class LazyStoreVfs implements Vfs {
       this.state.remote.delete(key);
       return null;
     }
-    return this.local.readBytes(key);
+    return this.local.readBytes(key, maxBytes);
   }
 
   writeText = (key: string, content: string) =>

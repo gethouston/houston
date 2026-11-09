@@ -163,6 +163,12 @@ const durableTurns = managedStore?.podGateway
     })()
   : undefined;
 const host = buildLocalHost({
+  officeConvert: process.env.HOUSTON_OFFICE_CONVERT_URL
+    ? {
+        url: process.env.HOUSTON_OFFICE_CONVERT_URL,
+        cacheDir: join(houstonHome, "cache", "office-previews"),
+      }
+    : undefined,
   workspacesRoot:
     process.env.HOUSTON_WORKSPACES_ROOT || join(houstonHome, "workspaces"),
   credentialsPath:

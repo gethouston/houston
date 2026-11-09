@@ -5,6 +5,7 @@ import {
   type ObjectStat,
   type Vfs,
   VfsExistsError,
+  VfsReadLimitError,
 } from "./vfs";
 
 interface Entry {
@@ -85,8 +86,11 @@ export class MemoryVfs implements Vfs {
     return buf ? decodeText(buf) : null;
   }
 
-  async readBytes(key: string): Promise<Buffer | null> {
-    return this.files.get(this.slot(key))?.content ?? null;
+  async readBytes(key: string, maxBytes?: number): Promise<Buffer | null> {
+    const bytes = this.files.get(this.slot(key))?.content ?? null;
+    if (bytes && maxBytes !== undefined && bytes.length > maxBytes)
+      throw new VfsReadLimitError();
+    return bytes;
   }
 
   async writeText(key: string, content: string): Promise<void> {
