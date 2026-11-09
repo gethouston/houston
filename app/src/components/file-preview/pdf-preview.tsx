@@ -183,7 +183,11 @@ export function PdfPreview({
           save: t("files.preview.comments.save"),
           remove: t("files.preview.comments.remove"),
           shortcut: isMac ? "⌘↵" : "Ctrl+↵",
+          tooLong: t("files.preview.comments.tooLong", {
+            limit: citationsFacade.module().commentLimit,
+          }),
         }}
+        maxLength={citationsFacade.module().commentLimit}
         onSubmit={comments.submit}
         onCancel={comments.cancel}
         onRemove={comments.remove}

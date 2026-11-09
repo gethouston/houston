@@ -275,7 +275,8 @@
         "add": "Add",
         "save": "Save",
         "remove": "Delete",
-        "pin": "Comment {{n}}: {{comment}}"
+        "pin": "Comment {{n}}: {{comment}}",
+        "tooLong": "Comments can be up to {{limit}} characters."
       }
     },
     "toasts": {

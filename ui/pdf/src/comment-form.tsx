@@ -9,6 +9,8 @@ export interface CommentFormLabels {
   remove: string;
   /** The submit shortcut, as the platform writes it ("⌘↵", "Ctrl+↵"). */
   shortcut: string;
+  /** Shown once the comment reaches `maxLength`. */
+  tooLong?: string;
 }
 
 export interface CommentFormProps {
@@ -23,6 +25,8 @@ export interface CommentFormProps {
   onRemove?: () => void;
   /** Phone sheet: full-width 44px buttons. */
   roomy?: boolean;
+  /** Characters a comment may hold. */
+  maxLength?: number;
 }
 
 /** Ask what the agent should change about a selection. */
@@ -35,6 +39,7 @@ export function CommentForm({
   onCancel,
   onRemove,
   roomy,
+  maxLength,
 }: CommentFormProps) {
   const [comment, setComment] = useState(initial);
   const area = useRef<HTMLTextAreaElement>(null);
@@ -59,6 +64,7 @@ export function CommentForm({
         placeholder={labels.placeholder}
         aria-label={labels.placeholder}
         rows={roomy ? 3 : 2}
+        maxLength={maxLength}
         onChange={(e) => setComment(e.target.value)}
         onKeyDown={(e) => {
           if (e.key === "Enter" && (e.metaKey || e.ctrlKey)) {
@@ -68,6 +74,11 @@ export function CommentForm({
         }}
         className="min-h-16 w-full resize-none rounded-xl border border-line-input bg-input px-3 py-2 text-base leading-[22px] text-ink outline-none placeholder:text-ink-muted focus-visible:border-ink-muted"
       />
+      {maxLength !== undefined && comment.length >= maxLength && (
+        <p role="status" className="text-xs text-ink-muted">
+          {labels.tooLong ?? `Comments can be up to ${maxLength} characters.`}
+        </p>
+      )}
       <div className={cn("flex items-center gap-1.5", roomy && "gap-2")}>
         {editing && onRemove && (
           <Button
