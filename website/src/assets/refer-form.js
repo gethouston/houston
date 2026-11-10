@@ -104,10 +104,10 @@ if (form && done && copyNode) {
   // Another referral from the same person: only the company starts over. The
   // reset puts back the page's own industry and request, if it has them.
   done.querySelector("[data-again]")?.addEventListener("click", () => {
-    const { yourName, yourEmail } = form.elements;
-    const keep = [yourName.value, yourEmail.value];
+    const { yourName, yourEmail, yourPhone } = form.elements;
+    const keep = [yourName.value, yourEmail.value, yourPhone.value];
     form.reset();
-    [yourName.value, yourEmail.value] = keep;
+    [yourName.value, yourEmail.value, yourPhone.value] = keep;
     country?.clear();
     tried = false;
     show({});

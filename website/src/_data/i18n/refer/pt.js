@@ -93,6 +93,9 @@ export default {
     you: "Sobre você",
     yourName: "Seu nome",
     yourEmail: "Seu e-mail",
+    yourPhone: "Seu número de telefone",
+    yourPhonePlaceholder: "+55 11 91234 5678",
+    yourPhoneHint: "O melhor número para falar com você, com o código do país.",
     company: "A empresa",
     companyName: "Nome da empresa",
     website: "Site da empresa",
@@ -126,6 +129,7 @@ export default {
       country: "Escolha o país onde a empresa fica.",
       yourName: "Seu nome é obrigatório.",
       yourEmail: "Digite um e-mail válido.",
+      yourPhone: "Digite um telefone com o código do país.",
       companyName: "O nome da empresa é obrigatório.",
       website: "Digite um site válido, como acme.com.",
       sameCompany:

@@ -8,7 +8,11 @@ import assert from "node:assert/strict";
 import { readdirSync, readFileSync } from "node:fs";
 import test from "node:test";
 import refer from "../src/_data/refer.js";
-import { referralRow } from "../src/assets/refer-model.js";
+import {
+  MAX_PHONE_LENGTH,
+  MIN_PHONE_DIGITS,
+  referralRow,
+} from "../src/assets/refer-model.js";
 import { sendReferral } from "../src/assets/refer-send.js";
 
 // The table and every later change to it, oldest first: the public site may
@@ -30,6 +34,7 @@ const statuses = /status in \(([^)]*)\)/
 const input = {
   yourName: " Ana Ruiz ",
   yourEmail: "ana@gmail.com",
+  yourPhone: " +57 300 123 4567 ",
   listing: "law-firm",
   companyName: "Acme",
   website: "https://www.Acme.com/about",
@@ -65,12 +70,21 @@ test("the row carries exactly the columns the public site may write", () => {
   assert.deepEqual(Object.keys(row).sort(), [...granted].sort());
 });
 
+test("the table takes every phone number the form lets through", () => {
+  const [, min, max] = /char_length\(referrer_phone\) between (\d+) and (\d+)/
+    .exec(sql)
+    .map(Number);
+  assert.ok(min <= MIN_PHONE_DIGITS, "shortest number the form accepts");
+  assert.equal(max, MAX_PHONE_LENGTH);
+});
+
 test("the table allows every state the referral tracker shows", () => {
   for (const state of refer.states) assert.ok(statuses.includes(state), state);
 });
 
 test("the row is trimmed, the website is its host, empty optionals are null", () => {
   assert.equal(row.referrer_name, "Ana Ruiz");
+  assert.equal(row.referrer_phone, "+57 300 123 4567");
   assert.equal(row.company_website, "acme.com");
   assert.equal(row.listing, "law-firm");
   assert.equal(row.company_size, "about 120");

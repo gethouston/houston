@@ -13,10 +13,18 @@ export const MAX_YEARS = 300;
 // Company size is the referrer's own words ("about 120", "200-500").
 export const MAX_SIZE_LENGTH = 60;
 export const MAX_COUNTRY_LENGTH = 100;
+// A phone number as typed, country code included ("+57 300 123 4567"): only
+// digits, spaces and + ( ) . - and as many digits as a dialled number has.
+// The table refuses a number longer than MAX_PHONE_LENGTH characters.
+const PHONE = /^\+?[\d\s().-]+$/;
+export const MIN_PHONE_DIGITS = 7;
+export const MAX_PHONE_DIGITS = 15;
+export const MAX_PHONE_LENGTH = 40;
 
 export const FIELDS = [
   "yourName",
   "yourEmail",
+  "yourPhone",
   "companyName",
   "website",
   "size",
@@ -50,6 +58,15 @@ export function validate(input) {
   const errors = {};
   if (!v.yourName) errors.yourName = "yourName";
   if (!EMAIL.test(v.yourEmail)) errors.yourEmail = "yourEmail";
+  const digits = v.yourPhone.replace(/\D/g, "").length;
+  if (
+    !PHONE.test(v.yourPhone) ||
+    v.yourPhone.length > MAX_PHONE_LENGTH ||
+    digits < MIN_PHONE_DIGITS ||
+    digits > MAX_PHONE_DIGITS
+  ) {
+    errors.yourPhone = "yourPhone";
+  }
   if (!v.companyName) errors.companyName = "companyName";
   const host = siteHost(v.website);
   if (!host) errors.website = "website";
@@ -81,6 +98,7 @@ export function referralRow(input, { locale, page }) {
   return {
     referrer_name: v.yourName,
     referrer_email: v.yourEmail,
+    referrer_phone: v.yourPhone,
     listing: v.listing || null,
     company_name: v.companyName,
     company_website: siteHost(v.website),

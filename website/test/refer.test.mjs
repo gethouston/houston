@@ -13,8 +13,11 @@ import landing from "../src/_data/landing.js";
 import refer from "../src/_data/refer.js";
 import {
   MAX_COUNTRY_LENGTH,
+  MAX_PHONE_DIGITS,
+  MAX_PHONE_LENGTH,
   MAX_SIZE_LENGTH,
   MAX_YEARS,
+  MIN_PHONE_DIGITS,
   siteHost,
   validate,
 } from "../src/assets/refer-model.js";
@@ -82,6 +85,7 @@ test("the page is built at the path its alternates point to", () => {
 const valid = {
   yourName: "Ana Ruiz",
   yourEmail: "ana@gmail.com",
+  yourPhone: "+57 300 123 4567",
   companyName: "Acme",
   website: "https://www.Acme.com/about",
   size: "about 120",
@@ -104,6 +108,7 @@ test("an empty form names every field the visitor fills, and not the request", (
     "years",
     "yourEmail",
     "yourName",
+    "yourPhone",
   ]);
 });
 
@@ -140,4 +145,30 @@ test("years in business is a whole number of years", () => {
     assert.deepEqual(validate({ ...valid, years }), {}, years);
   for (const years of ["", "12.5", "about 12", "-3", String(MAX_YEARS + 1)])
     assert.deepEqual(validate({ ...valid, years }), { years: "years" }, years);
+});
+
+test("your phone is a dialled number, country code and separators allowed", () => {
+  const digits = (n) => "9".repeat(n);
+  for (const yourPhone of [
+    "+1 (555) 123-4567",
+    "+55 11 91234.5678",
+    "3001234567",
+    digits(MIN_PHONE_DIGITS),
+    `+${digits(MAX_PHONE_DIGITS)}`,
+  ])
+    assert.deepEqual(validate({ ...valid, yourPhone }), {}, yourPhone);
+  for (const yourPhone of [
+    "",
+    "   ",
+    "call me",
+    "+57 300 123 4567 ext 2",
+    digits(MIN_PHONE_DIGITS - 1),
+    digits(MAX_PHONE_DIGITS + 1),
+    `+57 ${" ".repeat(MAX_PHONE_LENGTH)}300 123 4567`,
+  ])
+    assert.deepEqual(
+      validate({ ...valid, yourPhone }),
+      { yourPhone: "yourPhone" },
+      yourPhone,
+    );
 });
