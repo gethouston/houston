@@ -18,18 +18,9 @@ test("Fable 5.2 is identical across every pi catalog read path", () => {
     reasoning: true,
     input: ["text", "image"],
     cost: { input: 8, output: 40, cacheRead: 0.2, cacheWrite: 10 },
-    thinkingLevelMap: {
-      off: null,
-      minimal: null,
-      low: "low",
-      medium: "medium",
-      high: "high",
-      xhigh: "xhigh",
-      max: "max",
-    },
+    thinkingLevelMap: { off: null, xhigh: "xhigh", max: "max" },
     compat: {
       forceAdaptiveThinking: true,
-      supportsTemperature: false,
       supportsMidConvoEffort: true,
       supportsMidConvoSystemMessages: true,
       supportsMidConvoToolChanges: true,
@@ -41,6 +32,7 @@ test("Fable 5.2 is identical across every pi catalog read path", () => {
   expect(model.promptCache).toEqual(previous.promptCache);
   expect(model.inputLimits).toEqual(previous.inputLimits);
   expect(getSupportedThinkingLevels(model)).toEqual([
+    "minimal",
     "low",
     "medium",
     "high",
