@@ -102,6 +102,7 @@ export async function startTurnFilesystem(
       ...(maxBytes !== undefined ? { maxBytes } : {}),
       excludes,
       keepMergeBase: true,
+      ...(opts.listing ? { listing: opts.listing } : {}),
       ...(opts.filter ? { filter: opts.filter } : {}),
       ...(opts.capListed ? { capListed: true } : {}),
       ...(opts.defer ? { defer: opts.defer } : {}),
@@ -152,6 +153,7 @@ export async function startTurnFilesystem(
       skippedObjects: started.skippedObjects,
       generationAware: started.listed.generationAware,
       immediateWrites: new Set(),
+      ...(opts.listing ? { owns: opts.listing.owns } : {}),
       ...(watched ? watched : {}),
       loadArchive: turnArchiveLoader({
         store: opts.store,

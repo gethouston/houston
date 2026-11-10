@@ -39,9 +39,9 @@ export async function retryAtRefreshedGeneration(
   conflict?: string;
   vanished?: boolean;
 }> {
-  const refreshed = await opts.refresh();
-  if (!refreshed) return { entry: opts.previous, uploaded: false, conflict };
-  const current = refreshed.get(opts.key);
+  const current = await opts.refresh(opts.key);
+  if (current === undefined)
+    return { entry: opts.previous, uploaded: false, conflict };
   const retryGeneration = current ? current.generation : "0";
   if (retryGeneration === undefined) {
     return { entry: opts.previous, uploaded: false, conflict };

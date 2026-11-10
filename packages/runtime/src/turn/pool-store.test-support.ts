@@ -66,12 +66,22 @@ export function fakePoolStore(prefix: string, transcriptStatus = 200) {
     method: string,
     rest: string,
     init?: RequestInit,
+    query = new URLSearchParams(),
   ) => {
     const headers = new Headers(init?.headers);
     if (rest === "manifest") {
-      const keys = (await new LocalDirStore(root).list(prefix)).map((k) =>
-        k.slice(prefix.length + 1),
-      );
+      // Keys relative to the agent root, `?prefix=` a directory, and
+      // `?delimiter=/` one level of it, as pod-store answers.
+      const agent = new LocalDirStore(join(root, prefix));
+      const dir = query.get("prefix") ?? "";
+      if (query.get("delimiter") === "/") {
+        const level = await agent.manifestDir(dir);
+        return Response.json({
+          objects: level.objects.map(({ key }) => meta(key)),
+          dirs: level.dirs,
+        });
+      }
+      const keys = await agent.list(dir);
       return Response.json({ objects: keys.map(meta) });
     }
     if (!rest.startsWith("objects/")) return new Response("", { status: 404 });
@@ -112,7 +122,7 @@ export function fakePoolStore(prefix: string, transcriptStatus = 200) {
     const method = init?.method ?? "GET";
     if (url.pathname === "/hb") return Response.json({});
     const store = /^\/v1\/pod\/store\/[^/]+\/[^/]+\/(.+)$/.exec(url.pathname);
-    if (store?.[1]) return storeRoute(method, store[1], init);
+    if (store?.[1]) return storeRoute(method, store[1], init, url.searchParams);
     if (url.pathname.startsWith("/v1/pod/docs/"))
       return docRoute(method, url.pathname, init);
     if (url.pathname.startsWith("/v1/pod/custom-secrets/"))

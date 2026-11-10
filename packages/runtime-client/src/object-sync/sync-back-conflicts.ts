@@ -123,12 +123,11 @@ export async function deleteOwnedObject(opts: {
     return { deleted: true };
   } catch (error) {
     if (!(error instanceof StoreConflictError)) throw error;
-    const refreshed = await opts.refresh();
-    if (!refreshed) {
+    const current = await opts.refresh(opts.key);
+    if (current === undefined) {
       return { deleted: false, entry: opts.previous, conflict: error.message };
     }
-    const current = refreshed.get(opts.key);
-    if (!current) return { deleted: true };
+    if (current === null) return { deleted: true };
     const retryGeneration = current.generation;
     try {
       await opts.store.delete(

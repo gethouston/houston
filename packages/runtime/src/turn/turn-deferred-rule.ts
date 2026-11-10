@@ -1,7 +1,7 @@
 /** Hidden agent folders read before any tool runs: Houston's state and
  *  runtime inputs, the agent's skills, and harness settings (pi builds its
  *  settings from `.pi/settings.json` when the session starts). */
-const STARTUP_FOLDERS: ReadonlySet<string> = new Set([
+export const STARTUP_FOLDERS: ReadonlySet<string> = new Set([
   ".houston",
   ".agents",
   ".claude",

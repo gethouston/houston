@@ -6,6 +6,14 @@ export interface ObjectMetadata {
   generation?: string;
 }
 
+/** One directory level: the objects directly inside it and its
+ *  subdirectories, both as keys relative to the store root (no trailing
+ *  slash). */
+export interface DirListing {
+  objects: ObjectMetadata[];
+  dirs: string[];
+}
+
 /** Manifest + object seam used by read/write shared-prefix mirrors. */
 export interface ManifestObjectStore {
   manifest(prefix?: string): Promise<ObjectMetadata[]>;
@@ -68,4 +76,22 @@ export function normalizeObjectMetadata(value: ObjectMetadata): ObjectMetadata {
   // write — found by the cross-repo e2e against the dir blob backend.
   const generation = raw === undefined || raw === "0" ? undefined : raw;
   return generation === undefined ? metadata : { ...metadata, generation };
+}
+
+/**
+ * A `?delimiter=/` manifest body, or undefined when the body has no `dirs`:
+ * a pod-store that predates the delimiter answers with the recursive
+ * listing, which is not one level.
+ */
+export function parseDirManifest(
+  value: unknown,
+  source: string,
+): DirListing | undefined {
+  const objects = parseObjectManifest(value, source);
+  const dirs = (value as { dirs?: unknown }).dirs;
+  if (dirs === undefined) return undefined;
+  if (!Array.isArray(dirs) || !dirs.every((dir) => typeof dir === "string")) {
+    throw new Error(`${source} returned a malformed body`);
+  }
+  return { objects, dirs: dirs.map((dir) => dir.replace(/\/+$/, "")) };
 }

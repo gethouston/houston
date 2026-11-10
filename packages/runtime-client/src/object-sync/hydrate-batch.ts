@@ -106,7 +106,7 @@ async function landChunk(
     }
     opts.manifest.set(entry.rel, {
       hash: await fileSha256(dest(entry.rel), size),
-      generation: entry.generation,
+      generation: entry.fromRead ? outcome.generation : entry.generation,
       ...(opts.keepMergeBase && keepsMergeBase(entry.rel)
         ? { mergeBase: await readFile(dest(entry.rel), "utf8") }
         : {}),

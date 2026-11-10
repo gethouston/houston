@@ -1,5 +1,6 @@
 import type { Vfs } from "@houston/host/src/vfs";
 import type {
+  HydrateListing,
   HydrateManifest,
   HydrateOptions,
   ObjectStore,
@@ -32,6 +33,9 @@ export interface TurnFilesystem extends TurnLayout {
   /** The prompt is over: stop the deferred download if it has not landed,
    *  and sync as after a failed one (turn-deferred-watch.ts). */
   abandonDeferred?: () => void;
+  /** What a scoped listing covered (turn-store-scope.ts): sync-back never
+   *  writes or deletes outside it. Absent: the store was listed whole. */
+  owns?: (relativePath: string) => boolean;
   /** Eager trees only: fetch the archive segments the hot set left remote
    *  before a reader reaches them (turn-archive-fetch.ts). */
   loadArchive?: ArchiveLoader;
@@ -59,6 +63,9 @@ export interface TurnFilesystemOptions {
    *  for an op that never reads conversations. */
   excludes?: string[];
   filter?: HydrateOptions["filter"];
+  /** Eager trees only: hydrate from this listing instead of listing the
+   *  store whole, and keep sync-back to `owns`. */
+  listing?: HydrateListing & { owns: (relativePath: string) => boolean };
   /** Eager trees only: a lazy tree downloads nothing up front. */
   capListed?: HydrateOptions["capListed"];
   /**

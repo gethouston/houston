@@ -29,8 +29,9 @@ type FreshRead =
  * The conversation as the store holds it under this turn's claim. Hydration
  * read it under the claim unless the gateway inlined its bytes (read BEFORE
  * it held the claim, so the card the previous turn ended on can be missing
- * from them) or its prefetched listing did not name it (the card's turn may
- * have created it since). Only then is the object read again, conditioned on
+ * from them) or the prefetched whole-store listing did not name it (the
+ * card's turn may have created it since; a scoped listing never names it, and
+ * hydration reads it by key under the claim). Only then is the object read again, conditioned on
  * the generation of the bytes the worker holds (the inlined object's, else
  * the listing's), so an unchanged one answers 304. It starts once the listing,
  * layout and priority inputs have landed and overlaps the bulk hydration, so
@@ -46,12 +47,12 @@ export function startCardOwnerRead(
   const file = `${encodeURIComponent(turn.conversationId)}.json`;
   const key = posix.join(filesystem.dataRel, "conversations", file);
   const at = resolved.prefix ? posix.join(resolved.prefix, key) : key;
-  const listed = turn.prefetch?.manifest.find((object) => object.key === at);
+  const whole = turn.prefetch?.manifest;
+  const listed = whole?.find((object) => object.key === at);
   const inlined = resolved.inlined?.get(at);
   const live = resolved.live;
   const stale =
-    turn.prefetch !== undefined &&
-    (listed === undefined || inlined !== undefined);
+    inlined !== undefined || (whole !== undefined && listed === undefined);
   const stop = new AbortController();
   const scratch = join(dirname(filesystem.storeRoot), "card-owner");
   const read: Promise<FreshRead> =

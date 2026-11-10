@@ -10,6 +10,8 @@ export interface HydrateEntry {
   generation?: string;
   key: string;
   rel: string;
+  /** Not listed: read by key, and owned at the generation of that read. */
+  fromRead?: true;
 }
 
 export interface HydrateDownloadState {
@@ -71,7 +73,7 @@ export async function downloadHydrationEntries(opts: {
         }
         opts.manifest.set(rel, {
           hash: await fileSha256(dest, size),
-          generation,
+          generation: entry.fromRead ? read?.generation : generation,
           ...(opts.keepMergeBase && keepsMergeBase(rel)
             ? { mergeBase: await readFile(dest, "utf8") }
             : {}),
