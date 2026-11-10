@@ -60,7 +60,24 @@ export function hydrateCandidates(opts: {
   for (const key of opts.reads ?? []) {
     const rel = relOf(key);
     if (!rel || listed.has(key) || excluded(rel, opts.excludes)) continue;
-    candidates.push({ key, rel, fromRead: true });
+    candidates.push({
+      key,
+      rel,
+      fromRead: true,
+      ...(generationAware ? { requireGeneration: true as const } : {}),
+    });
   }
   return { candidates, sizes, generationAware };
+}
+
+/**
+ * A point read that came back without a generation from a store whose
+ * listing carries them lands on disk but stays out of the manifest: owned
+ * with no generation, its next write would go out unconditionally and could
+ * overwrite a concurrent writer. Unowned, that write goes out create-only and
+ * meets the ordinary conflict rule. In a store without generations every
+ * write is unconditional anyway, so the read stays owned there.
+ */
+export function unowned(entry: HydrateEntry, generation?: string): boolean {
+  return entry.requireGeneration === true && generation === undefined;
 }

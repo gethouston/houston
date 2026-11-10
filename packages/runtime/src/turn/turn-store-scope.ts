@@ -25,8 +25,9 @@ export const UNLISTED_ROOT_DIRS: ReadonlySet<string> = new Set([
  * - `conversation`: the turn's own transcript, read by key: its folder holds
  *   every conversation, too many to list for one file.
  *
- * `owns` is the union: sync-back never writes or deletes outside it.
- * cloud's turn prefetch (internal/pooldispatch) lists the same `critical`
+ * Nothing here limits writes: sync-back deletes only what landed (the
+ * manifest), and claimedTurnIncludes already keeps the turn out of every
+ * other conversation's files. cloud's turn prefetch (internal/pooldispatch) lists the same `critical`
  * set for CLAIMED_TURN_LISTING_SCOPE; keep the two identical.
  */
 export interface ClaimedStoreScope {
@@ -36,7 +37,6 @@ export interface ClaimedStoreScope {
   later(rel: string): boolean;
   /** A folder directly in the agent tree whose files are `later`. */
   laterFolder(dir: string): boolean;
-  owns(rel: string): boolean;
 }
 
 export function claimedStoreScope(
@@ -74,6 +74,5 @@ export function claimedStoreScope(
     later,
     laterFolder: (dir) =>
       later(`${dir}/file`) && !dir.slice(root.length).includes("/"),
-    owns: (rel) => rel === conversation || critical(rel) || later(rel),
   };
 }

@@ -82,9 +82,11 @@ test("the walk lists exactly the critical scope, and the agent's folders later",
     rels.filter(scope.critical).sort(),
   );
   expect(listing?.reads).toEqual([`${PREFIX}/${R}/conversations/c1.json`]);
-  expect((await listing?.later)?.map(({ key }) => rel(key)).sort()).toEqual(
-    rels.filter(scope.later).sort(),
-  );
+  expect(
+    (await listing?.later?.(new AbortController().signal))
+      ?.map(({ key }) => rel(key))
+      .sort(),
+  ).toEqual(rels.filter(scope.later).sort());
   // Never the whole store, never the folders of every conversation.
   for (const unlisted of [
     "",
@@ -168,7 +170,11 @@ test("a scoped prefetch is the critical listing, kept to the scope, and the stor
     conversationId: "c1",
   });
   expect(listing?.objects).toEqual([claude]);
-  expect((await listing?.later)?.map(({ key }) => key).sort()).toEqual([
+  expect(
+    (await listing?.later?.(new AbortController().signal))
+      ?.map(({ key }) => key)
+      .sort(),
+  ).toEqual([
     `${A}/.repo-site/README.md`,
     `${A}/.repo-site/src/index.ts`,
     `${A}/uploads/photo.png`,

@@ -23,8 +23,9 @@ export {
  * else from the real store. A whole-store listing answers the FIRST manifest
  * call only (hydration's); a scoped one is taken once by the claimed turn's
  * lister (`takeScopedListing`) and never answers a manifest call. Each
- * inlined object is served once and then forgotten, so later reads and every
- * write see the live store.
+ * inlined object is served once and then forgotten, and all of them are
+ * forgotten at the first write, so later reads and every write see the live
+ * store.
  */
 export class PrefetchedObjectStore implements ObjectStore {
   private manifestServed = false;
@@ -54,7 +55,7 @@ export class PrefetchedObjectStore implements ObjectStore {
     return this.inner.list(prefix);
   }
 
-  async manifest(prefix = ""): Promise<ObjectMetadata[]> {
+  async manifest(prefix = "", opts?: ReadOptions): Promise<ObjectMetadata[]> {
     const whole = this.servesWholeListing
       ? this.prefetched.manifest
       : undefined;
@@ -62,7 +63,7 @@ export class PrefetchedObjectStore implements ObjectStore {
     if (whole) {
       return whole.filter((object) => underObjectPrefix(object.key, prefix));
     }
-    if (this.inner.manifest) return this.inner.manifest(prefix);
+    if (this.inner.manifest) return this.inner.manifest(prefix, opts);
     const keys = await this.inner.list(prefix);
     return keys.map((key) => ({ key, size: 0, md5: "", updated: "" }));
   }
@@ -130,11 +131,20 @@ export class PrefetchedObjectStore implements ObjectStore {
     opts?: WriteOptions,
     // biome-ignore lint/suspicious/noConfusingVoidType: ObjectStore preserves void-returning adapters.
   ): Promise<WriteResult | void> {
+    this.forgetInlined();
     return this.inner.upload(srcFile, key, opts);
   }
 
   delete(key: string, opts?: WriteOptions): Promise<void> {
+    this.forgetInlined();
     return this.inner.delete(key, opts);
+  }
+
+  /** The inlined bytes were read before the turn held its claim. Once it
+   *  writes, a read is a conflict refresh or a re-read after a write, and
+   *  only the live store can answer it. */
+  private forgetInlined() {
+    this.prefetched.objects.clear();
   }
 
   private take(key: string) {

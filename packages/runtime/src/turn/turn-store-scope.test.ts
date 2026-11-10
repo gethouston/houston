@@ -40,10 +40,6 @@ test("the agent's own folders are listed later, under this agent only", () => {
   expect(scope.laterFolder(`${A}/uploads/2026`)).toBe(false);
 });
 
-test("the turn owns its transcript and every listed path, nothing else", () => {
+test("the turn's own transcript is read by key", () => {
   expect(scope.conversation).toBe(`${R}/conversations/chat%201.json`);
-  expect(scope.owns(scope.conversation)).toBe(true);
-  expect(scope.owns(`${A}/uploads/photo.png`)).toBe(true);
-  expect(scope.owns(`${R}/conversations/routine-r1.json`)).toBe(false);
-  expect(scope.owns(`${R}/sessions/routine-r1/1.jsonl`)).toBe(false);
 });

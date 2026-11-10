@@ -26,9 +26,13 @@ export function listingRefresh(
 
 /**
  * The one object a conflict is about, read by key with its generation: a
- * listing of a large store costs seconds (tens of thousands of keys), one
- * read costs the object. The bytes are thrown away; the conflict paths that
- * merge read the document themselves.
+ * listing of a large store costs seconds (tens of thousands of keys). The
+ * store has no generation-only read (a not-modified read skips the body only
+ * when the object is unchanged, and a conflict means it changed), so this
+ * downloads the whole object and throws the bytes away: a conflict on a
+ * large file costs its download. The conflict paths that merge read the
+ * document themselves. A prefetched store answers from the live store here:
+ * it forgets its inlined bytes at the first write, and a conflict follows one.
  */
 export function keyedRefresh(
   read: NonNullable<ObjectStore["downloadVersioned"]>,

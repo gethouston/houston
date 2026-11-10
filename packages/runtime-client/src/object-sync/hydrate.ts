@@ -4,9 +4,10 @@ import {
   type HydrateBudget,
   type HydrateDownloadState,
   type HydrateEntry,
+  hydrateConcurrency,
 } from "./hydrate-download";
 import { DEFAULT_EXCLUDES } from "./hydrate-excludes";
-import { admitLater, settleLater } from "./hydrate-later";
+import { admitLater, startLater } from "./hydrate-later";
 import { HydrateLimitError, splitDeferred } from "./hydrate-limit";
 import type { ObjectStore } from "./object-store";
 import { withReadTimeout } from "./read-timeout";
@@ -40,8 +41,6 @@ export type {
   StartedHydration,
 } from "./hydrate-options";
 
-const DEFAULT_HYDRATE_CONCURRENCY = 16;
-
 /** List once, hydrate priority inputs, then start the remaining downloads. */
 export async function startHydrate(
   store: ObjectStore,
@@ -51,17 +50,14 @@ export async function startHydrate(
 ): Promise<StartedHydration> {
   const excludes = opts.excludes ?? DEFAULT_EXCLUDES;
   const maxBytes = opts.maxBytes ?? 512 * 1024 * 1024;
-  // Guard against a non-finite override (NaN sizes the worker array to ZERO,
-  // which would return a successful empty manifest for a non-empty store —
-  // the exact partial-manifest state the hydration latch exists to prevent).
-  const requested = opts.concurrency ?? DEFAULT_HYDRATE_CONCURRENCY;
-  const concurrency =
-    Number.isFinite(requested) && requested >= 1
-      ? Math.floor(requested)
-      : DEFAULT_HYDRATE_CONCURRENCY;
-  // Observed now: it may fail while the critical set is still landing.
+  const concurrency = hydrateConcurrency(opts.concurrency);
+  const controller = new AbortController();
   const listedLater = opts.listing?.later
-    ? settleLater(opts.listing.later)
+    ? startLater(
+        opts.listing.later,
+        controller.signal,
+        opts.deferredReadTimeoutMs,
+      )
     : undefined;
   const manifest: HydrateManifest = new Map();
   const { candidates, sizes, generationAware } = hydrateCandidates({
@@ -84,7 +80,6 @@ export async function startHydrate(
     ? candidates.filter((entry) => opts.priority?.(entry.rel))
     : [];
   const priorityRels = new Set(priorityCandidates.map(({ rel }) => rel));
-  const controller = new AbortController();
   const state: HydrateDownloadState = {
     failed: false,
     fail(error) {

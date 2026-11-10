@@ -15,14 +15,15 @@ import {
 /** The store, listed by store-relative directory. */
 export interface StoreLister {
   /** Undefined: the store answered without levels (an older pod-store). */
-  level(rel: string): Promise<DirListing | undefined>;
-  tree(rel: string): Promise<ObjectMetadata[]>;
+  level(rel: string, signal?: AbortSignal): Promise<DirListing | undefined>;
+  tree(rel: string, signal?: AbortSignal): Promise<ObjectMetadata[]>;
   relOf(key: string): string;
   keyOf(rel: string): string;
   /** The agent's own folders, listed whole (`ClaimedStoreScope.later`). */
   listLater(
     scope: ClaimedStoreScope,
     dirs: readonly string[] | undefined,
+    signal: AbortSignal,
   ): Promise<ObjectMetadata[]>;
 }
 
@@ -37,22 +38,24 @@ export function storeLister(
     prefix && rel ? `${prefix}/${rel}` : rel || prefix;
   const relOf = (key: string) => (prefix ? key.slice(prefix.length + 1) : key);
   const lister: StoreLister = {
-    async level(rel) {
-      const listing = await manifestDir(keyOf(rel));
+    async level(rel, signal) {
+      const listing = await manifestDir(keyOf(rel), { signal });
       return (
         listing && { objects: listing.objects, dirs: listing.dirs.map(relOf) }
       );
     },
-    tree: (rel) => manifest(keyOf(rel)),
+    tree: (rel, signal) => manifest(keyOf(rel), { signal }),
     relOf,
     keyOf,
-    async listLater(scope, dirs) {
+    async listLater(scope, dirs, signal) {
       const own =
         dirs ??
-        (await lister.level(scope.agentRoot))?.dirs.filter(scope.laterFolder);
+        (await lister.level(scope.agentRoot, signal))?.dirs.filter(
+          scope.laterFolder,
+        );
       const listed = own
-        ? (await Promise.all(own.map(lister.tree))).flat()
-        : await lister.tree(scope.agentRoot);
+        ? (await Promise.all(own.map((dir) => lister.tree(dir, signal)))).flat()
+        : await lister.tree(scope.agentRoot, signal);
       return listed.filter((object) => scope.later(relOf(object.key)));
     },
   };
@@ -95,7 +98,9 @@ export async function listClaimedTree(
   );
   trees.push(...workspaces.dirs.filter((dir) => !standing.includes(dir)));
   const candidates: string[] = [];
-  for (const level of await Promise.all(standing.map(list.level))) {
+  for (const level of await Promise.all(
+    standing.map((dir) => list.level(dir)),
+  )) {
     if (!level) return undefined;
     levels.push(level);
     candidates.push(...level.dirs.filter(agentShaped));
@@ -114,7 +119,7 @@ export async function listClaimedTree(
     list.level(agent),
     list.level(`${agent}/.houston`),
     list.level(runtime),
-    ...[...trees, ...own].map(list.tree),
+    ...[...trees, ...own].map((dir) => list.tree(dir)),
     ...[...STARTUP_FOLDERS]
       .filter((folder) => folder !== ".houston")
       .map((folder) => list.tree(`${agent}/${folder}`)),
@@ -127,7 +132,7 @@ export async function listClaimedTree(
       (dir) => !["conversations", "sessions"].includes(name(dir)),
     ),
   ];
-  listed.push(...(await Promise.all(inner.map(list.tree))));
+  listed.push(...(await Promise.all(inner.map((dir) => list.tree(dir)))));
   const objects = [
     ...levels.flatMap((level) => level.objects),
     ...listed.flat(),

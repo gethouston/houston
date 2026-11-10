@@ -12,10 +12,8 @@ import {
   storeLister,
 } from "./turn-store-walk";
 
-/** A claimed turn's listing, and the scope sync-back keeps to. */
-export interface ClaimedTurnListing extends HydrateListing {
-  owns: (rel: string) => boolean;
-}
+/** A claimed turn's listing (turn-store-scope.ts). */
+export type ClaimedTurnListing = HydrateListing;
 
 const AGENT_ROOT = /^workspaces\/[^/]+\/[^/]+$/;
 
@@ -45,16 +43,16 @@ export async function listClaimedTurnStore(opts: {
       const objects = scoped.objects.filter((object) =>
         scope.critical(lister.relOf(object.key)),
       );
-      return claimedListing(lister, scope, objects, () =>
-        lister.listLater(scope, undefined),
+      return claimedListing(lister, scope, objects, (signal) =>
+        lister.listLater(scope, undefined, signal),
       );
     }
   }
   if (!lister) return undefined;
   const walked = await listClaimedTree(lister, conversationId);
   if (!walked) return undefined;
-  return claimedListing(lister, walked.scope, walked.objects, () =>
-    lister.listLater(walked.scope, walked.laterDirs),
+  return claimedListing(lister, walked.scope, walked.objects, (signal) =>
+    lister.listLater(walked.scope, walked.laterDirs, signal),
   );
 }
 
@@ -62,14 +60,14 @@ function claimedListing(
   lister: StoreLister,
   scope: ClaimedStoreScope,
   objects: ObjectMetadata[],
-  listLater: () => Promise<ObjectMetadata[]>,
+  listLater: (signal: AbortSignal) => Promise<ObjectMetadata[]>,
 ): ClaimedTurnListing {
   return {
     objects,
     reads: [lister.keyOf(scope.conversation)],
-    // Started once the critical listing is in, so the agent's own folders
-    // never slow the listing the prompt waits on.
-    later: listLater(),
-    owns: scope.owns,
+    // Hydration starts it once the critical listing is in, so the agent's
+    // own folders never slow the listing the prompt waits on, and its signal
+    // stops it when the turn abandons those folders.
+    later: listLater,
   };
 }

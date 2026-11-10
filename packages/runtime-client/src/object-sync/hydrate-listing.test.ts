@@ -4,7 +4,9 @@ import { tmpdir } from "node:os";
 import { dirname, join } from "node:path";
 import { expect, test } from "vitest";
 import { HydrateLimitError, startHydrate } from "./hydrate";
+import { LocalDirStore } from "./local-dir-store";
 import { memoryStore } from "./memory-store.test-support";
+import { StoreReadTimeoutError } from "./read-timeout";
 import { syncBack } from "./sync-back";
 
 const write = async (root: string, rel: string, body: string) => {
@@ -101,7 +103,7 @@ test("a later listing lands only in `deferred`, never in `done`", async () => {
   const started = await startHydrate(remote.store, "", dest, {
     listing: {
       objects: critical.filter(({ key }) => key === "agent/CLAUDE.md"),
-      later,
+      later: () => later,
     },
   });
   await started.done;
@@ -118,7 +120,9 @@ test("a failed later listing fails `deferred` and leaves `done` alone", async ()
   const started = await startHydrate(remote.store, "", dest, {
     listing: {
       objects: (await remote.store.manifest?.("agent")) ?? [],
-      later: Promise.reject(new Error("listing failed")),
+      later: async () => {
+        throw new Error("listing failed");
+      },
     },
   });
   await expect(started.done).resolves.toBeUndefined();
@@ -132,9 +136,91 @@ test("a later listing over the deferred budget refuses before downloading", asyn
     deferredMaxBytes: 16,
     listing: {
       objects: [],
-      later: Promise.resolve((await remote.store.manifest?.("agent")) ?? []),
+      later: async () => (await remote.store.manifest?.("agent")) ?? [],
     },
   });
   await expect(started.deferred).rejects.toBeInstanceOf(HydrateLimitError);
   expect(remote.calls.some((call) => call.startsWith("get"))).toBe(false);
+});
+
+test("abandoning while the later listing is pending rejects `deferred` at once and stops the listing", async () => {
+  const remote = memoryStore({ "agent/CLAUDE.md": "hi" });
+  const dest = await mkdtemp(join(tmpdir(), "hydrate-listing-"));
+  let listingSignal: AbortSignal | undefined;
+  const started = await startHydrate(remote.store, "", dest, {
+    listing: {
+      objects: (await remote.store.manifest?.("agent")) ?? [],
+      // A listing that never answers on its own.
+      later: (signal) => {
+        listingSignal = signal;
+        return new Promise(() => undefined);
+      },
+    },
+  });
+  await started.done;
+  const reason = new Error("abandoned");
+  started.abort(reason);
+  await expect(started.deferred).rejects.toBe(reason);
+  expect(listingSignal?.aborted).toBe(true);
+});
+
+test("a later listing that outlives the deferred read deadline fails `deferred`", async () => {
+  const dest = await mkdtemp(join(tmpdir(), "hydrate-listing-"));
+  const started = await startHydrate(memoryStore().store, "", dest, {
+    deferredReadTimeoutMs: 20,
+    listing: { objects: [], later: () => new Promise(() => undefined) },
+  });
+  await expect(started.deferred).rejects.toBeInstanceOf(StoreReadTimeoutError);
+});
+
+test("a point read that returns no generation lands but stays unowned, so its write goes out create-only", async () => {
+  const remote = memoryStore({ "conv/c1.json": "{}", "other.txt": "x" });
+  const read = remote.store.download;
+  const store = {
+    ...remote.store,
+    download: async (key: string, dest: string) => {
+      await read(key, dest);
+      return {};
+    },
+    downloadVersioned: async (key: string, dest: string) => {
+      await read(key, dest);
+      return {};
+    },
+  };
+  const dest = await mkdtemp(join(tmpdir(), "hydrate-listing-"));
+  const listed = (await remote.store.manifest?.("")) ?? [];
+  const started = await startHydrate(store, "", dest, {
+    // The listing shows a store with generations.
+    listing: {
+      objects: listed.filter(({ key }) => key !== "conv/c1.json"),
+      reads: ["conv/c1.json"],
+    },
+  });
+  await started.deferred;
+  expect(await readFile(join(dest, "conv/c1.json"), "utf8")).toBe("{}");
+  expect(started.manifest.has("conv/c1.json")).toBe(false);
+  await write(dest, "conv/c1.json", '{"messages":[1]}');
+  await syncBack(store, "", dest, started.manifest, {
+    generations: true,
+    workerMerge: true,
+  });
+  expect(remote.writes[0]).toEqual({
+    op: "put",
+    key: "conv/c1.json",
+    ifGenerationMatch: "0",
+  });
+});
+
+test("in a store without generations a point read stays owned, so an unchanged file is not uploaded", async () => {
+  const root = await mkdtemp(join(tmpdir(), "hydrate-listing-store-"));
+  await write(root, "conv/c1.json", "{}");
+  const store = new LocalDirStore(root);
+  const dest = await mkdtemp(join(tmpdir(), "hydrate-listing-"));
+  const started = await startHydrate(store, "", dest, {
+    listing: { objects: [], reads: ["conv/c1.json"] },
+  });
+  await started.deferred;
+  expect(started.manifest.has("conv/c1.json")).toBe(true);
+  const result = await syncBack(store, "", dest, started.manifest, {});
+  expect(result.uploaded).toEqual([]);
 });

@@ -8,15 +8,6 @@ import { DeferredFilesAbandonedError } from "./turn-deferred-watch";
 import type { TurnFilesystem } from "./turn-filesystem";
 import { claimedTurnIncludes } from "./turn-filesystem-scope";
 
-/** A scoped listing's writer stays inside what it listed: an object it never
- *  saw is neither overwritten nor deleted. */
-function withinListing(
-  include: (rel: string) => boolean,
-  owns: ((rel: string) => boolean) | undefined,
-): (rel: string) => boolean {
-  return owns ? (rel) => owns(rel) && include(rel) : include;
-}
-
 function withoutDeferred(
   include: (rel: string) => boolean,
   deferredFailed: boolean,
@@ -76,13 +67,10 @@ export async function syncTurnFilesystem(opts: {
       ...(opts.claimed
         ? {
             include: withoutDeferred(
-              withinListing(
-                claimedTurnIncludes(
-                  opts.filesystem.dataRel,
-                  opts.filesystem.workspaceRel,
-                  opts.conversationId,
-                ),
-                opts.filesystem.owns,
+              claimedTurnIncludes(
+                opts.filesystem.dataRel,
+                opts.filesystem.workspaceRel,
+                opts.conversationId,
               ),
               deferredFailed,
             ),

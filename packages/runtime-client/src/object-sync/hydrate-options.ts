@@ -35,10 +35,13 @@ export interface HydrateListing {
   /** Keys read without a listing entry: landed at the generation of the
    *  read when present, left out (and so unowned) when absent. */
   reads?: readonly string[];
-  /** Objects listed while the rest downloads. Every admitted one is
-   *  deferred (`defer`, `deferredMaxBytes`); a failed listing fails
-   *  `deferred`, never `done`. */
-  later?: Promise<readonly import("./object-manifest").ObjectMetadata[]>;
+  /** Objects listed while the rest downloads, started at once under the
+   *  hydration's signal (and `deferredReadTimeoutMs`). Every admitted one is
+   *  deferred (`defer`, `deferredMaxBytes`); a failed or abandoned listing
+   *  fails `deferred`, never `done`. */
+  later?: (
+    signal: AbortSignal,
+  ) => Promise<readonly import("./object-manifest").ObjectMetadata[]>;
 }
 
 /** Caller policy for one hydration. */

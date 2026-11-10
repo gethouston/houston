@@ -5,6 +5,7 @@ import { LocalDirStore } from "@houston/runtime-client/object-sync";
 import { expect, test } from "vitest";
 import { fakePoolStore, POOL_STORE_URL } from "./pool-store.test-support";
 import { startTurnRequestFilesystem } from "./turn-claimed-hydration";
+import { DeferredFilesAbandonedError } from "./turn-deferred-watch";
 import { syncTurnFilesystem } from "./turn-filesystem";
 import { resolveTurnStore } from "./turn-store";
 
@@ -17,7 +18,18 @@ const CLAIM = {
   heartbeatUrl: "https://heartbeat.test",
 };
 
-async function claimedTurn() {
+/** A pod-store that never answers the listing of the agent's own folders
+ *  until the request is aborted. */
+const stallFolders = (url: URL, init?: RequestInit) =>
+  url.searchParams.get("prefix")?.endsWith("/.repo-site")
+    ? new Promise<Response>((_resolve, reject) => {
+        init?.signal?.addEventListener("abort", () =>
+          reject(init.signal?.reason),
+        );
+      })
+    : undefined;
+
+async function claimedTurn(opts: { stall?: boolean } = {}) {
   const pool = fakePoolStore("ws/org/agent");
   pool.put(`${A}/CLAUDE.md`, "# Bob\n");
   pool.put(`${A}/.houston/activity/activity.json`, "[]");
@@ -35,7 +47,8 @@ async function claimedTurn() {
   const fetchImpl = (async (input: string | URL, init?: RequestInit) => {
     const url = new URL(String(input));
     if (url.pathname.endsWith("/manifest")) manifests.push(url.search);
-    return pool.fetchImpl(input, init);
+    const stalled = opts.stall ? stallFolders(url, init) : undefined;
+    return stalled ?? pool.fetchImpl(input, init);
   }) as typeof fetch;
   const turn = {
     gcsPrefix: "ws/org/agent",
@@ -55,7 +68,7 @@ async function claimedTurn() {
     timings: {},
   });
   const filesystem = await preparation.hydrated;
-  await filesystem.workspaceReady;
+  if (!opts.stall) await filesystem.workspaceReady;
   const sync = () =>
     syncTurnFilesystem({
       store: resolved.store,
@@ -86,7 +99,7 @@ test("a claimed turn never lists the store whole or another conversation's files
   expect(filesystem.listedObjects).toBeLessThan(10);
 });
 
-test("sync never deletes or overwrites what the listing left out, and creates new files create-only", async () => {
+test("sync never deletes or overwrites another conversation's files, and creates new files create-only", async () => {
   const { pool, sync, local } = await claimedTurn();
   const put = (rel: string, body: string) => {
     mkdirSync(dirname(local(rel)), { recursive: true });
@@ -110,4 +123,19 @@ test("sync never deletes or overwrites what the listing left out, and creates ne
   expect(
     (await pool.keys()).filter((key) => key.includes("routine-")),
   ).toHaveLength(60);
+});
+
+test("a turn that abandons its files never waits on their listing to sync its transcript", async () => {
+  const { pool, filesystem, sync, local } = await claimedTurn({ stall: true });
+  writeFileSync(
+    local(`${R}/conversations/c1.json`),
+    JSON.stringify({ id: "c1", messages: [{ role: "user", content: "hi" }] }),
+  );
+  filesystem.abandonDeferred?.();
+  await expect(filesystem.workspaceReady).rejects.toBeInstanceOf(
+    DeferredFilesAbandonedError,
+  );
+  const result = await sync();
+  expect(result.uploaded).toEqual([`${R}/conversations/c1.json`]);
+  expect(pool.read(`${R}/conversations/c1.json`)).toContain("hi");
 });

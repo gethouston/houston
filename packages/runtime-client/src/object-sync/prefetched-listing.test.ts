@@ -1,3 +1,6 @@
+import { mkdtemp, readFile } from "node:fs/promises";
+import { tmpdir } from "node:os";
+import { join } from "node:path";
 import { expect, test } from "vitest";
 import { memoryStore } from "./memory-store.test-support";
 import {
@@ -84,4 +87,18 @@ test("a whole-store manifest still answers the first manifest call only", async 
   ]);
   expect(store.servesWholeListing).toBe(false);
   expect((await store.manifest()).map(({ key }) => key)).toEqual(["live.txt"]);
+});
+
+test("inlined bytes never answer a read after the turn's first write", async () => {
+  const remote = memoryStore({ "a.txt": "live", "b.txt": "x" });
+  const store = new PrefetchedObjectStore(remote.store, {
+    objects: new Map([
+      ["a.txt", { data: Buffer.from("stale"), generation: "1" }],
+    ]),
+  });
+  await store.delete("b.txt");
+  const dest = join(await mkdtemp(join(tmpdir(), "prefetched-")), "a.txt");
+  const read = await store.downloadVersioned("a.txt", dest);
+  expect(await readFile(dest, "utf8")).toBe("live");
+  expect(read.generation).toBe(remote.generation("a.txt"));
 });
