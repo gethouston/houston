@@ -60,8 +60,10 @@ overrides:
   "postcss@<8.5.23": "^8.5.31"
   "brace-expansion@>=2 <2.1.7": "2.1.7"
   # glob 9/10/13 parents use glob/globSync/sync; these remain in glob 14.
-  # Drop once rimraf, typeorm and the ESM wrapper require glob >=14.0.2.
-  "glob@>=9 <=14.0.1": "14.0.2"
+  # glob 14 bundles its own minimatch: 14.0.3 is the first with minimatch >=11.0.1 inside.
+  # minimatch 11 dropped makeRe, Minimatch#regexp, AST and matchOne; no current parent uses them.
+  # Drop once rimraf, typeorm and the ESM wrapper require glob >=14.0.3.
+  "glob@>=9 <14.0.3": "14.0.3"
   "minimatch@>=7 <11.0.1": "11.0.3"
   "@sentry/cli>undici": "6.29.1"
   "jsdom>undici": "7.30.1"
