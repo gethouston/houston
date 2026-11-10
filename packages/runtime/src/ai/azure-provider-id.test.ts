@@ -16,7 +16,7 @@ import { piApiKeyProviderIds, piModelIds } from "./pi-catalog";
  * pi 1.0.3 renamed its Azure provider from `azure-openai-responses` to `azure`.
  * Houston keeps the old id everywhere (the wire, the gateway's credential rows
  * and model ceilings, settings.json, pins, routines, older desktop clients), so
- * the pi-ai patch (patches/@earendil-works__pi-ai@1.1.0.patch) reverts the
+ * the pi-ai patch (patches/@earendil-works__pi-ai@<version>.patch) reverts the
  * rename inside pi: the provider id, its catalog rows, the env-key table and
  * the Responses tool-call provider set. With it, nothing in Houston translates.
  * A pi bump must carry that hunk forward; these guards fail if it is dropped.

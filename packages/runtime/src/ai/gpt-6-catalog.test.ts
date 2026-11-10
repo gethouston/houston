@@ -108,5 +108,14 @@ test("the GPT-6 line is in pi's azure-openai-responses catalog", () => {
     output: 50,
     cacheRead: 1,
     cacheWrite: 12.5,
+    tiers: [
+      {
+        inputTokensAbove: 272_000,
+        input: 20,
+        output: 75,
+        cacheRead: 2,
+        cacheWrite: 25,
+      },
+    ],
   });
 });

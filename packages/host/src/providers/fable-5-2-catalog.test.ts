@@ -13,7 +13,7 @@ test("GET /v1/catalog offers Fable 5.2 and maps older Fable rows to it", () => {
     reasoning: true,
     vision: true,
     pricing: { input: 8, output: 40, cacheRead: 0.2, cacheWrite: 10 },
-    thinkingLevels: ["low", "medium", "high", "xhigh", "max"],
+    thinkingLevels: ["minimal", "low", "medium", "high", "xhigh", "max"],
   });
   expect(model?.runsAs).toBeUndefined();
   for (const id of ["claude-fable-5", "claude-fable-5-1"])
