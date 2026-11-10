@@ -2,7 +2,6 @@ import { mkdirSync, mkdtempSync, writeFileSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { dirname, join } from "node:path";
 import {
-  CLAIMED_TURN_LISTING_SCOPE,
   LocalDirStore,
   type ObjectStore,
   PrefetchedObjectStore,
@@ -133,7 +132,7 @@ test("a store that cannot list one level is listed whole", async () => {
     ).toBeUndefined();
 });
 
-test("a whole-store prefetch is left to hydrate, as before", async () => {
+test("a prefetched manifest is left to hydrate as the listing", async () => {
   const { local } = seeded();
   const store = new PrefetchedObjectStore(local, {
     manifest: await local.manifest(PREFIX),
@@ -142,63 +141,5 @@ test("a whole-store prefetch is left to hydrate, as before", async () => {
   expect(
     await listClaimedTurnStore({ store, prefix: PREFIX, conversationId: "c1" }),
   ).toBeUndefined();
-  expect(store.servesWholeListing).toBe(true);
-});
-
-test("a scoped prefetch is the critical listing, kept to the scope, and the store lists only the agent's folders", async () => {
-  const { root } = seeded();
-  const agentStore = new LocalDirStore(join(root, PREFIX));
-  const { store: inner, calls } = recorded(agentStore);
-  const stray = {
-    key: `${R}/conversations/routine-1.json`,
-    size: 1,
-    md5: "",
-    updated: "",
-  };
-  const claude = { ...stray, key: `${A}/CLAUDE.md` };
-  const store = new PrefetchedObjectStore(inner, {
-    listing: {
-      scope: CLAIMED_TURN_LISTING_SCOPE,
-      agentRoot: A,
-      objects: [claude, stray],
-    },
-    objects: new Map(),
-  });
-  const listing = await listClaimedTurnStore({
-    store,
-    prefix: "",
-    conversationId: "c1",
-  });
-  expect(listing?.objects).toEqual([claude]);
-  expect(
-    (await listing?.later?.(new AbortController().signal))
-      ?.map(({ key }) => key)
-      .sort(),
-  ).toEqual([
-    `${A}/.repo-site/README.md`,
-    `${A}/.repo-site/src/index.ts`,
-    `${A}/uploads/photo.png`,
-  ]);
-  expect(calls).toEqual([
-    `level ${A}`,
-    `manifest ${A}/.repo-site`,
-    `manifest ${A}/uploads`,
-  ]);
-});
-
-test("a scoped prefetch under a rule this worker does not know is walked instead", async () => {
-  const { root } = seeded();
-  const store = new PrefetchedObjectStore(
-    new LocalDirStore(join(root, PREFIX)),
-    {
-      listing: { scope: "claimed-turn/99", agentRoot: A, objects: [] },
-      objects: new Map(),
-    },
-  );
-  const listing = await listClaimedTurnStore({
-    store,
-    prefix: "",
-    conversationId: "c1",
-  });
-  expect(listing?.objects.map(({ key }) => key)).toContain(`${A}/CLAUDE.md`);
+  expect(store.servesListing).toBe(true);
 });

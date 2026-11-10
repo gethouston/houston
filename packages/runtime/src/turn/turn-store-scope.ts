@@ -27,8 +27,10 @@ export const UNLISTED_ROOT_DIRS: ReadonlySet<string> = new Set([
  *
  * Nothing here limits writes: sync-back deletes only what landed (the
  * manifest), and claimedTurnIncludes already keeps the turn out of every
- * other conversation's files. cloud's turn prefetch (internal/pooldispatch) lists the same `critical`
- * set for CLAIMED_TURN_LISTING_SCOPE; keep the two identical.
+ * other conversation's files. This is the worker's own walk; a gateway
+ * prefetch is not built from it. The prefetched `manifest` may leave out
+ * other conversations' transcripts and sessions, and the worker hydrates
+ * from it as the listing (PrefetchedObjects).
  */
 export interface ClaimedStoreScope {
   agentRoot: string;

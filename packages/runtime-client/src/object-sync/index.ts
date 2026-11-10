@@ -48,9 +48,8 @@ export {
   StoreConflictError,
   StoreFencedError,
 } from "./object-store";
-export type { PrefetchedObjects, ScopedListing } from "./prefetched-store";
+export type { PrefetchedObjects } from "./prefetched-store";
 export {
-  CLAIMED_TURN_LISTING_SCOPE,
   PrefetchedObjectStore,
   parsePrefetchedObjects,
 } from "./prefetched-store";
