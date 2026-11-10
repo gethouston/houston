@@ -1,6 +1,7 @@
 import { closeSync, openSync, readdirSync, readSync } from "node:fs";
 import { join } from "node:path";
 import { SessionManager } from "@earendil-works/pi-coding-agent";
+import { rotateSessionLog } from "./session-rotation";
 
 /**
  * Reopen the conversation's NEWEST session file, wherever it was written.
@@ -26,7 +27,12 @@ export function resumeSessionManager(
 ): SessionManager {
   if (!fresh) {
     const newest = newestSessionFile(sessionDir);
-    if (newest) return SessionManager.open(newest, sessionDir, workspaceDir);
+    if (newest)
+      return SessionManager.open(
+        rotateSessionLog(newest, workspaceDir),
+        sessionDir,
+        workspaceDir,
+      );
   }
   return SessionManager.create(workspaceDir, sessionDir);
 }

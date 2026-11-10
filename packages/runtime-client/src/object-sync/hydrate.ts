@@ -69,6 +69,7 @@ export async function startHydrate(
   const listedCandidates = candidates.filter(({ fromRead }) => !fromRead);
   const filterListing = listedCandidates.map(({ rel, updated }) => ({
     rel,
+    ...(sizes.has(rel) ? { size: sizes.get(rel) } : {}),
     ...(updated ? { updated } : {}),
   }));
   const listed = {

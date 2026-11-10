@@ -11,6 +11,7 @@ export type HydrateManifest = Map<string, HydrateManifestEntry>;
 /** Store-listing fields available to a caller's hot-set selector. */
 export interface HydrateListedObject {
   rel: string;
+  size?: number;
   updated?: string;
 }
 

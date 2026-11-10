@@ -130,7 +130,7 @@ test("a user project's conversations folder is never mistaken for runtime", () =
   for (const path of paths) expect(admit(path, listing, root)).toBe(true);
 });
 
-test("keeps two Pi tails and the Claude transcript named by sessions.json", () => {
+test("keeps the newest Pi tail, a small fallback and the mapped Claude transcript", () => {
   const root = rootWithSessions('{"c1":"session-new"}');
   const piOld = `${session}/2026-08-20T19-00-01-250Z_old.jsonl`;
   const piReadable = `${session}/2026-08-21T19-00-01-250Z_readable.jsonl`;
@@ -139,7 +139,7 @@ test("keeps two Pi tails and the Claude transcript named by sessions.json", () =
   const mapped = `${session}/claude/projects/current/session-new.jsonl`;
   const listing = [
     { rel: piOld },
-    { rel: piReadable },
+    { rel: piReadable, size: 1024 },
     { rel: piNewest },
     { rel: sessionsRel },
     { rel: stale, updated: "2026-08-28T12:00:00.000Z" },
