@@ -412,6 +412,9 @@ export async function streamTurn(
     sink.sendAccepted();
     noteAccepted();
   }
+  // Seeing our turn run proves the engine took it: a fast turn can settle the
+  // stream, and abort the POST still out, before the 202 arrives.
+  sink.whenStarted(noteAccepted);
   // A teardown ends the sink at once: a history reload still out publishes
   // nothing while the rest of this turn unwinds.
   ac.signal.addEventListener("abort", () => sink.dispose(), { once: true });
@@ -489,7 +492,6 @@ export async function streamTurn(
         // Keep the subscription as the arbiter: evidence of the turn settles
         // it normally; a verdict window with no evidence fails it as lost.
         sink.sendMaybeAccepted();
-        sink.whenStarted(noteAccepted);
         sendVerdict = setTimeout(() => {
           if (sink.failUnlessStarted(SEND_LOST_MESSAGE)) ac.abort();
         }, opts.tuning?.sendVerdictMs ?? SEND_VERDICT_MS);
