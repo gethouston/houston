@@ -59,6 +59,10 @@ overrides:
   "baseline-browser-mapping@<2.11.0": "^2.11.32"
   "postcss@<8.5.23": "^8.5.31"
   "brace-expansion@>=2 <2.1.7": "2.1.7"
+  # glob 9/10/13 parents use glob/globSync/sync; these remain in glob 14.
+  # Drop once rimraf, typeorm and the ESM wrapper require glob >=14.0.2.
+  "glob@>=9 <=14.0.1": "14.0.2"
+  "minimatch@>=7 <11.0.1": "11.0.3"
   "@sentry/cli>undici": "6.29.1"
   "jsdom>undici": "7.30.1"
   "@executor-js/fumadb>zod": "4.6.7"
