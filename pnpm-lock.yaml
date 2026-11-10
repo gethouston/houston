@@ -167,7 +167,7 @@ importers:
         version: 6.0.3
       vitest:
         specifier: 4.1.12
-        version: 4.1.12(@opentelemetry/api@1.9.1)(@types/node@22.20.0)(jsdom@29.1.1(@noble/hashes@2.2.0))(vite@6.4.5(@types/node@22.20.0)(jiti@2.7.0)(lightningcss@1.32.0)(terser@5.16.9)(tsx@4.23.0)(yaml@2.9.0))
+        version: 4.1.12(@opentelemetry/api@1.9.1)(@types/node@22.20.0)(jsdom@29.1.1(@noble/hashes@2.2.0))(vite@6.4.5(@types/node@22.20.0)(jiti@2.7.0)(lightningcss@1.32.0)(terser@5.16.9)(tsx@4.23.0)(yaml@2.9.1))
 
   app:
     dependencies:
@@ -303,7 +303,7 @@ importers:
         version: 3.6.0
       '@tailwindcss/vite':
         specifier: 4.3.2
-        version: 4.3.2(vite@6.4.5(@types/node@25.6.0)(jiti@2.7.0)(lightningcss@1.32.0)(terser@5.16.9)(tsx@4.23.0)(yaml@2.9.0))
+        version: 4.3.2(vite@6.4.5(@types/node@25.6.0)(jiti@2.7.0)(lightningcss@1.32.0)(terser@5.16.9)(tsx@4.23.0)(yaml@2.9.1))
       '@tauri-apps/cli':
         specifier: 2.12.4
         version: 2.12.4
@@ -318,7 +318,7 @@ importers:
         version: 19.2.3(@types/react@19.2.17)
       '@vitejs/plugin-react':
         specifier: 4.7.0
-        version: 4.7.0(vite@6.4.5(@types/node@25.6.0)(jiti@2.7.0)(lightningcss@1.32.0)(terser@5.16.9)(tsx@4.23.0)(yaml@2.9.0))
+        version: 4.7.0(vite@6.4.5(@types/node@25.6.0)(jiti@2.7.0)(lightningcss@1.32.0)(terser@5.16.9)(tsx@4.23.0)(yaml@2.9.1))
       jsdom:
         specifier: 29.1.1
         version: 29.1.1(@noble/hashes@2.2.0)
@@ -333,7 +333,7 @@ importers:
         version: 6.0.3
       vite:
         specifier: 6.4.5
-        version: 6.4.5(@types/node@25.6.0)(jiti@2.7.0)(lightningcss@1.32.0)(terser@5.16.9)(tsx@4.23.0)(yaml@2.9.0)
+        version: 6.4.5(@types/node@25.6.0)(jiti@2.7.0)(lightningcss@1.32.0)(terser@5.16.9)(tsx@4.23.0)(yaml@2.9.1)
 
   packages/agentstore-client:
     dependencies:
@@ -352,7 +352,7 @@ importers:
         version: 6.0.3
       vitest:
         specifier: 4.1.12
-        version: 4.1.12(@opentelemetry/api@1.9.1)(@types/node@22.20.0)(jsdom@29.1.1(@noble/hashes@2.2.0))(vite@6.4.5(@types/node@22.20.0)(jiti@2.7.0)(lightningcss@1.32.0)(terser@5.16.9)(tsx@4.23.0)(yaml@2.9.0))
+        version: 4.1.12(@opentelemetry/api@1.9.1)(@types/node@22.20.0)(jsdom@29.1.1(@noble/hashes@2.2.0))(vite@6.4.5(@types/node@22.20.0)(jiti@2.7.0)(lightningcss@1.32.0)(terser@5.16.9)(tsx@4.23.0)(yaml@2.9.1))
 
   packages/agentstore-contract:
     dependencies:
@@ -390,7 +390,7 @@ importers:
         version: 7.0.0-dev.20260607.1
       vitest:
         specifier: 4.1.12
-        version: 4.1.12(@opentelemetry/api@1.9.1)(@types/node@22.20.0)(jsdom@29.1.1(@noble/hashes@2.2.0))(vite@6.4.5(@types/node@22.20.0)(jiti@2.7.0)(lightningcss@1.32.0)(terser@5.16.9)(tsx@4.23.0)(yaml@2.9.0))
+        version: 4.1.12(@opentelemetry/api@1.9.1)(@types/node@22.20.0)(jsdom@29.1.1(@noble/hashes@2.2.0))(vite@6.4.5(@types/node@22.20.0)(jiti@2.7.0)(lightningcss@1.32.0)(terser@5.16.9)(tsx@4.23.0)(yaml@2.9.1))
 
   packages/design-tokens:
     devDependencies:
@@ -402,13 +402,13 @@ importers:
         version: 7.0.0-dev.20260607.1
       style-dictionary:
         specifier: 5.7.1
-        version: 5.7.1(tslib@2.8.1)
+        version: 5.7.1(tslib@2.9.1)
       typescript:
         specifier: 6.0.3
         version: 6.0.3
       vitest:
         specifier: 4.1.12
-        version: 4.1.12(@opentelemetry/api@1.9.1)(@types/node@22.20.0)(jsdom@29.1.1(@noble/hashes@2.2.0))(vite@6.4.5(@types/node@22.20.0)(jiti@2.7.0)(lightningcss@1.32.0)(terser@5.16.9)(tsx@4.23.0)(yaml@2.9.0))
+        version: 4.1.12(@opentelemetry/api@1.9.1)(@types/node@22.20.0)(jsdom@29.1.1(@noble/hashes@2.2.0))(vite@6.4.5(@types/node@22.20.0)(jiti@2.7.0)(lightningcss@1.32.0)(terser@5.16.9)(tsx@4.23.0)(yaml@2.9.1))
 
   packages/domain:
     dependencies:
@@ -473,10 +473,10 @@ importers:
         version: 6.0.3
       vite:
         specifier: 6.4.5
-        version: 6.4.5(@types/node@25.6.0)(jiti@2.7.0)(lightningcss@1.32.0)(terser@5.16.9)(tsx@4.23.0)(yaml@2.9.0)
+        version: 6.4.5(@types/node@25.6.0)(jiti@2.7.0)(lightningcss@1.32.0)(terser@5.16.9)(tsx@4.23.0)(yaml@2.9.1)
       vitest:
         specifier: 4.1.12
-        version: 4.1.12(@opentelemetry/api@1.9.1)(@types/node@25.6.0)(jsdom@29.1.1(@noble/hashes@2.2.0))(vite@6.4.5(@types/node@25.6.0)(jiti@2.7.0)(lightningcss@1.32.0)(terser@5.16.9)(tsx@4.23.0)(yaml@2.9.0))
+        version: 4.1.12(@opentelemetry/api@1.9.1)(@types/node@25.6.0)(jsdom@29.1.1(@noble/hashes@2.2.0))(vite@6.4.5(@types/node@25.6.0)(jiti@2.7.0)(lightningcss@1.32.0)(terser@5.16.9)(tsx@4.23.0)(yaml@2.9.1))
 
   packages/fake-host:
     dependencies:
@@ -513,7 +513,7 @@ importers:
         version: 6.0.3
       vitest:
         specifier: 4.1.12
-        version: 4.1.12(@opentelemetry/api@1.9.1)(@types/node@22.20.0)(jsdom@29.1.1(@noble/hashes@2.2.0))(vite@6.4.5(@types/node@22.20.0)(jiti@2.7.0)(lightningcss@1.32.0)(terser@5.16.9)(tsx@4.23.0)(yaml@2.9.0))
+        version: 4.1.12(@opentelemetry/api@1.9.1)(@types/node@22.20.0)(jsdom@29.1.1(@noble/hashes@2.2.0))(vite@6.4.5(@types/node@22.20.0)(jiti@2.7.0)(lightningcss@1.32.0)(terser@5.16.9)(tsx@4.23.0)(yaml@2.9.1))
 
   packages/host:
     dependencies:
@@ -525,13 +525,13 @@ importers:
         version: 1.5.2(@aws-sdk/credential-provider-node@3.972.84)(@modelcontextprotocol/sdk@1.32.0(@cfworker/json-schema@4.1.1)(zod@4.6.7))(@smithy/signature-v4@5.7.3)(ws@8.21.0)(zod@4.6.7)
       '@executor-js/plugin-mcp':
         specifier: 1.5.37
-        version: 1.5.37(effect@4.0.0-beta.59)(ioredis@5.11.1)(react@19.2.7)(typeorm@0.3.31(ioredis@5.11.1))
+        version: 1.5.37(effect@4.0.0-beta.103)(ioredis@5.11.1)(react@19.2.7)(typeorm@0.3.31(ioredis@5.11.1))
       '@executor-js/plugin-openapi':
         specifier: 1.5.37
-        version: 1.5.37(effect@4.0.0-beta.59)(ioredis@5.11.1)(react@19.2.7)(typeorm@0.3.31(ioredis@5.11.1))
+        version: 1.5.37(effect@4.0.0-beta.103)(ioredis@5.11.1)(react@19.2.7)(typeorm@0.3.31(ioredis@5.11.1))
       '@executor-js/sdk':
         specifier: 1.5.37
-        version: 1.5.37(patch_hash=7061d4455cc286a23ca4c3683819032231059648ed7fef31e7a1f0297e1f3597)(@effect/platform-node@4.0.0-beta.59(effect@4.0.0-beta.59)(ioredis@5.11.1))(effect@4.0.0-beta.59)(react@19.2.7)(typeorm@0.3.31(ioredis@5.11.1))
+        version: 1.5.37(patch_hash=7061d4455cc286a23ca4c3683819032231059648ed7fef31e7a1f0297e1f3597)(@effect/platform-node@4.0.0-beta.59(effect@4.0.0-beta.103)(ioredis@5.11.1))(effect@4.0.0-beta.103)(react@19.2.7)(typeorm@0.3.31(ioredis@5.11.1))
       '@houston/domain':
         specifier: workspace:*
         version: link:../domain
@@ -554,8 +554,8 @@ importers:
         specifier: 13.0.2
         version: 13.0.2
       effect:
-        specifier: 4.0.0-beta.59
-        version: 4.0.0-beta.59
+        specifier: 4.0.0-beta.103
+        version: 4.0.0-beta.103
       fflate:
         specifier: 0.8.3
         version: 0.8.3
@@ -586,7 +586,7 @@ importers:
         version: 8.12.2
       vitest:
         specifier: 4.1.12
-        version: 4.1.12(@opentelemetry/api@1.9.1)(@types/node@22.20.0)(jsdom@29.1.1(@noble/hashes@2.2.0))(vite@6.4.5(@types/node@22.20.0)(jiti@2.7.0)(lightningcss@1.32.0)(terser@5.16.9)(tsx@4.23.0)(yaml@2.9.0))
+        version: 4.1.12(@opentelemetry/api@1.9.1)(@types/node@22.20.0)(jsdom@29.1.1(@noble/hashes@2.2.0))(vite@6.4.5(@types/node@22.20.0)(jiti@2.7.0)(lightningcss@1.32.0)(terser@5.16.9)(tsx@4.23.0)(yaml@2.9.1))
 
   packages/mobile:
     dependencies:
@@ -644,10 +644,10 @@ importers:
         version: 22.20.0
       vite:
         specifier: 6.4.5
-        version: 6.4.5(@types/node@22.20.0)(jiti@2.7.0)(lightningcss@1.32.0)(terser@5.16.9)(tsx@4.23.0)(yaml@2.9.0)
+        version: 6.4.5(@types/node@22.20.0)(jiti@2.7.0)(lightningcss@1.32.0)(terser@5.16.9)(tsx@4.23.0)(yaml@2.9.1)
       vitest:
         specifier: 4.1.12
-        version: 4.1.12(@opentelemetry/api@1.9.1)(@types/node@22.20.0)(jsdom@29.1.1(@noble/hashes@2.2.0))(vite@6.4.5(@types/node@22.20.0)(jiti@2.7.0)(lightningcss@1.32.0)(terser@5.16.9)(tsx@4.23.0)(yaml@2.9.0))
+        version: 4.1.12(@opentelemetry/api@1.9.1)(@types/node@22.20.0)(jsdom@29.1.1(@noble/hashes@2.2.0))(vite@6.4.5(@types/node@22.20.0)(jiti@2.7.0)(lightningcss@1.32.0)(terser@5.16.9)(tsx@4.23.0)(yaml@2.9.1))
 
   packages/office-convert:
     dependencies:
@@ -663,7 +663,7 @@ importers:
         version: 7.0.0-dev.20260607.1
       vitest:
         specifier: 4.1.12
-        version: 4.1.12(@opentelemetry/api@1.9.1)(@types/node@22.20.0)(jsdom@29.1.1(@noble/hashes@2.2.0))(vite@6.4.5(@types/node@22.20.0)(jiti@2.7.0)(lightningcss@1.32.0)(terser@5.16.9)(tsx@4.23.0)(yaml@2.9.0))
+        version: 4.1.12(@opentelemetry/api@1.9.1)(@types/node@22.20.0)(jsdom@29.1.1(@noble/hashes@2.2.0))(vite@6.4.5(@types/node@22.20.0)(jiti@2.7.0)(lightningcss@1.32.0)(terser@5.16.9)(tsx@4.23.0)(yaml@2.9.1))
 
   packages/protocol:
     dependencies:
@@ -682,7 +682,7 @@ importers:
         version: 6.0.3
       vitest:
         specifier: 4.1.12
-        version: 4.1.12(@opentelemetry/api@1.9.1)(@types/node@22.20.0)(jsdom@29.1.1(@noble/hashes@2.2.0))(vite@6.4.5(@types/node@22.20.0)(jiti@2.7.0)(lightningcss@1.32.0)(terser@5.16.9)(tsx@4.23.0)(yaml@2.9.0))
+        version: 4.1.12(@opentelemetry/api@1.9.1)(@types/node@22.20.0)(jsdom@29.1.1(@noble/hashes@2.2.0))(vite@6.4.5(@types/node@22.20.0)(jiti@2.7.0)(lightningcss@1.32.0)(terser@5.16.9)(tsx@4.23.0)(yaml@2.9.1))
 
   packages/runtime:
     dependencies:
@@ -740,7 +740,7 @@ importers:
         version: 7.0.0-dev.20260607.1
       vitest:
         specifier: 4.1.12
-        version: 4.1.12(@opentelemetry/api@1.9.1)(@types/node@22.20.0)(jsdom@29.1.1(@noble/hashes@2.2.0))(vite@6.4.5(@types/node@22.20.0)(jiti@2.7.0)(lightningcss@1.32.0)(terser@5.16.9)(tsx@4.23.0)(yaml@2.9.0))
+        version: 4.1.12(@opentelemetry/api@1.9.1)(@types/node@22.20.0)(jsdom@29.1.1(@noble/hashes@2.2.0))(vite@6.4.5(@types/node@22.20.0)(jiti@2.7.0)(lightningcss@1.32.0)(terser@5.16.9)(tsx@4.23.0)(yaml@2.9.1))
     optionalDependencies:
       '@anthropic-ai/claude-agent-sdk':
         specifier: 0.3.321
@@ -769,7 +769,7 @@ importers:
         version: 6.0.3
       vitest:
         specifier: 4.1.12
-        version: 4.1.12(@opentelemetry/api@1.9.1)(@types/node@22.20.0)(jsdom@29.1.1(@noble/hashes@2.2.0))(vite@6.4.5(@types/node@22.20.0)(jiti@2.7.0)(lightningcss@1.32.0)(terser@5.16.9)(tsx@4.23.0)(yaml@2.9.0))
+        version: 4.1.12(@opentelemetry/api@1.9.1)(@types/node@22.20.0)(jsdom@29.1.1(@noble/hashes@2.2.0))(vite@6.4.5(@types/node@22.20.0)(jiti@2.7.0)(lightningcss@1.32.0)(terser@5.16.9)(tsx@4.23.0)(yaml@2.9.1))
 
   packages/sdk:
     dependencies:
@@ -818,7 +818,7 @@ importers:
         version: 6.0.3
       vitest:
         specifier: 4.1.12
-        version: 4.1.12(@opentelemetry/api@1.9.1)(@types/node@22.20.0)(jsdom@29.1.1(@noble/hashes@2.2.0))(vite@6.4.5(@types/node@22.20.0)(jiti@2.7.0)(lightningcss@1.32.0)(terser@5.16.9)(tsx@4.23.0)(yaml@2.9.0))
+        version: 4.1.12(@opentelemetry/api@1.9.1)(@types/node@22.20.0)(jsdom@29.1.1(@noble/hashes@2.2.0))(vite@6.4.5(@types/node@22.20.0)(jiti@2.7.0)(lightningcss@1.32.0)(terser@5.16.9)(tsx@4.23.0)(yaml@2.9.1))
 
   packages/web:
     dependencies:
@@ -939,7 +939,7 @@ importers:
         version: 1.64.0
       '@tailwindcss/vite':
         specifier: 4.3.2
-        version: 4.3.2(vite@6.4.5(@types/node@22.20.0)(jiti@2.7.0)(lightningcss@1.32.0)(terser@5.16.9)(tsx@4.23.0)(yaml@2.9.0))
+        version: 4.3.2(vite@6.4.5(@types/node@22.20.0)(jiti@2.7.0)(lightningcss@1.32.0)(terser@5.16.9)(tsx@4.23.0)(yaml@2.9.1))
       '@types/node':
         specifier: 22.20.0
         version: 22.20.0
@@ -954,7 +954,7 @@ importers:
         version: 7.0.0-dev.20260607.1
       '@vitejs/plugin-react':
         specifier: 4.7.0
-        version: 4.7.0(vite@6.4.5(@types/node@22.20.0)(jiti@2.7.0)(lightningcss@1.32.0)(terser@5.16.9)(tsx@4.23.0)(yaml@2.9.0))
+        version: 4.7.0(vite@6.4.5(@types/node@22.20.0)(jiti@2.7.0)(lightningcss@1.32.0)(terser@5.16.9)(tsx@4.23.0)(yaml@2.9.1))
       tailwindcss:
         specifier: 4.3.2
         version: 4.3.2
@@ -966,10 +966,10 @@ importers:
         version: 6.0.3
       vite:
         specifier: 6.4.5
-        version: 6.4.5(@types/node@22.20.0)(jiti@2.7.0)(lightningcss@1.32.0)(terser@5.16.9)(tsx@4.23.0)(yaml@2.9.0)
+        version: 6.4.5(@types/node@22.20.0)(jiti@2.7.0)(lightningcss@1.32.0)(terser@5.16.9)(tsx@4.23.0)(yaml@2.9.1)
       vitest:
         specifier: 4.1.12
-        version: 4.1.12(@opentelemetry/api@1.9.1)(@types/node@22.20.0)(jsdom@29.1.1(@noble/hashes@2.2.0))(vite@6.4.5(@types/node@22.20.0)(jiti@2.7.0)(lightningcss@1.32.0)(terser@5.16.9)(tsx@4.23.0)(yaml@2.9.0))
+        version: 4.1.12(@opentelemetry/api@1.9.1)(@types/node@22.20.0)(jsdom@29.1.1(@noble/hashes@2.2.0))(vite@6.4.5(@types/node@22.20.0)(jiti@2.7.0)(lightningcss@1.32.0)(terser@5.16.9)(tsx@4.23.0)(yaml@2.9.1))
 
   packages/wire-types:
     dependencies:
@@ -985,7 +985,7 @@ importers:
         version: 7.0.0-dev.20260607.1
       vitest:
         specifier: 4.1.12
-        version: 4.1.12(@opentelemetry/api@1.9.1)(@types/node@25.6.0)(jsdom@29.1.1(@noble/hashes@2.2.0))(vite@6.4.5(@types/node@25.6.0)(jiti@2.7.0)(lightningcss@1.32.0)(terser@5.16.9)(tsx@4.23.0)(yaml@2.9.0))
+        version: 4.1.12(@opentelemetry/api@1.9.1)(@types/node@25.6.0)(jsdom@29.1.1(@noble/hashes@2.2.0))(vite@6.4.5(@types/node@25.6.0)(jiti@2.7.0)(lightningcss@1.32.0)(terser@5.16.9)(tsx@4.23.0)(yaml@2.9.1))
 
   ui/agent:
     dependencies:
@@ -1302,10 +1302,10 @@ importers:
     devDependencies:
       '@tailwindcss/vite':
         specifier: 4.3.2
-        version: 4.3.2(vite@6.4.5(@types/node@25.6.0)(jiti@2.7.0)(lightningcss@1.32.0)(terser@5.16.9)(tsx@4.23.0)(yaml@2.9.0))
+        version: 4.3.2(vite@6.4.5(@types/node@25.6.0)(jiti@2.7.0)(lightningcss@1.32.0)(terser@5.16.9)(tsx@4.23.0)(yaml@2.9.1))
       '@vitejs/plugin-react':
         specifier: 4.7.0
-        version: 4.7.0(vite@6.4.5(@types/node@25.6.0)(jiti@2.7.0)(lightningcss@1.32.0)(terser@5.16.9)(tsx@4.23.0)(yaml@2.9.0))
+        version: 4.7.0(vite@6.4.5(@types/node@25.6.0)(jiti@2.7.0)(lightningcss@1.32.0)(terser@5.16.9)(tsx@4.23.0)(yaml@2.9.1))
       tailwindcss:
         specifier: 4.3.2
         version: 4.3.2
@@ -1314,7 +1314,7 @@ importers:
         version: 4.23.0
       vite:
         specifier: 6.4.5
-        version: 6.4.5(@types/node@25.6.0)(jiti@2.7.0)(lightningcss@1.32.0)(terser@5.16.9)(tsx@4.23.0)(yaml@2.9.0)
+        version: 6.4.5(@types/node@25.6.0)(jiti@2.7.0)(lightningcss@1.32.0)(terser@5.16.9)(tsx@4.23.0)(yaml@2.9.1)
 
   ui/skills:
     dependencies:
@@ -3155,33 +3155,33 @@ packages:
       '@cfworker/json-schema':
         optional: true
 
-  '@msgpackr-extract/msgpackr-extract-darwin-arm64@3.0.4':
-    resolution: {integrity: sha512-LCkGo6JDfaBhgST7UpPWgNgLINpcpabaHfyz5OBx75nUYxBsaEPxjnyNjWpeb/xBup/682QnBfRBy2/LvPutZQ==}
+  '@msgpackr-extract/msgpackr-extract-darwin-arm64@3.0.7':
+    resolution: {integrity: sha512-2zPHLn+MuGJ6GP/5jDrwa9Jy0CI+D3Ibpvopf5SFfmc1G9gdofR4uB7YrJAAp4vodn/7iDOciyv8bgkRPLw7cA==}
     cpu: [arm64]
     os: [darwin]
 
-  '@msgpackr-extract/msgpackr-extract-darwin-x64@3.0.4':
-    resolution: {integrity: sha512-zExlW9zUJKZH/tOtVMttwjKa4Xm/3KcNjnE3dPN92uCktwavMxpgCA3MoJK/DOnTWsQgo224OaST27/mPNAf+w==}
+  '@msgpackr-extract/msgpackr-extract-darwin-x64@3.0.7':
+    resolution: {integrity: sha512-of1miwFfEdgs5nythewsEoocfpbjzUf8PC996YDe3kAyv0ZJiMJs5NXlYhE6IdjxfNEPqUXj/BYBnpD8kRdfeQ==}
     cpu: [x64]
     os: [darwin]
 
-  '@msgpackr-extract/msgpackr-extract-linux-arm64@3.0.4':
-    resolution: {integrity: sha512-dgX0P/9wGPJeHFBG+ZmhgE6bmtMt7NP5CRBGyyktpopdk/mW4POnrpQsSLtKI1dwpc+pPLuXHDh6vvskyQE/sw==}
+  '@msgpackr-extract/msgpackr-extract-linux-arm64@3.0.7':
+    resolution: {integrity: sha512-jcRydYARTW0gX5idJhxV7m3KkRUD7KtZLYFF1ZY18HrPqpGY0TCqPUTJCwka2kVfVOwfKs3ZmlPSmQb4S6xj7w==}
     cpu: [arm64]
     os: [linux]
 
-  '@msgpackr-extract/msgpackr-extract-linux-arm@3.0.4':
-    resolution: {integrity: sha512-Tg3yX65f5GbtXLkrYEHE5oibZG9epyYWas7FogTTEJeDEF9JlXJzKgXaNhT3UXlTOeA+AfZpYZYZ0uPj7Cfquw==}
+  '@msgpackr-extract/msgpackr-extract-linux-arm@3.0.7':
+    resolution: {integrity: sha512-aDPbiEkFHs3H68705JKxJ15IT41wFdvDhba1pL8ygfdoshboL5dsXtiu76/CqhLWYneE+9hwBE+0abqNOiQ4Bw==}
     cpu: [arm]
     os: [linux]
 
-  '@msgpackr-extract/msgpackr-extract-linux-x64@3.0.4':
-    resolution: {integrity: sha512-8TNXMEjJc3QEy7R/x1INhgiU+XakDAFUzBhaz7+Rbrs8NH5UQeHQxxmzsSBJGyV6I1jW79undiQm8tOI+D+8FQ==}
+  '@msgpackr-extract/msgpackr-extract-linux-x64@3.0.7':
+    resolution: {integrity: sha512-A9xOmARctmUvHrBj5GGzGAigsZFnqE4kld5oprX3PyPbkVALV4jwBc17gPZrhSOvnXQc81hE9K7S2hDUCgialA==}
     cpu: [x64]
     os: [linux]
 
-  '@msgpackr-extract/msgpackr-extract-win32-x64@3.0.4':
-    resolution: {integrity: sha512-CmCXPQrkbwExx3j946/PtHWHbYJiCRBRDl4BlkRQcJB/YOwQxJRTpoo7aTsortjgoJ1x7opzTSxn7C+ASSLVjQ==}
+  '@msgpackr-extract/msgpackr-extract-win32-x64@3.0.7':
+    resolution: {integrity: sha512-PRBiOqK4mcR0rvm6nybO7pSOYRR2Zza0+43UK2IvbVGelzMqZViiZJmOWGuWOX678QKESO6YrHx36z43nSS6iQ==}
     cpu: [x64]
     os: [win32]
 
@@ -5074,8 +5074,8 @@ packages:
     resolution: {integrity: sha512-4Dj6M28JB+oAH8kFkTLUo+a2jwOFkuqb3yucU0CANcRRUbxS0cP0nZYCGjcc3BNXwRIsUVmDGgzawme7zvJHvg==}
     engines: {node: '>=12'}
 
-  ansis@4.4.0:
-    resolution: {integrity: sha512-9k3v7xcHwgdO/DruxGIg4HtjvlAZlcnsX/mzqUb1t3NkYnl9kK2UJ+Gq0io+vQf7iT//BD/HB/NBkUR1LWxoeA==}
+  ansis@4.5.0:
+    resolution: {integrity: sha512-KwIVkfFfJSSzBmZhDGuTmkhWqTdyB5oNVzzznBJbBZ5bZtHiqSrcugRF0RKJKT4Ss3d7ZrcjnlFVDlQNmtWfWw==}
     engines: {node: '>=14'}
 
   anynum@1.0.1:
@@ -5688,8 +5688,8 @@ packages:
   ee-first@1.1.1:
     resolution: {integrity: sha512-WMwm9LhRUo+WUaRN+vRuETqG89IgZphVSNkdFgeb6sS/E4OrDIN7t48CAewSHXc6C8lefD8KKfr5vY61brQlow==}
 
-  effect@4.0.0-beta.59:
-    resolution: {integrity: sha512-xyUDLeHSe8d6lWGOvR6Fgn2HL6gYeTZ/S4Jzk9uc4ZUxMPPsNZlNXrvk0C7/utQFzeX7uAWcVnG2BjbA0SRoAA==}
+  effect@4.0.0-beta.103:
+    resolution: {integrity: sha512-pE8TxF4m2tQzVI+77dIlm3s+81TACV1AiX1JEkvY+zVuxgQQ8aGSkqXNJF6b/ST+coCSk5cUdbULpQ7sm4oHyw==}
 
   electron-to-chromium@1.5.464:
     resolution: {integrity: sha512-nRa65aFge40viPAKxMKULIY8tcXKwKboJWNn4RoKwyWXJ6SP7BnrDGKUTzc64818jIciH0PK7LSF8QzZes19GA==}
@@ -5846,8 +5846,8 @@ packages:
   extend@3.0.2:
     resolution: {integrity: sha512-fjquC59cD7CyW6urNXK0FBufkZcoiGG80wTuPujX590cB5Ttln20E2UB4S/WARVqhXffZl2LNgS+gQdPIIim/g==}
 
-  fast-check@4.9.0:
-    resolution: {integrity: sha512-7ms6T7SybUev/PQITciI0yLM2pOSFy5zpG8Ty7tQofcVaQUvrMXp6CBwqF6fThLCLOrfBtuHAtwq6Yu4XPCllg==}
+  fast-check@4.10.2:
+    resolution: {integrity: sha512-iK2f+YrcmoeGqk6fA0ea2bptcu/itMIm4NfEozq6N25+aG6h7s5HZbB/k1aV7b5w5sFLMCbbtRUsTVR+BgC3xw==}
     engines: {node: '>=12.17.0'}
 
   fast-deep-equal@3.1.3:
@@ -6257,9 +6257,9 @@ packages:
     resolution: {integrity: sha512-X7rqawQBvfdjS10YU1y1YVreA3SsLrW9dX2CewP2EbBJM4ypVNLDkO5y04gejPwKIY9lR+7r9gn3rFPt/kmWFg==}
     engines: {node: ^14.17.0 || ^16.13.0 || >=18.0.0}
 
-  ini@6.0.0:
-    resolution: {integrity: sha512-IBTdIkzZNOpqm7q3dRqJvMaldXjDHWkEDfrwGEQTs5eaQMWV+djAhR+wahyNNMAa+qpbDUhBMVt4ZKNwpPm7xQ==}
-    engines: {node: ^20.17.0 || >=22.9.0}
+  ini@7.0.0:
+    resolution: {integrity: sha512-ifK0CgjALofS5bkrcTy4RaQ9Vx2Knf/eLeIO+NaswQEpH1UblrtTSCIvN71qQDMq0PeQ/SSPojvEJp9vvvfr+w==}
+    engines: {node: ^22.22.2 || ^24.15.0 || >=26.0.0}
 
   inline-style-parser@0.2.7:
     resolution: {integrity: sha512-Nb2ctOyNR8DqQoR0OwRG95uNWIC0C1lCgf5Naz5H6Ji72KZ8OcFZLz2P5sNgwlyoJ8Yif11oMuYs5pBQa86csA==}
@@ -6939,15 +6939,15 @@ packages:
   ms@2.1.3:
     resolution: {integrity: sha512-6FlzubTLZG3J2a/NVCAleEhjzq5oxgHyaCU9yYXvcLsvoVaHJq/s5xXI6/XXP6tz7R9xAOtHnSO/tXtF3WRTlA==}
 
-  msgpackr-extract@3.0.4:
-    resolution: {integrity: sha512-4kmO/MdyUIkLIvTPr8VHLil4AtoKIoniWPIEk5+CDy0xnWC84azhSFmuJ7PxZdsYtiP5kEeQsORAVIeMgxT+Hw==}
+  msgpackr-extract@3.0.7:
+    resolution: {integrity: sha512-/dOQboWnkR1cjm88XyH/cGSivECGgyQu3814+bNUAq5wACQC8Ya/CViB9WApvWJ5Hya/JJQQmUeBFOZj8MLjGA==}
     hasBin: true
 
-  msgpackr@1.12.1:
-    resolution: {integrity: sha512-4EUH9tQHnMmEgzW/MdAP0KIfa1T9AF+htl0ffe2n5vb2EKn9y2co8ccpgWko6S52Jy1PQZKwRnx5/KkYjtd9MQ==}
+  msgpackr@2.1.4:
+    resolution: {integrity: sha512-TvP18sX5U3MXoHHSUZen/FagaNTEJObyb8OlnJcNbqN6Ux/oCwYJrHhCOzi31bItyW/Efz1IDnRDKQ23j4ZuvA==}
 
-  multipasta@0.2.8:
-    resolution: {integrity: sha512-ZPWuMKyv0cSO29f7hozp+k6+crZbQijV8ipMvxNxRf2SwtYGTX1ZX89Kd20VV4H9Znonx+EQn+iy1wGQsJ+b+Q==}
+  multipasta@0.2.9:
+    resolution: {integrity: sha512-kAovZHgxryqb0xTFz7OTCPxbas8UBTTwCDhfrlaNecp1/z6xcMfp5PVhDxsW7jONHyDF10/ccp30MxA2+66GJw==}
 
   nanoid@3.3.20:
     resolution: {integrity: sha512-uKdg2G3GNCKQn9byYOpxbGqrT2fGO5KRt5J/8b3pok8rT6qxGWF6hxMyJiEYtAf+FVyYuD9hRaDqX5uPFYJ4ZQ==}
@@ -7974,6 +7974,9 @@ packages:
   tslib@2.8.1:
     resolution: {integrity: sha512-oJFu94HQb+KVduSUQL7wnpmqnfmLsOA/nAh6b6EH0wCEoK0/mPeXU6c3wKDV83MkOuHPRHtSXKKU99IBazS/2w==}
 
+  tslib@2.9.1:
+    resolution: {integrity: sha512-a4Ux9VKuIMHsOS7ENbEq6hK2ZGYIT27Rtl0E4eD9KqwxhKiQeMZE/9xb3IdYwWaSOyIBQLExhQgXDTYoiCxnWA==}
+
   tsx@4.23.0:
     resolution: {integrity: sha512-eUdUIaCr963q2h5u3+QwvYp0+eqPvn+egeqZUm0hwERCqqx1E3kK5ehbGCvqSE5MQAULr67ww0cA3jKc3YkM1w==}
     engines: {node: '>=18.0.0'}
@@ -8176,8 +8179,8 @@ packages:
     resolution: {integrity: sha512-vIYxrBCC/N/K+Js3qSN88go7kIfNPssr/hHCesKCQNAjmgvYS2oqr69kIufEG+O4+PfezOH4EbIeHCfFov8ZgQ==}
     hasBin: true
 
-  uuid@13.0.2:
-    resolution: {integrity: sha512-vzi9uRZ926x4XV73S/4qQaTwPXM2JBj6/6lI/byHH1jOpCzb0zDbfytgA9LcN/hzb2l7WQSQnxITOVx5un/wGw==}
+  uuid@14.0.3:
+    resolution: {integrity: sha512-Sc5u1VVln93y1Xnz4R+CunOZc7R9LUcTmhj7Rc7Eg3HVcf7rVn2FOoa812fe0W8p3jD7xeoGSYbfqCGGH2B6xw==}
     hasBin: true
 
   vary@1.1.2:
@@ -8425,6 +8428,11 @@ packages:
 
   yaml@2.9.0:
     resolution: {integrity: sha512-2AvhNX3mb8zd6Zy7INTtSpl1F15HW6Wnqj0srWlkKLcpYl/gMIMJiyuGq2KeI2YFxUPjdlB+3Lc10seMLtL4cA==}
+    engines: {node: '>= 14.6'}
+    hasBin: true
+
+  yaml@2.9.1:
+    resolution: {integrity: sha512-3NxN8+78OdzbT7C/WjGsyfPAtJaN3FNDsWxv7Y7mcDsT/oOmgW8BpyQQFFBnvZE3j9Y2Sdz1ULFLezL7Eb2yFw==}
     engines: {node: '>= 14.6'}
     hasBin: true
 
@@ -8934,12 +8942,12 @@ snapshots:
       string_decoder: 1.3.0
       url: 0.11.4
 
-  '@bundled-es-modules/memfs@4.17.0(tslib@2.8.1)':
+  '@bundled-es-modules/memfs@4.17.0(tslib@2.9.1)':
     dependencies:
       assert: 2.1.0
       buffer: 6.0.3
       events: 3.3.0
-      memfs: 4.57.8(tslib@2.8.1)
+      memfs: 4.57.8(tslib@2.9.1)
       path: 0.12.7
       stream: 0.0.3
       util: 0.12.5
@@ -9325,19 +9333,19 @@ snapshots:
       marked: 18.0.11
       marked-cjk-friendly: 0.1.2(marked@18.0.11)
 
-  '@effect/platform-node-shared@4.0.0-beta.97(effect@4.0.0-beta.59)':
+  '@effect/platform-node-shared@4.0.0-beta.97(effect@4.0.0-beta.103)':
     dependencies:
       '@types/ws': 8.18.1
-      effect: 4.0.0-beta.59
+      effect: 4.0.0-beta.103
       ws: 8.21.0
     transitivePeerDependencies:
       - bufferutil
       - utf-8-validate
 
-  '@effect/platform-node@4.0.0-beta.59(effect@4.0.0-beta.59)(ioredis@5.11.1)':
+  '@effect/platform-node@4.0.0-beta.59(effect@4.0.0-beta.103)(ioredis@5.11.1)':
     dependencies:
-      '@effect/platform-node-shared': 4.0.0-beta.97(effect@4.0.0-beta.59)
-      effect: 4.0.0-beta.59
+      '@effect/platform-node-shared': 4.0.0-beta.97(effect@4.0.0-beta.103)
+      effect: 4.0.0-beta.103
       ioredis: 5.11.1
       mime: 4.1.0
       undici: 8.12.3
@@ -9506,10 +9514,10 @@ snapshots:
   '@esbuild/win32-x64@0.28.1':
     optional: true
 
-  '@executor-js/config@1.5.37(@effect/platform-node@4.0.0-beta.59(effect@4.0.0-beta.59)(ioredis@5.11.1))(effect@4.0.0-beta.59)(react@19.2.7)(typeorm@0.3.31(ioredis@5.11.1))':
+  '@executor-js/config@1.5.37(@effect/platform-node@4.0.0-beta.59(effect@4.0.0-beta.103)(ioredis@5.11.1))(effect@4.0.0-beta.103)(react@19.2.7)(typeorm@0.3.31(ioredis@5.11.1))':
     dependencies:
-      '@executor-js/sdk': 1.5.37(patch_hash=7061d4455cc286a23ca4c3683819032231059648ed7fef31e7a1f0297e1f3597)(@effect/platform-node@4.0.0-beta.59(effect@4.0.0-beta.59)(ioredis@5.11.1))(effect@4.0.0-beta.59)(react@19.2.7)(typeorm@0.3.31(ioredis@5.11.1))
-      effect: 4.0.0-beta.59
+      '@executor-js/sdk': 1.5.37(patch_hash=7061d4455cc286a23ca4c3683819032231059648ed7fef31e7a1f0297e1f3597)(@effect/platform-node@4.0.0-beta.59(effect@4.0.0-beta.103)(ioredis@5.11.1))(effect@4.0.0-beta.103)(react@19.2.7)(typeorm@0.3.31(ioredis@5.11.1))
+      effect: 4.0.0-beta.103
       jiti: 2.7.0
       jsonc-parser: 3.3.1
     transitivePeerDependencies:
@@ -9531,14 +9539,14 @@ snapshots:
     transitivePeerDependencies:
       - typeorm
 
-  '@executor-js/plugin-mcp@1.5.37(effect@4.0.0-beta.59)(ioredis@5.11.1)(react@19.2.7)(typeorm@0.3.31(ioredis@5.11.1))':
+  '@executor-js/plugin-mcp@1.5.37(effect@4.0.0-beta.103)(ioredis@5.11.1)(react@19.2.7)(typeorm@0.3.31(ioredis@5.11.1))':
     dependencies:
       '@cfworker/json-schema': 4.1.1
-      '@effect/platform-node': 4.0.0-beta.59(effect@4.0.0-beta.59)(ioredis@5.11.1)
-      '@executor-js/config': 1.5.37(@effect/platform-node@4.0.0-beta.59(effect@4.0.0-beta.59)(ioredis@5.11.1))(effect@4.0.0-beta.59)(react@19.2.7)(typeorm@0.3.31(ioredis@5.11.1))
-      '@executor-js/sdk': 1.5.37(patch_hash=7061d4455cc286a23ca4c3683819032231059648ed7fef31e7a1f0297e1f3597)(@effect/platform-node@4.0.0-beta.59(effect@4.0.0-beta.59)(ioredis@5.11.1))(effect@4.0.0-beta.59)(react@19.2.7)(typeorm@0.3.31(ioredis@5.11.1))
+      '@effect/platform-node': 4.0.0-beta.59(effect@4.0.0-beta.103)(ioredis@5.11.1)
+      '@executor-js/config': 1.5.37(@effect/platform-node@4.0.0-beta.59(effect@4.0.0-beta.103)(ioredis@5.11.1))(effect@4.0.0-beta.103)(react@19.2.7)(typeorm@0.3.31(ioredis@5.11.1))
+      '@executor-js/sdk': 1.5.37(patch_hash=7061d4455cc286a23ca4c3683819032231059648ed7fef31e7a1f0297e1f3597)(@effect/platform-node@4.0.0-beta.59(effect@4.0.0-beta.103)(ioredis@5.11.1))(effect@4.0.0-beta.103)(react@19.2.7)(typeorm@0.3.31(ioredis@5.11.1))
       '@modelcontextprotocol/sdk': 1.32.0(@cfworker/json-schema@4.1.1)(zod@4.6.7)
-      effect: 4.0.0-beta.59
+      effect: 4.0.0-beta.103
       zod: 4.6.7
     optionalDependencies:
       react: 19.2.7
@@ -9550,12 +9558,12 @@ snapshots:
       - typeorm
       - utf-8-validate
 
-  '@executor-js/plugin-openapi@1.5.37(effect@4.0.0-beta.59)(ioredis@5.11.1)(react@19.2.7)(typeorm@0.3.31(ioredis@5.11.1))':
+  '@executor-js/plugin-openapi@1.5.37(effect@4.0.0-beta.103)(ioredis@5.11.1)(react@19.2.7)(typeorm@0.3.31(ioredis@5.11.1))':
     dependencies:
-      '@effect/platform-node': 4.0.0-beta.59(effect@4.0.0-beta.59)(ioredis@5.11.1)
-      '@executor-js/config': 1.5.37(@effect/platform-node@4.0.0-beta.59(effect@4.0.0-beta.59)(ioredis@5.11.1))(effect@4.0.0-beta.59)(react@19.2.7)(typeorm@0.3.31(ioredis@5.11.1))
-      '@executor-js/sdk': 1.5.37(patch_hash=7061d4455cc286a23ca4c3683819032231059648ed7fef31e7a1f0297e1f3597)(@effect/platform-node@4.0.0-beta.59(effect@4.0.0-beta.59)(ioredis@5.11.1))(effect@4.0.0-beta.59)(react@19.2.7)(typeorm@0.3.31(ioredis@5.11.1))
-      effect: 4.0.0-beta.59
+      '@effect/platform-node': 4.0.0-beta.59(effect@4.0.0-beta.103)(ioredis@5.11.1)
+      '@executor-js/config': 1.5.37(@effect/platform-node@4.0.0-beta.59(effect@4.0.0-beta.103)(ioredis@5.11.1))(effect@4.0.0-beta.103)(react@19.2.7)(typeorm@0.3.31(ioredis@5.11.1))
+      '@executor-js/sdk': 1.5.37(patch_hash=7061d4455cc286a23ca4c3683819032231059648ed7fef31e7a1f0297e1f3597)(@effect/platform-node@4.0.0-beta.59(effect@4.0.0-beta.103)(ioredis@5.11.1))(effect@4.0.0-beta.103)(react@19.2.7)(typeorm@0.3.31(ioredis@5.11.1))
+      effect: 4.0.0-beta.103
       js-yaml: 4.3.2
       lucide-react: 1.24.0(react@19.2.7)
       openapi-types: 12.1.3
@@ -9568,16 +9576,16 @@ snapshots:
       - typeorm
       - utf-8-validate
 
-  '@executor-js/sdk@1.5.37(patch_hash=7061d4455cc286a23ca4c3683819032231059648ed7fef31e7a1f0297e1f3597)(@effect/platform-node@4.0.0-beta.59(effect@4.0.0-beta.59)(ioredis@5.11.1))(effect@4.0.0-beta.59)(react@19.2.7)(typeorm@0.3.31(ioredis@5.11.1))':
+  '@executor-js/sdk@1.5.37(patch_hash=7061d4455cc286a23ca4c3683819032231059648ed7fef31e7a1f0297e1f3597)(@effect/platform-node@4.0.0-beta.59(effect@4.0.0-beta.103)(ioredis@5.11.1))(effect@4.0.0-beta.103)(react@19.2.7)(typeorm@0.3.31(ioredis@5.11.1))':
     dependencies:
       '@executor-js/fumadb': 1.5.7(typeorm@0.3.31(ioredis@5.11.1))
       '@standard-schema/spec': 1.1.0
-      effect: 4.0.0-beta.59
+      effect: 4.0.0-beta.103
       fractional-indexing: 3.4.0
       oauth4webapi: 3.8.6
       tldts: 7.4.8
     optionalDependencies:
-      '@effect/platform-node': 4.0.0-beta.59(effect@4.0.0-beta.59)(ioredis@5.11.1)
+      '@effect/platform-node': 4.0.0-beta.59(effect@4.0.0-beta.103)(ioredis@5.11.1)
       react: 19.2.7
     transitivePeerDependencies:
       - drizzle-orm
@@ -10596,132 +10604,132 @@ snapshots:
 
   '@js-sdsl/ordered-map@4.4.2': {}
 
-  '@jsonjoy.com/base64@1.1.2(tslib@2.8.1)':
+  '@jsonjoy.com/base64@1.1.2(tslib@2.9.1)':
     dependencies:
-      tslib: 2.8.1
+      tslib: 2.9.1
 
-  '@jsonjoy.com/base64@17.67.0(tslib@2.8.1)':
+  '@jsonjoy.com/base64@17.67.0(tslib@2.9.1)':
     dependencies:
-      tslib: 2.8.1
+      tslib: 2.9.1
 
-  '@jsonjoy.com/buffers@1.2.1(tslib@2.8.1)':
+  '@jsonjoy.com/buffers@1.2.1(tslib@2.9.1)':
     dependencies:
-      tslib: 2.8.1
+      tslib: 2.9.1
 
-  '@jsonjoy.com/buffers@17.67.0(tslib@2.8.1)':
+  '@jsonjoy.com/buffers@17.67.0(tslib@2.9.1)':
     dependencies:
-      tslib: 2.8.1
+      tslib: 2.9.1
 
-  '@jsonjoy.com/codegen@1.0.0(tslib@2.8.1)':
+  '@jsonjoy.com/codegen@1.0.0(tslib@2.9.1)':
     dependencies:
-      tslib: 2.8.1
+      tslib: 2.9.1
 
-  '@jsonjoy.com/codegen@17.67.0(tslib@2.8.1)':
+  '@jsonjoy.com/codegen@17.67.0(tslib@2.9.1)':
     dependencies:
-      tslib: 2.8.1
+      tslib: 2.9.1
 
-  '@jsonjoy.com/fs-core@4.57.8(tslib@2.8.1)':
+  '@jsonjoy.com/fs-core@4.57.8(tslib@2.9.1)':
     dependencies:
-      '@jsonjoy.com/fs-node-builtins': 4.57.8(tslib@2.8.1)
-      '@jsonjoy.com/fs-node-utils': 4.57.8(tslib@2.8.1)
-      thingies: 2.6.0(tslib@2.8.1)
-      tslib: 2.8.1
+      '@jsonjoy.com/fs-node-builtins': 4.57.8(tslib@2.9.1)
+      '@jsonjoy.com/fs-node-utils': 4.57.8(tslib@2.9.1)
+      thingies: 2.6.0(tslib@2.9.1)
+      tslib: 2.9.1
 
-  '@jsonjoy.com/fs-fsa@4.57.8(tslib@2.8.1)':
+  '@jsonjoy.com/fs-fsa@4.57.8(tslib@2.9.1)':
     dependencies:
-      '@jsonjoy.com/fs-core': 4.57.8(tslib@2.8.1)
-      '@jsonjoy.com/fs-node-builtins': 4.57.8(tslib@2.8.1)
-      '@jsonjoy.com/fs-node-utils': 4.57.8(tslib@2.8.1)
-      thingies: 2.6.0(tslib@2.8.1)
-      tslib: 2.8.1
+      '@jsonjoy.com/fs-core': 4.57.8(tslib@2.9.1)
+      '@jsonjoy.com/fs-node-builtins': 4.57.8(tslib@2.9.1)
+      '@jsonjoy.com/fs-node-utils': 4.57.8(tslib@2.9.1)
+      thingies: 2.6.0(tslib@2.9.1)
+      tslib: 2.9.1
 
-  '@jsonjoy.com/fs-node-builtins@4.57.8(tslib@2.8.1)':
+  '@jsonjoy.com/fs-node-builtins@4.57.8(tslib@2.9.1)':
     dependencies:
-      tslib: 2.8.1
+      tslib: 2.9.1
 
-  '@jsonjoy.com/fs-node-to-fsa@4.57.8(tslib@2.8.1)':
+  '@jsonjoy.com/fs-node-to-fsa@4.57.8(tslib@2.9.1)':
     dependencies:
-      '@jsonjoy.com/fs-fsa': 4.57.8(tslib@2.8.1)
-      '@jsonjoy.com/fs-node-builtins': 4.57.8(tslib@2.8.1)
-      '@jsonjoy.com/fs-node-utils': 4.57.8(tslib@2.8.1)
-      tslib: 2.8.1
+      '@jsonjoy.com/fs-fsa': 4.57.8(tslib@2.9.1)
+      '@jsonjoy.com/fs-node-builtins': 4.57.8(tslib@2.9.1)
+      '@jsonjoy.com/fs-node-utils': 4.57.8(tslib@2.9.1)
+      tslib: 2.9.1
 
-  '@jsonjoy.com/fs-node-utils@4.57.8(tslib@2.8.1)':
+  '@jsonjoy.com/fs-node-utils@4.57.8(tslib@2.9.1)':
     dependencies:
-      '@jsonjoy.com/fs-node-builtins': 4.57.8(tslib@2.8.1)
-      tslib: 2.8.1
+      '@jsonjoy.com/fs-node-builtins': 4.57.8(tslib@2.9.1)
+      tslib: 2.9.1
 
-  '@jsonjoy.com/fs-node@4.57.8(tslib@2.8.1)':
+  '@jsonjoy.com/fs-node@4.57.8(tslib@2.9.1)':
     dependencies:
-      '@jsonjoy.com/fs-core': 4.57.8(tslib@2.8.1)
-      '@jsonjoy.com/fs-node-builtins': 4.57.8(tslib@2.8.1)
-      '@jsonjoy.com/fs-node-utils': 4.57.8(tslib@2.8.1)
-      '@jsonjoy.com/fs-print': 4.57.8(tslib@2.8.1)
-      '@jsonjoy.com/fs-snapshot': 4.57.8(tslib@2.8.1)
-      glob-to-regex.js: 1.2.0(tslib@2.8.1)
-      thingies: 2.6.0(tslib@2.8.1)
-      tslib: 2.8.1
+      '@jsonjoy.com/fs-core': 4.57.8(tslib@2.9.1)
+      '@jsonjoy.com/fs-node-builtins': 4.57.8(tslib@2.9.1)
+      '@jsonjoy.com/fs-node-utils': 4.57.8(tslib@2.9.1)
+      '@jsonjoy.com/fs-print': 4.57.8(tslib@2.9.1)
+      '@jsonjoy.com/fs-snapshot': 4.57.8(tslib@2.9.1)
+      glob-to-regex.js: 1.2.0(tslib@2.9.1)
+      thingies: 2.6.0(tslib@2.9.1)
+      tslib: 2.9.1
 
-  '@jsonjoy.com/fs-print@4.57.8(tslib@2.8.1)':
+  '@jsonjoy.com/fs-print@4.57.8(tslib@2.9.1)':
     dependencies:
-      '@jsonjoy.com/fs-node-utils': 4.57.8(tslib@2.8.1)
-      tree-dump: 1.1.0(tslib@2.8.1)
-      tslib: 2.8.1
+      '@jsonjoy.com/fs-node-utils': 4.57.8(tslib@2.9.1)
+      tree-dump: 1.1.0(tslib@2.9.1)
+      tslib: 2.9.1
 
-  '@jsonjoy.com/fs-snapshot@4.57.8(tslib@2.8.1)':
+  '@jsonjoy.com/fs-snapshot@4.57.8(tslib@2.9.1)':
     dependencies:
-      '@jsonjoy.com/buffers': 17.67.0(tslib@2.8.1)
-      '@jsonjoy.com/fs-node-utils': 4.57.8(tslib@2.8.1)
-      '@jsonjoy.com/json-pack': 17.67.0(tslib@2.8.1)
-      '@jsonjoy.com/util': 17.67.0(tslib@2.8.1)
-      tslib: 2.8.1
+      '@jsonjoy.com/buffers': 17.67.0(tslib@2.9.1)
+      '@jsonjoy.com/fs-node-utils': 4.57.8(tslib@2.9.1)
+      '@jsonjoy.com/json-pack': 17.67.0(tslib@2.9.1)
+      '@jsonjoy.com/util': 17.67.0(tslib@2.9.1)
+      tslib: 2.9.1
 
-  '@jsonjoy.com/json-pack@1.21.0(tslib@2.8.1)':
+  '@jsonjoy.com/json-pack@1.21.0(tslib@2.9.1)':
     dependencies:
-      '@jsonjoy.com/base64': 1.1.2(tslib@2.8.1)
-      '@jsonjoy.com/buffers': 1.2.1(tslib@2.8.1)
-      '@jsonjoy.com/codegen': 1.0.0(tslib@2.8.1)
-      '@jsonjoy.com/json-pointer': 1.0.2(tslib@2.8.1)
-      '@jsonjoy.com/util': 1.9.0(tslib@2.8.1)
+      '@jsonjoy.com/base64': 1.1.2(tslib@2.9.1)
+      '@jsonjoy.com/buffers': 1.2.1(tslib@2.9.1)
+      '@jsonjoy.com/codegen': 1.0.0(tslib@2.9.1)
+      '@jsonjoy.com/json-pointer': 1.0.2(tslib@2.9.1)
+      '@jsonjoy.com/util': 1.9.0(tslib@2.9.1)
       hyperdyperid: 1.2.0
-      thingies: 2.6.0(tslib@2.8.1)
-      tree-dump: 1.1.0(tslib@2.8.1)
-      tslib: 2.8.1
+      thingies: 2.6.0(tslib@2.9.1)
+      tree-dump: 1.1.0(tslib@2.9.1)
+      tslib: 2.9.1
 
-  '@jsonjoy.com/json-pack@17.67.0(tslib@2.8.1)':
+  '@jsonjoy.com/json-pack@17.67.0(tslib@2.9.1)':
     dependencies:
-      '@jsonjoy.com/base64': 17.67.0(tslib@2.8.1)
-      '@jsonjoy.com/buffers': 17.67.0(tslib@2.8.1)
-      '@jsonjoy.com/codegen': 17.67.0(tslib@2.8.1)
-      '@jsonjoy.com/json-pointer': 17.67.0(tslib@2.8.1)
-      '@jsonjoy.com/util': 17.67.0(tslib@2.8.1)
+      '@jsonjoy.com/base64': 17.67.0(tslib@2.9.1)
+      '@jsonjoy.com/buffers': 17.67.0(tslib@2.9.1)
+      '@jsonjoy.com/codegen': 17.67.0(tslib@2.9.1)
+      '@jsonjoy.com/json-pointer': 17.67.0(tslib@2.9.1)
+      '@jsonjoy.com/util': 17.67.0(tslib@2.9.1)
       hyperdyperid: 1.2.0
-      thingies: 2.6.0(tslib@2.8.1)
-      tree-dump: 1.1.0(tslib@2.8.1)
-      tslib: 2.8.1
+      thingies: 2.6.0(tslib@2.9.1)
+      tree-dump: 1.1.0(tslib@2.9.1)
+      tslib: 2.9.1
 
-  '@jsonjoy.com/json-pointer@1.0.2(tslib@2.8.1)':
+  '@jsonjoy.com/json-pointer@1.0.2(tslib@2.9.1)':
     dependencies:
-      '@jsonjoy.com/codegen': 1.0.0(tslib@2.8.1)
-      '@jsonjoy.com/util': 1.9.0(tslib@2.8.1)
-      tslib: 2.8.1
+      '@jsonjoy.com/codegen': 1.0.0(tslib@2.9.1)
+      '@jsonjoy.com/util': 1.9.0(tslib@2.9.1)
+      tslib: 2.9.1
 
-  '@jsonjoy.com/json-pointer@17.67.0(tslib@2.8.1)':
+  '@jsonjoy.com/json-pointer@17.67.0(tslib@2.9.1)':
     dependencies:
-      '@jsonjoy.com/util': 17.67.0(tslib@2.8.1)
-      tslib: 2.8.1
+      '@jsonjoy.com/util': 17.67.0(tslib@2.9.1)
+      tslib: 2.9.1
 
-  '@jsonjoy.com/util@1.9.0(tslib@2.8.1)':
+  '@jsonjoy.com/util@1.9.0(tslib@2.9.1)':
     dependencies:
-      '@jsonjoy.com/buffers': 1.2.1(tslib@2.8.1)
-      '@jsonjoy.com/codegen': 1.0.0(tslib@2.8.1)
-      tslib: 2.8.1
+      '@jsonjoy.com/buffers': 1.2.1(tslib@2.9.1)
+      '@jsonjoy.com/codegen': 1.0.0(tslib@2.9.1)
+      tslib: 2.9.1
 
-  '@jsonjoy.com/util@17.67.0(tslib@2.8.1)':
+  '@jsonjoy.com/util@17.67.0(tslib@2.9.1)':
     dependencies:
-      '@jsonjoy.com/buffers': 17.67.0(tslib@2.8.1)
-      '@jsonjoy.com/codegen': 17.67.0(tslib@2.8.1)
-      tslib: 2.8.1
+      '@jsonjoy.com/buffers': 17.67.0(tslib@2.9.1)
+      '@jsonjoy.com/codegen': 17.67.0(tslib@2.9.1)
+      tslib: 2.9.1
 
   '@mermaid-js/parser@1.2.1':
     dependencies:
@@ -10776,22 +10784,22 @@ snapshots:
     transitivePeerDependencies:
       - supports-color
 
-  '@msgpackr-extract/msgpackr-extract-darwin-arm64@3.0.4':
+  '@msgpackr-extract/msgpackr-extract-darwin-arm64@3.0.7':
     optional: true
 
-  '@msgpackr-extract/msgpackr-extract-darwin-x64@3.0.4':
+  '@msgpackr-extract/msgpackr-extract-darwin-x64@3.0.7':
     optional: true
 
-  '@msgpackr-extract/msgpackr-extract-linux-arm64@3.0.4':
+  '@msgpackr-extract/msgpackr-extract-linux-arm64@3.0.7':
     optional: true
 
-  '@msgpackr-extract/msgpackr-extract-linux-arm@3.0.4':
+  '@msgpackr-extract/msgpackr-extract-linux-arm@3.0.7':
     optional: true
 
-  '@msgpackr-extract/msgpackr-extract-linux-x64@3.0.4':
+  '@msgpackr-extract/msgpackr-extract-linux-x64@3.0.7':
     optional: true
 
-  '@msgpackr-extract/msgpackr-extract-win32-x64@3.0.4':
+  '@msgpackr-extract/msgpackr-extract-win32-x64@3.0.7':
     optional: true
 
   '@next/env@15.5.28': {}
@@ -11991,19 +11999,19 @@ snapshots:
       postcss: 8.5.31
       tailwindcss: 4.3.2
 
-  '@tailwindcss/vite@4.3.2(vite@6.4.5(@types/node@22.20.0)(jiti@2.7.0)(lightningcss@1.32.0)(terser@5.16.9)(tsx@4.23.0)(yaml@2.9.0))':
+  '@tailwindcss/vite@4.3.2(vite@6.4.5(@types/node@22.20.0)(jiti@2.7.0)(lightningcss@1.32.0)(terser@5.16.9)(tsx@4.23.0)(yaml@2.9.1))':
     dependencies:
       '@tailwindcss/node': 4.3.2
       '@tailwindcss/oxide': 4.3.2
       tailwindcss: 4.3.2
-      vite: 6.4.5(@types/node@22.20.0)(jiti@2.7.0)(lightningcss@1.32.0)(terser@5.16.9)(tsx@4.23.0)(yaml@2.9.0)
+      vite: 6.4.5(@types/node@22.20.0)(jiti@2.7.0)(lightningcss@1.32.0)(terser@5.16.9)(tsx@4.23.0)(yaml@2.9.1)
 
-  '@tailwindcss/vite@4.3.2(vite@6.4.5(@types/node@25.6.0)(jiti@2.7.0)(lightningcss@1.32.0)(terser@5.16.9)(tsx@4.23.0)(yaml@2.9.0))':
+  '@tailwindcss/vite@4.3.2(vite@6.4.5(@types/node@25.6.0)(jiti@2.7.0)(lightningcss@1.32.0)(terser@5.16.9)(tsx@4.23.0)(yaml@2.9.1))':
     dependencies:
       '@tailwindcss/node': 4.3.2
       '@tailwindcss/oxide': 4.3.2
       tailwindcss: 4.3.2
-      vite: 6.4.5(@types/node@25.6.0)(jiti@2.7.0)(lightningcss@1.32.0)(terser@5.16.9)(tsx@4.23.0)(yaml@2.9.0)
+      vite: 6.4.5(@types/node@25.6.0)(jiti@2.7.0)(lightningcss@1.32.0)(terser@5.16.9)(tsx@4.23.0)(yaml@2.9.1)
 
   '@tanstack/query-async-storage-persister@5.101.2':
     dependencies:
@@ -12568,7 +12576,7 @@ snapshots:
 
   '@vercel/oidc@3.2.0': {}
 
-  '@vitejs/plugin-react@4.7.0(vite@6.4.5(@types/node@22.20.0)(jiti@2.7.0)(lightningcss@1.32.0)(terser@5.16.9)(tsx@4.23.0)(yaml@2.9.0))':
+  '@vitejs/plugin-react@4.7.0(vite@6.4.5(@types/node@22.20.0)(jiti@2.7.0)(lightningcss@1.32.0)(terser@5.16.9)(tsx@4.23.0)(yaml@2.9.1))':
     dependencies:
       '@babel/core': 7.29.7
       '@babel/plugin-transform-react-jsx-self': 7.29.7(@babel/core@7.29.7)
@@ -12576,11 +12584,11 @@ snapshots:
       '@rolldown/pluginutils': 1.0.0-beta.27
       '@types/babel__core': 7.20.5
       react-refresh: 0.17.0
-      vite: 6.4.5(@types/node@22.20.0)(jiti@2.7.0)(lightningcss@1.32.0)(terser@5.16.9)(tsx@4.23.0)(yaml@2.9.0)
+      vite: 6.4.5(@types/node@22.20.0)(jiti@2.7.0)(lightningcss@1.32.0)(terser@5.16.9)(tsx@4.23.0)(yaml@2.9.1)
     transitivePeerDependencies:
       - supports-color
 
-  '@vitejs/plugin-react@4.7.0(vite@6.4.5(@types/node@25.6.0)(jiti@2.7.0)(lightningcss@1.32.0)(terser@5.16.9)(tsx@4.23.0)(yaml@2.9.0))':
+  '@vitejs/plugin-react@4.7.0(vite@6.4.5(@types/node@25.6.0)(jiti@2.7.0)(lightningcss@1.32.0)(terser@5.16.9)(tsx@4.23.0)(yaml@2.9.1))':
     dependencies:
       '@babel/core': 7.29.7
       '@babel/plugin-transform-react-jsx-self': 7.29.7(@babel/core@7.29.7)
@@ -12588,7 +12596,7 @@ snapshots:
       '@rolldown/pluginutils': 1.0.0-beta.27
       '@types/babel__core': 7.20.5
       react-refresh: 0.17.0
-      vite: 6.4.5(@types/node@25.6.0)(jiti@2.7.0)(lightningcss@1.32.0)(terser@5.16.9)(tsx@4.23.0)(yaml@2.9.0)
+      vite: 6.4.5(@types/node@25.6.0)(jiti@2.7.0)(lightningcss@1.32.0)(terser@5.16.9)(tsx@4.23.0)(yaml@2.9.1)
     transitivePeerDependencies:
       - supports-color
 
@@ -12609,13 +12617,21 @@ snapshots:
     optionalDependencies:
       vite: 6.4.5(@types/node@22.20.0)(jiti@2.7.0)(lightningcss@1.32.0)(terser@5.16.9)(tsx@4.23.0)(yaml@2.9.0)
 
-  '@vitest/mocker@4.1.12(vite@6.4.5(@types/node@25.6.0)(jiti@2.7.0)(lightningcss@1.32.0)(terser@5.16.9)(tsx@4.23.0)(yaml@2.9.0))':
+  '@vitest/mocker@4.1.12(vite@6.4.5(@types/node@22.20.0)(jiti@2.7.0)(lightningcss@1.32.0)(terser@5.16.9)(tsx@4.23.0)(yaml@2.9.1))':
     dependencies:
       '@vitest/spy': 4.1.12
       estree-walker: 3.0.3
       magic-string: 0.30.21
     optionalDependencies:
-      vite: 6.4.5(@types/node@25.6.0)(jiti@2.7.0)(lightningcss@1.32.0)(terser@5.16.9)(tsx@4.23.0)(yaml@2.9.0)
+      vite: 6.4.5(@types/node@22.20.0)(jiti@2.7.0)(lightningcss@1.32.0)(terser@5.16.9)(tsx@4.23.0)(yaml@2.9.1)
+
+  '@vitest/mocker@4.1.12(vite@6.4.5(@types/node@25.6.0)(jiti@2.7.0)(lightningcss@1.32.0)(terser@5.16.9)(tsx@4.23.0)(yaml@2.9.1))':
+    dependencies:
+      '@vitest/spy': 4.1.12
+      estree-walker: 3.0.3
+      magic-string: 0.30.21
+    optionalDependencies:
+      vite: 6.4.5(@types/node@25.6.0)(jiti@2.7.0)(lightningcss@1.32.0)(terser@5.16.9)(tsx@4.23.0)(yaml@2.9.1)
 
   '@vitest/pretty-format@4.1.12':
     dependencies:
@@ -12704,7 +12720,7 @@ snapshots:
 
   ansi-styles@6.2.3: {}
 
-  ansis@4.4.0: {}
+  ansis@4.5.0: {}
 
   anynum@1.0.1: {}
 
@@ -13287,17 +13303,17 @@ snapshots:
 
   ee-first@1.1.1: {}
 
-  effect@4.0.0-beta.59:
+  effect@4.0.0-beta.103:
     dependencies:
       '@standard-schema/spec': 1.1.0
-      fast-check: 4.9.0
+      fast-check: 4.10.2
       find-my-way-ts: 0.1.6
-      ini: 6.0.0
+      ini: 7.0.0
       kubernetes-types: 1.30.0
-      msgpackr: 1.12.1
-      multipasta: 0.2.8
+      msgpackr: 2.1.4
+      multipasta: 0.2.9
       toml: 5.0.1
-      uuid: 13.0.2
+      uuid: 14.0.3
       yaml: 2.9.0
 
   electron-to-chromium@1.5.464: {}
@@ -13497,7 +13513,7 @@ snapshots:
 
   extend@3.0.2: {}
 
-  fast-check@4.9.0:
+  fast-check@4.10.2:
     dependencies:
       pure-rand: 8.4.2
 
@@ -13764,9 +13780,9 @@ snapshots:
       dunder-proto: 1.0.1
       es-object-atoms: 1.1.2
 
-  glob-to-regex.js@1.2.0(tslib@2.8.1):
+  glob-to-regex.js@1.2.0(tslib@2.9.1):
     dependencies:
-      tslib: 2.8.1
+      tslib: 2.9.1
 
   glob@10.5.0:
     dependencies:
@@ -14089,7 +14105,7 @@ snapshots:
 
   ini@4.1.3: {}
 
-  ini@6.0.0: {}
+  ini@7.0.0: {}
 
   inline-style-parser@0.2.7: {}
 
@@ -14634,22 +14650,22 @@ snapshots:
 
   media-typer@1.1.1: {}
 
-  memfs@4.57.8(tslib@2.8.1):
+  memfs@4.57.8(tslib@2.9.1):
     dependencies:
-      '@jsonjoy.com/fs-core': 4.57.8(tslib@2.8.1)
-      '@jsonjoy.com/fs-fsa': 4.57.8(tslib@2.8.1)
-      '@jsonjoy.com/fs-node': 4.57.8(tslib@2.8.1)
-      '@jsonjoy.com/fs-node-builtins': 4.57.8(tslib@2.8.1)
-      '@jsonjoy.com/fs-node-to-fsa': 4.57.8(tslib@2.8.1)
-      '@jsonjoy.com/fs-node-utils': 4.57.8(tslib@2.8.1)
-      '@jsonjoy.com/fs-print': 4.57.8(tslib@2.8.1)
-      '@jsonjoy.com/fs-snapshot': 4.57.8(tslib@2.8.1)
-      '@jsonjoy.com/json-pack': 1.21.0(tslib@2.8.1)
-      '@jsonjoy.com/util': 1.9.0(tslib@2.8.1)
-      glob-to-regex.js: 1.2.0(tslib@2.8.1)
-      thingies: 2.6.0(tslib@2.8.1)
-      tree-dump: 1.1.0(tslib@2.8.1)
-      tslib: 2.8.1
+      '@jsonjoy.com/fs-core': 4.57.8(tslib@2.9.1)
+      '@jsonjoy.com/fs-fsa': 4.57.8(tslib@2.9.1)
+      '@jsonjoy.com/fs-node': 4.57.8(tslib@2.9.1)
+      '@jsonjoy.com/fs-node-builtins': 4.57.8(tslib@2.9.1)
+      '@jsonjoy.com/fs-node-to-fsa': 4.57.8(tslib@2.9.1)
+      '@jsonjoy.com/fs-node-utils': 4.57.8(tslib@2.9.1)
+      '@jsonjoy.com/fs-print': 4.57.8(tslib@2.9.1)
+      '@jsonjoy.com/fs-snapshot': 4.57.8(tslib@2.9.1)
+      '@jsonjoy.com/json-pack': 1.21.0(tslib@2.9.1)
+      '@jsonjoy.com/util': 1.9.0(tslib@2.9.1)
+      glob-to-regex.js: 1.2.0(tslib@2.9.1)
+      thingies: 2.6.0(tslib@2.9.1)
+      tree-dump: 1.1.0(tslib@2.9.1)
+      tslib: 2.9.1
 
   merge-descriptors@2.0.0: {}
 
@@ -14974,23 +14990,23 @@ snapshots:
 
   ms@2.1.3: {}
 
-  msgpackr-extract@3.0.4:
+  msgpackr-extract@3.0.7:
     dependencies:
       node-gyp-build-optional-packages: 5.2.2
     optionalDependencies:
-      '@msgpackr-extract/msgpackr-extract-darwin-arm64': 3.0.4
-      '@msgpackr-extract/msgpackr-extract-darwin-x64': 3.0.4
-      '@msgpackr-extract/msgpackr-extract-linux-arm': 3.0.4
-      '@msgpackr-extract/msgpackr-extract-linux-arm64': 3.0.4
-      '@msgpackr-extract/msgpackr-extract-linux-x64': 3.0.4
-      '@msgpackr-extract/msgpackr-extract-win32-x64': 3.0.4
+      '@msgpackr-extract/msgpackr-extract-darwin-arm64': 3.0.7
+      '@msgpackr-extract/msgpackr-extract-darwin-x64': 3.0.7
+      '@msgpackr-extract/msgpackr-extract-linux-arm': 3.0.7
+      '@msgpackr-extract/msgpackr-extract-linux-arm64': 3.0.7
+      '@msgpackr-extract/msgpackr-extract-linux-x64': 3.0.7
+      '@msgpackr-extract/msgpackr-extract-win32-x64': 3.0.7
     optional: true
 
-  msgpackr@1.12.1:
+  msgpackr@2.1.4:
     optionalDependencies:
-      msgpackr-extract: 3.0.4
+      msgpackr-extract: 3.0.7
 
-  multipasta@0.2.8: {}
+  multipasta@0.2.9: {}
 
   nanoid@3.3.20: {}
 
@@ -16099,11 +16115,11 @@ snapshots:
 
   stubs@3.0.0: {}
 
-  style-dictionary@5.7.1(tslib@2.8.1):
+  style-dictionary@5.7.1(tslib@2.9.1):
     dependencies:
       '@bundled-es-modules/deepmerge': 4.3.2
       '@bundled-es-modules/glob': 13.0.6
-      '@bundled-es-modules/memfs': 4.17.0(tslib@2.8.1)
+      '@bundled-es-modules/memfs': 4.17.0(tslib@2.9.1)
       '@zip.js/zip.js': 2.8.26
       chalk: 5.6.2
       change-case: 5.4.4
@@ -16176,9 +16192,9 @@ snapshots:
       source-map-support: 0.5.21
     optional: true
 
-  thingies@2.6.0(tslib@2.8.1):
+  thingies@2.6.0(tslib@2.9.1):
     dependencies:
-      tslib: 2.8.1
+      tslib: 2.9.1
 
   through2@4.0.2:
     dependencies:
@@ -16231,9 +16247,9 @@ snapshots:
     dependencies:
       punycode: 2.3.1
 
-  tree-dump@1.1.0(tslib@2.8.1):
+  tree-dump@1.1.0(tslib@2.9.1):
     dependencies:
-      tslib: 2.8.1
+      tslib: 2.9.1
 
   tree-kill@1.2.2: {}
 
@@ -16248,6 +16264,8 @@ snapshots:
   tslib@2.6.2: {}
 
   tslib@2.8.1: {}
+
+  tslib@2.9.1: {}
 
   tsx@4.23.0:
     dependencies:
@@ -16274,7 +16292,7 @@ snapshots:
   typeorm@0.3.31(ioredis@5.11.1):
     dependencies:
       '@sqltools/formatter': 1.2.5
-      ansis: 4.4.0
+      ansis: 4.5.0
       app-root-path: 3.1.0
       buffer: 6.0.3
       dayjs: 1.11.23
@@ -16285,7 +16303,7 @@ snapshots:
       reflect-metadata: 0.2.2
       sha.js: 2.4.12
       sql-highlight: 6.1.0
-      tslib: 2.8.1
+      tslib: 2.9.1
       uuid: 11.1.1
       yargs: 17.7.3
     optionalDependencies:
@@ -16412,7 +16430,7 @@ snapshots:
 
   uuid@11.1.1: {}
 
-  uuid@13.0.2: {}
+  uuid@14.0.3: {}
 
   vary@1.1.2: {}
 
@@ -16448,7 +16466,24 @@ snapshots:
       tsx: 4.23.0
       yaml: 2.9.0
 
-  vite@6.4.5(@types/node@25.6.0)(jiti@2.7.0)(lightningcss@1.32.0)(terser@5.16.9)(tsx@4.23.0)(yaml@2.9.0):
+  vite@6.4.5(@types/node@22.20.0)(jiti@2.7.0)(lightningcss@1.32.0)(terser@5.16.9)(tsx@4.23.0)(yaml@2.9.1):
+    dependencies:
+      esbuild: 0.25.12
+      fdir: 6.5.0(picomatch@4.0.5)
+      picomatch: 4.0.5
+      postcss: 8.5.31
+      rollup: 4.62.2
+      tinyglobby: 0.2.17
+    optionalDependencies:
+      '@types/node': 22.20.0
+      fsevents: 2.3.3
+      jiti: 2.7.0
+      lightningcss: 1.32.0
+      terser: 5.16.9
+      tsx: 4.23.0
+      yaml: 2.9.1
+
+  vite@6.4.5(@types/node@25.6.0)(jiti@2.7.0)(lightningcss@1.32.0)(terser@5.16.9)(tsx@4.23.0)(yaml@2.9.1):
     dependencies:
       esbuild: 0.25.12
       fdir: 6.5.0(picomatch@4.0.5)
@@ -16463,7 +16498,7 @@ snapshots:
       lightningcss: 1.32.0
       terser: 5.16.9
       tsx: 4.23.0
-      yaml: 2.9.0
+      yaml: 2.9.1
 
   vitest@4.1.12(@opentelemetry/api@1.9.1)(@types/node@22.20.0)(jsdom@29.1.1(@noble/hashes@2.2.0))(vite@6.4.5(@types/node@22.20.0)(jiti@2.7.0)(lightningcss@1.32.0)(terser@5.16.9)(tsx@4.23.0)(yaml@2.9.0)):
     dependencies:
@@ -16494,10 +16529,10 @@ snapshots:
     transitivePeerDependencies:
       - msw
 
-  vitest@4.1.12(@opentelemetry/api@1.9.1)(@types/node@25.6.0)(jsdom@29.1.1(@noble/hashes@2.2.0))(vite@6.4.5(@types/node@25.6.0)(jiti@2.7.0)(lightningcss@1.32.0)(terser@5.16.9)(tsx@4.23.0)(yaml@2.9.0)):
+  vitest@4.1.12(@opentelemetry/api@1.9.1)(@types/node@22.20.0)(jsdom@29.1.1(@noble/hashes@2.2.0))(vite@6.4.5(@types/node@22.20.0)(jiti@2.7.0)(lightningcss@1.32.0)(terser@5.16.9)(tsx@4.23.0)(yaml@2.9.1)):
     dependencies:
       '@vitest/expect': 4.1.12
-      '@vitest/mocker': 4.1.12(vite@6.4.5(@types/node@25.6.0)(jiti@2.7.0)(lightningcss@1.32.0)(terser@5.16.9)(tsx@4.23.0)(yaml@2.9.0))
+      '@vitest/mocker': 4.1.12(vite@6.4.5(@types/node@22.20.0)(jiti@2.7.0)(lightningcss@1.32.0)(terser@5.16.9)(tsx@4.23.0)(yaml@2.9.1))
       '@vitest/pretty-format': 4.1.12
       '@vitest/runner': 4.1.12
       '@vitest/snapshot': 4.1.12
@@ -16514,7 +16549,36 @@ snapshots:
       tinyexec: 1.2.4
       tinyglobby: 0.2.17
       tinyrainbow: 3.2.0
-      vite: 6.4.5(@types/node@25.6.0)(jiti@2.7.0)(lightningcss@1.32.0)(terser@5.16.9)(tsx@4.23.0)(yaml@2.9.0)
+      vite: 6.4.5(@types/node@22.20.0)(jiti@2.7.0)(lightningcss@1.32.0)(terser@5.16.9)(tsx@4.23.0)(yaml@2.9.1)
+      why-is-node-running: 2.3.0
+    optionalDependencies:
+      '@opentelemetry/api': 1.9.1
+      '@types/node': 22.20.0
+      jsdom: 29.1.1(@noble/hashes@2.2.0)
+    transitivePeerDependencies:
+      - msw
+
+  vitest@4.1.12(@opentelemetry/api@1.9.1)(@types/node@25.6.0)(jsdom@29.1.1(@noble/hashes@2.2.0))(vite@6.4.5(@types/node@25.6.0)(jiti@2.7.0)(lightningcss@1.32.0)(terser@5.16.9)(tsx@4.23.0)(yaml@2.9.1)):
+    dependencies:
+      '@vitest/expect': 4.1.12
+      '@vitest/mocker': 4.1.12(vite@6.4.5(@types/node@25.6.0)(jiti@2.7.0)(lightningcss@1.32.0)(terser@5.16.9)(tsx@4.23.0)(yaml@2.9.1))
+      '@vitest/pretty-format': 4.1.12
+      '@vitest/runner': 4.1.12
+      '@vitest/snapshot': 4.1.12
+      '@vitest/spy': 4.1.12
+      '@vitest/utils': 4.1.12
+      es-module-lexer: 2.3.2
+      expect-type: 1.4.0
+      magic-string: 0.30.21
+      obug: 2.2.1
+      pathe: 2.0.3
+      picomatch: 4.0.5
+      std-env: 4.3.0
+      tinybench: 2.9.0
+      tinyexec: 1.2.4
+      tinyglobby: 0.2.17
+      tinyrainbow: 3.2.0
+      vite: 6.4.5(@types/node@25.6.0)(jiti@2.7.0)(lightningcss@1.32.0)(terser@5.16.9)(tsx@4.23.0)(yaml@2.9.1)
       why-is-node-running: 2.3.0
     optionalDependencies:
       '@opentelemetry/api': 1.9.1
@@ -16653,6 +16717,9 @@ snapshots:
   yallist@5.0.0: {}
 
   yaml@2.9.0: {}
+
+  yaml@2.9.1:
+    optional: true
 
   yargs-parser@21.1.1: {}
 
