@@ -1,5 +1,6 @@
 import type { Vfs } from "@houston/host/src/vfs";
 import type {
+  HydrateListing,
   HydrateManifest,
   HydrateOptions,
   ObjectStore,
@@ -59,6 +60,9 @@ export interface TurnFilesystemOptions {
    *  for an op that never reads conversations. */
   excludes?: string[];
   filter?: HydrateOptions["filter"];
+  /** Eager trees only: hydrate from this listing instead of listing the
+   *  store whole (turn-store-listing.ts). */
+  listing?: HydrateListing;
   /** Eager trees only: a lazy tree downloads nothing up front. */
   capListed?: HydrateOptions["capListed"];
   /**

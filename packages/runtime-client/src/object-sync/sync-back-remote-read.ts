@@ -2,10 +2,13 @@ import { readFile, rm } from "node:fs/promises";
 import type { ObjectMetadata } from "./object-manifest";
 import { ObjectNotFoundError, type ObjectStore } from "./object-store";
 
-/** Lazily fetched remote generations; `fresh` re-lists instead of reusing. */
+/** The object at `key` as the store holds it now: null when absent,
+ *  undefined when the store cannot say. `fresh` re-reads instead of reusing
+ *  an earlier answer (sync-back-refresh.ts). */
 export type RefreshManifest = (
+  key: string,
   fresh?: boolean,
-) => Promise<Map<string, ObjectMetadata>> | undefined;
+) => Promise<ObjectMetadata | null | undefined>;
 
 /** The remote document now: absent (`body` undefined, create-only) or read. */
 export interface RemoteDocument {
@@ -33,10 +36,9 @@ export async function readRemoteDocument(
     if (store.downloadVersioned) {
       generation = (await store.downloadVersioned(key, temp)).generation;
     } else {
-      const listing = await refresh(fresh);
-      if (!listing) return undefined;
-      const current = listing.get(key);
-      if (!current) return CREATE_ONLY;
+      const current = await refresh(key, fresh);
+      if (current === undefined) return undefined;
+      if (current === null) return CREATE_ONLY;
       generation = current.generation;
       await store.download(key, temp);
     }

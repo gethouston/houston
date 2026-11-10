@@ -2,6 +2,7 @@ import { readFile, rm, stat } from "node:fs/promises";
 import { join } from "node:path";
 import { fileSha256 } from "./file-hash";
 import type { HydrateManifest } from "./hydrate";
+import { unowned } from "./hydrate-candidates";
 import type {
   HydrateBudget,
   HydrateDownloadState,
@@ -104,9 +105,10 @@ async function landChunk(
     if (opts.budget.landed > opts.budget.maxBytes) {
       throw opts.limitError(opts.budget.landed);
     }
+    if (unowned(entry, outcome.generation)) continue;
     opts.manifest.set(entry.rel, {
       hash: await fileSha256(dest(entry.rel), size),
-      generation: entry.generation,
+      generation: entry.fromRead ? outcome.generation : entry.generation,
       ...(opts.keepMergeBase && keepsMergeBase(entry.rel)
         ? { mergeBase: await readFile(dest(entry.rel), "utf8") }
         : {}),

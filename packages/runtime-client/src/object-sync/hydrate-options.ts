@@ -28,8 +28,28 @@ export interface StartedHydration {
   abort: (reason?: unknown) => void;
 }
 
+/** A listing the caller made itself, in place of listing the prefix whole. */
+export interface HydrateListing {
+  /** Listed objects, keys as the store names them. */
+  objects: readonly import("./object-manifest").ObjectMetadata[];
+  /** Keys read without a listing entry: landed at the generation of the
+   *  read when present, left out (and so unowned) when absent. */
+  reads?: readonly string[];
+  /** Objects listed while the rest downloads, started at once under the
+   *  hydration's signal (and `deferredReadTimeoutMs`). Every admitted one is
+   *  deferred (`defer`, `deferredMaxBytes`); a failed or abandoned listing
+   *  fails `deferred`, never `done`. */
+  later?: (
+    signal: AbortSignal,
+  ) => Promise<readonly import("./object-manifest").ObjectMetadata[]>;
+}
+
 /** Caller policy for one hydration. */
 export interface HydrateOptions {
+  /** Hydrate from this listing instead of listing the prefix whole. The
+   *  manifest then owns only what it names: an object it leaves out is
+   *  never downloaded, so sync-back never deletes it. */
+  listing?: HydrateListing;
   /** Reject prefixes whose critical (non-deferred) bytes exceed this
    *  (default 512 MiB). */
   maxBytes?: number;

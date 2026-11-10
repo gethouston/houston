@@ -102,6 +102,7 @@ export async function startTurnFilesystem(
       ...(maxBytes !== undefined ? { maxBytes } : {}),
       excludes,
       keepMergeBase: true,
+      ...(opts.listing ? { listing: opts.listing } : {}),
       ...(opts.filter ? { filter: opts.filter } : {}),
       ...(opts.capListed ? { capListed: true } : {}),
       ...(opts.defer ? { defer: opts.defer } : {}),

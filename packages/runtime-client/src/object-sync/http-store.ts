@@ -1,12 +1,19 @@
 import { captureFencingToken } from "./fencing-token";
 import { downloadHttpBatch } from "./http-store-batch";
 import { objectStoreResponseError } from "./http-store-errors";
-import type { HttpObjectStoreOptions } from "./http-store-options";
-import { downloadHttpObject, readHttpManifest } from "./http-store-read";
+import {
+  assertWriteAuthority,
+  type HttpObjectStoreOptions,
+} from "./http-store-options";
+import {
+  downloadHttpObject,
+  manifestUrl,
+  readHttpDirManifest,
+  readHttpManifest,
+} from "./http-store-read";
 import { uploadHttpObject } from "./http-store-write";
 import { storeWriteHeaders } from "./http-store-write-headers";
-import type { ObjectMetadata } from "./object-manifest";
-import { InvalidObjectPrefixError, isObjectPrefix } from "./object-prefix";
+import type { DirListing, ObjectMetadata } from "./object-manifest";
 import type {
   ObjectStore,
   ReadOptions,
@@ -48,16 +55,7 @@ export class HttpObjectStore implements ObjectStore {
       this.downloadMany = (entries, readOpts) =>
         downloadHttpBatch(post, this.authHeaders(), entries, readOpts);
     }
-    if (Boolean(this.bootId) !== Boolean(this.fence)) {
-      throw new Error(
-        "object store bootId and fence must be configured together",
-      );
-    }
-    if (this.claim && (this.bootId || this.fence)) {
-      throw new Error(
-        "object store claim authority cannot be combined with lease authority",
-      );
-    }
+    assertWriteAuthority(opts);
   }
 
   async list(prefix: string): Promise<string[]> {
@@ -65,16 +63,21 @@ export class HttpObjectStore implements ObjectStore {
   }
 
   async manifest(prefix = "", opts?: ReadOptions): Promise<ObjectMetadata[]> {
-    if (!isObjectPrefix(prefix)) throw new InvalidObjectPrefixError(prefix);
-    const query = prefix ? `?prefix=${encodeURIComponent(prefix)}` : "";
     return readHttpManifest(
-      (signal) =>
-        this.fetch(`${this.baseUrl}/manifest${query}`, {
-          headers: this.authHeaders(),
-          signal,
-        }),
+      this.manifestRequest(prefix, false),
       (response) => this.captureFence(response),
       prefix,
+      opts?.signal,
+    );
+  }
+
+  async manifestDir(
+    prefix = "",
+    opts?: ReadOptions,
+  ): Promise<DirListing | undefined> {
+    return readHttpDirManifest(
+      this.manifestRequest(prefix, true),
+      (response) => this.captureFence(response),
       opts?.signal,
     );
   }
@@ -117,7 +120,7 @@ export class HttpObjectStore implements ObjectStore {
     // Fenced unconditional writes are idempotent and retry-safe: a superseded
     // writer is rejected by its token. Generation-guarded writes cannot retry
     // because a lost success is indistinguishable from a failed attempt.
-    const retryable = !this.guardedWrite(opts);
+    const retryable = opts?.ifGenerationMatch === undefined;
     return uploadHttpObject({
       fetchRequest: this.fetch.bind(this),
       url,
@@ -139,7 +142,7 @@ export class HttpObjectStore implements ObjectStore {
         method: "DELETE",
         headers: this.writeHeaders(opts),
       },
-      { retryable: !this.guardedWrite(opts) },
+      { retryable: opts?.ifGenerationMatch === undefined },
     );
     this.captureFence(res);
     if (!res.ok && res.status !== 404) {
@@ -163,18 +166,22 @@ export class HttpObjectStore implements ObjectStore {
     });
   }
 
+  private manifestRequest(prefix: string, oneLevel: boolean) {
+    const url = manifestUrl(this.baseUrl, prefix, oneLevel);
+    return (signal?: AbortSignal) =>
+      this.fetch(url, { headers: this.authHeaders(), signal });
+  }
+
   private objectUrl(key: string): string {
     const encoded = key.split("/").map(encodeURIComponent).join("/");
     return `${this.baseUrl}/objects/${encoded}`;
   }
 
   private authHeaders(): Record<string, string> {
+    const auth = { Authorization: `Bearer ${this.token}` };
     return this.agentSlug
-      ? {
-          Authorization: `Bearer ${this.token}`,
-          "X-Houston-Agent": this.agentSlug,
-        }
-      : { Authorization: `Bearer ${this.token}` };
+      ? { ...auth, "X-Houston-Agent": this.agentSlug }
+      : auth;
   }
 
   private writeHeaders(opts?: WriteOptions): Record<string, string> {
@@ -184,10 +191,6 @@ export class HttpObjectStore implements ObjectStore {
       fence,
       claim,
     });
-  }
-
-  private guardedWrite(opts?: WriteOptions): boolean {
-    return opts?.ifGenerationMatch !== undefined;
   }
 
   private captureFence(res: Response): void {

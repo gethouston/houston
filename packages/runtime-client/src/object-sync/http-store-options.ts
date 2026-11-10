@@ -21,3 +21,18 @@ export interface HttpObjectStoreOptions {
    */
   batchReads?: boolean;
 }
+
+/** A store writes under a boot lease (bootId + fence) or a turn claim, never
+ *  both and never half a lease. */
+export function assertWriteAuthority(opts: HttpObjectStoreOptions): void {
+  if (Boolean(opts.bootId) !== Boolean(opts.fence)) {
+    throw new Error(
+      "object store bootId and fence must be configured together",
+    );
+  }
+  if (opts.claim && (opts.bootId || opts.fence)) {
+    throw new Error(
+      "object store claim authority cannot be combined with lease authority",
+    );
+  }
+}

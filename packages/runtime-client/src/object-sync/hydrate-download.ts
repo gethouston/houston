@@ -3,6 +3,7 @@ import { join } from "node:path";
 import { fileSha256 } from "./file-hash";
 import type { HydrateManifest } from "./hydrate";
 import { hydrateBatched, skipRefusedLanding } from "./hydrate-batch";
+import { unowned } from "./hydrate-candidates";
 import { ObjectNotFoundError, type ObjectStore } from "./object-store";
 import { keepsMergeBase } from "./sync-back-doc-merge";
 
@@ -10,6 +11,24 @@ export interface HydrateEntry {
   generation?: string;
   key: string;
   rel: string;
+  /** Not listed: read by key, and owned at the generation of that read. */
+  fromRead?: true;
+  /** A point read in a store whose listing carries generations: owned only
+   *  when the read names one (hydrate-candidates.ts `unowned`). */
+  requireGeneration?: true;
+}
+
+const DEFAULT_HYDRATE_CONCURRENCY = 16;
+
+/** Downloads in flight, guarding against a non-finite override: NaN sizes
+ *  the worker array to ZERO, which would return a successful empty manifest
+ *  for a non-empty store, the exact partial-manifest state the hydration
+ *  latch exists to prevent. */
+export function hydrateConcurrency(requested?: number): number {
+  const value = requested ?? DEFAULT_HYDRATE_CONCURRENCY;
+  return Number.isFinite(value) && value >= 1
+    ? Math.floor(value)
+    : DEFAULT_HYDRATE_CONCURRENCY;
 }
 
 export interface HydrateDownloadState {
@@ -69,9 +88,10 @@ export async function downloadHydrationEntries(opts: {
         if (opts.budget.landed > opts.budget.maxBytes) {
           throw opts.limitError(opts.budget.landed);
         }
+        if (unowned(entry, read?.generation)) continue;
         opts.manifest.set(rel, {
           hash: await fileSha256(dest, size),
-          generation,
+          generation: entry.fromRead ? read?.generation : generation,
           ...(opts.keepMergeBase && keepsMergeBase(rel)
             ? { mergeBase: await readFile(dest, "utf8") }
             : {}),

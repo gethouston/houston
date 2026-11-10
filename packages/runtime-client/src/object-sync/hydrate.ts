@@ -1,10 +1,13 @@
+import { hydrateCandidates, listWhole } from "./hydrate-candidates";
 import {
   downloadHydrationEntries,
   type HydrateBudget,
   type HydrateDownloadState,
   type HydrateEntry,
+  hydrateConcurrency,
 } from "./hydrate-download";
-import { DEFAULT_EXCLUDES, excluded } from "./hydrate-excludes";
+import { DEFAULT_EXCLUDES } from "./hydrate-excludes";
+import { admitLater, startLater } from "./hydrate-later";
 import { HydrateLimitError, splitDeferred } from "./hydrate-limit";
 import type { ObjectStore } from "./object-store";
 import { withReadTimeout } from "./read-timeout";
@@ -31,13 +34,12 @@ import type {
 
 export type {
   HydrateListedObject,
+  HydrateListing,
   HydrateManifest,
   HydrateManifestEntry,
   HydrateOptions,
   StartedHydration,
 } from "./hydrate-options";
-
-const DEFAULT_HYDRATE_CONCURRENCY = 16;
 
 /** List once, hydrate priority inputs, then start the remaining downloads. */
 export async function startHydrate(
@@ -48,43 +50,29 @@ export async function startHydrate(
 ): Promise<StartedHydration> {
   const excludes = opts.excludes ?? DEFAULT_EXCLUDES;
   const maxBytes = opts.maxBytes ?? 512 * 1024 * 1024;
-  // Guard against a non-finite override (NaN sizes the worker array to ZERO,
-  // which would return a successful empty manifest for a non-empty store —
-  // the exact partial-manifest state the hydration latch exists to prevent).
-  const requested = opts.concurrency ?? DEFAULT_HYDRATE_CONCURRENCY;
-  const concurrency =
-    Number.isFinite(requested) && requested >= 1
-      ? Math.floor(requested)
-      : DEFAULT_HYDRATE_CONCURRENCY;
+  const concurrency = hydrateConcurrency(opts.concurrency);
+  const controller = new AbortController();
+  const listedLater = opts.listing?.later
+    ? startLater(
+        opts.listing.later,
+        controller.signal,
+        opts.deferredReadTimeoutMs,
+      )
+    : undefined;
   const manifest: HydrateManifest = new Map();
-  const objects = store.manifest ? await store.manifest(prefix) : undefined;
-  const storeObjects =
-    objects ??
-    (await store.list(prefix)).map((key) => ({ key, generation: undefined }));
-  const candidates: (HydrateEntry & { updated?: string })[] = [];
-  const sizes = new Map<string, number>();
-  let generationAware = false;
-  for (const object of storeObjects) {
-    const { key } = object;
-    const rel = prefix ? key.slice(prefix.length + 1) : key;
-    if (!rel || excluded(rel, excludes)) continue;
-    if (object.generation !== undefined) generationAware = true;
-    if ("size" in object) sizes.set(rel, object.size);
-    candidates.push({
-      key,
-      rel,
-      generation: object.generation,
-      ...("updated" in object && object.updated
-        ? { updated: object.updated }
-        : {}),
-    });
-  }
-  const filterListing = candidates.map(({ rel, updated }) => ({
+  const { candidates, sizes, generationAware } = hydrateCandidates({
+    objects: opts.listing?.objects ?? (await listWhole(store, prefix)),
+    ...(opts.listing?.reads ? { reads: opts.listing.reads } : {}),
+    prefix,
+    excludes,
+  });
+  const listedCandidates = candidates.filter(({ fromRead }) => !fromRead);
+  const filterListing = listedCandidates.map(({ rel, updated }) => ({
     rel,
     ...(updated ? { updated } : {}),
   }));
   const listed = {
-    rels: candidates.map(({ rel }) => rel),
+    rels: listedCandidates.map(({ rel }) => rel),
     generationAware,
   };
   await opts.onListed?.(listed);
@@ -92,7 +80,6 @@ export async function startHydrate(
     ? candidates.filter((entry) => opts.priority?.(entry.rel))
     : [];
   const priorityRels = new Set(priorityCandidates.map(({ rel }) => rel));
-  const controller = new AbortController();
   const state: HydrateDownloadState = {
     failed: false,
     fail(error) {
@@ -157,6 +144,22 @@ export async function startHydrate(
     ...(opts.capListed ? { capListed: true } : {}),
   });
   const done = download(now);
+  const downloadLater = async () => {
+    if (deferredRefusal) throw deferredRefusal;
+    const extra = listedLater
+      ? admitLater(await listedLater, {
+          prefix,
+          excludes,
+          sizes,
+          filterListing,
+          destDir,
+          ...(filter ? { filter } : {}),
+          deferredMaxBytes: deferredBudget.maxBytes,
+          later,
+        })
+      : [];
+    return download([...later, ...extra], true);
+  };
   return {
     manifest,
     listed,
@@ -164,12 +167,7 @@ export async function startHydrate(
     done,
     // After `done`, so a deferred object never takes bandwidth from the set
     // the caller is blocked on.
-    deferred: later.length
-      ? done.then(() => {
-          if (deferredRefusal) throw deferredRefusal;
-          return download(later, true);
-        })
-      : done,
+    deferred: later.length || listedLater ? done.then(downloadLater) : done,
     abort: (reason) =>
       state.fail(reason ?? new Error("hydration aborted before cleanup")),
   };

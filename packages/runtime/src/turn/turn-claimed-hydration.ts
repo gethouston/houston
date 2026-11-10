@@ -9,6 +9,11 @@ import {
 } from "./turn-deferred-watch";
 import { startTurnFilesystem } from "./turn-filesystem";
 import { ownClaudeFlagsOnly, ownConversationOnly } from "./turn-hot-set";
+import { turnHydrationError } from "./turn-hydration-error";
+import {
+  type ClaimedTurnListing,
+  listClaimedTurnStore,
+} from "./turn-store-listing";
 import type { TurnRequest } from "./types";
 
 /**
@@ -30,7 +35,7 @@ export const CLAIMED_TURN_EXCLUDES: readonly string[] = [
 ];
 
 /** Start hydration with the claimed conversation's read and ownership scope. */
-export function startTurnRequestFilesystem(input: {
+export async function startTurnRequestFilesystem(input: {
   store: ObjectStore;
   prefix: string;
   root: string;
@@ -40,6 +45,18 @@ export function startTurnRequestFilesystem(input: {
   timings: Record<string, number>;
 }) {
   const claimed = Boolean(input.turn.claim);
+  let listing: ClaimedTurnListing | undefined;
+  try {
+    listing = claimed
+      ? await listClaimedTurnStore({
+          store: input.store,
+          prefix: input.prefix,
+          conversationId: input.turn.conversationId,
+        })
+      : undefined;
+  } catch (error) {
+    throw turnHydrationError(error);
+  }
   return startTurnFilesystem({
     store: input.store,
     prefix: input.prefix,
@@ -53,6 +70,7 @@ export function startTurnRequestFilesystem(input: {
             input.turn.actingAs?.userId,
           ),
           excludes: [...CLAIMED_TURN_EXCLUDES],
+          ...(listing ? { listing } : {}),
           defer: deferredWorkspaceFile,
           ...(input.deferredMaxBytes !== undefined
             ? { deferredMaxBytes: input.deferredMaxBytes }

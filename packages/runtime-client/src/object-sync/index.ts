@@ -5,6 +5,7 @@ export type { HttpObjectStoreOptions } from "./http-store";
 export { HttpObjectStore } from "./http-store";
 export type {
   HydrateListedObject,
+  HydrateListing,
   HydrateManifest,
   HydrateOptions,
   LocalWriteLock,
@@ -24,6 +25,7 @@ export {
 } from "./hydrate";
 export { landStream } from "./land-file";
 export type {
+  DirListing,
   ManifestObjectStore,
   ObjectMetadata,
 } from "./object-manifest";

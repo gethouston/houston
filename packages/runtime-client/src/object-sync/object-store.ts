@@ -18,6 +18,13 @@ export interface ObjectStore {
     prefix?: string,
     opts?: ReadOptions,
   ): Promise<import("./object-manifest").ObjectMetadata[]>;
+  /** One level of the directory `prefix` names (`object-manifest.ts`
+   *  DirListing). Undefined: the store answered without levels, so the
+   *  caller lists recursively instead. */
+  manifestDir?(
+    prefix?: string,
+    opts?: ReadOptions,
+  ): Promise<import("./object-manifest").DirListing | undefined>;
   /** `{ refused: true }`: nothing landed (private-paths.ts). */
   download(
     key: string,

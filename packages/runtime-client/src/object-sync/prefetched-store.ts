@@ -12,7 +12,11 @@ import type {
 } from "./object-store";
 
 /** What the dispatcher shipped inside the turn: the listing plus the bytes of
- *  the objects it chose to inline. */
+ *  the objects it chose to inline. The worker hydrates from `manifest` as its
+ *  listing, so the manifest names the turn's ownership boundary: the gateway
+ *  may leave out other conversations' transcripts and sessions
+ *  (`.houston/runtime/conversations/*`, `.houston/runtime/sessions/*`), which
+ *  a claimed turn neither reads nor writes, and keeps the turn's own. */
 export interface PrefetchedObjects {
   manifest: ObjectMetadata[];
   objects: Map<string, { data: Buffer; generation?: string }>;
@@ -52,29 +56,39 @@ export function parsePrefetchedObjects(
 /**
  * Serves hydration from the prefetched listing and bytes, and everything
  * else from the real store. The listing answers the FIRST manifest call only
- * (hydration's); each inlined object is served once and then forgotten, so
- * later reads and every write see the live store.
+ * (hydration's); each inlined object is served once and then forgotten, and
+ * all of them are forgotten at the first write, so later reads and every
+ * write see the live store.
  */
 export class PrefetchedObjectStore implements ObjectStore {
   private manifestServed = false;
+  readonly manifestDir?: ObjectStore["manifestDir"];
 
   constructor(
     private readonly inner: ObjectStore,
     private readonly prefetched: PrefetchedObjects,
-  ) {}
+  ) {
+    const dir = inner.manifestDir?.bind(inner);
+    if (dir) this.manifestDir = dir;
+  }
+
+  /** Whether the next manifest call is answered from the prefetch. */
+  get servesListing(): boolean {
+    return !this.manifestServed;
+  }
 
   list(prefix: string): Promise<string[]> {
     return this.inner.list(prefix);
   }
 
-  async manifest(prefix = ""): Promise<ObjectMetadata[]> {
+  async manifest(prefix = "", opts?: ReadOptions): Promise<ObjectMetadata[]> {
     if (!this.manifestServed) {
       this.manifestServed = true;
       return this.prefetched.manifest.filter((object) =>
         underObjectPrefix(object.key, prefix),
       );
     }
-    if (this.inner.manifest) return this.inner.manifest(prefix);
+    if (this.inner.manifest) return this.inner.manifest(prefix, opts);
     const keys = await this.inner.list(prefix);
     return keys.map((key) => ({ key, size: 0, md5: "", updated: "" }));
   }
@@ -142,11 +156,20 @@ export class PrefetchedObjectStore implements ObjectStore {
     opts?: WriteOptions,
     // biome-ignore lint/suspicious/noConfusingVoidType: ObjectStore preserves void-returning adapters.
   ): Promise<WriteResult | void> {
+    this.forgetInlined();
     return this.inner.upload(srcFile, key, opts);
   }
 
   delete(key: string, opts?: WriteOptions): Promise<void> {
+    this.forgetInlined();
     return this.inner.delete(key, opts);
+  }
+
+  /** The inlined bytes were read before the turn held its claim. Once it
+   *  writes, a read is a conflict refresh or a re-read after a write, and
+   *  only the live store can answer it. */
+  private forgetInlined() {
+    this.prefetched.objects.clear();
   }
 
   private take(key: string) {

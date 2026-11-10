@@ -4,7 +4,7 @@ import { mkdir, readdir, rm, stat } from "node:fs/promises";
 import { dirname, join, posix, relative, resolve, sep } from "node:path";
 import { pipeline } from "node:stream/promises";
 import { landStream } from "./land-file";
-import type { ObjectMetadata } from "./object-manifest";
+import type { DirListing, ObjectMetadata } from "./object-manifest";
 import type {
   ObjectStore,
   ReadOptions,
@@ -51,19 +51,40 @@ export class LocalDirStore implements ObjectStore {
    *  generations (the local store has none), so readers stay unconditional. */
   async manifest(prefix = ""): Promise<ObjectMetadata[]> {
     const out: ObjectMetadata[] = [];
-    for (const key of await this.list(prefix)) {
-      const file = this.fileFor(key);
-      const info = await stat(file);
-      const hash = createHash("md5");
-      for await (const chunk of createReadStream(file)) hash.update(chunk);
-      out.push({
-        key,
-        size: info.size,
-        md5: hash.digest("base64"),
-        updated: info.mtime.toISOString(),
-      });
-    }
+    for (const key of await this.list(prefix)) out.push(await this.stat(key));
     return out;
+  }
+
+  /** One level of `prefix`, as pod-store answers `?delimiter=/`. */
+  async manifestDir(prefix = ""): Promise<DirListing> {
+    const base = this.fileFor(prefix);
+    const entries = existsSync(base)
+      ? await readdir(base, { withFileTypes: true })
+      : [];
+    const key = (name: string) => (prefix ? posix.join(prefix, name) : name);
+    const objects: ObjectMetadata[] = [];
+    const dirs: string[] = [];
+    for (const entry of entries) {
+      if (entry.isDirectory()) dirs.push(key(entry.name));
+      else objects.push(await this.stat(key(entry.name)));
+    }
+    return {
+      objects: objects.sort((a, b) => a.key.localeCompare(b.key)),
+      dirs: dirs.sort(),
+    };
+  }
+
+  private async stat(key: string): Promise<ObjectMetadata> {
+    const file = this.fileFor(key);
+    const info = await stat(file);
+    const hash = createHash("md5");
+    for await (const chunk of createReadStream(file)) hash.update(chunk);
+    return {
+      key,
+      size: info.size,
+      md5: hash.digest("base64"),
+      updated: info.mtime.toISOString(),
+    };
   }
 
   async download(

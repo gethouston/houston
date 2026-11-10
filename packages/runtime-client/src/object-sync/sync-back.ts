@@ -1,10 +1,10 @@
 import { join, posix } from "node:path";
 import { DEFAULT_EXCLUDES, excluded, type HydrateManifest } from "./hydrate";
-import type { ObjectMetadata } from "./object-manifest";
 import type { ObjectStore } from "./object-store";
 import { privateDirGate } from "./private-dir-gate";
 import { privateDirOf } from "./private-paths";
 import { deleteOwnedObject, uploadChangedObject } from "./sync-back-conflicts";
+import { keyedRefresh, listingRefresh } from "./sync-back-refresh";
 import { SOURCE_GONE, SOURCE_REFUSED, syncSource } from "./sync-back-source";
 import type { SyncBackOptions, SyncResult } from "./sync-back-types";
 import { walkFiles } from "./sync-back-walk";
@@ -42,17 +42,13 @@ export async function syncBack(
   const merges: SyncResult["merges"] = [];
   const nextManifest: HydrateManifest = new Map();
   let outOfScope = 0;
-  let refreshed: Promise<Map<string, ObjectMetadata>> | undefined;
-  const refresh = (fresh = false) => {
-    if (!store.manifest) return undefined;
-    if (fresh) refreshed = undefined;
-    refreshed ??= store
-      .manifest(prefix)
-      .then(
-        (objects) => new Map(objects.map((object) => [object.key, object])),
-      );
-    return refreshed;
-  };
+  // The worker's tree is one turn's: it pays a read of the conflicting
+  // object rather than a listing of the whole store. The standing sync keeps
+  // its one listing per pass.
+  const refresh =
+    opts.workerMerge && store.downloadVersioned
+      ? keyedRefresh(store.downloadVersioned.bind(store), dir)
+      : listingRefresh(store, prefix);
   let totalBytes = 0;
   // Sign-in state under a directory the tool user could have planted is
   // neither uploaded nor deleted: its manifest entry stays as it was. A cheap
