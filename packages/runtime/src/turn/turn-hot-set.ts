@@ -5,6 +5,8 @@ import { ROUTINE_RESULTS_FILE } from "../store/routine-results";
 import { CLAUDE_FLAGS_DIR, claudeFlagsFileName } from "./claude-flags-path";
 import { newestArchiveSegments } from "./turn-hot-set-archive";
 
+export const PI_SESSION_FALLBACK_MAX_BYTES = 1024 * 1024;
+
 function runtimeIndex(segments: string[]): number {
   if (segments[0] === "data") return 1;
   if (
@@ -79,7 +81,8 @@ function mappedClaudeTranscript(
 
 /**
  * Hot-set admission for one conversation: its canonical conversation and the
- * newest of its own archive segments, harness markers, the two newest Pi tails, the Claude
+ * newest of its own archive segments, harness markers, the newest Pi tail and
+ * a size-capped predecessor for a torn newest header, the Claude
  * transcript named by sessions.json, and the acting member's Claude flag
  * cache. Other
  * conversations, older session files, and other members' caches stay remote.
@@ -144,17 +147,24 @@ export function ownConversationOnly(
       )
         return true;
       if (tail.length === 1 && tail[0]?.endsWith(".jsonl")) {
-        const sessions = listing
-          .map(({ rel: candidate }) => candidate)
-          .filter((candidate) => {
-            const candidateSegments = candidate.split("/");
-            return (
-              candidateSegments.length === sessionAt + 1 &&
-              candidate.startsWith(`${sessionRel}/`) &&
-              candidate.endsWith(".jsonl")
-            );
-          });
-        return sessions.toSorted().slice(-2).includes(rel);
+        const sessions = listing.filter(({ rel: candidate }) => {
+          const candidateSegments = candidate.split("/");
+          return (
+            candidateSegments.length === sessionAt + 1 &&
+            candidate.startsWith(`${sessionRel}/`) &&
+            candidate.endsWith(".jsonl")
+          );
+        });
+        const ordered = sessions.toSorted((a, b) =>
+          a.rel === b.rel ? 0 : a.rel < b.rel ? -1 : 1,
+        );
+        if (ordered.at(-1)?.rel === rel) return true;
+        const fallback = ordered.at(-2);
+        return (
+          fallback?.rel === rel &&
+          fallback.size !== undefined &&
+          fallback.size <= PI_SESSION_FALLBACK_MAX_BYTES
+        );
       }
       const claudeRel = tail.join("/");
       if (claudeRel === "claude/sessions.json") return true;
