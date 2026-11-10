@@ -26,7 +26,7 @@ ignoredOptionalDependencies:
   - "@napi-rs/canvas"
 
 # Drop the claude-agent-sdk entries after 2026-11-16, once Claude Agent SDK
-# 0.3.321 is seven days old. Drop the pi entry after 2026-11-17, once pi 1.5.1
+# 0.3.321 is seven days old. Drop the pi entry after 2026-11-18, once pi 1.5.2
 # is seven days old.
 minimumReleaseAgeExclude:
   - "@anthropic-ai/claude-agent-sdk"
@@ -73,6 +73,6 @@ overrides:
   # GHSA-gg6h-894w-4m9c. Drop when @firebase/firestore requires re2js >=2.8.7.
   "re2js@<2.8.7": "2.8.7"
 patchedDependencies:
-  '@earendil-works/pi-ai@1.5.1': patches/@earendil-works__pi-ai@1.5.1.patch
+  '@earendil-works/pi-ai@1.5.2': patches/@earendil-works__pi-ai@1.5.2.patch
   '@executor-js/sdk@1.5.37': patches/@executor-js__sdk@1.5.37.patch
   playwright-core@1.64.0: patches/playwright-core@1.64.0.patch

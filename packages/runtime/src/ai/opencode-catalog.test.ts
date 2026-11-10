@@ -67,7 +67,6 @@ test("a pin on a dropped row with no successor gets a runnable switch target", (
     ["opencode", "deepseek-v4-flash-vision-exp"],
     ["opencode-go", "step-5-preview-free"],
     ["opencode", "deepseek-v4-flash"],
-    ["opencode", "minimax-m3.1-flash-free"],
     ["opencode", "longcat-2.5-preview-free"],
     ["opencode-go", "longcat-2.5-preview-free"],
   ] as const) {
