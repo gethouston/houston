@@ -1,15 +1,6 @@
 import { randomUUID } from "node:crypto";
-import {
-  closeSync,
-  openSync,
-  readdirSync,
-  readSync,
-  renameSync,
-  statSync,
-  writeFileSync,
-} from "node:fs";
+import { readdirSync, renameSync, statSync, writeFileSync } from "node:fs";
 import { dirname, join } from "node:path";
-import { StringDecoder } from "node:string_decoder";
 import {
   type FileEntry,
   parseSessionEntries,
@@ -17,6 +8,8 @@ import {
   SessionManager,
 } from "@earendil-works/pi-coding-agent";
 import { ATOMIC_TMP_SUFFIX } from "@houston/protocol";
+import { installRuntimeLogging } from "../../observability/logging";
+import { sessionLogLines } from "./session-log-lines";
 
 /** Reclaim summarized history only when it saves a material store transfer. */
 export const SESSION_LOG_ROTATION_BYTES = 8 * 1024 * 1024;
@@ -25,30 +18,35 @@ export const SESSION_LOG_ROTATION_BYTES = 8 * 1024 * 1024;
 export function rotateSessionLog(file: string, workspaceDir: string): string {
   const size = statSync(file).size;
   if (size <= SESSION_LOG_ROTATION_BYTES) return file;
-  // Match pi's chunked reader without its newline repair of the archived file.
-  const fileEntries: FileEntry[] = [];
-  const descriptor = openSync(file, "r");
-  try {
-    const decoder = new StringDecoder("utf8");
-    const buffer = Buffer.allocUnsafe(1024 * 1024);
-    let pending = "";
-    for (;;) {
-      const bytes = readSync(descriptor, buffer, 0, buffer.length, null);
-      if (bytes === 0) break;
-      pending += decoder.write(buffer.subarray(0, bytes));
-      let start = 0;
-      let newline = pending.indexOf("\n");
-      while (newline !== -1) {
-        fileEntries.push(...parseSessionEntries(pending.slice(start, newline)));
-        start = newline + 1;
-        newline = pending.indexOf("\n", start);
-      }
-      pending = pending.slice(start);
+  // Only rule out certain no-ops; the full branch traversal decides rotation.
+  const earlyIds = new Set<string>();
+  let couldRotate = false;
+  for (const { line, offset } of sessionLogLines(file)) {
+    if (offset <= SESSION_LOG_ROTATION_BYTES) {
+      // Canonical pi envelopes put id immediately after type. Unrecognized
+      // envelopes stay uncertain and go through the full parse.
+      const id =
+        /^\s*\{\s*"type"\s*:\s*"[^"]+"\s*,\s*"id"\s*:\s*"([A-Za-z0-9_-]+)"/.exec(
+          line,
+        )?.[1];
+      if (id) earlyIds.add(id);
+      continue;
     }
-    fileEntries.push(...parseSessionEntries(pending + decoder.end()));
-  } finally {
-    closeSync(descriptor);
+    if (!/"type"\s*:\s*"compaction"/.test(line)) continue;
+    if (
+      parseSessionEntries(line).some(
+        (entry) =>
+          entry.type === "compaction" && !earlyIds.has(entry.firstKeptEntryId),
+      )
+    ) {
+      couldRotate = true;
+      break;
+    }
   }
+  if (!couldRotate) return file;
+  const fileEntries: FileEntry[] = [];
+  for (const { line } of sessionLogLines(file))
+    fileEntries.push(...parseSessionEntries(line));
   const manager = SessionManager.inMemory(workspaceDir, undefined, fileEntries);
   const header = manager.getHeader();
   const compaction = manager
@@ -59,7 +57,6 @@ export function rotateSessionLog(file: string, workspaceDir: string): string {
   const compactionAt = entries.findIndex((e) => e.id === compaction.id);
   const keptAt = entries.findIndex((e) => e.id === compaction.firstKeptEntryId);
   const start = keptAt >= 0 && keptAt < compactionAt ? keptAt : compactionAt;
-  const prefix = entries.slice(0, start);
   const live = entries.slice(start);
   const keep = new Set<string>();
 
@@ -67,7 +64,8 @@ export function rotateSessionLog(file: string, workspaceDir: string): string {
   // consults the last physical response and the preceding model_change.
   const assistantById = new Map<string, string | undefined>();
   const physicalById = new Map<string, string | undefined>();
-  for (const entry of prefix) {
+  for (const entry of entries) {
+    const entryType = entry.type;
     switch (entry.type) {
       case "thinking_level_change":
       case "model_change":
@@ -77,6 +75,8 @@ export function rotateSessionLog(file: string, workspaceDir: string): string {
         keep.add(entry.id);
         break;
       case "message":
+        if (entry.message.role === "system") keep.add(entry.id);
+        break;
       case "compaction":
       case "branch_summary":
       case "custom_message":
@@ -84,8 +84,14 @@ export function rotateSessionLog(file: string, workspaceDir: string): string {
       case "usage":
         break;
       default: {
-        const exhaustive: never = entry;
-        throw new Error(`Unknown pi session entry: ${exhaustive}`);
+        const _exhaustive: never = entry;
+        // The installed runtime logger sends ERROR to its log and Sentry feed.
+        installRuntimeLogging().logger.error(
+          new Error(
+            `Session log rotation skipped: unknown pi entry type ${entryType}`,
+          ),
+        );
+        return file;
       }
     }
 
@@ -138,11 +144,13 @@ export function rotateSessionLog(file: string, workspaceDir: string): string {
 
   // A hydrated filename can be ahead of this worker's clock. Advance it too,
   // so filename-based resume always chooses the successor, even in that case.
-  const previousTimestamp = readdirSync(dirname(file))
-    .filter((name) => name.endsWith(".jsonl"))
-    .sort()
-    .at(-1)
-    ?.split("_", 1)[0]
+  const newest =
+    readdirSync(dirname(file))
+      .filter((name) => name.endsWith(".jsonl"))
+      .sort()
+      .at(-1) ?? "";
+  const previousTimestamp = newest
+    .split("_", 1)[0]
     ?.replace(/T(\d{2})-(\d{2})-(\d{2})-(\d{3})Z$/, "T$1:$2:$3.$4Z");
   const previousTime = Date.parse(previousTimestamp ?? "");
   const timestamp = new Date(
@@ -150,10 +158,9 @@ export function rotateSessionLog(file: string, workspaceDir: string): string {
   )
     .toISOString()
     .replace(/[:.]/g, "-");
-  const successor = join(
-    dirname(file),
-    `${timestamp}_${manager.getSessionId()}.jsonl`,
-  );
+  const successorName = `${timestamp}_${manager.getSessionId()}.jsonl`;
+  if (successorName <= newest) return file;
+  const successor = join(dirname(file), successorName);
   const temporary = `${successor}.${randomUUID()}${ATOMIC_TMP_SUFFIX}`;
   writeFileSync(temporary, content, { flag: "wx" });
   renameSync(temporary, successor);
