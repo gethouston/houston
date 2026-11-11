@@ -111,8 +111,9 @@ export function useAllConversations(agentPaths: string[]) {
     // this hook (sidebar badges, Mission Control, archived, mentions,
     // command palette, …), and "always" fans out to the whole fleet on each of
     // their mounts — the very pod-wake storm the Infinity was there to prevent.
-    // A window revalidates the boot (a restored copy is always older than it)
-    // while a mid-session navigation reuses the cache.
+    // The window only spares mid-session navigation another full sweep; the
+    // boot's revalidation comes from `markRestoredListsStale`, because a copy
+    // restored inside the window would otherwise count as fresh (HOU-198).
     staleTime: ALL_CONVERSATIONS_STALE_MS,
     refetchOnWindowFocus: false,
     // No `retry` here on purpose (the global default is `retry: false`): a cold
