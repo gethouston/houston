@@ -23,9 +23,12 @@ import {
 
 /**
  * How long a cross-agent sweep stays authoritative. Long enough that moving
- * between screens never re-fans-out to every agent's pod, short enough that a
- * restored-from-disk board (always older than this) is revalidated on the boot
- * that restores it — the HOU-981 "my missions are gone after login" fix.
+ * between screens never re-fans-out to every agent's pod. A restored-from-disk
+ * board is revalidated on the boot that restores it whatever its age (the
+ * HOU-981 "my missions are gone after login" fix): the restore marks it stale
+ * (`markRestoredListsStale`), since a relaunch inside this window would
+ * otherwise keep a board that missed every change made while the app was
+ * closed (HOU-198).
  */
 export const ALL_CONVERSATIONS_STALE_MS = 10 * 60_000;
 
@@ -108,8 +111,9 @@ export function useAllConversations(agentPaths: string[]) {
     // this hook (sidebar badges, Mission Control, archived, mentions,
     // command palette, …), and "always" fans out to the whole fleet on each of
     // their mounts — the very pod-wake storm the Infinity was there to prevent.
-    // A window revalidates the boot (a restored copy is always older than it)
-    // while a mid-session navigation reuses the cache.
+    // The window only spares mid-session navigation another full sweep; the
+    // boot's revalidation comes from `markRestoredListsStale`, because a copy
+    // restored inside the window would otherwise count as fresh (HOU-198).
     staleTime: ALL_CONVERSATIONS_STALE_MS,
     refetchOnWindowFocus: false,
     // No `retry` here on purpose (the global default is `retry: false`): a cold

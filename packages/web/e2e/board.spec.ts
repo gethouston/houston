@@ -231,16 +231,43 @@ test("restores cached missions before starting fresh board reads", async ({
   // restored. The board's read is the CROSS-AGENT sweep now (there is no
   // per-agent board left to read `["activity", path]`), and that sweep fans out
   // to ONE `GET /agents/:id/activities` per agent — that per-agent GET is the
-  // wire signal to count. The hold has to outlast the app's own boot by a wide
-  // margin: unpaused, the shell reaches its first sweep read ~150ms after the
-  // restore begins, so a window of a few hundred ms would go green whether the
-  // pause worked or not.
+  // wire signal to count.
+  //
+  // The count is taken IN the page, against the hold itself: a read is counted
+  // when it starts while an IndexedDB read is still held. Timing it from the
+  // node side cannot tell the two apart — the shell's agents rail only shows
+  // once the restore lands, so a fixed wait after it falls past the hold, where
+  // the restored board's revalidating read (HOU-198) belongs.
   await expect
     .poll(async () => (await persistedMirrorHeads(page)) ?? [], {
       timeout: 15_000,
     })
     .toContain("all-conversations");
   await page.addInitScript((holdMs: number) => {
+    const w = window as typeof window & {
+      __queryRestoreStarted?: boolean;
+      __queryRestoreReleased?: boolean;
+      __boardReadsDuringRestore?: number;
+    };
+    let held = 0;
+    w.__boardReadsDuringRestore = 0;
+    const nativeFetch = window.fetch;
+    window.fetch = function countedFetch(input, init) {
+      const url = input instanceof Request ? input.url : String(input);
+      const method = (
+        init?.method ?? (input instanceof Request ? input.method : "GET")
+      ).toUpperCase();
+      if (
+        held > 0 &&
+        method === "GET" &&
+        /\/agents\/[^/]+\/activities(\?|$)/.test(
+          new URL(url, location.href).pathname,
+        )
+      ) {
+        w.__boardReadsDuringRestore = (w.__boardReadsDuringRestore ?? 0) + 1;
+      }
+      return nativeFetch.call(this, input, init);
+    };
     const nativeGet = IDBObjectStore.prototype.get;
     IDBObjectStore.prototype.get = function delayedGet(query) {
       const nativeRequest = nativeGet.call(this, query);
@@ -252,14 +279,19 @@ test("restores cached missions before starting fresh board reads", async ({
           return nativeRequest.result;
         },
       } as IDBRequest;
-      (
-        window as typeof window & { __queryRestoreStarted?: boolean }
-      ).__queryRestoreStarted = true;
+      held += 1;
+      w.__queryRestoreStarted = true;
+      const release = (settle: () => void) =>
+        setTimeout(() => {
+          held -= 1;
+          if (held === 0) w.__queryRestoreReleased = true;
+          settle();
+        }, holdMs);
       nativeRequest.addEventListener("success", (event) => {
-        setTimeout(() => delayedRequest.onsuccess?.(event), holdMs);
+        release(() => delayedRequest.onsuccess?.(event));
       });
       nativeRequest.addEventListener("error", (event) => {
-        setTimeout(() => delayedRequest.onerror?.(event), holdMs);
+        release(() => delayedRequest.onerror?.(event));
       });
       return delayedRequest;
     };
@@ -276,14 +308,30 @@ test("restores cached missions before starting fresh board reads", async ({
       (window as typeof window & { __queryRestoreStarted?: boolean })
         .__queryRestoreStarted === true,
   );
-  // The shell is fully up while the restore is still held, so the board and its
-  // query observer are mounted: an unpaused read would already be on the wire.
-  await expect(page.locator("[data-tour-target='agents']")).toBeVisible();
-  await page.waitForTimeout(500);
+  await page.waitForFunction(
+    () =>
+      (window as typeof window & { __queryRestoreReleased?: boolean })
+        .__queryRestoreReleased === true,
+    undefined,
+    { timeout: RESTORE_HOLD_MS * 3 },
+  );
 
-  expect(boardReads).toBe(0);
-  // The restore then lands, and yesterday's cards paint off it.
+  // Nothing read the board while the populated cache was still restoring.
+  expect(
+    await page.evaluate(
+      () =>
+        (window as typeof window & { __boardReadsDuringRestore?: number })
+          .__boardReadsDuringRestore,
+    ),
+  ).toBe(0);
+  // The restore then lands, and yesterday's cards paint off it...
   await expect(missionCard(page, "Plan a trip to Tokyo")).toBeVisible();
+  // ...and the restored board is revalidated exactly once: one sweep, one read
+  // for the one seeded agent (HOU-198: a restored board is never trusted as
+  // fresh, since nothing replays what changed while the app was closed).
+  await expect.poll(() => boardReads).toBe(1);
+  await page.waitForTimeout(500);
+  expect(boardReads).toBe(1);
 });
 
 /**
