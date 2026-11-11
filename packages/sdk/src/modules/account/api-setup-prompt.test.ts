@@ -26,6 +26,12 @@ describe("apiSetupPrompt", () => {
     );
   });
 
+  it("explains how to answer a question the agent is waiting on", () => {
+    expect(apiSetupPrompt(input)).toContain(
+      'If the mission has "pendingInteraction", the agent is waiting on a question.',
+    );
+  });
+
   it("points at the key's env var and never carries a key", () => {
     const prompt = apiSetupPrompt(input);
     expect(prompt).toContain(`${HOUSTON_API_KEY_ENV} environment variable`);

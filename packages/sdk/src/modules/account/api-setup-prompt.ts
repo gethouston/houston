@@ -54,6 +54,7 @@ How the API works:
 2. Follow it live: GET ${missions}/<id>/events (Server-Sent Events).
 3. Read the result: GET ${missions}/<id>. "status" ends as completed, failed or canceled, and "result" holds the answer.
 4. Continue the same task: POST ${missions}/<id>/messages with JSON {"input": "what to do next"}. Keep using the same mission id and event stream.
+5. If the mission has "pendingInteraction", the agent is waiting on a question. Show me the question and its options, then send my answer with step 4.
 Optional: add "webhook": {"url": "https://...", "secret": "..."} when starting a mission to get a POST when it finishes.
 
 Read the reference before using anything not listed here: ${HOUSTON_API_DOCS.overview} (REST: ${HOUSTON_API_DOCS.missions}, MCP: ${HOUSTON_API_DOCS.mcp}, A2A: ${HOUSTON_API_DOCS.a2a}).`;
