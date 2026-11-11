@@ -136,6 +136,9 @@
   grid-template-columns: repeat(2, minmax(0, 1fr));
   gap: 12px;
 }
+.rf-row-full {
+  grid-template-columns: 1fr;
+}
 @media (max-width: 560px) {
   .rf-row {
     grid-template-columns: 1fr;
@@ -224,11 +227,6 @@ html.js .reveal.rf-settled {
   border-color: #b42318;
 }
 /* An error is the one red on the page: it has to be found at a glance. */
-.rf-hint {
-  font-size: 12.5px;
-  line-height: 1.4;
-  color: var(--ink-subtle);
-}
 .rf-error {
   font-size: 13px;
   line-height: 1.4;
