@@ -23,9 +23,12 @@ import {
 
 /**
  * How long a cross-agent sweep stays authoritative. Long enough that moving
- * between screens never re-fans-out to every agent's pod, short enough that a
- * restored-from-disk board (always older than this) is revalidated on the boot
- * that restores it — the HOU-981 "my missions are gone after login" fix.
+ * between screens never re-fans-out to every agent's pod. A restored-from-disk
+ * board is revalidated on the boot that restores it whatever its age (the
+ * HOU-981 "my missions are gone after login" fix): the restore marks it stale
+ * (`markRestoredListsStale`), since a relaunch inside this window would
+ * otherwise keep a board that missed every change made while the app was
+ * closed (HOU-198).
  */
 export const ALL_CONVERSATIONS_STALE_MS = 10 * 60_000;
 

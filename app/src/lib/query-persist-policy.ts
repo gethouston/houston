@@ -11,6 +11,8 @@
  * the conversation transcript cache.
  */
 
+import type { QueryClient } from "@tanstack/react-query";
+
 /** Query-key prefixes (see query-keys.ts) restored on boot as stale data. */
 export const PERSISTED_QUERY_PREFIXES = [
   "activity",
@@ -33,4 +35,22 @@ export function isPersistedQueryKey(queryKey: readonly unknown[]): boolean {
     typeof head === "string" &&
     (PERSISTED_QUERY_PREFIXES as readonly string[]).includes(head)
   );
+}
+
+/**
+ * Marks every restored list stale, whatever its age (HOU-198). The event
+ * stream has no replay, so a change made while the app was closed (a mission
+ * started through the public API, a routine run, a teammate's edit) never
+ * arrives as an event. A list restored younger than its staleTime (the
+ * cross-agent sweep's is 10 minutes) would otherwise paint as fresh after a
+ * quick relaunch and skip the read that shows the change. Nothing is fetched
+ * here: each observer refetches when it subscribes once the restore settles.
+ */
+export function markRestoredListsStale(
+  queryClient: QueryClient,
+): Promise<void> {
+  return queryClient.invalidateQueries({
+    predicate: (query) => isPersistedQueryKey(query.queryKey),
+    refetchType: "none",
+  });
 }
