@@ -17,6 +17,7 @@ export type MissionStartedBy =
   | { kind: "routine" }
   | { kind: "setup" }
   | { kind: "houston" }
+  | { kind: "api" }
   /** `agentId` is the starting employee, when the host recorded it. */
   | { kind: "employee"; agentId?: string };
 
@@ -36,14 +37,16 @@ export interface MissionStartFacts {
 
 /**
  * First match wins: a routine's run, then the setup task, then Houston, then
- * an AI Employee, else the person's own mission. A row with no `started_by`
- * but an `origin_session_key` predates the field and was started by an agent,
+ * the API, then an AI Employee, else the person's own mission. A row with no
+ * `started_by` but an `origin_session_key` predates the field and was started
+ * by an agent,
  * so it stays an employee's: older Houston missions are never relabeled.
  */
 export function missionStartedBy(row: MissionStartFacts): MissionStartedBy {
   if (row.routine_id) return { kind: "routine" };
   if (isAgentSetupMode(row.agent)) return { kind: "setup" };
   if (row.started_by === "houston") return { kind: "houston" };
+  if (row.started_by === "api") return { kind: "api" };
   if (row.started_by === "employee" || row.origin_session_key) {
     return row.origin_agent
       ? { kind: "employee", agentId: row.origin_agent }

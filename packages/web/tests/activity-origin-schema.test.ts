@@ -19,6 +19,7 @@ test("the activity schema accepts the server-stamped mission origin", () => {
   });
   expect(validate(rows), JSON.stringify(validate.errors)).toBe(true);
   expect(validate(activity({ started_by: "houston" }))).toBe(true);
+  expect(validate(activity({ started_by: "api" }))).toBe(true);
 });
 
 test.each([

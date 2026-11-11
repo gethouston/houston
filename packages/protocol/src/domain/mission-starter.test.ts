@@ -1,8 +1,8 @@
 import { describe, expect, test } from "vitest";
-import { isMissionStarter, MISSION_STARTERS } from "./mission-starter";
+import { isMissionStarter } from "./mission-starter";
 
 describe("isMissionStarter", () => {
-  test.each(MISSION_STARTERS)("accepts %s", (starter) => {
+  test.each(["houston", "employee", "api"])("accepts %s", (starter) => {
     expect(isMissionStarter(starter)).toBe(true);
   });
 

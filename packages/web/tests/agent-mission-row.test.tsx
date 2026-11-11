@@ -61,6 +61,22 @@ describe("AgentMissionRow", () => {
     ).toBe("Started by Houston");
   });
 
+  it("shows the API origin on a phone mission row", async () => {
+    await act(async () =>
+      root.render(
+        <AgentMissionRow
+          mission={mission}
+          status="needs_you"
+          originTag="Started through the API"
+          onOpen={() => {}}
+        />,
+      ),
+    );
+    expect(
+      host.querySelector('[data-testid="agent-mission-origin"]')?.textContent,
+    ).toBe("Started through the API");
+  });
+
   it("wears no origin tag on the user's own task", async () => {
     await act(async () =>
       root.render(
@@ -95,6 +111,7 @@ describe("useMissionOriginTag", () => {
         <Probe
           rows={[
             { started_by: "houston" },
+            { started_by: "api" },
             { started_by: "employee", origin_agent: "writer" },
             { started_by: "employee", origin_agent: "gone" },
             { origin_session_key: "conv-parent" },
@@ -108,6 +125,7 @@ describe("useMissionOriginTag", () => {
       [...host.querySelectorAll("li")].map((li) => li.textContent),
     ).toEqual([
       "tags.houstonStarted",
+      "tags.apiStarted",
       "tags.startedByAgent:Marisol",
       "tags.agentStarted",
       "tags.agentStarted",

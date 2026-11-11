@@ -13,6 +13,9 @@ it("seeds a mission's starter, and drops one the real host never stamps", () => 
     started_by: "houston",
   });
   expect(houston.started_by).toBe("houston");
+  expect(
+    createActivity("api-agent", { title: "t", started_by: "api" }).started_by,
+  ).toBe("api");
   // A POST body is untyped JSON: the value arrives however the caller wrote it.
   const body: Partial<Activity> = JSON.parse(
     '{"title":"t","started_by":"person"}',

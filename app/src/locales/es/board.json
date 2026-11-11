@@ -23,6 +23,7 @@
     "agentStarted": "Iniciada por el empleado de IA",
     "startedByAgent": "Iniciada por {{name}}",
     "houstonStarted": "Iniciada por Houston",
+    "apiStarted": "Iniciada desde la API",
     "setup": "Configuración"
   },
   "panel": {

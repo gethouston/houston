@@ -998,6 +998,14 @@
     "classification": "sdk"
   },
   {
+    "pattern": "/v1/agents/{slug}/missions/{id}/messages",
+    "methods": [
+      "POST"
+    ],
+    "classification": "infra",
+    "reason": "Public API mission follow-up for external callers; the app continues conversations through the agent chat SDK."
+  },
+  {
     "pattern": "/v1/agents/{slug}/move",
     "methods": [
       "POST"

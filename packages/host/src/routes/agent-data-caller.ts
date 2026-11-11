@@ -5,7 +5,13 @@ import {
   parseRoutineFloorHeader,
   ROUTINE_FLOOR_HEADER,
 } from "@houston/protocol";
-import { actingAuthorFor, routineActorFor } from "../auth/acting";
+import {
+  ACTING_AS_HEADER,
+  ACTING_VIA_API,
+  actingAuthorFor,
+  actingViaFromHeader,
+  routineActorFor,
+} from "../auth/acting";
 import { isAssistantRequest } from "../auth/assistant-call";
 import type { UserId } from "../domain/types";
 
@@ -34,8 +40,7 @@ export interface AgentDataCaller {
    * Reads still list existing trigger routines; the gate applies to writes only.
    */
   triggersEnabled?: boolean;
-  /** `houston` when the AI Manager made this request: a card it creates is
-   *  stamped `started_by` (PRODUCT-1928). Absent for everyone else. */
+  /** Verified AI Manager or public API caller, stamped on a new card. */
   startedBy?: MissionStarter;
   /**
    * The acting person's plan floor for a routine save (minutes between
@@ -73,11 +78,17 @@ export function agentDataCaller(
   const createdBy = routineActorFor(deps, req, userId);
   const author = actingAuthorFor(deps, req);
   const routineFloorMinutes = trustedRoutineFloor(deps, req);
+  const startedBy: MissionStarter | undefined = isAssistantRequest(deps, req)
+    ? "houston"
+    : deps.gatewayFronted &&
+        actingViaFromHeader(req.headers[ACTING_AS_HEADER]) === ACTING_VIA_API
+      ? "api"
+      : undefined;
   return {
     ...(createdBy ? { createdBy } : {}),
     ...(author ? { author } : {}),
     triggersEnabled: deps.triggersEnabled ?? false,
-    ...(isAssistantRequest(deps, req) ? { startedBy: "houston" as const } : {}),
+    ...(startedBy ? { startedBy } : {}),
     ...(routineFloorMinutes ? { routineFloorMinutes } : {}),
   };
 }

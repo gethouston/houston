@@ -13,8 +13,9 @@ import type { Agent } from "../lib/types";
 
 /**
  * The origin tag of a mission row, in the user's language: "Routine", "Set
- * up", "Started by Houston", "Started by {{name}}" or none. The ONE reading
- * the active board, the archive and the phone's task rows share, so a mission
+ * up", "Started by Houston", "Started through the API", "Started by {{name}}"
+ * or none. The ONE reading the active board, the archive and the phone's task
+ * rows share, so a mission
  * never reads one way in one place and another way in the next. `agents` is
  * the roster that names the employee who started it.
  */
@@ -27,6 +28,7 @@ export function useMissionOriginTag(
       routine: t("tags.routine"),
       setup: t("tags.setup"),
       houston: t("tags.houstonStarted"),
+      api: t("tags.apiStarted"),
       employee: t("tags.agentStarted"),
       employeeNamed: (name) => t("tags.startedByAgent", { name }),
     }),

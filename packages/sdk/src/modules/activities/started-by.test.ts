@@ -55,6 +55,26 @@ describe("missionStartedBy: first match wins", () => {
       },
       { kind: "employee", agentId: "Personal/Scout" },
     ],
+    ["the API", { started_by: "api" }, { kind: "api" }],
+    [
+      "the API outranks a legacy origin marker",
+      {
+        started_by: "api",
+        origin_session_key: "activity-p",
+        origin_agent: "writer",
+      },
+      { kind: "api" },
+    ],
+    [
+      "a routine outranks the API",
+      { routine_id: "r1", started_by: "api" },
+      { kind: "routine" },
+    ],
+    [
+      "setup outranks the API",
+      { agent: SETUP, started_by: "api" },
+      { kind: "setup" },
+    ],
     ["an employee, unnamed", { started_by: "employee" }, { kind: "employee" }],
     [
       "a legacy agent-started row stays an employee's",
@@ -85,6 +105,9 @@ test("the board item carries the decision for every surface", () => {
     started_by: "houston",
   };
   expect(toActivityItem(row).startedBy).toEqual({ kind: "houston" });
+  expect(toActivityItem({ ...row, started_by: "api" }).startedBy).toEqual({
+    kind: "api",
+  });
   expect(toActivityItem({ ...row, started_by: undefined }).startedBy).toEqual({
     kind: "person",
   });

@@ -62,6 +62,9 @@ export function actingDelegatorFromHeader(value: unknown): string | undefined {
 /** The `via` the gateway mints when the verified principal is the AI Manager. */
 export const ACTING_VIA_ASSISTANT = "assistant";
 
+/** The gateway's marker for public API, MCP and A2A card writes. */
+export const ACTING_VIA_API = "api";
+
 /**
  * The gateway's `via` claim (which credential drove this request), when
  * present beside a sub. Decoded, never verified: meaningful only on a

@@ -23,6 +23,7 @@
     "agentStarted": "Started by AI Employee",
     "startedByAgent": "Started by {{name}}",
     "houstonStarted": "Started by Houston",
+    "apiStarted": "Started through the API",
     "setup": "Set up"
   },
   "panel": {

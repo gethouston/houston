@@ -40,10 +40,11 @@ import { defineRouteFamily } from "./registry";
  *
  * `/sandbox/missions/settle` is the runtime's turn-end report. Board settle is
  * normally CLIENT-side (the SDK folds the terminal frame and PATCHes status) —
- * but a mission the agent started may never have a client observing it, so the
- * runtime reports every turn end and THIS route applies it ONLY to
- * agent-started missions (`origin_session_key` present) that are still
- * `running`. Every successful reply also stamps the card's message time,
+ * but a mission an agent or an API caller started may never have a client
+ * observing it, so the runtime reports every turn end and THIS route applies
+ * it ONLY to agent-started (`origin_session_key` present) or API-started
+ * (`started_by: "api"`) missions that are still `running`. Every successful
+ * reply also stamps the card's message time,
  * regardless of its origin or current status.
  */
 export interface MissionsDeps {
