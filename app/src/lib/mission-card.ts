@@ -5,6 +5,7 @@ export interface MissionOriginLabels {
   routine: string;
   setup: string;
   houston: string;
+  api: string;
   /** An AI Employee whose name the roster no longer knows. */
   employee: string;
   employeeNamed: (name: string) => string;
@@ -30,6 +31,8 @@ export function missionOriginLabel(
       return labels.setup;
     case "houston":
       return labels.houston;
+    case "api":
+      return labels.api;
     case "employee":
       return employeeName
         ? labels.employeeNamed(employeeName)

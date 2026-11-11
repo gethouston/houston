@@ -573,6 +573,55 @@ test("settle changes status only for agent-started missions still running", asyn
   );
 });
 
+test.each([
+  "needs_you",
+  "error",
+])("settle moves a running API card to %s without a client", async (status) => {
+  await saveActivities(vfs, root, [
+    PARENT,
+    {
+      id: "api-1",
+      title: "API task",
+      description: "",
+      status: "running",
+      started_by: "api",
+    },
+  ]);
+  const interaction = {
+    steps: [{ kind: "question", id: "q1", question: "Which tone?" }],
+  };
+  const result = await call("POST", "/sandbox/missions/settle", {
+    conversation_id: "activity-api-1",
+    status,
+    pending_interaction: interaction,
+  });
+  expect(result.status).toBe(200);
+  expect(result.body).toEqual({ ok: true });
+  expect((await onDisk()).find((a) => a.id === "api-1")).toMatchObject({
+    status,
+    started_by: "api",
+    pending_interaction: interaction,
+  });
+  expect((await onDisk()).find((a) => a.id === PARENT.id)).toEqual(PARENT);
+  expect(events).toEqual([{ type: "ActivityChanged", agentPath: agent.id }]);
+});
+
+test.each([
+  "needs_you",
+  "done",
+  "archived",
+  "error",
+])("settle preserves an API card already at %s", async (status) => {
+  await saveActivities(vfs, root, [{ ...PARENT, started_by: "api", status }]);
+  const result = await call("POST", "/sandbox/missions/settle", {
+    conversation_id: "conv-parent",
+    status: "error",
+  });
+  expect(result.body).toEqual({ ok: false });
+  expect((await onDisk())[0]?.status).toBe(status);
+  expect(events).toEqual([]);
+});
+
 test("a non-matching path is not handled", async () => {
   const { res } = fakeRes();
   const handled = await handleSandboxMissions(

@@ -43,8 +43,8 @@
       },
       "started_by": {
         "type": "string",
-        "enum": ["houston", "employee"],
-        "description": "Which AI started this mission. Set by Houston, not by the agent."
+        "enum": ["houston", "employee", "api"],
+        "description": "Who started this mission. Set by Houston, not by the agent."
       },
       "created_by": {
         "type": "string",

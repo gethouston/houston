@@ -20,6 +20,12 @@ describe("apiSetupPrompt", () => {
     expect(prompt).not.toContain("ai//v1");
   });
 
+  it("explains how to continue the same mission", () => {
+    expect(apiSetupPrompt(input)).toContain(
+      'POST https://gateway.gethouston.ai/v1/agents/3f9a1c07b2e84d65/missions/<id>/messages with JSON {"input": "what to do next"}',
+    );
+  });
+
   it("points at the key's env var and never carries a key", () => {
     const prompt = apiSetupPrompt(input);
     expect(prompt).toContain(`${HOUSTON_API_KEY_ENV} environment variable`);

@@ -12,6 +12,7 @@ const labels: MissionOriginLabels = {
   routine: "Routine",
   setup: "Set up",
   houston: "Started by Houston",
+  api: "Started through the API",
   employee: "Started by AI Employee",
   employeeNamed: (name) => `Started by ${name}`,
 };
@@ -43,6 +44,7 @@ describe("missionOriginLabel", () => {
     const tagOf = (row: Parameters<typeof missionStartedBy>[0]) =>
       missionOriginLabel(missionStartedBy(row), labels);
     strictEqual(tagOf({ started_by: "houston" }), "Started by Houston");
+    strictEqual(tagOf({ started_by: "api" }), "Started through the API");
     strictEqual(tagOf({ routine_id: "r1" }), "Routine");
     strictEqual(tagOf({ agent: AGENT_SETUP_AGENT_MODE }), "Set up");
     // A row older than `started_by` keeps today's label: never relabeled.

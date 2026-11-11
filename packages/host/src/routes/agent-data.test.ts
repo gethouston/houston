@@ -931,9 +931,9 @@ test("no vfs wired → typed data routes answer 503, runtime dispatch unaffected
   }
 });
 
-const viaAssistant = (sub: string) =>
+const viaToken = (sub: string, via = "assistant") =>
   `acting-v1.${Buffer.from(
-    JSON.stringify({ sub, via: "assistant", exp: 4102444800 }),
+    JSON.stringify({ sub, via, exp: 4102444800 }),
   ).toString("base64url")}.sig`;
 
 async function createCard(
@@ -970,7 +970,7 @@ test("activities: a plain create records no starter, and neither body nor PATCH 
   expect("started_by" in forged).toBe(false);
   // Off the gateway an acting header is client input: its via claim is ignored.
   const spoofed = await createCard(base, {
-    "x-houston-acting-as": viaAssistant("mallory"),
+    "x-houston-acting-as": viaToken("mallory"),
   });
   expect("started_by" in spoofed).toBe(false);
   const patched = await fetch(
@@ -984,6 +984,15 @@ test("activities: a plain create records no starter, and neither body nor PATCH 
   expect(patched.status).toBe(400);
 });
 
+test("activities: an API acting token and body cannot stamp a starter off the gateway", async () => {
+  const card = await createCard(
+    base,
+    { "x-houston-acting-as": viaToken("owner-sub", "api") },
+    { started_by: "api" },
+  );
+  expect("started_by" in card).toBe(false);
+});
+
 test("activities (gateway-fronted): the gateway's via claim stamps Houston, the loopback proof does not", async () => {
   const fronted = createControlPlaneServer({ ...deps(), gatewayFronted: true });
   await new Promise<void>((r) => fronted.listen(0, "127.0.0.1", () => r()));
@@ -991,9 +1000,35 @@ test("activities (gateway-fronted): the gateway's via claim stamps Houston, the 
   const at = `http://127.0.0.1:${typeof addr === "object" && addr ? addr.port : 0}`;
   try {
     const managed = await createCard(at, {
-      "x-houston-acting-as": viaAssistant("owner-sub"),
+      "x-houston-acting-as": viaToken("owner-sub"),
     });
     expect(managed.started_by).toBe("houston");
+    const api = await createCard(at, {
+      "x-houston-acting-as": viaToken("owner-sub", "api"),
+    });
+    expect(api.started_by).toBe("api");
+    const listed = await fetch(`${at}/agents/${agentId}/activities`, {
+      headers: auth("alice"),
+    });
+    expect((await listed.json()).items).toContainEqual(api);
+    for (const via of ["app", "API", ""]) {
+      const plain = await createCard(
+        at,
+        { "x-houston-acting-as": viaToken("owner-sub", via) },
+        { started_by: "api" },
+      );
+      expect("started_by" in plain).toBe(false);
+    }
+    const patched = await fetch(
+      `${at}/agents/${agentId}/activities/${api.id}`,
+      {
+        method: "PATCH",
+        headers: auth("alice"),
+        body: JSON.stringify({ title: "Renamed API mission" }),
+      },
+    );
+    expect(patched.status).toBe(200);
+    expect((await patched.json()).started_by).toBe("api");
     const proofOnly = await createCard(at, assistantCallHeaders());
     expect("started_by" in proofOnly).toBe(false);
   } finally {

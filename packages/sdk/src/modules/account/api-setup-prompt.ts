@@ -53,6 +53,7 @@ How the API works:
 1. Start a task (a "mission"): POST ${missions} with JSON {"input": "what to do"}. The response is the mission; keep its "id".
 2. Follow it live: GET ${missions}/<id>/events (Server-Sent Events).
 3. Read the result: GET ${missions}/<id>. "status" ends as completed, failed or canceled, and "result" holds the answer.
+4. Continue the same task: POST ${missions}/<id>/messages with JSON {"input": "what to do next"}. Keep using the same mission id and event stream.
 Optional: add "webhook": {"url": "https://...", "secret": "..."} when starting a mission to get a POST when it finishes.
 
 Read the reference before using anything not listed here: ${HOUSTON_API_DOCS.overview} (REST: ${HOUSTON_API_DOCS.missions}, MCP: ${HOUSTON_API_DOCS.mcp}, A2A: ${HOUSTON_API_DOCS.a2a}).`;

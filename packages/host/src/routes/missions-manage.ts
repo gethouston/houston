@@ -114,10 +114,9 @@ export async function applyMissionStatus(
 }
 
 /**
- * The runtime's turn-end report stamps every successful reply. Status changes
- * remain limited to agent-started missions still running: those may have no
- * client to settle their card. An observer may already have changed status
- * before this report arrives, so the reply stamp is independent of that guard.
+ * The runtime's turn-end report stamps every successful reply, even if an
+ * observer already changed the card. Only running agent-started or API missions
+ * change status here, since those may have no client to settle them.
  */
 export async function handleMissionSettle(
   ctx: MissionsCtx,
@@ -174,7 +173,8 @@ export async function handleMissionSettle(
       }
       if (!current) return { settled: false, report };
       const changesStatus =
-        Boolean(current.origin_session_key) && current.status === "running";
+        (Boolean(current.origin_session_key) || current.started_by === "api") &&
+        current.status === "running";
       const stamp =
         !stopped && status === "needs_you" ? "last_message" : undefined;
       if (!changesStatus && !stamp) return { settled: false, report };

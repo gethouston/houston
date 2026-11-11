@@ -202,6 +202,18 @@ test("normalize keeps a valid started_by and drops a hand-typed one", () => {
   expect(items.slice(2).some((a) => "started_by" in a)).toBe(false);
 });
 
+test("an API starter survives saving and loading the board", async () => {
+  const store = memStore();
+  const card: Activity = {
+    ...createActivity({ title: "Deck" }, "api-1", NOW),
+    started_by: "api",
+  };
+  await saveActivities(store, ROOT, [card]);
+  const { items, diagnostics } = await loadActivities(store, ROOT);
+  expect(diagnostics).toEqual([]);
+  expect(items).toEqual([card]);
+});
+
 test("attribution survives a save → load round-trip", async () => {
   const store = memStore();
   const a = createActivity({ title: "Deck" }, "act-1", NOW, ALICE);
