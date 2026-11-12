@@ -168,6 +168,18 @@ describe("a board keeps its activity-row semantics", () => {
       { s1: true },
     );
   });
+
+  it("shows an external turn in the open session while its VM still says completed", () => {
+    deepStrictEqual(
+      deriveSessionLoading({
+        locallySent: {},
+        rows: board({ s1: "running" }),
+        openSessionKey: "s1",
+        vmStatus: vm({ s1: "completed" }),
+      }),
+      { s1: true },
+    );
+  });
 });
 
 describe("a turn whose reply completed ends its Stop before the card's write lands", () => {
@@ -207,6 +219,22 @@ describe("a turn whose reply completed ends its Stop before the card's write lan
       }),
       {},
     );
+  });
+});
+
+describe("the open conversation follows running turns", () => {
+  it("starts loading again as soon as the next local or observed turn starts", () => {
+    for (const sent of [true, false]) {
+      deepStrictEqual(
+        deriveSessionLoading({
+          locallySent: sent ? { s1: true } : {},
+          rows: board({ s1: "needs_you" }),
+          openSessionKey: "s1",
+          vmStatus: vm({ s1: "running" }),
+        }),
+        { s1: true },
+      );
+    }
   });
 });
 

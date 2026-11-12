@@ -129,6 +129,7 @@ export function mountLog(element: ReactElement): {
 /** The viewport changes height and the pane's observer reports it. */
 export function resizeViewport(pane: HTMLElement, height: number): void {
   layout.viewport = height;
+  layout.scrollTop = Math.min(layout.scrollTop, maxScroll());
   const observer = observers.find((entry) => entry.targets.includes(pane));
   assert.ok(observer, "nothing observes the scroll pane");
   act(() => observer.callback());

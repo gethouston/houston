@@ -36,7 +36,7 @@
 #   a11y     roles / labels / focus expectations the surface must honor
 #   since    inventory version this component first appeared in
 
-version: 153
+version: 154
 
 components:
   - id: agent-delegation-settings
@@ -147,7 +147,9 @@ components:
       unless the user scrolled up. A feed held at its latest message stays
       pinned there when its own viewport resizes (a card appearing, growing or
       leaving in the composer slot, the composer growing a line, the phone
-      keyboard), and a feed the person scrolled up in stays where they put it.
+      keyboard). Viewport compensation happens before paint and preserves any
+      running content spring. A feed the person scrolled up in
+      stays where they put it.
       A send brings the latest message into view wherever the person had
       scrolled, and so does each answer in a scripted conversation whose
       answers are taps rather than sends. Item ordering/merge is view-model

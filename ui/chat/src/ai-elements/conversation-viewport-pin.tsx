@@ -2,9 +2,6 @@ import { useReducedMotion } from "motion/react";
 import { useEffect } from "react";
 import { useStickToBottomContext } from "use-stick-to-bottom";
 
-/** use-stick-to-bottom's own settle window for a resize-driven scroll. */
-const RESIZE_SCROLL_MS = 350;
-
 /** How the log moves to its latest message: the library's spring, or a jump
  *  when the person asks the system for reduced motion. */
 export function useConversationScrollAnimation(): "smooth" | "instant" {
@@ -20,12 +17,14 @@ export function useConversationScrollAnimation(): "smooth" | "instant" {
  * clamps `scrollTop` down, which the library reads as the person scrolling up
  * and answers by letting go of the bottom for good.
  *
+ * A viewport change adds no content. Compensating only its height preserves
+ * the content spring's remaining distance without hiding lines before paint.
+ *
  * A log the person scrolled up to read stays where they put it. Mount inside a
  * <Conversation>.
  */
 export function ConversationViewportPin() {
-  const { scrollRef, scrollToBottom, state } = useStickToBottomContext();
-  const animation = useConversationScrollAnimation();
+  const { scrollRef, state } = useStickToBottomContext();
 
   useEffect(() => {
     const pane = scrollRef.current;
@@ -39,12 +38,14 @@ export function ConversationViewportPin() {
       // The library ignores scroll events while `resizeDifference` is set, the
       // same guard its content observer raises, so the clamp is not an escape.
       state.resizeDifference = difference;
-      scrollToBottom({
-        animation,
-        wait: true,
-        preserveScrollPosition: true,
-        duration: animation === "instant" ? undefined : RESIZE_SCROLL_MS,
-      });
+      // Growth hides nothing. Only correct a browser clamp; subtracting from
+      // an unclamped pane would move visible content down during its spring.
+      if (difference > 0) {
+        if (state.scrollTop >= state.targetScrollTop)
+          state.scrollTop = state.targetScrollTop;
+      } else {
+        state.scrollTop -= difference;
+      }
       // Cleared only after the clamp's scroll event has been judged: that
       // event fires on the next frame and is weighed a timeout later.
       requestAnimationFrame(() => {
@@ -55,7 +56,7 @@ export function ConversationViewportPin() {
     });
     observer.observe(pane);
     return () => observer.disconnect();
-  }, [scrollRef, scrollToBottom, state, animation]);
+  }, [scrollRef, state]);
 
   return null;
 }
