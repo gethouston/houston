@@ -45,6 +45,87 @@ const BOTH_OFFERS = {
   },
 };
 
+test("suggested actions keep the latest reply visible in every frame", async ({
+  page,
+  request,
+}) => {
+  await request.post(`${FAKE_HOST_URL}/__test__/chat-reply`, {
+    data: {
+      text: `Roger that. You said: prepare the update.\n\n${Array.from(
+        { length: 24 },
+        (_, index) =>
+          `Update ${index + 1}. The weekly report is ready to review.`,
+      ).join("\n\n")}`,
+    },
+  });
+  await startMission(page, "prepare the update");
+  const pane = page.locator(".conversation-scroll-pane");
+  await expect
+    .poll(() =>
+      pane.evaluate((element) => ({
+        overflowing: element.scrollHeight > element.clientHeight,
+        pinned:
+          element.scrollHeight - element.clientHeight - element.scrollTop < 2,
+      })),
+    )
+    .toEqual({ overflowing: true, pinned: true });
+
+  await request.post(`${FAKE_HOST_URL}/__test__/chat-interaction`, {
+    data: { interaction: { steps: [BOTH_OFFERS.interaction.steps[0]] } },
+  });
+  const probe = await pane.evaluateHandle((element) => {
+    const samples: { replyBottom: number; paneBottom: number }[] = [];
+    const initialHeight = element.clientHeight;
+    let frame = 0;
+    const sample = () => {
+      const rows = element.querySelectorAll("[data-conversation-message-key]");
+      const reply = rows.item(rows.length - 1);
+      samples.push({
+        replyBottom: reply.getBoundingClientRect().bottom,
+        paneBottom: element.getBoundingClientRect().top + element.clientHeight,
+      });
+      frame = requestAnimationFrame(sample);
+    };
+    // Observe after the pin's observer, so the first sample sees its pre-paint
+    // correction. A mutation callback would run before ResizeObserver can act.
+    const observer = new ResizeObserver(() => {
+      if (
+        frame === 0 &&
+        element.clientHeight < initialHeight &&
+        document.querySelector('[aria-label="Dismiss suggested actions"]')
+      ) {
+        sample();
+      }
+    });
+    observer.observe(element);
+    return {
+      samples,
+      stop() {
+        cancelAnimationFrame(frame);
+        observer.disconnect();
+        return samples;
+      },
+    };
+  });
+  const composer = page.getByPlaceholder(FOLLOW_UP_PLACEHOLDER);
+  await composer.fill("finish the update");
+  await composer.press("Enter");
+  await expect(
+    page.getByRole("button", { name: "Draft an email" }),
+  ).toBeVisible();
+  await expect
+    .poll(() => probe.evaluate(({ samples }) => samples.length))
+    .toBeGreaterThanOrEqual(3);
+  const samples = await probe.evaluate((handle) => handle.stop());
+  await probe.dispose();
+  expect(
+    samples.filter(
+      ({ replyBottom, paneBottom }) => replyBottom > paneBottom + 2,
+    ),
+    "the latest reply must remain above the composer's visible edge",
+  ).toEqual([]);
+});
+
 test("suggested action pills settle the card in Needs you, prefill the composer, and dismiss", async ({
   page,
   request,
