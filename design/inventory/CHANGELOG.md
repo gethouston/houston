@@ -6,7 +6,9 @@ Every `version` bump in `inventory.yaml` needs a matching entry here (enforced b
 ## v154 - 2026-11-11
 
 A conversation pinned to its latest reply stays anchored before paint when
-suggestions or other composer content resize its viewport.
+suggestions or other composer content resize its viewport, preserving any
+running content spring. An unclamped growing viewport leaves visible content
+in place.
 
 ## v153 - 2026-11-09
 

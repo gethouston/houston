@@ -73,35 +73,56 @@ test("suggested actions keep the latest reply visible in every frame", async ({
   await request.post(`${FAKE_HOST_URL}/__test__/chat-interaction`, {
     data: { interaction: { steps: [BOTH_OFFERS.interaction.steps[0]] } },
   });
+  // Let the content spring finish before measuring the viewport-only resize.
+  const slotGate = await page.addStyleTag({
+    content:
+      '.shrink-0:has(> div [aria-label="Dismiss suggested actions"]) { display: none; }',
+  });
   const probe = await pane.evaluateHandle((element) => {
-    const samples: { replyBottom: number; paneBottom: number }[] = [];
+    const samples: {
+      replyBottom: number;
+      paneBottom: number;
+    }[] = [];
     const initialHeight = element.clientHeight;
     let frame = 0;
-    const sample = () => {
-      const rows = element.querySelectorAll("[data-conversation-message-key]");
-      const reply = rows.item(rows.length - 1);
-      samples.push({
-        replyBottom: reply.getBoundingClientRect().bottom,
-        paneBottom: element.getBoundingClientRect().top + element.clientHeight,
-      });
-      frame = requestAnimationFrame(sample);
-    };
-    // Observe after the pin's observer, so the first sample sees its pre-paint
-    // correction. A mutation callback would run before ResizeObserver can act.
+    let task = 0;
+    let reportedHeight = 0;
+    // Created after the pin's observer, so a reported height has its correction.
     const observer = new ResizeObserver(() => {
-      if (
-        frame === 0 &&
-        element.clientHeight < initialHeight &&
-        document.querySelector('[aria-label="Dismiss suggested actions"]')
-      ) {
-        sample();
-      }
+      reportedHeight = element.clientHeight;
     });
     observer.observe(element);
+    // A task can force layout between a Playwright mutation and ResizeObserver.
+    // Skip that unpainted layout until the pin has corrected its new height.
+    const sample = () => {
+      if (document.querySelector('[aria-label="Dismiss suggested actions"]')) {
+        if (
+          element.clientHeight === reportedHeight &&
+          reportedHeight < initialHeight
+        ) {
+          const rows = element.querySelectorAll(
+            "[data-conversation-message-key]",
+          );
+          const reply = rows.item(rows.length - 1);
+          samples.push({
+            replyBottom: reply.getBoundingClientRect().bottom,
+            paneBottom:
+              element.getBoundingClientRect().top + element.clientHeight,
+          });
+        }
+      }
+      frame = requestAnimationFrame(() => {
+        task = window.setTimeout(sample, 0);
+      });
+    };
+    frame = requestAnimationFrame(() => {
+      task = window.setTimeout(sample, 0);
+    });
     return {
       samples,
       stop() {
         cancelAnimationFrame(frame);
+        clearTimeout(task);
         observer.disconnect();
         return samples;
       },
@@ -110,6 +131,20 @@ test("suggested actions keep the latest reply visible in every frame", async ({
   const composer = page.getByPlaceholder(FOLLOW_UP_PLACEHOLDER);
   await composer.fill("finish the update");
   await composer.press("Enter");
+  await expect(
+    page.getByRole("button", { name: "Draft an email", includeHidden: true }),
+  ).toBeAttached();
+  await expect
+    .poll(() =>
+      pane.evaluate(
+        (element) =>
+          element.scrollHeight - element.clientHeight - element.scrollTop < 2,
+      ),
+    )
+    .toBe(true);
+  await slotGate.evaluate((element) =>
+    element.parentNode?.removeChild(element),
+  );
   await expect(
     page.getByRole("button", { name: "Draft an email" }),
   ).toBeVisible();

@@ -23,6 +23,8 @@ const { ConversationViewportPin } = await import(
   "../src/ai-elements/conversation-viewport-pin.tsx"
 );
 
+const { useStickToBottomContext } = await import("use-stick-to-bottom");
+
 const log = () =>
   mountLog(
     h(
@@ -36,14 +38,46 @@ const log = () =>
 describe("ConversationViewportPin", () => {
   beforeEach(() => {
     layout.viewport = 400;
-    layout.scrollTop = maxScroll();
+    layout.scrollTop = pinnedTop();
   });
 
-  it("keeps a pinned log on its latest line when the viewport shrinks", async () => {
+  it("keeps a pinned log on its latest line before a resized viewport paints", () => {
     const pane = log();
     resizeViewport(pane, 250);
-    await settle();
     assert.equal(layout.scrollTop, pinnedTop());
+  });
+
+  it("preserves an in-flight content spring's remaining distance", () => {
+    let context: ReturnType<typeof useStickToBottomContext> | undefined;
+    function CapturePin() {
+      context = useStickToBottomContext();
+      return h(ConversationViewportPin);
+    }
+    const { pane } = mountLog(
+      h(
+        Conversation,
+        null,
+        h(CapturePin),
+        h(ConversationContent, null, "reply"),
+      ),
+    );
+    assert.ok(context);
+    context.state.scrollTop = pinnedTop() - 178;
+    resizeViewport(pane, 250);
+    assert.equal(layout.scrollTop, pinnedTop() - 178);
+  });
+
+  it("keeps a browser-clamped growing viewport at the bottom before paint", () => {
+    const pane = log();
+    resizeViewport(pane, 550);
+    assert.equal(layout.scrollTop, pinnedTop());
+  });
+
+  it("leaves content in place when a growing viewport does not clamp it", () => {
+    const pane = log();
+    layout.scrollTop = 300;
+    resizeViewport(pane, 550);
+    assert.equal(layout.scrollTop, 300);
   });
 
   it("leaves a log the person scrolled up in where they put it", async () => {
@@ -62,7 +96,7 @@ describe("ConversationViewportPin", () => {
     await settle();
     // The browser clamps scrollTop down and reports it as a scroll.
     resizeViewport(pane, 550);
-    scrollTo(pane, maxScroll());
+    scrollTo(pane, layout.scrollTop);
     await settle();
     resizeViewport(pane, 300);
     await settle();

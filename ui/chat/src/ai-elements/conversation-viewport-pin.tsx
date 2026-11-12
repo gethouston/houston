@@ -17,8 +17,8 @@ export function useConversationScrollAnimation(): "smooth" | "instant" {
  * clamps `scrollTop` down, which the library reads as the person scrolling up
  * and answers by letting go of the bottom for good.
  *
- * A viewport change adds no content. Jump before paint because animating it
- * paints a frame with the newest lines hidden under the composer.
+ * A viewport change adds no content. Compensating only its height preserves
+ * the content spring's remaining distance without hiding lines before paint.
  *
  * A log the person scrolled up to read stays where they put it. Mount inside a
  * <Conversation>.
@@ -38,7 +38,14 @@ export function ConversationViewportPin() {
       // The library ignores scroll events while `resizeDifference` is set, the
       // same guard its content observer raises, so the clamp is not an escape.
       state.resizeDifference = difference;
-      state.scrollTop = state.calculatedTargetScrollTop;
+      // Growth hides nothing. Only correct a browser clamp; subtracting from
+      // an unclamped pane would move visible content down during its spring.
+      if (difference > 0) {
+        if (state.scrollTop >= state.targetScrollTop)
+          state.scrollTop = state.targetScrollTop;
+      } else {
+        state.scrollTop -= difference;
+      }
       // Cleared only after the clamp's scroll event has been judged: that
       // event fires on the next frame and is weighed a timeout later.
       requestAnimationFrame(() => {

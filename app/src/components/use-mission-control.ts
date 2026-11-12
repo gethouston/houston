@@ -46,6 +46,7 @@ import { mergeWarmingRows } from "../lib/warming-board-rows";
 import { useAgentProvisioningStore } from "../stores/agent-provisioning";
 import type { SendOverrides } from "./board/board-source";
 import { agentsByPath, missionCardAgentName } from "./board/mission-card-agent";
+import { deriveSessionLoading } from "./board/session-loading";
 import { useMcOpenConversation } from "./board/use-mc-open-conversation";
 import { useMissionCardWrites } from "./board/use-mission-card-writes";
 import { resolveFollowUpOverrides } from "./mission-control-send";
@@ -395,59 +396,29 @@ export function useMissionControl(agents: Agent[]) {
     [t, queryClient, paths, rememberCreated],
   );
 
-  // Per-session run state. The conversation VM is the live source: the open
-  // session's `activeFeed` subscription keeps this recomputing while its turn
-  // runs; background sessions re-derive when the activity list refetches (the
-  // SessionStatus/ActivityChanged invalidations), reading VM status
-  // synchronously. "idle"/unpublished falls back to the card's activity
-  // status, which the turn stream persists host-side at start and settle.
   const effectiveLoading = useMemo(() => {
-    const out: Record<string, boolean> = {};
-    const itemStatusBySession = new Map<string, string>();
-    for (const item of items) {
-      const sessionKey =
-        (item.metadata?.sessionKey as string | undefined) ??
-        `activity-${item.id}`;
-      itemStatusBySession.set(sessionKey, item.status);
-    }
-    const vmStatusFor = (agentPath: string | undefined, sessionKey: string) => {
-      // The open session reads its SUBSCRIBED vm (the reactive path — its
-      // spinner updates as the turn streams and settles); background sessions
-      // are read synchronously and re-derive on the activity refetch.
-      const s =
-        sessionKey === activeSessionKey && agentPath === (activeAgentPath ?? "")
-          ? activeVm?.turnStatus
-          : agentPath
-            ? getConversationStatus(agentPath, sessionKey)
-            : undefined;
-      return s === "idle" ? undefined : s;
-    };
-    for (const [sessionKey, value] of Object.entries(loading)) {
-      if (!value) continue;
-      const agentPath = sessionMapRef.current[sessionKey]?.agentPath;
-      const status = vmStatusFor(agentPath, sessionKey);
-      const activityStatus = itemStatusBySession.get(sessionKey);
-      if (!status && activityStatus && activityStatus !== "running") {
-        continue;
-      }
-      if (!status || status === "running") {
-        out[sessionKey] = true;
-      }
-    }
-    for (const item of items) {
-      const sessionKey =
-        (item.metadata?.sessionKey as string | undefined) ??
-        `activity-${item.id}`;
-      const agentPath = pathMapRef.current[item.id];
-      const vmStatus = vmStatusFor(agentPath, sessionKey);
-      // A completed reply ends the spinner before its card's write lands.
-      if (vmStatus === "wrapping_up") continue;
-      if (item.status === "running" || vmStatus === "running") {
-        out[sessionKey] = true;
-      }
-    }
-    return out;
-  }, [items, loading, activeVm, activeSessionKey, activeAgentPath]);
+    return deriveSessionLoading({
+      locallySent: loading,
+      rows: {
+        present: true,
+        statusBySession: new Map(
+          items.map((item) => [
+            (item.metadata?.sessionKey as string | undefined) ??
+              `activity-${item.id}`,
+            item.status,
+          ]),
+        ),
+      },
+      openSessionKey: activeSessionKey,
+      vmStatus: (sessionKey) => {
+        if (sessionKey === activeSessionKey) return activeVm?.turnStatus;
+        const agentPath = sessionMapRef.current[sessionKey]?.agentPath;
+        return agentPath
+          ? getConversationStatus(agentPath, sessionKey)
+          : undefined;
+      },
+    });
+  }, [items, loading, activeVm, activeSessionKey]);
 
   return {
     items,

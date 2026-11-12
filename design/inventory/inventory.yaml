@@ -147,8 +147,8 @@ components:
       unless the user scrolled up. A feed held at its latest message stays
       pinned there when its own viewport resizes (a card appearing, growing or
       leaving in the composer slot, the composer growing a line, the phone
-      keyboard). The resize anchor is instant, before paint, so the latest
-      lines never hide under the composer. A feed the person scrolled up in
+      keyboard). Viewport compensation happens before paint and preserves any
+      running content spring. A feed the person scrolled up in
       stays where they put it.
       A send brings the latest message into view wherever the person had
       scrolled, and so does each answer in a scripted conversation whose
