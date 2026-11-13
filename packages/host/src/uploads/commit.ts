@@ -64,6 +64,14 @@ export class StagedUploadUnavailableError extends Error {
     super("stagedGeneration requires a store-backed host");
   }
 }
+/**
+ * One uploaded file: original name + its base64-encoded bytes or staged reference. `relPath` is
+ * set for folder uploads (HOU-808): the file's slash-joined path INSIDE the
+ * dropped folder, including the filename (mirrors `File.webkitRelativePath`,
+ * e.g. `docs/guide/intro.md`) — the file then lands at `uploads/<relPath>` so
+ * the folder's structure survives. Hosts predating folder support ignore the
+ * field and store the flat `name`, which still yields readable paths.
+ */
 export type UploadFile =
   | { name: string; contentBase64: string; relPath?: string }
   | CommittedUploadFile;

@@ -1,8 +1,11 @@
-import { handleFakeUploads } from "./routes-uploads";
-import { handleAccountControls } from "./test-controls-account";
-import { handleChatControls } from "./test-controls-chat";
-import { handleStateControls } from "./test-controls-state";
-/** In-memory host router shared by the HTTP server and protocol tests. */
+/**
+ * The fake host's request router: a pure `Request -> Response` function with no
+ * Node HTTP coupling, so it can be unit-tested and driven by any adapter.
+ *
+ * Answers just enough of the host + per-agent runtime for the desktop UI
+ * (app/src) to boot and run on the new-engine adapter in host mode — with NO
+ * real backend, no AI provider, no credentials. Deterministic and hermetic.
+ */
 
 import { buildProviderCatalog } from "@houston/host/src/providers/pi-catalog";
 import { ASSISTANT_AGENT_ID } from "./config";
@@ -23,8 +26,12 @@ import { handleSetupRuntime } from "./routes-setup-runtime";
 import { handleSharedSkillsRoutes } from "./routes-shared-skills";
 import { handleSpacesRoutes } from "./routes-spaces";
 import { handleTeamsRoutes } from "./routes-teams";
+import { handleFakeUploads } from "./routes-uploads";
 import { sseResponse } from "./sse";
 import * as state from "./state";
+import { handleAccountControls } from "./test-controls-account";
+import { handleChatControls } from "./test-controls-chat";
+import { handleStateControls } from "./test-controls-state";
 
 /** Global reactivity feed (`GET /v1/events`). Mirrors the host's SSE shape:
  *  `data: { type, agentPath, workspaceId }`. control-plane.ts subscribeEvents
@@ -88,9 +95,23 @@ export async function handle(req: Request): Promise<Response> {
   if (path === "/v1/capabilities" && method === "GET") {
     return json(state.getCapabilities());
   }
+  // pi-ai's full static model catalog (`GET /v1/catalog`, wire `ProviderCatalog`).
+  // Built from the SAME real `buildProviderCatalog` the host route uses, so the
+  // mock can't drift from the wire contract — the app's `getCatalog()` hydrates
+  // the picker + AI Models tab from it. It returns every runnable provider on
+  // every deployment (no profile gating). Without this the route 404'd,
+  // `getCatalog()` degraded to `[]`, and the picker fell back to the override-only
+  // seed (no models).
   if (path === "/v1/catalog" && method === "GET") {
     return json(buildProviderCatalog());
   }
+  // Personal-assistant discovery (`GET /v1/assistant`, `AssistantHandle`): the
+  // address the rail's Manager row and its screen are gated on. Like the real
+  // host it answers a hidden agent off the roster, so a first run (an empty
+  // roster) still has its manager; the chat that opens rides the ordinary
+  // per-agent runtime routes, which is the contract under test. The
+  // conversation id is the host's own constant, and no activity is created for
+  // it, so the assistant thread stays off every board as it does in production.
   if (path === "/v1/assistant" && method === "GET") {
     return json({ agent: ASSISTANT_AGENT_ID, conversation: "assistant" });
   }

@@ -6,13 +6,51 @@ import {
   installConsoleCapture,
 } from "@houston/runtime-client/sentry";
 
-import { installParentWatchdog } from "../parent-watchdog";
-import { isBenignRecursiveWatchRace } from "../watch/watcher-race";
 import { buildMainHost } from "./main-host";
+import {
+  installProcessErrorHandlers,
+  installShutdownHandlers,
+} from "./main-lifecycle";
 import { managedStoreConfig } from "./managed-store-config";
 
-/** Desktop sidecar and self-host entry. HOUSTON_HOME defaults to ~/.houston;
- * HOUSTON_WORKSPACES_ROOT and HOUSTON_CREDENTIALS_PATH can override its children. */
+/**
+ * The local host entry point — the desktop sidecar the Tauri shell spawns. Same
+ * host server, local adapter profile. The shell parses the `HOUSTON_HOST_LISTENING`
+ * banner for {port, token}, exactly as it parses the runtime's today.
+ *
+ * Config (env, all optional):
+ *   HOUSTON_HOME              ~/.houston (base for the three paths below)
+ *   HOUSTON_WORKSPACES_ROOT   ~/.houston/workspaces
+ *   HOUSTON_CREDENTIALS_PATH  ~/.houston/credentials.json
+ *   HOUSTON_AGENTS_DIR        ~/.houston/agents (installed agent-config library)
+ *   HOUSTON_CHAT_HISTORY_DB   ~/.houston/db/houston.db (Rust-era chat to migrate)
+ *   HOUSTON_HOST_PORT         4318
+ *   HOUSTON_HOST_BIND         127.0.0.1 (desktop). Self-host on a VPS sets
+ *                             0.0.0.0 to expose it behind a TLS reverse proxy.
+ *   HOUSTON_HOST_TOKEN        random per boot (set a fixed one for self-host)
+ *   HOUSTON_CREDENTIALS_URL   managed pod only: gateway base URL for org credentials
+ *   HOUSTON_ORG_SLUG          managed pod only: org slug for org credentials
+ *   HOUSTON_AGENT_SLUG        managed pod only: agent slug for org credentials
+ *   HOUSTON_RUNTIME_COMMAND   argv to launch a pi-runtime (space-separated);
+ *                             explicit override (highest priority). Otherwise:
+ *                             the compiled sidecar spawns ITSELF (in runtime
+ *                             role via HOUSTON_SIDECAR_ROLE — see host.ts);
+ *                             bundled Docker spawns dist/runtime/main.mjs; dev
+ *                             falls back to `node --import tsx <repo>/packages/runtime/src/main.ts`.
+ *   HOUSTON_APP_SYSTEM_PROMPT the product voice prompt (from the app)
+ *   HOUSTON_MANAGED_CLOUD=1  serve managed-cloud capabilities (K8s pod)
+ *   HOUSTON_SHUTDOWN_DRAIN_MS  managed pod only: how long a shutdown lets
+ *                            in-flight turns finish (termination grace minus
+ *                            the final sync's share); unset = short default
+ *   HOUSTON_OAUTH_CALLBACK_BASE_URL  self-host only: the public origin for the
+ *                             custom-integration OAuth callback (PRODUCT-1172)
+ *   HOUSTON_PASSIVE=1        migration-source mode: no scheduler, no watcher
+ *   HOUSTON_ROUTINE_SCHEDULER_MODE  local (default) | external (managed pod
+ *                             only; disables cron fires, keeps reconcile)
+ *   HOUSTON_STORE_URL         managed pod only: object-store gateway base URL
+ *   HOUSTON_TRANSCRIPT_DUAL_WRITE=1  file-first transcript/doc DB shadow
+ *   HOUSTON_TURN_LOG=1        relay-frame batches to managed turnlog ingest
+ */
 
 // Crash reporting. Dormant without SENTRY_DSN; a DSN in a source run needs the
 // SENTRY_SEND_IN_DEV opt-in (activation rules: runtime-client/src/sentry/).
@@ -136,34 +174,7 @@ const host = buildMainHost({
 // (Integrations on/off/direct is announced by the host's own boot log —
 // formatIntegrationsModeLog in local/host.ts — so no extra warning here.)
 
-// A desktop supervisor must not die on a stray error from a child runtime, a
-// dropped SSE socket, or a transient fetch. Log loudly and stay up — the user
-// would otherwise see "NetworkError" on the next request.
-process.on("uncaughtException", (err) => {
-  // One narrow demotion: Node's Linux recursive-watcher ENOENT race on a
-  // transient dir (see watch/watcher-race.ts). Warning breadcrumb, not a
-  // Sentry error event; every other uncaught error stays loud.
-  if (isBenignRecursiveWatchRace(err)) {
-    console.warn(
-      "[local-host] transient fs-watch race (ignored):",
-      err.message,
-    );
-    return;
-  }
-  console.error("[local-host] uncaughtException (staying up):", err);
-});
-process.on("unhandledRejection", (reason) => {
-  // Same benign-race demotion as above: Node's promise-based watcher
-  // internals can surface the ENOENT as a rejection instead of a throw.
-  if (isBenignRecursiveWatchRace(reason)) {
-    console.warn(
-      "[local-host] transient fs-watch race (ignored):",
-      (reason as Error).message,
-    );
-    return;
-  }
-  console.error("[local-host] unhandledRejection (staying up):", reason);
-});
+installProcessErrorHandlers();
 
 try {
   await host.start();
@@ -173,28 +184,4 @@ try {
   await fatal("[local-host] startup failed:", err);
 }
 
-let shuttingDown = false;
-for (const sig of ["SIGINT", "SIGTERM"] as const) {
-  process.on(sig, () => {
-    if (shuttingDown) return process.exit(0);
-    shuttingDown = true;
-    void host
-      .stop()
-      .catch((err) => console.error("[local-host] shutdown failed:", err))
-      .finally(async () => {
-        // Deliver anything still queued (e.g. a shutdown-failure event). A
-        // clean stop has an empty queue and this resolves immediately.
-        await sentry?.flush(500);
-        process.exit(0);
-      });
-  });
-}
-
-// Unix orphan-prevention: when the Tauri app is FORCE-QUIT or crashes it sends
-// no signal, but the OS closes the write-end of our piped stdin. Watch for that
-// EOF and tear down (killing every runtime) so a hard app exit never orphans the
-// host + its runtimes. Arms ONLY when the supervisor set `HOUSTON_SUPERVISED=1`
-// (its default signal); self-host Docker, plain `tsx`, and tests leave it
-// unset and stay inert. Windows force-quit is covered by the supervisor's
-// kill-on-close Job Object.
-installParentWatchdog({ onParentExit: async () => await host.stop() });
+installShutdownHandlers(host, sentry);

@@ -5,6 +5,7 @@ import {
 } from "@houston/runtime-client/object-sync";
 import { FsVfs } from "./fs";
 import { Materializer } from "./lazy-store-fetch";
+import { moveLazyStoreEntry } from "./lazy-store-move";
 import { LazyOwnership } from "./lazy-store-ownership";
 import type { LazyStoreVfsOptions } from "./lazy-store-types";
 import {
@@ -16,6 +17,17 @@ import {
   VfsReadLimitError,
 } from "./vfs";
 
+/**
+ * A Vfs over an object store: listings/stats from the store manifest, an
+ * object downloaded into the local overlay (`root`) the FIRST time a handler
+ * reads it, writes and deletes in the overlay for the caller's sync-back.
+ * The shared `manifest` is the sync-back ownership boundary (materialized
+ * objects + UNREAD_HASH entries for keys written/deleted without a read);
+ * untouched remote objects never enter it, so they are never re-uploaded
+ * or deleted. Remote directories exist only as their descendants; writes
+ * keep a real tree's file/directory exclusivity so the next eager hydrate
+ * of the store cannot fail on a key that is both.
+ */
 export class LazyStoreVfs implements Vfs {
   private readonly local: FsVfs;
   private readonly state: LazyOwnership;
@@ -62,12 +74,23 @@ export class LazyStoreVfs implements Vfs {
     );
   }
 
+  /** Remote keys (store-relative) this vfs knows about, excludes applied. */
   get remoteKeys(): string[] {
     return [...this.state.remote.keys()];
   }
 
+  /**
+   * The OVERLAY decides: every write and move this vfs performs lands there,
+   * so its volume is what can silently replace a differently-cased neighbour.
+   * (The remote manifest is exact, but no write reaches it except through the
+   * overlay's sync-back.)
+   */
   keyCase = () => this.local.keyCase();
 
+  /**
+   * The overlay OR the store: a remote object nobody has materialized still
+   * occupies its key, and the overlay alone cannot see it.
+   */
   async exists(key: string): Promise<boolean> {
     assertSafeKey(key);
     return (
@@ -125,7 +148,9 @@ export class LazyStoreVfs implements Vfs {
   async writeBytes(key: string, content: Buffer): Promise<void> {
     assertSafeKey(key);
     this.state.assertWritable(key);
-    // Whole-list writes keep the old bytes for three-way conflict merging.
+    // A keyed document replaced unread (a whole-list save) still needs the
+    // bytes it replaces: they are the base a lost upload race merges against,
+    // without which an entry this write deleted comes back from the store.
     if (keepsMergeBase(key) && !(await this.local.exists(key)))
       await this.readBytes(key);
     await this.downloads.settle(key);
@@ -141,54 +166,16 @@ export class LazyStoreVfs implements Vfs {
   }
 
   async move(fromKey: string, toKey: string): Promise<void> {
-    assertSafeKey(fromKey);
-    assertSafeKey(toKey);
-    // POSIX rename: onto itself is a no-op, into itself is an error.
-    if (toKey === fromKey) return;
-    if (toKey.startsWith(`${fromKey}/`)) {
-      throw new Error(`move: destination is inside the source: ${fromKey}`);
-    }
-    const isFile =
-      (await this.local.readBytes(fromKey)) !== null ||
-      this.state.visible(fromKey);
-    if (!isFile) {
-      // A directory: exists only as its descendants. Move each one.
-      const children = await this.listDetailed(fromKey);
-      if (children.length === 0) {
-        throw new Error(`move: source not found: ${fromKey}`);
-      }
-      // Typed, like the single-object refusal below: `moveOrRefuse` turns a
-      // VfsExistsError into the 409 "already exists there" the user can act
-      // on. A plain Error would surface a fixable name collision as a 500.
-      if ((await this.listDetailed(toKey)).length > 0) {
-        throw new VfsExistsError(toKey);
-      }
-      for (const child of children) {
-        await this.move(
-          child.key,
-          `${toKey}${child.key.slice(fromKey.length)}`,
-        );
-      }
-      await this.local.deletePrefix(fromKey);
-      return;
-    }
-    this.state.assertWritable(toKey);
-    const meta = this.state.visible(fromKey);
-    if ((await this.local.readBytes(fromKey)) === null && meta) {
-      try {
-        await this.downloads.fetch(fromKey, meta);
-      } catch (error) {
-        if (!(error instanceof ObjectNotFoundError)) throw error;
-        this.state.remote.delete(fromKey);
-        throw new Error(`move: source not found: ${fromKey}`);
-      }
-    }
-    // The store's half is exact-keyed and invisible to the overlay's own
-    // guard: an object nobody has read yet still occupies the destination.
-    if (this.state.visible(toKey)) throw new VfsExistsError(toKey);
-    await this.local.move(fromKey, toKey);
-    this.state.written(toKey);
-    this.state.tombstone(fromKey);
+    return moveLazyStoreEntry(
+      {
+        vfs: this,
+        local: this.local,
+        state: this.state,
+        downloads: this.downloads,
+      },
+      fromKey,
+      toKey,
+    );
   }
 
   async deletePrefix(prefix: string): Promise<void> {

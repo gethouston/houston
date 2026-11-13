@@ -1,6 +1,6 @@
 import { captureFencingToken } from "./fencing-token";
 import { downloadHttpBatch } from "./http-store-batch";
-import { objectStoreResponseError } from "./http-store-errors";
+import { deleteHttpObject } from "./http-store-delete";
 import {
   assertWriteAuthority,
   type HttpObjectStoreOptions,
@@ -136,22 +136,21 @@ export class HttpObjectStore implements ObjectStore {
   }
 
   async delete(key: string, opts?: WriteOptions): Promise<void> {
-    // As with PUT, a generation-guarded DELETE may have committed despite a
-    // lost response.
-    const res = await this.fetch(
-      this.objectUrl(key),
-      {
-        method: "DELETE",
-        headers: this.writeHeaders(opts),
-      },
-      { retryable: opts?.ifGenerationMatch === undefined },
-    );
-    this.captureFence(res);
-    if (!res.ok && res.status !== 404) {
-      throw await objectStoreResponseError(res, "DELETE", key);
-    }
+    return deleteHttpObject({
+      fetchRequest: this.fetch.bind(this),
+      url: this.objectUrl(key),
+      headers: this.writeHeaders(opts),
+      key,
+      opts,
+      capture: (res) => this.captureFence(res),
+    });
   }
 
+  /**
+   * GETs and fenced-but-unconditional writes are safe to re-issue. Writes with
+   * generation preconditions disable retries because a lost success cannot be
+   * distinguished from a failed attempt without violating the precondition.
+   */
   private fetch(
     url: string,
     init?: RequestInit,

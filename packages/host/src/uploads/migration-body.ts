@@ -3,6 +3,7 @@ import { migrationImportCommitSchema } from "@houston/wire-types";
 import { readJson } from "../routes/http";
 import type { StagedFile, StagedUploads } from "./commit";
 
+/** Body reader with a hard cap — a runaway upload dies at the boundary. */
 export async function migrationBody(
   req: IncomingMessage,
   maxBytes: number,

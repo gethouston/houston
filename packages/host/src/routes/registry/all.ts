@@ -56,7 +56,7 @@ import "../skills-manifest";
 import "../skills";
 import "../portable-preview";
 import "../portable-export";
-import "../migration";
+import "../migration-routes";
 import "../agent-approval-read";
 import "../agent-data";
 import "../trigger-status";

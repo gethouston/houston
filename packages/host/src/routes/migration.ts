@@ -1,19 +1,15 @@
 import type { IncomingMessage, ServerResponse } from "node:http";
 import type { HoustonEvent } from "@houston/protocol";
-import { routineActorFor } from "../auth/acting";
 import type { Agent, Workspace } from "../domain/types";
 import type { WorkspacePaths } from "../paths";
 import { CloudPaths } from "../paths";
 import {
   type StagedUploads,
   StagedUploadUnavailableError,
-  stagedUploads,
 } from "../uploads/commit";
 import { MigrationBodyError, migrationBody } from "../uploads/migration-body";
 import { UploadError } from "../uploads/types";
 import type { Vfs } from "../vfs";
-import { DEFAULT_PATHS } from "./agent-authz";
-import { agentRest } from "./agent-rest";
 import { json, readJson } from "./http";
 import { exportMigrationChunk } from "./migration-export";
 import {
@@ -21,7 +17,6 @@ import {
   MigrationImportError,
 } from "./migration-import";
 import { MAX_IMPORT_BODY_BYTES } from "./migration-scope";
-import { defineRouteFamily } from "./registry";
 
 /**
  * Agent-scoped routes of the one-click desktop→cloud migration (HOU-719).
@@ -151,46 +146,3 @@ export async function handleMigration(
   json(res, 404, { error: "not found" });
   return true;
 }
-
-defineRouteFamily({
-  group: "migration",
-  members: [
-    { method: "POST", path: "/agents/:agentId/migration/export" },
-    { method: "POST", path: "/agents/:agentId/migration/import" },
-    { method: "POST", path: "/agents/:agentId/migration/complete" },
-    { method: "GET", path: "/agents/:agentId/migration/status" },
-  ],
-  // `/agents/:agentId/migration` alone is NOT in the prefix (the check above
-  // requires the separator), so it falls through to the agent's runtime.
-  owns: ["/agents/:agentId/migration/", "/agents/:agentId/migration/*rest"],
-  phase: "agent",
-  classification: "sdk",
-  source: "packages/host/src/routes/migration.ts",
-  handler: async ({ deps, authz, userId, method, path, req, res, emit }) => {
-    await handleMigration(
-      {
-        vfs: deps.vfs,
-        uploads: deps.vfs
-          ? stagedUploads(deps.uploadSessions, deps.vfs, {
-              agentId: authz.agent.id,
-              workspace: authz.workspace.id,
-              owner: userId,
-              purpose: "migration_import",
-            })
-          : undefined,
-        paths: deps.paths ?? DEFAULT_PATHS,
-        // Anchors re-synthesized pi sessions on a deployment with a real
-        // on-disk tree; absent in cloud, where nothing replays them.
-        agentDir: deps.agentDir?.(authz.workspace, authz.agent),
-        // The importer, by the same actor policy as the routine write routes.
-        routineCreatedBy: routineActorFor(deps, req, userId),
-      },
-      authz,
-      method,
-      agentRest(path),
-      req,
-      res,
-      emit,
-    );
-  },
-});

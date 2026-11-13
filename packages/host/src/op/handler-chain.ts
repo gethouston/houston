@@ -1,55 +1,21 @@
 import type { IncomingMessage, ServerResponse } from "node:http";
-import type {
-  ActivityContributor,
-  HoustonEvent,
-  MissionStarter,
-} from "@houston/protocol";
-import type { Agent, Workspace } from "../domain/types";
-import type { CustomIntegrationManager } from "../integrations/custom/manager";
-import type { WorkspacePaths } from "../paths";
 import { handleAgentData } from "../routes/agent-data";
 import { handleAgentFile } from "../routes/agent-file";
 import { handleCustomIntegrationsDispatch } from "../routes/custom-integrations-user";
 import { handleMigration } from "../routes/migration";
 import { handlePortableExport } from "../routes/portable-export";
 import { handlePortablePreview } from "../routes/portable-preview";
-import type { Answer } from "../routes/registry/types";
 import { handleSkills } from "../routes/skills";
 import { handleSkillsManifest } from "../routes/skills-manifest";
 import { handleAttachments } from "../turn/attachments";
 import { handleFiles } from "../turn/files";
 import { stagedUploads } from "../uploads/commit";
-import type { Vfs } from "../vfs";
+import type { AgentOpChainDeps, OpHandler } from "./op-handler";
+
 import { OP_CHAIN, type OpGroup } from "./op-surface";
 import { handleRoutineRunCancelOp } from "./routine-run-cancel";
 
-export interface AgentOpChainDeps {
-  vfs: Vfs;
-  paths: WorkspacePaths;
-  ctx: { workspace: Workspace; agent: Agent };
-  query: URLSearchParams;
-  emit: (event: HoustonEvent) => void;
-  actingSub?: string;
-  actingAuthor?: ActivityContributor;
-  startedBy?: MissionStarter;
-  triggersEnabled: boolean;
-  /** The acting person's plan floor for a routine write (op `limits`). */
-  routineFloorMinutes?: number;
-  /** Wired for custom-integration ops only (a per-op manager over the
-   *  hydrated definitions file + the gateway's secret store). */
-  customIntegrations?: CustomIntegrationManager;
-  /** The worker's on-disk agent dir; anchors a migration import's pi
-   *  sessions (routes/migration-import.ts). */
-  agentDir?: string;
-}
-
-type OpHandler = (
-  deps: AgentOpChainDeps,
-  method: string,
-  rest: string,
-  req: IncomingMessage,
-  res: ServerResponse,
-) => Answer;
+export type { AgentOpChainDeps } from "./op-handler";
 
 const OP_HANDLERS: Record<OpGroup, OpHandler> = {
   "routine-runs": handleRoutineRunCancelOp,

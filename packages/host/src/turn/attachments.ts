@@ -39,8 +39,9 @@ export { saveAttachments } from "./attachments-save";
  * silently vanish from the user's point of view. Files already stored there
  * stay readable at their old paths; new uploads never land there.)
  *
- * Small files arrive as base64 JSON; larger files reference a staged upload.
- * The body's `scopeId` is legacy: older hosts keyed
+ * Transport: base64 JSON (dependency-free, binary-safe — the same base64 path
+ * `files/read` already uses) for small files; larger files reference a staged
+ * upload. The body's `scopeId` is legacy: older hosts keyed
  * storage (and a DELETE route) on it. It is accepted and ignored so current
  * clients — which still send it to stay compatible with not-yet-updated cloud
  * pods — never 400.
@@ -52,7 +53,9 @@ export { saveAttachments } from "./attachments-save";
 // per-request). The RAW body is bounded during draining by MAX_UPLOAD_BODY_BYTES
 // so an oversized upload can never buffer into the process.
 
+/** Parse + validate the upload body. Throws AttachmentError (→ 4xx) on any malformed input. */
 function parseUploadBody(body: Record<string, unknown>): UploadFile[] {
+  // `scopeId` (legacy per-conversation storage key) is deliberately not read.
   if (!Array.isArray(body.files))
     throw new AttachmentError(400, "missing 'files' array");
   return parseUploadFiles(

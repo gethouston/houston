@@ -10,13 +10,11 @@ import {
 import { UploadError } from "../uploads/types";
 import type { Vfs } from "../vfs";
 import { json, readJson } from "./deps";
-import { serveArchive, serveFileDownload } from "./files-binary";
 import {
   importWorkspaceFiles,
   MAX_UPLOAD_BODY_BYTES,
   parseImportBody,
 } from "./files-import";
-import { logMissingFile } from "./files-missing";
 import { moveWorkspaceEntry } from "./files-move";
 import type { OfficePreview } from "./files-office";
 import {
@@ -24,12 +22,29 @@ import {
   deleteWorkspaceFile,
   FileOpError,
   FilePathError,
-  listWorkspace,
   readOnlyRefusal,
-  readWorkspaceFile,
   renameWorkspaceFile,
-  workspaceRel,
 } from "./files-ops";
+import { handleFileReads } from "./files-read";
+
+/**
+ * Files browser for an agent's workspace — the HOST serves it for EVERY
+ * deployment profile (cloud GCS prefix, local real FS) off the shared Vfs, so
+ * the web Files tab behaves identically everywhere with no drift. `root` is the
+ * agent's workspace root (`WorkspacePaths.agentRoot`): cloud `<prefix>/workspace`,
+ * local `<Workspace>/<Agent>`. The agent writes deck.pptx / sheet.xlsx / etc.
+ * there during a turn; these endpoints list, read, download, upload, move,
+ * rename, delete, create folders, and zip it up for "Download all".
+ *
+ * Internal Houston state — the top-level `.houston/` (typed data) and `.agents/`
+ * (skills) dot-directories — is hidden from the listing and refused by every
+ * path op, so the Files tab can neither show nor clobber it.
+ *
+ * Path safety: every model/UI-supplied relative path is validated to stay inside
+ * `root` (no `..`, no absolute, no top-level dot-dir) before it touches storage.
+ * The pure operations live in `files-ops.ts` / `files-import.ts` /
+ * `files-archive.ts`; this module is the HTTP surface.
+ */
 
 // The pure ops and the download headers are part of this module's public
 // surface (tests, attachments, the fake host).
@@ -66,36 +81,19 @@ export async function handleFiles(
   const changed = () =>
     emit?.({ type: "FilesChanged", agentPath: ctx.agent.id });
   try {
-    if (method === "GET" && rest === "files") {
-      await json(res, 200, await listWorkspace(vfs, root));
-      return true;
-    }
-    if (method === "GET" && rest === "files/download") {
-      await serveFileDownload(
+    if (
+      method === "GET" &&
+      (await handleFileReads(
         vfs,
         root,
-        ctx.agent.id,
-        query,
+        ctx.agent,
+        rest,
         res,
+        query,
         officePreview,
-      );
+      ))
+    )
       return true;
-    }
-    if (method === "GET" && rest === "files/archive") {
-      await serveArchive(vfs, root, ctx.agent.name, query, res);
-      return true;
-    }
-    if (method === "GET" && rest === "files/read") {
-      const rel = workspaceRel(root, query.get("path") ?? "");
-      const got = await readWorkspaceFile(vfs, root, rel);
-      if (!got) {
-        await logMissingFile(vfs, root, rel, ctx.agent.id);
-        json(res, 404, { error: "file not found" });
-        return true;
-      }
-      await json(res, 200, got);
-      return true;
-    }
     if (method === "DELETE" && rest === "files") {
       await deleteWorkspaceFile(vfs, root, query.get("path") ?? "");
       changed();
