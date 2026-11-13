@@ -6,8 +6,9 @@
 // module instance.
 //
 // The export token is the switch (no `CERTS_ENABLED` boolean): token present =
-// certificates are built, token absent = the build renders an empty catalogue
-// and says so on stdout. A missing token must never fail the site build.
+// certificates are built, token absent = the certificate pages and images are
+// left out of the build (eleventy.config.js) and the build says so on stdout. A
+// missing token must never fail the site build.
 
 /** Drop trailing slashes so we can concatenate paths without doubling them. */
 function normalizeOrigin(value) {
