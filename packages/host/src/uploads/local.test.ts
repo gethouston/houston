@@ -257,12 +257,10 @@ test("an aborted chunk reports persisted bytes and resumes at that offset", asyn
   const session = await open(granule * 2);
   const settled = Promise.withResolvers<void>();
   const sink = createServer((req, res) => {
+    // A dropped connection is an expected state, never a handler failure.
     serveUploadSink(sessions, session.uploadId, req, res).then(
       () => settled.resolve(),
-      (error) => {
-        if (req.aborted) settled.resolve();
-        else settled.reject(error);
-      },
+      (error) => settled.reject(error),
     );
   });
   const url = await listen(sink);
@@ -370,4 +368,17 @@ test("a status query finalizes a complete part left before its atomic rename", a
   expect(await readFile(sessions.path(session.uploadId, "done"), "utf8")).toBe(
     "abc",
   );
+});
+
+test("a body longer than its Content-Range keeps none of its bytes", async () => {
+  const session = await open(granule * 2);
+  const response = await put(
+    session,
+    chunkContentRange(0, granule, granule * 2),
+    new Uint8Array(granule + 10).fill(7),
+  );
+  expect(response.status).toBe(400);
+  expect((await stat(sessions.path(session.uploadId, "part"))).size).toBe(0);
+  const query = await put(session, statusQueryContentRange(granule * 2));
+  expect(query.headers.get("range")).toBeNull();
 });

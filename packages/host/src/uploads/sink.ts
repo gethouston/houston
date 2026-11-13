@@ -1,5 +1,5 @@
 import { createWriteStream } from "node:fs";
-import { rename } from "node:fs/promises";
+import { rename, truncate } from "node:fs/promises";
 import type { IncomingMessage, ServerResponse } from "node:http";
 import { Transform } from "node:stream";
 import { pipeline } from "node:stream/promises";
@@ -64,23 +64,33 @@ export async function serveUploadSink(
       return incomplete(req, res, current.size);
     }
     let received = 0;
+    const length = end - start + 1;
     const limit = new Transform({
       transform(bytes: Buffer, _encoding, callback) {
         received += bytes.length;
-        callback(
-          received > end - start + 1
-            ? new Error("upload body exceeds range")
-            : null,
-          received > end - start + 1 ? undefined : bytes,
-        );
+        if (received > length) callback(new Error("upload body exceeds range"));
+        else callback(null, bytes);
       },
     });
-    // Pipeline backpressure bounds memory independently of the request's size.
-    await pipeline(
-      req,
-      limit,
-      createWriteStream(sessions.path(id, "part"), { flags: "a" }),
-    );
+    try {
+      // Pipeline backpressure bounds memory independently of the request's size.
+      await pipeline(
+        req,
+        limit,
+        createWriteStream(sessions.path(id, "part"), { flags: "a" }),
+      );
+    } catch (error) {
+      if (received > length) {
+        // Earlier pieces of the oversized body already landed; drop them all.
+        await truncate(sessions.path(id, "part"), start);
+        return json(res, 400, { error: "upload body exceeds range" });
+      }
+      if (!isDroppedConnection(error)) throw error;
+      // The bytes that landed stay; the client's status query reads them.
+      if (!res.destroyed && !res.headersSent)
+        incomplete(req, res, (await sessions.offset(id)).size);
+      return;
+    }
     const persisted = await sessions.offset(id);
     if (persisted.size === meta.size) {
       await rename(sessions.path(id, "part"), sessions.path(id, "done"));
@@ -89,4 +99,13 @@ export async function serveUploadSink(
   });
   if (handled === null)
     json(res, 429, { error: "upload in progress" }, { "Retry-After": "1" });
+}
+
+function isDroppedConnection(error: unknown): boolean {
+  const code = (error as NodeJS.ErrnoException | undefined)?.code;
+  return (
+    code === "ERR_STREAM_PREMATURE_CLOSE" ||
+    code === "ECONNRESET" ||
+    code === "ECONNABORTED"
+  );
 }
