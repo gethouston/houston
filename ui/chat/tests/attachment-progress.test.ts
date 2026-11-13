@@ -16,6 +16,7 @@ const labels = {
   uploading: "Subiendo…",
   reconnecting: "Reconectando…",
   saving: "Guardando…",
+  done: "Todo listo",
 };
 
 beforeEach(() => {
@@ -26,7 +27,7 @@ beforeEach(() => {
 afterEach(() => act(() => root.unmount()));
 
 test("a chip renders real progress, localized reconnecting and saving states", () => {
-  const render = (state: "uploading" | "reconnecting" | "saving") =>
+  const render = (state: "uploading" | "reconnecting" | "saving" | "done") =>
     act(() =>
       root.render(
         h(AttachmentChip, {
@@ -39,14 +40,20 @@ test("a chip renders real progress, localized reconnecting and saving states", (
     );
   render("uploading");
   const bar = () => win.document.querySelector('[role="progressbar"]');
+  const live = () => win.document.querySelector('[role="status"]');
   assert.equal(bar()?.getAttribute("aria-valuenow"), "42");
+  assert.equal(live(), null);
   assert.equal(bar()?.getAttribute("aria-label"), "report.pdf");
   assert.match(win.document.body.textContent ?? "", /Subiendo… 42%/);
   render("reconnecting");
   assert.equal(bar()?.getAttribute("aria-valuenow"), "42");
   assert.equal(bar()?.getAttribute("aria-valuetext"), "Reconectando…");
+  assert.equal(live()?.textContent, "Reconectando…");
   render("saving");
   assert.match(win.document.body.textContent ?? "", /Guardando…/);
+  render("done");
+  assert.match(win.document.body.textContent ?? "", /Todo listo/);
+  assert.equal(bar(), null);
   act(() =>
     root.render(h(AttachmentChip, { name: "report.pdf", onRemove() {} })),
   );

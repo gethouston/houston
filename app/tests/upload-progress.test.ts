@@ -20,7 +20,7 @@ test("progress belongs to the File object, even with identical names", () => {
   assert.equal(progress.get(second), undefined);
 });
 
-test("reconnecting preserves the reported fraction and done clears only that file", () => {
+test("reconnecting preserves the reported fraction and done marks only that file finished", () => {
   const first = new File(["a"], "a.pdf");
   const second = new File(["b"], "b.pdf");
   let progress = updateUploadProgress(new Map(), first, {
@@ -42,7 +42,7 @@ test("reconnecting preserves the reported fraction and done clears only that fil
     totalBytes: 100,
     phase: "done",
   });
-  assert.equal(progress.has(first), false);
+  assert.deepEqual(progress.get(first), { fraction: 1, state: "done" });
   assert.deepEqual(progress.get(second), { fraction: 1, state: "saving" });
 });
 

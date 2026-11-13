@@ -12,16 +12,18 @@ export function updateUploadProgress(
   file: File,
   progress: UploadProgress,
 ): UploadDisplayProgress {
+  // A finished file keeps a "done" entry until its whole batch settles, so it
+  // reads as finished beside files still on their way.
   const next = new Map(current);
-  if (progress.phase === "done") next.delete(file);
-  else
-    next.set(file, {
-      fraction:
-        progress.totalBytes > 0
+  next.set(file, {
+    fraction:
+      progress.phase === "done"
+        ? 1
+        : progress.totalBytes > 0
           ? Math.min(1, Math.max(0, progress.sentBytes / progress.totalBytes))
           : 0,
-      state: progress.phase,
-    });
+    state: progress.phase,
+  });
   return next;
 }
 

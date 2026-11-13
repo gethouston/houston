@@ -11,7 +11,8 @@
     "uploadProgress": {
       "uploading": "Uploading…",
       "reconnecting": "Reconnecting…",
-      "saving": "Saving…"
+      "saving": "Saving…",
+      "done": "All done"
     },
     "placeholder": "Ask anything...",
     "fileAlreadyInChat": "File already in chat",

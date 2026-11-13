@@ -104,7 +104,9 @@ export function ChatInputAttachments({
         ? "reconnecting"
         : active.some((p) => p.state === "uploading")
           ? "uploading"
-          : "saving",
+          : active.some((p) => p.state === "saving")
+            ? "saving"
+            : "done",
     };
   };
   return (
