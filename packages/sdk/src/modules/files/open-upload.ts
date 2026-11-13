@@ -44,6 +44,7 @@ export async function openUpload(
       throw new UploadTransferError("Invalid upload session response");
     return session;
   } catch (error) {
+    throwIfAborted(signal);
     if (error instanceof SdkHttpError && error.status === 404) {
       const keys = unavailable.get(scope.ports) ?? new Set<string>();
       keys.add(key);

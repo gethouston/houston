@@ -236,6 +236,21 @@ describe("resumable transfer", () => {
     ).rejects.toMatchObject({ name: "AbortError" });
   });
 
+  it("normalizes a custom abort reason while opening the session", async () => {
+    const controller = new AbortController();
+    const s = setup([], async () => {
+      controller.abort("cancelled");
+      throw controller.signal.reason;
+    });
+    await expect(
+      s.sdk.files.upload("a1", new Blob(["abc"]), {
+        ...opts,
+        signal: controller.signal,
+      }),
+    ).rejects.toMatchObject({ name: "AbortError" });
+    expect(s.rawFetch).not.toHaveBeenCalled();
+  });
+
   it("keeps refusal codes and Retry-After on open", async () => {
     const s = setup([], async () =>
       Response.json(
