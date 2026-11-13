@@ -105,7 +105,15 @@ export async function runMigrationTask(
     chunkCount: chunks.length,
   });
   for (let i = 0; i < chunks.length; i++) {
-    deps.patchProgress({ step: "uploading", chunkIndex: i + 1 });
+    deps.patchProgress({
+      step: "uploading",
+      chunkIndex: i + 1,
+      uploadProgress: {
+        sentBytes: 0,
+        totalBytes: chunks[i].bytes,
+        phase: "uploading",
+      },
+    });
     await step("uploading", async () => {
       const zip = await exportSourceZip(
         deps.source,
@@ -114,6 +122,7 @@ export async function runMigrationTask(
       );
       const result = await importAgentZip(agentId, zip, {
         overwrite: deps.overwrite,
+        onProgress: (uploadProgress) => deps.patchProgress({ uploadProgress }),
       });
       counts.written += result.written;
       counts.skipped += result.skipped;

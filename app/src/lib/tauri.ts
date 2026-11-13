@@ -22,6 +22,7 @@ import type {
   CustomEndpoint,
   EditableProfileUpdate,
   ProviderStatus as EngineProviderStatus,
+  FileUploadOptions,
   MessageApproval,
   MessageMention,
   MissionTitle,
@@ -106,6 +107,7 @@ import {
   isToolkitOauthUnavailableError,
 } from "./toolkit-connect-refusals";
 import type { FileEntry, SkillDetail, SkillSummary, Workspace } from "./types";
+import { trackAttachmentUpload } from "./upload-progress";
 import { markToldUser } from "./user-told-mark";
 
 export { withAttachmentPaths } from "./attachment-message";
@@ -642,17 +644,27 @@ export const tauriAttachments = {
     agentPath: string,
     scopeId: string,
     files: File[],
+    opts?: FileUploadOptions,
   ): Promise<string[]> => {
     if (files.length === 0) return [];
     // A stale composer attachment (the backing file changed on disk before
     // send) is the user's environment, not a Houston bug: logged, but no
     // Sentry report. The send's catch surfaces the authored remedy via
     // `showSendFailedToast`.
-    return call<string[]>(
-      "save_attachments",
-      () => getEngine().saveAttachments(agentPath, scopeId, files),
-      undefined,
-      { silence: isStaleAttachmentError },
+    return trackAttachmentUpload(files, (onProgress) =>
+      call<string[]>(
+        "save_attachments",
+        () =>
+          getEngine().saveAttachments(agentPath, scopeId, files, {
+            ...opts,
+            onProgress: (file, progress) => {
+              onProgress(file, progress);
+              opts?.onProgress?.(file, progress);
+            },
+          }),
+        undefined,
+        { silence: isStaleAttachmentError },
+      ),
     );
   },
 };
@@ -1018,11 +1030,16 @@ export const tauriFiles = {
    * it is an EXPECTED, explainable state, not a Houston bug: `useUploadFiles`
    * surfaces it as calm, translated copy about the size limit. Every other
    * failure keeps the standard red toast + Sentry report. */
-  upload: (agentPath: string, files: File[], targetDir?: string | null) => {
+  upload: (
+    agentPath: string,
+    files: File[],
+    targetDir?: string | null,
+    opts?: FileUploadOptions,
+  ) => {
     blockWriteWhileWarming(agentPath);
     return call<void>(
       "upload_project_files",
-      () => getEngine().uploadProjectFiles(agentPath, files, targetDir),
+      () => getEngine().uploadProjectFiles(agentPath, files, targetDir, opts),
       { agentPath, targetDir, fileCount: files.length },
       { silence: isUploadTooLargeError },
     );

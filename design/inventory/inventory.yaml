@@ -36,7 +36,7 @@
 #   a11y     roles / labels / focus expectations the surface must honor
 #   since    inventory version this component first appeared in
 
-version: 154
+version: 155
 
 components:
   - id: agent-delegation-settings
@@ -372,10 +372,13 @@ components:
   - id: composer
     title: Composer
     purpose: The signature message-input surface -- text, attachments, send/stop.
-    anatomy: [resize-handle, leading-attach, attachment-chips, textarea, footer-slot, queued-list, trailing-send-stop]
-    states: [ready, submitted, streaming, has-attachments, drag-over, disabled, replaced-by-override, plan-usage-hint, plan-limit, manually-resized]
+    anatomy: [resize-handle, leading-attach, attachment-chips, upload-progress, textarea, footer-slot, queued-list, trailing-send-stop]
+    states: [ready, submitted, streaming, has-attachments, uploading, reconnecting, saving-attachments, drag-over, disabled, replaced-by-override, plan-usage-hint, plan-limit, manually-resized]
     variants: [single-line, multiline-expanded, phone]
     behavior: >-
+      Attachment chips render per-file upload progress and a quiet reconnecting
+      label from supplied progress. Folder chips combine their files by size.
+      Upload progress has an accessible value and status label in both layouts.
       Send is gated on non-empty text/attachments; while streaming the trailing
       button becomes Stop. Queued messages show when sending mid-turn. A host
       surface may pass an override card that renders above the input (default)

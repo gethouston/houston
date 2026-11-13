@@ -1,6 +1,15 @@
 import { attachmentFolderRoot } from "@houston-ai/core";
-import type { ChangeEvent, InputHTMLAttributes, RefObject } from "react";
+import {
+  type ChangeEvent,
+  type InputHTMLAttributes,
+  type RefObject,
+  useContext,
+} from "react";
 import { AttachmentChip, FolderAttachmentChip } from "./attachment-chip";
+import {
+  AttachmentProgressContext,
+  type AttachmentUploadProgress,
+} from "./attachment-progress";
 import { fileIdentityKey } from "./clipboard-files";
 
 // Non-standard attribute (WebKit lineage, supported by every engine we ship
@@ -72,6 +81,32 @@ export function ChatInputAttachments({
   removeLabel,
 }: ChatInputAttachmentsProps) {
   const groups = groupAttachments(files);
+  const { progress, labels } = useContext(AttachmentProgressContext);
+  const groupProgress = (
+    group: ChipGroup,
+  ): AttachmentUploadProgress | undefined => {
+    const active = group.indices.flatMap((index) => {
+      const report = progress.get(files[index]);
+      return report ? [report] : [];
+    });
+    if (active.length === 0) return undefined;
+    const total = group.indices.reduce(
+      (sum, index) => sum + files[index].size,
+      0,
+    );
+    const sent = group.indices.reduce((sum, index) => {
+      const file = files[index];
+      return sum + file.size * (progress.get(file)?.fraction ?? 1);
+    }, 0);
+    return {
+      fraction: total > 0 ? sent / total : 0,
+      state: active.some((p) => p.state === "reconnecting")
+        ? "reconnecting"
+        : active.some((p) => p.state === "uploading")
+          ? "uploading"
+          : "saving",
+    };
+  };
   return (
     <>
       <input
@@ -102,6 +137,8 @@ export function ChatInputAttachments({
               <FolderAttachmentChip
                 key={group.key}
                 name={group.name}
+                progress={groupProgress(group)}
+                labels={labels}
                 countLabel={
                   folderCountLabel?.(group.indices.length) ??
                   defaultFolderCount(group.indices.length)
@@ -113,6 +150,8 @@ export function ChatInputAttachments({
               <AttachmentChip
                 key={group.key}
                 name={group.name}
+                progress={groupProgress(group)}
+                labels={labels}
                 onRemove={() => onRemoveFiles(group.indices)}
                 removeLabel={removeLabel}
               />

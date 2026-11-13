@@ -1,3 +1,8 @@
+export type {
+  AttachmentProgressLabels,
+  AttachmentUploadProgress,
+} from "./attachment-progress";
+export { AttachmentProgressProvider } from "./attachment-progress";
 // === Types ===
 
 export {

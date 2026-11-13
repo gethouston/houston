@@ -4,6 +4,7 @@ import { useTranslation } from "react-i18next";
 import { computeOverallProgress } from "../../../lib/cloud-migration-progress";
 import { useCloudMigrationStore } from "../../../stores/cloud-migration";
 import { MigrationProgressBar } from "./migration-progress-bar";
+import { MigrationUploadProgress } from "./migration-upload-progress";
 import { AgentRow, RUNNING } from "./progress-agent-row";
 import { SpaceInvaders } from "./space-invaders";
 import { MigrationStatusCycle } from "./status-cycle";
@@ -143,6 +144,17 @@ export function ProgressScreen({ onDefer }: { onDefer?: () => void }) {
               />
               {!indeterminate && (
                 <div className="flex flex-col gap-1">
+                  {tasks
+                    .filter(
+                      (task) => progress[task.sourceId]?.step === "uploading",
+                    )
+                    .map((task) => (
+                      <MigrationUploadProgress
+                        key={task.sourceId}
+                        name={task.targetName}
+                        progress={progress[task.sourceId].uploadProgress}
+                      />
+                    ))}
                   {tasks.length > 1 && (
                     <p className="text-xs text-ink-muted">
                       {t("progress.overall", {

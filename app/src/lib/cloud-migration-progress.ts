@@ -7,6 +7,7 @@
  * task from its first incomplete step. Dependency-free, `node --test`-able.
  */
 
+import type { UploadProgress } from "@houston/engine-adapter";
 import type { MigrationTask } from "./cloud-migration";
 
 export type MigrationStep =
@@ -32,6 +33,7 @@ export interface AgentMigrationProgress {
   /** 1-based chunk being uploaded, meaningful while `step === "uploading"`. */
   chunkIndex: number;
   chunkCount: number;
+  uploadProgress?: UploadProgress;
   /** Set once the cloud agent exists — Retry must not create a duplicate. */
   createdAgentId?: string;
   createdAgentPath?: string;
@@ -85,8 +87,12 @@ function stepFraction(p: AgentMigrationProgress): number {
       return 0.25;
     case "uploading": {
       if (p.chunkCount <= 0) return UPLOAD_START;
-      const done =
-        Math.min(Math.max(p.chunkIndex, 0), p.chunkCount) / p.chunkCount;
+      const current = p.uploadProgress;
+      const chunks = current
+        ? Math.max(0, p.chunkIndex - 1) +
+          (current.totalBytes > 0 ? current.sentBytes / current.totalBytes : 0)
+        : p.chunkIndex;
+      const done = Math.min(Math.max(chunks, 0), p.chunkCount) / p.chunkCount;
       return UPLOAD_START + (UPLOAD_END - UPLOAD_START) * done;
     }
     case "finalizing":

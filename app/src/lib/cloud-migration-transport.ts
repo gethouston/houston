@@ -16,7 +16,11 @@
  * — the per-agent row renders the thrown `Error.message` verbatim.
  */
 
-import type { MigrationCounts, MigrationSource } from "@houston/engine-adapter";
+import type {
+  MigrationCounts,
+  MigrationSource,
+  UploadProgress,
+} from "@houston/engine-adapter";
 import type { SourceAgent } from "./cloud-migration";
 import {
   type MigrationCallDeps,
@@ -122,7 +126,10 @@ const cloudCall = <T>(
 export const importAgentZip = (
   agentId: string,
   zip: ArrayBuffer,
-  opts?: { overwrite?: boolean },
+  opts?: {
+    overwrite?: boolean;
+    onProgress?: (progress: UploadProgress) => void;
+  },
 ) =>
   cloudCall("migration import", (engine) =>
     engine.migrationImport(agentId, zip, opts),
