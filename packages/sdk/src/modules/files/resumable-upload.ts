@@ -5,6 +5,7 @@ import {
   statusQueryContentRange,
   UPLOAD_NO_308_HEADER,
   UPLOAD_STATUS_OVERRIDE_HEADER,
+  type UploadSession,
 } from "@houston/wire-types";
 import { isTransportFailure } from "../../transport-failure";
 import { throwIfAborted, waitForRetry } from "../abortable-wait";
@@ -40,14 +41,26 @@ export async function upload(
   blob: Blob,
   opts: ResumableUploadOptions,
 ): Promise<{ uploadId: string }> {
+  const { uploadId } = await transferUpload(scope, agentId, blob, opts);
+  return { uploadId };
+}
+
+export async function transferUpload(
+  scope: HttpScope,
+  agentId: string,
+  blob: Blob,
+  opts: ResumableUploadOptions,
+  resume?: UploadSession,
+): Promise<UploadSession> {
   throwIfAborted(opts.signal);
   const request = { name: opts.name, size: blob.size, purpose: opts.purpose };
-  let session = await openUpload(scope, agentId, request, opts.signal);
+  let session =
+    resume ?? (await openUpload(scope, agentId, request, opts.signal));
   const rawFetch = scope.ports.rawFetch;
   const random = scope.ports.random;
   if (!rawFetch || !random)
     throw new UploadTransferError("Upload transport is not configured");
-  let state: TransferState = { kind: "chunk", offset: 0 };
+  let state: TransferState = { kind: resume ? "query" : "chunk", offset: 0 };
   let failures = 0;
   let restarts = 0;
   const report = (phase: "uploading" | "reconnecting") =>
@@ -56,7 +69,7 @@ export async function upload(
       totalBytes: blob.size,
       phase,
     });
-  report("uploading");
+  report(resume ? "reconnecting" : "uploading");
   for (;;) {
     throwIfAborted(opts.signal);
     const end = Math.min(state.offset + session.chunkBytes, blob.size);
@@ -121,7 +134,7 @@ export async function upload(
       }
       state = { kind: "chunk", offset: blob.size };
       report("uploading");
-      return { uploadId: session.uploadId };
+      return session;
     } else if (res && res.status !== 429 && res.status < 500) {
       throw scope.fail(await res.text(), res.status);
     }
