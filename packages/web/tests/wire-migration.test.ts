@@ -24,7 +24,7 @@ import {
 
 const BASE = "https://gw.example";
 
-const { calls, reset, restore, stubFetch } = createWireCapture();
+const { calls, reset, restore, stubFetch, stubRouted } = createWireCapture();
 
 beforeEach(() => {
   reset();
@@ -55,8 +55,9 @@ function client(): HoustonClient {
 
 /** The single request the call made, with the two auth headers checked. */
 function soleCall(): Call {
-  expect(calls).toHaveLength(1);
-  const [call] = calls;
+  const commits = calls.filter((call) => !call.url.endsWith("/uploads"));
+  expect(commits).toHaveLength(1);
+  const [call] = commits;
   expect(call.headers.get("Authorization")).toBe("Bearer t");
   expect(call.headers.get("x-houston-org")).toBe(ORG);
   return call;
@@ -89,8 +90,10 @@ describe("the delegated migration requests", () => {
     );
   });
 
-  test("migrationImport POSTs the zip content type and answers the result", async () => {
-    stubFetch(() => json(200, RESULT));
+  test("migrationImport falls back to the zip content type on an old host", async () => {
+    stubRouted((call) =>
+      call.url.endsWith("/uploads") ? json(404) : json(200, RESULT),
+    );
     const result = await client().migrationImport(
       "a1",
       new Uint8Array([1, 2, 3]).buffer,
@@ -103,13 +106,19 @@ describe("the delegated migration requests", () => {
   });
 
   test("only the import options the caller set reach the query", async () => {
-    stubFetch(() => json(200, RESULT));
+    stubRouted((call) =>
+      call.url.endsWith("/uploads") ? json(404) : json(200, RESULT),
+    );
     const c = client();
     const bytes = new ArrayBuffer(0);
     await c.migrationImport("a1", bytes, { sessions: false });
     await c.migrationImport("a1", bytes, { overwrite: true, sessions: false });
     await c.migrationImport("a1", bytes, { sessions: true });
-    expect(calls.map((call) => call.url)).toEqual([
+    expect(
+      calls
+        .filter((call) => !call.url.endsWith("/uploads"))
+        .map((call) => call.url),
+    ).toEqual([
       `${BASE}/agents/a1/migration/import?sessions=0`,
       `${BASE}/agents/a1/migration/import?overwrite=1&sessions=0`,
       `${BASE}/agents/a1/migration/import`,
@@ -173,7 +182,11 @@ describe("what no half softens", () => {
   });
 
   test("an oversized import throws rather than reporting a partial write", async () => {
-    stubFetch(() => json(413, { error: "import body too large" }));
+    stubRouted((call) =>
+      call.url.endsWith("/uploads")
+        ? json(404)
+        : json(413, { error: "import body too large" }),
+    );
     const err = await client()
       .migrationImport("a1", new ArrayBuffer(0))
       .catch((e: unknown) => e);

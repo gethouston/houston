@@ -133,6 +133,8 @@ export function createEngineSdk(opts: EngineSdkOptions): HoustonSdk {
     reactivity: false,
     ports: {
       fetch: transientRetryFetch(opts.fetch),
+      rawFetch: (input, init) => globalThis.fetch(input, init),
+      random: Math.random,
       workspaceSelection: opts.workspaceSelection,
       reportPreferenceError: opts.reportPreferenceError
         ? (operation, error) =>

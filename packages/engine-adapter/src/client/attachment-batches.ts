@@ -1,19 +1,9 @@
 /**
- * The browser half of an upload: turning dropped `File`s into the JSON frames
- * the host stores, in batches small enough to send.
- *
- * It stays in the web adapter because `File` and `webkitRelativePath` are DOM
- * types — `@houston/sdk` is deployment-agnostic and cannot depend on them —
- * while the requests themselves live in `sdk.files`. The split is also what
- * keeps memory flat: a batch is framed only when it is about to be sent, so a
- * 2 GB folder drop never holds more than one batch of base64 at once.
- *
- * Shared by composer attachments and the Files section's own upload (HOU-889),
- * which is why the plan and the framing live beside each other rather than in
- * either caller.
+ * Browser upload batching and folder paths. The SDK receives named Blobs,
+ * chooses resumable or base64 transfer, and reports per-file progress.
  */
 
-import type { FileUpload, UploadProgress } from "@houston/sdk";
+import type { BlobUpload, UploadInput, UploadProgress } from "@houston/sdk";
 
 /**
  * How a surface watches and cancels a batch of browser `File` uploads: one
@@ -66,25 +56,21 @@ function uploadRelPath(f: File): string | undefined {
   return normalized.includes("/") ? normalized : undefined;
 }
 
-/** Base64-encode bytes without blowing the call stack on large files (chunked btoa). */
-function bytesToBase64(bytes: Uint8Array): string {
-  let binary = "";
-  const CHUNK = 0x8000;
-  for (let i = 0; i < bytes.length; i += CHUNK) {
-    binary += String.fromCharCode(...bytes.subarray(i, i + CHUNK));
-  }
-  return btoa(binary);
+/** Preserve File identity while the SDK chooses framing and transfer policy. */
+export function frameBatch(batch: readonly File[]): BlobUpload[] {
+  return batch.map((file) => ({
+    name: file.name,
+    blob: file,
+    relPath: uploadRelPath(file),
+  }));
 }
 
-/** One batch as the host's upload frames: name, base64 bytes, folder path. */
-export async function frameBatch(
-  batch: readonly File[],
-): Promise<FileUpload[]> {
-  return Promise.all(
-    batch.map(async (f) => ({
-      name: f.name,
-      contentBase64: bytesToBase64(new Uint8Array(await f.arrayBuffer())),
-      relPath: uploadRelPath(f),
-    })),
-  );
+export function sdkUploadOptions(opts?: FileUploadOptions) {
+  return {
+    signal: opts?.signal,
+    onProgress: (entry: UploadInput, progress: UploadProgress) => {
+      if ("blob" in entry && entry.blob instanceof File)
+        opts?.onProgress?.(entry.blob, progress);
+    },
+  };
 }

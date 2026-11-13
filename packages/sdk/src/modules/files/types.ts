@@ -2,13 +2,14 @@
  * Wire types for an agent's workspace files — the listing entries, the upload
  * frame, and the command vocabulary `dispatch` routes them by.
  *
- * The upload shape is deliberately DOM-free. A browser hands the Files section
- * `File` objects and this module is deployment-agnostic, so the framing
- * (reading the bytes, base64-encoding them, reading `webkitRelativePath`)
- * belongs to the surface; what crosses into this module is the JSON the host
- * already accepts.
+ * Browser Files arrive as named Blobs. Transfer policy and base64 framing
+ * live in the SDK; the adapter preserves folder paths and File identity.
  */
 
+import {
+  type CommittedUploadFile,
+  committedUploadFileSchema,
+} from "@houston/wire-types";
 import { field, requireString } from "../payload";
 
 /**
@@ -41,6 +42,22 @@ export interface FileUpload {
   relPath?: string;
 }
 
+/** A device file whose framing and transfer policy belongs to the SDK. */
+export interface BlobUpload {
+  name: string;
+  blob: Blob;
+  relPath?: string;
+}
+
+export type UploadEntry =
+  | FileUpload
+  | Pick<CommittedUploadFile, "name" | "relPath" | "uploadId">;
+export type UploadInput = UploadEntry | BlobUpload;
+export interface UploadBatchOptions {
+  signal?: AbortSignal;
+  onProgress?: (file: UploadInput, progress: UploadProgress) => void;
+}
+
 /**
  * Where one file's upload stands (HOU-201). `reconnecting` means a dropped
  * connection is being resumed from the bytes storage already holds; `saving`
@@ -68,6 +85,7 @@ export const FilesCommand = {
   Move: "files/move",
   Upload: "files/upload",
   SaveAttachments: "files/saveAttachments",
+  OpenUpload: "files/openUpload",
 } as const;
 
 export type FilesCommandType = (typeof FilesCommand)[keyof typeof FilesCommand];
@@ -89,13 +107,16 @@ export function nullableString(payload: unknown, key: string): string | null {
  * dispatch caller's malformed entry must fail here, not halfway through a batch
  * the host has already begun writing into the workspace.
  */
-export function requireUploads(payload: unknown, key: string): FileUpload[] {
+export function requireUploads(payload: unknown, key: string): UploadEntry[] {
   const value = field(payload, key);
   if (!Array.isArray(value) || value.length === 0) {
     throw new Error(`'${key}' must be a non-empty array of files`);
   }
   return value.map((raw, index) => {
     const name = requireString(raw, "name");
+    if (field(raw, "uploadId") !== undefined) {
+      return committedUploadFileSchema.parse(raw);
+    }
     const contentBase64 = field(raw, "contentBase64");
     if (typeof contentBase64 !== "string") {
       throw new Error(`'${key}'[${index}] needs a string contentBase64`);

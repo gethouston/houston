@@ -18,8 +18,13 @@
  */
 
 import { trimTrailingSlashes } from "@houston/runtime-client/trim-slashes";
-import { parseComputeRefusalText, retryAfterMsOf } from "@houston/wire-types";
-import type { Clock, SdkPorts } from "../ports";
+import {
+  parseComputeRefusalText,
+  RESUMABLE_UPLOAD_THRESHOLD_BYTES,
+  retryAfterMsOf,
+} from "@houston/wire-types";
+import type { SdkPorts } from "../ports";
+import { waitForRetry } from "./abortable-wait";
 
 /** Everything {@link httpRequest} needs that is constant for one module. */
 export interface HttpScope {
@@ -134,7 +139,7 @@ export async function httpRequest(
     const pause = computeRetryPause(res.status, body, retryAfterMs, init);
     if (pause !== undefined && paused + pause <= COMPUTE_RETRY_BUDGET_MS) {
       paused += pause;
-      await sleep(scope.ports.clock, pause);
+      await waitForRetry(scope.ports.clock, pause, init?.signal ?? undefined);
       continue;
     }
     const err = scope.fail(body, res.status);
@@ -159,15 +164,14 @@ function computeRetryPause(
     status !== 503 ||
     method === "GET" ||
     method === "HEAD" ||
-    !(init?.body == null || typeof init.body === "string")
+    !(init?.body == null || typeof init.body === "string") ||
+    (typeof init?.body === "string" &&
+      new TextEncoder().encode(init.body).byteLength >
+        RESUMABLE_UPLOAD_THRESHOLD_BYTES)
   )
     return undefined;
   const refusal = parseComputeRefusalText(body);
   if (!refusal) return undefined;
   const hint = refusal.retryAfterMs ?? retryAfterMs ?? COMPUTE_RETRY_DEFAULT_MS;
   return Math.max(COMPUTE_RETRY_MIN_MS, hint);
-}
-
-function sleep(clock: Clock, ms: number): Promise<void> {
-  return new Promise<void>((resolve) => clock.setTimeout(resolve, ms));
 }

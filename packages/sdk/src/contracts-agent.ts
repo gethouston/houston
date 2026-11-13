@@ -58,6 +58,7 @@ export {
 } from "./modules/agents";
 // ===== Files module contract ===========================================
 export {
+  type BlobUpload,
   FilesCommand,
   type FilesCommandType,
   FilesHttpError,
@@ -65,10 +66,17 @@ export {
   type FileUpload,
   isUploadInterruptedError,
   type ProjectFile,
+  type ResumableUploadOptions,
+  type UploadBatchOptions,
+  type UploadEntry,
+  type UploadInput,
   UploadInterruptedError,
   type UploadOptions,
   type UploadProgress,
+  UploadRefusalError,
   type UploadRoute,
+  UploadSessionsUnavailableError,
+  UploadTransferError,
 } from "./modules/files";
 // ===== Integrations module contract ====================================
 export {

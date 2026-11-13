@@ -105,6 +105,10 @@ export interface SdkPorts {
   userId?: () => string | null;
   /** HTTP transport, shaped exactly like the global `fetch`. */
   fetch: typeof fetch;
+  /** Unauthenticated transport for upload sinks. Never decorate with auth or retries. */
+  rawFetch?: typeof fetch;
+  /** Uniform sample in [0, 1) for retry jitter; required with rawFetch for uploads. */
+  random?: () => number;
   /** Persistent key/value storage the SDK keeps its OWN state in (the session
    *  token). Namespaced by the host, so nothing here collides with the app's
    *  state, and a store that is unavailable may degrade to memory. */
