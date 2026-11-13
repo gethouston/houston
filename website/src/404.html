@@ -36,6 +36,9 @@ eleventyExcludeFromCollections: true
       <a href="/#download">Download Houston</a>
     </div>
   </main>
+  {%- if certificatesBuilt %}
+  {#- Only while the certificate pages ship: it sends broken /c/ links to
+      /certificates/verify/, which does not exist otherwise. #}
   <script>
     // A 404 on a certificate share link (/c/<CODE>) is never really "page not
     // found" — it is a case-mangled link or a certificate issued since the last
@@ -86,5 +89,6 @@ eleventyExcludeFromCollections: true
       links.appendChild(home);
     })();
   </script>
+  {%- endif %}
 </body>
 </html>

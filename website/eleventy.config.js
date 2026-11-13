@@ -1,4 +1,5 @@
 import { marked } from "marked";
+import { EXPORT_TOKEN } from "./lib/certs/config.mjs";
 
 marked.setOptions({ gfm: true, breaks: false });
 
@@ -55,15 +56,25 @@ export default function (eleventyConfig) {
   eleventyConfig.addPassthroughCopy("src/robots.txt");
   eleventyConfig.addPassthroughCopy("src/llms.txt");
 
-  // Certificate images. Every issued certificate gets a printable PNG and a
-  // social card written into _site/c/ after the site is written — the same
-  // build-time export the /c/ pages are generated from, rendered with satori +
-  // resvg (see lib/certs/render.mjs). Imported lazily so the image toolchain is
-  // only loaded when a build actually runs.
-  eleventyConfig.on("eleventy.after", async ({ dir }) => {
-    const { renderAllCertificates } = await import("./lib/certs/render.mjs");
-    await renderAllCertificates(dir.output);
-  });
+  // Certificates. The export token is the switch (lib/certs/config.mjs): with
+  // no CERTS_EXPORT_TOKEN the whole section stays out of the build, so no
+  // claim page offers an empty event list and no 404 points at a verifier
+  // that is not there. `certificatesBuilt` lets the sitemap and the 404 page
+  // follow the same switch.
+  const certificatesBuilt = EXPORT_TOKEN !== "";
+  eleventyConfig.addGlobalData("certificatesBuilt", certificatesBuilt);
+  if (certificatesBuilt) {
+    // Every issued certificate gets a printable PNG and a social card written
+    // into _site/c/ after the site is written, rendered with satori + resvg
+    // (see lib/certs/render.mjs). Imported lazily so the image toolchain is
+    // only loaded when a build actually runs.
+    eleventyConfig.on("eleventy.after", async ({ dir }) => {
+      const { renderAllCertificates } = await import("./lib/certs/render.mjs");
+      await renderAllCertificates(dir.output);
+    });
+  } else {
+    eleventyConfig.ignores.add("src/certificates/**");
+  }
 
   return {
     dir: {

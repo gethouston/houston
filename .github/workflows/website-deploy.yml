@@ -47,11 +47,12 @@ name: Website Deploy
 #                         Apps Script web app. No default: unset, the "Book a
 #                         call" form stores to Supabase only
 #                         (website/scripts/apps-script/data-partnerships-calls.gs).
-#   CERTS_EXPORT_TOKEN  - bearer token for the gateway's /v1/certs/export
-#                         endpoint, read at build time to generate the
-#                         certificate pages and images. Deliberately NOT
-#                         guarded: the data layer warns and yields an empty
-#                         certificate set, so the rest of the site still ships.
+# Certificates (/certificates, /c/<CODE>) are OFF: CERTS_EXPORT_TOKEN is
+# deliberately not passed to the build, which then leaves the whole section
+# out. Rendering their ~930 images took ~27 min of every deploy whenever the
+# Actions cache that held them was evicted, which was most deploys. Turn them
+# back on by passing the token to "Build site" once the images live in
+# storage that is not the Actions cache.
 
 on:
   push:
@@ -116,7 +117,6 @@ jobs:
     permissions:
       contents: read
       id-token: write # Workload Identity Federation
-      actions: write # delete superseded certificate image caches
     steps:
       - uses: actions/checkout@v6
 
@@ -146,31 +146,6 @@ jobs:
             exit 1
           fi
 
-      # Certificate images are expensive: every issued certificate is two big
-      # satori + resvg canvases, and without this cache a fresh runner re-draws
-      # the whole cohort on every deploy (~20 min of the run). The digest
-      # manifest (website/.cache) decides staleness per attendee, but the skip
-      # also requires the previously rendered PNGs to exist in _site/c, so both
-      # are cached. Restore takes the newest cert-images-* entry.
-      # Correctness lives in the manifest digests (attendee data + renderer
-      # fingerprint), and render.mjs prunes images for certificates that are no
-      # longer issued, so a stale cache can never ship a wrong or revoked image.
-      #
-      # The cache is ~2.2 GB against the repo's 10 GB Actions cache limit, and
-      # only deploys read it, so it is the first entry GitHub evicts when CI
-      # caches crowd the limit: every eviction cost a ~25 min deploy. So it is
-      # saved under a hash of the manifest (no upload when no image changed)
-      # and older copies are deleted, keeping exactly one.
-      - name: Restore certificate image cache
-        uses: actions/cache/restore@v5
-        with:
-          path: |
-            website/.cache
-            website/_site/c
-          key: cert-images-${{ github.run_id }}
-          restore-keys: |
-            cert-images-
-
       - name: Build site
         working-directory: website
         run: npx @11ty/eleventy
@@ -182,8 +157,6 @@ jobs:
           DATA_PARTNER_CALLS_SHEET_ENDPOINT: ${{ secrets.DATA_PARTNER_CALLS_SHEET_ENDPOINT }}
           POSTHOG_KEY: ${{ secrets.POSTHOG_KEY }}
           POSTHOG_HOST: ${{ secrets.POSTHOG_HOST }}
-          CERTS_EXPORT_TOKEN: ${{ secrets.CERTS_EXPORT_TOKEN }}
-          CERTS_GATEWAY_URL: https://gateway.gethouston.ai
 
       - name: Auth to GCP
         uses: google-github-actions/auth@v3
@@ -211,29 +184,3 @@ jobs:
           accountId: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
           workingDirectory: website
           command: pages deploy _site --project-name=houston-site --branch=main
-
-      # After both deploys, so the upload never holds up a release and a cache
-      # failure never fails one.
-      - name: Save certificate image cache
-        id: cert-cache
-        if: ${{ !cancelled() && hashFiles('website/.cache/certificate-images.json') != '' }}
-        continue-on-error: true
-        uses: actions/cache/save@v5
-        with:
-          path: |
-            website/.cache
-            website/_site/c
-          key: cert-images-${{ hashFiles('website/.cache/certificate-images.json') }}
-
-      # One copy, the one just saved (or found already saved): anything older
-      # only crowds the cache limit.
-      - name: Drop superseded certificate image caches
-        if: ${{ !cancelled() && steps.cert-cache.outcome == 'success' }}
-        continue-on-error: true
-        env:
-          GH_TOKEN: ${{ github.token }}
-          KEEP: cert-images-${{ hashFiles('website/.cache/certificate-images.json') }}
-        run: |
-          gh cache list --repo "$GITHUB_REPOSITORY" --key cert-images- --limit 100 --json key --jq '.[].key' \
-            | { grep -vxF "$KEEP" || true; } \
-            | while read -r key; do gh cache delete --repo "$GITHUB_REPOSITORY" "$key"; done
