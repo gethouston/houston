@@ -34,9 +34,15 @@ export function createHostBase(opts: LocalHostOptions) {
   const store = new LocalWorkspaceStore(opts.workspacesRoot, LOCAL_USER);
   const { vfs, syncDaemon } = createHostFiles(opts);
   const paths = new LocalPaths();
-  const uploadSessions = new LocalUploadSessions(
-    join(opts.houstonHome ?? dirname(opts.workspacesRoot), "upload-staging"),
-  );
+  // Managed pods commit gateway staging; their sink URLs cannot reach the pod.
+  const uploadSessions = opts.gatewayFronted
+    ? undefined
+    : new LocalUploadSessions(
+        join(
+          opts.houstonHome ?? dirname(opts.workspacesRoot),
+          "upload-staging",
+        ),
+      );
   const bus = new MemoryTurnBus();
   const boot = new BootTelemetry();
   const events = new BusEventHub(bus);
