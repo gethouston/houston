@@ -2,8 +2,10 @@
  * Wire types for an agent's workspace files — the listing entries, the upload
  * frame, and the command vocabulary `dispatch` routes them by.
  *
- * Browser Files arrive as named Blobs. Transfer policy and base64 framing
- * live in the SDK; the adapter preserves folder paths and File identity.
+ * The upload shape is deliberately DOM-free. The adapter reads a browser
+ * `File`'s `webkitRelativePath` and hands this deployment-agnostic module named
+ * Blobs. The SDK reads their bytes and chooses base64 or resumable transfer;
+ * callers can also supply the JSON entries the host already accepts.
  */
 
 import {

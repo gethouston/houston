@@ -1,6 +1,16 @@
 /**
- * Browser upload batching and folder paths. The SDK receives named Blobs,
- * chooses resumable or base64 transfer, and reports per-file progress.
+ * The browser half of an upload: batching dropped `File`s and preserving their
+ * folder paths and identity for the SDK. The SDK chooses resumable or base64
+ * transfer and reports per-file progress.
+ *
+ * It stays in the web adapter because `File` and `webkitRelativePath` are DOM
+ * types; `@houston/sdk` is deployment-agnostic and receives named Blobs instead.
+ * The SDK frames or transfers a batch only when it is about to be sent, so a
+ * 2 GB folder drop never holds more than one batch of base64 at once.
+ *
+ * Shared by composer attachments and the Files section's own upload (HOU-889),
+ * which is why the plan and folder-path mapping live beside each other rather
+ * than in either caller.
  */
 
 import type { BlobUpload, UploadInput, UploadProgress } from "@houston/sdk";
@@ -56,7 +66,10 @@ function uploadRelPath(f: File): string | undefined {
   return normalized.includes("/") ? normalized : undefined;
 }
 
-/** Preserve File identity while the SDK chooses framing and transfer policy. */
+/**
+ * One batch as named Blobs: name, file bytes, folder path.
+ * Preserve File identity while the SDK chooses framing and transfer policy.
+ */
 export function frameBatch(batch: readonly File[]): BlobUpload[] {
   return batch.map((file) => ({
     name: file.name,

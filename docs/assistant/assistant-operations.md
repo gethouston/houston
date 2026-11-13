@@ -28,7 +28,7 @@ A person's message can grant one `createAgent` call with the constrained name, c
 | `createApiKey` | POST | confirmed: host approval required | returns a secret; the full key is revealed once and must not pass through a chat turn. | name: free text |
 | `listApiKeys` | GET | unconfirmed: read-only HTTP GET | a person's keys are theirs to look at, on the screen that lists them. | none |
 | `revokeApiKey` | DELETE | confirmed: host approval required | revoking a key is the person's own to do, on the screen that lists their keys. | id: open: API keys are secrets the directory never lists. |
-| `saveAttachments` | POST | unconfirmed: withheld from dispatch | the composer owns this; it frames the files a person dropped on a message, and writeAgentFile is how the assistant puts content into a workspace. | agentId: resolved:agents; scopeId: free text; files: free text; opts: free text |
+| `saveAttachments` | POST | unconfirmed: withheld from dispatch | the composer owns this; the SDK transfers the files a person dropped on a message, and writeAgentFile is how the assistant puts content into a workspace. | agentId: resolved:agents; scopeId: free text; files: free text; opts: free text |
 | `claimFreeSlot` | POST | confirmed: host approval required | visible | none |
 | `createCheckout` | POST | confirmed: host approval required | visible | interval: enum |
 | `createPlusCheckout` | POST | confirmed: host approval required | visible | none |

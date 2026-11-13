@@ -31,7 +31,7 @@ Every operation the assistant cannot drive states why in its `@assistant` tag, a
 - `createApiKey` - hidden: returns a secret; the full key is revealed once and must not pass through a chat turn.
 - `listApiKeys` - hidden: a person's keys are theirs to look at, on the screen that lists them.
 - `revokeApiKey` - hidden: revoking a key is the person's own to do, on the screen that lists their keys.
-- `saveAttachments` - hidden: the composer owns this; it frames the files a person dropped on a message, and writeAgentFile is how the assistant puts content into a workspace.
+- `saveAttachments` - hidden: the composer owns this; the SDK transfers the files a person dropped on a message, and writeAgentFile is how the assistant puts content into a workspace.
 - `createPlusPortal` - hidden: the URL grants access to a signed-in billing session.
 - `createPortal` - hidden: answers with a live Stripe portal session URL, which is a signed-in billing session for anyone who holds it; the person opens billing from the app instead of being handed a link through a model.
 - `dismissChoiceNotice` - hidden: only the person reading the announcement may dismiss it.

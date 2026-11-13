@@ -2,9 +2,17 @@
  * The two ways bytes get INTO an agent's workspace: files dropped on a chat
  * message, and files added from the Files section.
  *
- * These commit calls take mixed base64 and upload-ID entries. The SDK's
- * upload-batches module prepares device Blobs before reaching these literal
- * requests, so the catalog can still derive their route and body fields.
+ * Both take one already-prepared batch of base64 or upload-ID entries and
+ * post it. The adapter batches browser `File`s by size to keep small-file
+ * requests inside the host's cap and to hold only one batch in memory at a
+ * time. It preserves `webkitRelativePath` as `relPath` and passes named Blobs
+ * to the SDK, which chooses base64 or resumable transfer without knowing DOM
+ * `File` objects. The SDK's upload-batches module prepares those Blobs before
+ * these literal requests, so the catalog can derive their route and body fields.
+ *
+ * Kept out of `index.ts` so the module factory there stays within the
+ * file-size budget, and out of `http.ts` because these two are the family's
+ * binary half, hidden from the assistant and prepared by the SDK.
  */
 
 import { isTransportFailure } from "../../transport-failure";
@@ -63,7 +71,7 @@ function uploadFailure(
  * `scopeId` is legacy: current hosts ignore it, but engine pods that predate
  * the durable-uploads layout still 400 without it — keep sending it until no
  * pre-HOU-706 pod remains.
- * @assistant group:attachments hidden: the composer owns this; it frames the files a person dropped on a message, and writeAgentFile is how the assistant puts content into a workspace.
+ * @assistant group:attachments hidden: the composer owns this; the SDK transfers the files a person dropped on a message, and writeAgentFile is how the assistant puts content into a workspace.
  */
 export async function saveAttachments(
   scope: HttpScope,
