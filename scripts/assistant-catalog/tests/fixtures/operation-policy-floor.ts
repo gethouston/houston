@@ -177,6 +177,7 @@ export const OPERATION_POLICY_FLOOR: Readonly<Record<string, OperationPolicy>> =
   mintRoutineWebhookKey: { group: "routines", confirm: true, hidden: true, route: "POST /v1/agents/{agentId}/routines/{routineId}/webhook-key", rawResponse: true },
   moveAgent: { group: "spaces", confirm: true, hidden: false, route: "POST /v1/agents/{agentSlugOrId}/move", rawResponse: true },
   moveProjectFile: { group: "files", confirm: false, hidden: false, route: "POST /agents/{agentPath}/files/move", rawResponse: false },
+  openUpload: { group: "files", confirm: false, hidden: true, route: "POST /agents/{agentId}/uploads", rawResponse: true },
   orgAudit: { group: "org", confirm: false, hidden: false, route: "GET /v1/org/audit", rawResponse: true },
   orgUsage: { group: "org", confirm: false, hidden: false, route: "GET /v1/org/usage", rawResponse: true },
   postLinkedInImage: { group: "org", confirm: false, hidden: true, route: "POST /v1/linkedin/posts", rawResponse: true },
