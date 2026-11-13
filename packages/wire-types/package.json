@@ -27,6 +27,10 @@
     "./citations": {
       "types": "./src/citations.ts",
       "import": "./src/citations.ts"
+    },
+    "./upload-session": {
+      "types": "./src/upload-session.ts",
+      "import": "./src/upload-session.ts"
     }
   },
   "files": [
