@@ -66,6 +66,8 @@ export {
   isUploadInterruptedError,
   type ProjectFile,
   UploadInterruptedError,
+  type UploadOptions,
+  type UploadProgress,
   type UploadRoute,
 } from "./modules/files";
 // ===== Integrations module contract ====================================

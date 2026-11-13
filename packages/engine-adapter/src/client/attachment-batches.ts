@@ -13,7 +13,16 @@
  * either caller.
  */
 
-import type { FileUpload } from "@houston/sdk";
+import type { FileUpload, UploadProgress } from "@houston/sdk";
+
+/**
+ * How a surface watches and cancels a batch of browser `File` uploads: one
+ * progress report per file, keyed by the `File` the surface handed in.
+ */
+export interface FileUploadOptions {
+  onProgress?: (file: File, progress: UploadProgress) => void;
+  signal?: AbortSignal;
+}
 
 // A folder can hold hundreds of small files; a request per file would turn one
 // drop into hundreds of round trips. Batch small files together up to a modest

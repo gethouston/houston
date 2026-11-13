@@ -41,6 +41,23 @@ export interface FileUpload {
   relPath?: string;
 }
 
+/**
+ * Where one file's upload stands (HOU-201). `reconnecting` means a dropped
+ * connection is being resumed from the bytes storage already holds; `saving`
+ * is the commit call that turns the staged upload into a workspace file.
+ */
+export interface UploadProgress {
+  sentBytes: number;
+  totalBytes: number;
+  phase: "uploading" | "reconnecting" | "saving" | "done";
+}
+
+/** What an upload's caller can watch and cancel it by. */
+export interface UploadOptions {
+  onProgress?: (progress: UploadProgress) => void;
+  signal?: AbortSignal;
+}
+
 /** The write vocabulary — the same constants back the facade and `dispatch`. */
 export const FilesCommand = {
   List: "files/list",

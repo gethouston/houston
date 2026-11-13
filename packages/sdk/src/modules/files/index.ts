@@ -45,6 +45,8 @@ export type {
   FilesCommandType,
   FileUpload,
   ProjectFile,
+  UploadOptions,
+  UploadProgress,
 } from "./types";
 export { FilesCommand } from "./types";
 export {

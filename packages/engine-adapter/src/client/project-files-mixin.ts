@@ -5,7 +5,11 @@ import {
   parseFilePreviewRefusal,
 } from "@houston/wire-types";
 import * as controlPlane from "../control-plane";
-import { frameBatch, planAttachmentBatches } from "./attachment-batches";
+import {
+  type FileUploadOptions,
+  frameBatch,
+  planAttachmentBatches,
+} from "./attachment-batches";
 import { HoustonEngineError } from "./errors";
 import type { BaseCtor } from "./mixin";
 import { viaSdk } from "./sdk-error";
@@ -27,6 +31,7 @@ export function ProjectFilesMixin<TBase extends BaseCtor>(Base: TBase) {
       agentPath: string,
       scopeId: string,
       files: File[],
+      _opts?: FileUploadOptions,
     ): Promise<string[]> {
       if (files.length === 0) return [];
       if (!this.ctx.cp) throw new Error("Attachments need a cloud workspace.");
@@ -147,6 +152,7 @@ export function ProjectFilesMixin<TBase extends BaseCtor>(Base: TBase) {
       agentPath: string,
       files: File[],
       targetDir?: string | null,
+      _opts?: FileUploadOptions,
     ): Promise<void> {
       if (files.length === 0) return;
       if (!this.ctx.cp)
