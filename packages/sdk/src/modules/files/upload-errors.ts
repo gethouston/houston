@@ -51,3 +51,13 @@ export function uploadRefusal(error: unknown): unknown {
   typed.retryAfterMs = error.retryAfterMs;
   return typed;
 }
+
+export function uploadFallbackAllowed(error: unknown): boolean {
+  return (
+    error instanceof UploadSessionsUnavailableError ||
+    (error instanceof SdkHttpError && error.status === 503) ||
+    (error instanceof UploadRefusalError &&
+      error.status === 429 &&
+      error.code === "too_many_uploads")
+  );
+}

@@ -1,9 +1,6 @@
 import { throwIfAborted } from "../abortable-wait";
 import { upload } from "../files/resumable-upload";
-import {
-  UploadSessionsUnavailableError,
-  uploadRefusal,
-} from "../files/upload-errors";
+import { uploadFallbackAllowed, uploadRefusal } from "../files/upload-errors";
 import type { HttpScope } from "../http";
 import { migrationImport } from "./http";
 import type { MigrationImportOptions, MigrationImportResult } from "./types";
@@ -23,7 +20,7 @@ export async function importArchive(
       ...opts,
     });
   } catch (error) {
-    if (!(error instanceof UploadSessionsUnavailableError)) throw error;
+    if (!uploadFallbackAllowed(error)) throw error;
     opts?.onProgress?.({
       sentBytes: 0,
       totalBytes: bytes.byteLength,

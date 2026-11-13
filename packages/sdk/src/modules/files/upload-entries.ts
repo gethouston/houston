@@ -11,7 +11,7 @@ import type {
   UploadInput,
   UploadProgress,
 } from "./types";
-import { UploadSessionsUnavailableError } from "./upload-errors";
+import { uploadFallbackAllowed } from "./upload-errors";
 
 export function uploadBytes(file: UploadInput): number {
   if ("blob" in file) return file.blob.size;
@@ -62,7 +62,7 @@ export async function uploadEntries(
         entries.push({ name: file.name, relPath: file.relPath, uploadId });
         continue;
       } catch (error) {
-        if (!(error instanceof UploadSessionsUnavailableError)) throw error;
+        if (!uploadFallbackAllowed(error)) throw error;
       }
     }
     const bytes = new Uint8Array(await file.blob.arrayBuffer());
