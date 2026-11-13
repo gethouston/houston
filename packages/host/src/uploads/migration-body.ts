@@ -9,7 +9,11 @@ export async function migrationBody(
   maxBytes: number,
   uploads?: StagedUploads,
 ): Promise<{ bytes: Buffer; staged?: StagedFile } | null> {
-  if (req.headers["content-type"]?.includes("application/json")) {
+  const mediaType = req.headers["content-type"]
+    ?.split(";")[0]
+    ?.trim()
+    .toLowerCase();
+  if (mediaType === "application/json") {
     let body: unknown;
     try {
       body = await readJson(req);

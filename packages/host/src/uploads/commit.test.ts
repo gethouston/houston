@@ -208,3 +208,30 @@ test("stagedGeneration without a store client is a 400 on every commit family", 
     expect(response.status).toBe(400);
   }
 });
+
+test.each([
+  ["Application/JSON; charset=utf-8", true],
+  [" application/json ; charset=utf-8", true],
+  ["application/jsonp", false],
+  ["application/json+zip", false],
+  ["application/zip; note=application/json", false],
+])("migration dispatches media type %s exactly", async (contentType, staged) => {
+  const bytes = zipSync({ "docs/media.txt": Buffer.from("media") });
+  const uploadId = await stage("migration_import", bytes);
+  const response = await fetch(
+    `${base}/agents/${host.ids.agentId}/migration/import?sessions=0`,
+    {
+      method: "POST",
+      headers: {
+        Authorization: "Bearer tok:alice",
+        "Content-Type": contentType,
+      },
+      body: staged ? JSON.stringify({ uploadId }) : new Uint8Array(bytes),
+    },
+  );
+  expect(response.status).toBe(200);
+  expect(await response.json()).toMatchObject({ written: 1 });
+  expect(await host.deps.vfs?.readText(`${root()}/docs/media.txt`)).toBe(
+    "media",
+  );
+});
