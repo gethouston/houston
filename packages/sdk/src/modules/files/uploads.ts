@@ -2,20 +2,24 @@
  * The two ways bytes get INTO an agent's workspace: files dropped on a chat
  * message, and files added from the Files section.
  *
- * Both take one already-framed batch — `{ name, contentBase64, relPath }`, the
- * shape the host reads — and post it. The batching that produces those batches
- * belongs to the surface, not here: it reads a browser `File`'s size and bytes
- * to keep each request inside the host's cap and to hold only one batch in
- * memory at a time, and a `File` is a DOM object this module must not know.
+ * Both take one already-prepared batch of base64 or upload-ID entries and
+ * post it. The adapter batches browser `File`s by size to keep small-file
+ * requests inside the host's cap and to hold only one batch in memory at a
+ * time. It preserves `webkitRelativePath` as `relPath` and passes named Blobs
+ * to the SDK, which chooses base64 or resumable transfer without knowing DOM
+ * `File` objects. The SDK's upload-batches module prepares those Blobs before
+ * these literal requests, so the catalog can derive their route and body fields.
  *
  * Kept out of `index.ts` so the module factory there stays within the
  * file-size budget, and out of `http.ts` because these two are the family's
- * binary half — hidden from the assistant, framed by their caller.
+ * binary half, hidden from the assistant and prepared by the SDK.
  */
 
 import { isTransportFailure } from "../../transport-failure";
 import { type HttpScope, httpRequest } from "../http";
-import type { FileUpload } from "./types";
+import type { UploadBatchOptions, UploadEntry } from "./types";
+import { uploadBytes } from "./upload-entries";
+import { uploadRefusal } from "./upload-errors";
 import { UploadInterruptedError, type UploadRoute } from "./upload-interrupted";
 
 /** A clock reading to time an upload by: monotonic when the host has one. */
@@ -37,15 +41,12 @@ function uploadFailure(
   scope: HttpScope,
   route: UploadRoute,
   startedAt: number,
-  files: FileUpload[],
+  files: UploadEntry[],
 ): unknown {
   // A coding-bug TypeError stays itself, so it still files as a bug.
   if (!isTransportFailure(err)) return err;
   // Decoded size: base64 carries 3 bytes per 4 characters.
-  const bytes = files.reduce(
-    (sum, f) => sum + Math.floor((f.contentBase64.length * 3) / 4),
-    0,
-  );
+  const bytes = files.reduce((sum, f) => sum + uploadBytes(f), 0);
   const elapsed = Math.max(0, uploadClock(scope) - startedAt);
   return new UploadInterruptedError(route, bytes, elapsed, err.message);
 }
@@ -58,8 +59,8 @@ function uploadFailure(
  * file tools can Read them during this turn and any later conversation
  * (HOU-706), and return the RELATIVE workspace paths the host stored them at —
  * which the sender encodes verbatim into the message ("Read these attached
- * files: …"). Binary rides as base64 JSON (the host writes the bytes through
- * its Vfs); the agent resolves each path against its workspace root.
+ * files: …"). Base64 bytes or a completed upload ID reach the Vfs through
+ * this commit route; the agent resolves each path against its workspace root.
  *
  * Folder uploads (HOU-808): a file picked or dropped as part of a folder
  * carries `webkitRelativePath`; we forward it as `relPath` and the host stores
@@ -70,13 +71,14 @@ function uploadFailure(
  * `scopeId` is legacy: current hosts ignore it, but engine pods that predate
  * the durable-uploads layout still 400 without it — keep sending it until no
  * pre-HOU-706 pod remains.
- * @assistant group:attachments hidden: the composer owns this; it frames the files a person dropped on a message, and writeAgentFile is how the assistant puts content into a workspace.
+ * @assistant group:attachments hidden: the composer owns this; the SDK transfers the files a person dropped on a message, and writeAgentFile is how the assistant puts content into a workspace.
  */
 export async function saveAttachments(
   scope: HttpScope,
   agentId: string,
   scopeId: string,
-  files: FileUpload[],
+  files: UploadEntry[],
+  opts?: UploadBatchOptions,
 ): Promise<string[]> {
   const startedAt = uploadClock(scope);
   let res: Response;
@@ -84,12 +86,19 @@ export async function saveAttachments(
     res = await httpRequest(
       scope,
       `/agents/${encodeURIComponent(agentId)}/attachments`,
-      { method: "POST", body: JSON.stringify({ scopeId, files }) },
+      {
+        method: "POST",
+        body: JSON.stringify({ scopeId, files }),
+        signal: opts?.signal,
+      },
     );
   } catch (err) {
-    throw uploadFailure(err, scope, "attachments", startedAt, files);
+    throw uploadRefusal(
+      uploadFailure(err, scope, "attachments", startedAt, files),
+    );
   }
-  return ((await res.json()) as { paths: string[] }).paths;
+  const paths = ((await res.json()) as { paths: string[] }).paths;
+  return paths;
 }
 
 /**
@@ -109,8 +118,9 @@ export async function saveAttachments(
 export async function uploadProjectFiles(
   scope: HttpScope,
   agentPath: string,
-  files: FileUpload[],
+  files: UploadEntry[],
   targetDir?: string | null,
+  opts?: UploadBatchOptions,
 ): Promise<void> {
   const startedAt = uploadClock(scope);
   try {
@@ -123,9 +133,12 @@ export async function uploadProjectFiles(
       {
         method: "POST",
         body: JSON.stringify({ dir: targetDir ?? null, files }),
+        signal: opts?.signal,
       },
     );
   } catch (err) {
-    throw uploadFailure(err, scope, "files_import", startedAt, files);
+    throw uploadRefusal(
+      uploadFailure(err, scope, "files_import", startedAt, files),
+    );
   }
 }

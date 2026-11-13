@@ -5,6 +5,8 @@ import type { ManagedHostOptions } from "./host-managed-options";
 export interface LocalHostOptions extends ManagedHostOptions {
   /** `~/.houston/workspaces` — the desktop tree (FsVfs root + store root). */
   workspacesRoot: string;
+  /** Base data directory containing upload-staging, outside workspaces. */
+  houstonHome?: string;
   /** Office converter URL and disposable cache outside workspaces. */
   officeConvert?: { url: string; cacheDir: string };
   /** Where the connect-once credential file lives (e.g. `~/.houston/credentials.json`). */

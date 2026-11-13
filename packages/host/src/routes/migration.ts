@@ -1,12 +1,15 @@
 import type { IncomingMessage, ServerResponse } from "node:http";
 import type { HoustonEvent } from "@houston/protocol";
-import { routineActorFor } from "../auth/acting";
 import type { Agent, Workspace } from "../domain/types";
 import type { WorkspacePaths } from "../paths";
 import { CloudPaths } from "../paths";
+import {
+  type StagedUploads,
+  StagedUploadUnavailableError,
+} from "../uploads/commit";
+import { MigrationBodyError, migrationBody } from "../uploads/migration-body";
+import { UploadError } from "../uploads/types";
 import type { Vfs } from "../vfs";
-import { DEFAULT_PATHS } from "./agent-authz";
-import { agentRest } from "./agent-rest";
 import { json, readJson } from "./http";
 import { exportMigrationChunk } from "./migration-export";
 import {
@@ -14,7 +17,6 @@ import {
   MigrationImportError,
 } from "./migration-import";
 import { MAX_IMPORT_BODY_BYTES } from "./migration-scope";
-import { defineRouteFamily } from "./registry";
 
 /**
  * Agent-scoped routes of the one-click desktop→cloud migration (HOU-719).
@@ -28,24 +30,10 @@ import { defineRouteFamily } from "./registry";
 
 const MARKER_REL = ".houston/migration/imported.json";
 
-/** Body reader with a hard cap — a runaway upload dies at the boundary. */
-async function readBodyCapped(
-  req: IncomingMessage,
-  maxBytes: number,
-): Promise<Buffer | null> {
-  const chunks: Buffer[] = [];
-  let total = 0;
-  for await (const c of req) {
-    total += (c as Buffer).length;
-    if (total > maxBytes) return null;
-    chunks.push(c as Buffer);
-  }
-  return Buffer.concat(chunks);
-}
-
 export async function handleMigration(
   deps: {
     vfs?: Vfs;
+    uploads?: StagedUploads;
     paths?: WorkspacePaths;
     agentDir?: string;
     /** The verified actor, stamped as imported routines' `created_by`. */
@@ -79,30 +67,44 @@ export async function handleMigration(
   }
 
   if (rest === "migration/import" && method === "POST") {
-    const bytes = await readBodyCapped(req, MAX_IMPORT_BODY_BYTES);
-    if (bytes === null) {
-      json(res, 413, { error: "import body too large" });
-      return true;
-    }
-    const url = new URL(req.url ?? "", "http://local");
-    // `sessions=0`: write the transcripts but rebuild no pi session from them.
-    // A caller that stamps `needsSessionReplay` on the transcripts instead
-    // ("Copy an agent") gets the history replayed into whichever backend the
-    // next turn runs on; a synthesized pi session on top would double it.
-    const synthesize = url.searchParams.get("sessions") !== "0";
     try {
+      const body = await migrationBody(
+        req,
+        MAX_IMPORT_BODY_BYTES,
+        deps.uploads,
+      );
+      if (body === null) {
+        json(res, 413, { error: "import body too large" });
+        return true;
+      }
+      const url = new URL(req.url ?? "", "http://local");
+      // `sessions=0`: write the transcripts but rebuild no pi session from them.
+      // A caller that stamps `needsSessionReplay` on the transcripts instead
+      // ("Copy an agent") gets the history replayed into whichever backend the
+      // next turn runs on; a synthesized pi session on top would double it.
+      const synthesize = url.searchParams.get("sessions") !== "0";
       const { result, events } = await applyMigrationArchive({
         vfs,
         root,
         agentDir: synthesize ? deps.agentDir : undefined,
-        bytes,
+        bytes: body.bytes,
         overwrite: url.searchParams.get("overwrite") === "1",
         routineCreatedBy: deps.routineCreatedBy,
       });
+      await body.staged?.remove();
       for (const type of events) emit?.({ type, agentPath: ctx.agent.id });
       json(res, 200, result);
     } catch (err) {
-      if (err instanceof MigrationImportError) {
+      if (
+        err instanceof UploadError ||
+        err instanceof StagedUploadUnavailableError ||
+        err instanceof MigrationBodyError
+      ) {
+        json(res, err.status, {
+          error: err.message,
+          ...("code" in err ? { code: err.code } : {}),
+        });
+      } else if (err instanceof MigrationImportError) {
         json(res, err.status, { error: err.message });
       } else {
         json(res, 500, {
@@ -144,44 +146,3 @@ export async function handleMigration(
   json(res, 404, { error: "not found" });
   return true;
 }
-
-/**
- * The family owns the whole `migration/` prefix, not only the four pairs it
- * serves: an unknown path or a wrong verb inside it is this handler's own 404,
- * so a migration call that names nothing can never be forwarded to the agent's
- * runtime and answered by something else entirely.
- */
-defineRouteFamily({
-  group: "migration",
-  members: [
-    { method: "POST", path: "/agents/:agentId/migration/export" },
-    { method: "POST", path: "/agents/:agentId/migration/import" },
-    { method: "POST", path: "/agents/:agentId/migration/complete" },
-    { method: "GET", path: "/agents/:agentId/migration/status" },
-  ],
-  // `/agents/:agentId/migration` alone is NOT in the prefix (the check above
-  // requires the separator), so it falls through to the agent's runtime.
-  owns: ["/agents/:agentId/migration/", "/agents/:agentId/migration/*rest"],
-  phase: "agent",
-  classification: "sdk",
-  source: "packages/host/src/routes/migration.ts",
-  handler: async ({ deps, authz, userId, method, path, req, res, emit }) => {
-    await handleMigration(
-      {
-        vfs: deps.vfs,
-        paths: deps.paths ?? DEFAULT_PATHS,
-        // Anchors re-synthesized pi sessions on a deployment with a real
-        // on-disk tree; absent in cloud, where nothing replays them.
-        agentDir: deps.agentDir?.(authz.workspace, authz.agent),
-        // The importer, by the same actor policy as the routine write routes.
-        routineCreatedBy: routineActorFor(deps, req, userId),
-      },
-      authz,
-      method,
-      agentRest(path),
-      req,
-      res,
-      emit,
-    );
-  },
-});

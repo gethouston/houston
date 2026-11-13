@@ -101,7 +101,16 @@ async function record(
       method: probe.method,
       headers: {
         ...AUTH_HEADERS[probe.auth],
-        ...(hasBody ? { "Content-Type": "application/json" } : {}),
+        // Keep the legacy raw-zip probe alongside the JSON commit tests.
+        ...(hasBody
+          ? {
+              "Content-Type":
+                probe.path === "/agents/:agentId/migration/import" &&
+                probe.method === "POST"
+                  ? "application/zip"
+                  : "application/json",
+            }
+          : {}),
       },
       ...(hasBody ? { body: "{}" } : {}),
       signal: abort.signal,

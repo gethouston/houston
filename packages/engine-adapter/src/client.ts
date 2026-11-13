@@ -52,6 +52,7 @@ import type { BaseCtor } from "./client/mixin";
 import { OrgsMixin } from "./client/orgs-mixin";
 import { PlanMixin } from "./client/plan-mixin";
 import { PortableMixin } from "./client/portable-mixin";
+import { ProjectFileUploadsMixin } from "./client/project-file-uploads-mixin";
 import { ProjectFilesMixin } from "./client/project-files-mixin";
 import { ProviderCredentialsMixin } from "./client/provider-credentials-mixin";
 import { ProviderLoginMixin } from "./client/provider-login-mixin";
@@ -101,6 +102,7 @@ export const MIXINS = [
   RoutinesMixin,
   SharedSkillsMixin,
   ProjectFilesMixin,
+  ProjectFileUploadsMixin,
   CitationsMixin,
   AgentFilesMixin,
   ActivitiesMixin,

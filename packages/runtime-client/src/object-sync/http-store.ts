@@ -1,6 +1,6 @@
 import { captureFencingToken } from "./fencing-token";
 import { downloadHttpBatch } from "./http-store-batch";
-import { objectStoreResponseError } from "./http-store-errors";
+import { deleteHttpObject } from "./http-store-delete";
 import {
   assertWriteAuthority,
   type HttpObjectStoreOptions,
@@ -11,6 +11,7 @@ import {
   readHttpDirManifest,
   readHttpManifest,
 } from "./http-store-read";
+import { HttpUploadStore } from "./http-store-uploads";
 import { uploadHttpObject } from "./http-store-write";
 import { storeWriteHeaders } from "./http-store-write-headers";
 import type { DirListing, ObjectMetadata } from "./object-manifest";
@@ -22,33 +23,25 @@ import type {
   WriteResult,
 } from "./object-store";
 import { type FetchRetryOptions, fetchWithRetry } from "./retry";
+import type { UploadStore } from "./upload-store";
 
 export type { HttpObjectStoreOptions } from "./http-store-options";
 export { STREAM_UPLOAD_THRESHOLD_BYTES } from "./http-store-upload";
 
 export class HttpObjectStore implements ObjectStore {
+  private readonly opts: HttpObjectStoreOptions;
   private readonly baseUrl: string;
-  private readonly token: string;
-  private readonly agentSlug: string | undefined;
   private readonly fetchImpl: typeof fetch;
-  private readonly retryDelaysMs: number[] | undefined;
-  private readonly bootId: string | undefined;
-  private readonly fence: { token?: string } | undefined;
-  private readonly claim:
-    | { token: string; bootId: string; conversationId: string }
-    | undefined;
   /** Present only with `batchReads`: hydration batches iff the store has it. */
   readonly downloadMany?: ObjectStore["downloadMany"];
 
+  readonly copyUpload: UploadStore["copyUpload"];
+  readonly readUpload: UploadStore["readUpload"];
+
   constructor(opts: HttpObjectStoreOptions) {
+    this.opts = { ...opts };
     this.baseUrl = opts.baseUrl.replace(/\/+$/, "");
-    this.token = opts.token;
-    this.agentSlug = opts.agentSlug;
     this.fetchImpl = opts.fetchImpl ?? fetch;
-    this.retryDelaysMs = opts.retryDelaysMs;
-    this.bootId = opts.bootId;
-    this.fence = opts.fence;
-    this.claim = opts.claim;
     if (opts.batchReads) {
       const post = (init: RequestInit) =>
         this.fetch(`${this.baseUrl}/batch`, init);
@@ -56,6 +49,15 @@ export class HttpObjectStore implements ObjectStore {
         downloadHttpBatch(post, this.authHeaders(), entries, readOpts);
     }
     assertWriteAuthority(opts);
+    const uploads = new HttpUploadStore({
+      baseUrl: this.baseUrl,
+      request: this.fetch.bind(this),
+      authHeaders: () => this.authHeaders(),
+      writeHeaders: () => this.writeHeaders(),
+      capture: (res) => this.captureFence(res),
+    });
+    this.copyUpload = uploads.copyUpload.bind(uploads);
+    this.readUpload = uploads.readUpload.bind(uploads);
   }
 
   async list(prefix: string): Promise<string[]> {
@@ -134,20 +136,14 @@ export class HttpObjectStore implements ObjectStore {
   }
 
   async delete(key: string, opts?: WriteOptions): Promise<void> {
-    // As with PUT, a generation-guarded DELETE may have committed despite a
-    // lost response.
-    const res = await this.fetch(
-      this.objectUrl(key),
-      {
-        method: "DELETE",
-        headers: this.writeHeaders(opts),
-      },
-      { retryable: opts?.ifGenerationMatch === undefined },
-    );
-    this.captureFence(res);
-    if (!res.ok && res.status !== 404) {
-      throw await objectStoreResponseError(res, "DELETE", key);
-    }
+    return deleteHttpObject({
+      fetchRequest: this.fetch.bind(this),
+      url: this.objectUrl(key),
+      headers: this.writeHeaders(opts),
+      key,
+      opts,
+      capture: (res) => this.captureFence(res),
+    });
   }
 
   /**
@@ -161,7 +157,7 @@ export class HttpObjectStore implements ObjectStore {
     extra?: Pick<FetchRetryOptions, "body" | "retryable">,
   ): Promise<Response> {
     return fetchWithRetry(this.fetchImpl, url, init, {
-      delaysMs: this.retryDelaysMs,
+      delaysMs: this.opts.retryDelaysMs,
       ...extra,
     });
   }
@@ -178,14 +174,14 @@ export class HttpObjectStore implements ObjectStore {
   }
 
   private authHeaders(): Record<string, string> {
-    const auth = { Authorization: `Bearer ${this.token}` };
-    return this.agentSlug
-      ? { ...auth, "X-Houston-Agent": this.agentSlug }
+    const auth = { Authorization: `Bearer ${this.opts.token}` };
+    return this.opts.agentSlug
+      ? { ...auth, "X-Houston-Agent": this.opts.agentSlug }
       : auth;
   }
 
   private writeHeaders(opts?: WriteOptions): Record<string, string> {
-    const { bootId, fence, claim } = this;
+    const { bootId, fence, claim } = this.opts;
     return storeWriteHeaders(this.authHeaders(), opts, {
       bootId,
       fence,
@@ -194,7 +190,10 @@ export class HttpObjectStore implements ObjectStore {
   }
 
   private captureFence(res: Response): void {
-    if (!res.ok || !this.fence) return;
-    captureFencingToken(this.fence, res.headers.get("X-Houston-Fencing-Token"));
+    if (!res.ok || !this.opts.fence) return;
+    captureFencingToken(
+      this.opts.fence,
+      res.headers.get("X-Houston-Fencing-Token"),
+    );
   }
 }

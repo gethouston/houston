@@ -236,3 +236,22 @@ describe("migrationStatus", () => {
     expect((err as MigrationHttpError).status).toBe(status);
   });
 });
+
+it("migrationImport commits a staged archive as JSON", async () => {
+  const { sdk, calls } = makeSdk(() => json(RESULT));
+  const body = { uploadId: "upload_session_0001" };
+  expect(
+    await sdk.migration.migrationImport("a1", body, {
+      overwrite: true,
+      sessions: false,
+    }),
+  ).toEqual(RESULT);
+  expect(calls).toEqual([
+    {
+      method: "POST",
+      url: `${BASE}/agents/a1/migration/import?overwrite=1&sessions=0`,
+      contentType: "application/json",
+      body: JSON.stringify(body),
+    },
+  ]);
+});

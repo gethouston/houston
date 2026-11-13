@@ -1,5 +1,13 @@
 import type { Stats } from "node:fs";
-import { lstat, mkdir, rename, rm, stat, writeFile } from "node:fs/promises";
+import {
+  copyFile,
+  lstat,
+  mkdir,
+  rename,
+  rm,
+  stat,
+  writeFile,
+} from "node:fs/promises";
 import { dirname, join } from "node:path";
 import { isVanished, statsUnder } from "./fs-listing";
 import { readBytes } from "./fs-read";
@@ -89,6 +97,17 @@ export class FsVfs implements Vfs {
       // ATOMIC_TMP_SUFFIX so a concurrent walk knows to skip it.
       const tmp = scratchPath(path);
       await writeFile(tmp, content);
+      await rename(tmp, path);
+    });
+  }
+
+  /** Same atomic publish as `writeBytes`, copied file to file: a 100 MB upload never sits in memory. */
+  writeFileFrom(key: string, sourcePath: string): Promise<void> {
+    const path = this.pathFor(key);
+    return writable(key, async () => {
+      await mkdir(dirname(path), { recursive: true });
+      const tmp = scratchPath(path);
+      await copyFile(sourcePath, tmp);
       await rename(tmp, path);
     });
   }

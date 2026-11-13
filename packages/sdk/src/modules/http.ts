@@ -18,8 +18,13 @@
  */
 
 import { trimTrailingSlashes } from "@houston/runtime-client/trim-slashes";
-import { parseComputeRefusalText, retryAfterMsOf } from "@houston/wire-types";
-import type { Clock, SdkPorts } from "../ports";
+import {
+  parseComputeRefusalText,
+  RESUMABLE_UPLOAD_THRESHOLD_BYTES,
+  retryAfterMsOf,
+} from "@houston/wire-types";
+import type { SdkPorts } from "../ports";
+import { waitForRetry } from "./abortable-wait";
 
 /** Everything {@link httpRequest} needs that is constant for one module. */
 export interface HttpScope {
@@ -134,7 +139,7 @@ export async function httpRequest(
     const pause = computeRetryPause(res.status, body, retryAfterMs, init);
     if (pause !== undefined && paused + pause <= COMPUTE_RETRY_BUDGET_MS) {
       paused += pause;
-      await sleep(scope.ports.clock, pause);
+      await waitForRetry(scope.ports.clock, pause, init?.signal ?? undefined);
       continue;
     }
     const err = scope.fail(body, res.status);
@@ -159,7 +164,9 @@ function computeRetryPause(
     status !== 503 ||
     method === "GET" ||
     method === "HEAD" ||
-    !(init?.body == null || typeof init.body === "string")
+    !(init?.body == null || typeof init.body === "string") ||
+    (typeof init?.body === "string" &&
+      utf8LengthExceeds(init.body, RESUMABLE_UPLOAD_THRESHOLD_BYTES))
   )
     return undefined;
   const refusal = parseComputeRefusalText(body);
@@ -168,6 +175,23 @@ function computeRetryPause(
   return Math.max(COMPUTE_RETRY_MIN_MS, hint);
 }
 
-function sleep(clock: Clock, ms: number): Promise<void> {
-  return new Promise<void>((resolve) => clock.setTimeout(resolve, ms));
+/**
+ * Whether a string's UTF-8 encoding is longer than `limit`, without encoding
+ * it: a 100 MB upload body must not be copied just to be measured.
+ */
+function utf8LengthExceeds(text: string, limit: number): boolean {
+  if (text.length > limit) return true;
+  if (text.length * 3 <= limit) return false;
+  let bytes = 0;
+  for (let i = 0; i < text.length; i++) {
+    const code = text.charCodeAt(i);
+    if (code < 0x80) bytes += 1;
+    else if (code < 0x800) bytes += 2;
+    else if (code >= 0xd800 && code < 0xdc00) {
+      bytes += 4;
+      i++;
+    } else bytes += 3;
+    if (bytes > limit) return true;
+  }
+  return false;
 }

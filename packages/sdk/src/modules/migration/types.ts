@@ -8,8 +8,10 @@
  * than a command that could not hold it.
  */
 
+import type { UploadOptions } from "../files/types";
+
 /** How an import chunk lands on the target agent. */
-export interface MigrationImportOptions {
+export interface MigrationImportOptions extends UploadOptions {
   /** Replace files the target already has (a retry over a partial first try). */
   overwrite?: boolean;
   /** `false`: write the transcripts but rebuild no pi session from them; the

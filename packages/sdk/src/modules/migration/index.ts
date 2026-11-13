@@ -20,10 +20,11 @@
  * `clientFor(agentId)`. A 401 routes through the shared
  * {@link ModuleContext.authExpiry} notifier.
  *
- * Nothing degrades here: every non-2xx throws a `MigrationHttpError` carrying
- * its `status`, and the surface decides what a 404 means for it.
+ * Export, marker and commit failures retain their HTTP status. The archive
+ * composite falls back to raw zip on hosts without upload sessions.
  */
 
+import type { MigrationImportCommit } from "@houston/wire-types";
 import type { ModuleContext } from "../../module-context";
 import { moduleScope, SdkHttpError } from "../http";
 import {
@@ -32,6 +33,7 @@ import {
   migrationImport,
   migrationStatus,
 } from "./http";
+import { importArchive } from "./import-archive";
 import type {
   MigrationCounts,
   MigrationImportOptions,
@@ -54,6 +56,12 @@ export interface MigrationModule {
   migrationExport(agentId: string, paths: string[]): Promise<ArrayBuffer>;
   /** Unpack one archive into an agent; answers what landed and what did not. */
   migrationImport(
+    agentId: string,
+    bytes: ArrayBuffer | MigrationImportCommit,
+    opts?: MigrationImportOptions,
+  ): Promise<MigrationImportResult>;
+  /** Transfer a device archive through a resumable session, then commit it. */
+  importArchive(
     agentId: string,
     bytes: ArrayBuffer,
     opts?: MigrationImportOptions,
@@ -82,6 +90,11 @@ export function createMigrationModule(ctx: ModuleContext): MigrationModule {
     migrationExport: (agentId, paths) => migrationExport(scope, agentId, paths),
     migrationImport: (agentId, bytes, opts) =>
       migrationImport(scope, agentId, bytes, opts),
+    /** Transfer and commit a device archive.
+     * @assistant group:files hidden: the migration wizard supplies binary archives.
+     * @assistant unroutable: composes session transfer and migration commit. */
+    importArchive: (agentId, bytes, opts) =>
+      importArchive(scope, agentId, bytes, opts),
     migrationComplete: (agentId, source, counts) =>
       migrationComplete(scope, agentId, source, counts),
     migrationStatus: (agentId) => migrationStatus(scope, agentId),

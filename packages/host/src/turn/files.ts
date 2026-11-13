@@ -1,16 +1,20 @@
 import type { IncomingMessage, ServerResponse } from "node:http";
 import type { HoustonEvent } from "@houston/protocol";
+import { UploadCopyExistsError } from "@houston/runtime-client/object-sync";
 import type { Agent, Workspace } from "../domain/types";
 import type { WorkspacePaths } from "../paths";
+import {
+  type StagedUploads,
+  StagedUploadUnavailableError,
+} from "../uploads/commit";
+import { UploadError } from "../uploads/types";
 import type { Vfs } from "../vfs";
 import { json, readJson } from "./deps";
-import { serveArchive, serveFileDownload } from "./files-binary";
 import {
   importWorkspaceFiles,
   MAX_UPLOAD_BODY_BYTES,
   parseImportBody,
 } from "./files-import";
-import { logMissingFile } from "./files-missing";
 import { moveWorkspaceEntry } from "./files-move";
 import type { OfficePreview } from "./files-office";
 import {
@@ -18,12 +22,10 @@ import {
   deleteWorkspaceFile,
   FileOpError,
   FilePathError,
-  listWorkspace,
   readOnlyRefusal,
-  readWorkspaceFile,
   renameWorkspaceFile,
-  workspaceRel,
 } from "./files-ops";
+import { handleFileReads } from "./files-read";
 
 /**
  * Files browser for an agent's workspace — the HOST serves it for EVERY
@@ -68,6 +70,7 @@ export async function handleFiles(
   query: URLSearchParams,
   emit?: (event: HoustonEvent) => void,
   officePreview?: OfficePreview,
+  uploads?: StagedUploads,
 ): Promise<boolean> {
   if (rest !== "files" && !rest.startsWith("files/")) return false;
   if (!vfs) {
@@ -78,36 +81,19 @@ export async function handleFiles(
   const changed = () =>
     emit?.({ type: "FilesChanged", agentPath: ctx.agent.id });
   try {
-    if (method === "GET" && rest === "files") {
-      await json(res, 200, await listWorkspace(vfs, root));
-      return true;
-    }
-    if (method === "GET" && rest === "files/download") {
-      await serveFileDownload(
+    if (
+      method === "GET" &&
+      (await handleFileReads(
         vfs,
         root,
-        ctx.agent.id,
-        query,
+        ctx.agent,
+        rest,
         res,
+        query,
         officePreview,
-      );
+      ))
+    )
       return true;
-    }
-    if (method === "GET" && rest === "files/archive") {
-      await serveArchive(vfs, root, ctx.agent.name, query, res);
-      return true;
-    }
-    if (method === "GET" && rest === "files/read") {
-      const rel = workspaceRel(root, query.get("path") ?? "");
-      const got = await readWorkspaceFile(vfs, root, rel);
-      if (!got) {
-        await logMissingFile(vfs, root, rel, ctx.agent.id);
-        json(res, 404, { error: "file not found" });
-        return true;
-      }
-      await json(res, 200, got);
-      return true;
-    }
     if (method === "DELETE" && rest === "files") {
       await deleteWorkspaceFile(vfs, root, query.get("path") ?? "");
       changed();
@@ -118,7 +104,7 @@ export async function handleFiles(
       const { dir, files } = parseImportBody(
         await readJson(req, MAX_UPLOAD_BODY_BYTES),
       );
-      const saved = await importWorkspaceFiles(vfs, root, dir, files);
+      const saved = await importWorkspaceFiles(vfs, root, dir, files, uploads);
       changed();
       await json(res, 200, { paths: saved });
       return true;
@@ -165,6 +151,17 @@ export async function handleFiles(
     json(res, 404, { error: "not found" });
     return true;
   } catch (err) {
+    if (
+      err instanceof UploadError ||
+      err instanceof StagedUploadUnavailableError ||
+      err instanceof UploadCopyExistsError
+    ) {
+      json(res, err.status, {
+        error: err.message,
+        ...("code" in err ? { code: err.code } : {}),
+      });
+      return true;
+    }
     if (err instanceof FilePathError) {
       json(res, 400, { error: err.message });
       return true;

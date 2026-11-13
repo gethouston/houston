@@ -31,6 +31,7 @@ export const STORE_SYNC_EXCLUDES = [
   "claude-login/.credentials.json",
   "db/",
   "shared-mirror/",
+  "upload-staging/",
   ...STORE_ROOT_PACKAGE_EXCLUDES,
   // Language toolchains and package stores.
   "**/node_modules/",

@@ -15,6 +15,7 @@ import { CloudPaths, type WorkspacePaths } from "../paths";
 import type { RuntimeChannel, WorkspaceStore } from "../ports";
 import type { PushReporter } from "../telemetry/push-report";
 import type { OfficePreview } from "../turn/files-office";
+import type { LocalUploadSessions } from "../uploads/local";
 import type { Vfs } from "../vfs";
 import { json } from "./http";
 
@@ -31,6 +32,7 @@ export interface AgentRouteDeps {
   channels: Partial<Record<WorkspaceRuntime, RuntimeChannel>>;
   /** Workspace file store backing the typed .houston families; absent → those routes 503. */
   vfs?: Vfs;
+  uploadSessions?: LocalUploadSessions;
   officePreview?: OfficePreview;
   /** Where agent files live in the vfs (cloud prefixes vs local tree). Default: cloud. */
   paths?: WorkspacePaths;

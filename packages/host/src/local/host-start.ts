@@ -48,6 +48,7 @@ export async function startLocalHost(
     const objects = await boot.time("hydrate", () => syncDaemon.hydrate());
     boot.setHydratedObjects(objects);
   }
+  await state.uploadSessions?.sweep();
   await runHostMigrations(opts, state);
   bootStamp("hydration + migrations done");
   const bind = opts.bind ?? "127.0.0.1";

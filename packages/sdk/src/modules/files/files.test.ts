@@ -204,3 +204,72 @@ describe("files module — the dispatch path", () => {
     expect(calls).toEqual([]);
   });
 });
+
+describe("upload-ID commits", () => {
+  it("sends mixed upload IDs and base64 entries unchanged", async () => {
+    const { sdk, calls } = makeSdk(() =>
+      json({ paths: ["uploads/a.bin", "uploads/b.txt"] }),
+    );
+    const files = [
+      {
+        name: "a.bin",
+        uploadId: "upload_session_0001",
+        relPath: "folder/a.bin",
+      },
+      { name: "b.txt", contentBase64: "Yg==" },
+    ];
+    await sdk.files.saveAttachments("a1", "conv", files);
+    expect(calls[0].body).toBe(JSON.stringify({ scopeId: "conv", files }));
+    await sdk.files.uploadProjectFiles("a1", files, "docs");
+    expect(calls[1].body).toBe(JSON.stringify({ dir: "docs", files }));
+  });
+
+  it("dispatch accepts a parsed upload-ID entry and refuses an invalid ID", async () => {
+    const { sdk, calls } = makeSdk(() => json({ paths: ["uploads/a.bin"] }));
+    const good = await sdk.dispatch({
+      id: "1",
+      type: FilesCommand.SaveAttachments,
+      payload: {
+        agentId: "a1",
+        scopeId: "conv",
+        files: [{ name: "a.bin", uploadId: "upload_session_0001" }],
+      },
+    });
+    expect(good.ok).toBe(true);
+    const bad = await sdk.dispatch({
+      id: "2",
+      type: FilesCommand.SaveAttachments,
+      payload: {
+        agentId: "a1",
+        scopeId: "conv",
+        files: [{ name: "a.bin", uploadId: "bad" }],
+      },
+    });
+    expect(bad.ok).toBe(false);
+    expect(calls).toHaveLength(1);
+  });
+
+  it("dispatch opens a session with the same validated request", async () => {
+    const session = {
+      uploadId: "upload_session_0001",
+      uploadUrl: "/v1/sink",
+      chunkBytes: 262144,
+      expiresAt: "2026-11-14T00:00:00Z",
+    };
+    const { sdk, calls } = makeSdk(() => json(session));
+    const request = { name: "a.bin", size: 3, purpose: "attachment" };
+    const result = await sdk.dispatch({
+      id: "1",
+      type: FilesCommand.OpenUpload,
+      payload: { agentId: "a 1", request },
+    });
+    expect(result).toEqual({ id: "1", ok: true, value: session });
+    expect(calls).toEqual([
+      {
+        method: "POST",
+        url: `${BASE}/agents/a%201/uploads`,
+        body: JSON.stringify(request),
+      },
+    ]);
+  });
+});

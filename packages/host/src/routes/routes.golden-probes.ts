@@ -16,6 +16,7 @@ export const PUBLIC_PROBES: string[] = [
   "GET /v1/version",
   "GET /v1/capabilities",
   "GET /v1/catalog",
+  "PUT /v1/uploads/:uploadId",
   "GET /v1/integrations/custom/oauth/callback",
 ];
 

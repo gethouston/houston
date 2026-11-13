@@ -1,9 +1,11 @@
 import {
+  isUploadStore,
   keepsMergeBase,
   ObjectNotFoundError,
 } from "@houston/runtime-client/object-sync";
 import { FsVfs } from "./fs";
 import { Materializer } from "./lazy-store-fetch";
+import { moveLazyStoreEntry } from "./lazy-store-move";
 import { LazyOwnership } from "./lazy-store-ownership";
 import type { LazyStoreVfsOptions } from "./lazy-store-types";
 import {
@@ -38,9 +40,38 @@ export class LazyStoreVfs implements Vfs {
     this.state.ingest(opts.objects, opts.prefix, opts.excludes);
   }
 
+  get uploadStore() {
+    return isUploadStore(this.opts.store) ? this.opts.store : undefined;
+  }
+
+  async copyUpload(
+    uploadId: string,
+    key: string,
+    generation: string,
+  ): Promise<void> {
+    assertSafeKey(key);
+    this.state.assertWritable(key);
+    if (!this.uploadStore) throw new Error("upload store not configured");
+    if (await this.exists(key)) throw new VfsExistsError(key);
+    const storeKey = this.opts.prefix ? `${this.opts.prefix}/${key}` : key;
+    const copied = await this.uploadStore.copyUpload(
+      uploadId,
+      storeKey,
+      generation,
+    );
+    // A store-side copy stays remote and outside sync-back ownership until read or changed.
+    this.state.copied(key, {
+      ...copied,
+      md5: "",
+      updated: new Date().toISOString(),
+    });
+  }
+
   /** Whether the store mints generations (the sync-back CAS capability). */
   get generationAware(): boolean {
-    return this.opts.objects.some((o) => o.generation !== undefined);
+    return [...this.opts.objects, ...this.state.remote.values()].some(
+      (o) => o.generation !== undefined,
+    );
   }
 
   /** Remote keys (store-relative) this vfs knows about, excludes applied. */
@@ -135,54 +166,16 @@ export class LazyStoreVfs implements Vfs {
   }
 
   async move(fromKey: string, toKey: string): Promise<void> {
-    assertSafeKey(fromKey);
-    assertSafeKey(toKey);
-    // POSIX rename: onto itself is a no-op, into itself is an error.
-    if (toKey === fromKey) return;
-    if (toKey.startsWith(`${fromKey}/`)) {
-      throw new Error(`move: destination is inside the source: ${fromKey}`);
-    }
-    const isFile =
-      (await this.local.readBytes(fromKey)) !== null ||
-      this.state.visible(fromKey);
-    if (!isFile) {
-      // A directory: exists only as its descendants. Move each one.
-      const children = await this.listDetailed(fromKey);
-      if (children.length === 0) {
-        throw new Error(`move: source not found: ${fromKey}`);
-      }
-      // Typed, like the single-object refusal below: `moveOrRefuse` turns a
-      // VfsExistsError into the 409 "already exists there" the user can act
-      // on. A plain Error would surface a fixable name collision as a 500.
-      if ((await this.listDetailed(toKey)).length > 0) {
-        throw new VfsExistsError(toKey);
-      }
-      for (const child of children) {
-        await this.move(
-          child.key,
-          `${toKey}${child.key.slice(fromKey.length)}`,
-        );
-      }
-      await this.local.deletePrefix(fromKey);
-      return;
-    }
-    this.state.assertWritable(toKey);
-    const meta = this.state.visible(fromKey);
-    if ((await this.local.readBytes(fromKey)) === null && meta) {
-      try {
-        await this.downloads.fetch(fromKey, meta);
-      } catch (error) {
-        if (!(error instanceof ObjectNotFoundError)) throw error;
-        this.state.remote.delete(fromKey);
-        throw new Error(`move: source not found: ${fromKey}`);
-      }
-    }
-    // The store's half is exact-keyed and invisible to the overlay's own
-    // guard: an object nobody has read yet still occupies the destination.
-    if (this.state.visible(toKey)) throw new VfsExistsError(toKey);
-    await this.local.move(fromKey, toKey);
-    this.state.written(toKey);
-    this.state.tombstone(fromKey);
+    return moveLazyStoreEntry(
+      {
+        vfs: this,
+        local: this.local,
+        state: this.state,
+        downloads: this.downloads,
+      },
+      fromKey,
+      toKey,
+    );
   }
 
   async deletePrefix(prefix: string): Promise<void> {

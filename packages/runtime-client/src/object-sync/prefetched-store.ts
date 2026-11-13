@@ -62,12 +62,21 @@ export function parsePrefetchedObjects(
  */
 export class PrefetchedObjectStore implements ObjectStore {
   private manifestServed = false;
+  readonly copyUpload?: ObjectStore["copyUpload"];
+  readonly readUpload?: ObjectStore["readUpload"];
   readonly manifestDir?: ObjectStore["manifestDir"];
 
   constructor(
     private readonly inner: ObjectStore,
     private readonly prefetched: PrefetchedObjects,
   ) {
+    const copy = inner.copyUpload?.bind(inner);
+    if (copy)
+      this.copyUpload = (id, key, gen) => {
+        this.forgetInlined();
+        return copy(id, key, gen);
+      };
+    this.readUpload = inner.readUpload?.bind(inner);
     const dir = inner.manifestDir?.bind(inner);
     if (dir) this.manifestDir = dir;
   }

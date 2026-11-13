@@ -20,6 +20,7 @@ export type {
   LinkedInConnectAnswer,
   LinkedInPostInput,
   LinkedInPostResult,
+  UploadProgress,
 } from "@houston/sdk";
 export * from "@houston/wire-types";
 export type { HoustonClientOptions } from "./client";
@@ -30,6 +31,7 @@ export {
   isSignedOutEngineError,
   SIGNED_OUT_ERROR,
 } from "./client";
+export type { FileUploadOptions } from "./client/attachment-batches";
 // Local conversation cache (HOU-712): sign-out wipes the per-user cached
 // transcripts so nothing lingers on a shared machine. The scope helper also
 // keys the app's list-query persistence to the same gateway+user identity.

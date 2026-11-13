@@ -874,6 +874,13 @@
     "classification": "sdk"
   },
   {
+    "pattern": "/agents/{slug}/uploads",
+    "methods": [
+      "POST"
+    ],
+    "classification": "sdk"
+  },
+  {
     "pattern": "/feedback",
     "methods": [
       "POST"
@@ -1473,5 +1480,14 @@
       "PUT"
     ],
     "classification": "sdk"
+  },
+  {
+    "pattern": "/v1/upload-sink/{org}/{agent}/{uploadId}",
+    "methods": [
+      "PUT",
+      "OPTIONS"
+    ],
+    "classification": "infra",
+    "reason": "a signed storage sink the SDK reaches only through the uploadUrl returned by session opening; no separate SDK method addresses this route"
   }
 ]

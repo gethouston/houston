@@ -1,6 +1,6 @@
+import type { MigrationImportOptions } from "@houston/sdk";
 import type {
   MigrationCounts,
-  MigrationImportOptions,
   MigrationImportResult,
   MigrationMarker,
   MigrationSource,
@@ -93,7 +93,7 @@ export function PortableMixin<TBase extends BaseCtor>(Base: TBase) {
         throw new Error("Copying agent data needs a connected host.");
       return viaSdk(
         `/agents/${encodeURIComponent(agentPath)}/migration/import`,
-        () => this.ctx.sdk.migration.migrationImport(agentPath, bytes, opts),
+        () => this.ctx.sdk.migration.importArchive(agentPath, bytes, opts),
       );
     }
     async migrationComplete(

@@ -82,6 +82,8 @@ export {
 export { trustedBase, withMergeBase } from "./sync-back-merge-base";
 export type { ConflictBackoff } from "./sync-back-merge-retry";
 export { jitteredConflictBackoff } from "./sync-back-merge-retry";
+export type { CopiedUpload, UploadStore } from "./upload-store";
+export { isUploadStore, UploadCopyExistsError } from "./upload-store";
 export type {
   LeaseHolderState,
   WriteLeaseProbeOptions,

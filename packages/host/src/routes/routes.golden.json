@@ -47,6 +47,15 @@
     ],
     "forwarded": []
   },
+  "PUT /v1/uploads/:uploadId": {
+    "status": 404,
+    "contentType": "application/json; charset=utf-8",
+    "errorCode": "not found",
+    "bodyKeys": [
+      "error"
+    ],
+    "forwarded": []
+  },
   "GET /v1/integrations/custom/oauth/callback": {
     "status": 400,
     "contentType": "text/html; charset=utf-8",
@@ -1450,6 +1459,15 @@
     ],
     "forwarded": []
   },
+  "POST /agents/:agentId/uploads": {
+    "status": 400,
+    "contentType": "application/json; charset=utf-8",
+    "errorCode": "invalid upload request",
+    "bodyKeys": [
+      "error"
+    ],
+    "forwarded": []
+  },
   "GET /agents/:agentId/portable/preview": {
     "status": 200,
     "contentType": "application/json; charset=utf-8",
@@ -2062,6 +2080,51 @@
     "forwarded": []
   },
   "GET /v1/catalog/": {
+    "status": 401,
+    "contentType": "application/json; charset=utf-8",
+    "errorCode": "unauthorized",
+    "bodyKeys": [
+      "error"
+    ],
+    "forwarded": []
+  },
+  "GET /v1/uploads/:uploadId": {
+    "status": 401,
+    "contentType": "application/json; charset=utf-8",
+    "errorCode": "unauthorized",
+    "bodyKeys": [
+      "error"
+    ],
+    "forwarded": []
+  },
+  "POST /v1/uploads/:uploadId": {
+    "status": 401,
+    "contentType": "application/json; charset=utf-8",
+    "errorCode": "unauthorized",
+    "bodyKeys": [
+      "error"
+    ],
+    "forwarded": []
+  },
+  "PATCH /v1/uploads/:uploadId": {
+    "status": 401,
+    "contentType": "application/json; charset=utf-8",
+    "errorCode": "unauthorized",
+    "bodyKeys": [
+      "error"
+    ],
+    "forwarded": []
+  },
+  "DELETE /v1/uploads/:uploadId": {
+    "status": 401,
+    "contentType": "application/json; charset=utf-8",
+    "errorCode": "unauthorized",
+    "bodyKeys": [
+      "error"
+    ],
+    "forwarded": []
+  },
+  "PUT /v1/uploads/:uploadId/": {
     "status": 401,
     "contentType": "application/json; charset=utf-8",
     "errorCode": "unauthorized",
@@ -13917,6 +13980,133 @@
       "POST /attachments/"
     ]
   },
+  "GET /agents/:agentId/uploads": {
+    "status": 200,
+    "contentType": "application/json",
+    "errorCode": null,
+    "bodyKeys": [
+      "ok"
+    ],
+    "forwarded": [
+      "GET /uploads"
+    ]
+  },
+  "GET /agents/:agentId/uploads [anon]": {
+    "status": 401,
+    "contentType": "application/json; charset=utf-8",
+    "errorCode": "unauthorized",
+    "bodyKeys": [
+      "error"
+    ],
+    "forwarded": []
+  },
+  "GET /agents/:agentId/uploads [other]": {
+    "status": 403,
+    "contentType": "application/json; charset=utf-8",
+    "errorCode": "not your agent",
+    "bodyKeys": [
+      "error"
+    ],
+    "forwarded": []
+  },
+  "PUT /agents/:agentId/uploads": {
+    "status": 200,
+    "contentType": "application/json",
+    "errorCode": null,
+    "bodyKeys": [
+      "ok"
+    ],
+    "forwarded": [
+      "PUT /uploads"
+    ]
+  },
+  "PUT /agents/:agentId/uploads [anon]": {
+    "status": 401,
+    "contentType": "application/json; charset=utf-8",
+    "errorCode": "unauthorized",
+    "bodyKeys": [
+      "error"
+    ],
+    "forwarded": []
+  },
+  "PUT /agents/:agentId/uploads [other]": {
+    "status": 403,
+    "contentType": "application/json; charset=utf-8",
+    "errorCode": "not your agent",
+    "bodyKeys": [
+      "error"
+    ],
+    "forwarded": []
+  },
+  "PATCH /agents/:agentId/uploads": {
+    "status": 200,
+    "contentType": "application/json",
+    "errorCode": null,
+    "bodyKeys": [
+      "ok"
+    ],
+    "forwarded": [
+      "PATCH /uploads"
+    ]
+  },
+  "PATCH /agents/:agentId/uploads [anon]": {
+    "status": 401,
+    "contentType": "application/json; charset=utf-8",
+    "errorCode": "unauthorized",
+    "bodyKeys": [
+      "error"
+    ],
+    "forwarded": []
+  },
+  "PATCH /agents/:agentId/uploads [other]": {
+    "status": 403,
+    "contentType": "application/json; charset=utf-8",
+    "errorCode": "not your agent",
+    "bodyKeys": [
+      "error"
+    ],
+    "forwarded": []
+  },
+  "DELETE /agents/:agentId/uploads": {
+    "status": 200,
+    "contentType": "application/json",
+    "errorCode": null,
+    "bodyKeys": [
+      "ok"
+    ],
+    "forwarded": [
+      "DELETE /uploads"
+    ]
+  },
+  "DELETE /agents/:agentId/uploads [anon]": {
+    "status": 401,
+    "contentType": "application/json; charset=utf-8",
+    "errorCode": "unauthorized",
+    "bodyKeys": [
+      "error"
+    ],
+    "forwarded": []
+  },
+  "DELETE /agents/:agentId/uploads [other]": {
+    "status": 403,
+    "contentType": "application/json; charset=utf-8",
+    "errorCode": "not your agent",
+    "bodyKeys": [
+      "error"
+    ],
+    "forwarded": []
+  },
+  "POST /agents/:agentId/uploads/": {
+    "status": 200,
+    "contentType": "application/json",
+    "errorCode": null,
+    "bodyKeys": [
+      "ok"
+    ],
+    "forwarded": [
+      "POST /uploads/"
+    ]
+  },
   "POST /agents/:agentId/portable/preview": {
     "status": 200,
     "contentType": "application/json",
@@ -20962,6 +21152,24 @@
     "forwarded": []
   },
   "POST /agents/:agentId/attachments [other]": {
+    "status": 403,
+    "contentType": "application/json; charset=utf-8",
+    "errorCode": "not your agent",
+    "bodyKeys": [
+      "error"
+    ],
+    "forwarded": []
+  },
+  "POST /agents/:agentId/uploads [anon]": {
+    "status": 401,
+    "contentType": "application/json; charset=utf-8",
+    "errorCode": "unauthorized",
+    "bodyKeys": [
+      "error"
+    ],
+    "forwarded": []
+  },
+  "POST /agents/:agentId/uploads [other]": {
     "status": 403,
     "contentType": "application/json; charset=utf-8",
     "errorCode": "not your agent",

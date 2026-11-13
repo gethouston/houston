@@ -32,7 +32,7 @@ function applyCors(deps: ControlPlaneDeps, res: ServerResponse): void {
   // allow it even though the host ignores it.
   res.setHeader(
     "Access-Control-Allow-Headers",
-    "Authorization, Content-Type, X-Houston-App-Version",
+    "Authorization, Content-Type, X-Houston-App-Version, Content-Range, X-GUploader-No-308",
   );
   res.setHeader(
     "Access-Control-Allow-Methods",
@@ -46,7 +46,7 @@ function applyCors(deps: ControlPlaneDeps, res: ServerResponse): void {
   // `HoustonEngineError.retryAfterMs` and schedules its retry on it.
   res.setHeader(
     "Access-Control-Expose-Headers",
-    "Retry-After, X-Houston-Page-Count",
+    "Retry-After, X-Houston-Page-Count, Range, X-HTTP-Status-Code-Override",
   );
 }
 

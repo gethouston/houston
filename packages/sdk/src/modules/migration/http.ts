@@ -20,6 +20,7 @@
  * `MigrationHttpError` carrying the HTTP `status`.
  */
 
+import type { MigrationImportCommit } from "@houston/wire-types";
 import { type HttpScope, httpRequest } from "../http";
 import type {
   MigrationCounts,
@@ -59,7 +60,7 @@ export async function migrationExport(
 export async function migrationImport(
   scope: HttpScope,
   agentId: string,
-  bytes: ArrayBuffer,
+  bytes: ArrayBuffer | MigrationImportCommit,
   opts?: MigrationImportOptions,
 ): Promise<MigrationImportResult> {
   const q = new URLSearchParams();
@@ -71,8 +72,12 @@ export async function migrationImport(
     `/agents/${encodeURIComponent(agentId)}/migration/import${query}`,
     {
       method: "POST",
-      headers: { "Content-Type": "application/zip" },
-      body: bytes,
+      headers: {
+        "Content-Type":
+          bytes instanceof ArrayBuffer ? "application/zip" : "application/json",
+      },
+      body: bytes instanceof ArrayBuffer ? bytes : JSON.stringify(bytes),
+      signal: opts?.signal,
     },
   );
   return (await res.json()) as MigrationImportResult;

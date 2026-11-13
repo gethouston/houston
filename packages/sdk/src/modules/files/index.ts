@@ -18,9 +18,11 @@
  * through the adapter while surfaces render the chosen fallback.
  */
 
+import { openUploadRequestSchema } from "@houston/wire-types";
 import type { ModuleContext } from "../../module-context";
 import { moduleScope } from "../http";
-import { requireString } from "../payload";
+import { field, requireString } from "../payload";
+import type { FilesModule } from "./facade-types";
 import {
   createFolder,
   deleteFile,
@@ -30,77 +32,48 @@ import {
   readProjectFile,
   renameFile,
 } from "./http";
+import { openUpload } from "./open-upload";
 import { classifyPreviewRefusal, loadPreview, previewPlan } from "./preview";
-import {
-  FilesCommand,
-  type FileUpload,
-  nullableString,
-  type ProjectFile,
-  requireUploads,
-} from "./types";
-import { saveAttachments, uploadProjectFiles } from "./uploads";
+import { upload } from "./resumable-upload";
+import { FilesCommand, nullableString, requireUploads } from "./types";
+import { saveAttachmentBatch, uploadFileBatch } from "./upload-batches";
 
+export type { FilesModule } from "./facade-types";
 export { FilesHttpError } from "./http";
+export type { ResumableUploadOptions } from "./resumable-upload";
 export type {
+  BlobUpload,
   FilesCommandType,
   FileUpload,
   ProjectFile,
+  UploadBatchOptions,
+  UploadEntry,
+  UploadInput,
+  UploadOptions,
+  UploadProgress,
 } from "./types";
 export { FilesCommand } from "./types";
+export {
+  UploadRefusalError,
+  UploadSessionsUnavailableError,
+  UploadTransferError,
+} from "./upload-errors";
 export {
   isUploadInterruptedError,
   UploadInterruptedError,
   type UploadRoute,
 } from "./upload-interrupted";
 
-/** The typed facade for an agent's workspace files. Every call throws on a non-2xx. */
-export interface FilesModule {
-  /** Choose the download representation this deployment can preview. */
-  previewPlan: typeof previewPlan;
-  /** Download a PDF with the bounded capacity retry schedule. */
-  loadPreview<T>(download: () => Promise<T>): Promise<T>;
-  /** Classify a PDF refusal for fallback and diagnostic reporting. */
-  classifyPreviewRefusal: typeof classifyPreviewRefusal;
-  /** Everything in the agent's workspace, one entry per file and folder. */
-  listProjectFiles(agentPath: string): Promise<ProjectFile[]>;
-  /** One workspace file's contents, base64-framed bytes decoded to text. */
-  readProjectFile(agentPath: string, relPath: string): Promise<string>;
-  /** Permanently delete one workspace file or folder. */
-  deleteFile(agentPath: string, relPath: string): Promise<void>;
-  /** Rename one workspace entry in place; the folder it sits in never changes. */
-  renameFile(
-    agentPath: string,
-    relPath: string,
-    newName: string,
-  ): Promise<void>;
-  /** Create an empty folder; answers the path it was created at. */
-  createFolder(
-    agentPath: string,
-    folderName: string,
-  ): Promise<{ created: string }>;
-  /** Move an entry into another folder (`null` = the workspace root). */
-  moveProjectFile(
-    agentPath: string,
-    relPath: string,
-    toDir: string | null,
-  ): Promise<void>;
-  /** Write ONE already-framed batch into the workspace (`targetDir` = subfolder). */
-  uploadProjectFiles(
-    agentPath: string,
-    files: FileUpload[],
-    targetDir?: string | null,
-  ): Promise<void>;
-  /** Write ONE already-framed batch of composer attachments; answers their paths. */
-  saveAttachments(
-    agentId: string,
-    scopeId: string,
-    files: FileUpload[],
-  ): Promise<string[]>;
-}
-
 export function createFilesModule(ctx: ModuleContext): FilesModule {
   const scope = moduleScope(ctx, "files", FilesHttpError);
 
+  ctx.registerCommand(FilesCommand.OpenUpload, (p) =>
+    openUpload(
+      scope,
+      requireString(p, "agentId"),
+      openUploadRequestSchema.parse(field(p, "request")),
+    ),
+  );
   ctx.registerCommand(FilesCommand.List, (p) =>
     listProjectFiles(scope, requireString(p, "agentPath")),
   );
@@ -142,7 +115,7 @@ export function createFilesModule(ctx: ModuleContext): FilesModule {
     ),
   );
   ctx.registerCommand(FilesCommand.Upload, (p) =>
-    uploadProjectFiles(
+    uploadFileBatch(
       scope,
       requireString(p, "agentPath"),
       requireUploads(p, "files"),
@@ -150,7 +123,7 @@ export function createFilesModule(ctx: ModuleContext): FilesModule {
     ),
   );
   ctx.registerCommand(FilesCommand.SaveAttachments, (p) =>
-    saveAttachments(
+    saveAttachmentBatch(
       scope,
       requireString(p, "agentId"),
       requireString(p, "scopeId"),
@@ -159,6 +132,9 @@ export function createFilesModule(ctx: ModuleContext): FilesModule {
   );
 
   return {
+    openUpload: (agentId, request, signal) =>
+      openUpload(scope, agentId, request, signal),
+    upload: (agentId, blob, opts) => upload(scope, agentId, blob, opts),
     /** Choose the preview representation.
      * @assistant group:files hidden: local preview policy; no host request.
      * @assistant unroutable: pure representation selection. */
@@ -185,9 +161,15 @@ export function createFilesModule(ctx: ModuleContext): FilesModule {
       createFolder(scope, agentPath, folderName),
     moveProjectFile: (agentPath, relPath, toDir) =>
       moveProjectFile(scope, agentPath, relPath, toDir),
-    uploadProjectFiles: (agentPath, files, targetDir) =>
-      uploadProjectFiles(scope, agentPath, files, targetDir),
-    saveAttachments: (agentId, scopeId, files) =>
-      saveAttachments(scope, agentId, scopeId, files),
+    /** Import a device batch.
+     * @assistant group:files hidden: the Files picker supplies binary data.
+     * @assistant unroutable: composes session transfer and the files commit. */
+    uploadProjectFiles: (agentPath, files, targetDir, opts) =>
+      uploadFileBatch(scope, agentPath, files, targetDir, opts),
+    /** Save a device attachment batch.
+     * @assistant group:attachments hidden: the composer supplies binary data.
+     * @assistant unroutable: composes session transfer and the attachment commit. */
+    saveAttachments: (agentId, scopeId, files, opts) =>
+      saveAttachmentBatch(scope, agentId, scopeId, files, opts),
   };
 }

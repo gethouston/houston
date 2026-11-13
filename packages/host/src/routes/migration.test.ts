@@ -51,6 +51,7 @@ const ROOT = "Personal/Helper";
 function reqOf(body: Buffer, url = "/"): IncomingMessage {
   return {
     url,
+    headers: {},
     async *[Symbol.asyncIterator]() {
       if (body.byteLength) yield body;
     },

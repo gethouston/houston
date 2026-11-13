@@ -152,3 +152,36 @@ describe("httpRequest: the gateway's nothing-ran refusals", () => {
     expect(bodies).toHaveLength(1);
   });
 });
+
+describe("httpRequest upload body retry limit", () => {
+  it.each([
+    8 * 1024 * 1024,
+    8 * 1024 * 1024 + 1,
+  ])("sends a %i-byte body only when within the retry threshold", async (size) => {
+    const { scope, bodies, pauses } = makeScope([busy(), json(200, {})]);
+    const result = httpRequest(scope, "/agents/a1/attachments", {
+      method: "POST",
+      body: "x".repeat(size),
+    });
+    if (size > 8 * 1024 * 1024) {
+      await expect(result).rejects.toMatchObject({ status: 503 });
+      expect(bodies).toHaveLength(1);
+      expect(pauses).toEqual([]);
+    } else {
+      await expect(result).resolves.toHaveProperty("status", 200);
+      expect(bodies).toHaveLength(2);
+      expect(pauses).toEqual([2000]);
+    }
+  });
+
+  it("counts UTF-8 bytes rather than characters", async () => {
+    const { scope, bodies } = makeScope([busy(), json(200, {})]);
+    await expect(
+      httpRequest(scope, "/agents/a1/attachments", {
+        method: "POST",
+        body: "é".repeat(4 * 1024 * 1024 + 1),
+      }),
+    ).rejects.toMatchObject({ status: 503 });
+    expect(bodies).toHaveLength(1);
+  });
+});

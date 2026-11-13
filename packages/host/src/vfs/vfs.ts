@@ -1,3 +1,4 @@
+import type { UploadStore } from "@houston/runtime-client/object-sync";
 /** One entry's listing metadata (for the Files browser). */
 export interface ObjectStat {
   key: string;
@@ -87,6 +88,8 @@ export class VfsReadOnlyError extends Error {
  * throws {@link VfsReadOnlyError} when the storage refuses writes outright.
  */
 export interface Vfs {
+  readonly uploadStore?: UploadStore;
+  copyUpload?(uploadId: string, key: string, generation: string): Promise<void>;
   /**
    * How this backend compares keys — what a cheap batch pre-check
    * (`turn/files-names.ts`) needs in order to be friendly about a collision
@@ -113,6 +116,8 @@ export interface Vfs {
   writeText(key: string, content: string): Promise<void>;
   /** Raw-bytes write (binary uploads/seeds). Content type inferred by consumers. */
   writeBytes(key: string, content: Buffer): Promise<void>;
+  /** `writeBytes` from a local file without reading it into memory, where the backend can. */
+  writeFileFrom?(key: string, sourcePath: string): Promise<void>;
   /** Delete a single key. No-op when absent. */
   deleteKey(key: string): Promise<void>;
   /**
