@@ -108,6 +108,7 @@ export async function upload(
         offset < blob.size &&
         (state.kind === "query" || offset > state.offset)
       ) {
+        if (offset > state.offset) failures = 0;
         state = { kind: "chunk", offset };
         report("uploading");
         continue;

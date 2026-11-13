@@ -172,6 +172,38 @@ describe("resumable transfer", () => {
     );
   });
 
+  it.each([
+    "chunk",
+    "query",
+  ])("resets consecutive failures when a %s persists more bytes", async (advance) => {
+    const answers: Response[] = [];
+    for (let n = 0; n < 26; n++) {
+      answers.push(new Response(null, { status: 503 }));
+      answers.push(incomplete((advance === "query" ? n + 1 : n) * CHUNK));
+      if (advance === "chunk") answers.push(incomplete((n + 1) * CHUNK));
+    }
+    answers.push(new Response(null));
+    const s = setup(answers);
+    const file = new Blob([new Uint8Array(26 * CHUNK + 3)]);
+    await expect(
+      s.sdk.files.upload("a1", file, { ...opts, onProgress: s.onProgress }),
+    ).resolves.toEqual({ uploadId: SESSION.uploadId });
+    expect(s.pauses).toEqual(Array(26).fill(500));
+    expect(s.progress.at(-1)?.sentBytes).toBe(file.size);
+  });
+
+  it("does not reset the failure budget for a query with no progress", async () => {
+    const answers = Array.from({ length: 25 }, () => [
+      new Response(null, { status: 503 }),
+      incomplete(0),
+    ]).flat();
+    const s = setup(answers);
+    await expect(
+      s.sdk.files.upload("a1", new Blob(["abc"]), opts),
+    ).rejects.toThrow("Upload retry budget exhausted");
+    expect(s.pauses).toHaveLength(24);
+  });
+
   it("bounds retries and session replacements", async () => {
     const s = setup(
       Array.from({ length: 25 }, () => new Response(null, { status: 500 })),
