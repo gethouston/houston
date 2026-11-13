@@ -166,12 +166,32 @@ function computeRetryPause(
     method === "HEAD" ||
     !(init?.body == null || typeof init.body === "string") ||
     (typeof init?.body === "string" &&
-      new TextEncoder().encode(init.body).byteLength >
-        RESUMABLE_UPLOAD_THRESHOLD_BYTES)
+      utf8LengthExceeds(init.body, RESUMABLE_UPLOAD_THRESHOLD_BYTES))
   )
     return undefined;
   const refusal = parseComputeRefusalText(body);
   if (!refusal) return undefined;
   const hint = refusal.retryAfterMs ?? retryAfterMs ?? COMPUTE_RETRY_DEFAULT_MS;
   return Math.max(COMPUTE_RETRY_MIN_MS, hint);
+}
+
+/**
+ * Whether a string's UTF-8 encoding is longer than `limit`, without encoding
+ * it: a 100 MB upload body must not be copied just to be measured.
+ */
+function utf8LengthExceeds(text: string, limit: number): boolean {
+  if (text.length > limit) return true;
+  if (text.length * 3 <= limit) return false;
+  let bytes = 0;
+  for (let i = 0; i < text.length; i++) {
+    const code = text.charCodeAt(i);
+    if (code < 0x80) bytes += 1;
+    else if (code < 0x800) bytes += 2;
+    else if (code >= 0xd800 && code < 0xdc00) {
+      bytes += 4;
+      i++;
+    } else bytes += 3;
+    if (bytes > limit) return true;
+  }
+  return false;
 }

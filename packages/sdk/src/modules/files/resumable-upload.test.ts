@@ -18,6 +18,7 @@ function setup(
     Response | Error | ((init?: RequestInit) => Promise<Response>)
   >,
   open?: typeof fetch,
+  baseUrl = "https://host",
 ) {
   const requests: RequestInit[] = [];
   const pauses: number[] = [];
@@ -51,7 +52,7 @@ function setup(
     logger: { debug: vi.fn(), info: vi.fn(), warn: vi.fn(), error: vi.fn() },
   };
   const sdk = new HoustonSdk({
-    baseUrl: "https://host",
+    baseUrl,
     reactivity: false,
     ports,
   });
@@ -290,5 +291,20 @@ describe("resumable transfer", () => {
       refused.sdk.files.upload("a1", new Blob(["abc"]), opts),
     ).rejects.toMatchObject({ status: 403 });
     expect(refused.pauses).toEqual([]);
+  });
+});
+
+describe("sink URL", () => {
+  it("appends a relative sink to the base URL, keeping a path prefix", async () => {
+    const small = new Blob([new Uint8Array(10)]);
+    const { sdk, rawFetch } = setup(
+      [new Response(null, { status: 200 })],
+      undefined,
+      "https://gateway.example/houston",
+    );
+    await sdk.files.upload("agent-1", small, opts);
+    expect(String(rawFetch.mock.calls[0]?.[0])).toBe(
+      "https://gateway.example/houston/v1/sink",
+    );
   });
 });

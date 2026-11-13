@@ -16,6 +16,16 @@ import { UploadTransferError } from "./upload-errors";
 export type ResumableUploadOptions = UploadOptions &
   Pick<OpenUploadRequest, "name" | "purpose">;
 
+/**
+ * A host or dev gateway answers its own sink as a path, which is appended to
+ * the base URL as-is so a base with a path prefix (or a relative base) keeps it.
+ */
+function sinkUrl(uploadUrl: string, baseUrl: string): string {
+  return /^[a-z][a-z0-9+.-]*:/i.test(uploadUrl)
+    ? uploadUrl
+    : `${baseUrl}${uploadUrl}`;
+}
+
 type TransferState =
   | { kind: "chunk"; offset: number }
   | { kind: "query"; offset: number };
@@ -52,7 +62,7 @@ export async function upload(
     const end = Math.min(state.offset + session.chunkBytes, blob.size);
     let res: Response | undefined;
     try {
-      res = await rawFetch(new URL(session.uploadUrl, scope.baseUrl), {
+      res = await rawFetch(sinkUrl(session.uploadUrl, scope.baseUrl), {
         method: "PUT",
         credentials: "omit",
         signal: opts.signal,
