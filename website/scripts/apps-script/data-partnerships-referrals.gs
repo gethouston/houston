@@ -19,7 +19,8 @@
  * The tab and its header row are created on the first referral.
  *
  * Changing COLUMNS: add new ones at the end so existing rows keep lining up,
- * and redeploy (Deploy > Manage deployments > edit > New version).
+ * and redeploy (Deploy > Manage deployments > edit > New version). The next
+ * referral writes the new headers into the existing tab.
  */
 
 const TAB = "Data Partnerships - Referrals";
@@ -38,6 +39,7 @@ const COLUMNS = [
   ["Page", "page"],
   ["Industry", "industry"],
   ["Country", "company_country"],
+  ["Referrer phone", "referrer_phone"],
 ];
 
 // Longest value a cell takes, so a junk post can't flood the sheet.
@@ -72,6 +74,13 @@ function tab() {
     sheet.appendRow(COLUMNS.map(([header]) => header));
     sheet.setFrozenRows(1);
     sheet.getRange(1, 1, 1, COLUMNS.length).setFontWeight("bold");
+    return sheet;
+  }
+  // A tab made before a column was added has no header for it yet.
+  const header = sheet.getRange(1, 1, 1, COLUMNS.length);
+  const names = header.getValues()[0];
+  if (COLUMNS.some(([name], i) => names[i] !== name)) {
+    header.setValues([COLUMNS.map(([name]) => name)]).setFontWeight("bold");
   }
   return sheet;
 }

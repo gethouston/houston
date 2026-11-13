@@ -71,8 +71,11 @@ jobs:
   # the anon key. If a table is missing (its migration not applied), every
   # submission to its form on the live site fails, and nothing else would say
   # so. A job of its own after the deploy, so the site still ships but the run
-  # goes red. 401 is the healthy answer: the table exists and the public role
-  # may not read it. 404 (PGRST205) means the table is missing.
+  # goes red. Each probe selects the table's newest column, because a column
+  # the form sends but the table lacks fails every insert just the same. 401
+  # is the healthy answer: table and column exist and the public role may not
+  # read them. 404 (PGRST205) means the table is missing, 400 (42703) the
+  # column.
   referral-table:
     name: Form tables are reachable
     needs: deploy
@@ -87,22 +90,23 @@ jobs:
         run: |
           url="${SUPABASE_URL:-https://zfpnlvxazrataiannvtq.supabase.co}"
           failed=0
-          # table, the form it serves, the migration that creates it
-          while read -r table form migration; do
+          # table, its newest column, the form it serves, the migration
+          # that adds that column (apply any earlier ones it needs first)
+          while read -r table column form migration; do
             code="$(curl -s -o "/tmp/${table}.json" -w '%{http_code}' \
-              "${url}/rest/v1/${table}?select=id&limit=0" \
+              "${url}/rest/v1/${table}?select=id,${column}&limit=0" \
               -H "apikey: ${SUPABASE_ANON_KEY}" \
               -H "Authorization: Bearer ${SUPABASE_ANON_KEY}")"
             if [ "$code" != "401" ]; then
-              echo "::error::public.${table} answered ${code}, so the ${form} form on /data-partners cannot store anything. Apply supabase/migrations/${migration} to houston-prod."
+              echo "::error::public.${table} (column ${column}) answered ${code}, so the ${form} form on /data-partners cannot store anything. Apply supabase/migrations/${migration} to houston-prod."
               cat "/tmp/${table}.json"
               failed=1
             else
-              echo "public.${table} is reachable (anon may insert, not read)."
+              echo "public.${table} has ${column} (anon may insert, not read)."
             fi
           done <<'TABLES'
-          data_referrals referral 20261101000000_data_referrals.sql
-          data_partner_calls book-a-call 20261106000000_data_partner_calls.sql
+          data_referrals referrer_phone referral 20261109000000_data_referrals_referrer_phone.sql
+          data_partner_calls page book-a-call 20261106000000_data_partner_calls.sql
           TABLES
           exit "$failed"
 

@@ -12,9 +12,10 @@
     sends email: without JS the button stays disabled. -#}
 {%- set listing = item.slug if item else "" -%}
 {%- set industry = item.category if item else "" -%}
-{#- Compact on purpose: three rows of two, the industry last, and the
-    section names kept for screen readers only, so the whole card fits in
-    the fold of a laptop screen beside the statement. -#}
+{#- Compact on purpose: rows of two (the phone, the third field about the
+    referrer, gets a row to itself), the industry last, and the section names
+    kept for screen readers only, so the whole card fits in the fold of a
+    laptop screen beside the statement. -#}
 {#- One labelled, required field. Every field owns an error line the script
     fills (assets/refer-form.js). -#}
 {%- macro field(name, label, type, auto, placeholder, mode) %}
@@ -31,6 +32,9 @@
           <div class="rf-row">
 {{ field("yourName", f.yourName, "text", "name") }}
 {{ field("yourEmail", f.yourEmail, "email", "email") }}
+          </div>
+          <div class="rf-row rf-row-full">
+{{ field("yourPhone", f.yourPhone, "tel", "tel", f.yourPhonePlaceholder) }}
           </div>
         </fieldset>
 

@@ -94,6 +94,8 @@ export default {
     you: "Sobre ti",
     yourName: "Tu nombre",
     yourEmail: "Tu correo",
+    yourPhone: "Tu número de teléfono (con código de país)",
+    yourPhonePlaceholder: "+57 300 123 4567",
     company: "La empresa",
     companyName: "Nombre de la empresa",
     website: "Sitio web de la empresa",
@@ -127,6 +129,7 @@ export default {
       country: "Elige el país donde está la empresa.",
       yourName: "Tu nombre es obligatorio.",
       yourEmail: "Escribe un correo válido.",
+      yourPhone: "Escribe un teléfono con su código de país.",
       companyName: "El nombre de la empresa es obligatorio.",
       website: "Escribe un sitio web válido, como acme.com.",
       sameCompany:

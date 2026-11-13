@@ -95,6 +95,8 @@ export default {
     you: "About you",
     yourName: "Your name",
     yourEmail: "Your email",
+    yourPhone: "Your phone number (with country code)",
+    yourPhonePlaceholder: "+1 555 123 4567",
     company: "The company",
     companyName: "Company name",
     website: "Company website",
@@ -128,6 +130,7 @@ export default {
       country: "Pick the country the company is based in.",
       yourName: "Your name is required.",
       yourEmail: "Enter a valid email address.",
+      yourPhone: "Enter a phone number with its country code.",
       companyName: "Company name is required.",
       website: "Enter a valid website, like acme.com.",
       sameCompany:
