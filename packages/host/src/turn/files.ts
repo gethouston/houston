@@ -1,7 +1,13 @@
 import type { IncomingMessage, ServerResponse } from "node:http";
 import type { HoustonEvent } from "@houston/protocol";
+import { UploadCopyExistsError } from "@houston/runtime-client/object-sync";
 import type { Agent, Workspace } from "../domain/types";
 import type { WorkspacePaths } from "../paths";
+import {
+  type StagedUploads,
+  StagedUploadUnavailableError,
+} from "../uploads/commit";
+import { UploadError } from "../uploads/types";
 import type { Vfs } from "../vfs";
 import { json, readJson } from "./deps";
 import { serveArchive, serveFileDownload } from "./files-binary";
@@ -24,25 +30,6 @@ import {
   renameWorkspaceFile,
   workspaceRel,
 } from "./files-ops";
-
-/**
- * Files browser for an agent's workspace — the HOST serves it for EVERY
- * deployment profile (cloud GCS prefix, local real FS) off the shared Vfs, so
- * the web Files tab behaves identically everywhere with no drift. `root` is the
- * agent's workspace root (`WorkspacePaths.agentRoot`): cloud `<prefix>/workspace`,
- * local `<Workspace>/<Agent>`. The agent writes deck.pptx / sheet.xlsx / etc.
- * there during a turn; these endpoints list, read, download, upload, move,
- * rename, delete, create folders, and zip it up for "Download all".
- *
- * Internal Houston state — the top-level `.houston/` (typed data) and `.agents/`
- * (skills) dot-directories — is hidden from the listing and refused by every
- * path op, so the Files tab can neither show nor clobber it.
- *
- * Path safety: every model/UI-supplied relative path is validated to stay inside
- * `root` (no `..`, no absolute, no top-level dot-dir) before it touches storage.
- * The pure operations live in `files-ops.ts` / `files-import.ts` /
- * `files-archive.ts`; this module is the HTTP surface.
- */
 
 // The pure ops and the download headers are part of this module's public
 // surface (tests, attachments, the fake host).
@@ -68,6 +55,7 @@ export async function handleFiles(
   query: URLSearchParams,
   emit?: (event: HoustonEvent) => void,
   officePreview?: OfficePreview,
+  uploads?: StagedUploads,
 ): Promise<boolean> {
   if (rest !== "files" && !rest.startsWith("files/")) return false;
   if (!vfs) {
@@ -118,7 +106,7 @@ export async function handleFiles(
       const { dir, files } = parseImportBody(
         await readJson(req, MAX_UPLOAD_BODY_BYTES),
       );
-      const saved = await importWorkspaceFiles(vfs, root, dir, files);
+      const saved = await importWorkspaceFiles(vfs, root, dir, files, uploads);
       changed();
       await json(res, 200, { paths: saved });
       return true;
@@ -165,6 +153,17 @@ export async function handleFiles(
     json(res, 404, { error: "not found" });
     return true;
   } catch (err) {
+    if (
+      err instanceof UploadError ||
+      err instanceof StagedUploadUnavailableError ||
+      err instanceof UploadCopyExistsError
+    ) {
+      json(res, err.status, {
+        error: err.message,
+        ...("code" in err ? { code: err.code } : {}),
+      });
+      return true;
+    }
     if (err instanceof FilePathError) {
       json(res, 400, { error: err.message });
       return true;

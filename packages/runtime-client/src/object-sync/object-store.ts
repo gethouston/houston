@@ -1,3 +1,5 @@
+import type { UploadStore } from "./upload-store";
+
 export { LocalDirStore } from "./local-dir-store";
 export {
   ObjectNotFoundError,
@@ -11,7 +13,7 @@ export {
  * relative paths. Production adapters can live with their owning deployment;
  * LocalDirStore keeps the synchronization contract testable against real files.
  */
-export interface ObjectStore {
+export interface ObjectStore extends Partial<UploadStore> {
   /** All keys under a directory prefix, recursively (`object-prefix.ts`). */
   list(prefix: string): Promise<string[]>;
   manifest?(

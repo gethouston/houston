@@ -64,3 +64,12 @@ test("every any-depth exclude names exactly one directory", () => {
     expect(pattern, pattern).toMatch(/^\*\*\/[^/*]+\/$/);
   }
 });
+
+test("host staging stays outside the synced object tree", () => {
+  expect(
+    excluded("upload-staging/opaque_upload_id_123.part", STORE_SYNC_EXCLUDES),
+  ).toBe(true);
+  expect(excluded(`${AGENT}/uploads/report.pdf`, STORE_SYNC_EXCLUDES)).toBe(
+    false,
+  );
+});

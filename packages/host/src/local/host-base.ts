@@ -1,3 +1,4 @@
+import { dirname, join } from "node:path";
 import { createRolePublisher } from "../agent-role/role-publisher";
 import { AgentRoleTracker } from "../agent-role/role-tracker";
 import { processAssistantCatalog } from "../assistant/catalog-source";
@@ -24,14 +25,18 @@ import { MemoryTurnBus } from "../turn/bus";
 import { FrameForwarder } from "../turn/frame-forwarder";
 import { StandingFrameCapture } from "../turn/standing-frame-capture";
 import { HttpTurnLogSender } from "../turn/turn-log-http";
-import { FsVfs } from "../vfs";
+import { LocalUploadSessions } from "../uploads/local";
+import { createHostFiles } from "./host-files";
 import { LOCAL_USER, severityLog } from "./host-log";
 import type { LocalHostOptions } from "./host-options";
 
 export function createHostBase(opts: LocalHostOptions) {
   const store = new LocalWorkspaceStore(opts.workspacesRoot, LOCAL_USER);
-  const vfs = new FsVfs(opts.workspacesRoot);
+  const { vfs, syncDaemon } = createHostFiles(opts);
   const paths = new LocalPaths();
+  const uploadSessions = new LocalUploadSessions(
+    join(opts.houstonHome ?? dirname(opts.workspacesRoot), "upload-staging"),
+  );
   const bus = new MemoryTurnBus();
   const boot = new BootTelemetry();
   const events = new BusEventHub(bus);
@@ -122,6 +127,8 @@ export function createHostBase(opts: LocalHostOptions) {
 
   return {
     store,
+    uploadSessions,
+    syncDaemon,
     vfs,
     paths,
     bus,

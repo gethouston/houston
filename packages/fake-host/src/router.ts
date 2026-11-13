@@ -1,77 +1,30 @@
-/**
- * The fake host's request router: a pure `Request -> Response` function with no
- * Node HTTP coupling, so it can be unit-tested and driven by any adapter.
- *
- * Answers just enough of the host + per-agent runtime for the desktop UI
- * (app/src) to boot and run on the new-engine adapter in host mode — with NO
- * real backend, no AI provider, no credentials. Deterministic and hermetic.
- */
+import { handleFakeUploads } from "./routes-uploads";
+import { handleAccountControls } from "./test-controls-account";
+import { handleChatControls } from "./test-controls-chat";
+import { handleStateControls } from "./test-controls-state";
+/** In-memory host router shared by the HTTP server and protocol tests. */
 
 import { buildProviderCatalog } from "@houston/host/src/providers/pi-catalog";
-import type { ChatMessage, PendingInteraction } from "@houston/protocol";
-import type { ProviderUsage } from "@houston/runtime-client";
-import { parseOrgBilling } from "@houston/wire-types";
-import {
-  armHoldAfterFirstDelta,
-  setNextInteraction,
-  setNextReplyText,
-  setReplyDelay,
-} from "./chat";
-import {
-  clearChatStreams,
-  dropChatStreams,
-  killRunningTurns,
-  turnBoundary,
-} from "./chat-controls";
-import { type ScriptedToolCall, setNextToolCalls } from "./chat-tools";
-import { ASSISTANT_AGENT_ID, SEED_AGENT_ID } from "./config";
-import { CORS, json } from "./http";
+import { ASSISTANT_AGENT_ID } from "./config";
+import { CORS, json, parseBody } from "./http";
 import { handleAgents } from "./routes";
 import { handleAgentMoveRoutes } from "./routes-agent-move";
-import {
-  handleBillingChoiceCallsControl,
-  handleBillingChoiceControl,
-  handleBillingChoiceRoutes,
-} from "./routes-billing-choice";
+import { handleBillingChoiceRoutes } from "./routes-billing-choice";
 import { handleUserRoutes } from "./routes-integrations";
 import { handleMeRoutes } from "./routes-me";
 import {
   handleOrgBillingRoutes,
   lockedWriteRefusal,
 } from "./routes-org-billing";
-import {
-  handlePlanCallsControl,
-  handlePlanControl,
-  handlePlanRoutes,
-} from "./routes-plan";
-import { lastPortableExport, resetPortable } from "./routes-portable";
-import {
-  handlePriceNoticeRoutes,
-  setSwitchDeclines,
-} from "./routes-price-notice";
-import { handleSeatRoutes, setSeatChargeResult } from "./routes-seats";
+import { handlePlanRoutes } from "./routes-plan";
+import { handlePriceNoticeRoutes } from "./routes-price-notice";
+import { handleSeatRoutes } from "./routes-seats";
 import { handleSetupRuntime } from "./routes-setup-runtime";
 import { handleSharedSkillsRoutes } from "./routes-shared-skills";
-import { handleSpaceInvitesControl, handleSpacesRoutes } from "./routes-spaces";
+import { handleSpacesRoutes } from "./routes-spaces";
 import { handleTeamsRoutes } from "./routes-teams";
 import { sseResponse } from "./sse";
-import type { FakeCapabilities, TeamsSettings } from "./state";
 import * as state from "./state";
-
-const ORG_ROLES = ["owner", "admin", "user"] as const;
-
-async function parseBody(
-  req: Request,
-): Promise<Record<string, unknown> | undefined> {
-  if (req.method === "GET" || req.method === "HEAD") return undefined;
-  // A binary upload (the migration import's zip) keeps its body stream for
-  // the route: `req.json()` would consume it and leave nothing to unpack.
-  if (req.headers.get("content-type")?.includes("application/zip"))
-    return undefined;
-  return (await req.json().catch(() => undefined)) as
-    | Record<string, unknown>
-    | undefined;
-}
 
 /** Global reactivity feed (`GET /v1/events`). Mirrors the host's SSE shape:
  *  `data: { type, agentPath, workspaceId }`. control-plane.ts subscribeEvents
@@ -98,337 +51,18 @@ export async function handle(req: Request): Promise<Response> {
   if (method === "OPTIONS")
     return new Response(null, { status: 204, headers: CORS });
 
-  // --- test-control plane (called server-to-server by the harness) ---
-  if (path === "/__test__/reset" && method === "POST") {
-    clearChatStreams();
-    resetPortable();
-    state.reset();
-    state.setYearlySold(true);
-    setSwitchDeclines(false);
-    setSeatChargeResult("ok");
-    return json({ ok: true });
-  }
-  // `{ result: "decline" | "needs_action" }` answers the next seat charge.
-  if (path === "/__test__/seat-charge" && method === "POST") {
-    const body = await parseBody(req);
-    setSeatChargeResult(
-      body?.result === "decline" || body?.result === "needs_action"
-        ? body.result
-        : "ok",
-    );
-    return json({ ok: true });
-  }
-  // `{ decline: true }` makes the next switch to yearly decline the card.
-  if (path === "/__test__/switch-yearly" && method === "POST") {
-    const body = await parseBody(req);
-    setSwitchDeclines(body?.decline === true);
-    return json({ ok: true });
-  }
-  // `{ sold: false }` stops selling a yearly seat (see `setYearlySold`).
-  if (path === "/__test__/yearly" && method === "POST") {
-    const body = await parseBody(req);
-    state.setYearlySold(body?.sold !== false);
-    return json({ ok: true });
-  }
-  // What the last portable export carried — the copy wizard's selection.
-  if (path === "/__test__/portable-export" && method === "GET") {
-    return json({ selection: lastPortableExport() });
-  }
-  if (path === "/__test__/emit" && method === "POST") {
-    const body = await parseBody(req);
-    state.emit(
-      String(body?.type ?? "AgentsChanged"),
-      body?.agentPath as string | undefined,
-    );
-    return json({ ok: true });
-  }
-  // Sever every open chat stream mid-turn (the turns keep producing into the
-  // replay log) — the network-drop half of the reconnect e2e.
-  if (path === "/__test__/drop-chat-streams" && method === "POST") {
-    return json({ dropped: dropChatStreams() });
-  }
-  // Pace the canned reply, and optionally hold the next turn after its first
-  // delta until a drop/kill/boundary control releases it (chat-hold.ts).
-  if (path === "/__test__/chat-config" && method === "POST") {
-    const body = await parseBody(req);
-    setReplyDelay(Number(body?.replyDelayMs ?? 15));
-    armHoldAfterFirstDelta(body?.holdAfterFirstDelta === true);
-    return json({ ok: true });
-  }
-  // Arm the NEXT scripted turn to reply with this exact text instead of the
-  // echo — how a spec makes "the agent said X" happen. One-shot.
-  if (path === "/__test__/chat-reply" && method === "POST") {
-    const body = await parseBody(req);
-    setNextReplyText(typeof body?.text === "string" ? body.text : null);
-    return json({ ok: true });
-  }
-  // Arm the NEXT scripted turn to make these tool calls before it replies:
-  // `{ calls: [{ name, args, content?, isError?, mission? }] }`. One-shot.
-  if (path === "/__test__/chat-tools" && method === "POST") {
-    const body = await parseBody(req);
-    setNextToolCalls(
-      Array.isArray(body?.calls) ? (body.calls as ScriptedToolCall[]) : [],
-    );
-    return json({ ok: true });
-  }
-  // Arm the NEXT scripted turn to end on a pending interaction: its `done`
-  // frame carries it, so the settle lands the card on needs_you + composer card.
-  if (path === "/__test__/chat-interaction" && method === "POST") {
-    const body = await parseBody(req);
-    setNextInteraction(
-      (body?.interaction as PendingInteraction | null) ?? null,
-    );
-    return json({ ok: true });
-  }
-  // Seed a conversation's transcript verbatim: `{ conversationId, messages }`
-  // (optionally `agentId`, default the seeded agent). The only way to reach a
-  // SHARED conversation locally — user messages carrying the `author` the
-  // gateway stamps in multiplayer — for the sender-attribution spec.
-  if (path === "/__test__/chat-history" && method === "POST") {
-    const body = await parseBody(req);
-    const messages = Array.isArray(body?.messages)
-      ? (body.messages as ChatMessage[])
-      : [];
-    return json({
-      messages: state.seedHistory(
-        typeof body?.agentId === "string" ? body.agentId : SEED_AGENT_ID,
-        String(body?.conversationId ?? ""),
-        messages,
-      ),
-    });
-  }
-  // Synthesize the dead-pump reaper's terminal error on every running turn.
-  if (path === "/__test__/kill-turn" && method === "POST") {
-    return json({ killed: killRunningTurns() });
-  }
-  // End the running turn while nobody watches, then start the next one —
-  // the resync-across-a-turn-boundary simulation.
-  if (path === "/__test__/turn-boundary" && method === "POST") {
-    const body = await parseBody(req);
-    return json({
-      advanced: turnBoundary(String(body?.nextText ?? "next turn")),
-    });
-  }
-  // Stall every per-agent read (`GET /agents/:id/*`) by `ms` — the cloud
-  // gateway's `ensureAwake` hold: an asleep pod's reads hang until it wakes.
-  // `{ ms: 0 }` (and the per-test reset) answers instantly again.
-  if (path === "/__test__/hold-agent-reads" && method === "POST") {
-    const body = await parseBody(req);
-    state.setAgentReadHoldMs(Number(body?.ms ?? 0));
-    return json({ ms: state.arming.agentReadHoldMs });
-  }
-  // Hold every conversation import until `{ hold: false }` (or the per-test
-  // reset) lets them through: keeps onboarding on its closing across a reload.
-  if (path === "/__test__/hold-imports" && method === "POST") {
-    const body = await parseBody(req);
-    state.setImportHold(body?.hold === true);
-    return json({ hold: state.arming.importHold !== null });
-  }
-  // Fail every per-agent read (`GET /agents/:id/*`) for the named agents with a
-  // 500, leaving the rest healthy — the half-broken fleet the cross-agent
-  // sweep must survive (HOU-981). `{ segments: ["routine_runs"] }` narrows it
-  // to named sub-resources, the subtler state where one route is down while the
-  // rest of that same agent answers. `{ agentIds: [] }` (and the per-test
-  // reset) restores them.
-  if (path === "/__test__/fail-agent-reads" && method === "POST") {
-    const body = await parseBody(req);
-    state.setFailingAgentReads(
-      Array.isArray(body?.agentIds) ? body.agentIds.map(String) : [],
-      Array.isArray(body?.segments) ? body.segments.map(String) : null,
-    );
-    return json({
-      agentIds: [...state.arming.failingAgentReads],
-      segments: state.arming.failingAgentReadSegments
-        ? [...state.arming.failingAgentReadSegments]
-        : null,
-    });
-  }
-  // Make the named agents' workspaces refuse every files WRITE with the host's
-  // `403 read_only` — a read-only mount or revoked folder permissions, which
-  // the Files tab explains in authored copy instead of failing silently. Reads
-  // keep answering. `{ agentIds: [] }` (and the per-test reset) restores them.
-  if (path === "/__test__/workspace-read-only" && method === "POST") {
-    const body = await parseBody(req);
-    state.setReadOnlyWorkspaces(
-      Array.isArray(body?.agentIds) ? body.agentIds.map(String) : [],
-    );
-    return json({ agentIds: [...state.arming.readOnlyWorkspaces] });
-  }
-  // Rewind the routine-id counter so the NEXT created routine reuses an id an
-  // earlier agent already has (`{ next: 0 }` = start over at `routine-1`).
-  // Routine ids are unique per AGENT in the real host, so two agents holding
-  // `routine-1` is ordinary truth; the fake's single global counter is the only
-  // reason a spec would never see it.
-  if (path === "/__test__/routine-seq" && method === "POST") {
-    const body = await parseBody(req);
-    state.setRoutineSeq(Number(body?.next ?? 0));
-    return json({ next: state.state.routineSeq });
-  }
-  // Toggle Composio readiness: "ready" | "unavailable" (503) | "signin" |
-  // "absent" (not registered at all — only the custom provider, when armed).
-  if (path === "/__test__/integrations-mode" && method === "POST") {
-    const body = await parseBody(req);
-    state.setIntegrationsMode(
-      body?.mode === "unavailable" ||
-        body?.mode === "signin" ||
-        body?.mode === "absent"
-        ? body.mode
-        : "ready",
-    );
-    return json({ mode: state.integrationsMode() });
-  }
-  // Arm the custom-integrations feature (HOU-550): `{items: [...]}` serves the
-  // definitions + a ready `custom` provider; `{items: null}` disarms (404s —
-  // the pre-feature host shape). Reset restores disarmed.
-  if (path === "/__test__/custom-integrations" && method === "POST") {
-    const body = await parseBody(req);
-    state.setCustomIntegrations(
-      Array.isArray(body?.items)
-        ? (body.items as state.CustomIntegrationSeed[])
-        : null,
-    );
-    return json({ items: state.listCustomIntegrations() });
-  }
-  // Override advertised capabilities (Teams e2e): merge a partial into the set,
-  // e.g. `{ integrations:["composio"], multiplayer:true, teams:true, role:"owner" }`
-  // to reach the Teams-shaped state single-player can't. Reset restores the seed.
-  if (path === "/__test__/capabilities" && method === "POST") {
-    const body = await parseBody(req);
-    return json(
-      state.setCapabilities((body ?? {}) as Partial<FakeCapabilities>),
-    );
-  }
-  // Arm the compute-usage dataset `GET /v1/org/compute-usage` serves (pair with
-  // `/__test__/capabilities` `{computeUsage:true}`); `{seed:null}` disarms.
-  if (path === "/__test__/compute-usage" && method === "POST") {
-    const body = await parseBody(req);
-    return json({
-      seed: state.setComputeUsage(
-        (body?.seed ?? null) as state.ComputeUsageSeed | null,
-      ),
-    });
-  }
-  // Arm the rows `GET /providers/usage` serves — the live per-account usage the
-  // AI Models hub's Connected rows render (windows, credits, non-ok states).
-  // `{rows:null}` restores the default seed (the Claude subscription).
-  if (path === "/__test__/provider-usage" && method === "POST") {
-    const body = await parseBody(req);
-    return json({
-      rows: state.setProviderUsage(
-        (body?.rows ?? null) as ProviderUsage[] | null,
-      ),
-    });
-  }
-  // Arm the Teams settings the gateway serves at the settings routes below:
-  // the agent + org integration ceilings, the model ceiling, and agent access.
-  if (path === "/__test__/agent-settings" && method === "POST") {
-    const body = await parseBody(req);
-    return json(state.setTeamsSettings((body ?? {}) as Partial<TeamsSettings>));
-  }
-  // Arm the per-member access lens (Admin > People drill-in): a multi-member
-  // org roster (`members`) `GET /v1/org` serves, and the agent fleet with
-  // per-agent assignments (`agents`) `GET /agents` serves. Pair with
-  // `/__test__/capabilities` `{multiplayer:true, teams:true, role:"owner"}`.
-  if (path === "/__test__/org" && method === "POST") {
-    const body = await parseBody(req);
-    if (Array.isArray(body?.members)) {
-      state.setOrgMembers(body.members as state.FakeMember[]);
+  const uploadResponse = await handleFakeUploads(req, handle);
+  if (uploadResponse) return uploadResponse;
+
+  if (path.startsWith("/__test__/")) {
+    for (const controls of [
+      handleChatControls,
+      handleStateControls,
+      handleAccountControls,
+    ]) {
+      const response = await controls(req);
+      if (response) return response;
     }
-    if (Array.isArray(body?.agents)) {
-      state.armAgents(body.agents as state.AgentAccessSeed[]);
-    }
-    return json({
-      members: state.getOrgMembers(),
-      agents: state.listAgents(),
-    });
-  }
-  // Arm the team-space rows `GET /v1/workspaces` bridges in (C8 Spaces): each
-  // `{ slug, name }` becomes an `{ id:"org:<slug>", kind:"org" }` switcher row,
-  // served alongside the always-present personal seed row, with its org
-  // `billing`, `role` and `memberCount` when the row carries them. A `slug` must be
-  // exactly 16 lowercase hex chars (the id grammar `space-id.ts` enforces).
-  // Pair with `/__test__/capabilities` `{ spaces:true }`. Reset (or `{teams:[]}`)
-  // restores the personal-only list.
-  if (path === "/__test__/workspaces" && method === "POST") {
-    const body = await parseBody(req);
-    const teams = Array.isArray(body?.teams) ? body.teams : [];
-    const rows = teams.flatMap((t) => {
-      const row = t as Record<string, unknown>;
-      if (typeof row.slug !== "string" || !/^[a-f0-9]{16}$/.test(row.slug)) {
-        return [];
-      }
-      const billing = parseOrgBilling(row.billing);
-      const role = ORG_ROLES.find((r) => r === row.role);
-      return [
-        {
-          id: `org:${row.slug}`,
-          name: typeof row.name === "string" ? row.name : row.slug,
-          ...(billing ? { billing } : {}),
-          ...(role ? { role } : {}),
-          ...(typeof row.memberCount === "number"
-            ? { memberCount: row.memberCount }
-            : {}),
-        },
-      ];
-    });
-    return json({ teams: state.setTeamWorkspaces(rows) });
-  }
-  // Arm the invitee-side invite inbox `GET /v1/orgs` surfaces in `invites` (C8
-  // Spaces): `{ invites: [{ orgName, role?, invitedBy?, orgSlug?, id?,
-  // reject? }] }`. Only `orgName` is required. `reject` forces that invite's
-  // accept/decline rejection (`needs_upgrade` 403 / `already_member` 409 /
-  // `invite_not_found` 404) so the error paths are reachable. Pair with
-  // `/__test__/capabilities` `{ spaces:true }` — the sidebar card is
-  // capability-gated on the CLIENT, not here. `{ invites: [] }` (and reset)
-  // empties the inbox.
-  if (path === "/__test__/space-invites" && method === "POST") {
-    return handleSpaceInvitesControl(await parseBody(req));
-  }
-  // Arm the C19 personal plan: the PlanSummary `GET /v1/me/plan` serves, the
-  // invoices/routines, the Stripe URLs, and the chat send's `429
-  // message_limit`. Also advertises the `plan` capability (the gateway's one
-  // switch drives both); `{ summary: null }` (and reset) turns both off.
-  if (path === "/__test__/plan" && method === "POST") {
-    return handlePlanControl(await parseBody(req));
-  }
-  // Arm the free-org pick `GET /v1/me/billing-choice` serves; `{ choice: null }`
-  // (and reset) is a gateway that predates it.
-  if (path === "/__test__/billing-choice" && method === "POST") {
-    return handleBillingChoiceControl(await parseBody(req));
-  }
-  if (path === "/__test__/billing-choice-calls" && method === "GET") {
-    return handleBillingChoiceCallsControl();
-  }
-  // The plan-call ledger: every plan route hit (and refused send) since arming.
-  if (path === "/__test__/plan-calls" && method === "GET") {
-    return handlePlanCallsControl();
-  }
-  // Seed a connection at a status the UI can't be clicked into: `pending` (an
-  // abandoned sign-in) or `error` (the provider refused). `{toolkit, status}`.
-  if (path === "/__test__/integrations-connection" && method === "POST") {
-    const body = await parseBody(req);
-    const status = body?.status;
-    return json({
-      connection: state.seedConnection(
-        String(body?.toolkit ?? ""),
-        status === "active" || status === "error" ? status : "pending",
-        {
-          ...(typeof body?.accountLabel === "string" && body.accountLabel
-            ? { accountLabel: body.accountLabel }
-            : {}),
-          // Mint a NEW connection even when the toolkit already has one, so a
-          // spec can stack several accounts on one app (HOU-901).
-          ...(body?.extraAccount === true ? { extraAccount: true } : {}),
-        },
-      ),
-    });
-  }
-  // Flip a pending connection to active (models the OAuth completing).
-  if (path === "/__test__/integrations-activate" && method === "POST") {
-    const body = await parseBody(req);
-    return json({
-      activated: state.activateConnection(String(body?.connectionId ?? "")),
-    });
   }
 
   // --- global reactivity feed ---
@@ -454,23 +88,9 @@ export async function handle(req: Request): Promise<Response> {
   if (path === "/v1/capabilities" && method === "GET") {
     return json(state.getCapabilities());
   }
-  // pi-ai's full static model catalog (`GET /v1/catalog`, wire `ProviderCatalog`).
-  // Built from the SAME real `buildProviderCatalog` the host route uses, so the
-  // mock can't drift from the wire contract — the app's `getCatalog()` hydrates
-  // the picker + AI Models tab from it. It returns every runnable provider on
-  // every deployment (no profile gating). Without this the route 404'd,
-  // `getCatalog()` degraded to `[]`, and the picker fell back to the override-only
-  // seed (no models).
   if (path === "/v1/catalog" && method === "GET") {
     return json(buildProviderCatalog());
   }
-  // Personal-assistant discovery (`GET /v1/assistant`, `AssistantHandle`): the
-  // address the rail's Manager row and its screen are gated on. Like the real
-  // host it answers a hidden agent off the roster, so a first run (an empty
-  // roster) still has its manager; the chat that opens rides the ordinary
-  // per-agent runtime routes, which is the contract under test. The
-  // conversation id is the host's own constant, and no activity is created for
-  // it, so the assistant thread stays off every board as it does in production.
   if (path === "/v1/assistant" && method === "GET") {
     return json({ agent: ASSISTANT_AGENT_ID, conversation: "assistant" });
   }

@@ -1,25 +1,22 @@
-import {
-  type HydrateManifest,
-  StoreFencedError,
-} from "@houston/runtime-client/object-sync";
+import { StoreFencedError } from "@houston/runtime-client/object-sync";
 import { CoalescedRun } from "./coalesced-run";
 import { createDaemonFence } from "./daemon-fence";
-import { FENCE_RETIRED_MARKER, runHydrate } from "./daemon-hydrate";
+import { FENCE_RETIRED_MARKER } from "./daemon-hydrate";
 import { logFenceLost, logSyncFailed, logSyncResult } from "./daemon-log";
 import {
   awaitInFlightSync,
   runFinalSync,
-  runSyncBack,
   STORE_SYNC_EXCLUDES,
   type StoreSyncOptions,
 } from "./daemon-policy";
 import { SyncSchedule } from "./sync-schedule";
+import { SyncedUploadFiles } from "./upload-files";
 import type { WriteFence } from "./write-fence";
 
 export { STORE_SYNC_EXCLUDES, type StoreSyncOptions } from "./daemon-policy";
 
 export class StoreSyncDaemon {
-  private manifest: HydrateManifest = new Map();
+  private readonly files: SyncedUploadFiles;
   private hydrated = false;
   private started = false;
   private stopping = false;
@@ -34,12 +31,21 @@ export class StoreSyncDaemon {
   private consecutiveFailures = 0;
 
   constructor(private readonly opts: StoreSyncOptions) {
+    this.files = new SyncedUploadFiles(opts);
     this.schedule = new SyncSchedule(opts);
     this.fence = createDaemonFence(
       opts,
       (err) => this.haltFenced(err),
-      () => this.manifest.keys(),
+      () => this.files.manifest.keys(),
     );
+  }
+
+  get uploadStore() {
+    return this.files.uploadStore;
+  }
+
+  copyUpload(id: string, key: string, generation: string): Promise<void> {
+    return this.files.copyUpload(id, key, generation);
   }
 
   get fenced(): boolean {
@@ -61,9 +67,9 @@ export class StoreSyncDaemon {
   async hydrate(): Promise<number> {
     this.hydrated = false;
     this.fence.startHeartbeat();
-    this.manifest = await runHydrate(this.opts, this.excludes);
+    const count = await this.files.hydrate(this.excludes);
     this.hydrated = true;
-    return this.manifest.size;
+    return count;
   }
 
   start(): void {
@@ -154,9 +160,9 @@ export class StoreSyncDaemon {
 
   private async syncOnce(): Promise<void> {
     const version = this.dirtyVersion;
-    let result: Awaited<ReturnType<typeof runSyncBack>>;
+    let result: Awaited<ReturnType<SyncedUploadFiles["sync"]>>;
     try {
-      result = await runSyncBack(this.opts, this.manifest, this.excludes);
+      result = await this.files.sync(this.excludes);
     } catch (err) {
       if (!(err instanceof StoreFencedError)) {
         this.consecutiveFailures += 1;
@@ -166,7 +172,6 @@ export class StoreSyncDaemon {
       return;
     }
     this.consecutiveFailures = 0;
-    this.manifest = result.manifest;
     if (version === this.dirtyVersion) this.dirty = false;
     logSyncResult(result, this.opts);
   }

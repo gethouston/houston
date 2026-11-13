@@ -7,6 +7,8 @@ import { AGENT_GROUPS, type GroupsIn } from "../routes/registry/groups";
  * pod and the worker cannot drift apart silently.
  */
 export const OP_EXCLUSIONS = {
+  uploads:
+    "the gateway opens upload sessions before dispatch; workers only commit staged uploads",
   "agent-crud":
     "renaming and deleting an agent is a write to the registry the gateway owns; it never reaches a pod or a worker",
   "agent-first-day":

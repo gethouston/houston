@@ -1,6 +1,7 @@
 import { DEFAULT_PATHS } from "../routes/agent-authz";
 import { agentRest } from "../routes/agent-rest";
 import { defineRouteFamily } from "../routes/registry";
+import { stagedUploads } from "../uploads/commit";
 import { handleFiles } from "./files";
 
 /**
@@ -31,7 +32,7 @@ defineRouteFamily({
   phase: "agent",
   classification: "sdk",
   source: "packages/host/src/turn/files.ts",
-  handler: ({ deps, authz, method, path, url, req, res, emit }) =>
+  handler: ({ deps, authz, userId, method, path, url, req, res, emit }) =>
     handleFiles(
       deps.vfs,
       deps.paths ?? DEFAULT_PATHS,
@@ -43,5 +44,13 @@ defineRouteFamily({
       url.searchParams,
       emit,
       deps.officePreview,
+      deps.vfs
+        ? stagedUploads(deps.uploadSessions, deps.vfs, {
+            agentId: authz.agent.id,
+            workspace: authz.workspace.id,
+            owner: userId,
+            purpose: "files_import",
+          })
+        : undefined,
     ),
 });

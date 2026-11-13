@@ -1,3 +1,4 @@
+import type { UploadStore } from "@houston/runtime-client/object-sync";
 /** One entry's listing metadata (for the Files browser). */
 export interface ObjectStat {
   key: string;
@@ -87,6 +88,8 @@ export class VfsReadOnlyError extends Error {
  * throws {@link VfsReadOnlyError} when the storage refuses writes outright.
  */
 export interface Vfs {
+  readonly uploadStore?: UploadStore;
+  copyUpload?(uploadId: string, key: string, generation: string): Promise<void>;
   /**
    * How this backend compares keys — what a cheap batch pre-check
    * (`turn/files-names.ts`) needs in order to be friendly about a collision

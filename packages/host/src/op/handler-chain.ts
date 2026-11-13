@@ -18,6 +18,7 @@ import { handleSkills } from "../routes/skills";
 import { handleSkillsManifest } from "../routes/skills-manifest";
 import { handleAttachments } from "../turn/attachments";
 import { handleFiles } from "../turn/files";
+import { stagedUploads } from "../uploads/commit";
 import type { Vfs } from "../vfs";
 import { OP_CHAIN, type OpGroup } from "./op-surface";
 import { handleRoutineRunCancelOp } from "./routine-run-cancel";
@@ -42,10 +43,6 @@ export interface AgentOpChainDeps {
   agentDir?: string;
 }
 
-/**
- * One route family's handler, adapted to the single shape an op arrives in.
- * The answer is the chain's, unchanged: anything but `false` means answered.
- */
 type OpHandler = (
   deps: AgentOpChainDeps,
   method: string,
@@ -130,6 +127,13 @@ const OP_HANDLERS: Record<OpGroup, OpHandler> = {
       res,
       deps.query,
       deps.emit,
+      undefined,
+      stagedUploads(undefined, deps.vfs, {
+        agentId: deps.ctx.agent.id,
+        workspace: deps.ctx.workspace.id,
+        owner: deps.actingSub ?? "",
+        purpose: "files_import",
+      }),
     ),
   // Composer drops land in uploads/ BEFORE the send (which is a pool turn).
   attachments: (deps, method, rest, req, res) =>
@@ -142,6 +146,12 @@ const OP_HANDLERS: Record<OpGroup, OpHandler> = {
       req,
       res,
       deps.emit,
+      stagedUploads(undefined, deps.vfs, {
+        agentId: deps.ctx.agent.id,
+        workspace: deps.ctx.workspace.id,
+        owner: deps.actingSub ?? "",
+        purpose: "attachment",
+      }),
     ),
   "portable-preview": (deps, method, rest, req, res) =>
     handlePortablePreview(deps, deps.ctx, method, rest, req, res),
@@ -152,7 +162,16 @@ const OP_HANDLERS: Record<OpGroup, OpHandler> = {
   // routineCreatedBy: the op's verified actor stamps imported routines.
   migration: (deps, method, rest, req, res) =>
     handleMigration(
-      { ...deps, routineCreatedBy: deps.actingSub },
+      {
+        ...deps,
+        routineCreatedBy: deps.actingSub,
+        uploads: stagedUploads(undefined, deps.vfs, {
+          agentId: deps.ctx.agent.id,
+          workspace: deps.ctx.workspace.id,
+          owner: deps.actingSub ?? "",
+          purpose: "migration_import",
+        }),
+      },
       deps.ctx,
       method,
       rest,

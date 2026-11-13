@@ -32,6 +32,13 @@ export class LazyOwnership {
     }
   }
 
+  /** A completed store-side write is visible without owning an absent overlay file. */
+  copied(rel: string, meta: ObjectMetadata): void {
+    this.remote.set(rel, meta);
+    this.hidden.delete(rel);
+    this.manifest.delete(rel);
+  }
+
   visible(rel: string): ObjectMetadata | undefined {
     return this.hidden.has(rel) ? undefined : this.remote.get(rel);
   }

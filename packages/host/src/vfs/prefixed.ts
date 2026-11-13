@@ -11,10 +11,17 @@ export class PrefixedVfs implements Vfs {
     private readonly inner: Vfs,
     private readonly prefix: string,
   ) {
+    const copy = inner.copyUpload?.bind(inner);
+    if (copy) this.copyUpload = (id, key, gen) => copy(id, this.key(key), gen);
     if (!prefix || prefix.endsWith("/")) {
       throw new Error("PrefixedVfs needs a non-empty prefix without a slash");
     }
   }
+
+  get uploadStore() {
+    return this.inner.uploadStore;
+  }
+  readonly copyUpload?: Vfs["copyUpload"];
 
   private key(k: string): string {
     return `${this.prefix}/${k}`;

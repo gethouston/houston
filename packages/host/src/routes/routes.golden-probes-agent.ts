@@ -66,6 +66,7 @@ export const AGENT_PROBES: string[] = [
   "POST /agents/:agentId/files/rename",
   "POST /agents/:agentId/files/folder",
   "POST /agents/:agentId/attachments",
+  "POST /agents/:agentId/uploads",
   "GET /agents/:agentId/portable/preview",
   "POST /agents/:agentId/portable/export",
   "POST /agents/:agentId/migration/export",

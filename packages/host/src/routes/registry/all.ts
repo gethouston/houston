@@ -1,3 +1,4 @@
+import "../../uploads/routes";
 /**
  * The barrel that makes the registry complete.
  *

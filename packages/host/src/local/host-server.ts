@@ -2,9 +2,7 @@ import { existsSync } from "node:fs";
 import { basename, dirname } from "node:path";
 import { SingleUserVerifier } from "../auth/verify";
 import { refreshViewsOnEvents } from "../docs/view-warm";
-import { storeSyncRunsLock } from "../schedule/runs-lock";
 import { type ControlPlaneDeps, createControlPlaneServer } from "../server";
-import { StoreSyncDaemon } from "../store-sync";
 import { createModelCallForwarder } from "../telemetry/model-call-report";
 import { createPushReporter } from "../telemetry/push-report";
 import { createOfficePreview } from "../turn/files-office";
@@ -14,7 +12,7 @@ import type { createHostBase } from "./host-base";
 import { servedCapabilities } from "./host-capabilities";
 import type { createHostHeartbeat } from "./host-heartbeat";
 import type { createHostIntegrations } from "./host-integrations";
-import { LOCAL_USER, severityLog } from "./host-log";
+import { LOCAL_USER } from "./host-log";
 import type { LocalHostOptions } from "./host-options";
 import type { createHostRuntime } from "./host-runtime";
 import { createViewSink } from "./view-sink";
@@ -76,19 +74,9 @@ export function createHostServer(
     : undefined;
 
   const capabilities = servedCapabilities(opts, integration, heartbeat);
-  const syncDaemon = opts.storeSync
-    ? new StoreSyncDaemon({
-        ...opts.storeSync,
-        rootDir: dirname(opts.workspacesRoot),
-        localWriteLock: storeSyncRunsLock(basename(opts.workspacesRoot)),
-        // FsWatcher below already watches this subtree for reactivity. Avoid a
-        // second, redundant inotify watch over it (HOU-1237).
-        watchExcludeDirs: [opts.workspacesRoot],
-        onFenceLost: opts.onStoreFenceLost,
-        log: severityLog,
-      })
-    : undefined;
+  const syncDaemon = base.syncDaemon;
   const deps: ControlPlaneDeps = {
+    uploadSessions: base.uploadSessions,
     verifier: new SingleUserVerifier({ token: opts.token, userId: LOCAL_USER }),
     store,
     credentials,

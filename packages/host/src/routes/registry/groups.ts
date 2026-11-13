@@ -17,6 +17,7 @@ export const GROUP_PHASES = {
   // pi-ai's full static model catalog, the SAME on every deployment — static
   // and not user-scoped, so it rides the public meta surface.
   catalog: "public",
+  "upload-sink": "public",
   "sandbox-credential": "sandbox",
   "sandbox-credential-revoked": "sandbox",
   "sandbox-provider-usage": "sandbox",
@@ -84,6 +85,7 @@ export const GROUP_PHASES = {
   skills: "agent",
   "workspace-files": "agent",
   attachments: "agent",
+  uploads: "agent",
   "portable-preview": "agent",
   "portable-export": "agent",
   migration: "agent",

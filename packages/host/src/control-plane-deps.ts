@@ -23,6 +23,7 @@ import type { FireOutcomeLedger } from "./schedule/fire-outcome";
 import type { TranscriptShadow } from "./transcripts/http-shadow";
 import type { TriggerEventLock } from "./triggers/fire";
 import type { OfficePreview } from "./turn/files-office";
+import type { LocalUploadSessions } from "./uploads/local";
 import type { Vfs } from "./vfs";
 
 /**
@@ -58,6 +59,7 @@ export interface ControlPlaneDeps extends ControlPlaneAssistantDeps {
   channels: Partial<Record<WorkspaceRuntime, RuntimeChannel>>;
   /** Workspace file store backing the typed .houston families; absent → those routes 503. */
   vfs?: Vfs;
+  uploadSessions?: LocalUploadSessions;
   officePreview?: OfficePreview;
   /** Where agent files live in the vfs (cloud prefixes vs local tree). Default: cloud. */
   paths?: WorkspacePaths;

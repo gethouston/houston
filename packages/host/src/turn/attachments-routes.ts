@@ -1,6 +1,7 @@
 import { DEFAULT_PATHS } from "../routes/agent-authz";
 import { agentRest } from "../routes/agent-rest";
 import { defineRoute } from "../routes/registry";
+import { stagedUploads } from "../uploads/commit";
 import { handleAttachments } from "./attachments";
 
 /**
@@ -20,7 +21,7 @@ defineRoute({
   phase: "agent",
   classification: "sdk",
   source: "packages/host/src/turn/attachments.ts",
-  handler: ({ deps, authz, method, path, req, res, emit }) =>
+  handler: ({ deps, authz, userId, method, path, req, res, emit }) =>
     handleAttachments(
       deps.vfs,
       deps.paths ?? DEFAULT_PATHS,
@@ -30,5 +31,13 @@ defineRoute({
       req,
       res,
       emit,
+      deps.vfs
+        ? stagedUploads(deps.uploadSessions, deps.vfs, {
+            agentId: authz.agent.id,
+            workspace: authz.workspace.id,
+            owner: userId,
+            purpose: "attachment",
+          })
+        : undefined,
     ),
 });

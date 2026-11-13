@@ -1,6 +1,15 @@
+import {
+  prepareFiles,
+  type StagedUploads,
+  type UploadFile,
+} from "../uploads/commit";
+import { parseUploadFiles } from "../uploads/parse-files";
+
 import type { Vfs } from "../vfs";
 import { loadWorkspaceKeys } from "./files-names";
 import { FileOpError, FilePathError, fileKey, safeRel } from "./files-path";
+
+export type { UploadFile } from "../uploads/commit";
 
 /**
  * Uploads into an agent's workspace — the upload half of the Files tab
@@ -28,20 +37,6 @@ export const MAX_UPLOAD_BYTES = 100 * 1024 * 1024;
  */
 export const MAX_UPLOAD_BODY_BYTES =
   Math.ceil((MAX_UPLOAD_BYTES * 4) / 3) + 1024 * 1024;
-
-/**
- * One uploaded file: original name + its base64-encoded bytes. `relPath` is
- * set for folder uploads (HOU-889): the file's slash-joined path INSIDE the
- * picked/dropped folder, including the filename (mirrors
- * `File.webkitRelativePath`, e.g. `docs/guide/intro.md`) — the file then lands
- * at `<dir>/<relPath>` so the folder's structure survives. Hosts predating
- * folder support ignore the field and store the flat `name`.
- */
-export interface UploadFile {
-  name: string;
-  contentBase64: string;
-  relPath?: string;
-}
 
 /** Validate an uploaded filename: one path segment, no traversal, no hidden files. */
 function safeUploadName(name: string): string {
@@ -92,29 +87,11 @@ export function parseImportBody(body: Record<string, unknown>): {
   if (!Array.isArray(body.files) || body.files.length === 0) {
     throw new FileOpError(400, "missing 'files' array");
   }
-  let total = 0;
-  const files = body.files.map((raw, i) => {
-    const f = raw as {
-      name?: unknown;
-      contentBase64?: unknown;
-      relPath?: unknown;
-    };
-    if (typeof f.name !== "string" || typeof f.contentBase64 !== "string") {
-      throw new FileOpError(
-        400,
-        `file[${i}] needs string 'name' and 'contentBase64'`,
-      );
-    }
-    if (f.relPath !== undefined && typeof f.relPath !== "string") {
-      throw new FileOpError(400, `file[${i}] 'relPath' must be a string`);
-    }
-    // base64 is ~4/3 the byte size; estimate to fail oversized uploads loudly.
-    total += Math.floor((f.contentBase64.length * 3) / 4);
-    if (total > MAX_UPLOAD_BYTES) {
-      throw new FileOpError(413, "upload exceeds the size limit");
-    }
-    return { name: f.name, contentBase64: f.contentBase64, relPath: f.relPath };
-  });
+  const files = parseUploadFiles(
+    body.files,
+    MAX_UPLOAD_BYTES,
+    (status, message) => new FileOpError(status, message),
+  );
   return { dir, files };
 }
 
@@ -152,6 +129,7 @@ export async function importWorkspaceFiles(
   root: string,
   dir: string | null,
   files: readonly UploadFile[],
+  uploads?: StagedUploads,
 ): Promise<string[]> {
   const target = dir === null ? "" : safeRel(dir);
   // Compared the storage's way: on a case-insensitive disk an upload named
@@ -176,11 +154,14 @@ export async function importWorkspaceFiles(
     existing.add(fileKey(root, rel));
     planned.push({ file, rel });
   }
-  for (const { file, rel } of planned) {
-    await vfs.writeBytes(
-      fileKey(root, rel),
-      Buffer.from(file.contentBase64, "base64"),
-    );
+  const staged = await prepareFiles(
+    planned.map((p) => p.file),
+    uploads,
+  );
+  const destinations = planned.map(({ rel }) => fileKey(root, rel));
+  for (const [i, source] of staged.entries()) {
+    await source.write(vfs, `${destinations[i]}`);
   }
+  for (const source of staged) await source.remove();
   return planned.map((p) => p.rel);
 }
