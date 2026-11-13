@@ -64,13 +64,21 @@ export class LocalUploadSessions {
   ): Promise<UploadSession> {
     const run = this.opening.then(async () => {
       await this.sweep();
-      let count = 0;
+      const owned: { id: string; createdAt: number; complete: boolean }[] = [];
       for (const file of await readdir(this.directory)) {
         if (!file.endsWith(".json")) continue;
-        const meta = await this.meta(file.slice(0, -5));
-        if (meta?.owner === identity.owner) count++;
+        const id = file.slice(0, -5);
+        const meta = await this.meta(id);
+        if (meta?.owner === identity.owner) {
+          const { complete } = await this.offset(id);
+          owned.push({ id, createdAt: meta.createdAt, complete });
+        }
       }
-      if (count >= 16) throw new UploadError("too_many_uploads");
+      owned.sort(
+        (a, b) =>
+          Number(a.complete) - Number(b.complete) || a.createdAt - b.createdAt,
+      );
+      if (owned.length >= 16 && owned[0]) await this.remove(owned[0].id);
       const uploadId = randomBytes(24).toString("base64url");
       const createdAt = this.now();
       const meta: UploadMeta = { ...request, ...identity, createdAt };

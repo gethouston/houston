@@ -63,12 +63,7 @@ defineRoute({
       );
     } catch (error) {
       if (!(error instanceof UploadError)) throw error;
-      json(
-        res,
-        error.status,
-        { error: error.message, code: error.code },
-        error.code === "too_many_uploads" ? { "Retry-After": "60" } : {},
-      );
+      json(res, error.status, { error: error.message, code: error.code });
     }
   },
 });
