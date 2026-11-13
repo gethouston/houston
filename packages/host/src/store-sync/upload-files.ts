@@ -3,9 +3,11 @@ import { rename, rm, stat } from "node:fs/promises";
 import { join } from "node:path";
 import { atomicTempPath } from "@houston/protocol";
 import {
+  type CopiedUpload,
   fileSha256,
   type HydrateManifest,
   isUploadStore,
+  UploadCopyExistsError,
   type UploadStore,
 } from "@houston/runtime-client/object-sync";
 import { assertSafeKey } from "../vfs/vfs";
@@ -37,12 +39,24 @@ export class SyncedUploadFiles {
     return this.serial(async () => {
       assertSafeKey(key);
       if (!this.uploadStore) throw new Error("upload store not configured");
-      const copied = await this.uploadStore.copyUpload(
-        uploadId,
-        key,
-        generation,
-      );
       const destination = join(this.opts.rootDir, ...key.split("/"));
+      let copied: CopiedUpload;
+      try {
+        copied = await this.uploadStore.copyUpload(uploadId, key, generation);
+      } catch (error) {
+        if (!(error instanceof UploadCopyExistsError)) throw error;
+        const localExists = await stat(destination).then(
+          () => true,
+          (error: NodeJS.ErrnoException) => {
+            if (error.code === "ENOENT") return false;
+            throw error;
+          },
+        );
+        if (localExists) throw error;
+        // A local deletion may still be waiting for the next sync-back pass.
+        await this.opts.store.delete(key);
+        copied = await this.uploadStore.copyUpload(uploadId, key, generation);
+      }
       const temp = atomicTempPath(destination, randomUUID());
       try {
         const read = await this.opts.store.download(key, temp);
@@ -56,7 +70,20 @@ export class SyncedUploadFiles {
         await rename(temp, destination);
         this.manifest.set(key, { hash, generation: copied.generation });
       } catch (error) {
-        await rm(temp, { force: true });
+        try {
+          await this.opts.store.delete(key, {
+            ifGenerationMatch: copied.generation,
+          });
+        } catch (cleanupError) {
+          throw new Error(
+            "Copied upload could not be materialized or removed",
+            {
+              cause: cleanupError,
+            },
+          );
+        } finally {
+          await rm(temp, { force: true });
+        }
         throw error;
       }
     });
