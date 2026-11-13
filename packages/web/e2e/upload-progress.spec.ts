@@ -1,4 +1,3 @@
-import { mkdir } from "node:fs/promises";
 import type { Route } from "@playwright/test";
 import { BOOT_TIMEOUT } from "./config";
 import { FOLLOW_UP_PLACEHOLDER } from "./support/composer";
@@ -6,14 +5,9 @@ import { expect, test } from "./support/fixtures";
 import { awaitAgentsHome, openPhoneTeamSection } from "./support/mobile-nav";
 import { missionCard, openTeamSection } from "./support/team-nav";
 
-const SHOTS = "/private/tmp/claude-501/upload-design/shots";
 const SIZE = 20 * 1024 * 1024;
 const SECOND_CHUNK = `bytes ${8 * 1024 * 1024}-`;
 const THIRD_CHUNK = `bytes ${16 * 1024 * 1024}-`;
-
-test.beforeAll(async () => {
-  await mkdir(SHOTS, { recursive: true });
-});
 
 for (const [layout, viewport] of [
   ["desktop", { width: 1280, height: 800 }],
@@ -103,14 +97,14 @@ for (const [layout, viewport] of [
       expect(percent).toBeLessThan(100);
       await expect(smallChip).toContainText("All done");
       await page.screenshot({
-        path: `${SHOTS}/composer-uploading-${layout}.png`,
+        path: test.info().outputPath(`composer-uploading-${layout}.png`),
       });
       await chunk.continue();
 
       const query = await statusQuery;
       await expect(largeChip.getByRole("status")).toHaveText("Reconnecting…");
       await page.screenshot({
-        path: `${SHOTS}/composer-reconnecting-${layout}.png`,
+        path: test.info().outputPath(`composer-reconnecting-${layout}.png`),
       });
       await query.continue();
 
@@ -182,7 +176,9 @@ for (const [layout, viewport] of [
       const percent = Number(await progress.getAttribute("aria-valuenow"));
       expect(percent).toBeGreaterThan(0);
       expect(percent).toBeLessThan(100);
-      await page.screenshot({ path: `${SHOTS}/files-uploading-${layout}.png` });
+      await page.screenshot({
+        path: test.info().outputPath(`files-uploading-${layout}.png`),
+      });
       await chunk.continue();
 
       await expect(
