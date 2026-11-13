@@ -4,6 +4,7 @@ import { Check, CircleAlert, Loader2 } from "lucide-react";
 import { useTranslation } from "react-i18next";
 import type { MigrationTask } from "../../../lib/cloud-migration";
 import type { AgentMigrationProgress } from "../../../lib/cloud-migration-progress";
+import { MigrationUploadProgress } from "./migration-upload-progress";
 
 /**
  * One agent's row in the migration attention panel (HOU-719) — shown only when
@@ -76,6 +77,12 @@ export function AgentRow({
             ? progress.errorMessage
             : stepLabel(t, progress)}
         </p>
+        {progress.step === "uploading" && (
+          <MigrationUploadProgress
+            progress={progress.uploadProgress}
+            name={task.targetName}
+          />
+        )}
       </div>
       {progress.step === "error" && (
         <AsyncButton

@@ -3,6 +3,12 @@
 Every `version` bump in `inventory.yaml` needs a matching entry here (enforced by
 `pnpm check:parity`). Newest first. Use `## vN` headings.
 
+## v155 - 2026-11-13
+
+Composer attachment chips show upload progress, reconnecting and saving from
+supplied per-file reports. Folder chips combine progress across their files.
+Progress remains visible inside interaction cards and at both breakpoints.
+
 ## v154 - 2026-11-11
 
 A conversation pinned to its latest reply stays anchored before paint when

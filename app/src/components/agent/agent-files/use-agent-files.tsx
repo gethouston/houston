@@ -19,6 +19,7 @@ import { useFilesDeleteConfirm } from "../files-delete-confirm";
 import { buildBrowserLabels, buildMenuLabels } from "../files-tab-labels";
 import { buildUploadIntake } from "../files-upload-intake";
 import { useFilesUploadPickers } from "../files-upload-pickers";
+import { FilesUploadProgress } from "../files-upload-progress";
 import { useLocalFilesAccess } from "./agent-files-capabilities";
 import { useAgentFileDownloads } from "./agent-files-downloads";
 
@@ -112,6 +113,7 @@ export function useAgentFiles(
     files: files ?? [],
     loading,
     uploading: uploadFiles.isPending,
+    notice: <FilesUploadProgress progress={uploadFiles.progress} />,
     dragScope: agent.id,
     // The Modified column formats its dates in the user's language.
     locale: i18n.language,

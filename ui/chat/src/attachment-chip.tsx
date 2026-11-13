@@ -7,6 +7,11 @@
 
 import { FileTypeGlyphInline, FolderGlyph } from "@houston-ai/core";
 import { XIcon } from "lucide-react";
+import {
+  AttachmentProgress,
+  type AttachmentProgressLabels,
+  type AttachmentUploadProgress,
+} from "./attachment-progress";
 
 export function getExt(name: string): string {
   const dot = name.lastIndexOf(".");
@@ -60,6 +65,8 @@ export function AttachmentIcon({ ext }: { ext: string }) {
 
 export interface AttachmentChipProps {
   name: string;
+  progress?: AttachmentUploadProgress;
+  labels?: AttachmentProgressLabels;
   onRemove: () => void;
   /** The remove button's name for `name`; English default. */
   removeLabel?: (name: string) => string;
@@ -71,6 +78,8 @@ export function AttachmentChip({
   name,
   onRemove,
   removeLabel = defaultRemoveLabel,
+  progress,
+  labels,
 }: AttachmentChipProps) {
   const ext = getExt(name);
   return (
@@ -83,6 +92,9 @@ export function AttachmentChip({
         <p className="text-[10px] text-ink-muted leading-tight">
           {getTypeLabel(ext)}
         </p>
+        {progress && (
+          <AttachmentProgress name={name} progress={progress} labels={labels} />
+        )}
       </div>
       <button
         type="button"
@@ -98,6 +110,8 @@ export function AttachmentChip({
 
 export interface FolderAttachmentChipProps {
   name: string;
+  progress?: AttachmentUploadProgress;
+  labels?: AttachmentProgressLabels;
   /** Localized "N files" line under the folder name (HOU-808). */
   countLabel: string;
   onRemove: () => void;
@@ -111,6 +125,8 @@ export function FolderAttachmentChip({
   countLabel,
   onRemove,
   removeLabel = defaultRemoveLabel,
+  progress,
+  labels,
 }: FolderAttachmentChipProps) {
   return (
     <div className="relative flex items-center gap-2.5 rounded-xl border border-ink/[0.08] bg-input pl-2.5 pr-8 py-2 min-w-0 shrink-0 max-w-[240px] shadow-sm">
@@ -123,6 +139,9 @@ export function FolderAttachmentChip({
           {name}
         </p>
         <p className="text-[10px] text-ink-muted leading-tight">{countLabel}</p>
+        {progress && (
+          <AttachmentProgress name={name} progress={progress} labels={labels} />
+        )}
       </div>
       <button
         type="button"

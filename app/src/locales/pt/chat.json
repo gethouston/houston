@@ -8,6 +8,12 @@
     "textRoleAsName": "Oi, eu sou seu **{{role}}**! Hoje é meu *primeiro dia*, então me ajude a aprender como posso ser mais útil para você.\n\nJuntos, vamos registrar como eu faço meu trabalho do dia a dia. No Houston, esses procedimentos passo a passo se chamam **Skills**.\n\nVamos começar com **uma tarefa que você faz todos os dias**. Vamos fazer juntos uma vez, e depois eu salvo como uma Skill para poder fazer por você sempre que quiser.\n\nAqui vão algumas tarefas para começarmos:"
   },
   "composer": {
+    "uploadProgress": {
+      "uploading": "Enviando…",
+      "reconnecting": "Reconectando…",
+      "saving": "Salvando…",
+      "done": "Tudo pronto"
+    },
     "placeholder": "Pergunte qualquer coisa...",
     "fileAlreadyInChat": "Arquivo já está no chat",
     "dropTitle": "Solte seus arquivos",

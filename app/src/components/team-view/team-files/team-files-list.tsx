@@ -32,11 +32,14 @@ export function TeamFilesList({
       createFolderRequest={createFolderRequest}
       inFrame
       notice={
-        <AgentReadsFailed
-          failures={agentReadFailures([{ agent, error: files.error }])}
-          onRetry={files.refetch}
-          retrying={files.isFetching}
-        />
+        <>
+          <AgentReadsFailed
+            failures={agentReadFailures([{ agent, error: files.error }])}
+            onRetry={files.refetch}
+            retrying={files.isFetching}
+          />
+          {files.browserProps.notice}
+        </>
       }
       footer={files.overlays}
     />

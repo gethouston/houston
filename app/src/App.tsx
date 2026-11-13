@@ -5,6 +5,7 @@ import { SignInScreen } from "./components/auth/sign-in-screen";
 import { StorageUnavailableScreen } from "./components/auth/storage-unavailable-screen";
 import { AppRoutes } from "./components/shell/app-routes";
 import { WorkspaceLoading } from "./components/shell/workspace-loading";
+import { UploadProgressProvider } from "./components/upload-progress-provider";
 import { useAgentInvalidation } from "./hooks/use-agent-invalidation";
 import { useAnalyticsSubscriber } from "./hooks/use-analytics-subscriber";
 import { useAppDocumentListeners } from "./hooks/use-app-document-listeners";
@@ -153,13 +154,15 @@ export default function App() {
   logFirstRunRoute(routing.routeLogLine);
 
   return (
-    <AppRoutes
-      route={routing.route}
-      survey={routing.survey}
-      showSurveyPrompt={routing.showSurveyPrompt}
-      migrationReconnect={routing.migrationReconnect}
-      onFirstRunSurveyDone={routing.onFirstRunSurveyDone}
-      onCompletionPromptClosed={routing.onCompletionPromptClosed}
-    />
+    <UploadProgressProvider>
+      <AppRoutes
+        route={routing.route}
+        survey={routing.survey}
+        showSurveyPrompt={routing.showSurveyPrompt}
+        migrationReconnect={routing.migrationReconnect}
+        onFirstRunSurveyDone={routing.onFirstRunSurveyDone}
+        onCompletionPromptClosed={routing.onCompletionPromptClosed}
+      />
+    </UploadProgressProvider>
   );
 }

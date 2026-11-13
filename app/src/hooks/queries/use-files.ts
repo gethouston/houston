@@ -1,4 +1,5 @@
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
+import { useState } from "react";
 import { formatBytes } from "../../lib/attachment-validation";
 import { showExpectedStateToast } from "../../lib/error-toast";
 import { isReadOnlyError } from "../../lib/file-conflicts";
@@ -10,6 +11,10 @@ import i18n from "../../lib/i18n";
 import { queryKeys } from "../../lib/query-keys";
 import { showReadOnlyToast } from "../../lib/read-only-toast";
 import { tauriFiles } from "../../lib/tauri";
+import {
+  type UploadDisplayProgress,
+  updateUploadProgress,
+} from "../../lib/upload-progress";
 
 /**
  * An agent's file listing. Deletes, renames, moves and new folders live in
@@ -30,8 +35,9 @@ export function useFiles(agentPath: string | undefined, enabled = true) {
 
 export function useUploadFiles(agentPath: string | undefined) {
   const qc = useQueryClient();
-  return useMutation({
-    mutationFn: ({
+  const [progress, setProgress] = useState<UploadDisplayProgress>(new Map());
+  const mutation = useMutation({
+    mutationFn: async ({
       files,
       targetDir,
     }: {
@@ -39,7 +45,26 @@ export function useUploadFiles(agentPath: string | undefined) {
       targetDir?: string | null;
     }) => {
       if (!agentPath) throw new Error("agentPath is required");
-      return tauriFiles.upload(agentPath, files, targetDir);
+      setProgress((current) => {
+        const next = new Map(current);
+        for (const file of files)
+          next.set(file, { fraction: 0, state: "uploading" });
+        return next;
+      });
+      try {
+        await tauriFiles.upload(agentPath, files, targetDir, {
+          onProgress: (file, report) =>
+            setProgress((current) =>
+              updateUploadProgress(current, file, report),
+            ),
+        });
+      } finally {
+        setProgress((current) => {
+          const next = new Map(current);
+          for (const file of files) next.delete(file);
+          return next;
+        });
+      }
     },
     onSuccess: () => {
       if (agentPath)
@@ -70,4 +95,5 @@ export function useUploadFiles(agentPath: string | undefined) {
       );
     },
   });
+  return { ...mutation, progress };
 }

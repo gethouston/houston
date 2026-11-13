@@ -121,3 +121,27 @@ test("equal-weight fallback still averages per task", () => {
   );
   assert.ok(Math.abs(value - (1 + 0.25 + 0) / 3) < 1e-9);
 });
+
+test("upload progress advances within the current chunk and stays put while reconnecting", () => {
+  const progress = prog({
+    step: "uploading",
+    chunkIndex: 2,
+    chunkCount: 4,
+    uploadProgress: { sentBytes: 50, totalBytes: 100, phase: "uploading" },
+  });
+  const value = computeOverallProgress([task("a", 100)], { a: progress });
+  assert.ok(Math.abs(value - (0.25 + (0.65 * 1.5) / 4)) < 1e-9);
+  assert.equal(
+    computeOverallProgress([task("a", 100)], {
+      a: {
+        ...progress,
+        uploadProgress: {
+          sentBytes: 50,
+          totalBytes: 100,
+          phase: "reconnecting",
+        },
+      },
+    }),
+    value,
+  );
+});
