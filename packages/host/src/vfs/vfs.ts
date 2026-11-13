@@ -116,6 +116,8 @@ export interface Vfs {
   writeText(key: string, content: string): Promise<void>;
   /** Raw-bytes write (binary uploads/seeds). Content type inferred by consumers. */
   writeBytes(key: string, content: Buffer): Promise<void>;
+  /** `writeBytes` from a local file without reading it into memory, where the backend can. */
+  writeFileFrom?(key: string, sourcePath: string): Promise<void>;
   /** Delete a single key. No-op when absent. */
   deleteKey(key: string): Promise<void>;
   /**

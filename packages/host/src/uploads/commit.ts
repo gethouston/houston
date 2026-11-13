@@ -52,7 +52,9 @@ export function stagedUploads(
       return {
         read: () => readFile(path),
         write: async (target, key) =>
-          target.writeBytes(key, await readFile(path)),
+          target.writeFileFrom
+            ? target.writeFileFrom(key, path)
+            : target.writeBytes(key, await readFile(path)),
         remove: () => local.remove(file.uploadId),
       };
     },
