@@ -65,7 +65,11 @@ export async function handleAgentData(
   // Fire this family's reactivity event AFTER a successful write. agentPath is
   // the agent's opaque id (the UI scopes query invalidation by it).
   const fireChange = () => {
-    const event = FAMILY_EVENT[family]?.(ctx.agent.id);
+    // Own keys only: the route regex already limits `family`, and this keeps a
+    // prototype name from ever reaching the call.
+    const event = Object.hasOwn(FAMILY_EVENT, family)
+      ? FAMILY_EVENT[family]?.(ctx.agent.id)
+      : undefined;
     if (event) emit?.(event);
   };
 
