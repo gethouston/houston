@@ -35,9 +35,7 @@ export function useBoardChatWiring(source: BoardSource) {
   const queuedLabels = useQueuedMessageLabels();
   const formatTime = useMessageTime();
   const { labels, cardLabels, composerLabels } = useBoardLabels();
-  const { drafts, onDraftChange, newConversationKey } = useBoardDrafts(
-    source.draftScope,
-  );
+  const { draftStore, newConversationKey } = useBoardDrafts(source.draftScope);
 
   // The panel's own task line, composed here rather than left to `ui/`'s
   // i18n-agnostic English fallback (`panelTaskLabel`).
@@ -83,7 +81,7 @@ export function useBoardChatWiring(source: BoardSource) {
     onOpenChildMission: source.setSelectedId,
   });
   const overrides = useComposerSendOverrides(panel);
-  const prewarm = useComposerPrewarm(onDraftChange, {
+  const prewarm = useComposerPrewarm(draftStore, {
     agentPath: source.activeAgent?.folderPath,
     newConversationKey,
     provider: overrides.providerOverride,
@@ -150,8 +148,7 @@ export function useBoardChatWiring(source: BoardSource) {
     onLoadOlderMessages: source.onLoadOlderMessages,
     hasOlderMessages: source.hasOlderMessages,
     onStopSession: source.stopSession,
-    drafts,
-    onDraftChange: prewarm.onDraftChange,
+    draftStore: prewarm.draftStore,
     onNotice: handleNotice,
     labels,
     composerLabels,
