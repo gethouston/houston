@@ -83,7 +83,7 @@ export function classifyCommand(command: string): CommandActivity | undefined {
 function leadingExecutable(segment: string): string | undefined {
   for (const token of segment.trim().split(/\s+/)) {
     if (!token || /^[A-Za-z_][A-Za-z0-9_]*=/.test(token)) continue;
-    const bare = token.replace(/^["']+|["']+$/g, "");
+    const bare = stripQuotes(token);
     const name = (bare.split("/").at(-1) ?? bare).toLowerCase();
     if (WRAPPERS.has(name)) continue;
     return name;
@@ -102,12 +102,26 @@ function hostOf(text: string): string | undefined {
   if (url) return parseHost(url[0]);
   for (const token of text.trim().split(/\s+/).slice(1)) {
     if (token.startsWith("-")) continue;
-    const bare = token.replace(/^["']+|["']+$/g, "");
+    const bare = stripQuotes(token);
     if (/^(?:[a-z0-9-]+\.)+[a-z]{2,}(?:[/:?#]|$)/i.test(bare)) {
       return parseHost(`http://${bare}`);
     }
   }
   return undefined;
+}
+
+/**
+ * `token` without its surrounding quotes. Index walks instead of
+ * `/^["']+|["']+$/g`, which rescans a run of quotes in the middle of a token
+ * from every position, so one long token would stall the chat for seconds.
+ */
+function stripQuotes(token: string): string {
+  const isQuote = (ch: string | undefined) => ch === '"' || ch === "'";
+  let start = 0;
+  let end = token.length;
+  while (start < end && isQuote(token[start])) start++;
+  while (end > start && isQuote(token[end - 1])) end--;
+  return token.slice(start, end);
 }
 
 function parseHost(url: string): string | undefined {

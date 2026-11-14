@@ -14,9 +14,11 @@ const TAG = /^\[([^\]\n]*)\]\s*/;
 /**
  * Composio toolkit slug, matched case-insensitively and stored lowercase. At
  * least one letter is required: a bare number right after a title is a year or
- * a citation the author wrote (`**Revenue** [2024]`), never an app.
+ * a citation the author wrote (`**Revenue** [2024]`), never an app. The lead
+ * class leaves letters out so the first letter has exactly one place to match:
+ * overlapping classes backtrack quadratically on a long bracketed run.
  */
-const TOOLKIT = /^[A-Za-z0-9_-]*[A-Za-z][A-Za-z0-9_-]*$/;
+const TOOLKIT = /^[0-9_-]*[A-Za-z][A-Za-z0-9_-]*$/;
 /** Action slug as `integration_execute` takes it, stored uppercase. */
 const ACTION = /^[A-Za-z0-9_]+$/;
 
