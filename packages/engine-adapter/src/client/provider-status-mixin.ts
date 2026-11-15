@@ -1,9 +1,13 @@
+import { isAbortError, timeoutSignal } from "@houston/sdk/abort-signal";
 import type {
   CredentialScope,
   ProviderHealth,
   ProviderStatus,
   ProviderUsage,
 } from "@houston/wire-types";
+import { isEngineWakingError } from "../engine-waking-error";
+import { reportAdapterError } from "../error-sink";
+import { isNetworkTransportError } from "../network-transport-error";
 import { toNewProvider } from "../synthetic";
 import type { BaseCtor } from "./mixin";
 import { withProviderAgentRetarget } from "./provider-agent-gone";
@@ -83,13 +87,21 @@ export function ProviderStatusMixin<TBase extends BaseCtor>(Base: TBase) {
             (target
               ? this.ctx.providerEngineFor(target)
               : this.ctx.providerEngine()
-            ).listProviders({ signal: AbortSignal.timeout(PROBE_TIMEOUT_MS) }),
+            ).listProviders({ signal: timeoutSignal(PROBE_TIMEOUT_MS) }),
           );
           for (const p of list) byId.set(p.id, p);
           reachable = true;
         }
-      } catch {
-        /* engine unreachable → every card reports "unknown" below */
+      } catch (error) {
+        // Cards read "unknown" below either way; only a failure other than an
+        // unreachable engine (offline, pod waking, the probe timeout) is a bug.
+        if (
+          !isNetworkTransportError(error) &&
+          !isEngineWakingError(error) &&
+          !isAbortError(error)
+        ) {
+          reportAdapterError("provider-status.probe", error);
+        }
       }
       return names.map((name) => {
         const pid = toNewProvider(name);

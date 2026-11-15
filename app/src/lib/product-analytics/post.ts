@@ -10,6 +10,7 @@
  * tests with no window and no network. `transport.ts` is the live wiring.
  */
 
+import { isAbortError, timeoutSignal } from "@houston/sdk/abort-signal";
 import type { GatewayFetchDeps, GatewayRequestInit } from "../gateway-fetch.ts";
 import type {
   ProductAnalyticsContext,
@@ -82,12 +83,12 @@ export function createProductEventsPost(
         // ships without it: keepalive caps the body at 64 KiB (see
         // `ProductAnalyticsSendOptions`), which a full batch can exceed.
         ...(options?.final ? { keepalive: true } : {}),
-        signal: (deps.timeoutSignal ?? defaultTimeoutSignal)(),
+        signal: deps.timeoutSignal?.() ?? timeoutSignal(REQUEST_TIMEOUT_MS),
       });
     } catch (error) {
       // Offline and the timeout above are expected states worth exactly one
       // retry. Anything else reaching here is a bug in this path.
-      if (!deps.isOffline(error) && !isAbort(error)) {
+      if (!deps.isOffline(error) && !isAbortError(error)) {
         reportOnce(
           "post-failed",
           "the product-analytics POST failed unexpectedly",
@@ -113,33 +114,11 @@ export function createProductEventsPost(
       status: "ok",
       rejected: await readRejected(
         res,
-        (error) => deps.isOffline(error) || isAbort(error),
+        (error) => deps.isOffline(error) || isAbortError(error),
         reportOnce,
       ),
     };
   };
-}
-
-/** macOS 10.15 is a supported desktop, and its system WebKit (Safari 15) has
- *  no `AbortSignal.timeout`; calling it there threw before every send. */
-function defaultTimeoutSignal(): AbortSignal {
-  if (typeof AbortSignal.timeout === "function") {
-    return AbortSignal.timeout(REQUEST_TIMEOUT_MS);
-  }
-  const controller = new AbortController();
-  setTimeout(
-    () =>
-      controller.abort(new DOMException("signal timed out", "TimeoutError")),
-    REQUEST_TIMEOUT_MS,
-  );
-  return controller.signal;
-}
-
-/** The abort the timeout above raises, whatever the runtime names it. */
-function isAbort(error: unknown): boolean {
-  if (typeof error !== "object" || error === null) return false;
-  const { name } = error as { name?: unknown };
-  return name === "TimeoutError" || name === "AbortError";
 }
 
 /** The 202 body's per-event verdicts; an unreadable body is still a success
