@@ -13,6 +13,13 @@ import type { ExtensionFactory } from "@earendil-works/pi-coding-agent";
  * `session.prompt()`, like `auth/used-token.ts`: the hook runs inside pi's
  * request, inside that async subtree, so concurrent prompts never read each
  * other's response. Outside a prompt recording is a no-op.
+ *
+ * The record is per prompt, not per request: the cache warmer and a hedged
+ * attempt run inside the same prompt and write into it too, so the request id
+ * on a card can belong to a sibling attempt rather than the one that failed.
+ * Accepted: it still names a request the provider saw in that prompt, which
+ * is enough to trace it, and a per-request record would need pi to hand the
+ * failure its request.
  */
 export interface ProviderResponseFacts {
   status: number;
@@ -44,17 +51,21 @@ const REQUEST_ID_HEADERS = [
 ];
 
 /**
- * The pi extension that feeds the record. A new request clears it first, so a
- * failure on a transport that reports no response (Codex's WebSocket) never
- * inherits an earlier request's status.
+ * The pi extension that feeds the record. A new turn and a new request each
+ * clear it, so a failure on a transport that reports no response (Codex's
+ * WebSocket), or one that never sent a request (an auto-retry whose credential
+ * read throws, which happens before `before_provider_request`), never inherits
+ * an earlier attempt's status.
  */
 export function makeProviderResponseRecorder(): ExtensionFactory {
   return (pi) => {
-    pi.on("before_provider_request", () => {
+    const clear = () => {
       const holder = store.getStore();
       if (holder) holder.last = undefined;
       return undefined;
-    });
+    };
+    pi.on("turn_start", clear);
+    pi.on("before_provider_request", clear);
     pi.on("after_provider_response", (event) => {
       const holder = store.getStore();
       if (!holder) return;
@@ -66,9 +77,14 @@ export function makeProviderResponseRecorder(): ExtensionFactory {
   };
 }
 
-/** The current prompt's latest response, when it was an HTTP failure. */
-export function currentFailedResponse(): ProviderResponseFacts | undefined {
-  const last = store.getStore()?.last;
+/**
+ * Take the current prompt's latest response when it was an HTTP failure. The
+ * record is cleared, so one failure is never read for two cards.
+ */
+export function takeFailedResponse(): ProviderResponseFacts | undefined {
+  const holder = store.getStore();
+  const last = holder?.last;
+  if (holder) holder.last = undefined;
   return last && last.status >= 400 ? last : undefined;
 }
 

@@ -1,9 +1,9 @@
 import { expect, test } from "vitest";
 import {
-  currentFailedResponse,
   makeProviderResponseRecorder,
   requestIdFromBody,
   runWithProviderResponseCapture,
+  takeFailedResponse,
 } from "./provider-response";
 
 type Handler = (event: unknown) => unknown;
@@ -31,7 +31,7 @@ test("a failed response's status and request id are readable for the rest of the
       headers: { "x-oai-request-id": "oai-123", "cf-ray": "ray-9" },
     });
     await Promise.resolve();
-    return currentFailedResponse();
+    return takeFailedResponse();
   });
   expect(seen).toEqual({ status: 400, requestId: "oai-123" });
 });
@@ -44,7 +44,7 @@ test("a successful response is never attributed to a later failure", () => {
       status: 200,
       headers: { "x-oai-request-id": "ok-1" },
     });
-    return currentFailedResponse();
+    return takeFailedResponse();
   });
   expect(seen).toBeUndefined();
 });
@@ -59,7 +59,7 @@ test("a new request clears the previous request's failure", () => {
     });
     // The retry goes over a transport with no response event (a WebSocket).
     on.before_provider_request?.({ type: "before_provider_request" });
-    return currentFailedResponse();
+    return takeFailedResponse();
   });
   expect(seen).toBeUndefined();
 });
@@ -72,7 +72,7 @@ test("cf-ray stands in when the provider names no request id of its own", () => 
       status: 400,
       headers: { "cf-ray": "ray-9" },
     });
-    return currentFailedResponse();
+    return takeFailedResponse();
   });
   expect(seen).toEqual({ status: 400, requestId: "ray-9" });
 });
@@ -86,16 +86,16 @@ test("concurrent prompts keep their own record, and nothing is recorded outside 
       headers: { "x-request-id": id },
     });
   respond(500, "outside");
-  expect(currentFailedResponse()).toBeUndefined();
+  expect(takeFailedResponse()).toBeUndefined();
   const [a, b] = await Promise.all([
     runWithProviderResponseCapture(async () => {
       respond(400, "a");
       await new Promise((r) => setTimeout(r, 0));
-      return currentFailedResponse();
+      return takeFailedResponse();
     }),
     runWithProviderResponseCapture(async () => {
       respond(503, "b");
-      return currentFailedResponse();
+      return takeFailedResponse();
     }),
   ]);
   expect(a).toEqual({ status: 400, requestId: "a" });

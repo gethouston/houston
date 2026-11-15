@@ -36,3 +36,23 @@ export function providerErrorReportTags(
   if (facts.request_id) tags.provider_request_id = facts.request_id;
   return tags;
 }
+
+const LINE_PARTS: [key: string, label: string][] = [
+  ["provider_id", "provider"],
+  ["provider_model", "model"],
+  ["provider_effort", "effort"],
+  ["provider_http_status", "status"],
+  ["provider_request_id", "request id"],
+];
+
+/**
+ * The same facts as one plain line for the report's issue body
+ * (`provider openai-codex · model gpt-6-luna · status 400 · request id …`).
+ * Tags alone never show on the intake's issue, so its reader would miss them.
+ * Empty when the tags carry none of the facts.
+ */
+export function providerErrorReportLine(tags: Record<string, string>): string {
+  return LINE_PARTS.filter(([key]) => tags[key])
+    .map(([key, label]) => `${label} ${tags[key]}`)
+    .join(" · ");
+}

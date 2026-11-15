@@ -1157,3 +1157,36 @@ test("a thrown turn clears the in-flight marker too", async () => {
   await execTurn(conv, id, "turn-thrown", "go", recorded);
   expect(readInflightMarker(config.dataDir, id)).toBeNull();
 });
+
+/**
+ * execTurn wraps the prompt in the provider-response capture, so a failed
+ * request's status and request id reach the turn's card.
+ */
+test("a failed response's status and request id reach the card through execTurn", async () => {
+  const { failWithRecordedResponse } = await import(
+    "../backends/pi/provider-response.test-support"
+  );
+  vi.spyOn(console, "error").mockImplementation(() => {});
+  const id = "exec-provider-response";
+  const { events, unsub } = collect(id);
+  const conv = fakeConv((emit) => {
+    const wire = failWithRecordedResponse();
+    if (wire) emit(wire);
+  });
+
+  await execTurn(conv, id, "turn-1", "hey", {
+    author: undefined,
+    priorAuthors: [],
+  });
+  unsub();
+
+  const frame = events.find(
+    (e): e is Extract<WireEvent, { type: "provider_error" }> =>
+      e.type === "provider_error",
+  );
+  expect(frame?.data).toMatchObject({
+    kind: "unknown",
+    http_status: 400,
+    request_id: "oai-wrap-1",
+  });
+});

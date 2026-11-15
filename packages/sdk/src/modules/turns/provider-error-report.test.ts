@@ -1,6 +1,9 @@
 import type { ProviderError } from "@houston/runtime-client";
 import { expect, test } from "vitest";
-import { providerErrorReportTags } from "./provider-error-report";
+import {
+  providerErrorReportLine,
+  providerErrorReportTags,
+} from "./provider-error-report";
 
 test("an unclassified failure's report carries what its request ran on", () => {
   const error: ProviderError = {
@@ -49,4 +52,23 @@ test("the provider's text never becomes a tag", () => {
   expect(Object.values(providerErrorReportTags(error)).join(" ")).not.toMatch(
     /files/,
   );
+});
+
+test("the report's issue line names every fact the tags carry, in order", () => {
+  expect(
+    providerErrorReportLine({
+      provider_request_id: "oai-req-1",
+      provider_id: "openai-codex",
+      provider_model: "gpt-6-luna",
+      provider_effort: "medium",
+      provider_http_status: "400",
+      source: "ignored",
+    }),
+  ).toBe(
+    "provider openai-codex · model gpt-6-luna · effort medium · status 400 · request id oai-req-1",
+  );
+  expect(providerErrorReportLine({ provider_id: "anthropic" })).toBe(
+    "provider anthropic",
+  );
+  expect(providerErrorReportLine({})).toBe("");
 });
