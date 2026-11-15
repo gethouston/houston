@@ -15,10 +15,12 @@ import i18n from "./i18n";
  *   link was rendered. Keyed on the structural `.status`, since the host
  *   answers no typed code; an agent-gone 404 on the same route (stale roster)
  *   is equally the user's state and shares the copy. The host logs WHY.
- * - `outside_workspace`: the host's typed `400 outside_workspace` (the SDK's
- *   `isOutsideWorkspaceRefusal`): the agent linked a path outside its files,
- *   such as the turn sandbox's `/work/houston-turn-<id>/...`
- *   (HOUSTON-APP-5HK), an internal `.houston/` document or a `..` path.
+ * - `outside_workspace`: the host's typed `400 outside_workspace`, or the
+ *   uncoded `400 invalid workspace path: <path>` an older cloud gateway
+ *   answers for a sleeping agent (the SDK's `isOutsideWorkspaceRefusal`):
+ *   the agent linked a path outside its files, such as the turn sandbox's
+ *   `/work/houston-turn-<id>/...` (HOUSTON-APP-5HK), an internal `.houston/`
+ *   document or a `..` path.
  *
  * Applied ONLY to the two reads; writes keep the default loud surfacing.
  */

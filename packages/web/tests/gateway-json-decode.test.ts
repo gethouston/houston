@@ -95,6 +95,31 @@ test("WebKit's generic json() rejection on an HTML page is never connectivity", 
   expect((err as Error).message).toContain("text/html");
 });
 
+test("the failure carries nothing of the body, in message, stack or cause", async () => {
+  // V8's JSON.parse message quotes the input ("hello secret" is not valid
+  // JSON), and a reported error ships message, stack and cause chain.
+  answer(
+    () =>
+      new Response("hello secret", {
+        status: 200,
+        headers: { "content-type": "text/plain" },
+      }),
+  );
+
+  const err = await jsonError();
+
+  expect(err).toBeInstanceOf(SyntaxError);
+  expect((err as Error).message).toBe(
+    "gateway answered 200 (text/plain, 12 chars) that is not JSON",
+  );
+  for (let e: unknown = err; e !== undefined; e = (e as Error).cause) {
+    expect(e).toBeInstanceOf(Error);
+    expect(String((e as Error).message)).not.toContain("secret");
+    expect(String((e as Error).stack)).not.toContain("secret");
+  }
+  expect((err as Error).cause).toBeUndefined();
+});
+
 test("an empty 200 fails loudly, never as connectivity", async () => {
   answer(() => new Response("", { status: 200 }));
 

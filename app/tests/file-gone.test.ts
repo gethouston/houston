@@ -43,8 +43,18 @@ describe("fileReadRefusal", () => {
     assert.equal(fileReadRefusal(outside(OUTSIDE_BODY)), "outside_workspace");
   });
 
-  it("keeps a 400 loud when only the message says outside", () => {
-    assert.equal(fileReadRefusal(outside({ error: OUTSIDE_BODY.error })), null);
+  it("names an older gateway's uncoded 400 for a sleeping agent", () => {
+    assert.equal(
+      fileReadRefusal(outside({ error: OUTSIDE_BODY.error })),
+      "outside_workspace",
+    );
+  });
+
+  it("keeps an empty path or another 400 loud", () => {
+    assert.equal(
+      fileReadRefusal(outside({ error: "invalid workspace path: " })),
+      null,
+    );
     assert.equal(fileReadRefusal(outside({ error: "missing path" })), null);
   });
 

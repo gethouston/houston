@@ -22,12 +22,25 @@ describe("isOutsideWorkspaceRefusal: a files read of a path outside the agent's 
       expect(isOutsideWorkspaceRefusal(err)).toBe(true);
   });
 
-  it("never matches on the message alone, or on another status or code", () => {
+  it("recognizes the uncoded body an older gateway answers for a sleeping agent", () => {
+    const uncoded = { error: refusal.error };
     for (const err of [
-      engineError(400, { error: refusal.error }),
+      engineError(400, uncoded),
+      engineError(400, JSON.stringify(uncoded)),
+      new FilesHttpError(JSON.stringify(uncoded), 400),
+    ])
+      expect(isOutsideWorkspaceRefusal(err)).toBe(true);
+  });
+
+  it("never matches on the message alone, an empty path, or another status or code", () => {
+    for (const err of [
+      engineError(400, { error: "invalid workspace path: " }),
+      engineError(400, { error: "invalid workspace path:   " }),
       engineError(400, { error: "missing path" }),
       engineError(404, refusal),
+      engineError(404, { error: refusal.error }),
       engineError(400, { ...refusal, code: "read_only" }),
+      engineError(400, { error: refusal.error, code: "name_taken" }),
       new FilesHttpError(refusal.error, 400),
       new Error(refusal.error),
       refusal,

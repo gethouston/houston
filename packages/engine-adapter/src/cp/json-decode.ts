@@ -24,11 +24,13 @@ export function withTextDecodedJson(res: Response): Response {
     const text = await res.text();
     try {
       return JSON.parse(text);
-    } catch (err) {
+    } catch {
+      // Neither the parser's message nor the parse error as `cause`: V8
+      // quotes the input in it ("hello" is not valid JSON), and a reported
+      // error ships its message, stack and cause chain.
       const type = res.headers.get("content-type") ?? "no content type";
       throw new SyntaxError(
-        `gateway answered ${res.status} (${type}, ${text.length} chars) that is not JSON: ${err instanceof Error ? err.message : String(err)}`,
-        { cause: err },
+        `gateway answered ${res.status} (${type}, ${text.length} chars) that is not JSON`,
       );
     }
   };

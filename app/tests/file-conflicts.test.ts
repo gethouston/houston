@@ -255,3 +255,12 @@ test("fileRefusal routes each host FileOpCode to its own surface", () => {
   assert.equal(fileRefusal(new Error("boom")), null);
   assert.equal(fileRefusal(undefined), null);
 });
+
+test("a write refused for a path outside the agent's files stays loud", () => {
+  // Only reads explain this state; on a write the client sent a bad path.
+  for (const body of [
+    { error: "invalid workspace path: ../x", code: "outside_workspace" },
+    { error: "invalid workspace path: ../x" },
+  ])
+    assert.equal(fileRefusal({ status: 400, body }), null);
+});
