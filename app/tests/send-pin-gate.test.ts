@@ -2,8 +2,10 @@ import { deepStrictEqual, strictEqual } from "node:assert";
 import { describe, it } from "node:test";
 import {
   createSendPinGate,
+  pinStallQuietClass,
   type SendPinSignals,
   sendPinSettled,
+  unsettledPinInputs,
 } from "../src/lib/send-pin-gate.ts";
 
 const allSettled: SendPinSignals = {
@@ -145,5 +147,68 @@ describe("createSendPinGate", () => {
     gate.update({ provider: "b", model: "2" }, true);
     await waiting;
     strictEqual(released, true);
+  });
+});
+
+describe("unsettledPinInputs (HOUSTON-APP-5EX)", () => {
+  it("names exactly the inputs still pending, in a fixed order", () => {
+    deepStrictEqual(unsettledPinInputs(allSettled), []);
+    deepStrictEqual(
+      unsettledPinInputs({
+        ...allSettled,
+        statusesSettled: false,
+        agentConfigSettled: false,
+      }),
+      ["agentConfig", "statuses"],
+    );
+    deepStrictEqual(
+      unsettledPinInputs({ ...allSettled, choiceSettled: false }),
+      ["choice"],
+    );
+  });
+});
+
+describe("pinStallQuietClass", () => {
+  const calm = { online: true, engineWarming: false, failures: [] };
+
+  it("is a real report when nothing explains the stall", () => {
+    strictEqual(pinStallQuietClass(calm), null);
+    strictEqual(
+      pinStallQuietClass({ ...calm, failures: [undefined, new Error("boom")] }),
+      null,
+    );
+  });
+
+  it("is offline when the device is offline", () => {
+    strictEqual(pinStallQuietClass({ ...calm, online: false }), "offline");
+  });
+
+  it("is engine_waking while the agent's engine warms up", () => {
+    strictEqual(
+      pinStallQuietClass({ ...calm, engineWarming: true }),
+      "engine_waking",
+    );
+  });
+
+  it("reads a waiting read's last failure", () => {
+    strictEqual(
+      pinStallQuietClass({
+        ...calm,
+        failures: [new TypeError("Failed to fetch")],
+      }),
+      "offline",
+    );
+    strictEqual(
+      pinStallQuietClass({
+        ...calm,
+        failures: [
+          Object.assign(new Error("engine unavailable (engine error 503)"), {
+            name: "HoustonEngineError",
+            status: 503,
+          }),
+        ],
+      }),
+      "engine_waking",
+    );
   });
 });

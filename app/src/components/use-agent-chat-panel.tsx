@@ -136,7 +136,8 @@ import {
 import { blocksPurchaseUrl } from "../lib/purchase-policy";
 import { queryKeys } from "../lib/query-keys";
 import { reportRejection } from "../lib/report-rejection";
-import { sendPinSettled } from "../lib/send-pin-gate";
+import { type SendPinSignals, sendPinSettled } from "../lib/send-pin-gate";
+import { reportSendPinStall } from "../lib/send-pin-stall-report";
 import {
   buildSkillClaudePrompt,
   decodeSkillMessage,
@@ -157,7 +158,10 @@ import {
 } from "../lib/tauri";
 import { DEFAULT_TURN_MODE, type TurnMode } from "../lib/turn-mode";
 import type { Agent, SkillSummary } from "../lib/types";
-import { useAgentProvisioningStore } from "../stores/agent-provisioning";
+import {
+  isAgentProvisioning,
+  useAgentProvisioningStore,
+} from "../stores/agent-provisioning";
 import { useDraftStore, useNewConversationDraftKey } from "../stores/drafts";
 import { useInteractionDraftStore } from "../stores/interaction-drafts";
 import { useUIStore } from "../stores/ui";
@@ -840,17 +844,35 @@ export function useAgentChatPanel({
   // must not carry a guess as the turn's pin: `resolveSendPin` holds the send
   // until the composer settles (bounded), then hands it the pin the picker
   // shows at that moment.
-  const pinSettled = sendPinSettled({
+  const pinSignals: SendPinSignals = {
     agentConfigSettled,
     activitySettled,
     capabilitiesSettled: !capabilitiesLoading,
     choiceSettled: !modelDecision.personal || modelChoiceFetched,
     statusesSettled: !providerStatusesLoading,
+  };
+  const pinSettled = sendPinSettled(pinSignals);
+  // Read at timeout time: the report names what was still pending THEN.
+  const pinStallRef = useRef({
+    signals: pinSignals,
+    agentId,
+    failures: [] as unknown[],
   });
+  pinStallRef.current = {
+    signals: pinSignals,
+    agentId,
+    failures: [agentConfigQuery.failureReason, activityQuery.failureReason],
+  };
   const reportPinTimeout = useCallback(() => {
-    logAndReportError(
-      "chat.send-pin-settle",
-      new Error("composer pin never settled; sent the current pin"),
+    const { signals, agentId: stalledAgent, failures } = pinStallRef.current;
+    reportSendPinStall(
+      signals,
+      {
+        online: typeof navigator === "undefined" || navigator.onLine !== false,
+        engineWarming: stalledAgent ? isAgentProvisioning(stalledAgent) : false,
+        failures,
+      },
+      stalledAgent,
     );
   }, []);
   const resolveSendPin = useSendPin(
