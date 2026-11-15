@@ -10,6 +10,7 @@ mod claude_login;
 mod channels_loopback;
 mod codex_oauth_loopback;
 mod commands;
+mod deep_link_register;
 mod dictation;
 #[cfg(target_os = "macos")]
 mod dmg_guard;
@@ -339,12 +340,13 @@ pub fn run() {
             // reach the app.
             //   - Windows: `register_all()` writes HKCU\Software\Classes\houston
             //     pointing at the current exe (per-user, no admin, idempotent).
-            //   - Linux: it writes
+            //   - Linux: `deep_link_register` writes
             //     `~/.local/share/applications/houston-app-handler.desktop`
-            //     declaring `x-scheme-handler/houston` at the AppImage path.
+            //     declaring `x-scheme-handler/houston` at the AppImage path, and
+            //     still sets the handler when desktop-file-utils is missing.
             // Must run in setup(), before any sign-in. Failure is a warn, not a
             // crash: Google/Microsoft/email sign-in don't depend on the scheme.
-            #[cfg(any(target_os = "linux", target_os = "windows"))]
+            #[cfg(target_os = "windows")]
             {
                 use tauri_plugin_deep_link::DeepLinkExt;
                 if let Err(e) = app.deep_link().register_all() {
@@ -354,6 +356,8 @@ pub fn run() {
                     );
                 }
             }
+            #[cfg(target_os = "linux")]
+            deep_link_register::register(app.handle());
 
             // MSI upgrades break taskbar-pin/desktop icons (PRODUCT-1233);
             // once per installed version, repair stale shortcut icons and
