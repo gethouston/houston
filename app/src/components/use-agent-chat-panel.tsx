@@ -136,7 +136,11 @@ import {
 import { blocksPurchaseUrl } from "../lib/purchase-policy";
 import { queryKeys } from "../lib/query-keys";
 import { reportRejection } from "../lib/report-rejection";
-import { type SendPinSignals, sendPinSettled } from "../lib/send-pin-gate";
+import {
+  type PinInputFailures,
+  type SendPinSignals,
+  sendPinSettled,
+} from "../lib/send-pin-gate";
 import { reportSendPinStall } from "../lib/send-pin-stall-report";
 import {
   buildSkillClaudePrompt,
@@ -487,7 +491,11 @@ export function useAgentChatPanel({
   // Integration connect cards are a new-engine feature: the host advertises
   // its wired providers in capabilities; the legacy Rust engine (null) and
   // unconfigured deployments fall back to plain markdown links.
-  const { capabilities, isLoading: capabilitiesLoading } = useCapabilities();
+  const {
+    capabilities,
+    isLoading: capabilitiesLoading,
+    failureReason: capabilitiesFailure,
+  } = useCapabilities();
   const integrationsEnabled = integrationsSupported(capabilities);
 
   // Teams E8: in a multiplayer Teams org the composer's model + effort pickers
@@ -496,8 +504,11 @@ export function useAgentChatPanel({
   // / self-host keeps the shared-config behavior (personal=false, no ceiling).
   // The gateway is the sole enforcer of the ceiling per turn.
   const modelDecision = modelSelectorDecision(capabilities, agent);
-  const { data: modelChoiceInfo, isFetched: modelChoiceFetched } =
-    useAgentModelChoice(agent?.id ?? "", modelDecision.personal);
+  const {
+    data: modelChoiceInfo,
+    isFetched: modelChoiceFetched,
+    failureReason: modelChoiceFailure,
+  } = useAgentModelChoice(agent?.id ?? "", modelDecision.personal);
   const setModelChoice = useSetAgentModelChoice(agent?.id ?? "");
   const allowedModels = modelDecision.personal
     ? (modelChoiceInfo?.allowedModels ?? null)
@@ -654,6 +665,7 @@ export function useAgentChatPanel({
     statuses: providerStatuses,
     isLoading: providerStatusesLoading,
     isError: providerStatusesError,
+    failureReason: providerStatusesFailure,
   } = useProviderStatuses();
   const authedProviders = useMemo(
     () =>
@@ -853,16 +865,19 @@ export function useAgentChatPanel({
   };
   const pinSettled = sendPinSettled(pinSignals);
   // Read at timeout time: the report names what was still pending THEN.
+  const pinFailures: PinInputFailures = {
+    agentConfigSettled: agentConfigQuery.failureReason,
+    activitySettled: activityQuery.failureReason,
+    capabilitiesSettled: capabilitiesFailure,
+    choiceSettled: modelChoiceFailure,
+    statusesSettled: providerStatusesFailure,
+  };
   const pinStallRef = useRef({
     signals: pinSignals,
     agentId,
-    failures: [] as unknown[],
+    failures: pinFailures,
   });
-  pinStallRef.current = {
-    signals: pinSignals,
-    agentId,
-    failures: [agentConfigQuery.failureReason, activityQuery.failureReason],
-  };
+  pinStallRef.current = { signals: pinSignals, agentId, failures: pinFailures };
   const reportPinTimeout = useCallback(() => {
     const { signals, agentId: stalledAgent, failures } = pinStallRef.current;
     reportSendPinStall(

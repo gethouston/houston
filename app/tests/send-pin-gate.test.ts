@@ -169,46 +169,65 @@ describe("unsettledPinInputs (HOUSTON-APP-5EX)", () => {
 });
 
 describe("pinStallQuietClass", () => {
-  const calm = { online: true, engineWarming: false, failures: [] };
+  const calm = { online: true, engineWarming: false, failures: {} };
+  const stalled: SendPinSignals = { ...allSettled, statusesSettled: false };
+  const waking = Object.assign(
+    new Error("engine unavailable (engine error 503)"),
+    { name: "HoustonEngineError", status: 503 },
+  );
 
   it("is a real report when nothing explains the stall", () => {
-    strictEqual(pinStallQuietClass(calm), null);
+    strictEqual(pinStallQuietClass(stalled, calm), null);
     strictEqual(
-      pinStallQuietClass({ ...calm, failures: [undefined, new Error("boom")] }),
+      pinStallQuietClass(stalled, {
+        ...calm,
+        failures: { statusesSettled: new Error("boom") },
+      }),
       null,
     );
   });
 
   it("is offline when the device is offline", () => {
-    strictEqual(pinStallQuietClass({ ...calm, online: false }), "offline");
+    strictEqual(
+      pinStallQuietClass(stalled, { ...calm, online: false }),
+      "offline",
+    );
   });
 
   it("is engine_waking while the agent's engine warms up", () => {
     strictEqual(
-      pinStallQuietClass({ ...calm, engineWarming: true }),
+      pinStallQuietClass(stalled, { ...calm, engineWarming: true }),
       "engine_waking",
     );
   });
 
-  it("reads a waiting read's last failure", () => {
+  it("reads the last failure of an input still unsettled", () => {
     strictEqual(
-      pinStallQuietClass({
+      pinStallQuietClass(stalled, {
         ...calm,
-        failures: [new TypeError("Failed to fetch")],
+        failures: { statusesSettled: new TypeError("Failed to fetch") },
       }),
       "offline",
     );
     strictEqual(
-      pinStallQuietClass({
+      pinStallQuietClass(stalled, {
         ...calm,
-        failures: [
-          Object.assign(new Error("engine unavailable (engine error 503)"), {
-            name: "HoustonEngineError",
-            status: 503,
-          }),
-        ],
+        failures: { statusesSettled: waking },
       }),
       "engine_waking",
+    );
+  });
+
+  it("ignores a stale failure on an input that has since settled", () => {
+    strictEqual(
+      pinStallQuietClass(stalled, {
+        ...calm,
+        failures: {
+          agentConfigSettled: waking,
+          activitySettled: new TypeError("Failed to fetch"),
+        },
+      }),
+      null,
     );
   });
 });

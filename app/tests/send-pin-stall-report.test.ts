@@ -26,7 +26,7 @@ const signals = {
   choiceSettled: true,
   statusesSettled: false,
 };
-const calm = { online: true, engineWarming: false, failures: [] };
+const calm = { online: true, engineWarming: false, failures: {} };
 
 describe("reportSendPinStall (HOUSTON-APP-5EX)", () => {
   beforeEach(() => {
@@ -63,8 +63,13 @@ describe("reportSendPinStall (HOUSTON-APP-5EX)", () => {
       const [kind, command, , , context, extra] = call?.args ?? [];
       strictEqual(kind, quiet);
       strictEqual(command, "chat.send-pin-settle");
-      deepStrictEqual(context, { agentId: "agent-1" });
-      deepStrictEqual(extra, { unsettled_inputs: ["statuses"] });
+      // No agent context: a stall is not an answer from the agent's engine,
+      // so it must never count toward that agent's waking_stuck escalation.
+      strictEqual(context, undefined);
+      deepStrictEqual(extra, {
+        unsettled_inputs: ["statuses"],
+        stalled_agent_id: "agent-1",
+      });
     });
   }
 });

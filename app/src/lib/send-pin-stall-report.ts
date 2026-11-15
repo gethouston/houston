@@ -17,24 +17,22 @@ const COMMAND = "chat.send-pin-settle";
  */
 export function reportSendPinStall(
   signals: SendPinSignals,
-  env: Parameters<typeof pinStallQuietClass>[0],
+  env: Parameters<typeof pinStallQuietClass>[1],
   agentId: string | null,
 ): void {
   const unsettled = unsettledPinInputs(signals);
   const names = unsettled.join(",") || "none";
   const message = `composer pin never settled (waiting on ${names}); sent the current pin`;
   const err = new Error(message);
-  const quiet = pinStallQuietClass(env);
+  const quiet = pinStallQuietClass(signals, env);
   if (quiet) {
     console.warn(`[${COMMAND}] ${message} (${quiet})`);
-    reportQuietError(
-      quiet,
-      COMMAND,
-      message,
-      err,
-      agentId ? { agentId } : undefined,
-      { unsettled_inputs: unsettled },
-    );
+    // No agent context: a stall is not an answer from the agent's engine, so
+    // it must not count toward that agent's waking_stuck escalation.
+    reportQuietError(quiet, COMMAND, message, err, undefined, {
+      unsettled_inputs: unsettled,
+      stalled_agent_id: agentId,
+    });
     return;
   }
   logAndReportError(COMMAND, err, {
