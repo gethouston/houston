@@ -3,7 +3,9 @@ import {
   BridgeStateError,
   isAuthorizationFailure,
   isBridgeUnsupported,
+  isMigrationReconnect,
   isPermanentBridgeFailure,
+  isStaleBridgeSession,
 } from "./errors";
 import type { LocalBridgeStatus } from "./types";
 
@@ -15,13 +17,11 @@ export function bridgeRetry(
   if (isBridgeUnsupported(error)) return { status: "disabled", delay: null };
   if (error instanceof BridgeRegistrationRefusedError)
     return { status: "disabled", delay: null };
-  const migrationMismatch =
-    typeof error === "object" &&
-    error !== null &&
-    "code" in error &&
-    error.code === "migration_requires_reconnect";
-  const status =
-    migrationMismatch || isPermanentBridgeFailure(error)
+  // A stale renewal is a 409 like the permanent refusals, but a fresh session
+  // recovers it, so it must be checked first.
+  const status = isStaleBridgeSession(error)
+    ? "reconnecting"
+    : isMigrationReconnect(error) || isPermanentBridgeFailure(error)
       ? "reconnect_required"
       : error instanceof BridgeStateError
         ? error.status

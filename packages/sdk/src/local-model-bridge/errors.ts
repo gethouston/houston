@@ -112,23 +112,61 @@ export function isBridgeCancellation(error: unknown): boolean {
   return isBridgeAbort(error) || error instanceof BridgeDisposedError;
 }
 
-export function isBridgeAbsent(error: unknown): boolean {
+/**
+ * The gateway's refusal `code` for an answer with `status`, or undefined.
+ * HoustonEngineError keeps the gateway's top-level code in `body`; its `code`
+ * getter exposes only the nested host error shape.
+ */
+function gatewayRefusal(error: unknown, status: number): string | undefined {
   if (
     typeof error !== "object" ||
     error === null ||
     !("status" in error) ||
-    error.status !== 404
+    error.status !== status
   )
-    return false;
-  if ("code" in error && error.code !== undefined)
-    return error.code === "bridge_not_found";
-  // HoustonEngineError keeps gateway's top-level code in body; its getter
-  // exposes only the nested host error shape.
+    return undefined;
+  if ("code" in error && error.code !== undefined) return String(error.code);
   const body = "body" in error ? error.body : undefined;
-  return (
-    typeof body === "object" &&
+  return typeof body === "object" &&
     body !== null &&
     "code" in body &&
-    body.code === "bridge_not_found"
+    typeof body.code === "string"
+    ? body.code
+    : undefined;
+}
+
+export function isBridgeAbsent(error: unknown): boolean {
+  return gatewayRefusal(error, 404) === "bridge_not_found";
+}
+
+/**
+ * A renewal for a session generation the relay no longer holds (it restarted,
+ * or the renewal came after the session lapsed). Nothing is wrong with the
+ * bridge: a fresh session (no generation) recovers it (HOUSTON-APP-5DY).
+ */
+export function isStaleBridgeSession(error: unknown): boolean {
+  return gatewayRefusal(error, 409) === "stale_session";
+}
+
+/**
+ * The gateway could not match the old tunnel's proof, so the migration never
+ * completes on its own: the person connects the model again, which needs no
+ * proof (HOUSTON-APP-5M1).
+ */
+export function isMigrationReconnect(error: unknown): boolean {
+  return gatewayRefusal(error, 409) === "migration_requires_reconnect";
+}
+
+/**
+ * The native bridge could not reach, or timed out reaching, the gateway's
+ * relay: the device dropped off the network or the relay is rolling. The
+ * native port rejects with the plain strings `BridgeError`'s Display renders
+ * (`crates/local-model-bridge/src/types.rs`), and the SDK retries on its
+ * reconnecting curve (HOUSTON-APP-5E4).
+ */
+export function isBridgeRelayUnreachable(error: unknown): boolean {
+  return (
+    error === "Bridge connection failed" ||
+    error === "Bridge operation timed out"
   );
 }
