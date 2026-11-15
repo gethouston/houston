@@ -51,9 +51,11 @@ export type FirstDayRefusalCode =
   | "first_day_no_provider"
   /**
    * The person's AI is connected but its credential could not be served for
-   * the first turn right now (the provider failed a token refresh, or the
-   * lookup timed out). Transient: the first day stays pending, and the
-   * answer carries `Retry-After` for when another start may succeed.
+   * the first turn right now (the provider failed a token refresh).
+   * Transient: the first day stays pending, and the answer carries
+   * `Retry-After` for when another start may succeed. A provider that blocks
+   * the account answers the send route's `provider_account_blocked` refusal
+   * instead (`ProviderRefusal` in `@houston/wire-types`).
    */
   | "first_day_provider_unavailable";
 

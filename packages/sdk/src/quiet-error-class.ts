@@ -38,6 +38,10 @@ import type { BridgeQuietClass } from "@houston/sdk/local-model-bridge/quiet";
  *  person's AI could not be reached right now (`agents/first-day-refusal`):
  *  transient, with copy to try again, and one fingerprinted warning so a
  *  provider outage still shows up as a count.
+ *  `first_day_account_blocked` is a first-day start refused because the
+ *  person's provider blocks their account (`agents/first-day-refusal`'s
+ *  `firstDayAccountBlocked`): a business state the person fixes at the
+ *  provider or by connecting another AI, with copy saying so and no report.
  *  `storage_full` is the device's disk refusing the updater's release
  *  download: the device's state, not a bug, named only by the download report
  *  path and never retried for that release in the session.
@@ -70,6 +74,7 @@ export type QuietErrorClass =
   | "webhook_not_creator"
   | "first_day_no_provider"
   | "first_day_provider_unavailable"
+  | "first_day_account_blocked"
   | "bug_intake_unavailable"
   | "upload_interrupted"
   | "routine_gone"

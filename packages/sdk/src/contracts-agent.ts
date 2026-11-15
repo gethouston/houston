@@ -48,6 +48,7 @@ export {
   type AgentsModule,
   type AgentsViewModel,
   type AgentsWrites,
+  firstDayAccountBlocked,
   firstDayRefusal,
   type InstalledConfig,
   isAgentNameReserved,

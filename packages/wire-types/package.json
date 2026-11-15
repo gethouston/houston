@@ -16,6 +16,10 @@
       "types": "./src/first-day-refusal.ts",
       "import": "./src/first-day-refusal.ts"
     },
+    "./provider-refusal": {
+      "types": "./src/provider-refusal.ts",
+      "import": "./src/provider-refusal.ts"
+    },
     "./routine-refusal": {
       "types": "./src/routine-refusal.ts",
       "import": "./src/routine-refusal.ts"

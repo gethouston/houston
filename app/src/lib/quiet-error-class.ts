@@ -16,6 +16,7 @@
 // Dependency-free subpath: the app's node:test entry points cannot load the
 // SDK root (it pulls @houston/domain, whose extensionless imports node rejects).
 import {
+  firstDayAccountBlocked,
   isFirstDayNoProvider,
   isFirstDayProviderUnavailable,
 } from "@houston/sdk/agents/first-day-refusal";
@@ -70,6 +71,10 @@ export type { QuietErrorClass } from "@houston/sdk/quiet-error-class";
  * `isFirstDayProviderUnavailable`): a toast asking to try again shortly, and
  * one fingerprinted warning instead of a bug per press (HOUSTON-APP-5H4).
  *
+ * `first_day_account_blocked` is a first-day start refused because the
+ * provider blocks the person's account (the SDK's `firstDayAccountBlocked`):
+ * a business state with copy naming the provider, and no report.
+ *
  * `bug_intake_unavailable` is the bug-report intake refusing everyone on our
  * side (Linear's plan cap, HOUSTON-APP-5FT). `submitBugReport` reports it
  * itself and delivers the report through the fallback; this catches any other
@@ -88,6 +93,7 @@ export function classifyQuietError(err: unknown): QuietErrorClass | null {
   if (isFirstDayNoProvider(err)) return "first_day_no_provider";
   if (isFirstDayProviderUnavailable(err))
     return "first_day_provider_unavailable";
+  if (firstDayAccountBlocked(err)) return "first_day_account_blocked";
   if (isBugIntakeUnavailable(err)) return "bug_intake_unavailable";
   const bridge = bridgeQuietClass(err);
   if (bridge) return bridge;

@@ -4,6 +4,7 @@ import { HoustonSdk } from "../../sdk";
 import { memoryKv } from "../../test-ports";
 import {
   AgentsCommand,
+  firstDayAccountBlocked,
   firstDayRefusal,
   isFirstDayNoProvider,
   isFirstDayNotPending,
@@ -188,6 +189,29 @@ describe("the first-day refusal classifiers", () => {
         body: { error: "x", code: "first_day_not_started" },
       }),
     ).toBe(false);
+  });
+
+  it("read the send route's account-blocked refusal, never retried", async () => {
+    const body = {
+      error:
+        "Your GitHub Copilot account is blocked by the provider. Fix it there, or connect another AI.",
+      code: "provider_account_blocked",
+      provider: "github-copilot",
+    };
+    const h = harness({ status: 409, body });
+    dispose = h.sdk.agents.dispose;
+    const err = await h.sdk.agents.startFirstDay("a1").catch((e: unknown) => e);
+    expect(firstDayAccountBlocked(err)).toEqual(body);
+    expect(isFirstDayNoProvider(err)).toBe(false);
+    expect(isFirstDayProviderUnavailable(err)).toBe(false);
+    expect(h.calls).toHaveLength(1);
+    expect(
+      firstDayAccountBlocked({
+        status: 409,
+        body: { error: "x", code: "no_provider" },
+      }),
+    ).toBeNull();
+    expect(firstDayAccountBlocked({ status: 502, body })).toBeNull();
   });
 
   it("read the adapter's parsed body and keep the provider it names", () => {

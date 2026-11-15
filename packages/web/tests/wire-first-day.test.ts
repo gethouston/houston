@@ -1,5 +1,6 @@
 import { HoustonClient } from "@houston/engine-adapter/client";
 import {
+  firstDayAccountBlocked,
   firstDayRefusal,
   isFirstDayNoProvider,
   isFirstDayProviderUnavailable,
@@ -214,5 +215,28 @@ test("a start whose AI could not be reached (409 first_day_provider_unavailable 
   expect(failure).toMatchObject({ name: "HoustonEngineError", status: 409 });
   expect(isFirstDayProviderUnavailable(failure)).toBe(true);
   expect(isFirstDayNoProvider(failure)).toBe(false);
+  expect(calls).toHaveLength(1);
+});
+
+test("a start the provider blocks (409 provider_account_blocked) is the send route's refusal, not re-issued", async () => {
+  vi.useFakeTimers();
+  stubResponses(
+    json(409, {
+      error: "Your GitHub Copilot account is blocked by the provider.",
+      code: "provider_account_blocked",
+      provider: "github-copilot",
+    }),
+  );
+  const pending = client()
+    .startFirstDay("a1", {})
+    .then(
+      () => null,
+      (err: unknown) => err,
+    );
+  await vi.advanceTimersByTimeAsync(120_000);
+  const failure = await pending;
+  expect(failure).toMatchObject({ name: "HoustonEngineError", status: 409 });
+  expect(firstDayAccountBlocked(failure)?.provider).toBe("github-copilot");
+  expect(firstDayRefusal(failure)).toBeNull();
   expect(calls).toHaveLength(1);
 });

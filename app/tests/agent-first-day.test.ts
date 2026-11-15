@@ -1,6 +1,7 @@
 import assert from "node:assert/strict";
 import { describe, it } from "node:test";
 import {
+  firstDayAccountBlocked,
   isFirstDayNoProvider,
   isFirstDayNotPending,
   isFirstDayProviderUnavailable,
@@ -106,5 +107,27 @@ describe("a start whose AI could not be reached", () => {
   it("is a quiet class, never the bug pair (HOUSTON-APP-5H4)", () => {
     const err = Object.assign(new Error("engine error 409"), refusal);
     assert.equal(classifyQuietError(err), "first_day_provider_unavailable");
+  });
+});
+
+describe("a start the provider blocks", () => {
+  const refusal = {
+    status: 409,
+    body: {
+      error: "Your GitHub Copilot account is blocked by the provider.",
+      code: "provider_account_blocked",
+      provider: "github-copilot",
+    },
+  };
+
+  it("is the SDK's account-blocked refusal, naming the provider", () => {
+    assert.equal(firstDayAccountBlocked(refusal)?.provider, "github-copilot");
+    assert.equal(isFirstDayNoProvider(refusal), false);
+    assert.equal(isFirstDayProviderUnavailable(refusal), false);
+  });
+
+  it("is a quiet class, never the bug pair", () => {
+    const err = Object.assign(new Error("engine error 409"), refusal);
+    assert.equal(classifyQuietError(err), "first_day_account_blocked");
   });
 });

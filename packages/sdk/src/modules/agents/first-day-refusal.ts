@@ -3,6 +3,11 @@ import {
   parseFirstDayRefusal,
   parseFirstDayRefusalText,
 } from "@houston/wire-types/first-day-refusal";
+import {
+  type ProviderRefusal,
+  parseProviderRefusal,
+  parseProviderRefusalText,
+} from "@houston/wire-types/provider-refusal";
 
 /**
  * The typed refusal behind a failed first-day start (`409`, the protocol's
@@ -43,13 +48,37 @@ export function isFirstDayNoProvider(error: unknown): boolean {
 /**
  * Whether a start was refused because the person's AI could not be reached
  * for the first turn right now (`first_day_provider_unavailable`): the
- * provider failed a token refresh, or the lookup timed out. Transient and
+ * provider failed a token refresh. Transient and
  * nothing for us to fix on the client, so every surface reads it through the
  * quiet classifier (one fingerprinted warning, copy asking to try again). The
  * first day stays pending, so the same start works once the provider answers.
  */
 export function isFirstDayProviderUnavailable(error: unknown): boolean {
   return firstDayRefusal(error)?.code === "first_day_provider_unavailable";
+}
+
+/**
+ * The refusal behind a start whose provider blocks the person's account
+ * (GitHub Copilot with billing locked): the send route's own
+ * `409 provider_account_blocked`, read with the same wire parser, so one
+ * reading covers both routes. The credential is intact and a sign-in would
+ * change nothing; the person fixes it at the provider or connects another AI.
+ * The first day stays pending. Null for every other error.
+ */
+export function firstDayAccountBlocked(error: unknown): ProviderRefusal | null {
+  if (!error || typeof error !== "object") return null;
+  const { status, body, message } = error as {
+    status?: unknown;
+    body?: unknown;
+    message?: unknown;
+  };
+  if (status !== 409) return null;
+  const payload = body === undefined ? message : body;
+  const refusal =
+    typeof payload === "string"
+      ? parseProviderRefusalText(payload)
+      : parseProviderRefusal(payload);
+  return refusal?.code === "provider_account_blocked" ? refusal : null;
 }
 
 /**

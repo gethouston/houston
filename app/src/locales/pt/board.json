@@ -132,6 +132,12 @@
       "title": "Sua IA não está respondendo agora",
       "body": "Não conseguimos falar com sua IA para começar o primeiro dia. Espere um minuto e comece de novo."
     },
+    "accountBlocked": {
+      "title": "Sua conta do {{provider}} está bloqueada",
+      "body": "Seu funcionário de IA não consegue começar o primeiro dia no {{provider}}. Resolva no {{provider}} ou conecte outra IA e depois comece o primeiro dia de novo.",
+      "titleAny": "Sua conta de IA está bloqueada",
+      "bodyAny": "Seu funcionário de IA não consegue começar o primeiro dia nesta IA. Resolva com seu provedor de IA ou conecte outra IA e depois comece o primeiro dia de novo."
+    },
     "bannerNeedsAiTitle": "Conecte uma IA para sua equipe começar",
     "reconnect": {
       "title": "Reconecte {{provider}}",
