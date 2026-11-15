@@ -3,6 +3,8 @@
 // subpath, and node resolves no extensionless relative import.
 export { isBridgeUnsupported } from "@houston/sdk/local-model-bridge/unsupported";
 
+import { refusalCode, refusalStatus } from "@houston/sdk/refusal-code";
+
 export type BridgeState =
   | "model_unavailable"
   | "revoked"
@@ -112,31 +114,21 @@ export function isBridgeCancellation(error: unknown): boolean {
   return isBridgeAbort(error) || error instanceof BridgeDisposedError;
 }
 
-/**
- * The gateway's refusal `code` for an answer with `status`, or undefined.
- * HoustonEngineError keeps the gateway's top-level code in `body`; its `code`
- * getter exposes only the nested host error shape.
- */
-function gatewayRefusal(error: unknown, status: number): string | undefined {
-  if (
-    typeof error !== "object" ||
-    error === null ||
-    !("status" in error) ||
-    error.status !== status
-  )
-    return undefined;
-  if ("code" in error && error.code !== undefined) return String(error.code);
-  const body = "body" in error ? error.body : undefined;
-  return typeof body === "object" &&
-    body !== null &&
-    "code" in body &&
-    typeof body.code === "string"
-    ? body.code
-    : undefined;
+function refusedWith(error: unknown, status: number): error is Error {
+  return error instanceof Error && refusalStatus(error) === status;
 }
 
+/**
+ * The host answers absence in its nested shape (`{ error: { code } }`, which
+ * HoustonEngineError's `code` getter reads); the gateway puts the code at the
+ * top level of the body.
+ */
 export function isBridgeAbsent(error: unknown): boolean {
-  return gatewayRefusal(error, 404) === "bridge_not_found";
+  if (!refusedWith(error, 404)) return false;
+  const nested = (error as { code?: unknown }).code;
+  return (
+    nested === "bridge_not_found" || refusalCode(error) === "bridge_not_found"
+  );
 }
 
 /**
@@ -145,7 +137,7 @@ export function isBridgeAbsent(error: unknown): boolean {
  * bridge: a fresh session (no generation) recovers it (HOUSTON-APP-5DY).
  */
 export function isStaleBridgeSession(error: unknown): boolean {
-  return gatewayRefusal(error, 409) === "stale_session";
+  return refusedWith(error, 409) && refusalCode(error) === "stale_session";
 }
 
 /**
@@ -154,7 +146,10 @@ export function isStaleBridgeSession(error: unknown): boolean {
  * proof (HOUSTON-APP-5M1).
  */
 export function isMigrationReconnect(error: unknown): boolean {
-  return gatewayRefusal(error, 409) === "migration_requires_reconnect";
+  return (
+    refusedWith(error, 409) &&
+    refusalCode(error) === "migration_requires_reconnect"
+  );
 }
 
 /**
@@ -162,7 +157,9 @@ export function isMigrationReconnect(error: unknown): boolean {
  * relay: the device dropped off the network or the relay is rolling. The
  * native port rejects with the plain strings `BridgeError`'s Display renders
  * (`crates/local-model-bridge/src/types.rs`), and the SDK retries on its
- * reconnecting curve (HOUSTON-APP-5E4).
+ * reconnecting curve (HOUSTON-APP-5E4). A handshake the relay answered with
+ * an HTTP status ("Bridge connection refused (401)") is not this: the
+ * network worked and our side said no, so it stays a loud report.
  */
 export function isBridgeRelayUnreachable(error: unknown): boolean {
   return (

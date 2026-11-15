@@ -68,6 +68,11 @@ test("keeps unexpected gateway and native answers loud", () => {
     }),
     "Invalid bridge protocol",
     "Bridge connection does not match registration",
+    // The relay answered the handshake with a status: our side refused.
+    "Bridge connection refused (401)",
+    "Bridge connection refused (403)",
+    "Bridge connection refused (502)",
+    "Bridge connection refused (503)",
   ])
     expect(bridgeQuietClass(error)).toBeNull();
 });

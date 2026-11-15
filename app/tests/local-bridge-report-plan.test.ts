@@ -87,6 +87,12 @@ describe("planLocalBridgeReport", () => {
       ),
       { kind: "failed", cause: "TypeError: Load failed" },
     );
+    // The relay answered the handshake with a status: our side refused, so
+    // it is never the quiet relay-unreachable class.
+    deepStrictEqual(planLocalBridgeReport("Bridge connection refused (401)"), {
+      kind: "failed",
+      cause: "Bridge connection refused (401)",
+    });
     deepStrictEqual(planLocalBridgeReport("boom"), {
       kind: "failed",
       cause: "boom",
