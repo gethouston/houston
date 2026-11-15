@@ -53,10 +53,15 @@ import type { BridgeQuietClass } from "@houston/sdk/local-model-bridge/quiet";
  *  `link_identity_taken` is a provider sign-in that met an existing account
  *  whose provider identity already belongs to another account
  *  (`modules/identity`): the person stays signed in by email code and sees
- *  a notice. Support can join the accounts, so it is one counted warning. */
+ *  a notice. Support can join the accounts, so it is one counted warning.
+ *  `agent_data_busy` is the gateway's read-only "agent data temporarily
+ *  unavailable" 503 outliving the read's retries: nothing is waking (reads
+ *  never wake the agent), so the person sees nothing and it is one counted
+ *  warning per burst (HOUSTON-APP-5HP). */
 export type QuietErrorClass =
   | "office_preview_capacity"
   | "engine_waking"
+  | "agent_data_busy"
   | "offline"
   | BridgeQuietClass
   | "release_host_unavailable"

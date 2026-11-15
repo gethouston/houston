@@ -64,14 +64,12 @@
 // answers the same `engine unavailable` pair with the latch as detail
 // (PRODUCT-1804), so nothing here reads the detail.
 //
-// A sixth is the GATEWAY serving a sleeping pool-served agent's reads from its
-// store with no pod: when the store cannot answer yet (a drain window, a
-// fail-fast window, no pool worker free) the read answers
-// `503 {"error":"agent data temporarily unavailable; retrying"}` +
-// `Retry-After` and never wakes the pod (`cloud/internal/edge/agents/
-// agentfileasleep.go`, `poolops.go`). The same read answers once the store
-// does; reported per read it filed a bug for a passive skills read
-// (HOUSTON-APP-5HP).
+// NOT one of them: `503 {"error":"agent data temporarily unavailable;
+// retrying"}` + `Retry-After`, the gateway's answer to a READ of a sleeping
+// agent's data it cannot serve yet. Reads never wake the agent, so the waking
+// notice would be wrong. The read transport gives it the wake retry budget;
+// one that outlives it is the report-only `agent_data_busy` quiet class
+// (`isAgentDataBusyError`, HOUSTON-APP-5HP).
 //
 // Four client stacks reach the host, minting different error shapes (the
 // split `@houston/sdk`'s refusal readers also handle, plus the runtime client):
@@ -142,11 +140,32 @@ function isWakingAnswer(
     return (
       matches(ENGINE_UNAVAILABLE_503) ||
       matches(RUNTIME_STILL_STARTING_503) ||
-      matches(HOST_SHUTTING_DOWN_503) ||
-      matches(AGENT_DATA_BUSY_503)
+      matches(HOST_SHUTTING_DOWN_503)
     );
   }
   return status === 502 && matches(ENGINE_PROXY_FAILED_502);
+}
+
+/** The (status, reason matcher) off any of the client shapes above; `sdk`
+ *  flags the SDK write branch, which reads one extra waking pair. */
+function gatewayAnswer(err: unknown): {
+  status: unknown;
+  matches: (reason: string) => boolean;
+  sdk: boolean;
+} | null {
+  if (!(err instanceof Error)) return null;
+  const status = (err as { status?: unknown }).status;
+  if (err.name === "HoustonEngineError") {
+    const message = err.message;
+    return { status, matches: (r) => message.startsWith(r), sdk: false };
+  }
+  const sdk = SDK_HTTP_ERROR_NAMES.has(err.name);
+  let body: unknown = null;
+  if (sdk) body = err.message;
+  else if (err.name === "EngineError") body = (err as { body?: unknown }).body;
+  const reason = typeof body === "string" ? gatewayReason(body) : null;
+  if (reason === null) return null;
+  return { status, matches: (r) => reason === r, sdk };
 }
 
 /**
@@ -156,24 +175,23 @@ function isWakingAnswer(
  * reason) so this stays dependency-free.
  */
 export function isEngineWakingError(err: unknown): boolean {
-  if (!(err instanceof Error)) return false;
-  const status = (err as { status?: unknown }).status;
-  if (err.name === "HoustonEngineError") {
-    return isWakingAnswer(status, (reason) => err.message.startsWith(reason));
-  }
-  if (SDK_HTTP_ERROR_NAMES.has(err.name)) {
-    const reason = gatewayReason(err.message);
-    if (reason === null) return false;
-    return (
-      isWakingAnswer(status, (r) => reason === r) ||
-      (status === 502 && reason === AGENT_POD_UNUSABLE_502)
-    );
-  }
-  if (err.name === "EngineError") {
-    const body = (err as { body?: unknown }).body;
-    const reason = typeof body === "string" ? gatewayReason(body) : null;
-    if (reason === null) return false;
-    return isWakingAnswer(status, (r) => reason === r);
-  }
-  return false;
+  const answer = gatewayAnswer(err);
+  if (answer === null) return false;
+  return (
+    isWakingAnswer(answer.status, answer.matches) ||
+    (answer.sdk &&
+      answer.status === 502 &&
+      answer.matches(AGENT_POD_UNUSABLE_502))
+  );
+}
+
+/** The gateway's read-only "agent data temporarily unavailable" 503: nothing
+ *  is waking, and the same read answers once the data can be served. */
+export function isAgentDataBusyError(err: unknown): boolean {
+  const answer = gatewayAnswer(err);
+  return (
+    answer !== null &&
+    answer.status === 503 &&
+    answer.matches(AGENT_DATA_BUSY_503)
+  );
 }

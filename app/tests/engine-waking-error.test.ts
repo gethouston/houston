@@ -513,35 +513,25 @@ describe("isEngineWakingError (SDK activity-write shape)", () => {
   });
 });
 
-// HOUSTON-APP-5HP: a sleeping pool-served agent whose data the gateway could
-// not serve from its store right now answers `503 {"error":"agent data
-// temporarily unavailable; retrying"}` + `Retry-After`, never a pod wake
-// (`cloud/internal/edge/agents/agentfileasleep.go`, `poolops.go`). The same
-// read answers once the store does, so it is the waking state seen from a
-// sleeping agent, not a bug per read.
+// HOUSTON-APP-5HP: the read-only `503 {"error":"agent data temporarily
+// unavailable; retrying"}` arrives only on reads, which never wake the agent,
+// so it must not read as waking (it would show the "waking up" notice). Its
+// own quiet class is pinned in agent-data-busy.test.ts.
 const AGENT_DATA_BUSY = "agent data temporarily unavailable; retrying";
 
-describe("isEngineWakingError (asleep agent data busy)", () => {
-  it("matches on every client shape", () => {
-    strictEqual(isEngineWakingError(engineError(503, AGENT_DATA_BUSY)), true);
+describe("isEngineWakingError (agent data busy)", () => {
+  it("never matches on any client shape", () => {
+    strictEqual(isEngineWakingError(engineError(503, AGENT_DATA_BUSY)), false);
     strictEqual(
       isEngineWakingError(
         agentsHttpError(503, `{"error":"${AGENT_DATA_BUSY}"}`),
       ),
-      true,
+      false,
     );
     strictEqual(
       isEngineWakingError(
         runtimeEngineError(503, `{"error":"${AGENT_DATA_BUSY}"}`),
       ),
-      true,
-    );
-  });
-
-  it("is a 503 reason only", () => {
-    strictEqual(isEngineWakingError(engineError(502, AGENT_DATA_BUSY)), false);
-    strictEqual(
-      isEngineWakingError(engineError(503, "agent data unavailable")),
       false,
     );
   });

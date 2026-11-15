@@ -92,10 +92,9 @@ const RUNTIME_STILL_STARTING =
  */
 const HOST_SHUTTING_DOWN = "the host is shutting down; retry shortly";
 /**
- * The GATEWAY serving a sleeping pool-served agent's reads from its store
- * (`cloud/internal/edge/agents/agentfileasleep.go`, `poolops.go`): the store
- * could not answer yet, and a read never wakes the pod. It heals on the
- * store's own window, which outlasts a handoff (HOUSTON-APP-5HP).
+ * A read of a sleeping agent's data the gateway cannot serve yet. Reads never
+ * wake the agent, and the same read answers within a wake's time, not a
+ * handoff's (HOUSTON-APP-5HP).
  */
 const AGENT_DATA_BUSY = "agent data temporarily unavailable; retrying";
 export const SHARED_SKILLS_UNCONFIGURED = "shared skills not configured";
