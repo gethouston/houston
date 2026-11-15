@@ -512,3 +512,37 @@ describe("isEngineWakingError (SDK activity-write shape)", () => {
     strictEqual(isEngineWakingError(err), false);
   });
 });
+
+// HOUSTON-APP-5HP: a sleeping pool-served agent whose data the gateway could
+// not serve from its store right now answers `503 {"error":"agent data
+// temporarily unavailable; retrying"}` + `Retry-After`, never a pod wake
+// (`cloud/internal/edge/agents/agentfileasleep.go`, `poolops.go`). The same
+// read answers once the store does, so it is the waking state seen from a
+// sleeping agent, not a bug per read.
+const AGENT_DATA_BUSY = "agent data temporarily unavailable; retrying";
+
+describe("isEngineWakingError (asleep agent data busy)", () => {
+  it("matches on every client shape", () => {
+    strictEqual(isEngineWakingError(engineError(503, AGENT_DATA_BUSY)), true);
+    strictEqual(
+      isEngineWakingError(
+        agentsHttpError(503, `{"error":"${AGENT_DATA_BUSY}"}`),
+      ),
+      true,
+    );
+    strictEqual(
+      isEngineWakingError(
+        runtimeEngineError(503, `{"error":"${AGENT_DATA_BUSY}"}`),
+      ),
+      true,
+    );
+  });
+
+  it("is a 503 reason only", () => {
+    strictEqual(isEngineWakingError(engineError(502, AGENT_DATA_BUSY)), false);
+    strictEqual(
+      isEngineWakingError(engineError(503, "agent data unavailable")),
+      false,
+    );
+  });
+});

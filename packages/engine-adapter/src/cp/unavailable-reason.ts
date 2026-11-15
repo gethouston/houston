@@ -91,6 +91,13 @@ const RUNTIME_STILL_STARTING =
  * reason is kept for pods still on the older host during a roll.
  */
 const HOST_SHUTTING_DOWN = "the host is shutting down; retry shortly";
+/**
+ * The GATEWAY serving a sleeping pool-served agent's reads from its store
+ * (`cloud/internal/edge/agents/agentfileasleep.go`, `poolops.go`): the store
+ * could not answer yet, and a read never wakes the pod. It heals on the
+ * store's own window, which outlasts a handoff (HOUSTON-APP-5HP).
+ */
+const AGENT_DATA_BUSY = "agent data temporarily unavailable; retrying";
 export const SHARED_SKILLS_UNCONFIGURED = "shared skills not configured";
 
 /** Why a read got no answer — the typed form of the gateway's 5xx body. */
@@ -152,6 +159,7 @@ export function classifyUnavailableBody(body: unknown): UnavailableReason {
   // A draining host: the read meets the replacement pod, which is a wake
   // away, not a second (PRODUCT-1777).
   if (b?.error === HOST_SHUTTING_DOWN) return "engine-waking";
+  if (b?.error === AGENT_DATA_BUSY) return "engine-waking";
   return "handoff";
 }
 

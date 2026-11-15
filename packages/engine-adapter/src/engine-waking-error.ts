@@ -64,6 +64,15 @@
 // answers the same `engine unavailable` pair with the latch as detail
 // (PRODUCT-1804), so nothing here reads the detail.
 //
+// A sixth is the GATEWAY serving a sleeping pool-served agent's reads from its
+// store with no pod: when the store cannot answer yet (a drain window, a
+// fail-fast window, no pool worker free) the read answers
+// `503 {"error":"agent data temporarily unavailable; retrying"}` +
+// `Retry-After` and never wakes the pod (`cloud/internal/edge/agents/
+// agentfileasleep.go`, `poolops.go`). The same read answers once the store
+// does; reported per read it filed a bug for a passive skills read
+// (HOUSTON-APP-5HP).
+//
 // Four client stacks reach the host, minting different error shapes (the
 // split `@houston/sdk`'s refusal readers also handle, plus the runtime client):
 //
@@ -100,6 +109,7 @@ const ENGINE_UNAVAILABLE_503 = "engine unavailable";
 const RUNTIME_STILL_STARTING_503 =
   "the agent's runtime is still starting, try again shortly";
 const HOST_SHUTTING_DOWN_503 = "the host is shutting down; retry shortly";
+const AGENT_DATA_BUSY_503 = "agent data temporarily unavailable; retrying";
 const ENGINE_PROXY_FAILED_502 = "engine proxy failed";
 const AGENT_POD_UNUSABLE_502 = "agent pod unusable";
 
@@ -132,7 +142,8 @@ function isWakingAnswer(
     return (
       matches(ENGINE_UNAVAILABLE_503) ||
       matches(RUNTIME_STILL_STARTING_503) ||
-      matches(HOST_SHUTTING_DOWN_503)
+      matches(HOST_SHUTTING_DOWN_503) ||
+      matches(AGENT_DATA_BUSY_503)
     );
   }
   return status === 502 && matches(ENGINE_PROXY_FAILED_502);
