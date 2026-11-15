@@ -109,11 +109,31 @@ export function createProductEventsPost(
       return { status: "ok" };
     }
     if (!res.ok) return { status: "failed" };
-    return { status: "ok", rejected: await readRejected(res, reportOnce) };
+    return {
+      status: "ok",
+      rejected: await readRejected(
+        res,
+        (error) => deps.isOffline(error) || isAbort(error),
+        reportOnce,
+      ),
+    };
   };
 }
 
-const defaultTimeoutSignal = () => AbortSignal.timeout(REQUEST_TIMEOUT_MS);
+/** macOS 10.15 is a supported desktop, and its system WebKit (Safari 15) has
+ *  no `AbortSignal.timeout`; calling it there threw before every send. */
+function defaultTimeoutSignal(): AbortSignal {
+  if (typeof AbortSignal.timeout === "function") {
+    return AbortSignal.timeout(REQUEST_TIMEOUT_MS);
+  }
+  const controller = new AbortController();
+  setTimeout(
+    () =>
+      controller.abort(new DOMException("signal timed out", "TimeoutError")),
+    REQUEST_TIMEOUT_MS,
+  );
+  return controller.signal;
+}
 
 /** The abort the timeout above raises, whatever the runtime names it. */
 function isAbort(error: unknown): boolean {
@@ -123,9 +143,12 @@ function isAbort(error: unknown): boolean {
 }
 
 /** The 202 body's per-event verdicts; an unreadable body is still a success
- *  (the events are stored), so it is reported rather than retried. */
+ *  (the events are stored), so it is never retried. A read cut off by the
+ *  network or the request timeout is connectivity; only a body that arrived
+ *  and does not parse is reported. */
 async function readRejected(
   res: Response,
+  isDropped: (error: unknown) => boolean,
   reportOnce: (key: string, message: string, detail?: unknown) => void,
 ): Promise<readonly RejectedProductEvent[]> {
   try {
@@ -133,6 +156,7 @@ async function readRejected(
     if (!Array.isArray(body.rejected)) return [];
     return body.rejected.filter(isRejectedEvent);
   } catch (error) {
+    if (isDropped(error)) return [];
     reportOnce(
       "unreadable-body",
       "the product-analytics ingest answered with a body we cannot read",

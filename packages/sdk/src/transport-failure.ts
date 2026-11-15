@@ -17,12 +17,13 @@
  *    "The Internet connection appears to be offline.", "A server with the
  *    specified hostname could not be found.", "Could not connect to the
  *    server.", "The request timed out.").
- *  - Chromium: "Failed to fetch".
+ *  - Chromium: "Failed to fetch", and "network error" when the connection
+ *    drops while the response body streams.
  *  - Firefox: "NetworkError when attempting to fetch resource.".
  *  - Node/undici (web dev, tests): "fetch failed".
  */
 const TRANSPORT_MESSAGE =
-  /^load failed|^failed to fetch|^networkerror|^fetch failed|network connection was lost|internet connection appears to be offline|hostname could not be found|could not connect to the server|request timed out/i;
+  /^load failed|^failed to fetch|^network error$|^networkerror|^fetch failed|network connection was lost|internet connection appears to be offline|hostname could not be found|could not connect to the server|request timed out/i;
 
 /** Whether `err` is a `fetch` transport rejection, never a coding bug. */
 export function isTransportFailure(err: unknown): err is TypeError {

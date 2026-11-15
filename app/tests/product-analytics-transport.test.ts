@@ -5,7 +5,7 @@
 import { ok, strictEqual } from "node:assert";
 import { readFileSync } from "node:fs";
 import { join } from "node:path";
-import { describe, it } from "node:test";
+import { describe, it, mock } from "node:test";
 import type { GatewayFetchDeps } from "../src/lib/gateway-fetch.ts";
 import {
   createProductEventsPost,
@@ -160,6 +160,70 @@ describe("the product-analytics POST", () => {
     strictEqual(h.reports.length, 1);
     strictEqual((await h.post()).status, "ok");
     strictEqual(h.reports.length, 1, "one report per launch, not per batch");
+  });
+
+  it("keeps quiet when the 202 body dies in transport or to the timeout", async () => {
+    // The events are stored once the 202 arrives; a connection that drops
+    // while the body streams (sleep, network switch) or the request timeout
+    // firing mid-read is connectivity, not a defect in this pipe.
+    const h = harness();
+    const dyingBody = (error: Error) =>
+      Promise.resolve(
+        Object.assign(new Response("", { status: 202 }), {
+          json: () => Promise.reject(error),
+        }),
+      );
+    h.reply(() => dyingBody(offline()));
+    strictEqual((await h.post()).status, "ok");
+    h.reply(() =>
+      dyingBody(
+        Object.assign(new Error("signal timed out"), { name: "TimeoutError" }),
+      ),
+    );
+    strictEqual((await h.post()).status, "ok");
+    strictEqual(h.reports.length, 0, "a dropped body read is not a bug");
+  });
+
+  it("still sends on a webview without AbortSignal.timeout", async () => {
+    // macOS 10.15 is a supported desktop and its system WebKit (Safari 15)
+    // has no AbortSignal.timeout: building the signal must not throw there,
+    // or every batch fails before it is sent.
+    const original = AbortSignal.timeout;
+    Reflect.deleteProperty(AbortSignal, "timeout");
+    // The fallback arms a real 15 s timer; a fake clock keeps the run instant.
+    mock.timers.enable({ apis: ["setTimeout"] });
+    try {
+      const calls: RequestInit[] = [];
+      const reports: string[] = [];
+      const post = createProductEventsPost({
+        gateway: () => GATEWAY,
+        context: () => ({
+          session_id: "session-1",
+          app_version: "1.2.3",
+          platform: "desktop",
+        }),
+        send: (_deps, _path, init) => {
+          calls.push(init);
+          return Promise.resolve(
+            new Response(JSON.stringify({ rejected: [] })),
+          );
+        },
+        isOffline: () => false,
+        report: (message) => {
+          reports.push(message);
+        },
+      });
+      strictEqual((await post(EVENTS)).status, "ok");
+      strictEqual(reports.length, 0);
+      const signal = calls[0]?.signal;
+      ok(signal, "a hung POST must not own the pipe forever");
+      mock.timers.tick(15_000);
+      strictEqual(signal.aborted, true);
+      strictEqual((signal.reason as Error).name, "TimeoutError");
+    } finally {
+      mock.timers.reset();
+      AbortSignal.timeout = original;
+    }
   });
 
   it("answers no-session when the gateway has no bearer to send", async () => {
