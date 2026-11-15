@@ -20,6 +20,29 @@ describe("isFileGoneError", () => {
     assert.equal(isFileGoneError({ status: 404 }), true);
   });
 
+  it("matches the host's 400 for a linked path outside the workspace", () => {
+    const err = Object.assign(
+      new Error(
+        "invalid workspace path: /work/houston-turn-0123456789abcdef/store/custom-integrations.json (engine error 400)",
+      ),
+      {
+        status: 400,
+        body: {
+          error:
+            "invalid workspace path: /work/houston-turn-0123456789abcdef/store/custom-integrations.json",
+        },
+      },
+    );
+    assert.equal(isFileGoneError(err), true);
+  });
+
+  it("keeps any other 400 loud", () => {
+    assert.equal(
+      isFileGoneError({ status: 400, body: { error: "missing path" } }),
+      false,
+    );
+  });
+
   it("never matches other statuses or shapeless throws", () => {
     for (const status of [400, 403, 500, 502, 503, "404"]) {
       assert.equal(isFileGoneError({ status }), false);

@@ -20,5 +20,22 @@
  */
 export function isFileGoneError(err: unknown): boolean {
   if (!err || typeof err !== "object") return false;
-  return (err as { status?: unknown }).status === 404;
+  const { status, body } = err as { status?: unknown; body?: unknown };
+  if (status === 404) return true;
+  return status === 400 && isOutsideWorkspace(body);
 }
+
+/**
+ * The host's `invalid workspace path: <path>` 400 on a read: the agent linked
+ * a path outside its own workspace, such as the turn sandbox's internal
+ * `/work/houston-turn-<id>/store/custom-integrations.json`
+ * (HOUSTON-APP-5HK). That file is not in the agent's Files either, so it gets
+ * the same copy. The host answers no typed code here, so the fixed message
+ * prefix from `packages/host/src/turn/files-path.ts` is what identifies it.
+ */
+function isOutsideWorkspace(body: unknown): boolean {
+  const error = (body as { error?: unknown } | null)?.error;
+  return typeof error === "string" && error.startsWith(WORKSPACE_PATH_REFUSAL);
+}
+
+const WORKSPACE_PATH_REFUSAL = "invalid workspace path: ";

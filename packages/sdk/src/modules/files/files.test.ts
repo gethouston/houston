@@ -224,6 +224,27 @@ describe("upload-ID commits", () => {
     expect(calls[1].body).toBe(JSON.stringify({ dir: "docs", files }));
   });
 
+  it("sends a file whose macOS name holds a backslash under a name the host accepts", async () => {
+    const { sdk, calls } = makeSdk(() =>
+      json({ paths: ["uploads/### 1_. package.txt"] }),
+    );
+    await sdk.files.saveAttachments("a1", "conv", [
+      { name: "### 1\\. package.txt", blob: new Blob(["x"]) },
+      {
+        name: "b\\c.txt",
+        blob: new Blob(["y"]),
+        relPath: "notes\\old/b\\c.txt",
+      },
+    ]);
+    const sent = JSON.parse(calls[0].body ?? "{}") as {
+      files: { name: string; relPath?: string }[];
+    };
+    expect(sent.files.map((f) => [f.name, f.relPath])).toEqual([
+      ["### 1_. package.txt", undefined],
+      ["b_c.txt", "notes_old/b_c.txt"],
+    ]);
+  });
+
   it("dispatch accepts a parsed upload-ID entry and refuses an invalid ID", async () => {
     const { sdk, calls } = makeSdk(() => json({ paths: ["uploads/a.bin"] }));
     const good = await sdk.dispatch({

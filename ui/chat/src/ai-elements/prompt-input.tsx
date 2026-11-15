@@ -63,6 +63,7 @@ import {
   useState,
 } from "react";
 import { composerTextareaBounds } from "../composer-resize";
+import { submitForm } from "../submit-form";
 import { applyTextareaFit } from "../textarea-fit";
 
 // ============================================================================
@@ -1003,7 +1004,7 @@ export const PromptInputTextarea = ({
           return;
         }
 
-        form?.requestSubmit();
+        if (form) submitForm(form);
       }
 
       // Remove last attachment when Backspace is pressed and textarea is empty
