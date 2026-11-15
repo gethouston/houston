@@ -91,13 +91,11 @@ export const CURATED_API_KEY_OVERRIDES: Record<string, ProviderOverride> = {
     installUrl: "https://platform.minimax.io",
     apiKeyUrl:
       "https://platform.minimax.io/user-center/basic-information/interface-key",
-    // The 1M-context tier MiniMax's Coding/Token plan bills against; also works
-    // pay-as-you-go. A subscription key run on bare MiniMax-M3 reads as
-    // "usage ran out" (HOU-1160), so this is the connect default.
+    // The connect default: the one text model both key kinds run.
     models: {
-      "MiniMax-M3[1m]": {
+      "MiniMax-M3.1-Flash": {
         description:
-          "Best default. 1M-context tier for the MiniMax coding/token plan or pay-as-you-go.",
+          "Best default. Fast 1M-context model for the MiniMax plan or pay-as-you-go.",
       },
       "MiniMax-M3": {
         description: "Long-context multimodal model, pay-as-you-go.",

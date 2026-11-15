@@ -95,7 +95,7 @@ test("providerDefaultModel returns each provider's catalog default", () => {
   expect(providerDefaultModel("amazon-bedrock")).toBe(
     "global.anthropic.claude-sonnet-4-6",
   );
-  expect(providerDefaultModel("minimax")).toBe("MiniMax-M3[1m]");
+  expect(providerDefaultModel("minimax")).toBe("MiniMax-M3.1-Flash");
 });
 
 test("a provider with no catalog default resolves to NO model, never Codex's", () => {
@@ -146,23 +146,22 @@ test("MiniMax uses pi-ai's global minimax provider and model catalog", () => {
   ).toBe("MiniMax-M3");
 });
 
-test("MiniMax token-plan model MiniMax-M3[1m] resolves on the minimax provider", () => {
-  // The token/coding-plan SKU is hand-built (not in pi's catalog): it must resolve
-  // to a real model on the minimax provider (same endpoint/auth), verbatim id, for
-  // both a saved pick and a hard pin — never fall back to the pay-as-you-go SKU or
-  // throw "not available" (HOU-1160).
+test("MiniMax runs only ids its API serves; a stored MiniMax-M3[1m] retargets to the default", () => {
+  // `[1m]` is a Claude Code client suffix, never a wire id: sent verbatim,
+  // MiniMax answers `unknown model 'MiniMax-M3[1m]' (2013)` for every key. The
+  // default must be pi's own row and the one model both key kinds run.
+  expect(providerDefaultModel("minimax")).toBe("MiniMax-M3.1-Flash");
   for (const pinned of [false, true]) {
     const m = safeGetModel("minimax", "MiniMax-M3[1m]", pinned) as {
       id?: string;
       provider?: string;
       baseUrl?: string;
     };
-    expect(m.id).toBe("MiniMax-M3[1m]");
+    expect(m.id).toBe("MiniMax-M3.1-Flash");
     expect(m.provider).toBe("minimax");
     expect(m.baseUrl).toBe("https://api.minimax.io/anthropic");
   }
-  // It is also offered in the picker id list (so it survives the saved-id gate).
-  expect(safeModelIds("minimax")).toContain("MiniMax-M3[1m]");
+  expect(safeModelIds("minimax")).not.toContain("MiniMax-M3[1m]");
 });
 
 test("safeGetModel keeps a valid saved id but falls back on a stale one", () => {

@@ -48,7 +48,7 @@ const PI_MODELS: Record<string, Set<string>> = {
     "gpt-6.1-sol",
   ]),
   minimax: new Set([
-    "MiniMax-M3[1m]",
+    "MiniMax-M3.1-Flash",
     "MiniMax-M2.7",
     "MiniMax-M2.7-highspeed",
     "MiniMax-M3",
@@ -314,18 +314,17 @@ test("MiniMax global provider uses the pi-ai catalog, not minimax-cn", () => {
 
   const fallback = migrateProviderModel("minimax", "MiniMax-M1");
   expect(fallback.provider).toBe("minimax");
-  expect(fallback.model).toBe("MiniMax-M3[1m]");
+  expect(fallback.model).toBe("MiniMax-M3.1-Flash");
   expect(fallback.diagnostics[0]?.message).toContain("MiniMax-M1");
   assertValid(fallback, "minimax fallback");
 });
 
-test("MiniMax token-plan SKU MiniMax-M3[1m] is kept verbatim, never rewritten", () => {
-  // The subscription/coding-plan model id — hand-built on the minimax provider
-  // (not in pi's catalog) but a valid id, so migration must NOT rewrite it to the
-  // pay-as-you-go SKU (HOU-1160).
+test("a saved MiniMax-M3[1m] migrates to the MiniMax default", () => {
+  // `[1m]` is a Claude Code client suffix MiniMax's API rejects as an unknown
+  // model; a config still naming it must land on a model the key can run.
   const r = migrateProviderModel("minimax", "MiniMax-M3[1m]");
-  expect(r).toMatchObject({ provider: "minimax", model: "MiniMax-M3[1m]" });
-  expect(r.diagnostics).toEqual([]);
+  expect(r).toMatchObject({ provider: "minimax", model: "MiniMax-M3.1-Flash" });
+  expect(r.diagnostics[0]?.message).toContain("MiniMax-M3[1m]");
   assertValid(r, "minimax/MiniMax-M3[1m]");
 });
 

@@ -118,7 +118,7 @@ export const MODEL_DISPLAY: Partial<
     "amazon.nova-lite-v1:0": "Nova Lite",
   },
   minimax: {
-    "MiniMax-M3[1m]": "MiniMax M3 (1M)",
+    "MiniMax-M3.1-Flash": "MiniMax M3.1 Flash",
     "MiniMax-M3": "MiniMax M3",
     "MiniMax-M2.7": "MiniMax M2.7",
     "MiniMax-M2.7-highspeed": "MiniMax M2.7 Highspeed",

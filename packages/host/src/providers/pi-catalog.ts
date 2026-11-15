@@ -43,36 +43,6 @@ import { QWEN_PROVIDER_ID, qwenModels } from "./qwen-dashscope";
 /** A pi-ai model of any api — the mappers never look at the `TApi` specifics. */
 type PiModel = Model<Api>;
 
-/** MiniMax's token/coding-plan model id (1M-context tier); see runtime `ai/minimax.ts`. */
-const MINIMAX_TOKEN_PLAN_MODEL_ID = "MiniMax-M3[1m]";
-const MINIMAX_BASE_MODEL_ID = "MiniMax-M3";
-/**
- * Display name for the token-plan model. Deliberately bracket-FREE: the AI Models
- * hub folds models by a name-derived key that strips bracketed suffixes, so a name
- * of `MiniMax-M3[1m]` would collapse onto `MiniMax-M3` and vanish. "1M" (the tier's
- * 1M-context window) keeps the key distinct while staying honest.
- */
-const MINIMAX_TOKEN_PLAN_MODEL_NAME = "MiniMax-M3 1M";
-
-/**
- * pi-ai's `minimax` catalog ships only pay-as-you-go ids. Surface MiniMax's
- * subscription "token plan" model (`MiniMax-M3[1m]`, same endpoint/auth, 1M context)
- * so it appears in the picker — cloned from `MiniMax-M3` (its base SKU) with the wire
- * id overridden. Skips silently if pi ever drops the base model. Keep in sync with the
- * runtime's `buildMinimaxTokenPlanModel` (HOU-1160).
- */
-export function withMinimaxTokenPlan(models: PiModel[]): PiModel[] {
-  const base = models.find((m) => m.id === MINIMAX_BASE_MODEL_ID);
-  if (!base || models.some((m) => m.id === MINIMAX_TOKEN_PLAN_MODEL_ID))
-    return models;
-  const tokenPlan: PiModel = {
-    ...base,
-    id: MINIMAX_TOKEN_PLAN_MODEL_ID,
-    name: MINIMAX_TOKEN_PLAN_MODEL_NAME,
-  };
-  return [tokenPlan, ...models];
-}
-
 /** Map one pi-ai `Model` to a wire `CatalogModelEntry`. Pure and deterministic. */
 export function piModelToCatalogEntry(model: PiModel): CatalogModelEntry {
   const entry: CatalogModelEntry = {
@@ -164,11 +134,7 @@ export function buildProviderCatalog(): ProviderCatalog {
     if (models.length === 0) continue;
     const provider = piProviderToCatalog(
       id,
-      id === "minimax"
-        ? withMinimaxTokenPlan(models)
-        : id === BEDROCK_PROVIDER_ID
-          ? invokableBedrockModels(models)
-          : models,
+      id === BEDROCK_PROVIDER_ID ? invokableBedrockModels(models) : models,
       oauthIds.has(id),
       providerDisplayName(id, oauthNames),
     );

@@ -44,11 +44,11 @@ export const VALID_MODELS: Partial<Record<ProviderId, ReadonlySet<string>>> = {
     "gpt-6-sol",
     "gpt-6.1-sol",
   ]),
-  // `MiniMax-M3[1m]` is the token/coding-plan SKU: hand-built on the minimax
-  // provider (not in pi's catalog), so it must be a VALID id here or the migration
-  // rewrites it to bare `MiniMax-M3` (HOU-1160).
+  // No `MiniMax-M3[1m]`: that suffix is Claude Code's client-side 1M marker,
+  // and MiniMax's API answers it with `unknown model` (2013). A saved one
+  // falls back to the default here.
   minimax: new Set([
-    "MiniMax-M3[1m]",
+    "MiniMax-M3.1-Flash",
     "MiniMax-M2.7",
     "MiniMax-M2.7-highspeed",
     "MiniMax-M3",

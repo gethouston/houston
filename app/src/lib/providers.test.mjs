@@ -108,6 +108,7 @@ const SAMPLE_CATALOG = [
     tm("amazon.nova-lite-v1:0", 300000),
   ]),
   prov("minimax", "apiKey", [
+    rm("MiniMax-M3.1-Flash", 1000000),
     rm("MiniMax-M3", 512000),
     rm("MiniMax-M2.7", 204800),
     rm("MiniMax-M2.7-highspeed", 204800),
@@ -325,11 +326,16 @@ test("MiniMax is an active api-key provider backed by pi-ai's global provider", 
   assert.ok(p, "minimax is in the active catalog");
   assert.equal(p.name, "MiniMax");
   assert.equal(p.auth, "apiKey");
-  assert.equal(p.defaultModel, "MiniMax-M3");
+  assert.equal(p.defaultModel, "MiniMax-M3.1-Flash");
   assert.equal(p.apiKeyUrl, "https://platform.minimax.io");
   assert.deepEqual(
     p.models.map((m) => m.id),
-    ["MiniMax-M3", "MiniMax-M2.7", "MiniMax-M2.7-highspeed"],
+    [
+      "MiniMax-M3.1-Flash",
+      "MiniMax-M3",
+      "MiniMax-M2.7",
+      "MiniMax-M2.7-highspeed",
+    ],
   );
   for (const m of p.models) {
     assert.ok(
