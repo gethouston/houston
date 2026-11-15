@@ -95,9 +95,13 @@ export function detectRenameConflict(
  * The vocabulary is the host's own (`@houston/protocol`), not a mirror of it:
  * keying on the code rather than the status is only worth anything while the
  * two ends cannot drift. The English message is no contract either — the
- * host's wording is untranslated and free to change.
+ * host's wording is untranslated and free to change. `outside_workspace` is a
+ * read's refusal (`file-gone.ts`); on a write it means the client sent a bad
+ * path, which is a bug and keeps the report path.
  */
-export function fileRefusal(err: unknown): FileOpCode | null {
+export function fileRefusal(
+  err: unknown,
+): Exclude<FileOpCode, "outside_workspace"> | null {
   switch (engineErrorCode(err)) {
     case NAME_TAKEN:
       return NAME_TAKEN;

@@ -9,7 +9,7 @@ import { useEffect, useMemo } from "react";
 import { useTranslation } from "react-i18next";
 import { fileNameOf } from "../../lib/agent-file-paths";
 import { logAndReportError } from "../../lib/error-report";
-import { isFileGoneError } from "../../lib/file-gone";
+import { fileReadRefusal } from "../../lib/file-gone";
 import { tauriFiles } from "../../lib/tauri";
 import { useUIStore } from "../../stores/ui";
 import { UserSkillMessage } from "../user-skill-message";
@@ -37,7 +37,7 @@ function useCropUrls(
   const failures = results.map((r) => r.error);
   useEffect(() => {
     for (const error of failures)
-      if (error && !isFileGoneError(error))
+      if (error && !fileReadRefusal(error))
         logAndReportError("citation_crop", error);
     // biome-ignore lint/correctness/useExhaustiveDependencies: one report per error identity
   }, failures);

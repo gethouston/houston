@@ -1,59 +1,119 @@
 import assert from "node:assert/strict";
 import { readFileSync } from "node:fs";
 import { join } from "node:path";
-import { describe, it } from "node:test";
-import { isFileGoneError } from "../src/lib/file-gone.ts";
+import { afterEach, describe, it } from "node:test";
+import {
+  fileReadRefusal,
+  surfaceFileReadRefusal,
+} from "../src/lib/file-gone.ts";
+import en from "../src/locales/en/agents.json" with { type: "json" };
+import { useUIStore } from "../src/stores/ui.ts";
 
 /**
- * PRODUCT-1780 (HOUSTON-APP-53E): a workspace-file download that answers
- * `404 file not found` is the user's state (the agent linked a file that is
- * not there), never a Houston bug. The classifier keys on the structural
- * status both engine adapters carry; every other status stays loud.
+ * A workspace-file read the host refuses in a way the person can understand
+ * is their state, never a Houston bug: `404 file not found` (PRODUCT-1780,
+ * HOUSTON-APP-53E: the agent linked a file that is not there), and the typed
+ * `400 outside_workspace` (HOUSTON-APP-5HK: the agent linked a path outside
+ * its files). Every other refusal stays loud.
  */
-describe("isFileGoneError", () => {
-  it("matches the engine adapter's 404 for a missing workspace file", () => {
+
+const outside = (body: unknown) =>
+  Object.assign(new Error("invalid workspace path (engine error 400)"), {
+    status: 400,
+    body,
+  });
+
+const OUTSIDE_BODY = {
+  error:
+    "invalid workspace path: /work/houston-turn-0123456789abcdef/store/custom-integrations.json",
+  code: "outside_workspace",
+};
+
+describe("fileReadRefusal", () => {
+  it("names the engine adapter's 404 for a missing workspace file", () => {
     const err = Object.assign(new Error("file not found (engine error 404)"), {
       status: 404,
       body: { error: "file not found" },
     });
-    assert.equal(isFileGoneError(err), true);
-    assert.equal(isFileGoneError({ status: 404 }), true);
+    assert.equal(fileReadRefusal(err), "file_gone");
+    assert.equal(fileReadRefusal({ status: 404 }), "file_gone");
   });
 
-  it("matches the host's 400 for a linked path outside the workspace", () => {
-    const err = Object.assign(
-      new Error(
-        "invalid workspace path: /work/houston-turn-0123456789abcdef/store/custom-integrations.json (engine error 400)",
-      ),
-      {
-        status: 400,
-        body: {
-          error:
-            "invalid workspace path: /work/houston-turn-0123456789abcdef/store/custom-integrations.json",
-        },
-      },
-    );
-    assert.equal(isFileGoneError(err), true);
+  it("names the host's typed 400 for a path outside the agent's files", () => {
+    assert.equal(fileReadRefusal(outside(OUTSIDE_BODY)), "outside_workspace");
   });
 
-  it("keeps any other 400 loud", () => {
-    assert.equal(
-      isFileGoneError({ status: 400, body: { error: "missing path" } }),
-      false,
-    );
+  it("keeps a 400 loud when only the message says outside", () => {
+    assert.equal(fileReadRefusal(outside({ error: OUTSIDE_BODY.error })), null);
+    assert.equal(fileReadRefusal(outside({ error: "missing path" })), null);
   });
 
   it("never matches other statuses or shapeless throws", () => {
     for (const status of [400, 403, 500, 502, 503, "404"]) {
-      assert.equal(isFileGoneError({ status }), false);
+      assert.equal(fileReadRefusal({ status }), null);
     }
-    assert.equal(isFileGoneError(undefined), false);
-    assert.equal(isFileGoneError("file not found"), false);
-    assert.equal(isFileGoneError(new Error("boom")), false);
+    assert.equal(fileReadRefusal(undefined), null);
+    assert.equal(fileReadRefusal("file not found"), null);
+    assert.equal(fileReadRefusal(new Error("boom")), null);
   });
 });
 
-describe("files.gone copy", () => {
+describe("surfaceFileReadRefusal", () => {
+  const reports: string[] = [];
+  const report = (kind: "outside_workspace") => void reports.push(kind);
+  afterEach(() => {
+    reports.length = 0;
+    for (const t of useUIStore.getState().toasts)
+      useUIStore.getState().dismissToast(t.id);
+  });
+
+  it("reports an outside-workspace link quietly and toasts its own copy", () => {
+    const refusal = surfaceFileReadRefusal(
+      outside(OUTSIDE_BODY),
+      "download_project_file",
+      { agentPath: "Personal/Bob" },
+      true,
+      report,
+    );
+    assert.equal(refusal, "outside_workspace");
+    assert.deepEqual(reports, ["outside_workspace"]);
+    const [toast] = useUIStore.getState().toasts;
+    assert.equal(toast?.variant, "info");
+    assert.ok(
+      toast?.title === en.files.outsideWorkspace.title ||
+        toast?.title === "agents:files.outsideWorkspace.title",
+    );
+  });
+
+  it("reports even when the caller renders the copy inline", () => {
+    surfaceFileReadRefusal(
+      outside(OUTSIDE_BODY),
+      "download_project_file",
+      {},
+      false,
+      report,
+    );
+    assert.deepEqual(reports, ["outside_workspace"]);
+    assert.equal(useUIStore.getState().toasts.length, 0);
+  });
+
+  it("a gone file toasts without a report; a fault does neither", () => {
+    assert.equal(
+      surfaceFileReadRefusal({ status: 404 }, "x", {}, true, report),
+      "file_gone",
+    );
+    assert.equal(reports.length, 0);
+    assert.equal(useUIStore.getState().toasts.length, 1);
+    assert.equal(
+      surfaceFileReadRefusal({ status: 500 }, "x", {}, true, report),
+      null,
+    );
+    assert.equal(reports.length, 0);
+    assert.equal(useUIStore.getState().toasts.length, 1);
+  });
+});
+
+describe("file read refusal copy", () => {
   for (const locale of ["en", "es", "pt"] as const) {
     it(`${locale} has authored title + description`, () => {
       const agents = JSON.parse(
@@ -61,12 +121,14 @@ describe("files.gone copy", () => {
           join(import.meta.dirname, `../src/locales/${locale}/agents.json`),
           "utf8",
         ),
-      ) as { files?: { gone?: Record<string, unknown> } };
-      for (const key of ["title", "description"]) {
-        const text = agents.files?.gone?.[key];
-        assert.equal(typeof text, "string");
-        assert.ok((text as string).length > 0);
-        assert.ok(!/engine error|404|—/i.test(text as string));
+      ) as { files?: Record<string, Record<string, unknown> | undefined> };
+      for (const group of ["gone", "outsideWorkspace"]) {
+        for (const key of ["title", "description"]) {
+          const text = agents.files?.[group]?.[key];
+          assert.equal(typeof text, "string", `${group}.${key}`);
+          assert.ok((text as string).length > 0);
+          assert.ok(!/engine error|404|400|—/i.test(text as string));
+        }
       }
     });
   }

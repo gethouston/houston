@@ -10,7 +10,7 @@ import {
   settleWithoutReplay,
   signedOutResponse,
 } from "./bearer-recovery";
-import { withBodyCutAsTransport } from "./body-cut";
+import { withTextDecodedJson } from "./json-decode";
 import { transientRetryFetch } from "./transient-retry";
 
 /**
@@ -133,7 +133,7 @@ export function gatewayAuthFetch(
       // preflight-free; every receiving host ignores it.
       const appVersion = appVersionHeader();
       if (appVersion) headers.set("X-Houston-App-Version", appVersion);
-      return fetch(input, { ...init, headers }).then(withBodyCutAsTransport);
+      return fetch(input, { ...init, headers }).then(withTextDecodedJson);
     };
     // A caller-supplied bearer source (the store seam's session token)
     // outranks the engine-global live token — same live-read discipline.

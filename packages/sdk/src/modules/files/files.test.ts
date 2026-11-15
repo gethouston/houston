@@ -2,7 +2,11 @@ import { describe, expect, it, vi } from "vitest";
 import type { SdkConfig, SdkPorts } from "../../ports";
 import { HoustonSdk } from "../../sdk";
 import { memoryKv } from "../../test-ports";
-import { FilesCommand, FilesHttpError } from "./index";
+import {
+  FilesCommand,
+  FilesHttpError,
+  isOutsideWorkspaceRefusal,
+} from "./index";
 
 const BASE = "http://127.0.0.1:4317";
 
@@ -92,6 +96,27 @@ describe("files module — reading an agent's workspace", () => {
     await expect(sdk.files.readProjectFile("a1", "logo.png")).resolves.toBe(
       "Hello",
     );
+  });
+
+  it("a read the host refuses as outside the workspace keeps its code", async () => {
+    const { sdk } = makeSdk(() =>
+      json(
+        {
+          error: "invalid workspace path: .houston/activity.json",
+          code: "outside_workspace",
+        },
+        400,
+      ),
+    );
+
+    const err = await sdk.files
+      .readProjectFile("a1", ".houston/activity.json")
+      .then(
+        () => null,
+        (e: unknown) => e,
+      );
+    expect(err).toBeInstanceOf(FilesHttpError);
+    expect(isOutsideWorkspaceRefusal(err)).toBe(true);
   });
 
   it("surfaces a non-2xx as a FilesHttpError carrying the status", async () => {

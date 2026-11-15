@@ -53,7 +53,11 @@ import type { BridgeQuietClass } from "@houston/sdk/local-model-bridge/quiet";
  *  `link_identity_taken` is a provider sign-in that met an existing account
  *  whose provider identity already belongs to another account
  *  (`modules/identity`): the person stays signed in by email code and sees
- *  a notice. Support can join the accounts, so it is one counted warning. */
+ *  a notice. Support can join the accounts, so it is one counted warning.
+ *  `outside_workspace` is a files read refused because the path points
+ *  outside the agent's files (`files/outside-workspace`): an agent's link
+ *  with its own copy, still one fingerprinted warning, since a burst of
+ *  them means agents keep linking such paths. */
 export type QuietErrorClass =
   | "office_preview_capacity"
   | "engine_waking"
@@ -68,7 +72,8 @@ export type QuietErrorClass =
   | "bug_intake_unavailable"
   | "upload_interrupted"
   | "routine_gone"
-  | "link_identity_taken";
+  | "link_identity_taken"
+  | "outside_workspace";
 
 /**
  * The burst-gate key a quiet-class report collapses on.

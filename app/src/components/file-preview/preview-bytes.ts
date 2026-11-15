@@ -1,5 +1,5 @@
 import { showErrorToast } from "../../lib/error-toast";
-import { isFileGoneError } from "../../lib/file-gone";
+import { fileReadRefusal } from "../../lib/file-gone";
 import { reportQuietError } from "../../lib/quiet-error-report";
 import type { tauriFiles } from "../../lib/tauri";
 import type { Loaded } from "./file-preview-body";
@@ -19,7 +19,8 @@ export async function sameBytes(a: Blob, b: Blob): Promise<boolean> {
 }
 
 /** Report a refused conversion: a full capacity quietly, a failed one loudly,
- *  a gone file not at all (the panel says so). */
+ *  a refused read not here (the panel says so, and the download reports an
+ *  outside link itself). */
 export function reportPreviewRefusal(
   refusal: ReturnType<typeof tauriFiles.classifyPreviewRefusal>,
   agentPath: string,
@@ -34,7 +35,7 @@ export function reportPreviewRefusal(
         { agentPath },
       );
     else showErrorToast("office_preview", refusal.error.message, refusal.error);
-  } else if (!refusal.fallback && !isFileGoneError(refusal.error)) {
+  } else if (!refusal.fallback && !fileReadRefusal(refusal.error)) {
     showErrorToast("office_preview", String(refusal.error), refusal.error);
   }
 }

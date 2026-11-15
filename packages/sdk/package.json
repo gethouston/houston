@@ -83,6 +83,10 @@
       "types": "./src/modules/routines/webhook-key-access.ts",
       "import": "./src/modules/routines/webhook-key-access.ts"
     },
+    "./files/outside-workspace": {
+      "types": "./src/modules/files/outside-workspace.ts",
+      "import": "./src/modules/files/outside-workspace.ts"
+    },
     "./files/upload-interrupted": {
       "types": "./src/modules/files/upload-interrupted.ts",
       "import": "./src/modules/files/upload-interrupted.ts"

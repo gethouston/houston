@@ -1,8 +1,8 @@
 /**
  * Submit `form` the way pressing its submit button would. `requestSubmit` only
- * exists from Safari 16, and the desktop app still runs on the older WebKit of
- * macOS 10.15 to 12 (HOUSTON-APP-5KR), where calling it threw and Enter sent
- * nothing. A cancelable bubbling `submit` event reaches React's `onSubmit` the
+ * exists from Safari 16, and macOS 10.15 cannot install it, so the desktop app
+ * there runs an older WebKit (HOUSTON-APP-5KR), where calling it threw and
+ * Enter sent nothing. A cancelable bubbling `submit` event reaches React's `onSubmit` the
  * same way.
  */
 export function submitForm(form: HTMLFormElement): void {
