@@ -340,10 +340,11 @@ pub fn run() {
             // reach the app.
             //   - Windows: `register_all()` writes HKCU\Software\Classes\houston
             //     pointing at the current exe (per-user, no admin, idempotent).
-            //   - Linux: `deep_link_register` writes
+            //   - Linux: the plugin writes
             //     `~/.local/share/applications/houston-app-handler.desktop`
             //     declaring `x-scheme-handler/houston` at the AppImage path, and
-            //     still sets the handler when desktop-file-utils is missing.
+            //     `deep_link_register` completes registration with `xdg-mime`,
+            //     on a background thread, checking the handler it ends up with.
             // Must run in setup(), before any sign-in. Failure is a warn, not a
             // crash: Google/Microsoft/email sign-in don't depend on the scheme.
             #[cfg(target_os = "windows")]

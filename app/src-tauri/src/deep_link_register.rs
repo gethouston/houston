@@ -9,6 +9,11 @@
 //! spawn, so on a desktop without desktop-file-utils the handler is never set
 //! and sign-in redirects (Apple) never reach this install. When the plugin
 //! fails that way, this module runs the `xdg-mime default` step itself.
+//!
+//! The plugin also ignores both commands' exit statuses, so its `Ok(())` does
+//! not prove the handler is set. Every path ends by asking
+//! `xdg-mime query default`, and a machine that still does not name our
+//! desktop file is reported, so it stays countable.
 
 // The runtime entry point is Linux-only; the decision logic stays compiled
 // everywhere so its unit tests run on every CI platform.
@@ -25,6 +30,8 @@ pub const SCHEMES: &[&str] = &["houston"];
 /// What to do after the plugin's `register(scheme)` returned.
 #[derive(Debug, PartialEq, Eq)]
 pub enum AfterPlugin {
+    /// Both commands spawned. Their exit statuses are unchecked, so this
+    /// still needs the query.
     Registered,
     /// A command could not be spawned. The desktop file is already written,
     /// so running `xdg-mime default` ourselves finishes the job.
@@ -32,7 +39,8 @@ pub enum AfterPlugin {
     Failed,
 }
 
-/// Where registration ended up after our own `xdg-mime default` attempt.
+/// Where registration ended up after an `xdg-mime` run: our own
+/// `xdg-mime default`, or the `xdg-mime query default` check.
 #[derive(Debug, PartialEq, Eq)]
 pub enum AfterXdgMime {
     Registered,
@@ -60,6 +68,16 @@ pub fn after_xdg_mime(result: &std::io::Result<bool>) -> AfterXdgMime {
     }
 }
 
+/// `stdout` is what `xdg-mime query default x-scheme-handler/<scheme>`
+/// printed. Its exit status is ignored: a non-zero exit prints no handler.
+pub fn after_query(stdout: &std::io::Result<String>, file_name: &str) -> AfterXdgMime {
+    match stdout {
+        Ok(handler) if handler.trim() == file_name => AfterXdgMime::Registered,
+        Err(e) if e.kind() == ErrorKind::NotFound => AfterXdgMime::XdgMimeMissing,
+        Ok(_) | Err(_) => AfterXdgMime::Failed,
+    }
+}
+
 /// The plugin names its desktop file after the running executable.
 pub fn desktop_file_name(exe: &Path) -> Option<String> {
     exe.file_name()
@@ -67,68 +85,9 @@ pub fn desktop_file_name(exe: &Path) -> Option<String> {
 }
 
 #[cfg(target_os = "linux")]
-pub fn register<R: tauri::Runtime, M: tauri::Manager<R>>(app: &M) {
-    use tauri_plugin_deep_link::DeepLinkExt;
-    for scheme in SCHEMES {
-        let plugin = app.deep_link().register(scheme);
-        match after_plugin(&plugin) {
-            AfterPlugin::Registered => {}
-            AfterPlugin::Failed => warn_unregistered(scheme, &format!("{plugin:?}")),
-            AfterPlugin::RunXdgMime => {
-                let xdg = run_xdg_mime(scheme);
-                match after_xdg_mime(&xdg) {
-                    AfterXdgMime::Registered => tracing::info!(
-                        "[deep-link] {scheme}:// registered with xdg-mime after the plugin stopped: {plugin:?}"
-                    ),
-                    AfterXdgMime::XdgMimeMissing => report_xdg_mime_missing(scheme),
-                    AfterXdgMime::Failed => {
-                        warn_unregistered(scheme, &format!("plugin {plugin:?}, xdg-mime {xdg:?}"))
-                    }
-                }
-            }
-        }
-    }
-}
-
+mod linux;
 #[cfg(target_os = "linux")]
-fn run_xdg_mime(scheme: &str) -> std::io::Result<bool> {
-    let exe = tauri::utils::platform::current_exe()?;
-    let file_name = desktop_file_name(&exe).ok_or_else(|| {
-        std::io::Error::new(ErrorKind::InvalidInput, "executable path has no file name")
-    })?;
-    let mut cmd = std::process::Command::new("xdg-mime");
-    cmd.args(["default", &file_name, &format!("x-scheme-handler/{scheme}")]);
-    // xdg-mime lives outside the bundle; the AppImage's library paths break it.
-    crate::appimage_env::sanitize_std_command(&mut cmd);
-    cmd.status().map(|status| status.success())
-}
-
-#[cfg(target_os = "linux")]
-fn warn_unregistered(scheme: &str, detail: &str) {
-    tracing::warn!(
-        "[deep-link] runtime {scheme}:// registration failed; Apple sign-in won't reach this install: {detail}"
-    );
-}
-
-/// A warning, not an error: nothing in Houston broke, but the count of
-/// machines that cannot sign in by redirect is worth seeing. One fingerprint
-/// so every launch on every such machine lands in one issue.
-#[cfg(target_os = "linux")]
-fn report_xdg_mime_missing(scheme: &str) {
-    tracing::warn!("[deep-link] xdg-mime is not installed; {scheme}:// sign-in redirects can't reach this install");
-    sentry::with_scope(
-        |scope| {
-            scope.set_tag("source", "deep_link_register");
-            scope.set_fingerprint(Some(&["deep-link-xdg-mime-missing"][..]));
-        },
-        || {
-            sentry::capture_message(
-                "xdg-mime is not installed; houston:// sign-in redirects can't reach this install",
-                sentry::Level::Warning,
-            );
-        },
-    );
-}
+pub use linux::register;
 
 #[cfg(test)]
 mod tests {
@@ -169,6 +128,41 @@ mod tests {
         assert_eq!(after_xdg_mime(&Ok(false)), AfterXdgMime::Failed);
         let denied = io::Error::new(ErrorKind::PermissionDenied, "noexec");
         assert_eq!(after_xdg_mime(&Err(denied)), AfterXdgMime::Failed);
+    }
+
+    #[test]
+    fn a_command_that_is_not_installed_reads_as_xdg_mime_missing() {
+        // Pins std's spawn-error kind, which the whole fallback keys on.
+        let status = std::process::Command::new("houston-definitely-missing").status();
+        assert_eq!(
+            after_xdg_mime(&status.map(|s| s.success())),
+            AfterXdgMime::XdgMimeMissing
+        );
+        let output = std::process::Command::new("houston-definitely-missing").output();
+        let stdout = output.map(|o| String::from_utf8_lossy(&o.stdout).into_owned());
+        assert_eq!(
+            after_query(&stdout, "houston-app-handler.desktop"),
+            AfterXdgMime::XdgMimeMissing
+        );
+    }
+
+    #[test]
+    fn query_accepts_only_our_desktop_file() {
+        let ours = "houston-app-handler.desktop";
+        let query = |stdout: &str| after_query(&Ok(stdout.to_string()), ours);
+        assert_eq!(
+            query("houston-app-handler.desktop\n"),
+            AfterXdgMime::Registered
+        );
+        // A stale handler from another build, another app, or none at all.
+        assert_eq!(
+            query("houston-app-old-handler.desktop\n"),
+            AfterXdgMime::Failed
+        );
+        assert_eq!(query("firefox.desktop\n"), AfterXdgMime::Failed);
+        assert_eq!(query(""), AfterXdgMime::Failed);
+        let denied = io::Error::new(ErrorKind::PermissionDenied, "noexec");
+        assert_eq!(after_query(&Err(denied), ours), AfterXdgMime::Failed);
     }
 
     #[test]
