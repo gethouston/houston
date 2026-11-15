@@ -1,6 +1,7 @@
 import { isSignedOutEngineError } from "@houston/engine-adapter/client";
 import { HoustonEngineError } from "@houston/engine-adapter/client/errors";
 import { cpFetch } from "@houston/engine-adapter/cp/fetch";
+import { EngineError } from "@houston/runtime-client";
 import { afterEach, beforeEach, expect, test, vi } from "vitest";
 
 /**
@@ -75,6 +76,21 @@ test("a real 401 from the gateway is NOT marked signed-out", async () => {
   expect(err).toBeInstanceOf(HoustonEngineError);
   expect((err as HoustonEngineError).status).toBe(401);
   expect(isSignedOutEngineError(err)).toBe(false);
+});
+
+test("the runtime client's raw-body signed-out 401 is recognized; other 401s are not", () => {
+  expect(
+    isSignedOutEngineError(new EngineError(401, '{"error":"signed_out"}')),
+  ).toBe(true);
+  expect(
+    isSignedOutEngineError(
+      new EngineError(401, '{"error":"missing bearer token"}'),
+    ),
+  ).toBe(false);
+  expect(
+    isSignedOutEngineError(new EngineError(403, '{"error":"signed_out"}')),
+  ).toBe(false);
+  expect(isSignedOutEngineError(new EngineError(401, "<html>"))).toBe(false);
 });
 
 test("local (non-control-plane) host keeps its unauthenticated behavior", async () => {

@@ -27,7 +27,9 @@ vi.mock("@houston/engine-adapter/control-plane", async (importOriginal) => {
 });
 
 import { HoustonClient } from "@houston/engine-adapter/client";
+import { HoustonEngineError } from "@houston/engine-adapter/client/errors";
 import { setAdapterErrorSink } from "@houston/engine-adapter/error-sink";
+import { EngineError } from "@houston/runtime-client";
 import {
   restoreAgentListFetch,
   stubAgentListFetch,
@@ -191,6 +193,13 @@ test("an unreachable runtime stays quiet; any other probe failure is reported", 
       new DOMException("signal timed out", "TimeoutError"),
     );
     await client.providerStatuses(["anthropic"]);
+    // No session, or a refresh that failed: the cloud transport answers its
+    // synthetic signed-out 401, which the per-agent runtime client raises
+    // with the raw body.
+    listProviders.mockRejectedValueOnce(
+      new EngineError(401, '{"error":"signed_out"}'),
+    );
+    await client.providerStatuses(["anthropic"]);
     expect(reports).toEqual([]);
 
     const bug = new TypeError("undefined is not a function");
@@ -198,6 +207,36 @@ test("an unreachable runtime stays quiet; any other probe failure is reported", 
     const statuses = await client.providerStatuses(["anthropic"]);
     expect(statuses.map((s) => s.authState)).toEqual(["unknown"]);
     expect(reports).toEqual([{ source: "provider-status.probe", error: bug }]);
+  } finally {
+    setAdapterErrorSink((source, error) => console.error(`[${source}]`, error));
+  }
+});
+
+test("a failure that repeats on every re-probe is reported once per signature", async () => {
+  const reports: { source: string; error: unknown }[] = [];
+  setAdapterErrorSink((source, error) => reports.push({ source, error }));
+  try {
+    const client = await settledClient();
+    const first = new EngineError(500, '{"error":"provider list failed"}');
+    listProviders.mockRejectedValueOnce(first);
+    for (let i = 1; i < 5; i++) {
+      listProviders.mockRejectedValueOnce(
+        new EngineError(500, '{"error":"provider list failed"}'),
+      );
+    }
+    for (let i = 0; i < 5; i++) await client.providerStatuses(["anthropic"]);
+    expect(reports).toEqual([
+      { source: "provider-status.probe", error: first },
+    ]);
+
+    const other = new HoustonEngineError(504, { error: "gateway timeout" });
+    listProviders.mockRejectedValueOnce(other);
+    listProviders.mockRejectedValueOnce(
+      new HoustonEngineError(504, { error: "gateway timeout" }),
+    );
+    await client.providerStatuses(["anthropic"]);
+    await client.providerStatuses(["anthropic"]);
+    expect(reports.map((r) => r.error)).toEqual([first, other]);
   } finally {
     setAdapterErrorSink((source, error) => console.error(`[${source}]`, error));
   }

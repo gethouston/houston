@@ -1,16 +1,14 @@
-import { isAbortError, timeoutSignal } from "@houston/sdk/abort-signal";
+import { timeoutSignal } from "@houston/sdk/abort-signal";
 import type {
   CredentialScope,
   ProviderHealth,
   ProviderStatus,
   ProviderUsage,
 } from "@houston/wire-types";
-import { isEngineWakingError } from "../engine-waking-error";
-import { reportAdapterError } from "../error-sink";
-import { isNetworkTransportError } from "../network-transport-error";
 import { toNewProvider } from "../synthetic";
 import type { BaseCtor } from "./mixin";
 import { withProviderAgentRetarget } from "./provider-agent-gone";
+import { reportProbeFailure } from "./provider-probe-report";
 import { providerRoutingSettled } from "./provider-routing";
 
 /**
@@ -93,15 +91,8 @@ export function ProviderStatusMixin<TBase extends BaseCtor>(Base: TBase) {
           reachable = true;
         }
       } catch (error) {
-        // Cards read "unknown" below either way; only a failure other than an
-        // unreachable engine (offline, pod waking, the probe timeout) is a bug.
-        if (
-          !isNetworkTransportError(error) &&
-          !isEngineWakingError(error) &&
-          !isAbortError(error)
-        ) {
-          reportAdapterError("provider-status.probe", error);
-        }
+        // Cards read "unknown" below either way.
+        reportProbeFailure(error);
       }
       return names.map((name) => {
         const pid = toNewProvider(name);

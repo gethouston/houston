@@ -116,7 +116,9 @@ test("the caller's abort still cancels a connect where AbortSignal.any is missin
     caller.abort();
     return descriptor;
   });
-  await expect(h.controller.connect(input, caller.signal)).rejects.toThrow();
+  await expect(
+    h.controller.connect(input, caller.signal),
+  ).rejects.toMatchObject({ name: "AbortError" });
   expect(h.controller.getSnapshot().status).not.toBe("online");
   await h.controller.dispose();
 });
