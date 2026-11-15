@@ -170,7 +170,7 @@
     "interactionBusyTitle": "Isso já está em andamento",
     "interactionBusyBody": "A solicitação foi substituída por uma nova resposta. Aguarde terminar ou pressione Parar para abandoná-la.",
     "interactionNotYoursTitle": "Esta pergunta é para outra pessoa",
-    "interactionNotYoursBody": "Só o colega cuja mensagem iniciou este pedido pode responder ou dispensar."
+    "interactionNotYoursBody": "Só o colega cuja mensagem iniciou esta solicitação pode respondê-la ou descartá-la."
   },
   "providerError": {
     "retryPrompt": "Tente de novo.",

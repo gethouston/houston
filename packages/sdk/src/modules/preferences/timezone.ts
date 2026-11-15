@@ -1,5 +1,5 @@
-import { EngineError } from "@houston/runtime-client";
 import { TurnTimezoneSchema } from "@houston/wire-types";
+import { refusalCode, refusalStatus } from "../refusal-code";
 /**
  * Seeding the account `timezone` preference. The cloud scheduler fires
  * routines and the morning briefing in it, so every surface seeds it for every
@@ -43,14 +43,11 @@ const usableZone = (zone: string | undefined): zone is string =>
   Boolean(zone) && TurnTimezoneSchema.safeParse(zone).success;
 
 function isLockedTeamRefusal(err: unknown): boolean {
-  if (!(err instanceof EngineError) || err.status !== 403) return false;
-  try {
-    return (
-      (JSON.parse(err.body) as { code?: unknown })?.code === "needs_upgrade"
-    );
-  } catch {
-    return false;
-  }
+  return (
+    err instanceof Error &&
+    refusalStatus(err) === 403 &&
+    refusalCode(err) === "needs_upgrade"
+  );
 }
 
 export async function seedTimezone(

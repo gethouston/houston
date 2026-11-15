@@ -13,8 +13,8 @@
  * (the web engine-adapter) binds these unchanged.
  */
 
-import { EngineError } from "@houston/runtime-client";
 import type { ModuleContext } from "../../module-context";
+import { refusalCode, refusalStatus } from "../refusal-code";
 import { createConversationImports } from "./conversation-imports";
 import { createConversationPrewarm } from "./conversation-prewarm";
 import { type StreamRegistry, streamKey } from "./stream-registry";
@@ -40,15 +40,11 @@ export type DismissInteractionOutcome =
   | { ok: false; refusal: "turn_running" | "not_interaction_owner" };
 
 function isNotInteractionOwnerRefusal(err: unknown): boolean {
-  if (!(err instanceof EngineError) || err.status !== 403) return false;
-  try {
-    return (
-      (JSON.parse(err.body) as { code?: unknown })?.code ===
-      "not_interaction_owner"
-    );
-  } catch {
-    return false;
-  }
+  return (
+    err instanceof Error &&
+    refusalStatus(err) === 403 &&
+    refusalCode(err) === "not_interaction_owner"
+  );
 }
 
 export function createConversationControls(
