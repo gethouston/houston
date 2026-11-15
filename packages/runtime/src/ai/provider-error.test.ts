@@ -197,6 +197,18 @@ test("xAI's 400 'Incorrect API key' → unauthenticated / invalid_api_key", () =
   if (err.kind === "unauthenticated") expect(err.cause).toBe("invalid_api_key");
 });
 
+test("a 400 naming PERMISSION_DENIED is not read as a wrong key", () => {
+  // Only key-specific wording overrides a 400; PERMISSION_DENIED names the
+  // 403 family (an authorization verdict), never a mistyped credential.
+  const err = classifyProviderError({
+    provider: "google",
+    model: "gemini-2.5-pro",
+    message:
+      '400: {"error":{"code":400,"message":"Request had insufficient scopes.","status":"PERMISSION_DENIED"}}',
+  });
+  expect(err.kind).not.toBe("unauthenticated");
+});
+
 test("Alibaba Model Studio 'AccessDenied.Unpurchased' 403 → model_unavailable", () => {
   // The key authenticated (a bad key answers 401 invalid_api_key); the account
   // has not activated this model, so the switch-model card fits, and at

@@ -39,6 +39,10 @@
       "types": "./src/modules/agents/first-day-refusal.ts",
       "import": "./src/modules/agents/first-day-refusal.ts"
     },
+    "./integrations/connect-refusal": {
+      "types": "./src/modules/integrations/connect-refusal.ts",
+      "import": "./src/modules/integrations/connect-refusal.ts"
+    },
     "./browser-handoff": {
       "types": "./src/modules/browser/handoff-layout.ts",
       "import": "./src/modules/browser/handoff-layout.ts"

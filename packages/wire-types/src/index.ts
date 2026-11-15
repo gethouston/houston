@@ -23,6 +23,7 @@ export * from "./file-preview";
 export * from "./first-day-refusal";
 export * from "./heartbeat";
 export * from "./identity";
+export * from "./integration-connect-refusal";
 export * from "./interactions";
 export * from "./linkedin";
 export * from "./local-model-bridge";

@@ -93,6 +93,16 @@ const INVALID_KEY_PATTERNS = [
   "project has been denied access",
 ];
 
+/** The INVALID_KEY_PATTERNS that name the key itself, the only ones trusted
+ *  on a 400 (see `isAuth`). */
+const WRONG_KEY_400_PATTERNS = [
+  "incorrect api key",
+  "invalid api key",
+  "invalid_api_key",
+  "invalid api-key",
+  "invalid x-api-key",
+];
+
 /**
  * The credential is simply ABSENT — the user logged out (or never connected)
  * while the provider stayed selected. pi RAISES this at prompt time (its
@@ -646,10 +656,12 @@ function isAuth(lower: string, status: number | null): boolean {
   // ("authentication", "oauth") inside a 400/422/5xx body trip a reconnect card
   // the user can't act on. Rate-limit / 5xx / network own their own statuses.
   // One exception: xAI answers a wrong key with 400 "Incorrect API key
-  // provided", and INVALID_KEY_PATTERNS name nothing but a credential.
+  // provided". Only the phrases that name a key itself count there; the rest
+  // of INVALID_KEY_PATTERNS ("permission_denied", "authorization failed")
+  // are 403-family wording a 400 body can carry for other reasons.
   if (typeof status === "number" && status !== 401 && status !== 403)
     return (
-      status === 400 && INVALID_KEY_PATTERNS.some((p) => lower.includes(p))
+      status === 400 && WRONG_KEY_400_PATTERNS.some((p) => lower.includes(p))
     );
   // Some OpenAI-compatible gateways OVERLOAD 401 for non-auth failures: opencode.ai
   // answers "Insufficient balance" (CreditsError) and "Model <id> is not supported"

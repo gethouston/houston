@@ -40,6 +40,7 @@ import type {
   FilesModule,
   TimezoneSeedResult,
 } from "@houston/sdk";
+import { integrationConnectRefusal } from "@houston/sdk/integrations/connect-refusal";
 import type {
   PushDeviceRegistration,
   SlackConnectReturn,
@@ -102,11 +103,6 @@ import {
   isNeedsUpgradeError,
   isPersonalSpaceError,
 } from "./team-status-model";
-import {
-  isToolkitNoAuthError,
-  isToolkitNotFoundError,
-  isToolkitOauthUnavailableError,
-} from "./toolkit-connect-refusals";
 import type { FileEntry, SkillDetail, SkillSummary, Workspace } from "./types";
 import { trackAttachmentUpload } from "./upload-progress";
 import { markToldUser } from "./user-told-mark";
@@ -1811,10 +1807,7 @@ export const tauriIntegrations = {
       () => getEngine().connectIntegration(provider, toolkit, agent),
       { provider, toolkit },
       {
-        silence: (err) =>
-          isToolkitOauthUnavailableError(err) ||
-          isToolkitNoAuthError(err) ||
-          isToolkitNotFoundError(err),
+        silence: (err) => integrationConnectRefusal(err) !== null,
       },
     ),
   /** The connect poll's status read. A 404 means the pending connection is
