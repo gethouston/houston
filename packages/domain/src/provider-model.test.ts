@@ -307,10 +307,10 @@ test("a deepseek id the catalog renamed maps at the same tier", () => {
 });
 
 test("MiniMax global provider uses the pi-ai catalog, not minimax-cn", () => {
-  const r = migrateProviderModel("minimax", "MiniMax-M2.7");
-  expect(r).toMatchObject({ provider: "minimax", model: "MiniMax-M2.7" });
+  const r = migrateProviderModel("minimax", "MiniMax-M3");
+  expect(r).toMatchObject({ provider: "minimax", model: "MiniMax-M3" });
   expect(r.diagnostics).toEqual([]);
-  assertValid(r, "minimax/MiniMax-M2.7");
+  assertValid(r, "minimax/MiniMax-M3");
 
   const fallback = migrateProviderModel("minimax", "MiniMax-M1");
   expect(fallback.provider).toBe("minimax");
@@ -319,13 +319,23 @@ test("MiniMax global provider uses the pi-ai catalog, not minimax-cn", () => {
   assertValid(fallback, "minimax fallback");
 });
 
-test("a saved MiniMax-M3[1m] migrates to the MiniMax default", () => {
+test("a saved retired MiniMax id migrates to the MiniMax default", () => {
   // `[1m]` is a Claude Code client suffix MiniMax's API rejects as an unknown
-  // model; a config still naming it must land on a model the key can run.
-  const r = migrateProviderModel("minimax", "MiniMax-M3[1m]");
-  expect(r).toMatchObject({ provider: "minimax", model: "MiniMax-M3.1-Flash" });
-  expect(r.diagnostics[0]?.message).toContain("MiniMax-M3[1m]");
-  assertValid(r, "minimax/MiniMax-M3[1m]");
+  // model, and MiniMax retired the M2.7 line; a config still naming one must
+  // land on a model the key can run.
+  for (const retired of [
+    "MiniMax-M3[1m]",
+    "MiniMax-M2.7",
+    "MiniMax-M2.7-highspeed",
+  ]) {
+    const r = migrateProviderModel("minimax", retired);
+    expect(r).toMatchObject({
+      provider: "minimax",
+      model: "MiniMax-M3.1-Flash",
+    });
+    expect(r.diagnostics[0]?.message).toContain(retired);
+    assertValid(r, `minimax/${retired}`);
+  }
 });
 
 test("deepseek provider models migrate against its finite pi catalog", () => {

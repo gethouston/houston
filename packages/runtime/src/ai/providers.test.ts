@@ -164,6 +164,21 @@ test("MiniMax runs only ids its API serves; a stored MiniMax-M3[1m] retargets to
   expect(safeModelIds("minimax")).not.toContain("MiniMax-M3[1m]");
 });
 
+test("a pinned or saved MiniMax-M2.7 runs on M3.1 Flash", () => {
+  // MiniMax retired the M2.7 line (pay-as-you-go ends 2026-11-18; plan keys
+  // already run M3.1 Flash), but pi still lists both rows.
+  for (const retired of ["MiniMax-M2.7", "MiniMax-M2.7-highspeed"]) {
+    for (const pinned of [false, true]) {
+      const m = safeGetModel("minimax", retired, pinned) as { id?: string };
+      expect(m.id).toBe("MiniMax-M3.1-Flash");
+    }
+    expect(safeModelIds("minimax")).not.toContain(retired);
+  }
+  expect(safeModelIds("minimax")).toEqual(
+    expect.arrayContaining(["MiniMax-M3.1-Flash", "MiniMax-M3"]),
+  );
+});
+
 test("safeGetModel keeps a valid saved id but falls back on a stale one", () => {
   // A valid id resolves to that exact model.
   expect(

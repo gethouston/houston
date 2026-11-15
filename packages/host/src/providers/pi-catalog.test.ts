@@ -140,10 +140,28 @@ test("buildProviderCatalog serves the full pi-ai registry", () => {
 
 test("catalog offers MiniMax only ids its API serves", () => {
   // `MiniMax-M3[1m]` is Claude Code's client-side 1M marker; MiniMax answers
-  // it with `unknown model` (2013), so the picker must never offer it.
+  // it with `unknown model` (2013), and MiniMax retired the M2.7 line. Every
+  // row without `runsAs` is one a turn runs as itself.
   const minimax = buildProviderCatalog().find((p) => p.id === "minimax");
-  const ids = minimax?.models.map((m) => m.id) ?? [];
-  expect(ids).toContain("MiniMax-M3.1-Flash");
-  expect(ids).toContain("MiniMax-M3");
-  expect(ids.some((id) => id.includes("["))).toBe(false);
+  const served = (minimax?.models ?? [])
+    .filter((m) => m.runsAs === undefined)
+    .map((m) => m.id)
+    .sort();
+  expect(served).toEqual(["MiniMax-M3", "MiniMax-M3.1-Flash"]);
+});
+
+test("MiniMax's retired ids stay as rows that run as M3.1 Flash", () => {
+  // A team ceiling written with a retired id keeps admitting MiniMax: the
+  // gateway's clamp and the app map the entry through `runsAs`.
+  const minimax = buildProviderCatalog().find((p) => p.id === "minimax");
+  const runsAs = Object.fromEntries(
+    (minimax?.models ?? [])
+      .filter((m) => m.runsAs !== undefined)
+      .map((m) => [m.id, m.runsAs]),
+  );
+  expect(runsAs).toEqual({
+    "MiniMax-M3[1m]": "MiniMax-M3.1-Flash",
+    "MiniMax-M2.7": "MiniMax-M3.1-Flash",
+    "MiniMax-M2.7-highspeed": "MiniMax-M3.1-Flash",
+  });
 });

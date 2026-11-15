@@ -78,8 +78,6 @@ test("OpenRouter, DeepSeek, Gemini, Bedrock, and MiniMax are registered but LOCA
   expect(isCloudProvider("minimax")).toBe(false);
   expect(hostProvider("minimax")?.models).toEqual([
     "MiniMax-M3.1-Flash",
-    "MiniMax-M2.7",
-    "MiniMax-M2.7-highspeed",
     "MiniMax-M3",
   ]);
   expect(hostProvider("minimax")?.defaultModel).toBe("MiniMax-M3.1-Flash");

@@ -127,12 +127,7 @@ export const PROVIDERS: readonly HostProvider[] = [
     cloud: false,
     // M3.1 Flash leads because it is the connect default, the one model both
     // key kinds (pay-as-you-go and M Plan / Token Plan) run.
-    models: [
-      "MiniMax-M3.1-Flash",
-      "MiniMax-M2.7",
-      "MiniMax-M2.7-highspeed",
-      "MiniMax-M3",
-    ],
+    models: ["MiniMax-M3.1-Flash", "MiniMax-M3"],
     defaultModel: DEFAULT_MODEL.minimax,
   },
   {

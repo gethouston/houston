@@ -24,6 +24,7 @@ import {
 } from "./anthropic-catalog";
 import { BEDROCK_PROVIDER_ID, invokableBedrockModels } from "./bedrock-catalog";
 import { withMissionPin } from "./catalog-pin";
+import { MINIMAX_PROVIDER, withMinimaxRetired } from "./minimax-catalog";
 import { piOAuthProviders } from "./pi-oauth";
 import { QWEN_PROVIDER_ID, qwenModels } from "./qwen-dashscope";
 
@@ -114,10 +115,11 @@ function providerDisplayName(
  * every provider's public :443 endpoint, so a hosted user sees the full catalog
  * too. Deterministic — no clock, no IO.
  *
- * Two providers are shaped. Bedrock's pi-ai list is mostly ids Bedrock itself
+ * Three providers are shaped. Bedrock's pi-ai list is mostly ids Bedrock itself
  * refuses (see ./bedrock-catalog); the catalog is the RUNNABLE set, so those
  * never reach a picker. Anthropic runs one model per Claude family, so its
- * retired rows name the lineup model they run as (see ./anthropic-catalog).
+ * retired rows name the lineup model they run as (see ./anthropic-catalog),
+ * and MiniMax's retired ids name the MiniMax default (see ./minimax-catalog).
  */
 export function buildProviderCatalog(): ProviderCatalog {
   const oauthProviders = piOAuthProviders();
@@ -139,7 +141,11 @@ export function buildProviderCatalog(): ProviderCatalog {
       providerDisplayName(id, oauthNames),
     );
     catalog.push(
-      id === ANTHROPIC_PROVIDER_ID ? withAnthropicLineup(provider) : provider,
+      id === ANTHROPIC_PROVIDER_ID
+        ? withAnthropicLineup(provider)
+        : id === MINIMAX_PROVIDER
+          ? withMinimaxRetired(provider)
+          : provider,
     );
   }
   // Houston's qwen extension provider (DashScope international pay-as-you-go)

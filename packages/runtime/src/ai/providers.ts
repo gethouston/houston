@@ -26,7 +26,11 @@ import {
 import { AZURE_OPENAI, withAzureBaseUrl } from "./azure-openai";
 import { CODEX_PROVIDER_ID, codexOfferedModelIds } from "./codex-offered";
 import { endpointReachableCached } from "./endpoint-reachability";
-import { minimaxServedModelId } from "./minimax";
+import {
+  MINIMAX_PROVIDER,
+  minimaxOfferedModelIds,
+  minimaxServedModelId,
+} from "./minimax";
 import {
   buildActiveCustomModel,
   customEndpointConfigured,
@@ -475,7 +479,7 @@ export function safeGetModel(
 ) {
   // A retired Claude id runs on its own family's lineup model, pinned or saved
   // alike (./anthropic-lineup): it is the SAME choice, not a stale one. A
-  // MiniMax id its API never served runs on the MiniMax default (./minimax).
+  // MiniMax id its API no longer serves runs on the MiniMax default (./minimax).
   const modelId = minimaxServedModelId(
     provider,
     lineupModelId(provider, requestedId),
@@ -622,6 +626,9 @@ export function safeModelIds(provider: ProviderId): string[] {
     return codexOfferedModelIds(piModelIds(provider));
   if (provider === ANTHROPIC_PROVIDER_ID)
     return anthropicOfferedModelIds(piModelIds(provider));
+  // pi still lists MiniMax's retired M2.7 rows; a turn on one runs the default.
+  if (provider === MINIMAX_PROVIDER)
+    return minimaxOfferedModelIds(piModelIds(provider));
   return piModelIds(provider);
 }
 
