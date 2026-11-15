@@ -6,7 +6,9 @@
  * shapes, and each wants a different surface:
  *   * `error: null` — the user cancelled; dismiss silently.
  *   * `helperUnavailable: true` — the helper BINARY cannot run on this
- *     machine (pre-AVX2 CPU, signal death; HOUSTON-APP-543). Retrying the
+ *     machine (pre-AVX2 CPU, signal death, HOUSTON-APP-543; or a Windows
+ *     loader failure, 0xC0000135 / 0xC0000139, when the Windows version
+ *     lacks a DLL or entry point it needs, HOUSTON-APP-4ZQ). Retrying the
  *     browser login can only reproduce it, so a remote engine degrades to the
  *     runtime's paste flow (which needs no local helper) and a co-located one
  *     gets a translated explanation.
