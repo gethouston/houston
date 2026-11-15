@@ -44,3 +44,20 @@ test("OpenRouter 400 'is not a valid model ID' → model_unavailable", () => {
   });
   expect(err.kind).toBe("model_unavailable");
 });
+
+// Near-misses that must stay `unknown`: OpenRouter's capability and data-policy
+// misses name no model, and a bad request field is not a dead model.
+test.each([
+  [
+    "openrouter",
+    '404 {"error":{"message":"No endpoints found that support tool use. To learn more about provider routing, visit: https://openrouter.ai/docs/provider-routing","code":404}}',
+  ],
+  [
+    "openrouter",
+    '404 {"error":{"message":"No endpoints found matching your data policy (Free model training). Configure: https://openrouter.ai/settings/privacy","code":404}}',
+  ],
+  ["openai-compatible", '400 unknown model parameter "foo"'],
+])("%s near-miss %s stays unknown", (provider, message) => {
+  const err = classifyProviderError({ provider, model: "some-model", message });
+  expect(err.kind).toBe("unknown");
+});
