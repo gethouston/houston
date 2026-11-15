@@ -168,7 +168,9 @@
     "missionRowFailed": "We could not save this task to your board. Your message was still sent.",
     "interactionDismissFailed": "Couldn't dismiss the request.",
     "interactionBusyTitle": "This is already in progress",
-    "interactionBusyBody": "The request was replaced by a new reply. Wait for it to finish, or press Stop to abandon it."
+    "interactionBusyBody": "The request was replaced by a new reply. Wait for it to finish, or press Stop to abandon it.",
+    "interactionNotYoursTitle": "This question is for someone else",
+    "interactionNotYoursBody": "Only the teammate whose message started this request can answer or dismiss it."
   },
   "providerError": {
     "retryPrompt": "Try again.",

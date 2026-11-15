@@ -397,6 +397,18 @@ test("a dismiss refused by a running turn is a typed outcome, never a throw (PRO
   expect(calls.dismissed).toEqual(["c1"]);
 });
 
+test("a dismiss of a card meant for another member is a typed outcome", async () => {
+  const { mod, calls } = harness();
+  calls.dismissRefusal = new EngineError(
+    403,
+    '{"error":"not_interaction_owner","code":"not_interaction_owner"}',
+  );
+  await expect(mod.dismissInteraction("c1", "a1")).resolves.toEqual({
+    ok: false,
+    refusal: "not_interaction_owner",
+  });
+});
+
 test("every other dismiss failure still throws to the caller", async () => {
   const { mod, calls } = harness();
   calls.dismissRefusal = new EngineError(500, '{"error":"boom"}');

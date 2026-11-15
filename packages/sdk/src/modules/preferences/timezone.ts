@@ -1,3 +1,4 @@
+import { EngineError } from "@houston/runtime-client";
 import { TurnTimezoneSchema } from "@houston/wire-types";
 /**
  * Seeding the account `timezone` preference. The cloud scheduler fires
@@ -27,16 +28,30 @@ export interface TimezoneSeedInput {
  * `seeded`: written now. `stored`: the account already had one, untouched.
  * `unseeded`: neither candidate is a real IANA zone (Chromium on some Linux
  * hosts reports `Etc/Unknown`), so nothing was written; `timezone` is the
- * detected value to render.
+ * detected value to render. `locked`: the team's writes are refused (403
+ * `needs_upgrade`), so nothing was written; the team's own lock state is the
+ * surface, and the next seed after the upgrade writes it.
  */
 export type TimezoneSeedResult =
   | { kind: "seeded"; timezone: string; source: "legacy" | "detected" }
   | { kind: "stored"; timezone: string }
-  | { kind: "unseeded"; timezone: string };
+  | { kind: "unseeded"; timezone: string }
+  | { kind: "locked"; timezone: string };
 
 /** The server refuses an invalid zone with a 400, so never send one. */
 const usableZone = (zone: string | undefined): zone is string =>
   Boolean(zone) && TurnTimezoneSchema.safeParse(zone).success;
+
+function isLockedTeamRefusal(err: unknown): boolean {
+  if (!(err instanceof EngineError) || err.status !== 403) return false;
+  try {
+    return (
+      (JSON.parse(err.body) as { code?: unknown })?.code === "needs_upgrade"
+    );
+  } catch {
+    return false;
+  }
+}
 
 export async function seedTimezone(
   io: {
@@ -58,7 +73,14 @@ export async function seedTimezone(
       ? { zone: detected, source: "detected" as const }
       : null;
   if (!pick) return { kind: "unseeded", timezone: detected };
-  const out = await io.create(TIMEZONE_PREFERENCE, pick.zone);
+  let out: { created: boolean; value: string };
+  try {
+    out = await io.create(TIMEZONE_PREFERENCE, pick.zone);
+  } catch (err) {
+    if (isLockedTeamRefusal(err))
+      return { kind: "locked", timezone: pick.zone };
+    throw err;
+  }
   if (!out.created) return { kind: "stored", timezone: out.value };
   return { kind: "seeded", timezone: out.value, source: pick.source };
 }
