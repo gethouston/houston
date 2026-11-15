@@ -11,9 +11,12 @@
  *  - `toolkit_no_auth` — the toolkit needs no account at all; its tools
  *    already work (HOUSTON-APP-4Z1: agents authored connect cards for the
  *    no-auth "composio" toolkit itself, and every click ended in this 400).
+ *  - `toolkit_not_found` — Composio carries no app by this slug; an
+ *    agent-authored card named one that does not exist (HOUSTON-APP-5M0).
  */
 export const TOOLKIT_OAUTH_UNAVAILABLE = "toolkit_oauth_unavailable";
 export const TOOLKIT_NO_AUTH = "toolkit_no_auth";
+export const TOOLKIT_NOT_FOUND = "toolkit_not_found";
 
 /** The transitional match for a cloud gateway that predates the typed code: it
  *  still relays the raw auth-config error as a 500 whose `detail` carries this
@@ -61,4 +64,9 @@ export function isToolkitOauthUnavailableError(err: unknown): boolean {
  */
 export function isToolkitNoAuthError(err: unknown): boolean {
   return refusalBody(err)?.code === TOOLKIT_NO_AUTH;
+}
+
+/** True when a thrown connect error means no app by this slug exists. */
+export function isToolkitNotFoundError(err: unknown): boolean {
+  return refusalBody(err)?.code === TOOLKIT_NOT_FOUND;
 }

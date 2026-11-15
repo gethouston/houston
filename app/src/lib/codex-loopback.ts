@@ -28,6 +28,7 @@ import {
   osStartCodexOauthLoopback,
 } from "./os-bridge";
 import { providerName } from "./providers";
+import { reportQuietError } from "./quiet-error-report";
 import { tauriProvider } from "./tauri";
 
 /** Native event carrying the OAuth redirect's raw `code=...&state=...` query. */
@@ -107,6 +108,16 @@ function fallBackToDeviceCode(
 ): Promise<void> {
   return runCodexDeviceCodeFallback(cause, {
     report: (err) => logAndReportError("codex_loopback_login", err),
+    reportPortTaken: (err) => {
+      const message = err instanceof Error ? err.message : String(err);
+      console.warn(`[codex_loopback_login] ${message}`);
+      reportQuietError(
+        "codex_port_taken",
+        "codex_loopback_login",
+        message,
+        err,
+      );
+    },
     cancelLogin: () => tauriProvider.cancelLogin(frontendProviderId),
     launchDeviceCodeLogin: () =>
       tauriProvider.launchLogin(frontendProviderId, {

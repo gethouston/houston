@@ -53,7 +53,10 @@ import type { BridgeQuietClass } from "@houston/sdk/local-model-bridge/quiet";
  *  `link_identity_taken` is a provider sign-in that met an existing account
  *  whose provider identity already belongs to another account
  *  (`modules/identity`): the person stays signed in by email code and sees
- *  a notice. Support can join the accounts, so it is one counted warning. */
+ *  a notice. Support can join the accounts, so it is one counted warning.
+ *  `codex_port_taken` is another process on the person's machine holding
+ *  the fixed port OpenAI's desktop sign-in redirects to (HOUSTON-APP-5EV):
+ *  the sign-in falls back to a device code, so it is one counted warning. */
 export type QuietErrorClass =
   | "office_preview_capacity"
   | "engine_waking"
@@ -68,7 +71,8 @@ export type QuietErrorClass =
   | "bug_intake_unavailable"
   | "upload_interrupted"
   | "routine_gone"
-  | "link_identity_taken";
+  | "link_identity_taken"
+  | "codex_port_taken";
 
 /**
  * The burst-gate key a quiet-class report collapses on.

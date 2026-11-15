@@ -4,6 +4,7 @@ import { analytics } from "../../lib/analytics";
 import { tauriIntegrations } from "../../lib/tauri";
 import {
   isToolkitNoAuthError,
+  isToolkitNotFoundError,
   isToolkitOauthUnavailableError,
 } from "../../lib/toolkit-connect-refusals";
 import { useUIStore } from "../../stores/ui";
@@ -24,8 +25,10 @@ import { INTEGRATION_PROVIDER } from "./model";
  * plus an analytics event so demand for the missing app stays visible. A
  * no-auth refusal (the app never needed an account; an agent-authored card
  * offered it anyway — HOUSTON-APP-4Z1, "composio") tells the user they are
- * already set. Either way the error is re-thrown so the runner settles the
- * row as failed.
+ * already set. A not-found refusal (an agent-authored card named an app
+ * Composio does not carry — HOUSTON-APP-5M0, "etsy") says the app is not one
+ * Houston can connect. In every case the error is re-thrown so the runner
+ * settles the row as failed.
  */
 export function useMintConnectLink(
   agentId: string | undefined,
@@ -46,6 +49,12 @@ export function useMintConnectLink(
           addToast({
             title: t("connectResult.noAuthTitle", { app: appName(slug) }),
             description: t("connectResult.noAuth"),
+            variant: "info",
+          });
+        } else if (isToolkitNotFoundError(err)) {
+          addToast({
+            title: t("connectResult.notFoundTitle", { app: appName(slug) }),
+            description: t("connectResult.notFound"),
             variant: "info",
           });
         } else if (isToolkitOauthUnavailableError(err)) {

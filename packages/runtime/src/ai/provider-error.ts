@@ -206,6 +206,11 @@ const MODEL_UNAVAILABLE_PATTERNS = [
   // phrasings above match this order, so it degraded to `unknown` — the
   // report-bug card instead of switch-model (PRODUCT-1517).
   "not supported model",
+  // Alibaba Model Studio (qwen) answers a model the account has not activated
+  // with 403 `{"code":"AccessDenied.Unpurchased","message":"Access to model
+  // denied. …"}`. A bad key answers 401 invalid_api_key first, so this body
+  // proves the credential and only the MODEL is out of reach.
+  "accessdenied.unpurchased",
   // The runtime's OWN local-override guard (`localOverrideError`,
   // ai/openai-compatible.ts): a turn pinned to a model the configured custom
   // endpoint doesn't serve — a conversation pinned before the endpoint was
@@ -640,8 +645,12 @@ function isAuth(lower: string, status: number | null): boolean {
   // A KNOWN non-auth status is never an auth failure: don't let loose words
   // ("authentication", "oauth") inside a 400/422/5xx body trip a reconnect card
   // the user can't act on. Rate-limit / 5xx / network own their own statuses.
+  // One exception: xAI answers a wrong key with 400 "Incorrect API key
+  // provided", and INVALID_KEY_PATTERNS name nothing but a credential.
   if (typeof status === "number" && status !== 401 && status !== 403)
-    return false;
+    return (
+      status === 400 && INVALID_KEY_PATTERNS.some((p) => lower.includes(p))
+    );
   // Some OpenAI-compatible gateways OVERLOAD 401 for non-auth failures: opencode.ai
   // answers "Insufficient balance" (CreditsError) and "Model <id> is not supported"
   // (ModelError) with HTTP 401. The credential is valid — reconnecting fixes

@@ -2,6 +2,7 @@ import { strictEqual } from "node:assert";
 import { describe, it } from "node:test";
 import {
   isToolkitNoAuthError,
+  isToolkitNotFoundError,
   isToolkitOauthUnavailableError,
 } from "../src/lib/toolkit-connect-refusals.ts";
 
@@ -112,5 +113,21 @@ describe("isToolkitNoAuthError", () => {
     strictEqual(isToolkitNoAuthError(localError("<html>")), false);
     strictEqual(isToolkitNoAuthError(new Error("x")), false);
     strictEqual(isToolkitNoAuthError(null), false);
+  });
+});
+
+describe("isToolkitNotFoundError", () => {
+  it("matches the typed code on both error body shapes", () => {
+    const body = { error: "…", code: "toolkit_not_found" };
+    strictEqual(isToolkitNotFoundError(cloudError(body)), true);
+    strictEqual(isToolkitNotFoundError(localError(JSON.stringify(body))), true);
+  });
+
+  it("rejects other refusals and untyped errors", () => {
+    strictEqual(
+      isToolkitNotFoundError(cloudError({ code: "toolkit_no_auth" })),
+      false,
+    );
+    strictEqual(isToolkitNotFoundError(new Error("boom")), false);
   });
 });

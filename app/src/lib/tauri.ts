@@ -104,6 +104,7 @@ import {
 } from "./team-status-model";
 import {
   isToolkitNoAuthError,
+  isToolkitNotFoundError,
   isToolkitOauthUnavailableError,
 } from "./toolkit-connect-refusals";
 import type { FileEntry, SkillDetail, SkillSummary, Workspace } from "./types";
@@ -1800,7 +1801,8 @@ export const tauriIntegrations = {
    *  per-agent surface so the gateway applies the agent's allowlist + auto-grant
    *  (Teams v2); omit it for the account-level Integrations page. The host's
    *  typed connect refusals — OAuth unavailable (a Houston-side setup gap,
-   *  HOU-1110) and no-auth (nothing to connect, its tools already work) — are
+   *  HOU-1110), no-auth (nothing to connect, its tools already work) and
+   *  not-found (no app by that slug, HOUSTON-APP-5M0) — are
    *  expected + explainable: the connect flow surfaces its own copy, so no raw
    *  toast and no bug report. */
   connect: (provider: IntegrationProviderId, toolkit: string, agent?: string) =>
@@ -1810,7 +1812,9 @@ export const tauriIntegrations = {
       { provider, toolkit },
       {
         silence: (err) =>
-          isToolkitOauthUnavailableError(err) || isToolkitNoAuthError(err),
+          isToolkitOauthUnavailableError(err) ||
+          isToolkitNoAuthError(err) ||
+          isToolkitNotFoundError(err),
       },
     ),
   /** The connect poll's status read. A 404 means the pending connection is

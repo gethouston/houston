@@ -82,6 +82,19 @@ test("a 401 rejection reads as an invalid key", async () => {
   });
 });
 
+test("xAI's 400 'Incorrect API key' reads as an invalid key, not an outage", async () => {
+  completeSimple.mockResolvedValue(
+    reply({
+      stopReason: "error",
+      errorMessage:
+        'xai API error (400): 400 "Incorrect API key provided. You can obtain an API key from https://console.x.ai."',
+    }),
+  );
+  await expect(verifyApiKey("xai", "xai-typo")).rejects.toMatchObject({
+    reason: "invalid_key",
+  });
+});
+
 test("a rate limit proves the key authenticated — verified", async () => {
   completeSimple.mockResolvedValue(
     reply({

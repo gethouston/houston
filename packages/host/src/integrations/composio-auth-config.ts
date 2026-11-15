@@ -105,6 +105,7 @@ const OAUTH_MODES = new Set(["OAUTH1", "OAUTH1A", "OAUTH2"]);
  *  remedy shown to an end user). The `.message` keeps the remedy for logs and
  *  self-host operators; `body.error` is the fallback a generic surface shows. */
 export const TOOLKIT_OAUTH_UNAVAILABLE = "toolkit_oauth_unavailable";
+export const TOOLKIT_NOT_FOUND = "toolkit_not_found";
 
 function oauthOnlyError(toolkit: string): Error {
   return new IntegrationUpstreamError(
@@ -129,8 +130,18 @@ async function candidateSpecs(
 ): Promise<Record<string, unknown>[]> {
   const detail = await http.call<RawToolkitDetail>(
     `/api/v3/toolkits/${encodeURIComponent(toolkit)}`,
+    { nullStatuses: [404] },
   );
-  const modes = (detail?.auth_config_details ?? []).flatMap((d) =>
+  // Composio has no app by this slug: an agent-authored connect card named an
+  // app the catalog does not carry (HOUSTON-APP-5M0: "etsy"). Nothing to set
+  // up on either side, so a typed 400 the connect flow explains, not a 502.
+  if (!detail) {
+    throw new IntegrationUpstreamError(400, {
+      error: `${toolkit} is not an app Houston can connect`,
+      code: TOOLKIT_NOT_FOUND,
+    });
+  }
+  const modes = (detail.auth_config_details ?? []).flatMap((d) =>
     d.mode ? [d.mode] : [],
   );
   const connectable = modes.filter((m) => m.toUpperCase() !== "NO_AUTH");
@@ -139,7 +150,7 @@ async function candidateSpecs(
   );
 
   const specs: Record<string, unknown>[] = [];
-  if ((detail?.composio_managed_auth_schemes ?? []).length > 0) {
+  if ((detail.composio_managed_auth_schemes ?? []).length > 0) {
     specs.push({ type: "use_composio_managed_auth" });
   }
   if (collectible) {
