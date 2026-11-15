@@ -18,6 +18,7 @@ import {
   ModelNotOfferedError,
 } from "../ai/provider-error";
 import { logProviderError } from "../ai/provider-error-log";
+import { runWithProviderResponseCapture } from "../ai/provider-response";
 import {
   activeEffort,
   canonicalPinProvider,
@@ -701,7 +702,9 @@ export async function execTurn(
                   // store's request-time reads record into THIS turn's holder
                   // (auth/used-token.ts, PRODUCT-1319).
                   runWithUsedTokenCapture(usedTokens, () =>
-                    conv.session.prompt(promptText),
+                    runWithProviderResponseCapture(() =>
+                      conv.session.prompt(promptText),
+                    ),
                   ),
                 ),
             ),
@@ -972,6 +975,7 @@ export async function execTurn(
         kind: "unknown",
         provider: attributedProvider("unknown"),
         raw_excerpt: errMessage(err),
+        ...(attributedModel && { model: attributedModel }),
       },
       turnId,
     });

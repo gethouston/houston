@@ -6,6 +6,7 @@ import {
 } from "../../ai/codex-terse-refusal";
 import { classifyProviderError } from "../../ai/provider-error";
 import { logProviderError } from "../../ai/provider-error-log";
+import { currentFailedResponse } from "../../ai/provider-response";
 import { canonicalPinProvider } from "../../ai/providers";
 import {
   noteAuthFailure,
@@ -40,7 +41,10 @@ export function classifyTurnFailure(
   // opencode.ai 401 body, an entitlement 403, a misclassified non-auth
   // error) is otherwise never recorded — leaving production provider
   // failures undiagnosable from the engine logs.
-  const status = diagnosticStatus(msg.diagnostics);
+  // The response hook's status covers the SSE path, where pi keeps only the
+  // body (provider-response.ts).
+  const response = currentFailedResponse();
+  const status = diagnosticStatus(msg.diagnostics) ?? response?.status ?? null;
   const input = {
     provider: msg.provider,
     model: msg.model ?? null,
@@ -61,6 +65,14 @@ export function classifyTurnFailure(
       : plain;
   noteCodexRefusal(classified);
   logProviderError(classified, { model: msg.model ?? null, status });
+  if (classified.kind === "unknown") {
+    const effort = msg.providerThinkingLevel ?? msg.thinkingLevel;
+    return {
+      ...classified,
+      ...(effort && { effort }),
+      ...(response?.requestId && { request_id: response.requestId }),
+    };
+  }
   // Feed an auth failure into the status surface: the credential the
   // turn just ran on cannot authenticate, so "Connected" would be a lie
   // until it changes (auth/credential-health.ts).

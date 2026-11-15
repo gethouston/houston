@@ -19,6 +19,8 @@ interface BugReportContext {
   /** Free-text the person typed (Settings > Report bug). Linear titles and
    *  leads the issue with it, and the fallback feedback's message is it. */
   userMessage?: string;
+  /** Triage tags for the fallback feedback (a provider card's facts). */
+  tags?: Record<string, string>;
 }
 
 async function getRecentLogs(
@@ -48,15 +50,16 @@ export async function submitBugReport(
   context: BugReportContext,
 ): Promise<BugReportOutcome> {
   const logs = await getRecentLogs();
-  const { command } = context;
+  const { command, tags, ...intake } = context;
   return deliverBugReport({
-    sendToIntake: () => osReportBug({ ...context, logs }),
+    sendToIntake: () => osReportBug({ ...intake, command, logs }),
     sendFallback: (failure) =>
       captureBugReportFeedback({
         message: context.userMessage || context.error,
         email: context.userEmail,
         command,
         reason: failure.kind,
+        tags,
         context: {
           error: context.userMessage ? undefined : context.error,
           appVersion: context.appVersion,

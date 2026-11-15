@@ -551,6 +551,8 @@ test("a throw before the provider write is attributed to the RESOLVED provider, 
     kind: "unknown",
     provider: "openai-codex",
     raw_excerpt: "the flux capacitor came loose",
+    // The model the turn resolved onto rides along for the bug report.
+    model: "gpt-x",
   });
   // The stale cached provider never reaches the card.
   expect(conv.provider).toBe("google");
