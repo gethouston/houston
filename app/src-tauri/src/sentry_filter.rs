@@ -99,8 +99,16 @@ pub fn demote_webview_creation_error(target: &str, message: &str, guard_active: 
 /// The failing request already returns `Err` and its caller owns surfacing
 /// it, so the verifier's own log line is a duplicate — one Sentry event per
 /// retry from a handful of broken machines (Sentry HOUSTON-APP-PE).
+///
+/// `tauri_plugin_deep_link` logs an error for every OS command it cannot run
+/// (`update-desktop-database` / `xdg-mime` on a Linux desktop without
+/// desktop-file-utils) and then returns that same failure to `register_all()`,
+/// whose caller in `lib.rs` already warns. A missing tool on the user's machine
+/// is not a defect, and the warn keeps the line as a breadcrumb.
 pub fn demote_error_to_breadcrumb(target: &str) -> bool {
-    target.starts_with("tauri_plugin_updater") || target.starts_with("rustls_platform_verifier")
+    target.starts_with("tauri_plugin_updater")
+        || target.starts_with("rustls_platform_verifier")
+        || target.starts_with("tauri_plugin_deep_link")
 }
 
 #[cfg(test)]
@@ -121,6 +129,19 @@ mod tests {
             "rustls_platform_verifier::verification::windows"
         ));
         assert!(demote_error_to_breadcrumb("rustls_platform_verifier"));
+    }
+
+    #[test]
+    fn deep_link_missing_os_command_is_demoted_to_a_breadcrumb() {
+        let all = decisions(|| {
+            tracing::error!(
+                target: "tauri_plugin_deep_link::error",
+                "Failed to run OS command `update-desktop-database`: No such file or directory (os error 2)"
+            );
+        });
+        let decision = decision_for(&all, "update-desktop-database");
+        assert!(decision.contains(EventFilter::Breadcrumb));
+        assert!(!decision.contains(EventFilter::Event));
     }
 
     #[test]
