@@ -54,6 +54,7 @@ export {
   isAgentNameTaken,
   isFirstDayNoProvider,
   isFirstDayNotPending,
+  isFirstDayProviderUnavailable,
   type WireAgent,
 } from "./modules/agents";
 // ===== Files module contract ===========================================

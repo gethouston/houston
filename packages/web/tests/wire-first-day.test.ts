@@ -1,5 +1,9 @@
 import { HoustonClient } from "@houston/engine-adapter/client";
-import { firstDayRefusal, isFirstDayNoProvider } from "@houston/sdk";
+import {
+  firstDayRefusal,
+  isFirstDayNoProvider,
+  isFirstDayProviderUnavailable,
+} from "@houston/sdk";
 import { afterEach, beforeEach, expect, test, vi } from "vitest";
 import {
   createWireCapture,
@@ -135,6 +139,7 @@ test.each([
   "first_day_not_pending",
   "first_day_not_started",
   "first_day_no_provider",
+  "first_day_provider_unavailable",
 ])("the %s refusal surfaces as the adapter's engine error, never retried", async (code) => {
   vi.useFakeTimers();
   stubResponses(json(409, { error: "refused", code }));
@@ -182,4 +187,32 @@ test("a start with no AI connected (409 first_day_no_provider) is the typed refu
       (err: unknown) => err,
     );
   expect(isFirstDayNoProvider(other)).toBe(false);
+});
+
+test("a start whose AI could not be reached (409 first_day_provider_unavailable + Retry-After) is the typed refusal, not re-issued", async () => {
+  vi.useFakeTimers();
+  stubResponses(
+    new Response(
+      JSON.stringify({
+        error: "the AI provider could not be reached; try again in a minute",
+        code: "first_day_provider_unavailable",
+      }),
+      {
+        status: 409,
+        headers: { "content-type": "application/json", "retry-after": "60" },
+      },
+    ),
+  );
+  const pending = client()
+    .startFirstDay("a1", {})
+    .then(
+      () => null,
+      (err: unknown) => err,
+    );
+  await vi.advanceTimersByTimeAsync(120_000);
+  const failure = await pending;
+  expect(failure).toMatchObject({ name: "HoustonEngineError", status: 409 });
+  expect(isFirstDayProviderUnavailable(failure)).toBe(true);
+  expect(isFirstDayNoProvider(failure)).toBe(false);
+  expect(calls).toHaveLength(1);
 });

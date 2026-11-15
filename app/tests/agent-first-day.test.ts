@@ -3,6 +3,7 @@ import { describe, it } from "node:test";
 import {
   isFirstDayNoProvider,
   isFirstDayNotPending,
+  isFirstDayProviderUnavailable,
 } from "@houston/sdk/agents/first-day-refusal";
 import { isFirstDayPending } from "../src/lib/agent-first-day-model.ts";
 import { classifyQuietError } from "../src/lib/quiet-error-class.ts";
@@ -84,5 +85,26 @@ describe("a start with no AI connected", () => {
       ),
       null,
     );
+  });
+});
+
+describe("a start whose AI could not be reached", () => {
+  const refusal = {
+    status: 409,
+    body: {
+      error: "the AI provider could not be reached; try again in a minute",
+      code: "first_day_provider_unavailable",
+    },
+  };
+
+  it("is the SDK's provider-unavailable refusal, and only that", () => {
+    assert.equal(isFirstDayProviderUnavailable(refusal), true);
+    assert.equal(isFirstDayNoProvider(refusal), false);
+    assert.equal(isFirstDayNotPending(refusal), false);
+  });
+
+  it("is a quiet class, never the bug pair (HOUSTON-APP-5H4)", () => {
+    const err = Object.assign(new Error("engine error 409"), refusal);
+    assert.equal(classifyQuietError(err), "first_day_provider_unavailable");
   });
 });

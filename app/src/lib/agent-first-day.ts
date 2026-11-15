@@ -22,6 +22,7 @@ import type { FirstDayStartResult } from "@houston/engine-adapter";
 import {
   isFirstDayNoProvider,
   isFirstDayNotPending,
+  isFirstDayProviderUnavailable,
 } from "@houston/sdk/agents/first-day-refusal";
 import { registerSetupGreeting } from "../hooks/use-setup-greeting";
 import { useAgentProvisioningStore } from "../stores/agent-provisioning";
@@ -65,7 +66,8 @@ export async function startEmployeeFirstDay(
     // `call()` in lib/tauri.ts already reported it and chose the toast (a
     // pod still waking past the SDK's wait, offline). A refusal means this
     // button was stale, and that the engine is up: the refetch takes it away.
-    if (isFirstDayNotPending(err)) engineAnswered(agent.folderPath);
+    if (isFirstDayNotPending(err) || isFirstDayProviderUnavailable(err))
+      engineAnswered(agent.folderPath);
     if (isFirstDayNoProvider(err)) {
       engineAnswered(agent.folderPath);
       // The scan said an AI was connected and the host disagreed: re-probe

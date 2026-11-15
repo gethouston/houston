@@ -52,6 +52,18 @@ export function surfaceQuietState(
       console.info(`[toast:${command}] ${message}`);
       showFirstDayNoProviderToast(originalError);
       return true;
+    case "first_day_provider_unavailable":
+      // Transient: the provider failed a token refresh or the lookup timed
+      // out, and the first day stays pending. One counted warning, so an
+      // outage is still visible to us, and copy to try again.
+      console.warn(`[toast:${command}] ${message}`);
+      reportQuietError(quiet, command, message, originalError);
+      useUIStore.getState().addToast({
+        title: i18n.t("board:firstDay.providerUnavailable.title"),
+        description: i18n.t("board:firstDay.providerUnavailable.body"),
+        variant: "info",
+      });
+      return true;
     case "no_url_handler":
       // Same remedy copy `openExternalUrl` shows; a rejection that reached
       // this surface skipped that seam (a raw `osOpenUrl` caller).

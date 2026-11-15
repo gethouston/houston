@@ -128,6 +128,10 @@
       "body": "Tu empleado de IA necesita una IA como Claude o ChatGPT para trabajar. Conecta una y luego comienza su primer día.",
       "action": "Conectar IA"
     },
+    "providerUnavailable": {
+      "title": "Tu IA no responde en este momento",
+      "body": "No pudimos conectar con tu IA para comenzar el primer día. Espera un minuto y vuelve a comenzarlo."
+    },
     "bannerNeedsAiTitle": "Conecta una IA para que tu equipo empiece",
     "reconnect": {
       "title": "Vuelve a conectar {{provider}}",

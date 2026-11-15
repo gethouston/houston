@@ -34,6 +34,10 @@ import type { BridgeQuietClass } from "@houston/sdk/local-model-bridge/quiet";
  *  has no AI connected (`@houston/sdk/agents/first-day-refusal`): an expected
  *  state whose surface offers the connect flow, skipped by every reporting
  *  path.
+ *  `first_day_provider_unavailable` is a first-day start refused because the
+ *  person's AI could not be reached right now (`agents/first-day-refusal`):
+ *  transient, with copy to try again, and one fingerprinted warning so a
+ *  provider outage still shows up as a count.
  *  `storage_full` is the device's disk refusing the updater's release
  *  download: the device's state, not a bug, named only by the download report
  *  path and never retried for that release in the session.
@@ -65,6 +69,7 @@ export type QuietErrorClass =
   | "plan_min_interval"
   | "webhook_not_creator"
   | "first_day_no_provider"
+  | "first_day_provider_unavailable"
   | "bug_intake_unavailable"
   | "upload_interrupted"
   | "routine_gone"

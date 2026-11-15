@@ -48,7 +48,14 @@ export type FirstDayRefusalCode =
    * An expected state, not a failure: the first day stays pending and
    * starts once an AI is connected.
    */
-  | "first_day_no_provider";
+  | "first_day_no_provider"
+  /**
+   * The person's AI is connected but its credential could not be served for
+   * the first turn right now (the provider failed a token refresh, or the
+   * lookup timed out). Transient: the first day stays pending, and the
+   * answer carries `Retry-After` for when another start may succeed.
+   */
+  | "first_day_provider_unavailable";
 
 /** The 409 body a refused first-day start answers with. */
 export interface FirstDayRefusal {

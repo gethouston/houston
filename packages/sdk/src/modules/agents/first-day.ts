@@ -40,7 +40,9 @@ export type { FirstDayStartInput, FirstDayStartResult };
  * The first day runs on an AI the person has connected (Claude, ChatGPT and
  * the like): with none connected the start is refused with
  * `first_day_no_provider` and the first day stays waiting, so connect an AI
- * first, then start it again.
+ * first, then start it again. When the connected AI cannot be reached right
+ * now the start is refused with `first_day_provider_unavailable` and the first
+ * day stays waiting: start it again after about a minute.
  *
  * @param agentId The agent this acts on, by the id listAgents returns. An
  *   agent's name is not its id, so read the id from listAgents first.
@@ -63,6 +65,9 @@ export async function startFirstDay(
         body: JSON.stringify(input),
       }),
     // Idempotent on the host, so a waking refusal is safe to re-issue.
+    // `first_day_provider_unavailable` is not re-issued: its Retry-After is
+    // the gateway's refresh-failure memo window (a minute), and an earlier
+    // retry only reads the same failure, so the person retries instead.
     { wakingLadderMs: WAKING_CREATE_RETRY_MS },
   );
   return (await res.json()) as FirstDayStartResult;

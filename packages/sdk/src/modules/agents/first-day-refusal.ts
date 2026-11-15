@@ -41,6 +41,18 @@ export function isFirstDayNoProvider(error: unknown): boolean {
 }
 
 /**
+ * Whether a start was refused because the person's AI could not be reached
+ * for the first turn right now (`first_day_provider_unavailable`): the
+ * provider failed a token refresh, or the lookup timed out. Transient and
+ * nothing for us to fix on the client, so every surface reads it through the
+ * quiet classifier (one fingerprinted warning, copy asking to try again). The
+ * first day stays pending, so the same start works once the provider answers.
+ */
+export function isFirstDayProviderUnavailable(error: unknown): boolean {
+  return firstDayRefusal(error)?.code === "first_day_provider_unavailable";
+}
+
+/**
  * Whether a start was refused because the employee has no first day waiting
  * (`first_day_not_pending`): another tab or the AI Manager already started
  * it, or the employee has none. The surface's start button was stale; the

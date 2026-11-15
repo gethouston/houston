@@ -7,6 +7,7 @@ import {
   firstDayRefusal,
   isFirstDayNoProvider,
   isFirstDayNotPending,
+  isFirstDayProviderUnavailable,
 } from "./index";
 
 /**
@@ -121,6 +122,7 @@ describe("startFirstDay", () => {
     "first_day_not_pending",
     "first_day_not_started",
     "first_day_no_provider",
+    "first_day_provider_unavailable",
   ])("the %s refusal throws once with the host's 409, never retried", async (code) => {
     const h = harness({ status: 409, body: { error: "refused", code } });
     dispose = h.sdk.agents.dispose;
@@ -164,6 +166,28 @@ describe("the first-day refusal classifiers", () => {
     expect(isFirstDayNoProvider(err)).toBe(true);
     expect(isFirstDayNotPending(err)).toBe(false);
     expect(h.calls).toHaveLength(1);
+  });
+
+  it("name the provider-unavailable refusal, never retried", async () => {
+    const h = harness({
+      status: 409,
+      body: {
+        error: "the AI provider could not be reached; try again in a minute",
+        code: "first_day_provider_unavailable",
+      },
+    });
+    dispose = h.sdk.agents.dispose;
+    const err = await h.sdk.agents.startFirstDay("a1").catch((e: unknown) => e);
+    expect(isFirstDayProviderUnavailable(err)).toBe(true);
+    expect(isFirstDayNoProvider(err)).toBe(false);
+    expect(isFirstDayNotPending(err)).toBe(false);
+    expect(h.calls).toHaveLength(1);
+    expect(
+      isFirstDayProviderUnavailable({
+        status: 409,
+        body: { error: "x", code: "first_day_not_started" },
+      }),
+    ).toBe(false);
   });
 
   it("read the adapter's parsed body and keep the provider it names", () => {
