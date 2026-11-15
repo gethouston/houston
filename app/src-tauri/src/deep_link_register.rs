@@ -12,8 +12,10 @@
 //!
 //! The plugin also ignores both commands' exit statuses, so its `Ok(())` does
 //! not prove the handler is set. Every path ends by asking
-//! `xdg-mime query default`, and a machine that still does not name our
-//! desktop file is reported, so it stays countable.
+//! `xdg-mime query default` and reading the user's `mimeapps.list` (the
+//! query alone misses a working handler on some xdg-utils, see `mimeapps`).
+//! A machine where neither names our desktop file is reported, so it stays
+//! countable.
 
 // The runtime entry point is Linux-only; the decision logic stays compiled
 // everywhere so its unit tests run on every CI platform.
@@ -70,7 +72,16 @@ pub fn after_xdg_mime(result: &std::io::Result<bool>) -> AfterXdgMime {
 
 /// `stdout` is what `xdg-mime query default x-scheme-handler/<scheme>`
 /// printed. Its exit status is ignored: a non-zero exit prints no handler.
-pub fn after_query(stdout: &std::io::Result<String>, file_name: &str) -> AfterXdgMime {
+/// `listed` is the first desktop file the user's `mimeapps.list` names for
+/// the scheme; either one naming ours means the handler is set.
+pub fn after_query(
+    stdout: &std::io::Result<String>,
+    listed: Option<&str>,
+    file_name: &str,
+) -> AfterXdgMime {
+    if listed == Some(file_name) {
+        return AfterXdgMime::Registered;
+    }
     match stdout {
         Ok(handler) if handler.trim() == file_name => AfterXdgMime::Registered,
         Err(e) if e.kind() == ErrorKind::NotFound => AfterXdgMime::XdgMimeMissing,
@@ -83,6 +94,10 @@ pub fn desktop_file_name(exe: &Path) -> Option<String> {
     exe.file_name()
         .map(|name| format!("{}-handler.desktop", name.to_string_lossy()))
 }
+
+mod mimeapps;
+#[cfg(target_os = "linux")]
+pub use mimeapps::read_default as mimeapps_default;
 
 #[cfg(target_os = "linux")]
 mod linux;
@@ -141,7 +156,7 @@ mod tests {
         let output = std::process::Command::new("houston-definitely-missing").output();
         let stdout = output.map(|o| String::from_utf8_lossy(&o.stdout).into_owned());
         assert_eq!(
-            after_query(&stdout, "houston-app-handler.desktop"),
+            after_query(&stdout, None, "houston-app-handler.desktop"),
             AfterXdgMime::XdgMimeMissing
         );
     }
@@ -149,7 +164,7 @@ mod tests {
     #[test]
     fn query_accepts_only_our_desktop_file() {
         let ours = "houston-app-handler.desktop";
-        let query = |stdout: &str| after_query(&Ok(stdout.to_string()), ours);
+        let query = |stdout: &str| after_query(&Ok(stdout.to_string()), None, ours);
         assert_eq!(
             query("houston-app-handler.desktop\n"),
             AfterXdgMime::Registered
@@ -162,7 +177,23 @@ mod tests {
         assert_eq!(query("firefox.desktop\n"), AfterXdgMime::Failed);
         assert_eq!(query(""), AfterXdgMime::Failed);
         let denied = io::Error::new(ErrorKind::PermissionDenied, "noexec");
-        assert_eq!(after_query(&Err(denied), ours), AfterXdgMime::Failed);
+        assert_eq!(after_query(&Err(denied), None, ours), AfterXdgMime::Failed);
+    }
+
+    #[test]
+    fn mimeapps_list_confirms_what_the_query_misses() {
+        // xdg-utils 1.1.3 without desktop-file-utils: empty query, file set.
+        let ours = "houston-app-handler.desktop";
+        let empty = Ok(String::new());
+        assert_eq!(
+            after_query(&empty, Some(ours), ours),
+            AfterXdgMime::Registered
+        );
+        assert_eq!(
+            after_query(&empty, Some("firefox.desktop"), ours),
+            AfterXdgMime::Failed
+        );
+        assert_eq!(after_query(&empty, None, ours), AfterXdgMime::Failed);
     }
 
     #[test]

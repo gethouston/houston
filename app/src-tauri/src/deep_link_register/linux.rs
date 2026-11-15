@@ -4,8 +4,8 @@ use tauri::Manager;
 use tauri_plugin_deep_link::DeepLinkExt;
 
 use super::{
-    after_plugin, after_query, after_xdg_mime, desktop_file_name, AfterPlugin, AfterXdgMime,
-    SCHEMES,
+    after_plugin, after_query, after_xdg_mime, desktop_file_name, mimeapps_default, AfterPlugin,
+    AfterXdgMime, SCHEMES,
 };
 
 enum Unregistered {
@@ -78,8 +78,8 @@ fn register_scheme<R: tauri::Runtime>(
         }
     }
 
-    let handler = query_default(scheme);
-    match after_query(&handler, &file_name) {
+    let (outcome, handler) = current_handler(scheme, &file_name);
+    match outcome {
         AfterXdgMime::Registered => {
             if ran_default {
                 tracing::info!(
@@ -91,7 +91,7 @@ fn register_scheme<R: tauri::Runtime>(
         AfterXdgMime::XdgMimeMissing => return Err(Unregistered::XdgMimeMissing),
         AfterXdgMime::Failed if ran_default => {
             return Err(Unregistered::Failed(format!(
-                "xdg-mime default ran, handler is still {handler:?}"
+                "xdg-mime default ran, handler is still {handler}"
             )))
         }
         AfterXdgMime::Failed => {}
@@ -100,17 +100,17 @@ fn register_scheme<R: tauri::Runtime>(
     // The plugin returned Ok, but it ignores exit statuses and the handler is
     // not ours. One retry of the step that sets it.
     let xdg = set_default(scheme, &file_name);
-    let retried = query_default(scheme);
-    match after_query(&retried, &file_name) {
+    let (outcome, retried) = current_handler(scheme, &file_name);
+    match outcome {
         AfterXdgMime::Registered => {
             tracing::info!(
-                "[deep-link] {scheme}:// set with xdg-mime; the plugin left the handler at {handler:?}"
+                "[deep-link] {scheme}:// set with xdg-mime; the plugin left the handler at {handler}"
             );
             Ok(())
         }
         AfterXdgMime::XdgMimeMissing => Err(Unregistered::XdgMimeMissing),
         AfterXdgMime::Failed => Err(Unregistered::Failed(format!(
-            "plugin left the handler at {handler:?}; xdg-mime default {xdg:?}, handler now {retried:?}"
+            "plugin left the handler at {handler}; xdg-mime default {xdg:?}, handler now {retried}"
         ))),
     }
 }
@@ -127,6 +127,27 @@ fn set_default(scheme: &str, file_name: &str) -> std::io::Result<bool> {
         .args(["default", file_name, &format!("x-scheme-handler/{scheme}")])
         .status()
         .map(|status| status.success())
+}
+
+/// The outcome, and both answers for a report.
+fn current_handler(scheme: &str, file_name: &str) -> (AfterXdgMime, String) {
+    let queried = query_default(scheme);
+    let listed = listed_default(scheme);
+    let listed_name = listed.as_ref().ok().and_then(|l| l.as_deref());
+    let outcome = after_query(&queried, listed_name, file_name);
+    (
+        outcome,
+        format!("query {queried:?}, mimeapps.list {listed:?}"),
+    )
+}
+
+/// `dirs::config_dir()` honours `$XDG_CONFIG_HOME`, as xdg-mime does.
+fn listed_default(scheme: &str) -> std::io::Result<Option<String>> {
+    let dir = dirs::config_dir().ok_or_else(|| std::io::Error::other("no config dir"))?;
+    mimeapps_default(
+        &dir.join("mimeapps.list"),
+        &format!("x-scheme-handler/{scheme}"),
+    )
 }
 
 fn query_default(scheme: &str) -> std::io::Result<String> {
