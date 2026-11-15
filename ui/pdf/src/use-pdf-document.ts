@@ -1,7 +1,7 @@
 import type { PDFDocumentProxy } from "pdfjs-dist/legacy/build/pdf.mjs";
 import { useEffect, useRef, useState } from "react";
 import { firstPaintSizes, measureAll } from "./page-sizes";
-import { loadPdfJs } from "./pdfjs";
+import { openPdf } from "./pdfjs";
 import type { PdfPageSize } from "./types";
 
 /** A loaded document. `version` counts the loads of this viewer, so a page
@@ -19,9 +19,7 @@ export type PdfDocumentState =
   | { status: "ready"; handle: PdfDocumentHandle };
 
 async function open(data: Blob, version: number): Promise<PdfDocumentHandle> {
-  const pdfjs = await loadPdfJs();
-  const bytes = new Uint8Array(await data.arrayBuffer());
-  const doc = await pdfjs.getDocument({ data: bytes }).promise;
+  const doc = await openPdf(new Uint8Array(await data.arrayBuffer()));
   const sizes = await firstPaintSizes(doc);
   return { doc, pageCount: doc.numPages, sizes, version };
 }
