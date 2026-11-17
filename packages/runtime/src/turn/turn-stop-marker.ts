@@ -62,7 +62,7 @@ export async function reconcileTurnStopMarker(
       `${encodeURIComponent(opts.turn.conversationId)}.json`,
     );
     const key = posix.join(opts.resolved.prefix, conversationKey);
-    const signal = AbortSignal.timeout(5_000);
+    const signal = AbortSignal.timeout(opts.deps.stopMarkerTimeoutMs ?? 5_000);
     const store = opts.resolved.live ?? opts.resolved.store;
     let generation = syncedManifest?.get(conversationKey)?.generation;
     if (!syncedManifest && opts.filesystem.generationAware) {
