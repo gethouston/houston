@@ -120,4 +120,6 @@ export interface ContextWindowConfig {
   default: number;
   /** Snap-up ceiling once observed usage proves a larger window. */
   max: number;
+  /** The model's input cap when it sits below the window (`modelInputLimit`). */
+  inputLimit?: number;
 }
