@@ -79,10 +79,10 @@ export function countLayersAbove(layers: readonly LayerReading[]): number {
  * Escape that answers it — the rule lives here, in one list, because the sweep
  * below reads the role off the element rather than spelling it a second time.
  */
-const OPEN_LAYER_ROLES = ["dialog", "alertdialog", "menu", "listbox"];
+const OPEN_LAYER_ROLES = new Set(["dialog", "alertdialog", "menu", "listbox"]);
 
 export function isOpenLayerRole(role: string): boolean {
-  return OPEN_LAYER_ROLES.includes(role);
+  return OPEN_LAYER_ROLES.has(role);
 }
 
 /** Anything a layer might be: the role then says whether it takes keys. */

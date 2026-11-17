@@ -26,6 +26,7 @@ export function useFittingLabel(
   const index = pick.key === key ? pick.index : 0;
   const measures = candidates.length > 1;
 
+  // oxlint-disable-next-line react-hooks/exhaustive-deps -- Measure after every commit; the pick equality check terminates the fitting pass.
   useLayoutEffect(() => {
     const el = ref.current;
     if (!measures || !el) return;

@@ -133,11 +133,13 @@ describe("the claimed id reaches the mission", () => {
         /newMissionIds\(opts\.conversationId\)/.test(source(file)),
         `${file} must mint through newMissionIds`,
       );
+    const wiring = source("components/board/use-board-chat-wiring.tsx");
     ok(
-      /conversationId: prewarm\.claimNewConversationId\(\)/.test(
-        source("components/board/use-board-chat-wiring.tsx"),
+      /const prewarmClaimNewConversationId = prewarm\.claimNewConversationId/.test(
+        wiring,
       ),
     );
+    ok(/conversationId: prewarmClaimNewConversationId\(\)/.test(wiring));
     ok(
       /conversationId: claimedId/.test(
         source("components/board/board-create-conversation.ts"),

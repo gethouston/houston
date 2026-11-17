@@ -32,7 +32,7 @@ export interface ObjectStore extends Partial<UploadStore> {
     key: string,
     destFile: string,
     opts?: ReadOptions,
-    // biome-ignore lint/suspicious/noConfusingVoidType: additive port widening must accept existing void-returning stores.
+    // additive port widening must accept existing void-returning stores.
   ): Promise<ReadResult | void>;
   /** Download one object and return metadata from the same read response. */
   downloadVersioned?(
@@ -44,7 +44,7 @@ export interface ObjectStore extends Partial<UploadStore> {
     srcFile: string,
     key: string,
     opts?: WriteOptions,
-    // biome-ignore lint/suspicious/noConfusingVoidType: additive port widening must accept existing void-returning stores.
+    // additive port widening must accept existing void-returning stores.
   ): Promise<WriteResult | void>;
   delete(key: string, opts?: WriteOptions): Promise<void>;
   /** Read many objects in one round trip. Keys answered `fallback` were not

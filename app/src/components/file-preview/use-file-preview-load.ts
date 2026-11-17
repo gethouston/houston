@@ -91,9 +91,9 @@ export function useFilePreviewLoad(
           ? { state: "error", message: t("files.gone.description") }
           : { state: "binary" },
       );
-  }, [pdf.error, plan, filePath, officePreview, agentPath, t, show]);
+  }, [pdf.error, plan, filePath, officePreview, agentPath, t, show, files]);
 
-  // biome-ignore lint/correctness/useExhaustiveDependencies: `version` (the file was rewritten) and `attempt` (Try again) re-run the load
+  // oxlint-disable-next-line react-hooks/exhaustive-deps -- `version` (the file was rewritten) and `attempt` (Try again) re-run the load
   useEffect(() => {
     if (!filePath || isLoading || listingPending) return;
     let cancelled = false;

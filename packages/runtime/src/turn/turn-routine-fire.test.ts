@@ -190,9 +190,9 @@ function seedRotatedChat(dataDir: string): void {
 }
 
 const lastAssistant = (dataDir: string) =>
-  loadConversation(join(dataDir, "conversations"), ID)
-    ?.messages.filter((m) => m.role === "assistant")
-    .at(-1);
+  loadConversation(join(dataDir, "conversations"), ID)?.messages.findLast(
+    (m) => m.role === "assistant",
+  );
 
 /** A person's turn in the routine's chat: no `routineFire`. */
 async function chat(

@@ -27,7 +27,7 @@ export function useReconnectNotice(
   const next = nextReconnectNoticeChangeFor(statuses, now);
 
   // `tick` re-arms the timer after a capped wait, when `next` is unchanged.
-  // biome-ignore lint/correctness/useExhaustiveDependencies: tick is read only to re-run the effect after each wake
+  // oxlint-disable-next-line react-hooks/exhaustive-deps -- tick is read only to re-run the effect after each wake
   useEffect(() => {
     if (next === null) return;
     const wait = Math.min(

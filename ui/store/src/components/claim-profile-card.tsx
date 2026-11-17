@@ -1,6 +1,8 @@
 import type { StoreLinkComponent } from "../types";
 
-const PlainLink: StoreLinkComponent = (props) => <a {...props} />;
+const PlainLink: StoreLinkComponent = ({ children, ...props }) => (
+  <a {...props}>{children}</a>
+);
 
 export interface ClaimProfileCardLabels {
   title: string;

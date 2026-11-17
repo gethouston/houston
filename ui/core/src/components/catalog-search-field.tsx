@@ -76,7 +76,6 @@ export function CatalogSearchField({
       <input
         ref={inputRef}
         type="search"
-        role="searchbox"
         value={value}
         onChange={(event) => onChange(event.target.value)}
         placeholder={placeholder}

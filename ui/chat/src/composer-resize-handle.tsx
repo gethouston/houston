@@ -98,7 +98,7 @@ export function ComposerResizeHandle({
   };
 
   return (
-    // biome-ignore lint/a11y/useSemanticElements: a focusable splitter is role="separator" with a value (ARIA window splitter); <hr> cannot take focus or pointer drags.
+    // a focusable splitter is role="separator" with a value (ARIA window splitter); <hr> cannot take focus or pointer drags.
     <div
       aria-label={label}
       aria-orientation="horizontal"

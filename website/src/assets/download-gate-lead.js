@@ -24,7 +24,7 @@
   // reported as the unknown entry point instead.
   const SOURCE = /^[a-z0-9_-]{1,64}$/;
   const UNKNOWN_SOURCE = "unknown";
-  const LOCALES = ["en", "es", "pt"];
+  const LOCALES = new Set(["en", "es", "pt"]);
   const VISITOR_KEY = "houston_visitor_id";
   // The constant the two mirrors have always written in their source column, so
   // rows written before this release keep matching the ones written after it.
@@ -56,7 +56,7 @@
     const code = String(window.HOUSTON_LOCALE || "")
       .slice(0, 2)
       .toLowerCase();
-    return LOCALES.includes(code) ? code : null;
+    return LOCALES.has(code) ? code : null;
   }
 
   // Only fields that carry a value, so an empty optional is absent rather than

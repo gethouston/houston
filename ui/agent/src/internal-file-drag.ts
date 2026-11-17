@@ -12,10 +12,10 @@ export function dragAllowsScope(
   types: readonly string[],
   scope?: string,
 ): boolean {
-  const normalized = types.map((type) => type.toLowerCase());
+  const normalized = new Set(types.map((type) => type.toLowerCase()));
   return (
-    !normalized.includes(INTERNAL_DRAG_TYPE.toLowerCase()) ||
-    normalized.includes(scopeType(scope))
+    !normalized.has(INTERNAL_DRAG_TYPE.toLowerCase()) ||
+    normalized.has(scopeType(scope))
   );
 }
 

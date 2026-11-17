@@ -104,7 +104,7 @@ export interface ChatInteractionCardLabels {
 export type CardCompletion = (
   answers: ChatInteractionAnswer[],
   files: File[],
-  // biome-ignore lint/suspicious/noConfusingVoidType: a plain `void` callback (one that sends no files) must stay assignable.
+  // a plain `void` callback (one that sends no files) must stay assignable.
 ) => void | Promise<boolean>;
 
 export interface ChatInteractionCardProps {

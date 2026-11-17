@@ -25,12 +25,12 @@ export function nonEmpty(value: unknown): value is string {
   return typeof value === "string" && value.length > 0;
 }
 
-const GRANT_SCOPES: readonly TurnGrantScope[] = [
+const GRANT_SCOPES: ReadonlySet<TurnGrantScope> = new Set([
   "integrations",
   "agent-writes",
   "code-run",
   "browser-live",
-];
+]);
 
 export function parseGrant(value: unknown): TurnGrant {
   const grant = record(value, "grant");
@@ -67,8 +67,7 @@ export function parseGrant(value: unknown): TurnGrant {
     expires: grant.expires,
     scopes: grant.scopes.filter(
       (scope): scope is TurnGrantScope =>
-        typeof scope === "string" &&
-        GRANT_SCOPES.includes(scope as TurnGrantScope),
+        typeof scope === "string" && GRANT_SCOPES.has(scope as TurnGrantScope),
     ),
   };
 }

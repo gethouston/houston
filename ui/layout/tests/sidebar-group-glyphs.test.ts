@@ -138,8 +138,10 @@ describe("team icon search", () => {
   });
 
   it("makes money surface the complete requested finance set", () => {
-    const matches = SIDEBAR_GROUP_GLYPH_NAMES.filter((name) =>
-      matchesSidebarGroupGlyph(name, "money"),
+    const matches = new Set(
+      SIDEBAR_GROUP_GLYPH_NAMES.filter((name) =>
+        matchesSidebarGroupGlyph(name, "money"),
+      ),
     );
     for (const name of [
       "bank",
@@ -148,7 +150,7 @@ describe("team icon search", () => {
       "dollar-bill",
       "money-stack",
     ] as const) {
-      assert.ok(matches.includes(name), name);
+      assert.ok(matches.has(name), name);
     }
   });
 

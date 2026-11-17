@@ -118,7 +118,7 @@ export function CatalogRow({
     // wrapper only widens where that button's click can come FROM, so it adds
     // nothing to the accessibility tree and takes no key handler of its own (a
     // key handler here would fire a second time for the same press).
-    // biome-ignore lint/a11y/noStaticElementInteractions: a role that made this wrapper interactive is precisely the bug — see above.
+    // oxlint-disable-next-line jsx-a11y/no-static-element-interactions -- a role that made this wrapper interactive is precisely the bug — see above.
     <div
       role="presentation"
       onClick={open ? handleClick : undefined}

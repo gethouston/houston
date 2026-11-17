@@ -3,6 +3,8 @@ import type { ReactNode } from "react";
 import type { StoreAgentRow } from "../types";
 import { AgentTile } from "./agent-tile";
 
+const DEFAULT_LABELS = {};
+
 export function AgentDetailLayout({
   agent,
   creator,
@@ -13,7 +15,7 @@ export function AgentDetailLayout({
   learnings,
   moreAgents,
   footer,
-  labels = {},
+  labels = DEFAULT_LABELS,
 }: {
   agent: StoreAgentRow;
   creator: ReactNode;

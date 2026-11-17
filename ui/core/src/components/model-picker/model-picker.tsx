@@ -104,7 +104,7 @@ export function ModelPicker({
   // auto-focus over this (`onOpenAutoFocus` prevented by the consumer).
   const rootRef = useRef<HTMLDivElement>(null);
   const inputRef = useRef<HTMLInputElement>(null);
-  // biome-ignore lint/correctness/useExhaustiveDependencies: commandKey/withSearch key the remount + input mount this re-focuses after.
+  // oxlint-disable-next-line react-hooks/exhaustive-deps -- commandKey/withSearch key the remount + input mount this re-focuses after.
   useEffect(() => {
     (inputRef.current ?? rootRef.current)?.focus();
   }, [commandKey, withSearch]);

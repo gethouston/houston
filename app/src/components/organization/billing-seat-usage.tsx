@@ -25,7 +25,7 @@ export function BillingSeatUsage({
       <div aria-hidden="true" className="flex flex-wrap gap-1.5">
         {Array.from({ length: dots }, (_, seat) => (
           <span
-            // biome-ignore lint/suspicious/noArrayIndexKey: seats have no identity, only a position.
+            // oxlint-disable-next-line react/no-array-index-key -- seats have no identity, only a position.
             key={seat}
             className={cn(
               "size-2.5 rounded-full",

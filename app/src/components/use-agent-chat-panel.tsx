@@ -549,7 +549,7 @@ export function useAgentChatPanel({
       if (!path) return;
       queryClient.setQueryData<configData.Config>(
         queryKeys.config(path),
-        (prev) => ({ ...(prev ?? {}), ...patch }),
+        (prev) => ({ ...prev, ...patch }),
       );
     },
     [path, queryClient],
@@ -1215,7 +1215,7 @@ export function useAgentChatPanel({
   const [activeSkill, setActiveSkill] = useState<SkillSummary | null>(null);
   // Drop selected Skill when the agent / session changes so it doesn't
   // leak across contexts.
-  // biome-ignore lint/correctness/useExhaustiveDependencies: path and selectedSessionKey are intentional change-triggers that reset activeSkill when the agent or session switches; they are reactive values derived from props and must remain in the dep list.
+  // oxlint-disable-next-line react-hooks/exhaustive-deps -- path and selectedSessionKey are intentional change-triggers that reset activeSkill when the agent or session switches; they are reactive values derived from props and must remain in the dep list.
   useEffect(() => {
     setActiveSkill(null);
   }, [path, selectedSessionKey]);
@@ -1617,7 +1617,7 @@ export function useAgentChatPanel({
   const [abandonedInteractionKey, setAbandonedInteractionKey] = useState<
     string | null
   >(null);
-  // biome-ignore lint/correctness/useExhaustiveDependencies: selectedSessionKey is the intentional change-trigger that clears all four suppression states when the open conversation switches, so a dismissed or abandoned card never suppresses a new chat's card. The effect body deliberately reads none of it.
+  // oxlint-disable-next-line react-hooks/exhaustive-deps -- selectedSessionKey is the intentional change-trigger that clears all four suppression states when the open conversation switches, so a dismissed or abandoned card never suppresses a new chat's card. The effect body deliberately reads none of it.
   useEffect(() => {
     setDismissedPlanReady(null);
     setDismissedSuggestReusable(null);

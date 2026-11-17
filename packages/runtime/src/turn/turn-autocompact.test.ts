@@ -130,9 +130,9 @@ async function send(
 }
 
 const lastAssistant = (dataDir: string) =>
-  loadConversation(join(dataDir, "conversations"), ID)
-    ?.messages.filter((m) => m.role === "assistant")
-    .at(-1);
+  loadConversation(join(dataDir, "conversations"), ID)?.messages.findLast(
+    (m) => m.role === "assistant",
+  );
 
 test("a nearly full pi session compacts before the prompt, like the pod", async () => {
   target.model = {

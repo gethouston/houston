@@ -60,7 +60,7 @@ export function useSkillDetailSurface(args: {
   // The header pencil's uncommitted rename (PRODUCT-1018): saved into the
   // frontmatter `title:` when Save runs; the slug never moves.
   const [rename, setRename] = useState<string | null>(null);
-  // biome-ignore lint/correctness/useExhaustiveDependencies: slug is the intentional change-trigger — a pending rename must die with the row it was typed for; the effect body deliberately reads none of it.
+  // oxlint-disable-next-line react-hooks/exhaustive-deps -- slug is the intentional change-trigger — a pending rename must die with the row it was typed for; the effect body deliberately reads none of it.
   useEffect(() => {
     setRename(null);
   }, [slug]);

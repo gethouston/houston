@@ -1,7 +1,7 @@
 import { mkdtempSync, readdirSync, readFileSync, writeFileSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
-import { expect, test } from "vitest";
+import { assert, expect, test } from "vitest";
 import { HttpObjectStore, STREAM_UPLOAD_THRESHOLD_BYTES } from "./http-store";
 import {
   ObjectTooLargeError,
@@ -638,7 +638,9 @@ test("a large file uploads as a per-attempt stream, never one heap buffer", asyn
     // Drain the stream — a retried attempt must deliver the FULL body again,
     // which only works if each attempt opened a fresh stream.
     let bytes = 0;
-    for await (const chunk of init?.body as ReadableStream<Uint8Array>) {
+    const stream = init?.body;
+    assert(stream instanceof ReadableStream);
+    for await (const chunk of stream) {
       bytes += chunk.byteLength;
     }
     received.push(bytes);

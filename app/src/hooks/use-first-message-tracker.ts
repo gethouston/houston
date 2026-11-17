@@ -37,7 +37,7 @@ export function useFirstMessageTracker(): void {
   const { data: session } = useSession();
   const uid = session?.uid ?? null;
 
-  // biome-ignore lint/correctness/useExhaustiveDependencies: uid re-keys the tracker per account; the state itself is read at send time.
+  // oxlint-disable-next-line react-hooks/exhaustive-deps -- uid re-keys the tracker per account; the state itself is read at send time.
   useEffect(() => {
     const tracker = createFirstMessageTracker({
       readState: readFirstMessageState,

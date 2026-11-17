@@ -21,7 +21,7 @@ export function ProgressDots({
     <div className="flex items-center gap-1.5" aria-hidden>
       {Array.from({ length: total }, (_, i) => (
         <span
-          // biome-ignore lint/suspicious/noArrayIndexKey: dots are positional counters — no identity field exists; order is invariant
+          // oxlint-disable-next-line react/no-array-index-key -- dots are positional counters — no identity field exists; order is invariant
           key={`dot-${i}`}
           className={cn(
             "size-2 rounded-full transition-colors",

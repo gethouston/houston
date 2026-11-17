@@ -19,16 +19,14 @@ const call: ModelCallTiming = {
 /** A session whose timing feed the test drives by hand. */
 function fakeSession(withTimings = true) {
   const listeners = new Set<(e: HarnessTimingEvent) => void>();
-  const session = {
-    ...(withTimings
-      ? {
-          subscribeModelCalls(l: (e: HarnessTimingEvent) => void) {
-            listeners.add(l);
-            return () => listeners.delete(l);
-          },
-        }
-      : {}),
-  } as unknown as HarnessSession;
+  const session = (withTimings
+    ? {
+        subscribeModelCalls(l: (e: HarnessTimingEvent) => void) {
+          listeners.add(l);
+          return () => listeners.delete(l);
+        },
+      }
+    : {}) as unknown as HarnessSession;
   const emit = (e: HarnessTimingEvent) => {
     for (const l of listeners) l(e);
   };

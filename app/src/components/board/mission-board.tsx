@@ -67,9 +67,10 @@ export function MissionBoard({ source }: { source: BoardSource }) {
       ),
     [t, source.openNewMission, locked],
   );
+  const sourceSetSelectedId = source.setSelectedId;
   const closeOpenChat = useCallback(
-    () => source.setSelectedId(null),
-    [source.setSelectedId],
+    () => sourceSetSelectedId(null),
+    [sourceSetSelectedId],
   );
   const { columns, selectionProps } = useBoardSelectionUI({
     baseColumns,
@@ -111,17 +112,17 @@ export function MissionBoard({ source }: { source: BoardSource }) {
   );
   const backToBoard = useCallback(() => {
     closerRef.current?.();
-    source.setSelectedId(null);
-  }, [source.setSelectedId]);
+    sourceSetSelectedId(null);
+  }, [sourceSetSelectedId]);
 
   const handleSelect = useCallback(
     (id: string | null) => {
       // Card-open perf mark (HOU-1011): completed when the opened
       // conversation's messages paint (use-mc-open-conversation.ts).
       if (id) perfSpans.cardClicked();
-      source.setSelectedId(id);
+      sourceSetSelectedId(id);
     },
-    [source.setSelectedId],
+    [sourceSetSelectedId],
   );
 
   const firstDay = source.firstDay;

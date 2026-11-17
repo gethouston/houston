@@ -82,7 +82,7 @@ export class CompletionLatches {
    */
   fireForAgent(agentPath: string): void {
     // Snapshot keys first: `fire` mutates the map (deletes the fired entry).
-    for (const [key, entry] of [...this.map]) {
+    for (const [key, entry] of Array.from(this.map)) {
       if (entry.agentPath === agentPath) this.fire(key, false);
     }
   }

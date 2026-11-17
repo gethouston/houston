@@ -108,7 +108,7 @@ export function orgChartUsage(
   const frame = windowFrame(agents, now);
   const counts = new Map(agents.map((agent) => [agent.id, 0]));
   const talkers = new Map<string, Map<string, number>>();
-  const series = new Array<number>(frame.length).fill(0);
+  const series = Array.from({ length: frame.length }, () => 0);
   let total = 0;
   for (const row of rows) {
     const id = frame.ids.get(row.agentSlug);
@@ -162,7 +162,7 @@ export function orgChartWork(
 ): OrgChartWork {
   const frame = windowFrame(agents, now);
   const byAgent = new Map(agents.map((agent) => [agent.id, 0]));
-  const series = new Array<number>(frame.length).fill(0);
+  const series = Array.from({ length: frame.length }, () => 0);
   let total = 0;
   for (const row of rows) {
     const id = frame.ids.get(row.agentSlug);

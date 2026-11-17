@@ -63,14 +63,15 @@ export function AssistantChat({ handle }: { handle: AssistantHandle }) {
     onSelectSession: noop,
   });
   const renderStartedMissions = useStartedMissionSummary();
+  const panelRenderTurnSummary = panel.renderTurnSummary;
   const renderTurnSummary = useCallback(
     (summary: Parameters<NonNullable<typeof panel.renderTurnSummary>>[0]) => (
       <>
-        {panel.renderTurnSummary?.(summary)}
+        {panelRenderTurnSummary?.(summary)}
         {renderStartedMissions(summary)}
       </>
     ),
-    [panel.renderTurnSummary, renderStartedMissions],
+    [panelRenderTurnSummary, renderStartedMissions],
   );
   const attachmentValidation = useAttachmentRejectionDialog({
     modelAcceptsImages: modelAcceptsImages(

@@ -132,7 +132,9 @@ export class MessageAdmissions {
       if (!hasCode(error, "EEXIST")) throw error;
       const winner = this.inspect(conversationId, nonce, fingerprint);
       if (!winner)
-        throw new Error("Message admission disappeared during acceptance");
+        throw new Error("Message admission disappeared during acceptance", {
+          cause: error,
+        });
       return winner;
     } finally {
       unlinkSync(temporary);

@@ -105,7 +105,7 @@ export function renameAgent(
 export function deleteAgent(id: string): boolean {
   const before = state.agents.length;
   state.agents = state.agents.filter((a) => a.id !== id);
-  for (const key of [...state.files.keys()])
+  for (const key of Array.from(state.files.keys()))
     if (key.startsWith(`${id}:`)) state.files.delete(key);
   if (state.agents.length === before) return false;
   emitDomain("AgentsChanged");

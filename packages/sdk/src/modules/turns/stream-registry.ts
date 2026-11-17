@@ -139,7 +139,7 @@ export class StreamRegistry {
     });
   }
   private wakeLeaving(): void {
-    for (const check of [...this.leaving]) check();
+    for (const check of Array.from(this.leaving)) check();
   }
 
   /**

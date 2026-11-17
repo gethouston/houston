@@ -34,7 +34,7 @@ export function TimeColumn({
   const containerRef = useRef<HTMLFieldSetElement>(null);
   const selectedRef = useRef<HTMLButtonElement>(null);
 
-  // biome-ignore lint/correctness/useExhaustiveDependencies: `selected` is a genuine dep — the effect must re-run whenever the selection changes to re-center the column. Refs are not deps.
+  // oxlint-disable-next-line react-hooks/exhaustive-deps -- `selected` is a genuine dep — the effect must re-run whenever the selection changes to re-center the column. Refs are not deps.
   useEffect(() => {
     const c = containerRef.current;
     const el = selectedRef.current;

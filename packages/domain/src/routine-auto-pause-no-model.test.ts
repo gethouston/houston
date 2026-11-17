@@ -55,9 +55,17 @@ test("an unconnected fire blames the pinned provider, or names no model", () => 
 test("N no-model refusals in a row pause the routine with no provider named", () => {
   const noModel = { code: "no_model" } as const;
   expect(
-    routineAutoPause(routine(), runs(Array(N - 1).fill(noModel)), NOW),
+    routineAutoPause(
+      routine(),
+      runs(Array.from({ length: N - 1 }, () => ({ ...noModel }))),
+      NOW,
+    ),
   ).toBeNull();
-  const pause = routineAutoPause(routine(), runs(Array(N).fill(noModel)), NOW);
+  const pause = routineAutoPause(
+    routine(),
+    runs(Array.from({ length: N }, () => ({ ...noModel }))),
+    NOW,
+  );
   // An account reason old clients can render, with the real cause beside it.
   expect(pause).toEqual({
     reason: "model_unavailable",
@@ -77,7 +85,10 @@ test("a no-model refusal and a named-account refusal are different walls", () =>
     code: "creator_not_connected",
     provider: "anthropic",
   } as const;
-  const mixed = [...Array(N - 1).fill(named), { code: "no_model" } as const];
+  const mixed = [
+    ...Array.from({ length: N - 1 }, () => ({ ...named })),
+    { code: "no_model" } as const,
+  ];
   expect(routineAutoPause(routine(), runs(mixed), NOW)).toBeNull();
   expect(
     routineAutoPauseLogTail({

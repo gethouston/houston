@@ -49,7 +49,7 @@ export function InlineTextRow({
     if (text !== null) onSubmit(text);
   };
   return (
-    // biome-ignore lint/a11y/noStaticElementInteractions: focus-delegation surface — the real widget is the <input> inside; clicking the field's padding focuses it (mirrors the composer). role="presentation" is correct, no widget role applies.
+    // oxlint-disable-next-line jsx-a11y/no-static-element-interactions -- focus-delegation surface — the real widget is the <input> inside; clicking the field's padding focuses it (mirrors the composer). role="presentation" is correct, no widget role applies.
     <div
       className={cn(
         "mt-3 flex cursor-text items-center gap-2 rounded-full border border-line-input bg-transparent py-1 pr-1 pl-3.5 transition-colors focus-within:border-focus dark:bg-line-input/30",

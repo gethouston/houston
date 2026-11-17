@@ -53,11 +53,11 @@ for (const locale of ["en", "es", "pt"] as const)
           await seedPage(page);
           await openBoard(page, { locale, width, chat });
         });
-        // biome-ignore lint/correctness/noEmptyPattern: Playwright requires the destructuring pattern on a hook's first parameter
+        // Playwright requires the destructuring pattern on a hook's first parameter
         test.afterEach(async ({}, testInfo) => {
           if (testInfo.status !== testInfo.expectedStatus) failed = true;
         });
-        // biome-ignore lint/correctness/noEmptyPattern: Playwright requires the destructuring pattern on a hook's first parameter
+        // Playwright requires the destructuring pattern on a hook's first parameter
         test.afterAll(async ({}, testInfo) => {
           const video = page?.video();
           await context?.close();

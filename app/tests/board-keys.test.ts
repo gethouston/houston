@@ -16,8 +16,8 @@ function node(chain: string[][], tagName = "DIV") {
     tagName,
     isContentEditable: false,
     closest(selector: string) {
-      const wanted = selector.split(",").map((part) => part.trim());
-      return chain.some((matches) => matches.some((m) => wanted.includes(m)))
+      const wanted = new Set(selector.split(",").map((part) => part.trim()));
+      return chain.some((matches) => matches.some((m) => wanted.has(m)))
         ? {}
         : null;
     },

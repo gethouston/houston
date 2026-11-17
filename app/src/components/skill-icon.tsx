@@ -26,7 +26,7 @@ export function SkillIcon({
   bubbleClassName = "size-12 rounded-full bg-line-input flex items-center justify-center shrink-0 overflow-hidden",
 }: Props) {
   const [broken, setBroken] = useState(false);
-  // biome-ignore lint/correctness/useExhaustiveDependencies: image is a prop and is a valid dependency; the effect must reset `broken` whenever the image source changes
+  // oxlint-disable-next-line react-hooks/exhaustive-deps -- image is a prop and is a valid dependency; the effect must reset `broken` whenever the image source changes
   useEffect(() => setBroken(false), [image]);
 
   const fallback = fluentEmojiUrl(FALLBACK_SLUG);
