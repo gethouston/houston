@@ -121,7 +121,7 @@ export function SiteHeader() {
             </Link>
           ))}
           {/* External links: no close handler needed — navigation replaces
-              the document (and Biome's useValidAnchor flags onClick on <a>). */}
+              the document (the link keeps native navigation semantics). */}
           <a
             href="https://gethouston.ai/#download"
             className="border-b border-line px-1 py-2.5 text-[15px] font-medium text-ink"
