@@ -1,3 +1,4 @@
+import { timeoutSignal } from "@houston/sdk/abort-signal";
 import type {
   CredentialScope,
   ProviderHealth,
@@ -7,6 +8,7 @@ import type {
 import { toNewProvider } from "../synthetic";
 import type { BaseCtor } from "./mixin";
 import { withProviderAgentRetarget } from "./provider-agent-gone";
+import { reportProbeFailure } from "./provider-probe-report";
 import { providerRoutingSettled } from "./provider-routing";
 
 /**
@@ -83,13 +85,14 @@ export function ProviderStatusMixin<TBase extends BaseCtor>(Base: TBase) {
             (target
               ? this.ctx.providerEngineFor(target)
               : this.ctx.providerEngine()
-            ).listProviders({ signal: AbortSignal.timeout(PROBE_TIMEOUT_MS) }),
+            ).listProviders({ signal: timeoutSignal(PROBE_TIMEOUT_MS) }),
           );
           for (const p of list) byId.set(p.id, p);
           reachable = true;
         }
-      } catch {
-        /* engine unreachable → every card reports "unknown" below */
+      } catch (error) {
+        // Cards read "unknown" below either way.
+        reportProbeFailure(error);
       }
       return names.map((name) => {
         const pid = toNewProvider(name);
