@@ -69,7 +69,8 @@ export const VISIBLE_MODELS: Readonly<Record<string, ReadonlySet<string>>> = {
   // documented source and carries the live-probe evidence;
   // `codex-models.test.ts` pins this set to it. An id that probe answered `400
   // not supported when using Codex with a ChatGPT account` can only produce a
-  // dead turn.
+  // dead turn. The served GPT-5.6 rows are hidden to keep the picker to the
+  // GPT-6 line; pins on them still run (`ProviderInfo.hiddenModels`).
   openai: new Set([
     "gpt-6-luna",
     "gpt-6.1-terra",
@@ -78,9 +79,6 @@ export const VISIBLE_MODELS: Readonly<Record<string, ReadonlySet<string>>> = {
     "gpt-6.2-sol",
     "gpt-6-astra",
     "gpt-6.2-astra",
-    "gpt-5.6-sol",
-    "gpt-5.6-terra",
-    "gpt-5.6-luna",
   ]),
   // The Claude lineup, one model per family (`ANTHROPIC_LINEUP` in
   // @houston/domain model-aliases.ts; `anthropic-model-catalog.test.ts` pins

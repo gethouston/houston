@@ -1,0 +1,89 @@
+import { deepStrictEqual, ok, strictEqual } from "node:assert";
+import { before, describe, it } from "node:test";
+import { resolveAgentModelOverrides } from "../src/lib/agent-model-overrides.ts";
+import {
+  coherentPinModel,
+  resolveChatModelPin,
+} from "../src/lib/chat-model-pin.ts";
+import {
+  getContextWindowConfig,
+  getEffortLevels,
+  getModel,
+  getProvider,
+  hydrateProviderCatalog,
+  validEffortOrDefault,
+  validModelOrNull,
+} from "../src/lib/providers.ts";
+import { SAMPLE_CATALOG } from "./fixtures/sample-catalog.ts";
+
+// The Codex picker hides the GPT-5.6 rows, which the subscription still serves
+// (`CODEX_PICKER_HIDDEN_MODEL_IDS`). A chat, agent or routine already pinned to
+// one must keep running it rather than drop to the provider default.
+const HIDDEN = ["gpt-5.6-sol", "gpt-5.6-terra", "gpt-5.6-luna"];
+const NONE = { provider: null, model: null };
+
+before(() => hydrateProviderCatalog(SAMPLE_CATALOG));
+
+describe("Codex rows hidden from the picker", () => {
+  it("are absent from the picker's model list", () => {
+    const listed = getProvider("openai")?.models.map((m) => m.id) ?? [];
+    for (const id of HIDDEN) ok(!listed.includes(id), id);
+  });
+
+  it("still resolve with their own window and effort ladder", () => {
+    for (const id of HIDDEN) {
+      strictEqual(getModel("openai", id)?.id, id);
+      strictEqual(validModelOrNull("openai-codex", id), id);
+      deepStrictEqual(getContextWindowConfig("openai", id), {
+        default: 258_400,
+        max: 950_000,
+      });
+      ok(getEffortLevels("openai", id).length > 0, id);
+      strictEqual(validEffortOrDefault("openai", id, "high"), "high");
+    }
+  });
+
+  it("keep a chat pinned to one on that model", () => {
+    deepStrictEqual(
+      resolveChatModelPin(
+        "openai",
+        { provider: "openai-codex", model: "gpt-5.6-sol" },
+        NONE,
+      ),
+      { provider: "openai", model: "gpt-5.6-sol", source: "mission" },
+    );
+    strictEqual(coherentPinModel("openai", "gpt-5.6-terra"), "gpt-5.6-terra");
+  });
+
+  it("keep an agent configured on one on that model", () => {
+    deepStrictEqual(
+      resolveAgentModelOverrides({
+        provider: "openai-codex",
+        model: "gpt-5.6-luna",
+      }),
+      { providerOverride: "openai", modelOverride: "gpt-5.6-luna" },
+    );
+  });
+});
+
+describe("rows hidden because the provider no longer runs them", () => {
+  it("still fall back to the provider default", () => {
+    // Codex refuses gpt-5.5 for a ChatGPT account, so it is not runnable.
+    strictEqual(getModel("openai", "gpt-5.5"), undefined);
+    strictEqual(validModelOrNull("openai", "gpt-5.5"), null);
+    deepStrictEqual(
+      resolveChatModelPin(
+        "openai",
+        { provider: "openai-codex", model: "gpt-5.5" },
+        NONE,
+      ),
+      {
+        provider: "openai",
+        model: getProvider("openai")?.defaultModel,
+        source: "deployment",
+      },
+    );
+    // google has no domain runnable set, so its curation stays a hard hide.
+    strictEqual(getModel("google", "gemini-2.5-pro"), undefined);
+  });
+});

@@ -2,6 +2,7 @@ import { config as hostConfig } from "@houston/host/src/config";
 import { expect, test } from "vitest";
 import {
   CODEX_DEFAULT_MODEL,
+  CODEX_PICKER_HIDDEN_MODEL_IDS,
   CODEX_PROVIDER_ID,
   codexOfferedModelIds,
 } from "./codex-offered";
@@ -71,15 +72,18 @@ test("a pin naming a refused id fails with a served model as the switch target",
   expect(suggested).toBe(CODEX_DEFAULT_MODEL);
 });
 
-test("the cloud picker's Codex list is exactly the served set, default first", () => {
+test("the cloud picker's Codex list is the served set minus the hidden rows, default first", () => {
   // `config.codexModels` is the model list the cloud per-turn path hands
   // `GET /providers` (turn/dispatch-providers.ts). It is hand-written, so
   // nothing but this assertion stops it drifting from the probe's verdicts —
   // and an id the backend refuses is a hosted turn that can only fail, while a
   // served id missing from it is a model the hosted picker never offers.
   const served = codexOfferedModelIds(piModelIds(CODEX_PROVIDER_ID));
+  for (const id of CODEX_PICKER_HIDDEN_MODEL_IDS) expect(served).toContain(id);
   expect(hostConfig.codexModels[0]).toBe(CODEX_DEFAULT_MODEL);
-  expect([...hostConfig.codexModels].sort()).toEqual([...served].sort());
+  expect([...hostConfig.codexModels].sort()).toEqual(
+    served.filter((id) => !CODEX_PICKER_HIDDEN_MODEL_IDS.includes(id)).sort(),
+  );
 });
 
 test("a saved refused id falls back to a served model instead of a dead turn", () => {

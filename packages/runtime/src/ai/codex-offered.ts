@@ -75,6 +75,18 @@ const CODEX_UNSERVED_MODEL_IDS: ReadonlySet<string> = new Set([
 ]);
 
 /**
+ * Served ids every Codex picker leaves out, so it lists only the GPT-6 line.
+ * Presentation only: they stay in the offer above, so a stored pin on one
+ * still runs. The app's `VISIBLE_MODELS.openai` and the cloud
+ * `config.codexModels` are pinned to `served minus these` by their tests.
+ */
+export const CODEX_PICKER_HIDDEN_MODEL_IDS: readonly string[] = [
+  "gpt-5.6-sol",
+  "gpt-5.6-terra",
+  "gpt-5.6-luna",
+];
+
+/**
  * Narrow pi's `openai-codex` catalog to the ids the subscription is known to
  * run, so the picker, the agent-facing tool enum and the pin validator never
  * offer a model whose only possible outcome is a `model_unavailable` turn.

@@ -15,12 +15,19 @@ import {
  * reasoning-effort levels it accepts.
  */
 
-/** Find the model object for a provider + model id. */
+/**
+ * Find the model object for a provider + model id: a picker row, or a hidden
+ * row the provider still runs (`ProviderInfo.hiddenModels`).
+ */
 export function getModel(
   providerId: string,
   modelId: string,
 ): ModelOption | undefined {
-  return getProvider(providerId)?.models.find((m) => m.id === modelId);
+  const provider = getProvider(providerId);
+  return (
+    provider?.models.find((m) => m.id === modelId) ??
+    provider?.hiddenModels?.find((m) => m.id === modelId)
+  );
 }
 
 /**
