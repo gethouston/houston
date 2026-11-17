@@ -22,6 +22,14 @@ concurrency:
 permissions:
   contents: read
 
+# Every job runs on `vars.CI_RUNNER` (a repo variable; unset = GitHub's
+# ubuntu-latest), the same switch the cloud repo uses. Hosted jobs share the
+# org's concurrent-job limit with the cloud repo, and a full run here is 13
+# jobs, so two PRs at once queue: 2 s p50 but 6 to 12 min p95 of waiting per
+# job over the 150 runs before this. A runner label with its own capacity
+# (Blacksmith's `blacksmith-4vcpu-ubuntu-2404`, the same 4 vCPU) removes the
+# queue without touching a job; unsetting the variable rolls back.
+
 jobs:
   changes:
     # Decides whether the Playwright jobs below (the web shards and the
@@ -49,7 +57,7 @@ jobs:
     # event (if a merge queue is ever enabled) is not a pull_request, so it
     # would need a checkout plus `base` for the action, or to run everything.
     name: Changed paths
-    runs-on: ubuntu-latest
+    runs-on: ${{ vars.CI_RUNNER || 'ubuntu-latest' }}
     timeout-minutes: 5
     permissions:
       contents: read
@@ -95,7 +103,7 @@ jobs:
     name: TS checks (lint · typecheck · contract tests)
     needs: changes
     if: needs.changes.outputs.app == 'true'
-    runs-on: ubuntu-latest
+    runs-on: ${{ vars.CI_RUNNER || 'ubuntu-latest' }}
     timeout-minutes: 20
     steps:
       - name: Checkout
@@ -170,7 +178,7 @@ jobs:
     name: Unit tests (${{ matrix.package }})
     needs: changes
     if: needs.changes.outputs.app == 'true'
-    runs-on: ubuntu-latest
+    runs-on: ${{ vars.CI_RUNNER || 'ubuntu-latest' }}
     timeout-minutes: 15
     strategy:
       fail-fast: false
@@ -223,7 +231,7 @@ jobs:
     name: Web (UI tests)
     needs: changes
     if: needs.changes.outputs.web == 'true'
-    runs-on: ubuntu-latest
+    runs-on: ${{ vars.CI_RUNNER || 'ubuntu-latest' }}
     timeout-minutes: 30
     strategy:
       fail-fast: false
@@ -303,7 +311,7 @@ jobs:
     # packages/web/e2e/README.md → Visual regression → Platforms).
     needs: changes
     if: needs.changes.outputs.web == 'true'
-    runs-on: ubuntu-latest
+    runs-on: ${{ vars.CI_RUNNER || 'ubuntu-latest' }}
     timeout-minutes: 20
     container:
       image: mcr.microsoft.com/playwright:v1.64.0-noble
@@ -348,7 +356,7 @@ jobs:
     name: App · Web unit · Agent Store (typecheck · tests · builds)
     needs: changes
     if: needs.changes.outputs.app == 'true'
-    runs-on: ubuntu-latest
+    runs-on: ${{ vars.CI_RUNNER || 'ubuntu-latest' }}
     timeout-minutes: 20
     steps:
       - uses: actions/checkout@v6
@@ -401,7 +409,7 @@ jobs:
     name: Website (lint · tests · locales · build)
     needs: changes
     if: needs.changes.outputs.site == 'true'
-    runs-on: ubuntu-latest
+    runs-on: ${{ vars.CI_RUNNER || 'ubuntu-latest' }}
     timeout-minutes: 10
     steps:
       - uses: actions/checkout@v6
