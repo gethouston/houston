@@ -60,24 +60,27 @@ test.each([
   ["a byte-order mark", `﻿${JSON.stringify([card("theirs")])}`],
   ["trailing bytes", `${JSON.stringify([card("theirs")])}\n}garbage`],
   ["a board that is not an array", JSON.stringify({ cards: [] })],
-])("a remote board with %s falls back to the overwrite and says so", async (_label, remote) => {
-  const local = `${JSON.stringify([card("mine")], null, 2)}\n`;
-  const { result, landed, preconditions, abs } = await contended(
-    BOARD,
-    local,
-    remote,
-  );
+])(
+  "a remote board with %s falls back to the overwrite and says so",
+  async (_label, remote) => {
+    const local = `${JSON.stringify([card("mine")], null, 2)}\n`;
+    const { result, landed, preconditions, abs } = await contended(
+      BOARD,
+      local,
+      remote,
+    );
 
-  expect(result.uploaded).toContain(BOARD);
-  expect(result.uploaded).toContain("notes.md");
-  expect(result.conflicts).toEqual([]);
-  expect(landed.get(BOARD)).toBe(local);
-  expect(preconditions).toEqual(["4", "5"]);
-  expect(await readFile(abs, "utf8")).toBe(local);
-  expect(result.merges).toHaveLength(1);
-  expect(result.merges[0]).toMatchObject({ key: BOARD, attempts: 1 });
-  expect(result.merges[0]?.unmergeable).toEqual(expect.any(String));
-});
+    expect(result.uploaded).toContain(BOARD);
+    expect(result.uploaded).toContain("notes.md");
+    expect(result.conflicts).toEqual([]);
+    expect(landed.get(BOARD)).toBe(local);
+    expect(preconditions).toEqual(["4", "5"]);
+    expect(await readFile(abs, "utf8")).toBe(local);
+    expect(result.merges).toHaveLength(1);
+    expect(result.merges[0]).toMatchObject({ key: BOARD, attempts: 1 });
+    expect(result.merges[0]?.unmergeable).toEqual(expect.any(String));
+  },
+);
 
 test("an unparseable local routines file overwrites the remote instead of throwing", async () => {
   const local = "﻿[]";

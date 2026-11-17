@@ -113,9 +113,12 @@ export function selfRoleRunsForQuery(
   labels: SelfRoleRunLabels,
 ): ChoiceSection[] {
   const needle = foldForSearch(query.trim());
-  const leadership = LEADERSHIP_ROLE_IDS.map(
-    (id): ChoiceOption => ({ id, label: labels.leadershipRole(id) }),
-  ).filter((choice) => !needle || foldForSearch(choice.label).includes(needle));
+  const leadership = LEADERSHIP_ROLE_IDS.map((id): ChoiceOption => ({
+    id,
+    label: labels.leadershipRole(id),
+  })).filter(
+    (choice) => !needle || foldForSearch(choice.label).includes(needle),
+  );
   const jobs = roleRunsForQuery(contextId, query, labels);
   if (leadership.length === 0) return jobs;
   if (jobs.length === 0) return [{ id: "leadership", options: leadership }];

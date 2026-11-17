@@ -33,12 +33,10 @@ vi.mock("../store/conversations", async (importOriginal) => {
 
 const { registerBackend } = await import("../backends/registry");
 const { resetRoutineSessionIfNeeded } = await import("./routine-session-reset");
-const { appendAssistantMessage, appendUserMessage } = await import(
-  "../store/conversations"
-);
-const { resetPooledRoutineSession } = await import(
-  "../turn/turn-routine-context"
-);
+const { appendAssistantMessage, appendUserMessage } =
+  await import("../store/conversations");
+const { resetPooledRoutineSession } =
+  await import("../turn/turn-routine-context");
 const { config } = await import("../config");
 type Conversation = import("./conversation-record").Conversation;
 

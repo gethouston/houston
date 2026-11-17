@@ -99,11 +99,9 @@ describe("a checkout is started once until it resolves", () => {
     const { tracker } = harness();
     const refused = {
       ...ports(),
-      create: vi.fn(
-        async (): Promise<SeatCheckoutOutcome> => ({
-          kind: "interval_unavailable",
-        }),
-      ),
+      create: vi.fn(async (): Promise<SeatCheckoutOutcome> => ({
+        kind: "interval_unavailable",
+      })),
     };
     expect(await tracker.start(ORG, refused)).toBe("interval_unavailable");
     expect(refused.open).not.toHaveBeenCalled();
@@ -322,11 +320,9 @@ describe("the return page's hand-back belongs to the app that opened it", () => 
     const { tracker } = harness();
     const refused = {
       ...ports(),
-      create: vi.fn(
-        async (): Promise<SeatCheckoutOutcome> => ({
-          kind: "interval_unavailable",
-        }),
-      ),
+      create: vi.fn(async (): Promise<SeatCheckoutOutcome> => ({
+        kind: "interval_unavailable",
+      })),
     };
     await tracker.start(ORG, refused);
     expect(tracker.claimReturn(ORG)).toBe(false);

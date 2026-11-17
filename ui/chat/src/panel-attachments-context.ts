@@ -8,14 +8,13 @@ import type { ChatPanelProps } from "./chat-panel-types";
  * same list: a file dropped anywhere on the panel shows up in the card, and
  * leaves with the card's answer instead of waiting for a later message.
  */
-export interface PanelAttachments
-  extends Pick<
-    ChatPanelProps,
-    | "prepareAttachments"
-    | "onAttachmentRejections"
-    | "onNotice"
-    | "composerLabels"
-  > {
+export interface PanelAttachments extends Pick<
+  ChatPanelProps,
+  | "prepareAttachments"
+  | "onAttachmentRejections"
+  | "onNotice"
+  | "composerLabels"
+> {
   files: File[];
   setFiles: (files: File[]) => void;
   /** Remove exactly the given File objects from the panel's CURRENT lists.

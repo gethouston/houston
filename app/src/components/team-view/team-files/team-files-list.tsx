@@ -5,8 +5,8 @@ import {
 } from "@houston-ai/agent";
 import { agentReadFailures } from "../../../lib/agent-read-failures";
 import type { Agent } from "../../../lib/types";
-import type { AgentFiles } from "../../agent/agent-files";
 import { AgentReadsFailed } from "../../agent-reads-failed";
+import type { AgentFiles } from "../../agent/agent-files";
 
 /** The employee's one file tree, with its read failure above it. */
 export function TeamFilesList({

@@ -18,6 +18,21 @@ import {
   providerBrandKey,
 } from "./provider-logo-map.ts";
 import {
+  MistralLogo,
+  MoonshotLogo,
+  NvidiaLogo,
+  OpenAILogo,
+  OpenCodeGoLogo,
+  OpenCodeLogo,
+  OpenRouterLogo,
+  QwenLogo,
+  TogetherLogo,
+  VercelLogo,
+  XaiLogo,
+  XiaomiLogo,
+  ZaiLogo,
+} from "./provider-marks-extra.tsx";
+import {
   AmazonBedrockLogo,
   AnthropicLogo,
   AzureLogo,
@@ -35,21 +50,6 @@ import {
   MetaLogo,
   MiniMaxLogo,
 } from "./provider-marks.tsx";
-import {
-  MistralLogo,
-  MoonshotLogo,
-  NvidiaLogo,
-  OpenAILogo,
-  OpenCodeGoLogo,
-  OpenCodeLogo,
-  OpenRouterLogo,
-  QwenLogo,
-  TogetherLogo,
-  VercelLogo,
-  XaiLogo,
-  XiaomiLogo,
-  ZaiLogo,
-} from "./provider-marks-extra.tsx";
 
 /** The one place a `BrandKey` binds to its mark. Exhaustive by construction. */
 const BRAND_LOGOS: Record<BrandKey, (props?: LogoProps) => ReactElement> = {

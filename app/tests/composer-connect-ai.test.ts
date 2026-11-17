@@ -145,7 +145,7 @@ test("the empty state reuses the picker's no-providers copy", () => {
     "the CTA label is the picker's existing action key",
   );
   // Split around the interpolation so this assertion is not itself a template
-  // placeholder in a plain string (which biome rightly flags).
+  // placeholder in a plain string (which lint rightly flags).
   const perVariant = (leaf: string) =>
     `modelSelector.picker.noProviders.$\{variant}.${leaf}`;
   assert.ok(

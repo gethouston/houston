@@ -1,5 +1,3 @@
-import type { OrgMember } from "@houston/engine-adapter";
-import { formatLocalDate, seatRemoveNote } from "@houston/sdk";
 import {
   AlertDialog,
   AlertDialogAction,
@@ -10,6 +8,8 @@ import {
   AlertDialogHeader,
   AlertDialogTitle,
 } from "@houston-ai/core";
+import type { OrgMember } from "@houston/engine-adapter";
+import { formatLocalDate, seatRemoveNote } from "@houston/sdk";
 import { useState } from "react";
 import { useTranslation } from "react-i18next";
 import { useMemberRoutines } from "../../hooks/queries";

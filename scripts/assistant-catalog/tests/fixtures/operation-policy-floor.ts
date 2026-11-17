@@ -34,7 +34,8 @@ export interface OperationPolicy {
   readonly rawResponse: boolean | null;
 }
 
-// biome-ignore format: one operation per line - the policy diff IS the review.
+// prettier-ignore
+// One operation per line keeps the policy changes reviewable.
 export const OPERATION_POLICY_FLOOR: Readonly<Record<string, OperationPolicy>> = {
   "browser.input": { group: "chat", confirm: false, hidden: true, route: "POST /agents/{agentId}/conversations/{conversationId}/browser/input", rawResponse: true },
   "browser.watch": { group: "chat", confirm: false, hidden: true, route: "GET /agents/{agentId}/conversations/{conversationId}/browser/live", rawResponse: true },

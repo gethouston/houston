@@ -204,39 +204,40 @@ describe("the probe tables cover the catalog", () => {
 });
 
 describe("catalog operations address the local host's real routes", () => {
-  test.each(
-    LOCAL_PROBES.map((probe) => [probe.operation, probe] as const),
-  )("%s resolves to a live route", async (_name, probe) => {
-    const res = await call(probe.operation, probe.params);
-    // A route the host never claimed: the catalog and the host disagree.
-    expect(`${res.path} -> ${res.status} ${res.body.slice(0, 120)}`).not.toBe(
-      `${res.path} -> 404 ${ROUTE_MISS}`,
-    );
-    if (probe.runtimeProxied) {
-      // The host publishes this rest as the agent engine's own
-      // (routes/agents-proxy-members.ts) and relays it, so the stand-in
-      // runtime answering IS the proof: the address resolved into the proxy
-      // family and the request was forwarded verbatim.
-      expect(`${res.status} ${res.body}`, probe.runtimeProxied.reason).toBe(
-        `${SENTINEL_STATUS} ${SENTINEL_BODY}`,
+  test.each(LOCAL_PROBES.map((probe) => [probe.operation, probe] as const))(
+    "%s resolves to a live route",
+    async (_name, probe) => {
+      const res = await call(probe.operation, probe.params);
+      // A route the host never claimed: the catalog and the host disagree.
+      expect(`${res.path} -> ${res.status} ${res.body.slice(0, 120)}`).not.toBe(
+        `${res.path} -> 404 ${ROUTE_MISS}`,
       );
-      return;
-    }
-    expect(res.body).not.toContain(SENTINEL_BODY);
-    expect(res.status).not.toBe(SENTINEL_STATUS);
-    if (probe.serviceState) {
-      // A handler that answers for itself with "this deployment cannot do
-      // that". The route resolved; the capability behind it is simply not
-      // wired in a host seeded with nothing.
-      expect(res.status, probe.serviceState.reason).toBe(
-        probe.serviceState.status,
-      );
-      return;
-    }
-    // 5xx means the address landed nowhere serviceable (a proxy attempt, a
-    // crash); a real handler answers 2xx or a 4xx it authored itself.
-    expect(res.status).toBeLessThan(500);
-  });
+      if (probe.runtimeProxied) {
+        // The host publishes this rest as the agent engine's own
+        // (routes/agents-proxy-members.ts) and relays it, so the stand-in
+        // runtime answering IS the proof: the address resolved into the proxy
+        // family and the request was forwarded verbatim.
+        expect(`${res.status} ${res.body}`, probe.runtimeProxied.reason).toBe(
+          `${SENTINEL_STATUS} ${SENTINEL_BODY}`,
+        );
+        return;
+      }
+      expect(res.body).not.toContain(SENTINEL_BODY);
+      expect(res.status).not.toBe(SENTINEL_STATUS);
+      if (probe.serviceState) {
+        // A handler that answers for itself with "this deployment cannot do
+        // that". The route resolved; the capability behind it is simply not
+        // wired in a host seeded with nothing.
+        expect(res.status, probe.serviceState.reason).toBe(
+          probe.serviceState.status,
+        );
+        return;
+      }
+      // 5xx means the address landed nowhere serviceable (a proxy attempt, a
+      // crash); a real handler answers 2xx or a 4xx it authored itself.
+      expect(res.status).toBeLessThan(500);
+    },
+  );
 });
 
 describe("cloud-only operations are absent locally, on purpose", () => {

@@ -9,10 +9,5 @@ export type { EventFilterProps } from "./event-filter";
 export { EventFilter } from "./event-filter";
 export type { EventItemProps } from "./event-item";
 export { EventItem } from "./event-item";
-export type {
-  EventEntry,
-  EventSource,
-  EventStatus,
-  EventType,
-} from "./types";
+export type { EventEntry, EventSource, EventStatus, EventType } from "./types";
 export { EVENT_TYPE_ICONS, EVENT_TYPE_LABELS } from "./types";

@@ -15,11 +15,11 @@
  * applies to the optimistic path AND to the message replayed on reload.
  */
 
+import type { FeedItem } from "@houston-ai/chat";
 import {
   encodeAutoContinue,
   isAutoContinue,
 } from "@houston/protocol/auto-continue";
-import type { FeedItem } from "@houston-ai/chat";
 
 /** Wrap agent-bound text so the transcript can recognize and hide it. */
 export function encodeAutoContinueMessage(text: string): string {

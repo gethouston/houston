@@ -121,14 +121,19 @@ describe("startFirstDay", () => {
     "first_day_not_pending",
     "first_day_not_started",
     "first_day_no_provider",
-  ])("the %s refusal throws once with the host's 409, never retried", async (code) => {
-    const h = harness({ status: 409, body: { error: "refused", code } });
-    dispose = h.sdk.agents.dispose;
-    const err = await h.sdk.agents.startFirstDay("a1").catch((e: unknown) => e);
-    expect(err).toMatchObject({ name: "AgentsHttpError", status: 409 });
-    expect((err as Error).message).toContain(code);
-    expect(h.calls).toHaveLength(1);
-  });
+  ])(
+    "the %s refusal throws once with the host's 409, never retried",
+    async (code) => {
+      const h = harness({ status: 409, body: { error: "refused", code } });
+      dispose = h.sdk.agents.dispose;
+      const err = await h.sdk.agents
+        .startFirstDay("a1")
+        .catch((e: unknown) => e);
+      expect(err).toMatchObject({ name: "AgentsHttpError", status: 409 });
+      expect((err as Error).message).toContain(code);
+      expect(h.calls).toHaveLength(1);
+    },
+  );
 
   it("the command path shape-checks its untrusted input", async () => {
     const h = harness({ status: 201, body: STARTED });

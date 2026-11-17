@@ -1,8 +1,8 @@
+import { cn } from "@houston-ai/core";
 import {
   LINKEDIN_FEED_URL,
   linkedInRetryMinutes,
 } from "@houston/sdk/linkedin/policy";
-import { cn } from "@houston-ai/core";
 import { useTranslation } from "react-i18next";
 import { FallbackLink } from "../shell/fallback-link";
 import { LINE_KEY, shareLineKey } from "./org-chart-share-line-copy";

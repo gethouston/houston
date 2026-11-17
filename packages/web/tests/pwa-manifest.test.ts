@@ -51,7 +51,7 @@ function minAlpha(png: Buffer): number {
   const colorType = png.readUInt8(25);
   if (colorType !== 6) return 255; // no alpha channel at all
   const idat: Buffer[] = [];
-  for (let pos = 8; pos < png.length; ) {
+  for (let pos = 8; pos < png.length;) {
     const length = png.readUInt32BE(pos);
     const type = png.subarray(pos + 4, pos + 8).toString("ascii");
     if (type === "IDAT") idat.push(png.subarray(pos + 8, pos + 8 + length));

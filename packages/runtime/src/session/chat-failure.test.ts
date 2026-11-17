@@ -12,9 +12,8 @@ process.env.HOUSTON_WORKSPACE_DIR = process.env.HOUSTON_DATA_DIR;
 const { runTurn } = await import("./chat");
 const { getHistory } = await import("../store/conversations");
 const { subscribe } = await import("./bus");
-const { recordServedScope, resetServedScopes } = await import(
-  "../auth/served-scope"
-);
+const { recordServedScope, resetServedScopes } =
+  await import("../auth/served-scope");
 const { runWithActingContext } = await import("./acting-context");
 
 /**

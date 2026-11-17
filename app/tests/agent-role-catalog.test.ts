@@ -7,14 +7,14 @@ import {
 import { CONTEXT_SEARCH_REACH } from "../src/components/shell/context-step-model.ts";
 import { ROLE_SEARCH_REACH } from "../src/components/shell/role-step-model.ts";
 import {
+  AGENT_COMMON_ROLES,
+  AGENT_CONTEXT_ROLES,
+} from "../src/lib/agent-role-catalog-data.ts";
+import {
   AGENT_CONTEXT_IDS,
   AGENT_ROLE_IDS,
   rolesForContext,
 } from "../src/lib/agent-role-catalog.ts";
-import {
-  AGENT_COMMON_ROLES,
-  AGENT_CONTEXT_ROLES,
-} from "../src/lib/agent-role-catalog-data.ts";
 import en from "../src/locales/en/agent-onboarding.json" with { type: "json" };
 import es from "../src/locales/es/agent-onboarding.json" with { type: "json" };
 import pt from "../src/locales/pt/agent-onboarding.json" with { type: "json" };

@@ -37,12 +37,10 @@ function generationStore(root: string) {
     writes,
     list: (p) => inner.list(p),
     manifest: async (p) =>
-      (await inner.manifest(p)).map(
-        (o): ObjectMetadata => ({
-          ...o,
-          generation: generations.get(o.key) ?? "7",
-        }),
-      ),
+      (await inner.manifest(p)).map((o): ObjectMetadata => ({
+        ...o,
+        generation: generations.get(o.key) ?? "7",
+      })),
     download: (key, dest) => inner.download(key, dest),
     upload: async (src, key, opts) => {
       writes.push({ op: "upload", key, opts });

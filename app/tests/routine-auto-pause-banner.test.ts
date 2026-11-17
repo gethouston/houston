@@ -53,9 +53,8 @@ before(async () => {
     ns: ["routines"],
     resources: { en: { routines } },
   });
-  const { RoutineAutoPauseBanner } = await import(
-    "../src/components/agent/routine-auto-pause-banner.tsx"
-  );
+  const { RoutineAutoPauseBanner } =
+    await import("../src/components/agent/routine-auto-pause-banner.tsx");
   render = (routine, readerHealth) =>
     renderToStaticMarkup(
       React.createElement(RoutineAutoPauseBanner, {

@@ -2,17 +2,11 @@ import assert from "node:assert/strict";
 import { readFileSync } from "node:fs";
 import { join } from "node:path";
 import { describe, it } from "node:test";
-import enOnboarding from "../src/locales/en/agent-onboarding.json" with {
-  type: "json",
-};
+import enOnboarding from "../src/locales/en/agent-onboarding.json" with { type: "json" };
 import enShell from "../src/locales/en/shell.json" with { type: "json" };
-import esOnboarding from "../src/locales/es/agent-onboarding.json" with {
-  type: "json",
-};
+import esOnboarding from "../src/locales/es/agent-onboarding.json" with { type: "json" };
 import esShell from "../src/locales/es/shell.json" with { type: "json" };
-import ptOnboarding from "../src/locales/pt/agent-onboarding.json" with {
-  type: "json",
-};
+import ptOnboarding from "../src/locales/pt/agent-onboarding.json" with { type: "json" };
 import ptShell from "../src/locales/pt/shell.json" with { type: "json" };
 
 /**

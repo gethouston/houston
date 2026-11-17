@@ -19,16 +19,19 @@ test("an unknown effort uses medium before choosing the closest served level", a
 test.each([
   ["openai", "openai-codex", "gpt-6.1-terra"],
   ["claude", "anthropic", "claude-sonnet-5-5"],
-])("creation canonicalizes explicit %s before choosing its default", async (alias, provider, model) => {
-  const result = await createRoutineChecked(
-    new MemoryVfs(),
-    "ws/agent",
-    "ws",
-    { ...daily, provider: alias },
-    opts,
-  );
-  expect(result).toMatchObject({ routine: { provider, model } });
-});
+])(
+  "creation canonicalizes explicit %s before choosing its default",
+  async (alias, provider, model) => {
+    const result = await createRoutineChecked(
+      new MemoryVfs(),
+      "ws/agent",
+      "ws",
+      { ...daily, provider: alias },
+      opts,
+    );
+    expect(result).toMatchObject({ routine: { provider, model } });
+  },
+);
 
 test.each([
   ["off", "low"],

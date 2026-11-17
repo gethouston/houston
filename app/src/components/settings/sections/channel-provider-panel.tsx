@@ -1,8 +1,8 @@
+import { Button } from "@houston-ai/core";
 import type {
   ChannelConnection,
   ChannelProviderId,
 } from "@houston/engine-adapter";
-import { Button } from "@houston-ai/core";
 import { Plus } from "lucide-react";
 import type { ReactNode, Ref } from "react";
 import { useEffect, useId, useState } from "react";

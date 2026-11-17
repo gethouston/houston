@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
-import { parseChannelStatus } from "./channels.ts";
 import { parseWhatsAppLink } from "./channels-whatsapp.ts";
+import { parseChannelStatus } from "./channels.ts";
 
 const link = {
   code: "ABCDEFGH234567AB",

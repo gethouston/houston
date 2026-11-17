@@ -80,34 +80,30 @@ export function useManagerTeam({
   };
 
   // Already on the team: hired, with nothing left to go wrong.
-  const earlierRows = earlierHires.map(
-    (agent): RosterRow => ({
-      key: `earlier-${agent.id}`,
-      name: agent.name,
-      role: agent.role ?? "",
-      color: agent.color,
-      status: "hired",
-      problem: null,
-    }),
-  );
-  const hireRows = roster.members.map(
-    (member): RosterRow => ({
-      key: member.key,
-      name: member.name,
-      role: member.brief.role,
-      color: member.color,
-      status: member.status.kind,
-      problem: problemOf(member),
-      onRetry:
-        member.status.kind === "failed"
-          ? () => roster.retry(member.key)
-          : undefined,
-      onRemove:
-        member.status.kind === "failed"
-          ? () => roster.remove(member.key)
-          : undefined,
-    }),
-  );
+  const earlierRows = earlierHires.map((agent): RosterRow => ({
+    key: `earlier-${agent.id}`,
+    name: agent.name,
+    role: agent.role ?? "",
+    color: agent.color,
+    status: "hired",
+    problem: null,
+  }));
+  const hireRows = roster.members.map((member): RosterRow => ({
+    key: member.key,
+    name: member.name,
+    role: member.brief.role,
+    color: member.color,
+    status: member.status.kind,
+    problem: problemOf(member),
+    onRetry:
+      member.status.kind === "failed"
+        ? () => roster.retry(member.key)
+        : undefined,
+    onRemove:
+      member.status.kind === "failed"
+        ? () => roster.remove(member.key)
+        : undefined,
+  }));
   const rows = [...earlierRows, ...hireRows];
 
   return {

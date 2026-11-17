@@ -1,7 +1,7 @@
 import assert from "node:assert/strict";
 import { it } from "node:test";
-import type { Activity } from "../src/data/activity.ts";
 import { activityWrites } from "../src/data/activity-writes.ts";
+import type { Activity } from "../src/data/activity.ts";
 
 it("whole-file board writes preserve the last message during rename, drag, archive and pin clear", async () => {
   let content =

@@ -1,7 +1,7 @@
 import { strict as assert } from "node:assert";
 import { describe, it } from "node:test";
-import { HoustonSdk, type SdkPorts } from "@houston/sdk";
 import { decodeCitedMessage } from "@houston-ai/chat";
+import { HoustonSdk, type SdkPorts } from "@houston/sdk";
 import { submitWithCitations } from "../src/components/file-preview/cited-submit.ts";
 
 // The chat composer's submit: file comments fold into the text before the

@@ -31,21 +31,21 @@ test("resolves the single standing agent and creates its runtime data dir", asyn
   );
 });
 
-test.each([
-  "data",
-  "workspace",
-])("resolves a cloudrun tree containing %s", async (present) => {
-  const storeRoot = await root();
-  await mkdir(join(storeRoot, present));
+test.each(["data", "workspace"])(
+  "resolves a cloudrun tree containing %s",
+  async (present) => {
+    const storeRoot = await root();
+    await mkdir(join(storeRoot, present));
 
-  await expect(resolveTurnLayout(storeRoot)).resolves.toEqual({
-    kind: "cloudrun",
-    workspaceDir: join(storeRoot, "workspace"),
-    workspaceRel: "workspace",
-    dataDir: join(storeRoot, "data"),
-    dataRel: "data",
-  });
-});
+    await expect(resolveTurnLayout(storeRoot)).resolves.toEqual({
+      kind: "cloudrun",
+      workspaceDir: join(storeRoot, "workspace"),
+      workspaceRel: "workspace",
+      dataDir: join(storeRoot, "data"),
+      dataRel: "data",
+    });
+  },
+);
 
 test("an empty tree is a brand-new cloudrun layout", async () => {
   const storeRoot = await root();
@@ -208,17 +208,17 @@ test("two unmarked agents outside the namespace are still ambiguous", async () =
   } satisfies Partial<TurnSetupError>);
 });
 
-test.each([
-  "data",
-  "workspace",
-])("the namespace beside a per-turn %s tree resolves per-turn", async (present) => {
-  const storeRoot = await root();
-  await seedFiles(storeRoot, [...PREFS_NAMESPACE, `${present}/x.json`]);
+test.each(["data", "workspace"])(
+  "the namespace beside a per-turn %s tree resolves per-turn",
+  async (present) => {
+    const storeRoot = await root();
+    await seedFiles(storeRoot, [...PREFS_NAMESPACE, `${present}/x.json`]);
 
-  await expect(
-    resolveTurnLayout(storeRoot, { allowEmpty: false }),
-  ).resolves.toMatchObject({ kind: "cloudrun", dataRel: "data" });
-});
+    await expect(
+      resolveTurnLayout(storeRoot, { allowEmpty: false }),
+    ).resolves.toMatchObject({ kind: "cloudrun", dataRel: "data" });
+  },
+);
 
 test("a store holding only the namespace is an empty store", async () => {
   const storeRoot = await root();

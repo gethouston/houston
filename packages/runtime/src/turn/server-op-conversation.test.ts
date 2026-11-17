@@ -178,24 +178,27 @@ test("missing dismissal is a successful no-op and invalid imports do not write",
   expect(pool.transcripts).toEqual([]);
 });
 
-test.each([
-  404, 500,
-])("failed transcript projection (%s) after a durable cut is ambiguous", async (status) => {
-  const { pool, post } = await opWorker(status);
-  pool.put(`${RUNTIME}/conversations/c1.json`, JSON.stringify(conversation));
-  const error = vi.spyOn(console, "error").mockImplementation(() => undefined);
-  const out = await post({
-    kind: "conversation",
-    action: "truncate",
-    conversationId: "c1",
-    body: '{"turnId":"t2"}',
-  });
-  expect(out).toEqual({ ok: true, ambiguous: true });
-  expect(
-    JSON.parse(pool.read(`${RUNTIME}/conversations/c1.json`)).messages,
-  ).toHaveLength(2);
-  expect(error).toHaveBeenCalled();
-});
+test.each([404, 500])(
+  "failed transcript projection (%s) after a durable cut is ambiguous",
+  async (status) => {
+    const { pool, post } = await opWorker(status);
+    pool.put(`${RUNTIME}/conversations/c1.json`, JSON.stringify(conversation));
+    const error = vi
+      .spyOn(console, "error")
+      .mockImplementation(() => undefined);
+    const out = await post({
+      kind: "conversation",
+      action: "truncate",
+      conversationId: "c1",
+      body: '{"turnId":"t2"}',
+    });
+    expect(out).toEqual({ ok: true, ambiguous: true });
+    expect(
+      JSON.parse(pool.read(`${RUNTIME}/conversations/c1.json`)).messages,
+    ).toHaveLength(2);
+    expect(error).toHaveBeenCalled();
+  },
+);
 
 test("an absent database conversation discards a stale file before importing", async () => {
   const { pool, post } = await opWorker();

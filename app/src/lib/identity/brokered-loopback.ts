@@ -27,11 +27,11 @@ import type { OauthLoopbackStart } from "../os-bridge";
 import type { LoopbackAuthorizeOptions } from "./desktop-oauth.ts";
 import { IdentityError, isIdentityError } from "./errors.ts";
 import { identityLog } from "./log.ts";
-import { awaitLoopbackCallback } from "./oauth-attempt.ts";
 import {
   type DeepLinkListen,
   withBrowserOpenDeadline,
 } from "./oauth-attempt-contract.ts";
+import { awaitLoopbackCallback } from "./oauth-attempt.ts";
 import { parseCallbackQuery } from "./oauth-callback.ts";
 
 const LOG_CTX = "identity/brokered-loopback";

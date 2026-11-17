@@ -18,9 +18,8 @@ vi.mock("./credential-fingerprint", () => ({
   credentialFingerprint: () => "absent|absent",
 }));
 
-const { authFailureActive, noteAuthFailure, resetAuthFailures } = await import(
-  "./credential-health"
-);
+const { authFailureActive, noteAuthFailure, resetAuthFailures } =
+  await import("./credential-health");
 const { getAuthStatus, startLogin } = await import("./login");
 const { modelRuntime } = await import("./storage");
 

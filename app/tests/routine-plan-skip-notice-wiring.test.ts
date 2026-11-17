@@ -46,9 +46,8 @@ await i18next.use(initReactI18next).init({
   react: { useSuspense: false },
   resources: { en: { plan: en } },
 });
-const { RoutinePlanSkipNoticeControls } = await import(
-  "../src/components/agent/routine-plan-skip-notice-controls.tsx"
-);
+const { RoutinePlanSkipNoticeControls } =
+  await import("../src/components/agent/routine-plan-skip-notice-controls.tsx");
 
 const base = { count: 3, lastAt: "2026-10-05T19:43:49Z" };
 const limit: TriggerPlanSkipNotice = {

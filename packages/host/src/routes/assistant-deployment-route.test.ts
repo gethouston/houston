@@ -71,19 +71,19 @@ async function call(
   return { ...result, fetchImpl };
 }
 
-test.each([
-  true,
-  false,
-])("custom list routes correctly, managed=%s", async (managed) => {
-  const result = await call(context(managed), "customIntegrations");
-  expect(result.status).toBe(200);
-  expect(result.body).toBe('{"items":[{"slug":"custom-app"}]}');
-  expect(result.fetchImpl.mock.calls[0]?.[0]).toBe(
-    managed
-      ? "https://gateway.test/agents/trusted-pod/integrations/custom/definitions"
-      : "https://gateway.test/v1/integrations/custom/definitions",
-  );
-});
+test.each([true, false])(
+  "custom list routes correctly, managed=%s",
+  async (managed) => {
+    const result = await call(context(managed), "customIntegrations");
+    expect(result.status).toBe(200);
+    expect(result.body).toBe('{"items":[{"slug":"custom-app"}]}');
+    expect(result.fetchImpl.mock.calls[0]?.[0]).toBe(
+      managed
+        ? "https://gateway.test/agents/trusted-pod/integrations/custom/definitions"
+        : "https://gateway.test/v1/integrations/custom/definitions",
+    );
+  },
+);
 
 test("custom writes retain live-turn and approval gates, then preserve approved body", async () => {
   const ctx = context();
@@ -123,17 +123,17 @@ test("custom writes retain live-turn and approval gates, then preserve approved 
   );
 });
 
-test.each([
-  "submitCustomIntegrationCredential",
-  "startCustomIntegrationOAuth",
-])("hidden %s stays refused", async (operation) => {
-  const result = await call(context(), operation, {
-    slug: "custom-app",
-    values: { token: "secret" },
-  });
-  expect(JSON.parse(result.body).code).toBe("operation_not_supported");
-  expect(result.fetchImpl).not.toHaveBeenCalled();
-});
+test.each(["submitCustomIntegrationCredential", "startCustomIntegrationOAuth"])(
+  "hidden %s stays refused",
+  async (operation) => {
+    const result = await call(context(), operation, {
+      slug: "custom-app",
+      values: { token: "secret" },
+    });
+    expect(JSON.parse(result.body).code).toBe("operation_not_supported");
+    expect(result.fetchImpl).not.toHaveBeenCalled();
+  },
+);
 
 test.each([
   undefined,

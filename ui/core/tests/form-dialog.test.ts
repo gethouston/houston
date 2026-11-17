@@ -2,7 +2,6 @@ import { strict as assert } from "node:assert";
 import { describe, it } from "node:test";
 import * as React from "react";
 import { renderToStaticMarkup } from "react-dom/server";
-import { FormDialog } from "../src/components/form-dialog.tsx";
 import { FormDialogForm } from "../src/components/form-dialog-form.tsx";
 import {
   FORM_DIALOG_SIZE_CLASS,
@@ -12,6 +11,7 @@ import {
   resolveSecondary,
   runPendingAction,
 } from "../src/components/form-dialog-parts.ts";
+import { FormDialog } from "../src/components/form-dialog.tsx";
 
 Object.assign(globalThis, { React });
 const { createElement } = React;

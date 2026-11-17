@@ -135,19 +135,22 @@ test.each([
   "first_day_not_pending",
   "first_day_not_started",
   "first_day_no_provider",
-])("the %s refusal surfaces as the adapter's engine error, never retried", async (code) => {
-  vi.useFakeTimers();
-  stubResponses(json(409, { error: "refused", code }));
-  const pending = client()
-    .startFirstDay("a1", {})
-    .catch((err: unknown) => err);
-  await vi.advanceTimersByTimeAsync(60_000);
-  expect(await pending).toMatchObject({
-    name: "HoustonEngineError",
-    status: 409,
-  });
-  expect(calls).toHaveLength(1);
-});
+])(
+  "the %s refusal surfaces as the adapter's engine error, never retried",
+  async (code) => {
+    vi.useFakeTimers();
+    stubResponses(json(409, { error: "refused", code }));
+    const pending = client()
+      .startFirstDay("a1", {})
+      .catch((err: unknown) => err);
+    await vi.advanceTimersByTimeAsync(60_000);
+    expect(await pending).toMatchObject({
+      name: "HoustonEngineError",
+      status: 409,
+    });
+    expect(calls).toHaveLength(1);
+  },
+);
 
 test("a start with no AI connected (409 first_day_no_provider) is the typed refusal", async () => {
   stubResponses(

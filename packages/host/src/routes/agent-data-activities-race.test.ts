@@ -42,19 +42,23 @@ test("a user-created mission retires a pending first day", async () => {
   });
 });
 
-test.each([
-  "started",
-  undefined,
-] as const)("a user-created mission leaves firstDay %s untouched", async (firstDay) => {
-  const store = slowStore();
-  await saveConfig(store, ROOT, firstDay ? { firstDay } : { model: "sonnet" });
-  const write = vi.spyOn(store, "writeText");
-  expect((await post(store, { title: "Start working" })).status).toBe(201);
-  expect(write).not.toHaveBeenCalledWith(
-    docKey(ROOT, "config"),
-    expect.anything(),
-  );
-});
+test.each(["started", undefined] as const)(
+  "a user-created mission leaves firstDay %s untouched",
+  async (firstDay) => {
+    const store = slowStore();
+    await saveConfig(
+      store,
+      ROOT,
+      firstDay ? { firstDay } : { model: "sonnet" },
+    );
+    const write = vi.spyOn(store, "writeText");
+    expect((await post(store, { title: "Start working" })).status).toBe(201);
+    expect(write).not.toHaveBeenCalledWith(
+      docKey(ROOT, "config"),
+      expect.anything(),
+    );
+  },
+);
 
 test("a failed config write does not fail a user-created mission", async () => {
   const store = slowStore();

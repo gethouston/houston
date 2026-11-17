@@ -17,8 +17,8 @@ import {
 import { facadeSurface } from "./assistant-facade-surface.ts";
 import type { Candidate } from "./assistant-module-surface.ts";
 import { ASSISTANT_PROVENANCE } from "./assistant-paths.ts";
-import type { RouteContext } from "./assistant-route.ts";
 import { claimRoutes } from "./assistant-route-claims.ts";
+import type { RouteContext } from "./assistant-route.ts";
 import { hashSources, sharedHelpers } from "./assistant-sources.ts";
 
 /** How to read the document's own fields, for whoever opens it. */

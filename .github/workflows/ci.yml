@@ -425,8 +425,8 @@ jobs:
           set -euo pipefail
           lint_version="$(node -p "require('./package.json').devDependencies.oxlint")"
           npx --yes "oxlint@${lint_version}" --deny-warnings --report-unused-disable-directives-severity=error website
-          version="$(node -p "require('./package.json').devDependencies['@biomejs/biome']")"
-          npx --yes "@biomejs/biome@${version}" check --error-on-warnings website
+          format_version="$(node -p "require('./package.json').devDependencies.oxfmt")"
+          npx --yes "oxfmt@${format_version}" --check website
 
       - name: Install
         working-directory: website

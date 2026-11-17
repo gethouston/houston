@@ -36,8 +36,10 @@ function StorePage({
   );
 }
 
-interface StorePageHeaderProps
-  extends Omit<React.ComponentProps<"header">, "title"> {
+interface StorePageHeaderProps extends Omit<
+  React.ComponentProps<"header">,
+  "title"
+> {
   /** The page title, set in the display role (32px/1.2 semibold). */
   title: React.ReactNode;
   /** One line of context under the title, in the muted meta role. */
@@ -78,8 +80,10 @@ function StorePageHeader({
   );
 }
 
-interface StoreSectionProps
-  extends Omit<React.ComponentProps<"section">, "title"> {
+interface StoreSectionProps extends Omit<
+  React.ComponentProps<"section">,
+  "title"
+> {
   /** The section title, set in the section role (20px/1.3 semibold). */
   title?: React.ReactNode;
   /** One line under the title, in the muted meta role. */

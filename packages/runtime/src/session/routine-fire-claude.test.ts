@@ -49,14 +49,12 @@ const { runTurn, disposeConversation } = await import("./chat");
 const { registerBackend } = await import("../backends/registry");
 const { createClaudeBackend } = await import("../backends/claude/backend");
 const { serverClaudeLayout } = await import("../backends/claude/paths");
-const { SIMULATED_REPLY, simulatedClaudeApi } = await import(
-  "../backends/claude/simulated-api.test-support"
-);
+const { SIMULATED_REPLY, simulatedClaudeApi } =
+  await import("../backends/claude/simulated-api.test-support");
 const { toolSelection } = await import("./session-tools");
 const { config } = await import("../config");
-const { appendAssistantMessage, appendUserMessage, getHistory } = await import(
-  "../store/conversations"
-);
+const { appendAssistantMessage, appendUserMessage, getHistory } =
+  await import("../store/conversations");
 const { estimateTokens } = await import("./token-estimate");
 
 const WINDOW = 200_000;

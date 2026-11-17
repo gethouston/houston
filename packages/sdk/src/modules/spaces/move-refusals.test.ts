@@ -28,14 +28,12 @@ describe("classifyMoveError", () => {
 });
 
 describe("which move failures a retry can fix", () => {
-  it.each([
-    "unsupported_move",
-    "needs_upgrade",
-    "timeout",
-    "unknown",
-  ] as const)("%s allows a retry", (kind) => {
-    expect(canRetryMoveError(kind)).toBe(true);
-  });
+  it.each(["unsupported_move", "needs_upgrade", "timeout", "unknown"] as const)(
+    "%s allows a retry",
+    (kind) => {
+      expect(canRetryMoveError(kind)).toBe(true);
+    },
+  );
 
   it("a storage the gateway cannot move is terminal", () => {
     expect(canRetryMoveError("unmovable_volume")).toBe(false);

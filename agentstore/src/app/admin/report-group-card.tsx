@@ -1,6 +1,5 @@
 "use client";
 
-import type { AdminReport } from "@houston/agentstore-client";
 import {
   Badge,
   Button,
@@ -9,6 +8,7 @@ import {
   CardHeader,
   CardTitle,
 } from "@houston-ai/core";
+import type { AdminReport } from "@houston/agentstore-client";
 import { ExternalLink } from "lucide-react";
 
 const REASON_LABEL: Record<AdminReport["reason"], string> = {

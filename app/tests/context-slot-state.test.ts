@@ -62,9 +62,8 @@ describe("the context editor's waiting frame", () => {
       ns: ["context"],
       resources: { en: { context } },
     });
-    const { ContextSlotWaiting } = await import(
-      "../src/components/context/context-slot-waiting.tsx"
-    );
+    const { ContextSlotWaiting } =
+      await import("../src/components/context/context-slot-waiting.tsx");
     const noAgent = renderToStaticMarkup(
       React.createElement(ContextSlotWaiting, { state: "noAgent" }),
     );

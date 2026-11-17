@@ -73,7 +73,7 @@ The gateway must send CORS for this store's origin on the authed/mutation routes
 pnpm --filter houston-agentstore typecheck
 pnpm --filter houston-agentstore test
 pnpm --filter houston-agentstore build     # DB-less: never calls the gateway
-cd .. && pnpm exec biome check --write agentstore/src
+cd .. && pnpm exec oxlint --fix --deny-warnings agentstore/src && pnpm exec oxfmt --write agentstore/src
 ```
 
 ## Deploy (GKE)

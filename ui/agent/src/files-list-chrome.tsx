@@ -154,7 +154,7 @@ export function HeaderCell({
 }) {
   const active = sortKey === col;
   return (
-    // biome-ignore lint/a11y/useSemanticElements lint/a11y/useFocusableInteractive: the CSS-grid cell needs columnheader semantics while its nested sort button remains the focusable control.
+    // the CSS-grid cell needs columnheader semantics while its nested sort button remains the focusable control.
     <span role="columnheader" className="h-full min-w-0">
       <button
         type="button"

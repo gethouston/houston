@@ -3,8 +3,8 @@ import { before, describe, it } from "node:test";
 import type { CatalogModelEntry, ProviderCatalog } from "@houston/protocol";
 import { ANTHROPIC_LINEUP } from "@houston/sdk/provider-catalog";
 import { buildPickerModels } from "../src/lib/chat-model-picker-map.ts";
-import { VISIBLE_MODELS } from "../src/lib/provider-overrides/pi-catalog-filters.ts";
 import { PROVIDER_OVERRIDES } from "../src/lib/provider-overrides.ts";
+import { VISIBLE_MODELS } from "../src/lib/provider-overrides/pi-catalog-filters.ts";
 import {
   getContextWindowConfig,
   getEffortLevels,

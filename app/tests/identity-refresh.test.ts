@@ -188,9 +188,8 @@ test("proactive refresh backs off on a transient failure near expiry (no hot loo
   const { saveSession } = await import("../src/lib/identity/session-store.ts");
   await saveSession({ ...SESSION, expiresAt: Date.now() }); // past the skew
 
-  const { startProactiveRefresh, stopProactiveRefresh } = await import(
-    "../src/lib/identity/refresh-timer.ts"
-  );
+  const { startProactiveRefresh, stopProactiveRefresh } =
+    await import("../src/lib/identity/refresh-timer.ts");
 
   let calls = 0;
   globalThis.fetch = (async () => {
@@ -213,12 +212,10 @@ test("the post-save compensation never deletes a NEWER account's session", async
   // DIFFERENT account may already have signed in — clearing then signs the new
   // user straight back out (and they cannot log in again without a relaunch).
   await seedSession();
-  const { refreshNow, setSessionSink } = await import(
-    "../src/lib/identity/refresh.ts"
-  );
-  const { clearSession, loadSession, saveSession } = await import(
-    "../src/lib/identity/session-store.ts"
-  );
+  const { refreshNow, setSessionSink } =
+    await import("../src/lib/identity/refresh.ts");
+  const { clearSession, loadSession, saveSession } =
+    await import("../src/lib/identity/session-store.ts");
 
   const NEW_ACCOUNT: Session = {
     ...SESSION,
@@ -270,12 +267,10 @@ test("refreshNow abandons the save when clearSession lands DURING the stored-ses
   // refresh would re-save the session sign-out just deleted — the "logged back
   // into the last account" bug. The epoch must be sampled BEFORE the read.
   await seedSession();
-  const { refreshNow, setSessionSink } = await import(
-    "../src/lib/identity/refresh.ts"
-  );
-  const { clearSession, loadSession } = await import(
-    "../src/lib/identity/session-store.ts"
-  );
+  const { refreshNow, setSessionSink } =
+    await import("../src/lib/identity/refresh.ts");
+  const { clearSession, loadSession } =
+    await import("../src/lib/identity/session-store.ts");
 
   const sinkUpdates: (Session | null)[] = [];
   setSessionSink((s) => sinkUpdates.push(s));
@@ -319,12 +314,10 @@ test("refreshNow abandons the save when clearSession lands DURING the stored-ses
 
 test("refreshNow abandons the save when clearSession fired mid-flight (sign-out race)", async () => {
   await seedSession();
-  const { refreshNow, setSessionSink } = await import(
-    "../src/lib/identity/refresh.ts"
-  );
-  const { clearSession, loadSession } = await import(
-    "../src/lib/identity/session-store.ts"
-  );
+  const { refreshNow, setSessionSink } =
+    await import("../src/lib/identity/refresh.ts");
+  const { clearSession, loadSession } =
+    await import("../src/lib/identity/session-store.ts");
 
   // Track the refresh sink: it must NOT receive a session on the abandon path.
   const sinkUpdates: (Session | null)[] = [];
@@ -411,9 +404,8 @@ test("refreshNow never hands out a token that outlived its lifetime in flight: i
   // it and the gateway refused each one. The run must notice and mint again,
   // with the refresh token the stale answer carried.
   await seedSession();
-  const { refreshNow, setSessionSink } = await import(
-    "../src/lib/identity/refresh.ts"
-  );
+  const { refreshNow, setSessionSink } =
+    await import("../src/lib/identity/refresh.ts");
   const { loadSession } = await import("../src/lib/identity/session-store.ts");
   const sinkUpdates: (Session | null)[] = [];
   setSessionSink((s) => sinkUpdates.push(s));
@@ -530,9 +522,8 @@ test("a client clock an hour ahead of Google's refreshes once, not in a loop", a
   // window, where judging by claims produced dozens.
   const { saveSession } = await import("../src/lib/identity/session-store.ts");
   await saveSession({ ...SESSION, expiresAt: Date.now() }); // due now
-  const { startProactiveRefresh, stopProactiveRefresh } = await import(
-    "../src/lib/identity/refresh-timer.ts"
-  );
+  const { startProactiveRefresh, stopProactiveRefresh } =
+    await import("../src/lib/identity/refresh-timer.ts");
 
   let calls = 0;
   globalThis.fetch = (async () => {
@@ -548,9 +539,8 @@ test("a client clock an hour ahead of Google's refreshes once, not in a loop", a
 });
 
 test("expiresAtFromSend and isSleptOut judge by wall-clock duration only", async () => {
-  const { expiresAtFromSend, isSleptOut, MIN_REMAINING_MS } = await import(
-    "../src/lib/identity/refresh-mint.ts"
-  );
+  const { expiresAtFromSend, isSleptOut, MIN_REMAINING_MS } =
+    await import("../src/lib/identity/refresh-mint.ts");
   const minted = { idToken: "t", refreshToken: "r", expiresAt: 0 };
   // Read 5221 s after send, lifetime 3600 s from the read.
   const readAt = 5_221_000;

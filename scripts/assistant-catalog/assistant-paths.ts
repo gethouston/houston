@@ -81,7 +81,7 @@ export const assistantPaths = {
   resolverSources: sourcesIn(runtimeClient, (name) =>
     name.startsWith("client"),
   ),
-  biome: join(repoRoot, "node_modules/.bin/biome"),
+  formatter: join(repoRoot, "node_modules/.bin/oxfmt"),
   repo: repoRoot,
 };
 

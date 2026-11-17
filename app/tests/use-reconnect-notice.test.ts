@@ -15,9 +15,8 @@ const React = await import("react");
 const { act, createElement: h } = React;
 (globalThis as Record<string, unknown>).React = React;
 const { createRoot } = await import("react-dom/client");
-const { useReconnectNotice } = await import(
-  "../src/hooks/use-reconnect-notice.ts"
-);
+const { useReconnectNotice } =
+  await import("../src/hooks/use-reconnect-notice.ts");
 
 const statuses = {
   anthropic: {

@@ -1,9 +1,3 @@
-import type { OrgBilling } from "@houston/engine-adapter";
-import {
-  formatLocalDate,
-  formatPlanAmount,
-  seatChargeView,
-} from "@houston/sdk";
 import {
   AlertDialog,
   AlertDialogContent,
@@ -14,6 +8,12 @@ import {
   Button,
   Spinner,
 } from "@houston-ai/core";
+import type { OrgBilling } from "@houston/engine-adapter";
+import {
+  formatLocalDate,
+  formatPlanAmount,
+  seatChargeView,
+} from "@houston/sdk";
 import { useTranslation } from "react-i18next";
 import { usePortal } from "../../hooks/queries/use-billing";
 import type { ChargeDialog } from "./people-seat-flow";

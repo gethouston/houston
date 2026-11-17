@@ -85,52 +85,58 @@ test("a pooled turn following the configured agent uses Sonnet for new routines"
 test.each([
   [undefined, "gpt-6.1-terra"],
   ["gpt-6-astra", "gpt-6-astra"],
-])("a legacy Codex credential overrides the Anthropic config with explicit model %s", async (model, expectedModel) => {
-  const { agent, sandbox, save } = await fixture({
-    credential: {
-      provider: "openai-codex",
-      access: "test-access",
-      expires: 4102444800,
-      accountId: null,
-      kind: "oauth",
-    },
-    model: "gpt-6-astra",
-    effort: "max",
-  });
-  try {
-    const response = await save({ ...daily, ...(model ? { model } : {}) });
-    expect(response.status).toBe(201);
-    expect(await storedRoutines(agent)).toMatchObject([
-      { provider: "openai-codex", model: expectedModel, effort: "max" },
-    ]);
-  } finally {
-    await sandbox.dispose();
-  }
-});
+])(
+  "a legacy Codex credential overrides the Anthropic config with explicit model %s",
+  async (model, expectedModel) => {
+    const { agent, sandbox, save } = await fixture({
+      credential: {
+        provider: "openai-codex",
+        access: "test-access",
+        expires: 4102444800,
+        accountId: null,
+        kind: "oauth",
+      },
+      model: "gpt-6-astra",
+      effort: "max",
+    });
+    try {
+      const response = await save({ ...daily, ...(model ? { model } : {}) });
+      expect(response.status).toBe(201);
+      expect(await storedRoutines(agent)).toMatchObject([
+        { provider: "openai-codex", model: expectedModel, effort: "max" },
+      ]);
+    } finally {
+      await sandbox.dispose();
+    }
+  },
+);
 
 test.each([
   ["high", "low"],
   ["xhigh", "max"],
-])("a pooled Codex turn overrides the configured provider and maps %s effort to %s", async (effort, expectedEffort) => {
-  const { agent, sandbox, save } = await fixture({
-    provider: "openai-codex",
-    model: "gpt-6-astra",
-    effort,
-  });
-  try {
-    const response = await save(daily);
-    expect(response.status).toBe(201);
-    expect(await storedRoutines(agent)).toMatchObject([
-      {
-        provider: "openai-codex",
-        model: "gpt-6.1-terra",
-        effort: expectedEffort,
-      },
-    ]);
-  } finally {
-    await sandbox.dispose();
-  }
-});
+])(
+  "a pooled Codex turn overrides the configured provider and maps %s effort to %s",
+  async (effort, expectedEffort) => {
+    const { agent, sandbox, save } = await fixture({
+      provider: "openai-codex",
+      model: "gpt-6-astra",
+      effort,
+    });
+    try {
+      const response = await save(daily);
+      expect(response.status).toBe(201);
+      expect(await storedRoutines(agent)).toMatchObject([
+        {
+          provider: "openai-codex",
+          model: "gpt-6.1-terra",
+          effort: expectedEffort,
+        },
+      ]);
+    } finally {
+      await sandbox.dispose();
+    }
+  },
+);
 
 test.each([
   [{}, "claude-opus-5-5", "anthropic", "high"],
@@ -140,18 +146,21 @@ test.each([
     "openai-codex",
     "max",
   ],
-])("an explicit model survives pooled routine creation with pin %j", async (pin, model, provider, effort) => {
-  const { agent, sandbox, save } = await fixture(pin);
-  try {
-    const response = await save({ ...daily, model });
-    expect(response.status).toBe(201);
-    expect(await storedRoutines(agent)).toMatchObject([
-      { provider, model, effort },
-    ]);
-  } finally {
-    await sandbox.dispose();
-  }
-});
+])(
+  "an explicit model survives pooled routine creation with pin %j",
+  async (pin, model, provider, effort) => {
+    const { agent, sandbox, save } = await fixture(pin);
+    try {
+      const response = await save({ ...daily, model });
+      expect(response.status).toBe(201);
+      expect(await storedRoutines(agent)).toMatchObject([
+        { provider, model, effort },
+      ]);
+    } finally {
+      await sandbox.dispose();
+    }
+  },
+);
 
 test("pooled updates keep saved pins and routines that follow the agent", async () => {
   const originals = [

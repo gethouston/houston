@@ -225,16 +225,17 @@ describe("migrationStatus", () => {
 
   // A deployment that cannot be asked is not a deployment that answered "never
   // imported": the status does NOT soften here, and the surface decides.
-  it.each([
-    404, 500,
-  ])("throws on %i rather than reading it as absent", async (status) => {
-    const { sdk } = makeSdk(() => json({ error: "not found" }, status));
-    const err = await sdk.migration
-      .migrationStatus("a1")
-      .catch((e: unknown) => e);
-    expect(err).toBeInstanceOf(MigrationHttpError);
-    expect((err as MigrationHttpError).status).toBe(status);
-  });
+  it.each([404, 500])(
+    "throws on %i rather than reading it as absent",
+    async (status) => {
+      const { sdk } = makeSdk(() => json({ error: "not found" }, status));
+      const err = await sdk.migration
+        .migrationStatus("a1")
+        .catch((e: unknown) => e);
+      expect(err).toBeInstanceOf(MigrationHttpError);
+      expect((err as MigrationHttpError).status).toBe(status);
+    },
+  );
 });
 
 it("migrationImport commits a staged archive as JSON", async () => {

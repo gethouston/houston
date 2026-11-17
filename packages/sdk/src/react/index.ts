@@ -12,8 +12,5 @@
  * consumer needs implicit access, add the context then — not speculatively.
  */
 
-export type {
-  SnapshotSource,
-  SnapshotStoreAdapter,
-} from "./use-sdk-snapshot";
+export type { SnapshotSource, SnapshotStoreAdapter } from "./use-sdk-snapshot";
 export { snapshotStoreAdapter, useSdkSnapshot } from "./use-sdk-snapshot";

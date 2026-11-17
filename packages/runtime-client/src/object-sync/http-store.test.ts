@@ -305,26 +305,27 @@ test("claim and lease mutation authority cannot be configured together", () => {
   ).toThrow("claim authority cannot be combined");
 });
 
-test.each([
-  409, 500,
-])("does not capture a fencing token from a failed %i response", async (status) => {
-  const fence = { token: "41" };
-  const store = new HttpObjectStore({
-    baseUrl: "https://store.test/base",
-    token: "pod-token",
-    bootId: "boot-123",
-    fence,
-    fetchImpl: async () =>
-      new Response("rejected", {
-        status,
-        headers: { "X-Houston-Fencing-Token": "99" },
-      }),
-    retryDelaysMs: [],
-  });
+test.each([409, 500])(
+  "does not capture a fencing token from a failed %i response",
+  async (status) => {
+    const fence = { token: "41" };
+    const store = new HttpObjectStore({
+      baseUrl: "https://store.test/base",
+      token: "pod-token",
+      bootId: "boot-123",
+      fence,
+      fetchImpl: async () =>
+        new Response("rejected", {
+          status,
+          headers: { "X-Houston-Fencing-Token": "99" },
+        }),
+      retryDelaysMs: [],
+    });
 
-  await expect(store.manifest()).rejects.toThrow(`failed (${status})`);
-  expect(fence.token).toBe("41");
-});
+    await expect(store.manifest()).rejects.toThrow(`failed (${status})`);
+    expect(fence.token).toBe("41");
+  },
+);
 
 test("keeps old-gateway writes free of fencing and precondition headers", async () => {
   const dir = mkdtempSync(join(tmpdir(), "http-unfenced-object-store-"));
@@ -582,27 +583,30 @@ test("a 413 PUT surfaces as the typed ObjectTooLargeError, with no retry", async
 test.each([
   [409, StoreFencedError],
   [412, StoreConflictError],
-] as const)("a %i write response surfaces its typed store error", async (status, ErrorType) => {
-  const dir = mkdtempSync(join(tmpdir(), "houston-store-write-error-"));
-  const source = join(dir, "notes.txt");
-  writeFileSync(source, "notes");
-  const store = new HttpObjectStore({
-    baseUrl: "https://gw.test/v1/pod/store/o/a",
-    token: "pod-token",
-    fetchImpl: async () => new Response("rejected", { status }),
-    retryDelaysMs: [0, 0],
-  });
+] as const)(
+  "a %i write response surfaces its typed store error",
+  async (status, ErrorType) => {
+    const dir = mkdtempSync(join(tmpdir(), "houston-store-write-error-"));
+    const source = join(dir, "notes.txt");
+    writeFileSync(source, "notes");
+    const store = new HttpObjectStore({
+      baseUrl: "https://gw.test/v1/pod/store/o/a",
+      token: "pod-token",
+      fetchImpl: async () => new Response("rejected", { status }),
+      retryDelaysMs: [0, 0],
+    });
 
-  const err = await store
-    .upload(source, "work/notes.txt", { ifGenerationMatch: "3" })
-    .then(() => null)
-    .catch((error: unknown) => error);
+    const err = await store
+      .upload(source, "work/notes.txt", { ifGenerationMatch: "3" })
+      .then(() => null)
+      .catch((error: unknown) => error);
 
-  expect(err).toBeInstanceOf(ErrorType);
-  expect((err as StoreFencedError | StoreConflictError).key).toBe(
-    "work/notes.txt",
-  );
-});
+    expect(err).toBeInstanceOf(ErrorType);
+    expect((err as StoreFencedError | StoreConflictError).key).toBe(
+      "work/notes.txt",
+    );
+  },
+);
 
 test("does not retry a conditional PUT after a transient response", async () => {
   const dir = mkdtempSync(join(tmpdir(), "houston-store-conditional-"));

@@ -1,6 +1,6 @@
+import type { CitationChipData } from "@houston-ai/chat";
 import type { DraftCitation } from "@houston/sdk";
 import type { SentCitation } from "@houston/wire-types";
-import type { CitationChipData } from "@houston-ai/chat";
 import type { TFunction } from "i18next";
 
 const PRESENTATION_RE = /\.(pptx?|odp|key)$/i;

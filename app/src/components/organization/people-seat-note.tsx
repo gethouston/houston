@@ -1,3 +1,4 @@
+import { cn } from "@houston-ai/core";
 import type { OrgBilling } from "@houston/engine-adapter";
 import {
   formatLocalDate,
@@ -5,7 +6,6 @@ import {
   type SeatQuote,
   seatNote,
 } from "@houston/sdk";
-import { cn } from "@houston-ai/core";
 import { useTranslation } from "react-i18next";
 import { PlanWebNote } from "../shell/plan-web-note";
 import { BILLING_CURRENCY } from "./billing-tab-model";
