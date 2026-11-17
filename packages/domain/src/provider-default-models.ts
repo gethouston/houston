@@ -49,9 +49,11 @@ export const DEFAULT_MODEL: Partial<Record<ProviderId, string>> = {
   // (including the connect-time key probe) fails with "on-demand throughput
   // isn't supported" (PRODUCT-1477).
   "amazon-bedrock": "global.anthropic.claude-sonnet-4-6",
-  // The token/coding-plan SKU (1M context) — see runtime `ai/minimax.ts`. A
-  // subscription key run on bare MiniMax-M3 reads as "usage ran out" (HOU-1160).
-  minimax: "MiniMax-M3[1m]",
+  // The one text model MiniMax serves on BOTH key kinds: pay-as-you-go keys run
+  // M3.1 Flash and M3, while M Plan / Token Plan keys list only M3.1 Flash
+  // (platform.minimax.io/docs/m-plan/faq.md). The key, not the model id,
+  // decides which balance is charged, so the default never has to guess it.
+  minimax: "MiniMax-M3.1-Flash",
   // NVIDIA serves each hosted model per ACCOUNT (HOU-890), so pi's
   // alphabetically-first rows (gemma, deepseek) answer `404 Function not found
   // for account` for many accounts — and the default is what the key VERIFIER
