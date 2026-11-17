@@ -168,7 +168,9 @@
     "missionRowFailed": "No pudimos guardar esta tarea en tu tablero. Tu mensaje sí fue enviado.",
     "interactionDismissFailed": "No pudimos descartar la solicitud.",
     "interactionBusyTitle": "Esto ya está en curso",
-    "interactionBusyBody": "La solicitud fue reemplazada por una respuesta nueva. Espera a que termine o presiona Detener para abandonarla."
+    "interactionBusyBody": "La solicitud fue reemplazada por una respuesta nueva. Espera a que termine o presiona Detener para abandonarla.",
+    "interactionNotYoursTitle": "Esta pregunta es para otra persona",
+    "interactionNotYoursBody": "Solo el compañero cuyo mensaje inició esta solicitud puede responderla o descartarla."
   },
   "providerError": {
     "retryPrompt": "Intenta de nuevo.",

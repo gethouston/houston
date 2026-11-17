@@ -67,6 +67,10 @@
       "types": "./src/provider-visibility.ts",
       "import": "./src/provider-visibility.ts"
     },
+    "./minimax-retired": {
+      "types": "./src/minimax-retired.ts",
+      "import": "./src/minimax-retired.ts"
+    },
     "./model-aliases": {
       "types": "./src/model-aliases.ts",
       "import": "./src/model-aliases.ts"

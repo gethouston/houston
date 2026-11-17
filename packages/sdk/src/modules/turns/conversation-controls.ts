@@ -14,6 +14,7 @@
  */
 
 import type { ModuleContext } from "../../module-context";
+import { refusalCode, refusalStatus } from "../refusal-code";
 import { createConversationImports } from "./conversation-imports";
 import { createConversationPrewarm } from "./conversation-prewarm";
 import { type StreamRegistry, streamKey } from "./stream-registry";
@@ -30,10 +31,21 @@ import { isTurnRunningRejection } from "./turn-running";
  * already retired by that turn. The caller catches its view up to the running
  * turn (the interaction is gone either way) and must NOT clear a persisted
  * copy of the card, which would race the running turn's own settle write.
+ * `not_interaction_owner`: on a shared agent the card is for the member whose
+ * message raised it, and only they may dismiss it (403). Nothing changed; the
+ * card stays for its person.
  */
 export type DismissInteractionOutcome =
   | { ok: true }
-  | { ok: false; refusal: "turn_running" };
+  | { ok: false; refusal: "turn_running" | "not_interaction_owner" };
+
+function isNotInteractionOwnerRefusal(err: unknown): boolean {
+  return (
+    err instanceof Error &&
+    refusalStatus(err) === 403 &&
+    refusalCode(err) === "not_interaction_owner"
+  );
+}
 
 export function createConversationControls(
   ctx: ModuleContext,
@@ -99,7 +111,9 @@ export function createConversationControls(
    * which reads to the model exactly like a real Stop — it learns nothing from
    * the dismissal. Answers `{ ok: false, refusal: "turn_running" }` instead of
    * throwing when a turn raced the dismiss: that turn already retired the
-   * question, the caller's view was stale, and nothing is wrong.
+   * question, the caller's view was stale, and nothing is wrong. Answers
+   * `{ ok: false, refusal: "not_interaction_owner" }` when the card belongs to
+   * another member of a shared agent.
    * @param conversationId The chat whose pending question is retired.
    * @param agentId The agent this acts on, by the id listAgents returns. An
    *   agent's name is not its id, so read the id from listAgents first.
@@ -114,8 +128,11 @@ export function createConversationControls(
       await ctx.clientFor(agentId).dismissInteraction(conversationId);
       return { ok: true };
     } catch (err) {
-      if (!isTurnRunningRejection(err)) throw err;
-      return { ok: false, refusal: "turn_running" };
+      if (isTurnRunningRejection(err))
+        return { ok: false, refusal: "turn_running" };
+      if (isNotInteractionOwnerRefusal(err))
+        return { ok: false, refusal: "not_interaction_owner" };
+      throw err;
     }
   };
 

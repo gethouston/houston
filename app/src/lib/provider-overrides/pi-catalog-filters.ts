@@ -88,6 +88,10 @@ export const VISIBLE_MODELS: Readonly<Record<string, ReadonlySet<string>>> = {
     "claude-fable-5-2",
     "claude-haiku-5-5",
   ]),
+  // What MiniMax serves today. pi still lists the retired M2.7 rows, and the
+  // host keeps them (and `MiniMax-M3[1m]`) as hidden `runsAs` rows so a ceiling
+  // naming one still admits M3.1 Flash (@houston/domain minimax-retired.ts).
+  minimax: new Set(["MiniMax-M3.1-Flash", "MiniMax-M3"]),
   // NOTE: pi-ai ships no plain `gemini-3.1-flash` (only the Lite tier), so the
   // 3.1 line is represented by Flash Lite here.
   google: new Set([
