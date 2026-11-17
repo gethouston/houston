@@ -180,6 +180,7 @@ export const SAMPLE_CATALOG: ProviderCatalog = [
     m("amazon.nova-lite-v1:0", { contextWindow: 300_000 }),
   ]),
   provider("minimax", "apiKey", [
+    reasoningModel("MiniMax-M3.1-Flash", { contextWindow: 1_000_000 }),
     reasoningModel("MiniMax-M3", { contextWindow: 512_000 }),
     reasoningModel("MiniMax-M2.7", { contextWindow: 204_800 }),
     reasoningModel("MiniMax-M2.7-highspeed", { contextWindow: 204_800 }),

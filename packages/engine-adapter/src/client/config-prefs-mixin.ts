@@ -156,7 +156,10 @@ export function ConfigPrefsMixin<TBase extends BaseCtor>(Base: TBase) {
             .sdkForSpace(teamSlugFromWorkspaceId(wireId))
             .preferences.seedTimezone({ detected, legacy }),
       );
-      if (legacy !== null) dropLegacyLocalPref(TIMEZONE_PREFERENCE);
+      // A locked team wrote nothing, so the device copy stays for the seed
+      // that runs after the upgrade.
+      if (legacy !== null && result.kind !== "locked")
+        dropLegacyLocalPref(TIMEZONE_PREFERENCE);
       return result;
     }
     async getAgentConfig(): Promise<ProjectConfig> {

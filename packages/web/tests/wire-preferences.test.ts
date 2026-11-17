@@ -304,6 +304,22 @@ describe("the delegated timezone seed", () => {
     }
   });
 
+  test("a locked team keeps the device copy for the seed after the upgrade", async () => {
+    localStorage.setItem("houston.pref.timezone", "Europe/Madrid");
+    stubFetch(() =>
+      calls.length === 1
+        ? json(200, { value: null })
+        : json(403, { code: "needs_upgrade", error: "team needs upgrade" }),
+    );
+    const c = client();
+    c.setActiveOrg(ORG);
+    expect(await c.seedTimezone(`org:${ORG}`, "America/Bogota")).toEqual({
+      kind: "locked",
+      timezone: "Europe/Madrid",
+    });
+    expect(localStorage.getItem("houston.pref.timezone")).toBe("Europe/Madrid");
+  });
+
   test("a stored zone is adopted and nothing is written", async () => {
     stubFetch(() => json(200, { value: "Europe/Lisbon" }));
     const c = client();

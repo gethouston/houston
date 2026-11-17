@@ -126,6 +126,32 @@ describe("seeding the timezone", () => {
     );
   });
 
+  it("a locked team's refusal is a typed outcome, never a throw", async () => {
+    // A background seed on a team whose writes are refused (403
+    // needs_upgrade) is a business state the team's own banner explains;
+    // a throw here filed a bug report on every app open.
+    const { sdk, calls } = makeSdk((method) =>
+      method === "GET"
+        ? json({ value: null })
+        : json({ error: "team needs upgrade", code: "needs_upgrade" }, 403),
+    );
+    expect(
+      await sdk.preferences.seedTimezone({ detected: "America/Bogota" }),
+    ).toEqual({ kind: "locked", timezone: "America/Bogota" });
+    expect(calls.map((c) => c.method)).toEqual(["GET", "PUT"]);
+  });
+
+  it("another 403 still throws", async () => {
+    const { sdk } = makeSdk((method) =>
+      method === "GET"
+        ? json({ value: null })
+        : json({ error: "not allowed", code: "not_manager" }, 403),
+    );
+    await expect(
+      sdk.preferences.seedTimezone({ detected: "America/Bogota" }),
+    ).rejects.toThrow();
+  });
+
   it("any other failure still throws", async () => {
     const { sdk } = makeSdk(() => json({ error: "boom" }, 500));
     await expect(
