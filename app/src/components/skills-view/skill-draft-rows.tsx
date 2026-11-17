@@ -1,6 +1,6 @@
+import { CatalogGrid, CatalogRow } from "@houston-ai/core";
 import type { Activity } from "@houston/engine-adapter";
 import { skillDraftLastWorkedAt } from "@houston/sdk/skill-drafts";
-import { CatalogGrid, CatalogRow } from "@houston-ai/core";
 import { ChevronRight, MessageCircle } from "lucide-react";
 import { useTranslation } from "react-i18next";
 import { formatRelativeTime } from "../organization/org-time";

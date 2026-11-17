@@ -367,16 +367,19 @@ test.each([
   ["conversion_unavailable", 503],
   ["timeout", 504],
   ["conversion_failed", 422],
-] as const)("Office %s is a typed refusal without transport replay", async (code, status) => {
-  stubFetch(() => json(status, { code, error: "preview refused" }));
-  await expect(
-    client().downloadProjectFile("a1", "deck.pptx", {
-      as: "pdf",
-      lang: "pt-BR",
-    }),
-  ).rejects.toMatchObject({ name: "FilePreviewError", code });
-  expect(calls).toHaveLength(1);
-});
+] as const)(
+  "Office %s is a typed refusal without transport replay",
+  async (code, status) => {
+    stubFetch(() => json(status, { code, error: "preview refused" }));
+    await expect(
+      client().downloadProjectFile("a1", "deck.pptx", {
+        as: "pdf",
+        lang: "pt-BR",
+      }),
+    ).rejects.toMatchObject({ name: "FilePreviewError", code });
+    expect(calls).toHaveLength(1);
+  },
+);
 
 test("Office capacity keeps Retry-After through the SDK's bounded retries", async () => {
   vi.useFakeTimers();

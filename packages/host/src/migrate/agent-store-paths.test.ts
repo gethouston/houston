@@ -99,25 +99,28 @@ async function migrated(
 test.each([
   ["a legacy agent", FIXTURE],
   ["an agent whose learnings already moved", MOVED_LEARNINGS],
-])("%s migrates the same over the admitted files as over the whole agent", async (_, fixture) => {
-  const whole = await migrated(fixture, () => true);
-  const admitted = await migrated(fixture, (rel) =>
-    AGENT_STORE_MIGRATION_PATHS.has(rel),
-  );
+])(
+  "%s migrates the same over the admitted files as over the whole agent",
+  async (_, fixture) => {
+    const whole = await migrated(fixture, () => true);
+    const admitted = await migrated(fixture, (rel) =>
+      AGENT_STORE_MIGRATION_PATHS.has(rel),
+    );
 
-  expect(admitted.report).toEqual(whole.report);
-  expect(whole.report.layoutFiles).toBeGreaterThan(0);
-  const untouched = Object.keys(fixture).filter(
-    (rel) => !AGENT_STORE_MIGRATION_PATHS.has(rel),
-  );
-  const wholeAdmitted = Object.fromEntries(
-    Object.entries(whole.files).filter(([rel]) => !untouched.includes(rel)),
-  );
-  expect(admitted.files).toEqual(wholeAdmitted);
-  // Nothing outside the admitted paths was written, moved or removed.
-  for (const rel of untouched) expect(whole.files[rel]).toBe(fixture[rel]);
-  for (const rel of Object.keys(whole.files))
-    expect(
-      AGENT_STORE_MIGRATION_PATHS.has(rel) || untouched.includes(rel),
-    ).toBe(true);
-});
+    expect(admitted.report).toEqual(whole.report);
+    expect(whole.report.layoutFiles).toBeGreaterThan(0);
+    const untouched = Object.keys(fixture).filter(
+      (rel) => !AGENT_STORE_MIGRATION_PATHS.has(rel),
+    );
+    const wholeAdmitted = Object.fromEntries(
+      Object.entries(whole.files).filter(([rel]) => !untouched.includes(rel)),
+    );
+    expect(admitted.files).toEqual(wholeAdmitted);
+    // Nothing outside the admitted paths was written, moved or removed.
+    for (const rel of untouched) expect(whole.files[rel]).toBe(fixture[rel]);
+    for (const rel of Object.keys(whole.files))
+      expect(
+        AGENT_STORE_MIGRATION_PATHS.has(rel) || untouched.includes(rel),
+      ).toBe(true);
+  },
+);

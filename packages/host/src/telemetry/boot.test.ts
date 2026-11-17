@@ -161,17 +161,18 @@ describe("sendBootReport", () => {
     );
   });
 
-  it.each([
-    404, 401,
-  ])("treats an older gateway's %i as done (no retry, no error)", async (status) => {
-    const boot = new BootTelemetry();
-    const log = vi.fn();
-    const fetchImpl = vi.fn(async () => new Response(null, { status }));
-    await sendBootReport({ report, telemetry: boot, log, fetchImpl });
-    expect(fetchImpl).toHaveBeenCalledTimes(1);
-    expect(log).toHaveBeenCalledTimes(1);
-    expect(log).toHaveBeenCalledWith(
-      `[boot-report] gateway has no ingest yet (${status}), skipping`,
-    );
-  });
+  it.each([404, 401])(
+    "treats an older gateway's %i as done (no retry, no error)",
+    async (status) => {
+      const boot = new BootTelemetry();
+      const log = vi.fn();
+      const fetchImpl = vi.fn(async () => new Response(null, { status }));
+      await sendBootReport({ report, telemetry: boot, log, fetchImpl });
+      expect(fetchImpl).toHaveBeenCalledTimes(1);
+      expect(log).toHaveBeenCalledTimes(1);
+      expect(log).toHaveBeenCalledWith(
+        `[boot-report] gateway has no ingest yet (${status}), skipping`,
+      );
+    },
+  );
 });

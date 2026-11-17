@@ -1,6 +1,6 @@
 import type { ChartPerson } from "./org-chart-people.ts";
-import type { OrgTreeAgent } from "./org-chart-tree.ts";
 import type { Box } from "./org-chart-tree-paths.ts";
+import type { OrgTreeAgent } from "./org-chart-tree.ts";
 
 /**
  * The share image's fixed frame and the shapes its layout hands the

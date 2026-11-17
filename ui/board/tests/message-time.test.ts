@@ -6,8 +6,8 @@ import { renderToStaticMarkup } from "react-dom/server";
 import { KanbanBoard } from "../src/kanban-board.tsx";
 import { KanbanCard } from "../src/kanban-card.tsx";
 import { KanbanDetailPanel } from "../src/kanban-detail-panel.tsx";
-import { KanbanList } from "../src/kanban-list.tsx";
 import { KanbanListItem } from "../src/kanban-list-item.tsx";
+import { KanbanList } from "../src/kanban-list.tsx";
 import type { KanbanItem } from "../src/types.ts";
 
 Object.assign(globalThis, { React });

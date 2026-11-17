@@ -53,15 +53,15 @@ test.each([
     error: "bad spec",
   },
   { payload: [{ slug: "acme", state: null }], error: "unreadable" },
-])("refuses missing or unusable definitions: $error", async ({
-  payload,
-  error,
-}) => {
-  const { run } = setup(payload);
-  const holder = newInteractionHolder();
-  await expect(runWithInteractionCapture(holder, run)).rejects.toThrow(error);
-  expect(holder.pending).toBeUndefined();
-});
+])(
+  "refuses missing or unusable definitions: $error",
+  async ({ payload, error }) => {
+    const { run } = setup(payload);
+    const holder = newInteractionHolder();
+    await expect(runWithInteractionCapture(holder, run)).rejects.toThrow(error);
+    expect(holder.pending).toBeUndefined();
+  },
+);
 
 test("a denied read does not queue a card", async () => {
   const { run } = setup({ error: "denied" }, 403);

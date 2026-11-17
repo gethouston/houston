@@ -50,11 +50,14 @@ test.each([
     '404 {"error":{"code":"model_not_found","message":"The service is temporarily unavailable for this model"}}',
     "model_unavailable",
   ],
-])("an upstream %s 4xx keeps its own verdict: %s", (provider, message, kind) => {
-  expect(classifyProviderError({ provider, model: "m", message }).kind).toBe(
-    kind,
-  );
-});
+])(
+  "an upstream %s 4xx keeps its own verdict: %s",
+  (provider, message, kind) => {
+    expect(classifyProviderError({ provider, model: "m", message }).kind).toBe(
+      kind,
+    );
+  },
+);
 
 test.each([
   '400: {"message":"Provider returned error","code":400,"metadata":{"raw":"invalid_request_error: tool_use.input: Input should be a valid dictionary"}}',
@@ -69,12 +72,15 @@ test.each([
   "upstream request failed: model not found",
   "request to https://oauth2.googleapis.com/token failed, reason: getaddrinfo ENOTFOUND oauth2.googleapis.com",
   "request to https://oauth2.googleapis.com/token failed, reason: connect ECONNREFUSED 127.0.0.1:443",
-])("a status-less refusal or local network failure is never read as an outage: %s", (message) => {
-  expect(
-    classifyProviderError({ provider: "google-vertex", model: "m", message })
-      .kind,
-  ).not.toBe("provider_internal");
-});
+])(
+  "a status-less refusal or local network failure is never read as an outage: %s",
+  (message) => {
+    expect(
+      classifyProviderError({ provider: "google-vertex", model: "m", message })
+        .kind,
+    ).not.toBe("provider_internal");
+  },
+);
 
 test("a Gemini policy stop sharing the prefix is not read as an outage", () => {
   const err = classifyProviderError({

@@ -29,9 +29,8 @@ await i18next.use(initReactI18next).init({
   react: { useSuspense: false },
   resources: { en: { agents, common } },
 });
-const { LearningsContent } = await import(
-  "../src/components/agent/learnings-content.tsx"
-);
+const { LearningsContent } =
+  await import("../src/components/agent/learnings-content.tsx");
 
 /** A write the test settles: `true` = landed, `false` = refused. */
 function pendingWrite() {

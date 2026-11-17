@@ -1,4 +1,5 @@
 import { afterAll, describe, expect, test } from "vitest";
+import { pagesSite } from "./browser-pages.test-support";
 import {
   agentWorkspace,
   browserAvailable,
@@ -8,7 +9,6 @@ import {
   SITE_HOST,
   tool,
 } from "./browser.test-support";
-import { pagesSite } from "./browser-pages.test-support";
 import type { BrowserPool } from "./pool";
 import { UNTRUSTED_CLOSE } from "./untrusted";
 

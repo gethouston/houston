@@ -5,10 +5,7 @@
  * the title is written only while the card still shows that fallback, so a
  * rename the user made in the meantime always wins.
  */
-export {
-  type MissionTitleRequest,
-  parseMissionTitle,
-} from "@houston/protocol";
+export { type MissionTitleRequest, parseMissionTitle } from "@houston/protocol";
 
 import type { MissionTitleRequest } from "@houston/protocol";
 

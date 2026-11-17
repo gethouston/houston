@@ -1,5 +1,5 @@
-import type { IntegrationToolkit } from "@houston/engine-adapter";
 import { Badge, Button, CatalogDetailDialog } from "@houston-ai/core";
+import type { IntegrationToolkit } from "@houston/engine-adapter";
 import { Plus, RotateCw } from "lucide-react";
 import { useTranslation } from "react-i18next";
 import {

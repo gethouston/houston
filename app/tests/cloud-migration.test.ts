@@ -1,6 +1,12 @@
 import assert from "node:assert/strict";
 import test from "node:test";
 import {
+  buildMigrationPlan,
+  isPlausibleMigrationTarget,
+  migratedAgentCreate,
+} from "../src/lib/cloud-migration-plan.ts";
+import { initialProgress } from "../src/lib/cloud-migration-progress.ts";
+import {
   chunkPaths,
   collectIntegrations,
   doneScreenOutcome,
@@ -9,12 +15,6 @@ import {
   type SourceAgent,
   type SourceManifestEntry,
 } from "../src/lib/cloud-migration.ts";
-import {
-  buildMigrationPlan,
-  isPlausibleMigrationTarget,
-  migratedAgentCreate,
-} from "../src/lib/cloud-migration-plan.ts";
-import { initialProgress } from "../src/lib/cloud-migration-progress.ts";
 
 function agent(
   workspace: string,

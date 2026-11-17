@@ -32,10 +32,7 @@ import type {
 } from "./conversation-cache-types";
 import { trimForCache } from "./history-window";
 
-export {
-  conversationCacheScope,
-  jwtSub,
-} from "./conversation-cache-identity";
+export { conversationCacheScope, jwtSub } from "./conversation-cache-identity";
 export type {
   CachedFrame,
   CacheRecord,

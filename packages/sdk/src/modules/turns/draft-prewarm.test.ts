@@ -130,15 +130,14 @@ describe("rule 3: whitespace ends the typing session", () => {
 });
 
 describe("rule 4: a routine's chat never prewarms", () => {
-  it.each([
-    "routine-r1",
-    "routine-r1-run2",
-    "ROUTINE-r1",
-  ])("%s", async (conversationId) => {
-    const { requests, typeOn } = harness();
-    await typeOn({ conversationId, text: "hello" });
-    expect(requests).toEqual([]);
-  });
+  it.each(["routine-r1", "routine-r1-run2", "ROUTINE-r1"])(
+    "%s",
+    async (conversationId) => {
+      const { requests, typeOn } = harness();
+      await typeOn({ conversationId, text: "hello" });
+      expect(requests).toEqual([]);
+    },
+  );
 });
 
 describe("rule 5: a held prewarm refreshes at most every interval, while it holds", () => {

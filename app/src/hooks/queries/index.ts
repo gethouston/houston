@@ -72,8 +72,4 @@ export {
   useSettledConversations,
 } from "./use-settled-conversations";
 export { useSkillDetail, useSkills } from "./use-skills";
-export {
-  useAgentMoveStatus,
-  useMoveAgent,
-  useOrgs,
-} from "./use-spaces";
+export { useAgentMoveStatus, useMoveAgent, useOrgs } from "./use-spaces";

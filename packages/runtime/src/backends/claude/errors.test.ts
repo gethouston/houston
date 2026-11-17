@@ -297,9 +297,8 @@ test("the verbatim provider text is logged once it is reduced to a card", () => 
  */
 test("an enum-mapped card carries the acting identity's credential stamp", async () => {
   const { runWithActingContext } = await import("../../session/acting-context");
-  const { recordServedScope, resetServedScopes } = await import(
-    "../../auth/served-scope"
-  );
+  const { recordServedScope, resetServedScopes } =
+    await import("../../auth/served-scope");
   resetServedScopes();
   const actingAs = `acting-v1.${Buffer.from(
     JSON.stringify({ sub: "sub-claude", agent: "acme", exp: 9_000_000_000 }),

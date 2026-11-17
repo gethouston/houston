@@ -1,7 +1,7 @@
 import { deepStrictEqual, rejects } from "node:assert/strict";
 import { describe, it } from "node:test";
-import type { Activity } from "../src/data/activity.ts";
 import { activityWrites } from "../src/data/activity-writes.ts";
+import type { Activity } from "../src/data/activity.ts";
 
 const card = (id: string): Activity => ({
   id,

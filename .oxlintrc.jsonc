@@ -11,19 +11,19 @@
     "promise",
     "node",
     "vitest",
-    "jsdoc"
+    "jsdoc",
   ],
   // Style/restriction rules prescribe incompatible bans on async/await, optional chaining, named exports and null.
   // Pedantic rules are selected below for defect checks rather than code-style preferences.
   "categories": {
     "correctness": "error",
     "suspicious": "error",
-    "perf": "error"
+    "perf": "error",
   },
   // Type-aware rules are deferred to per-package cleanup: no-floating-promises 9,379; unsafe member access 4,115;
   // unsafe type assertions 3,665; unsafe calls 3,260; unsafe assignments 1,728 in the initial audit.
   "options": {
-    "typeAware": false
+    "typeAware": false,
   },
   // Next.js rules apply to the Agent Store; the desktop and web clients use Vite.
   "overrides": [
@@ -40,9 +40,9 @@
         "node",
         "vitest",
         "jsdoc",
-        "nextjs"
-      ]
-    }
+        "nextjs",
+      ],
+    },
   ],
   "ignorePatterns": [
     "**/*.css",
@@ -56,11 +56,11 @@
     "app/src/lib/ai-hub/model-catalog.json",
     "packages/host/src/routes/routes.golden.json",
     "scripts/sdk-parity/gateway-routes.generated.json",
-    "website/src/assets/vendor"
+    "website/src/assets/vendor",
   ],
   "env": {
     "browser": true,
-    "node": true
+    "node": true,
   },
   "rules": {
     "array-callback-return": "error",
@@ -68,8 +68,8 @@
       "error",
       "always",
       {
-        "null": "ignore"
-      }
+        "null": "ignore",
+      },
     ],
     "no-restricted-globals": ["error", "isNaN", "isFinite"],
     "oxc/no-const-enum": "error",
@@ -82,8 +82,8 @@
     "no-fallthrough": [
       "error",
       {
-        "allowEmptyCase": true
-      }
+        "allowEmptyCase": true,
+      },
     ],
     "no-new-wrappers": "error",
     "no-object-constructor": "error",
@@ -109,15 +109,15 @@
     "no-unsafe-optional-chaining": [
       "error",
       {
-        "disallowArithmeticOperators": true
-      }
+        "disallowArithmeticOperators": true,
+      },
     ],
     "no-unused-expressions": [
       "error",
       {
         "allowTernary": true,
-        "allowShortCircuit": true
-      }
+        "allowShortCircuit": true,
+      },
     ],
     "no-unused-vars": [
       "error",
@@ -126,33 +126,33 @@
         "argsIgnorePattern": "^_",
         "varsIgnorePattern": "^_",
         "ignoreRestSiblings": true,
-        "caughtErrorsIgnorePattern": "^_"
-      }
+        "caughtErrorsIgnorePattern": "^_",
+      },
     ],
     "vitest/valid-expect": [
       "error",
       {
         "maxArgs": 2,
-        "alwaysAwait": false
-      }
+        "alwaysAwait": false,
+      },
     ],
     "jsx-a11y/control-has-associated-label": [
       "error",
       {
-        "depth": 5
-      }
+        "depth": 5,
+      },
     ],
     "jsx-a11y/label-has-associated-control": [
       "error",
       {
-        "depth": 5
-      }
+        "depth": 5,
+      },
     ],
     "react/no-unstable-nested-components": [
       "error",
       {
-        "allowAsProps": true
-      }
+        "allowAsProps": true,
+      },
     ],
     "jsdoc/check-tag-names": [
       "error",
@@ -164,10 +164,10 @@
           "vitest-environment-options",
           "jest-environment",
           "mention",
-          "mentions"
-        ]
-      }
-    ]
+          "mentions",
+        ],
+      },
+    ],
   },
-  "extends": ["./.oxlint/policies.jsonc", "./.oxlint/overrides.jsonc"]
+  "extends": ["./.oxlint/policies.jsonc", "./.oxlint/overrides.jsonc"],
 }

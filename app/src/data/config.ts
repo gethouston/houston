@@ -1,7 +1,7 @@
 /** `.houston/config/config.json` — per-agent provider/model config. */
 
-import type { AgentFirstDay } from "@houston/protocol";
 import schema from "@houston-ai/agent-schemas/config.schema.json";
+import type { AgentFirstDay } from "@houston/protocol";
 import { readAgentJson, writeAgentJson } from "./agent-file";
 
 export interface Config {

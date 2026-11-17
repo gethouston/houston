@@ -67,7 +67,9 @@ test("a question card attaches a picked file and sends it with the chosen option
   await expect(attach).toBeVisible();
   const chooser = page.waitForEvent("filechooser");
   await attach.click();
-  await (await chooser).setFiles({
+  await (
+    await chooser
+  ).setFiles({
     name: "character.png",
     mimeType: "image/png",
     buffer: PNG,
@@ -185,7 +187,9 @@ test("a question that wants files leads with an upload area and sends the pick",
   const chooser = page.waitForEvent("filechooser");
   await upload.focus();
   await page.keyboard.press("Enter");
-  await (await chooser).setFiles({
+  await (
+    await chooser
+  ).setFiles({
     name: "character.png",
     mimeType: "image/png",
     buffer: PNG,
@@ -248,7 +252,9 @@ test("each file question in one card is answered by its own file", async ({
   const pick = async (name: string) => {
     const chooser = page.waitForEvent("filechooser");
     await page.getByRole("button", { name: "Upload your files" }).click();
-    await (await chooser).setFiles({
+    await (
+      await chooser
+    ).setFiles({
       name,
       mimeType: "image/png",
       buffer: PNG,

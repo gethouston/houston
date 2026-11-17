@@ -1,7 +1,7 @@
 import { deepStrictEqual, strictEqual } from "node:assert";
 import { describe, it } from "node:test";
-import type { Routine } from "@houston/engine-adapter";
 import type { RoutineRun } from "@houston-ai/routines";
+import type { Routine } from "@houston/engine-adapter";
 import {
   adoptDraft,
   clearMissingRoutine,

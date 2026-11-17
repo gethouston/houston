@@ -212,28 +212,27 @@ test("houston_describe warns on a confirm operation before it is ever called", a
   expect(text(result)).not.toMatch(/confirmed true/i);
 });
 
-test.each([
-  "rotateSecret",
-  "exportLedger",
-  "noSuchOperation",
-])("houston_describe refuses %s as an unknown operation, without throwing", async (operation) => {
-  const result = await describe.execute(
-    "d1",
-    { operation },
-    undefined,
-    undefined,
-    CTX,
-  );
-  expect(result.details).toEqual({
-    ok: false,
-    operation,
-    error: {
-      code: "unknown_operation",
-      message: expect.stringContaining(operation),
-    },
-  });
-  expect(text(result)).toContain("ERROR unknown_operation");
-});
+test.each(["rotateSecret", "exportLedger", "noSuchOperation"])(
+  "houston_describe refuses %s as an unknown operation, without throwing",
+  async (operation) => {
+    const result = await describe.execute(
+      "d1",
+      { operation },
+      undefined,
+      undefined,
+      CTX,
+    );
+    expect(result.details).toEqual({
+      ok: false,
+      operation,
+      error: {
+        code: "unknown_operation",
+        message: expect.stringContaining(operation),
+      },
+    });
+    expect(text(result)).toContain("ERROR unknown_operation");
+  },
+);
 
 /**
  * THE DEPLOYMENT GATE, on the two READ tools. An operation this Houston cannot

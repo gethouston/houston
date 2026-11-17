@@ -1,5 +1,5 @@
-import type { AgentIdentity } from "@houston/agentstore-contract";
 import { cn } from "@houston-ai/core";
+import type { AgentIdentity } from "@houston/agentstore-contract";
 
 export interface AgentIconProps {
   icon: AgentIdentity["icon"];

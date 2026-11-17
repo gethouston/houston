@@ -3,6 +3,7 @@ import { join } from "node:path";
 import { viewOf } from "@houston/host/src/integrations/custom/views";
 import { expect, test } from "vitest";
 import { publishCustomDefinitionsView } from "./turn-custom-definitions-doc";
+import { landOp } from "./turn-views-op.test-support";
 import {
   type AgentStore,
   agentStore,
@@ -12,7 +13,6 @@ import {
   podDocs,
   seed,
 } from "./turn-views.test-support";
-import { landOp } from "./turn-views-op.test-support";
 
 /**
  * The gateway serves a sleeping agent's custom integrations list from the
@@ -76,7 +76,9 @@ test("an op whose add lost the race to another add keeps both in the view", asyn
 test("an integration another op removed stays out of the file and the view", async () => {
   const agent = await agentStore();
   const docs = podDocs();
-  await (await landOp(agent, docs, add("Old")))();
+  await (
+    await landOp(agent, docs, add("Old"))
+  )();
   const adding = await landOp(agent, docs, add("Gadgets"), {
     beforeSync: async () => {
       const remove = await landOp(agent, docs, {

@@ -33,11 +33,11 @@ import {
   teamFunnelStep,
   teamViewKey,
 } from "../src/components/onboarding/team/team-view-model.ts";
+import { AGENT_COMMON_ROLES } from "../src/lib/agent-role-catalog-data.ts";
 import {
   AGENT_CONTEXT_IDS,
   rolesForContext,
 } from "../src/lib/agent-role-catalog.ts";
-import { AGENT_COMMON_ROLES } from "../src/lib/agent-role-catalog-data.ts";
 import { AGENT_ROLE_PART_MAX_LENGTH } from "../src/lib/agent-role-context.ts";
 import { nextFreeAgentColor } from "../src/lib/next-agent-color.ts";
 

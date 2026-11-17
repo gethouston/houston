@@ -70,9 +70,8 @@ const { snapshot, subscribe } = await import("./bus");
 const { turnsInFlight } = await import("./turn-inflight-count");
 const { withWorkdirLock } = await import("./workdir-lock");
 const { config } = await import("../config");
-const { appendAssistantMessage, stampSessionReplay } = await import(
-  "../store/conversations"
-);
+const { appendAssistantMessage, stampSessionReplay } =
+  await import("../store/conversations");
 
 /** Cache a conversation whose prompt would run a tool; counts its prompts. */
 function cachedConv(id: string, backendId: string, fill = 0) {
@@ -117,30 +116,30 @@ async function until(ready: () => boolean): Promise<void> {
 const persisted = (id: string) =>
   vi.mocked(appendAssistantMessage).mock.calls.find((c) => c[0] === id)?.[2];
 
-test.each([
-  "pi",
-  "anthropic",
-])("a turn stopped while it waits on the workdir lock never prompts (%s backend)", async (backendId) => {
-  const id = `early-lock-${backendId}`;
-  const { conv, tool } = cachedConv(id, backendId);
-  const { frames, unsub } = collect(id);
-  const lock = Promise.withResolvers<void>();
-  const holder = withWorkdirLock(config.workspaceDir, () => lock.promise);
+test.each(["pi", "anthropic"])(
+  "a turn stopped while it waits on the workdir lock never prompts (%s backend)",
+  async (backendId) => {
+    const id = `early-lock-${backendId}`;
+    const { conv, tool } = cachedConv(id, backendId);
+    const { frames, unsub } = collect(id);
+    const lock = Promise.withResolvers<void>();
+    const holder = withWorkdirLock(config.workspaceDir, () => lock.promise);
 
-  const turn = runTurn(id, "go");
-  await until(() => conv.turnId !== undefined);
-  expect(await cancelTurn(id)).toBe(true);
-  lock.resolve();
-  await holder;
-  await turn;
-  unsub();
+    const turn = runTurn(id, "go");
+    await until(() => conv.turnId !== undefined);
+    expect(await cancelTurn(id)).toBe(true);
+    lock.resolve();
+    await holder;
+    await turn;
+    unsub();
 
-  expect(tool).not.toHaveBeenCalled();
-  expect(frames.map((f) => f.type)).toEqual(["user", "error"]);
-  expect(snapshot(id).running).toBe(false);
-  expect(turnsInFlight()).toBe(0);
-  expect(persisted(id)).toMatchObject({ stopped: true });
-});
+    expect(tool).not.toHaveBeenCalled();
+    expect(frames.map((f) => f.type)).toEqual(["user", "error"]);
+    expect(snapshot(id).running).toBe(false);
+    expect(turnsInFlight()).toBe(0);
+    expect(persisted(id)).toMatchObject({ stopped: true });
+  },
+);
 
 test("a turn stopped during its pre-turn autocompact never prompts, and keeps the compaction", async () => {
   const id = "early-compact";

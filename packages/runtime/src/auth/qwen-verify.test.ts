@@ -103,9 +103,8 @@ test("a region with no verdict → provider_unavailable, never 'paste it again'"
 
 test("an injected persist (the pool-worker seam) lands the region in the AGENT's dir, not the process's", async () => {
   const { verifyQwenRegions, persistedRegion } = await load();
-  const { setQwenRegionIn, qwenRegionFileIn } = await import(
-    "../ai/qwen-dashscope"
-  );
+  const { setQwenRegionIn, qwenRegionFileIn } =
+    await import("../ai/qwen-dashscope");
   const { mkdtempSync } = await import("node:fs");
   const { tmpdir } = await import("node:os");
   const { join } = await import("node:path");

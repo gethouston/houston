@@ -1,7 +1,7 @@
 // `.ts` extensions so the node test runner can load this module on its own.
 
-import type { AgentRoleId } from "../../../lib/agent-role-catalog.ts";
 import { AGENT_COMMON_ROLES } from "../../../lib/agent-role-catalog-data.ts";
+import type { AgentRoleId } from "../../../lib/agent-role-catalog.ts";
 import { type BasicTeamDraft, draftFor } from "./basic-team-model.ts";
 
 /**

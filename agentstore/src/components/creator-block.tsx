@@ -1,6 +1,6 @@
+import { CreatorBlock as StoreCreatorBlock } from "@houston-ai/store";
 import type { StoreCreator } from "@houston/agentstore-client";
 import type { AgentIdentity } from "@houston/agentstore-contract";
-import { CreatorBlock as StoreCreatorBlock } from "@houston-ai/store";
 import Link from "next/link";
 
 /**

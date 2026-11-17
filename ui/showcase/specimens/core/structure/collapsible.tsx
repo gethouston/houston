@@ -105,7 +105,7 @@ function CollapsibleSpecimen() {
 
       <SpecimenSection
         title="States"
-        note="data-state=&quot;open&quot; | &quot;closed&quot; lands on all three parts, so the trigger's chevron and the panel can be styled from the parent."
+        note='data-state="open" | "closed" lands on all three parts, so the trigger&apos;s chevron and the panel can be styled from the parent.'
       >
         <SpecimenRow label="Open">
           <RunDetails defaultOpen />

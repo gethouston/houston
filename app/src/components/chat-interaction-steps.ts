@@ -1,8 +1,8 @@
-import type { MessageApproval } from "@houston/protocol/approval";
 import type {
   ChatInteractionCardProps,
   ChatInteractionStep,
 } from "@houston-ai/chat";
+import type { MessageApproval } from "@houston/protocol/approval";
 import { handsOnScreenLabel } from "../lib/hands-on-screens";
 import type { ApprovalCardCopy } from "../lib/interaction-approval-labels";
 import { localizeApprovalQuestion } from "../lib/interaction-approval-labels";

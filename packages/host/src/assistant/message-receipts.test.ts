@@ -63,30 +63,29 @@ test("a retry of the prompt that raised a card leaves that new card pending", ()
   ).toBeDefined();
 });
 
-test.each([
-  "body",
-  "actor",
-  "approval",
-])("a nonce conflict in %s is refused before it changes any approval", (change) => {
-  const store = new ApprovalStore();
-  prepare(store, { text: "original", nonce: "n" });
-  const request = issue(store);
-  const approvals = [{ requestId: request.requestId, decision: "approve" }];
-  expect(() =>
-    prepare(
-      store,
-      {
-        text: change === "body" ? "different" : "original",
-        nonce: "n",
-        ...(change === "approval" ? { approvals } : {}),
-      },
-      change === "actor" ? "user-b" : "user-a",
-    ),
-  ).toThrow("nonce_conflict");
-  expect(
-    store.pending(request.requestId, agentId, conversationId),
-  ).toBeDefined();
-});
+test.each(["body", "actor", "approval"])(
+  "a nonce conflict in %s is refused before it changes any approval",
+  (change) => {
+    const store = new ApprovalStore();
+    prepare(store, { text: "original", nonce: "n" });
+    const request = issue(store);
+    const approvals = [{ requestId: request.requestId, decision: "approve" }];
+    expect(() =>
+      prepare(
+        store,
+        {
+          text: change === "body" ? "different" : "original",
+          nonce: "n",
+          ...(change === "approval" ? { approvals } : {}),
+        },
+        change === "actor" ? "user-b" : "user-a",
+      ),
+    ).toThrow("nonce_conflict");
+    expect(
+      store.pending(request.requestId, agentId, conversationId),
+    ).toBeDefined();
+  },
+);
 
 test("a definitive pre-accept refusal releases the guard for corrected input", () => {
   const store = new ApprovalStore();

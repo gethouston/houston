@@ -1,5 +1,5 @@
-import type { CreatorDirectoryEntry } from "@houston/agentstore-client";
 import { CreatorCard as StoreCreatorCard } from "@houston-ai/store";
+import type { CreatorDirectoryEntry } from "@houston/agentstore-client";
 import Link from "next/link";
 
 export function CreatorCard({ creator }: { creator: CreatorDirectoryEntry }) {

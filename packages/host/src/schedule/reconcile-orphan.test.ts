@@ -174,13 +174,16 @@ test("after an orphan settles, the pod's busy probe reads idle", async () => {
 test.each([
   ["is not an array", {}],
   ["drops a malformed entry", [{ id: "broken" }]],
-])("a routines.json the reader %s settles no orphan: the file may hide a live routine", async (_, doc) => {
-  const env = await setup([], [routine("gone")]);
-  const [orphan] = env.runs as [RoutineRun];
-  await env.reply(orphan.session_key, answer(STARTED.getTime() + 1000));
-  await env.vfs.writeText(docKey(env.root, "routines"), JSON.stringify(doc));
+])(
+  "a routines.json the reader %s settles no orphan: the file may hide a live routine",
+  async (_, doc) => {
+    const env = await setup([], [routine("gone")]);
+    const [orphan] = env.runs as [RoutineRun];
+    await env.reply(orphan.session_key, answer(STARTED.getTime() + 1000));
+    await env.vfs.writeText(docKey(env.root, "routines"), JSON.stringify(doc));
 
-  await env.sweep(LATE);
+    await env.sweep(LATE);
 
-  expect((await env.byId("run-gone")).status).toBe("running");
-});
+    expect((await env.byId("run-gone")).status).toBe("running");
+  },
+);

@@ -1,3 +1,4 @@
+import { cn } from "@houston-ai/core";
 import type { BillingInterval, SeatPrices } from "@houston/engine-adapter";
 import {
   formatPlanAmount,
@@ -5,7 +6,6 @@ import {
   seatPlans,
   yearlySavingsPercent,
 } from "@houston/sdk";
-import { cn } from "@houston-ai/core";
 import { Check } from "lucide-react";
 import { useId } from "react";
 import { useTranslation } from "react-i18next";

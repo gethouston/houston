@@ -1,5 +1,5 @@
-import { formatCutoverDay } from "@houston/sdk";
 import { cn } from "@houston-ai/core";
+import { formatCutoverDay } from "@houston/sdk";
 import { Clock, CreditCard, Lock } from "lucide-react";
 import { useTranslation } from "react-i18next";
 import { useTeamStatus } from "../../hooks/use-team-status";
@@ -48,9 +48,8 @@ const ASK_OWNER = {
  */
 export function TeamStatusBanner() {
   const { t, i18n } = useTranslation("teams");
-  const { view, org, orgs, billing, checkout } = useTeamStatus(
-    canPurchaseInApp(),
-  );
+  const { view, org, orgs, billing, checkout } =
+    useTeamStatus(canPurchaseInApp());
   const actions = useTeamStatusActions(
     org?.slug ?? null,
     checkout,

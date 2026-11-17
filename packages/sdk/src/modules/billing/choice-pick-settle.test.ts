@@ -73,77 +73,80 @@ describe("settlePick", () => {
   });
 });
 
-describe.each([
-  "plus",
-  "comp",
-] as const)("a %s payer refused in one open", (kind) => {
-  const payer = choice({ payer: kind });
-  // One render: the modal's frame for the latest choice, its draft settled.
-  const render = (frame: ChoiceModalFrame, latest: BillingChoice) =>
-    settleChoicePick(
-      nextChoiceModalFrame(frame, choiceModal(latest, ctx)),
-      latest,
-    );
-  const refusedFrame = () => {
-    let frame = render(CLOSED_CHOICE_FRAME, payer);
-    frame = nextChoicePage(nextChoicePage(frame));
-    frame = withChoicePick(frame, {
-      step: "free",
-      free: INNOVA.slug,
-      paid: LA_FILA.slug,
-      paidRefused: false,
-    });
-    return withChoicePick(
-      frame,
-      pickRefused(choiceFramePick(frame, payer), { kind: "not_payer" }),
-    );
-  };
+describe.each(["plus", "comp"] as const)(
+  "a %s payer refused in one open",
+  (kind) => {
+    const payer = choice({ payer: kind });
+    // One render: the modal's frame for the latest choice, its draft settled.
+    const render = (frame: ChoiceModalFrame, latest: BillingChoice) =>
+      settleChoicePick(
+        nextChoiceModalFrame(frame, choiceModal(latest, ctx)),
+        latest,
+      );
+    const refusedFrame = () => {
+      let frame = render(CLOSED_CHOICE_FRAME, payer);
+      frame = nextChoicePage(nextChoicePage(frame));
+      frame = withChoicePick(frame, {
+        step: "free",
+        free: INNOVA.slug,
+        paid: LA_FILA.slug,
+        paidRefused: false,
+      });
+      return withChoicePick(
+        frame,
+        pickRefused(choiceFramePick(frame, payer), { kind: "not_payer" }),
+      );
+    };
 
-  it("stays free-only while the refetch lags and still names the payer", () => {
-    const frame = render(refusedFrame(), payer);
-    expect(frame.pick).toEqual(refused);
-    expect(choiceFrameFlow(frame, payer)).toEqual({ intro: 2, payer: false });
-    expect(pickerSubmission(choiceFramePick(frame, payer))).toEqual({
-      freeOrgSlug: INNOVA.slug,
+    it("stays free-only while the refetch lags and still names the payer", () => {
+      const frame = render(refusedFrame(), payer);
+      expect(frame.pick).toEqual(refused);
+      expect(choiceFrameFlow(frame, payer)).toEqual({ intro: 2, payer: false });
+      expect(pickerSubmission(choiceFramePick(frame, payer))).toEqual({
+        freeOrgSlug: INNOVA.slug,
+      });
     });
-  });
 
-  it("brings the paid step back after no payer, then a payer again", () => {
-    const cleared = render(refusedFrame(), none);
-    expect(cleared.pick?.paidRefused).toBe(false);
-    expect(choiceFrameFlow(cleared, none)).toEqual({ intro: 2, payer: false });
-    const renewed = render(cleared, payer);
-    const draft = choiceFramePick(renewed, payer);
-    expect(draft).toEqual({
-      step: "paid",
-      free: INNOVA.slug,
-      paid: LA_FILA.slug,
-      paidRefused: false,
+    it("brings the paid step back after no payer, then a payer again", () => {
+      const cleared = render(refusedFrame(), none);
+      expect(cleared.pick?.paidRefused).toBe(false);
+      expect(choiceFrameFlow(cleared, none)).toEqual({
+        intro: 2,
+        payer: false,
+      });
+      const renewed = render(cleared, payer);
+      const draft = choiceFramePick(renewed, payer);
+      expect(draft).toEqual({
+        step: "paid",
+        free: INNOVA.slug,
+        paid: LA_FILA.slug,
+        paidRefused: false,
+      });
+      const flow = choiceFrameFlow(renewed, payer);
+      expect(flow).toEqual({ intro: 2, payer: true });
+      expect(pickFlowProgress(flow, { step: "paid" })).toEqual({
+        current: 3,
+        total: 5,
+      });
+      expect(pickerSubmission(toFreeStep(payer, draft))).toEqual({
+        freeOrgSlug: INNOVA.slug,
+        paidOrgSlug: LA_FILA.slug,
+      });
     });
-    const flow = choiceFrameFlow(renewed, payer);
-    expect(flow).toEqual({ intro: 2, payer: true });
-    expect(pickFlowProgress(flow, { step: "paid" })).toEqual({
-      current: 3,
-      total: 5,
-    });
-    expect(pickerSubmission(toFreeStep(payer, draft))).toEqual({
-      freeOrgSlug: INNOVA.slug,
-      paidOrgSlug: LA_FILA.slug,
-    });
-  });
 
-  it("does the same in the Settings picker", () => {
-    const frame = withPickerDraft(openChoicePicker(), refused);
-    expect(settleChoicePick(frame, payer)).toBe(frame);
-    const renewed = settleChoicePick(settleChoicePick(frame, none), payer);
-    expect(pickFlow(payer, null, renewed.pick)).toEqual({
-      intro: 0,
-      payer: true,
+    it("does the same in the Settings picker", () => {
+      const frame = withPickerDraft(openChoicePicker(), refused);
+      expect(settleChoicePick(frame, payer)).toBe(frame);
+      const renewed = settleChoicePick(settleChoicePick(frame, none), payer);
+      expect(pickFlow(payer, null, renewed.pick)).toEqual({
+        intro: 0,
+        payer: true,
+      });
+      const draft = choicePickerPick(renewed, payer);
+      expect(draft.step).toBe("paid");
+      expect(
+        pickerSubmission(toFreeStep(payer, { ...draft, paid: PERSONAL.slug })),
+      ).toEqual({ freeOrgSlug: INNOVA.slug, paidOrgSlug: PERSONAL.slug });
     });
-    const draft = choicePickerPick(renewed, payer);
-    expect(draft.step).toBe("paid");
-    expect(
-      pickerSubmission(toFreeStep(payer, { ...draft, paid: PERSONAL.slug })),
-    ).toEqual({ freeOrgSlug: INNOVA.slug, paidOrgSlug: PERSONAL.slug });
-  });
-});
+  },
+);

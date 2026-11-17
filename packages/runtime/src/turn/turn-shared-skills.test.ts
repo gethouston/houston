@@ -45,14 +45,12 @@ function sharedStore(files: Record<string, string>) {
       if (!isObjectPrefix(prefix)) throw new InvalidObjectPrefixError(prefix);
       return Object.keys(files)
         .filter((key) => underObjectPrefix(key, prefix))
-        .map(
-          (key): ObjectMetadata => ({
-            key,
-            size: files[key]?.length ?? 0,
-            md5: "",
-            updated: "",
-          }),
-        );
+        .map((key): ObjectMetadata => ({
+          key,
+          size: files[key]?.length ?? 0,
+          md5: "",
+          updated: "",
+        }));
     },
     download: async (key, dest) => {
       downloads.push(key);

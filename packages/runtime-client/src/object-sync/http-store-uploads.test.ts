@@ -4,61 +4,61 @@ import { StoreFencedError } from "./object-store";
 import { PrefetchedObjectStore } from "./prefetched-store";
 import { UploadCopyExistsError } from "./upload-store";
 
-test.each([
-  "lease",
-  "claim",
-])("copies the exact generation under %s authority without retrying a lost response", async (authority) => {
-  const requests: { url: string; headers: Headers; body: unknown }[] = [];
-  const store = new HttpObjectStore({
-    baseUrl: "https://store.test/v1/pod/store/org/agent/",
-    token: "pod",
-    ...(authority === "lease"
-      ? { bootId: "boot", fence: { token: "41" } }
-      : {
-          claim: { token: "claim", bootId: "worker", conversationId: "conv" },
-        }),
-    fetchImpl: async (input, init) => {
-      requests.push({
-        url: String(input),
-        headers: new Headers(init?.headers),
-        body: JSON.parse(String(init?.body)),
-      });
-      return Response.json({
-        key: "workspaces/main/agent/uploads/report.pdf",
-        generation: "9223372036854775806",
-        size: 19,
-      });
-    },
-  });
-  const copied = await store.copyUpload(
-    "opaque_upload_id_123",
-    "workspaces/main/agent/uploads/report.pdf",
-    "9223372036854775805",
-  );
-  expect(copied).toEqual({
-    key: "workspaces/main/agent/uploads/report.pdf",
-    generation: "9223372036854775806",
-    size: 19,
-  });
-  expect(requests[0]?.url).toBe(
-    "https://store.test/v1/pod/store/org/agent/uploads/opaque_upload_id_123/copy",
-  );
-  expect(requests[0]?.body).toEqual({
-    key: copied.key,
-    generation: "9223372036854775805",
-  });
-  expect(requests[0]?.headers.get("authorization")).toBe("Bearer pod");
-  if (authority === "lease") {
-    expect(requests[0]?.headers.get("x-houston-fencing-token")).toBe("41");
-    expect(requests[0]?.headers.get("x-houston-boot-id")).toBe("boot");
-  } else {
-    expect(requests[0]?.headers.get("x-houston-claim-token")).toBe("claim");
-    expect(requests[0]?.headers.get("x-houston-claim-boot")).toBe("worker");
-    expect(requests[0]?.headers.get("x-houston-claim-conversation")).toBe(
-      "conv",
+test.each(["lease", "claim"])(
+  "copies the exact generation under %s authority without retrying a lost response",
+  async (authority) => {
+    const requests: { url: string; headers: Headers; body: unknown }[] = [];
+    const store = new HttpObjectStore({
+      baseUrl: "https://store.test/v1/pod/store/org/agent/",
+      token: "pod",
+      ...(authority === "lease"
+        ? { bootId: "boot", fence: { token: "41" } }
+        : {
+            claim: { token: "claim", bootId: "worker", conversationId: "conv" },
+          }),
+      fetchImpl: async (input, init) => {
+        requests.push({
+          url: String(input),
+          headers: new Headers(init?.headers),
+          body: JSON.parse(String(init?.body)),
+        });
+        return Response.json({
+          key: "workspaces/main/agent/uploads/report.pdf",
+          generation: "9223372036854775806",
+          size: 19,
+        });
+      },
+    });
+    const copied = await store.copyUpload(
+      "opaque_upload_id_123",
+      "workspaces/main/agent/uploads/report.pdf",
+      "9223372036854775805",
     );
-  }
-});
+    expect(copied).toEqual({
+      key: "workspaces/main/agent/uploads/report.pdf",
+      generation: "9223372036854775806",
+      size: 19,
+    });
+    expect(requests[0]?.url).toBe(
+      "https://store.test/v1/pod/store/org/agent/uploads/opaque_upload_id_123/copy",
+    );
+    expect(requests[0]?.body).toEqual({
+      key: copied.key,
+      generation: "9223372036854775805",
+    });
+    expect(requests[0]?.headers.get("authorization")).toBe("Bearer pod");
+    if (authority === "lease") {
+      expect(requests[0]?.headers.get("x-houston-fencing-token")).toBe("41");
+      expect(requests[0]?.headers.get("x-houston-boot-id")).toBe("boot");
+    } else {
+      expect(requests[0]?.headers.get("x-houston-claim-token")).toBe("claim");
+      expect(requests[0]?.headers.get("x-houston-claim-boot")).toBe("worker");
+      expect(requests[0]?.headers.get("x-houston-claim-conversation")).toBe(
+        "conv",
+      );
+    }
+  },
+);
 
 test("staged reads use pod auth and exact generation without mutation headers", async () => {
   let seen = "";

@@ -56,9 +56,8 @@ g.React = React;
 const { act, createElement: h } = React;
 const { createRoot } = await import("react-dom/client");
 const { TooltipProvider } = await import("@houston-ai/core");
-const { SidebarWorkspaceSwitcher } = await import(
-  "../src/sidebar-workspace-switcher.tsx"
-);
+const { SidebarWorkspaceSwitcher } =
+  await import("../src/sidebar-workspace-switcher.tsx");
 
 function withMounted(
   element: ReactElement,

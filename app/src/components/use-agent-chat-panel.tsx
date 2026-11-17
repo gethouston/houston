@@ -19,8 +19,6 @@
 
 // Subpath import (like `lib/active-interaction.ts`): value imports from the
 // package index only resolve under bundler resolution.
-import { hasOnlySuggestionSteps } from "@houston/protocol/interaction";
-import { setupGreetingCopy } from "@houston/sdk/first-day";
 import type { AIBoardProps } from "@houston-ai/board";
 import type { ChatMessage, ChatPanelProps, FeedItem } from "@houston-ai/chat";
 import {
@@ -43,6 +41,8 @@ import {
   UserInteractionAnswersMessage,
 } from "@houston-ai/chat";
 import { Button } from "@houston-ai/core";
+import { hasOnlySuggestionSteps } from "@houston/protocol/interaction";
+import { setupGreetingCopy } from "@houston/sdk/first-day";
 import { useQueryClient } from "@tanstack/react-query";
 import { FolderUp, Paperclip, Play } from "lucide-react";
 import {

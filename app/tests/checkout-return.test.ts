@@ -1,6 +1,11 @@
 import { deepStrictEqual, strictEqual } from "node:assert";
 import { describe, it } from "node:test";
 import {
+  handOffCheckoutReturn,
+  type ReturnPagePorts,
+} from "../src/lib/checkout-return-handoff.ts";
+import { createCheckoutLinkGate } from "../src/lib/checkout-return-links.ts";
+import {
   type CheckoutReturnMessage,
   desktopReturnLink,
   orgReturnFromCheckoutPage,
@@ -9,11 +14,6 @@ import {
   parseCheckoutReturnMessage,
   webReturnPath,
 } from "../src/lib/checkout-return.ts";
-import {
-  handOffCheckoutReturn,
-  type ReturnPagePorts,
-} from "../src/lib/checkout-return-handoff.ts";
-import { createCheckoutLinkGate } from "../src/lib/checkout-return-links.ts";
 import { settingsSectionFromDeepLink } from "../src/lib/settings-sections.ts";
 
 const ORG = "0123456789abcdef";

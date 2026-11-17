@@ -1,6 +1,7 @@
 import { readFile, writeFile } from "node:fs/promises";
 import { join } from "node:path";
 import { expect, test } from "vitest";
+import { landOp } from "./turn-views-op.test-support";
 import {
   agentStore,
   claimedTurn,
@@ -10,7 +11,6 @@ import {
   routine,
   storedRoutines,
 } from "./turn-views.test-support";
-import { landOp } from "./turn-views-op.test-support";
 
 /**
  * The gateway serves a sleeping agent's Routines tab from the routines doc.

@@ -9,12 +9,10 @@ const React = await import("react");
 const { act, createElement: h } = React;
 (globalThis as Record<string, unknown>).React = React;
 const { createRoot } = await import("react-dom/client");
-const { useStableByContent } = await import(
-  "../src/components/organization/use-stable-by-content.ts"
-);
-const { buildOrgTree, SCREEN_TREE_CAPS } = await import(
-  "../src/components/organization/org-chart-tree.ts"
-);
+const { useStableByContent } =
+  await import("../src/components/organization/use-stable-by-content.ts");
+const { buildOrgTree, SCREEN_TREE_CAPS } =
+  await import("../src/components/organization/org-chart-tree.ts");
 
 const tree = (name = "Acme") =>
   buildOrgTree(

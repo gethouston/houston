@@ -49,9 +49,8 @@ const SESSION: Session = {
 };
 
 test("saveSession → loadSession round-trips the full session (incl. photoUrl)", async () => {
-  const { loadSession, saveSession } = await import(
-    "../src/lib/identity/session-store.ts"
-  );
+  const { loadSession, saveSession } =
+    await import("../src/lib/identity/session-store.ts");
   await saveSession(SESSION);
   assert.deepEqual(await loadSession(), SESSION);
 });
@@ -77,9 +76,8 @@ test("loadSession returns null for a corrupt (unparseable) blob", async () => {
 });
 
 test("subscribeSession is notified on save (session) and clear (null)", async () => {
-  const { saveSession, clearSession, subscribeSession } = await import(
-    "../src/lib/identity/session-store.ts"
-  );
+  const { saveSession, clearSession, subscribeSession } =
+    await import("../src/lib/identity/session-store.ts");
   const seen: Array<Session | null> = [];
   const unsub = subscribeSession((s) => seen.push(s));
   await saveSession(SESSION);
@@ -90,9 +88,8 @@ test("subscribeSession is notified on save (session) and clear (null)", async ()
 });
 
 test("loadSessionState maps a read fault to `unavailable` WITHOUT notifying", async () => {
-  const { loadSessionState, subscribeSession } = await import(
-    "../src/lib/identity/session-store.ts"
-  );
+  const { loadSessionState, subscribeSession } =
+    await import("../src/lib/identity/session-store.ts");
   // A store whose read throws: the wiring must surface a FAULT, not a null that
   // would flip every subscriber to signed-out (the spurious-logout bug).
   globalThis.localStorage = {
@@ -111,16 +108,14 @@ test("loadSessionState maps a read fault to `unavailable` WITHOUT notifying", as
 });
 
 test("loadSessionState reports `none` for an absent entry", async () => {
-  const { loadSessionState } = await import(
-    "../src/lib/identity/session-store.ts"
-  );
+  const { loadSessionState } =
+    await import("../src/lib/identity/session-store.ts");
   assert.deepEqual(await loadSessionState(), { kind: "none" });
 });
 
 test("loadSessionState reports `none` for a corrupt blob", async () => {
-  const { loadSessionState } = await import(
-    "../src/lib/identity/session-store.ts"
-  );
+  const { loadSessionState } =
+    await import("../src/lib/identity/session-store.ts");
   fake.store.set(STORAGE_KEY, "{not json");
   assert.deepEqual(await loadSessionState(), { kind: "none" });
 });
@@ -144,9 +139,8 @@ test("clearSession retries a failed delete once and succeeds", async () => {
 });
 
 test("clearSession throws typed when both attempts fail, and still broadcasts signed-out", async () => {
-  const { clearSession, subscribeSession } = await import(
-    "../src/lib/identity/session-store.ts"
-  );
+  const { clearSession, subscribeSession } =
+    await import("../src/lib/identity/session-store.ts");
   const { IdentityError } = await import("../src/lib/identity/errors.ts");
   let attempts = 0;
   globalThis.localStorage = {

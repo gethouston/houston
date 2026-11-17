@@ -60,9 +60,8 @@ describe("memberRoutineKey", () => {
 
 describe("isExpectedMemberRoutinesRefusal", () => {
   it("treats a gone member and a lost owner role as expected", async () => {
-    const { isExpectedMemberRoutinesRefusal } = await import(
-      "../src/lib/member-routines-refusal.ts"
-    );
+    const { isExpectedMemberRoutinesRefusal } =
+      await import("../src/lib/member-routines-refusal.ts");
     strictEqual(isExpectedMemberRoutinesRefusal({ status: 404 }), true);
     strictEqual(isExpectedMemberRoutinesRefusal({ status: 403 }), true);
     strictEqual(isExpectedMemberRoutinesRefusal({ status: 500 }), false);

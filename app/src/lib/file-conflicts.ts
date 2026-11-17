@@ -9,12 +9,12 @@
 // Subpath import (like @houston/protocol/interaction): the app's node:test
 // runner loads value imports for real, and the package index's extensionless
 // import chain only resolves under bundler resolution.
+import type { FileEntry } from "@houston-ai/agent";
 import {
   type FileOpCode,
   NAME_TAKEN,
   READ_ONLY,
 } from "@houston/protocol/file-refusal";
-import type { FileEntry } from "@houston-ai/agent";
 import { engineErrorCode } from "./engine-error-code.ts";
 
 /** Where `sourcePath` would land when moved into `toDir` (null = root). */

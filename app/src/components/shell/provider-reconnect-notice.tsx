@@ -1,5 +1,5 @@
-import type { ProviderReconnectNotice as Notice } from "@houston/sdk";
 import { Button } from "@houston-ai/core";
+import type { ProviderReconnectNotice as Notice } from "@houston/sdk";
 import { Clock, Loader2 } from "lucide-react";
 import { useState } from "react";
 import { useTranslation } from "react-i18next";

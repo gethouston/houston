@@ -573,54 +573,52 @@ test("settle changes status only for agent-started missions still running", asyn
   );
 });
 
-test.each([
-  "needs_you",
-  "error",
-])("settle moves a running API card to %s without a client", async (status) => {
-  await saveActivities(vfs, root, [
-    PARENT,
-    {
-      id: "api-1",
-      title: "API task",
-      description: "",
-      status: "running",
+test.each(["needs_you", "error"])(
+  "settle moves a running API card to %s without a client",
+  async (status) => {
+    await saveActivities(vfs, root, [
+      PARENT,
+      {
+        id: "api-1",
+        title: "API task",
+        description: "",
+        status: "running",
+        started_by: "api",
+      },
+    ]);
+    const interaction = {
+      steps: [{ kind: "question", id: "q1", question: "Which tone?" }],
+    };
+    const result = await call("POST", "/sandbox/missions/settle", {
+      conversation_id: "activity-api-1",
+      status,
+      pending_interaction: interaction,
+    });
+    expect(result.status).toBe(200);
+    expect(result.body).toEqual({ ok: true });
+    expect((await onDisk()).find((a) => a.id === "api-1")).toMatchObject({
+      status,
       started_by: "api",
-    },
-  ]);
-  const interaction = {
-    steps: [{ kind: "question", id: "q1", question: "Which tone?" }],
-  };
-  const result = await call("POST", "/sandbox/missions/settle", {
-    conversation_id: "activity-api-1",
-    status,
-    pending_interaction: interaction,
-  });
-  expect(result.status).toBe(200);
-  expect(result.body).toEqual({ ok: true });
-  expect((await onDisk()).find((a) => a.id === "api-1")).toMatchObject({
-    status,
-    started_by: "api",
-    pending_interaction: interaction,
-  });
-  expect((await onDisk()).find((a) => a.id === PARENT.id)).toEqual(PARENT);
-  expect(events).toEqual([{ type: "ActivityChanged", agentPath: agent.id }]);
-});
+      pending_interaction: interaction,
+    });
+    expect((await onDisk()).find((a) => a.id === PARENT.id)).toEqual(PARENT);
+    expect(events).toEqual([{ type: "ActivityChanged", agentPath: agent.id }]);
+  },
+);
 
-test.each([
-  "needs_you",
-  "done",
-  "archived",
-  "error",
-])("settle preserves an API card already at %s", async (status) => {
-  await saveActivities(vfs, root, [{ ...PARENT, started_by: "api", status }]);
-  const result = await call("POST", "/sandbox/missions/settle", {
-    conversation_id: "conv-parent",
-    status: "error",
-  });
-  expect(result.body).toEqual({ ok: false });
-  expect((await onDisk())[0]?.status).toBe(status);
-  expect(events).toEqual([]);
-});
+test.each(["needs_you", "done", "archived", "error"])(
+  "settle preserves an API card already at %s",
+  async (status) => {
+    await saveActivities(vfs, root, [{ ...PARENT, started_by: "api", status }]);
+    const result = await call("POST", "/sandbox/missions/settle", {
+      conversation_id: "conv-parent",
+      status: "error",
+    });
+    expect(result.body).toEqual({ ok: false });
+    expect((await onDisk())[0]?.status).toBe(status);
+    expect(events).toEqual([]);
+  },
+);
 
 test("a non-matching path is not handled", async () => {
   const { res } = fakeRes();
@@ -826,48 +824,48 @@ function actingToken(sub: string, name: string): string {
   return `acting-v1.${payload}.sig`;
 }
 
-test.each([
-  undefined,
-  "conv-parent",
-])("a successful settle stamps after an observer's reply_complete write, origin %s", async (origin) => {
-  const earlier = "2026-10-26T10:00:00.000Z";
-  const replyAt = "2026-10-27T16:25:00.000Z";
-  vi.spyOn(Date.prototype, "toISOString").mockReturnValue(replyAt);
-  await saveActivities(vfs, root, [
-    {
-      ...PARENT,
-      origin_session_key: origin,
+test.each([undefined, "conv-parent"])(
+  "a successful settle stamps after an observer's reply_complete write, origin %s",
+  async (origin) => {
+    const earlier = "2026-10-26T10:00:00.000Z";
+    const replyAt = "2026-10-27T16:25:00.000Z";
+    vi.spyOn(Date.prototype, "toISOString").mockReturnValue(replyAt);
+    await saveActivities(vfs, root, [
+      {
+        ...PARENT,
+        origin_session_key: origin,
+        last_message_at: earlier,
+      },
+    ]);
+    const { res, captured } = fakeRes();
+    await handleActivitiesData(
+      vfs,
+      root,
+      agent.id,
+      "PATCH",
+      PARENT.id,
+      fakeReq({ status: "needs_you", pending_interaction: null }, {}),
+      res,
+    );
+    expect(captured.status).toBe(200);
+    expect((await onDisk())[0]).toMatchObject({
+      status: "needs_you",
       last_message_at: earlier,
-    },
-  ]);
-  const { res, captured } = fakeRes();
-  await handleActivitiesData(
-    vfs,
-    root,
-    agent.id,
-    "PATCH",
-    PARENT.id,
-    fakeReq({ status: "needs_you", pending_interaction: null }, {}),
-    res,
-  );
-  expect(captured.status).toBe(200);
-  expect((await onDisk())[0]).toMatchObject({
-    status: "needs_you",
-    last_message_at: earlier,
-  });
-  events.length = 0;
-  const result = await call("POST", "/sandbox/missions/settle", {
-    conversation_id: "conv-parent",
-    status: "needs_you",
-    stopped: false,
-  });
-  expect(result.body).toEqual({ ok: true });
-  expect((await onDisk())[0]).toMatchObject({
-    status: "needs_you",
-    last_message_at: replyAt,
-  });
-  expect(events).toEqual([{ type: "ActivityChanged", agentPath: agent.id }]);
-});
+    });
+    events.length = 0;
+    const result = await call("POST", "/sandbox/missions/settle", {
+      conversation_id: "conv-parent",
+      status: "needs_you",
+      stopped: false,
+    });
+    expect(result.body).toEqual({ ok: true });
+    expect((await onDisk())[0]).toMatchObject({
+      status: "needs_you",
+      last_message_at: replyAt,
+    });
+    expect(events).toEqual([{ type: "ActivityChanged", agentPath: agent.id }]);
+  },
+);
 
 for (const origin of [undefined, "conv-parent"]) {
   for (const cardStatus of [
@@ -881,38 +879,41 @@ for (const origin of [undefined, "conv-parent"]) {
       { status: "needs_you", stopped: false },
       { status: "needs_you", stopped: true },
       { status: "error", stopped: false },
-    ])(`settle preserves status guards and stamps only replies, origin ${origin}, card ${cardStatus}, report %j`, async (outcome) => {
-      const earlier = "2026-10-26T10:00:00.000Z";
-      const replyAt = "2026-10-27T16:25:00.000Z";
-      vi.spyOn(Date.prototype, "toISOString").mockReturnValue(replyAt);
-      const interaction = {
-        steps: [{ kind: "question", id: "q1", question: "Which tone?" }],
-      } as const;
-      await saveActivities(vfs, root, [
-        {
-          ...PARENT,
-          status: cardStatus,
-          origin_session_key: origin,
-          last_message_at: earlier,
-          pending_interaction: { steps: [...interaction.steps] },
-        },
-      ]);
-      const result = await call("POST", "/sandbox/missions/settle", {
-        conversation_id: "conv-parent",
-        ...outcome,
-        pending_interaction: null,
-      });
-      const changesStatus = Boolean(origin) && cardStatus === "running";
-      const stamps = outcome.status === "needs_you" && !outcome.stopped;
-      expect(result.body).toEqual({ ok: changesStatus || stamps });
-      const [card] = await onDisk();
-      expect(card?.status).toBe(changesStatus ? outcome.status : cardStatus);
-      expect(card?.last_message_at).toBe(stamps ? replyAt : earlier);
-      expect(card?.pending_interaction).toEqual(
-        changesStatus ? undefined : interaction,
-      );
-      expect(events).toHaveLength(changesStatus || stamps ? 1 : 0);
-    });
+    ])(
+      `settle preserves status guards and stamps only replies, origin ${origin}, card ${cardStatus}, report %j`,
+      async (outcome) => {
+        const earlier = "2026-10-26T10:00:00.000Z";
+        const replyAt = "2026-10-27T16:25:00.000Z";
+        vi.spyOn(Date.prototype, "toISOString").mockReturnValue(replyAt);
+        const interaction = {
+          steps: [{ kind: "question", id: "q1", question: "Which tone?" }],
+        } as const;
+        await saveActivities(vfs, root, [
+          {
+            ...PARENT,
+            status: cardStatus,
+            origin_session_key: origin,
+            last_message_at: earlier,
+            pending_interaction: { steps: [...interaction.steps] },
+          },
+        ]);
+        const result = await call("POST", "/sandbox/missions/settle", {
+          conversation_id: "conv-parent",
+          ...outcome,
+          pending_interaction: null,
+        });
+        const changesStatus = Boolean(origin) && cardStatus === "running";
+        const stamps = outcome.status === "needs_you" && !outcome.stopped;
+        expect(result.body).toEqual({ ok: changesStatus || stamps });
+        const [card] = await onDisk();
+        expect(card?.status).toBe(changesStatus ? outcome.status : cardStatus);
+        expect(card?.last_message_at).toBe(stamps ? replyAt : earlier);
+        expect(card?.pending_interaction).toEqual(
+          changesStatus ? undefined : interaction,
+        );
+        expect(events).toHaveLength(changesStatus || stamps ? 1 : 0);
+      },
+    );
   }
 }
 
@@ -1063,22 +1064,25 @@ test("the after-turn title lands only while the card shows its fallback", async 
 test.each([
   [true, { routineMinIntervalMinutes: 15 }],
   [false, undefined],
-])("the child turn runs under its parent's plan limits behind the gateway (fronted: %s)", async (fronted, expected) => {
-  const r = await call(
-    "POST",
-    "/sandbox/missions/start",
-    { title: "t", prompt: "p" },
-    {
-      conversationId: "conv-parent",
-      gatewayFronted: fronted,
-      actingAs: actingToken("alice-sub", "Alice"),
-      limits: { routineMinIntervalMinutes: 15 },
-    },
-  );
-  expect(r.status).toBe(201);
-  expect(fired).toHaveLength(1);
-  expect(fired[0]?.limits).toEqual(expected);
-});
+])(
+  "the child turn runs under its parent's plan limits behind the gateway (fronted: %s)",
+  async (fronted, expected) => {
+    const r = await call(
+      "POST",
+      "/sandbox/missions/start",
+      { title: "t", prompt: "p" },
+      {
+        conversationId: "conv-parent",
+        gatewayFronted: fronted,
+        actingAs: actingToken("alice-sub", "Alice"),
+        limits: { routineMinIntervalMinutes: 15 },
+      },
+    );
+    expect(r.status).toBe(201);
+    expect(fired).toHaveLength(1);
+    expect(fired[0]?.limits).toEqual(expected);
+  },
+);
 
 test("settle hands a well-formed model-call report to the sink, any mission", async () => {
   const reports: ModelCallReport[] = [];

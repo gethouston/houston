@@ -1,8 +1,8 @@
+import type { FeedItem, HostCard } from "@houston-ai/chat";
 import {
   type BrowserHandoffCardModel,
   browserHandoffFeedRows,
 } from "@houston/sdk/browser-handoff";
-import type { FeedItem, HostCard } from "@houston-ai/chat";
 
 const BROWSER_HANDOFF_CARD = "browser_handoff";
 

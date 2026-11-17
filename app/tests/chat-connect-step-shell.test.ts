@@ -62,9 +62,8 @@ await i18next.use(initReactI18next).init({
   react: { useSuspense: false },
   resources: { en: { chat: {} } },
 });
-const { ChatConnectStepShell } = await import(
-  "../src/components/chat-connect-step-shell.tsx"
-);
+const { ChatConnectStepShell } =
+  await import("../src/components/chat-connect-step-shell.tsx");
 
 /** The shell with its draft parked by the caller, as the stepper parks it. */
 function Harness({ onDecline }: { onDecline: (message?: string) => void }) {

@@ -1,6 +1,6 @@
+import { HoustonAvatar, resolveAgentColor, Switch } from "@houston-ai/core";
 import { delegationWithAgent, otherAddressableAgents } from "@houston/sdk";
 import type { AgentDelegation } from "@houston/wire-types";
-import { HoustonAvatar, resolveAgentColor, Switch } from "@houston-ai/core";
 import { useId } from "react";
 import { useTranslation } from "react-i18next";
 import type { Agent } from "../../lib/types";

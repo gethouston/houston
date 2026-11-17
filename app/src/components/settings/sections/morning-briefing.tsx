@@ -1,5 +1,3 @@
-import { channelUnavailableReason } from "@houston/engine-adapter";
-import { classifyHeartbeatFailure } from "@houston/sdk";
 import {
   AsyncButton,
   Select,
@@ -9,6 +7,8 @@ import {
   SelectValue,
   Switch,
 } from "@houston-ai/core";
+import { channelUnavailableReason } from "@houston/engine-adapter";
+import { classifyHeartbeatFailure } from "@houston/sdk";
 import { Clock, Sunrise, Zap } from "lucide-react";
 import { useTranslation } from "react-i18next";
 import { useChannels } from "../../../hooks/queries/use-channels";

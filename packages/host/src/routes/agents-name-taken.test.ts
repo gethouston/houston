@@ -128,51 +128,57 @@ test.each([
   ["the exact name", "Mia"],
   ["a case variant", "mia"],
   ["a padded case variant", "  MIA "],
-])("creating %s answers 409 name_taken and leaves the existing employee untouched", async (_label, name) => {
-  const response = await post({ name, claudeMd: "# Impostor" });
+])(
+  "creating %s answers 409 name_taken and leaves the existing employee untouched",
+  async (_label, name) => {
+    const response = await post({ name, claudeMd: "# Impostor" });
 
-  expect(response.status).toBe(409);
-  expect(JSON.parse(response.body)).toMatchObject({ code: NAME_TAKEN });
-  expect(readFileSync(join(miaDir(), "CLAUDE.md"), "utf8")).toBe(ORIGINAL);
-  expect(await agentNames()).toEqual(["Mia"]);
-});
+    expect(response.status).toBe(409);
+    expect(JSON.parse(response.body)).toMatchObject({ code: NAME_TAKEN });
+    expect(readFileSync(join(miaDir(), "CLAUDE.md"), "utf8")).toBe(ORIGINAL);
+    expect(await agentNames()).toEqual(["Mia"]);
+  },
+);
 
 test.each([
   ["the exact name", "Mia"],
   ["a case variant", "mia"],
-])("a failing seed on %s never deletes the existing employee's folder", async (_label, name) => {
-  // A traversal key makes writeAgentSeeds throw mid-write, which is what runs
-  // the create's rollback.
-  const response = await post({
-    name,
-    seeds: { "notes.json": "[]", "../evil": "x" },
-  }).catch((err: unknown) => err);
+])(
+  "a failing seed on %s never deletes the existing employee's folder",
+  async (_label, name) => {
+    // A traversal key makes writeAgentSeeds throw mid-write, which is what runs
+    // the create's rollback.
+    const response = await post({
+      name,
+      seeds: { "notes.json": "[]", "../evil": "x" },
+    }).catch((err: unknown) => err);
 
-  expect(response).toMatchObject({ status: 409 });
-  expect(existsSync(miaDir())).toBe(true);
-  expect(readFileSync(join(miaDir(), "CLAUDE.md"), "utf8")).toBe(ORIGINAL);
-  expect(await agentNames()).toEqual(["Mia"]);
-});
+    expect(response).toMatchObject({ status: 409 });
+    expect(existsSync(miaDir())).toBe(true);
+    expect(readFileSync(join(miaDir(), "CLAUDE.md"), "utf8")).toBe(ORIGINAL);
+    expect(await agentNames()).toEqual(["Mia"]);
+  },
+);
 
-test.each([
-  "Mia",
-  "mia",
-])("a portable install named %j answers 409 name_taken and keeps Mia's job description", async (agentName) => {
-  const archive = packAgent(
-    { claudeMd: "# Imported", skills: [], routines: [], learnings: [] },
-    { agentName: "Mia", houstonVersion: "test" },
-    "2026-01-01T00:00:00.000Z",
-  );
-  const response = await install({
-    agentName,
-    archive: Buffer.from(archive).toString("base64"),
-  });
+test.each(["Mia", "mia"])(
+  "a portable install named %j answers 409 name_taken and keeps Mia's job description",
+  async (agentName) => {
+    const archive = packAgent(
+      { claudeMd: "# Imported", skills: [], routines: [], learnings: [] },
+      { agentName: "Mia", houstonVersion: "test" },
+      "2026-01-01T00:00:00.000Z",
+    );
+    const response = await install({
+      agentName,
+      archive: Buffer.from(archive).toString("base64"),
+    });
 
-  expect(response.status).toBe(409);
-  expect(JSON.parse(response.body)).toMatchObject({ code: NAME_TAKEN });
-  expect(readFileSync(join(miaDir(), "CLAUDE.md"), "utf8")).toBe(ORIGINAL);
-  expect(await agentNames()).toEqual(["Mia"]);
-});
+    expect(response.status).toBe(409);
+    expect(JSON.parse(response.body)).toMatchObject({ code: NAME_TAKEN });
+    expect(readFileSync(join(miaDir(), "CLAUDE.md"), "utf8")).toBe(ORIGINAL);
+    expect(await agentNames()).toEqual(["Mia"]);
+  },
+);
 
 test("renaming onto a case variant of another employee answers the same 409", async () => {
   expect((await post({ name: "Leo" })).status).toBe(201);

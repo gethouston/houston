@@ -1,11 +1,11 @@
 "use client";
 
+import { StoreHomeScreen, type StoreHomeState } from "@houston-ai/store";
 import type {
   CreatorDirectoryEntry,
   StoreAgentSummary,
   StoreCategory,
 } from "@houston/agentstore-client";
-import { StoreHomeScreen, type StoreHomeState } from "@houston-ai/store";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { StoreNav } from "@/components/store-nav";

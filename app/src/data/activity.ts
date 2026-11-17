@@ -6,8 +6,8 @@
  * one mutation per agent at a time (`activity-writes.ts`).
  */
 
-import type { PendingInteraction } from "@houston/protocol";
 import schema from "@houston-ai/agent-schemas/activity.schema.json";
+import type { PendingInteraction } from "@houston/protocol";
 import { activityWrites } from "./activity-writes";
 import { newId, now, readAgentJson, writeAgentJson } from "./agent-file";
 

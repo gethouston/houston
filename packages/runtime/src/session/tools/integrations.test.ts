@@ -354,27 +354,26 @@ test.each(
       })),
     ),
   ),
-)("parameter rejection gives exact recovery for $action, HTTP $status: $error", async ({
-  error,
-  status,
-  action,
-}) => {
-  mockFetch(() => ({ status, body: { successful: false, error } }));
-  const failure = run(execute, { action, params: {} });
-  await expect(failure).rejects.toThrow(error);
-  await expect(failure).rejects.toThrow(
-    `the exact action name "${action}" as \`query\``,
-  );
-  await expect(failure).rejects.toThrow(
-    "the app the action belongs to (as shown next to it in your earlier search results)",
-  );
-  await expect(failure).rejects.toThrow("retry with corrected arguments");
-  await expect(failure).rejects.toThrow(
-    "Never mention slugs or technical details to the user",
-  );
-  await expect(failure).rejects.not.toThrow("request_connection");
-  await expect(failure).rejects.not.toThrow("first result");
-});
+)(
+  "parameter rejection gives exact recovery for $action, HTTP $status: $error",
+  async ({ error, status, action }) => {
+    mockFetch(() => ({ status, body: { successful: false, error } }));
+    const failure = run(execute, { action, params: {} });
+    await expect(failure).rejects.toThrow(error);
+    await expect(failure).rejects.toThrow(
+      `the exact action name "${action}" as \`query\``,
+    );
+    await expect(failure).rejects.toThrow(
+      "the app the action belongs to (as shown next to it in your earlier search results)",
+    );
+    await expect(failure).rejects.toThrow("retry with corrected arguments");
+    await expect(failure).rejects.toThrow(
+      "Never mention slugs or technical details to the user",
+    );
+    await expect(failure).rejects.not.toThrow("request_connection");
+    await expect(failure).rejects.not.toThrow("first result");
+  },
+);
 
 test("a thrown parameter rejection retains its original error as the cause", async () => {
   const original = new Error("Invalid request data provided: recipients");

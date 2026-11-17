@@ -6,13 +6,13 @@
  * Renders nothing for a running routine or one a person paused.
  */
 
+import { Button } from "@houston-ai/core";
 import type { Routine } from "@houston/engine-adapter";
 import {
   type RoutinePauseNotice,
   type RoutineReaderAccount,
   routinePauseNotice,
 } from "@houston/sdk";
-import { Button } from "@houston-ai/core";
 import { useTranslation } from "react-i18next";
 import { providerName } from "../../lib/providers";
 import { RoutineNoticeCard } from "./routine-notice-card";

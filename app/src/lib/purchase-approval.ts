@@ -1,8 +1,8 @@
-import type { InteractionStep } from "@houston/protocol/interaction";
 import type {
   ChatInteractionOption,
   ChatInteractionStep,
 } from "@houston-ai/chat";
+import type { InteractionStep } from "@houston/protocol/interaction";
 import { canPurchaseInApp, isPurchaseOperation } from "./purchase-policy";
 
 type QuestionStep = Extract<InteractionStep, { kind: "question" }>;

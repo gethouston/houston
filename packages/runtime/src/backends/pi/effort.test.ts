@@ -43,34 +43,37 @@ test.each([
     "max",
     "xhigh",
   ],
-])("%s reaches pi on create and reuse", async (_label, model, effort, expected) => {
-  const setThinkingLevel = vi.fn();
-  const underlying = {
-    model,
-    agent: {},
-    subscribe: () => () => {},
-    setThinkingLevel,
-  } as unknown as AgentSession;
-  const create = vi.mocked(createAgentSession);
-  create.mockClear();
-  create.mockResolvedValue({ session: underlying } as Awaited<
-    ReturnType<typeof createAgentSession>
-  >);
-  const backend = createPiBackend({
-    workspaceDir: "/tmp/hou175-fixture",
-    dataDir: "/tmp/hou175-fixture",
-    modelRuntime: {} as never,
-    tools: [],
-    customTools: [],
-  });
-  const level = toThinkingLevel(effort);
-  if (!level) throw new Error("expected a thinking level");
-  const session = await backend.createSession({
-    conversationId: "routine-r1",
-    model,
-    thinkingLevel: level,
-  });
-  expect(create.mock.calls[0]?.[0]?.thinkingLevel).toBe(expected);
-  session.setThinkingLevel(level);
-  expect(setThinkingLevel).toHaveBeenCalledWith(expected);
-});
+])(
+  "%s reaches pi on create and reuse",
+  async (_label, model, effort, expected) => {
+    const setThinkingLevel = vi.fn();
+    const underlying = {
+      model,
+      agent: {},
+      subscribe: () => () => {},
+      setThinkingLevel,
+    } as unknown as AgentSession;
+    const create = vi.mocked(createAgentSession);
+    create.mockClear();
+    create.mockResolvedValue({ session: underlying } as Awaited<
+      ReturnType<typeof createAgentSession>
+    >);
+    const backend = createPiBackend({
+      workspaceDir: "/tmp/hou175-fixture",
+      dataDir: "/tmp/hou175-fixture",
+      modelRuntime: {} as never,
+      tools: [],
+      customTools: [],
+    });
+    const level = toThinkingLevel(effort);
+    if (!level) throw new Error("expected a thinking level");
+    const session = await backend.createSession({
+      conversationId: "routine-r1",
+      model,
+      thinkingLevel: level,
+    });
+    expect(create.mock.calls[0]?.[0]?.thinkingLevel).toBe(expected);
+    session.setThinkingLevel(level);
+    expect(setThinkingLevel).toHaveBeenCalledWith(expected);
+  },
+);

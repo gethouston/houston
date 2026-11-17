@@ -49,18 +49,18 @@ test("keeps pi's automatic truncation and continuation on DOCX text", async () =
   ).toContain("Paragraph 2100");
 });
 
-test.each([
-  "locked.docx",
-  "legacy.doc",
-])("returns a note for CFB Word files: %s", async (path) => {
-  await writeFile(
-    join(workspace, path),
-    Buffer.from("d0cf11e0a1b11ae1", "hex"),
-  );
-  expect((await readDocument(workspace, path)).structuredContent).toBe(
-    "This Word file is locked or in the old .doc format, so its text can't be read here. Ask the person for an unlocked .docx or a PDF.",
-  );
-});
+test.each(["locked.docx", "legacy.doc"])(
+  "returns a note for CFB Word files: %s",
+  async (path) => {
+    await writeFile(
+      join(workspace, path),
+      Buffer.from("d0cf11e0a1b11ae1", "hex"),
+    );
+    expect((await readDocument(workspace, path)).structuredContent).toBe(
+      "This Word file is locked or in the old .doc format, so its text can't be read here. Ask the person for an unlocked .docx or a PDF.",
+    );
+  },
+);
 
 test("returns a note for a zip with a Word extension but no Word document", async () => {
   await writeFile(
@@ -78,26 +78,29 @@ test.each([
   ["export.doc", "<html><body><p>Exportado desde la web</p></body></html>"],
   ["saved.doc", "{\\rtf1\\ansi Texto en RTF}"],
   ["plain.docx", "ordinary text"],
-])("reads text saved with a Word extension as plain text: %s", async (path, text) => {
-  await writeFile(join(workspace, path), text);
-  expect((await readDocument(workspace, path)).structuredContent).toBe(text);
-});
+])(
+  "reads text saved with a Word extension as plain text: %s",
+  async (path, text) => {
+    await writeFile(join(workspace, path), text);
+    expect((await readDocument(workspace, path)).structuredContent).toBe(text);
+  },
+);
 
-test.each([
-  "custom/main.xml",
-  "/custom/main.xml",
-])("resolves the main Word part from package relationships: %s", async (mainPart) => {
-  await writeFile(
-    join(workspace, "renamed.docx"),
-    docxWithBody(
-      "<w:p><w:r><w:t>Renamed main part</w:t></w:r></w:p>",
-      mainPart,
-    ),
-  );
-  expect(
-    (await readDocument(workspace, "renamed.docx")).structuredContent,
-  ).toBe("Renamed main part\n");
-});
+test.each(["custom/main.xml", "/custom/main.xml"])(
+  "resolves the main Word part from package relationships: %s",
+  async (mainPart) => {
+    await writeFile(
+      join(workspace, "renamed.docx"),
+      docxWithBody(
+        "<w:p><w:r><w:t>Renamed main part</w:t></w:r></w:p>",
+        mainPart,
+      ),
+    );
+    expect(
+      (await readDocument(workspace, "renamed.docx")).structuredContent,
+    ).toBe("Renamed main part\n");
+  },
+);
 
 test("falls back to word/document.xml without package relationships", async () => {
   await writeFile(
@@ -151,14 +154,15 @@ test("skips a Word main part whose declared expanded size exceeds 64 MiB", async
   );
 });
 
-test.each([
-  "archive.zip",
-  "sheet.xlsx",
-  "slides.pptx",
-])("keeps pi's default ZIP behaviour for %s", async (path) => {
-  const zip = docxWithBody("<w:p><w:r><w:t>Unchanged bytes</w:t></w:r></w:p>");
-  await writeFile(join(workspace, path), zip);
-  expect((await readDocument(workspace, path)).structuredContent).toBe(
-    Buffer.from(zip).toString("utf8"),
-  );
-});
+test.each(["archive.zip", "sheet.xlsx", "slides.pptx"])(
+  "keeps pi's default ZIP behaviour for %s",
+  async (path) => {
+    const zip = docxWithBody(
+      "<w:p><w:r><w:t>Unchanged bytes</w:t></w:r></w:p>",
+    );
+    await writeFile(join(workspace, path), zip);
+    expect((await readDocument(workspace, path)).structuredContent).toBe(
+      Buffer.from(zip).toString("utf8"),
+    );
+  },
+);

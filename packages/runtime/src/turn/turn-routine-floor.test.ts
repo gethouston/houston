@@ -1,4 +1,5 @@
 import { expect, test } from "vitest";
+import { applyRoute } from "./turn-views-op.test-support";
 import {
   agentStore,
   claimedTurn,
@@ -6,7 +7,6 @@ import {
   routine,
   storedRoutines,
 } from "./turn-views.test-support";
-import { applyRoute } from "./turn-views-op.test-support";
 
 /**
  * The plan floor on a sleeping agent's routine writes, run on a pool worker:

@@ -1,5 +1,5 @@
-import { compactionWindow } from "@houston/protocol/model-windows";
 import type { FeedItem, TokenUsage } from "@houston-ai/chat";
+import { compactionWindow } from "@houston/protocol/model-windows";
 import type { ContextWindowConfig } from "./providers";
 
 export interface SessionContextUsage {

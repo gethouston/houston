@@ -281,47 +281,50 @@ test("invalid attempts fail before any worker-side use", async () => {
 test.each([
   new Error("store unavailable"),
   new ObjectTooLargeError("custom-integrations.json", "size cap"),
-])("a secret already stored makes a failed definition sync ambiguous: %s", async (error) => {
-  const { post, store, secrets } = await setup();
-  const start = await post({
-    kind: "custom-oauth",
-    action: "start",
-    slug: "acme",
-    callbackUrl,
-  });
-  const { attempt } = JSON.parse(String(start.json.body));
-  vi.spyOn(store, "upload").mockRejectedValue(error);
-  const complete = await post({
-    kind: "custom-oauth",
-    action: "complete",
-    attempt,
-    code: "code-test",
-  });
-  expect(complete.json).toEqual({ ok: true, ambiguous: true });
-  expect(secrets.size).toBe(1);
-});
-
-test.each([
-  false,
-  true,
-])("OAuth detection uses the gateway callback capability=%s", async (supported) => {
-  const { post } = await setup();
-  const detected = await post(
-    {
-      kind: "route",
-      method: "POST",
-      rest: "integrations/custom/detect",
-      contentType: "application/json",
-      body: JSON.stringify({ url: endpoint }),
-    },
-    supported,
-  );
-  if (supported) {
-    expect(detected.json.status).toBe(200);
-    expect(JSON.parse(String(detected.json.body))).toMatchObject({
-      requiresOAuth: true,
-      oauthSupported: true,
+])(
+  "a secret already stored makes a failed definition sync ambiguous: %s",
+  async (error) => {
+    const { post, store, secrets } = await setup();
+    const start = await post({
+      kind: "custom-oauth",
+      action: "start",
+      slug: "acme",
+      callbackUrl,
     });
-    expect(detected.json.decline).toBeUndefined();
-  } else expect(detected.json.decline).toBe(true);
-});
+    const { attempt } = JSON.parse(String(start.json.body));
+    vi.spyOn(store, "upload").mockRejectedValue(error);
+    const complete = await post({
+      kind: "custom-oauth",
+      action: "complete",
+      attempt,
+      code: "code-test",
+    });
+    expect(complete.json).toEqual({ ok: true, ambiguous: true });
+    expect(secrets.size).toBe(1);
+  },
+);
+
+test.each([false, true])(
+  "OAuth detection uses the gateway callback capability=%s",
+  async (supported) => {
+    const { post } = await setup();
+    const detected = await post(
+      {
+        kind: "route",
+        method: "POST",
+        rest: "integrations/custom/detect",
+        contentType: "application/json",
+        body: JSON.stringify({ url: endpoint }),
+      },
+      supported,
+    );
+    if (supported) {
+      expect(detected.json.status).toBe(200);
+      expect(JSON.parse(String(detected.json.body))).toMatchObject({
+        requiresOAuth: true,
+        oauthSupported: true,
+      });
+      expect(detected.json.decline).toBeUndefined();
+    } else expect(detected.json.decline).toBe(true);
+  },
+);

@@ -9,8 +9,8 @@
  * re-runs it over each write that lands while the host has not answered.
  */
 
-import type { Activity } from "../data/activity.ts";
 import { applyActivityPatch } from "../data/activity-bulk.ts";
+import type { Activity } from "../data/activity.ts";
 import type { OptimisticPatch } from "./optimistic-core.ts";
 import { queryKeys } from "./query-keys.ts";
 import { restoreFields, revertRows } from "./row-revert.ts";
@@ -24,8 +24,10 @@ export interface MissionEdit {
   title?: string;
 }
 
-interface AggregateRow
-  extends Pick<Activity, "id" | "updated_at" | "last_message_at"> {
+interface AggregateRow extends Pick<
+  Activity,
+  "id" | "updated_at" | "last_message_at"
+> {
   agent_path: string;
 }
 
@@ -70,17 +72,15 @@ export function missionRemovalPatches(
 ): OptimisticPatch[] {
   const sets = idSets(groups);
   return [
-    ...[...sets].map(
-      ([agentPath, ids]): OptimisticPatch<Activity[]> => ({
-        queryKey: queryKeys.activity(agentPath),
-        apply: (rows) => dropMatching(rows, (row) => ids.has(row.id)),
-        revert: (rows, before) =>
-          revertRows(rows, before, {
-            keyOf: activityKey,
-            touched: (row) => ids.has(row.id),
-          }),
-      }),
-    ),
+    ...[...sets].map(([agentPath, ids]): OptimisticPatch<Activity[]> => ({
+      queryKey: queryKeys.activity(agentPath),
+      apply: (rows) => dropMatching(rows, (row) => ids.has(row.id)),
+      revert: (rows, before) =>
+        revertRows(rows, before, {
+          keyOf: activityKey,
+          touched: (row) => ids.has(row.id),
+        }),
+    })),
     {
       queryKey: queryKeys.allConversations([]),
       apply: (rows: AggregateRow[] | undefined) =>
@@ -130,24 +130,22 @@ export function missionEditPatches(
     return next;
   };
   return [
-    ...[...sets].map(
-      ([agentPath, ids]): OptimisticPatch<Activity[]> => ({
-        queryKey: queryKeys.activity(agentPath),
-        apply: (rows) =>
-          mapMatching(
-            rows,
-            (row) => ids.has(row.id),
-            (row) => applyActivityPatch(row, edit, timestamp),
-          ),
-        revert: (rows, before) =>
-          revertRows(rows, before, {
-            keyOf: activityKey,
-            touched: (row) => ids.has(row.id),
-            restore: restoreOwn,
-            reinsert: false,
-          }),
-      }),
-    ),
+    ...[...sets].map(([agentPath, ids]): OptimisticPatch<Activity[]> => ({
+      queryKey: queryKeys.activity(agentPath),
+      apply: (rows) =>
+        mapMatching(
+          rows,
+          (row) => ids.has(row.id),
+          (row) => applyActivityPatch(row, edit, timestamp),
+        ),
+      revert: (rows, before) =>
+        revertRows(rows, before, {
+          keyOf: activityKey,
+          touched: (row) => ids.has(row.id),
+          restore: restoreOwn,
+          reinsert: false,
+        }),
+    })),
     {
       queryKey: queryKeys.allConversations([]),
       apply: (rows: AggregateRow[] | undefined) =>
