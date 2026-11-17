@@ -62,7 +62,7 @@ test("lineup rows carry no runsAs and a row outside every family is dropped", ()
   ]);
 });
 
-test("GET /v1/catalog shapes anthropic and leaves every other provider alone", () => {
+test("GET /v1/catalog shapes anthropic's rows and no other provider's Claude rows", () => {
   const catalog = buildProviderCatalog();
   const claude = catalog.find((p) => p.id === ANTHROPIC_PROVIDER_ID);
   expect(claude).toBeDefined();
@@ -71,8 +71,10 @@ test("GET /v1/catalog shapes anthropic and leaves every other provider alone", (
   expect(byId.get("claude-opus-5-5")?.runsAs).toBeUndefined();
   expect(byId.get("claude-haiku-4-5")?.runsAs).toBe("claude-haiku-5-5");
   expect(byId.get("claude-haiku-5-5")?.runsAs).toBeUndefined();
+  // MiniMax's retired rows carry `runsAs` too (./pi-catalog.test.ts).
   for (const provider of catalog) {
-    if (provider.id === ANTHROPIC_PROVIDER_ID) continue;
+    if (provider.id === ANTHROPIC_PROVIDER_ID || provider.id === "minimax")
+      continue;
     expect(
       provider.models.some((m) => m.runsAs !== undefined),
       provider.id,

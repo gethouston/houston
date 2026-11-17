@@ -168,7 +168,9 @@
     "missionRowFailed": "Não conseguimos salvar esta tarefa no seu quadro. Sua mensagem foi enviada.",
     "interactionDismissFailed": "Não foi possível descartar a solicitação.",
     "interactionBusyTitle": "Isso já está em andamento",
-    "interactionBusyBody": "A solicitação foi substituída por uma nova resposta. Aguarde terminar ou pressione Parar para abandoná-la."
+    "interactionBusyBody": "A solicitação foi substituída por uma nova resposta. Aguarde terminar ou pressione Parar para abandoná-la.",
+    "interactionNotYoursTitle": "Esta pergunta é para outra pessoa",
+    "interactionNotYoursBody": "Só o colega cuja mensagem iniciou esta solicitação pode respondê-la ou descartá-la."
   },
   "providerError": {
     "retryPrompt": "Tente de novo.",

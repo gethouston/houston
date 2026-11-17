@@ -28,8 +28,8 @@ import { CODEX_PROVIDER_ID, codexOfferedModelIds } from "./codex-offered";
 import { endpointReachableCached } from "./endpoint-reachability";
 import {
   MINIMAX_PROVIDER,
-  MINIMAX_TOKEN_PLAN_MODEL_ID,
-  minimaxTokenPlanModelFor,
+  minimaxOfferedModelIds,
+  minimaxServedModelId,
 } from "./minimax";
 import {
   buildActiveCustomModel,
@@ -478,13 +478,13 @@ export function safeGetModel(
   pinned: boolean,
 ) {
   // A retired Claude id runs on its own family's lineup model, pinned or saved
-  // alike (./anthropic-lineup): it is the SAME choice, not a stale one.
-  const modelId = lineupModelId(provider, requestedId);
-  // MiniMax token/coding plan: pi-ai's minimax catalog has no `[1m]` variant, so
-  // hand-build it (same provider/endpoint/auth) before consulting pi's getModel —
-  // otherwise a saved id falls back to the pay-as-you-go SKU and a pinned id throws.
-  const minimaxTokenPlan = minimaxTokenPlanModelFor(provider, modelId);
-  if (minimaxTokenPlan) return minimaxTokenPlan;
+  // alike (./anthropic-lineup): it is the SAME choice, not a stale one. A
+  // MiniMax id its API no longer serves runs on the MiniMax default (./minimax).
+  const modelId = minimaxServedModelId(
+    provider,
+    lineupModelId(provider, requestedId),
+    providerDefaultModel(provider),
+  );
 
   const pp = provider as BuiltinProvider;
   const mp = modelId as Parameters<typeof getModel>[1];
@@ -615,10 +615,6 @@ export function safeModelIds(provider: ProviderId): string[] {
     const m = customModelId();
     return m ? [m] : [];
   }
-  // MiniMax's token-plan model (`MiniMax-M3[1m]`) is hand-built, not in pi's
-  // catalog — surface it in the picker alongside pi's pay-as-you-go minimax ids.
-  if (provider === MINIMAX_PROVIDER)
-    return [MINIMAX_TOKEN_PLAN_MODEL_ID, ...piModelIds(provider)];
   // Xiaomi's Token Plan gateways serve a subset of the general catalog — a
   // key verified against one must not be offered a model it 404s.
   if (provider === XIAOMI_PROVIDER_ID)
@@ -630,6 +626,9 @@ export function safeModelIds(provider: ProviderId): string[] {
     return codexOfferedModelIds(piModelIds(provider));
   if (provider === ANTHROPIC_PROVIDER_ID)
     return anthropicOfferedModelIds(piModelIds(provider));
+  // pi still lists MiniMax's retired M2.7 rows; a turn on one runs the default.
+  if (provider === MINIMAX_PROVIDER)
+    return minimaxOfferedModelIds(piModelIds(provider));
   return piModelIds(provider);
 }
 
