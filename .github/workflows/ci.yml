@@ -216,6 +216,20 @@ jobs:
         if: matrix.package == 'runtime' && steps.headless-shell-cache.outputs.cache-hit != 'true'
         run: pnpm --filter @houston/runtime exec playwright-core install --no-progress chromium-headless-shell
 
+      # The browser runs sandboxed, as in the cloud. Ubuntu 24.04's AppArmor
+      # refuses unprivileged user namespaces to any binary without a profile;
+      # Google Chrome's package ships one, a downloaded headless shell does
+      # not, so its sandbox cannot start and the launch falls back to Chrome.
+      - name: Let the headless shell's sandbox start
+        if: matrix.package == 'runtime'
+        working-directory: packages/runtime
+        run: |
+          set -euo pipefail
+          launch="require('playwright-core').chromium.launch({ chromiumSandbox: true }).then((b) => { console.log('headless shell', b.version()); return b.close(); })"
+          node -e "$launch" || echo "::notice::headless shell refused before the sysctl (expected)"
+          sudo sysctl -w kernel.apparmor_restrict_unprivileged_userns=0
+          node -e "$launch"
+
       - name: Vitest
         env:
           PACKAGE: ${{ matrix.package }}
