@@ -10,6 +10,7 @@
  * tests with no window and no network. `transport.ts` is the live wiring.
  */
 
+import { isAbortError, timeoutSignal } from "@houston/sdk/abort-signal";
 import type { GatewayFetchDeps, GatewayRequestInit } from "../gateway-fetch.ts";
 import type {
   ProductAnalyticsContext,
@@ -82,12 +83,12 @@ export function createProductEventsPost(
         // ships without it: keepalive caps the body at 64 KiB (see
         // `ProductAnalyticsSendOptions`), which a full batch can exceed.
         ...(options?.final ? { keepalive: true } : {}),
-        signal: (deps.timeoutSignal ?? defaultTimeoutSignal)(),
+        signal: deps.timeoutSignal?.() ?? timeoutSignal(REQUEST_TIMEOUT_MS),
       });
     } catch (error) {
       // Offline and the timeout above are expected states worth exactly one
       // retry. Anything else reaching here is a bug in this path.
-      if (!deps.isOffline(error) && !isAbort(error)) {
+      if (!deps.isOffline(error) && !isAbortError(error)) {
         reportOnce(
           "post-failed",
           "the product-analytics POST failed unexpectedly",
@@ -109,23 +110,24 @@ export function createProductEventsPost(
       return { status: "ok" };
     }
     if (!res.ok) return { status: "failed" };
-    return { status: "ok", rejected: await readRejected(res, reportOnce) };
+    return {
+      status: "ok",
+      rejected: await readRejected(
+        res,
+        (error) => deps.isOffline(error) || isAbortError(error),
+        reportOnce,
+      ),
+    };
   };
 }
 
-const defaultTimeoutSignal = () => AbortSignal.timeout(REQUEST_TIMEOUT_MS);
-
-/** The abort the timeout above raises, whatever the runtime names it. */
-function isAbort(error: unknown): boolean {
-  if (typeof error !== "object" || error === null) return false;
-  const { name } = error as { name?: unknown };
-  return name === "TimeoutError" || name === "AbortError";
-}
-
 /** The 202 body's per-event verdicts; an unreadable body is still a success
- *  (the events are stored), so it is reported rather than retried. */
+ *  (the events are stored), so it is never retried. A read cut off by the
+ *  network or the request timeout is connectivity; only a body that arrived
+ *  and does not parse is reported. */
 async function readRejected(
   res: Response,
+  isDropped: (error: unknown) => boolean,
   reportOnce: (key: string, message: string, detail?: unknown) => void,
 ): Promise<readonly RejectedProductEvent[]> {
   try {
@@ -133,6 +135,7 @@ async function readRejected(
     if (!Array.isArray(body.rejected)) return [];
     return body.rejected.filter(isRejectedEvent);
   } catch (error) {
+    if (isDropped(error)) return [];
     reportOnce(
       "unreadable-body",
       "the product-analytics ingest answered with a body we cannot read",
