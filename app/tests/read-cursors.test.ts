@@ -1,5 +1,13 @@
 import { deepStrictEqual, ok, strictEqual } from "node:assert";
 import { describe, it } from "node:test";
+import { mergeReadCursorStores } from "../src/lib/read-cursors-merge.ts";
+import {
+  type CursorStorage,
+  loadReadCursors,
+  pruneForeignCursorStores,
+  readCursorStorageKey,
+  saveReadCursors,
+} from "../src/lib/read-cursors-storage.ts";
 import {
   cursorKey,
   markMentionNotified,
@@ -9,14 +17,6 @@ import {
   type ReadCursorStore,
   readFloorFor,
 } from "../src/lib/read-cursors.ts";
-import { mergeReadCursorStores } from "../src/lib/read-cursors-merge.ts";
-import {
-  type CursorStorage,
-  loadReadCursors,
-  pruneForeignCursorStores,
-  readCursorStorageKey,
-  saveReadCursors,
-} from "../src/lib/read-cursors-storage.ts";
 
 const UID = "user-me";
 const NOW = Date.UTC(2026, 6, 27, 12, 0, 0);

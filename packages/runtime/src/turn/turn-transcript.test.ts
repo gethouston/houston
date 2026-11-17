@@ -609,46 +609,46 @@ test.each([
     conversationId: "mission.1",
     earlierAttempt: true,
   },
-])("an unconnected turn publishes no transcript, in $name", async ({
-  conversationId,
-  earlierAttempt,
-}) => {
-  const objects = seedStandingLayout();
-  if (earlierAttempt) {
-    const conversation: StoredConversation = {
-      ...priorConversation,
-      messages: [
-        ...priorConversation.messages,
-        {
-          role: "user",
-          content: "Build the launch plan",
-          ts: 3,
-          turnId: "turn.7",
+])(
+  "an unconnected turn publishes no transcript, in $name",
+  async ({ conversationId, earlierAttempt }) => {
+    const objects = seedStandingLayout();
+    if (earlierAttempt) {
+      const conversation: StoredConversation = {
+        ...priorConversation,
+        messages: [
+          ...priorConversation.messages,
+          {
+            role: "user",
+            content: "Build the launch plan",
+            ts: 3,
+            turnId: "turn.7",
+          },
+        ],
+      };
+      objects.set(
+        "workspaces/Main/Helper/.houston/runtime/conversations/mission.1.json",
+        new TextEncoder().encode(JSON.stringify(conversation)),
+      );
+    }
+    const requests: TranscriptRequest[] = [];
+    const raw = await runClaimedTurn(
+      {
+        runTurn: async () => {
+          throw new Error("an unconnected turn must not run the session");
         },
-      ],
-    };
-    objects.set(
-      "workspaces/Main/Helper/.houston/runtime/conversations/mission.1.json",
-      new TextEncoder().encode(JSON.stringify(conversation)),
-    );
-  }
-  const requests: TranscriptRequest[] = [];
-  const raw = await runClaimedTurn(
-    {
-      runTurn: async () => {
-        throw new Error("an unconnected turn must not run the session");
+        poolStoreUrl: "https://pool.example",
+        fetchImpl: poolFetch(objects, requests),
+        heartbeatIntervalMs: 60_000,
       },
-      poolStoreUrl: "https://pool.example",
-      fetchImpl: poolFetch(objects, requests),
-      heartbeatIntervalMs: 60_000,
-    },
-    turnBody({ credential: null, conversationId }),
-  );
+      turnBody({ credential: null, conversationId }),
+    );
 
-  expect(requests).toHaveLength(0);
-  expect(raw).toContain('"type":"user"');
-  expect(errorMessage(raw)).toBe(NO_PROVIDER);
-});
+    expect(requests).toHaveLength(0);
+    expect(raw).toContain('"type":"user"');
+    expect(errorMessage(raw)).toBe(NO_PROVIDER);
+  },
+);
 
 test("a credentialed turn that fails after persisting still publishes its user row", async () => {
   const objects = seedStandingLayout();

@@ -1,4 +1,3 @@
-import { color, employeeMetal } from "@houston/design-tokens";
 import { initialsFor } from "@houston-ai/board";
 import {
   avatarHelmetSize,
@@ -7,6 +6,7 @@ import {
   HELMET_VIEWBOX,
   hexColorMix,
 } from "@houston-ai/core";
+import { color, employeeMetal } from "@houston/design-tokens";
 import { ART } from "./org-chart-share-card-art";
 import { FONT, fitText } from "./org-chart-share-card-text";
 

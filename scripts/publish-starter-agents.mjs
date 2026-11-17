@@ -26,9 +26,8 @@ import { register } from "tsx/esm/api";
 // tsx ESM loader: lets this plain-node script import the TS `agentstore-*` pkgs.
 register();
 
-const { AgentStoreClient, StoreApiError } = await import(
-  "@houston/agentstore-client"
-);
+const { AgentStoreClient, StoreApiError } =
+  await import("@houston/agentstore-client");
 const { buildStarterAgentIr, indexExistingBySlug, listStarterAgentIds } =
   await import("./lib/starter-agent-ir.mjs");
 

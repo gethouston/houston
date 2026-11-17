@@ -1,5 +1,5 @@
-import type { SeatUsageView } from "@houston/sdk";
 import { cn } from "@houston-ai/core";
+import type { SeatUsageView } from "@houston/sdk";
 import { useTranslation } from "react-i18next";
 
 /** More dots than this stop reading as seats; the line still counts them. */

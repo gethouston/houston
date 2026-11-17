@@ -90,49 +90,48 @@ test.each([
   { fronted: false, zone: "UTC" },
   { fronted: true, zone: "UTC" },
   { fronted: true, zone: "America/New_York" },
-])("production wiring keeps sends and fires in the firing zone, $fronted/$zone", async ({
-  fronted,
-  zone,
-}) => {
-  vi.stubEnv("TZ", zone);
-  const h = await setup(fronted);
-  try {
-    await setPreference(h.base.vfs, "Work", "timezone", "Asia/Tokyo");
-    const expected = fronted ? hostTimezone() : "Asia/Tokyo";
-    expect((await h.send(fronted ? expected : "Europe/Paris")).status).toBe(
-      202,
-    );
-    await h.fire();
-    expect((await h.send(fronted ? expected : undefined)).status).toBe(202);
-    await h.fire();
-    expect(h.bodies.map((b) => b.timezone)).toEqual(Array(4).fill(expected));
-    if (fronted) {
-      await h.send("America/Bogota");
-      expect(h.bodies.at(-1)?.timezone).toBe("America/Bogota");
+])(
+  "production wiring keeps sends and fires in the firing zone, $fronted/$zone",
+  async ({ fronted, zone }) => {
+    vi.stubEnv("TZ", zone);
+    const h = await setup(fronted);
+    try {
+      await setPreference(h.base.vfs, "Work", "timezone", "Asia/Tokyo");
+      const expected = fronted ? hostTimezone() : "Asia/Tokyo";
+      expect((await h.send(fronted ? expected : "Europe/Paris")).status).toBe(
+        202,
+      );
+      await h.fire();
+      expect((await h.send(fronted ? expected : undefined)).status).toBe(202);
+      await h.fire();
+      expect(h.bodies.map((b) => b.timezone)).toEqual(Array(4).fill(expected));
+      if (fronted) {
+        await h.send("America/Bogota");
+        expect(h.bodies.at(-1)?.timezone).toBe("America/Bogota");
+      }
+    } finally {
+      await h.close();
     }
-  } finally {
-    await h.close();
-  }
-});
+  },
+);
 
-test.each([
-  null,
-  "Mars/Olympus",
-  "+01:00",
-])("unset or invalid stored preference %s keeps local turns valid", async (value) => {
-  const h = await setup();
-  try {
-    await setPreference(h.base.vfs, "Work", "timezone", value);
-    expect((await h.send()).status).toBe(202);
-    await h.fire();
-    expect(h.bodies.map((b) => b.timezone)).toEqual([
-      hostTimezone(),
-      hostTimezone(),
-    ]);
-  } finally {
-    await h.close();
-  }
-});
+test.each([null, "Mars/Olympus", "+01:00"])(
+  "unset or invalid stored preference %s keeps local turns valid",
+  async (value) => {
+    const h = await setup();
+    try {
+      await setPreference(h.base.vfs, "Work", "timezone", value);
+      expect((await h.send()).status).toBe(202);
+      await h.fire();
+      expect(h.bodies.map((b) => b.timezone)).toEqual([
+        hostTimezone(),
+        hostTimezone(),
+      ]);
+    } finally {
+      await h.close();
+    }
+  },
+);
 
 test("preference PUT refuses invalid zones, supports clearing, and the next turn and listing use the saved zone", async () => {
   const h = await setup();

@@ -5,7 +5,6 @@
  * field, plus the next fire time), and the model pin.
  */
 
-import type { Routine, RoutineUpdate } from "@houston/engine-adapter";
 import { Button, Textarea } from "@houston-ai/core";
 import {
   cronSummary,
@@ -13,6 +12,7 @@ import {
   nextFire,
   RoutineRowScheduleEdit,
 } from "@houston-ai/routines";
+import type { Routine, RoutineUpdate } from "@houston/engine-adapter";
 import { type ReactNode, useEffect, useState } from "react";
 import { useTranslation } from "react-i18next";
 import { useRoutineLabels } from "../../hooks/use-routine-labels";

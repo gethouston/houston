@@ -196,28 +196,28 @@ test("API-key connect returns capture wire and maps typed verification refusal t
   ).toBe(409);
 });
 
-test.each([
-  "anthropic",
-  "github-copilot",
-])("%s OAuth export matches capture including optional account and enterprise domain", (provider) => {
-  expect(
-    captureWire({
-      provider,
+test.each(["anthropic", "github-copilot"])(
+  "%s OAuth export matches capture including optional account and enterprise domain",
+  (provider) => {
+    expect(
+      captureWire({
+        provider,
+        access: "access-fixture",
+        refresh: "refresh-fixture",
+        expires: 123,
+        accountId: "account-fixture",
+        enterpriseUrl: "enterprise.example",
+      }),
+    ).toEqual({
+      kind: "oauth",
       access: "access-fixture",
       refresh: "refresh-fixture",
       expires: 123,
       accountId: "account-fixture",
       enterpriseUrl: "enterprise.example",
-    }),
-  ).toEqual({
-    kind: "oauth",
-    access: "access-fixture",
-    refresh: "refresh-fixture",
-    expires: 123,
-    accountId: "account-fixture",
-    enterpriseUrl: "enterprise.example",
-  });
-});
+    });
+  },
+);
 test("API-key export carries Azure's endpoint with empty refresh and zero expiry", () => {
   expect(
     captureWire({

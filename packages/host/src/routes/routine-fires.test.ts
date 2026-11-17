@@ -275,29 +275,32 @@ test.each([
     },
   ],
   ["a taken turn slot", turnBusyError("other-chat"), { result: "busy" }],
-])("%s answers 200 with a terminal result and an errored run", async (_name, refusal, expected, typedRun?: object) => {
-  await seedRoutines([routine()]);
-  channel.refusal = refusal;
-  const body = {
-    routineId: "r1",
-    fireAt: FIRE_AT,
-    actingAs: actingAs("creator-1"),
-  };
-  const res = await postFire(body);
+])(
+  "%s answers 200 with a terminal result and an errored run",
+  async (_name, refusal, expected, typedRun?: object) => {
+    await seedRoutines([routine()]);
+    channel.refusal = refusal;
+    const body = {
+      routineId: "r1",
+      fireAt: FIRE_AT,
+      actingAs: actingAs("creator-1"),
+    };
+    const res = await postFire(body);
 
-  expect(res.status).toBe(200);
-  expect(await res.json()).toEqual(expected);
-  const [run] = await runs();
-  expect(run).toMatchObject({
-    status: "error",
-    ...(typedRun ?? { summary: refusal.message }),
-  });
+    expect(res.status).toBe(200);
+    expect(await res.json()).toEqual(expected);
+    const [run] = await runs();
+    expect(run).toMatchObject({
+      status: "error",
+      ...(typedRun ?? { summary: refusal.message }),
+    });
 
-  // The instant stays burned and a redelivery replays the recorded outcome.
-  const replay = await postFire(body);
-  expect(await replay.json()).toEqual({ ...expected, deduped: true });
-  expect(await runs()).toHaveLength(1);
-});
+    // The instant stays burned and a redelivery replays the recorded outcome.
+    const replay = await postFire(body);
+    expect(await replay.json()).toEqual({ ...expected, deduped: true });
+    expect(await runs()).toHaveLength(1);
+  },
+);
 
 // Only console.error reaches Sentry on the host: an unexpected failure is
 // reported there, a creator with nothing connected stays a warning.
@@ -393,29 +396,32 @@ test.each([
 test.each([
   ["before the run is recorded", 1, 0],
   ["when the errored mark cannot be written", 2, 1],
-])("a runs-file failure %s releases the instant", async (_name, failingWrite, recorded) => {
-  await seedRoutines([routine()]);
-  channel.refusal = new Error("quota exceeded");
-  const write = vfs.writeText.bind(vfs);
-  let runWrites = 0;
-  const spy = vi
-    .spyOn(vfs, "writeText")
-    .mockImplementation(async (key, text) => {
-      if (key.includes("routine_runs") && ++runWrites === failingWrite)
-        throw new Error("store unavailable");
-      return write(key, text);
+])(
+  "a runs-file failure %s releases the instant",
+  async (_name, failingWrite, recorded) => {
+    await seedRoutines([routine()]);
+    channel.refusal = new Error("quota exceeded");
+    const write = vfs.writeText.bind(vfs);
+    let runWrites = 0;
+    const spy = vi
+      .spyOn(vfs, "writeText")
+      .mockImplementation(async (key, text) => {
+        if (key.includes("routine_runs") && ++runWrites === failingWrite)
+          throw new Error("store unavailable");
+        return write(key, text);
+      });
+    const res = await postFire({
+      routineId: "r1",
+      fireAt: FIRE_AT,
+      actingAs: actingAs("creator-1"),
     });
-  const res = await postFire({
-    routineId: "r1",
-    fireAt: FIRE_AT,
-    actingAs: actingAs("creator-1"),
-  });
-  spy.mockRestore();
+    spy.mockRestore();
 
-  expect(res.status).toBe(503);
-  expect(await bus.get(`routine:fired:r1:${FIRE_AT}`)).toBeNull();
-  expect(await runs()).toHaveLength(recorded);
-});
+    expect(res.status).toBe(503);
+    expect(await bus.get(`routine:fired:r1:${FIRE_AT}`)).toBeNull();
+    expect(await runs()).toHaveLength(recorded);
+  },
+);
 
 test.each([
   ["unknown", [routine()], "missing"],

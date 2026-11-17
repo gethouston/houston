@@ -1,5 +1,5 @@
-import type { InteractionStep } from "@houston/protocol";
 import type { StepperState } from "@houston-ai/chat";
+import type { InteractionStep } from "@houston/protocol";
 import { useCallback, useEffect, useRef, useState } from "react";
 import { hydrateParkedState } from "../lib/interaction-draft-hydrate";
 import { restoreInteractionOutcomes } from "../lib/interaction-outcomes-restore";

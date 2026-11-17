@@ -23,71 +23,73 @@ const hubspot = fixtures.find((m) => m.toolkit === "hubspot");
 if (!sheets || !hubspot) throw new Error("missing fixtures");
 
 describe("real Composio parameter schemas", () => {
-  it.each(
-    fixtures,
-  )("recovers every parameter of $action through exact lookup", async (match) => {
-    const tail = renderSearchItems([sheets, sheets, match])
-      .split(`- ${match.action}`)
-      .at(-1);
-    expect(tail).toContain("params: ");
-    expect(tail).not.toContain("\n    ");
-    const calls: Record<string, string>[] = [];
-    const { items } = await searchComposio(
-      {
-        listConnections: async () => [],
-        catalog: async () => [{ slug: match.toolkit, name: match.toolkit }],
-        queryTools: async (query) => {
-          calls.push(query);
-          return query.tool_slugs === match.action ? [match] : [];
+  it.each(fixtures)(
+    "recovers every parameter of $action through exact lookup",
+    async (match) => {
+      const tail = renderSearchItems([sheets, sheets, match])
+        .split(`- ${match.action}`)
+        .at(-1);
+      expect(tail).toContain("params: ");
+      expect(tail).not.toContain("\n    ");
+      const calls: Record<string, string>[] = [];
+      const { items } = await searchComposio(
+        {
+          listConnections: async () => [],
+          catalog: async () => [{ slug: match.toolkit, name: match.toolkit }],
+          queryTools: async (query) => {
+            calls.push(query);
+            return query.tool_slugs === match.action ? [match] : [];
+          },
         },
-      },
-      match.action,
-      match.toolkit,
-    );
-    expect(calls).toContainEqual({
-      tool_slugs: match.action,
-      toolkit_slug: match.toolkit,
-    });
-    const detailed = renderSearchItems(items);
-    const json = JSON.stringify(match.inputParams);
-    if (json.length <= 2000) {
-      expect(detailed).toContain(`params: ${json}`);
-    } else {
-      const properties =
-        schemaObject(schemaObject(match.inputParams)?.properties) ?? {};
-      for (const [name, spec] of Object.entries(properties)) {
-        const description = schemaObject(spec)?.description;
-        const line = detailed
-          .split("\n")
-          .find(
-            (line) =>
-              line.startsWith(`    ${name}:`) ||
-              line.startsWith(`    ${name}?:`),
-          );
-        expect(line).toBeDefined();
-        if (typeof description === "string")
-          expect(line).toContain(description.slice(0, 30));
+        match.action,
+        match.toolkit,
+      );
+      expect(calls).toContainEqual({
+        tool_slugs: match.action,
+        toolkit_slug: match.toolkit,
+      });
+      const detailed = renderSearchItems(items);
+      const json = JSON.stringify(match.inputParams);
+      if (json.length <= 2000) {
+        expect(detailed).toContain(`params: ${json}`);
+      } else {
+        const properties =
+          schemaObject(schemaObject(match.inputParams)?.properties) ?? {};
+        for (const [name, spec] of Object.entries(properties)) {
+          const description = schemaObject(spec)?.description;
+          const line = detailed
+            .split("\n")
+            .find(
+              (line) =>
+                line.startsWith(`    ${name}:`) ||
+                line.startsWith(`    ${name}?:`),
+            );
+          expect(line).toBeDefined();
+          if (typeof description === "string")
+            expect(line).toContain(description.slice(0, 30));
+        }
       }
-    }
-    expect(
-      detailed.slice(detailed.indexOf(`- ${match.action}`)).length,
-    ).toBeLessThanOrEqual(3300);
-    if (match.action === sheets.action) {
-      expect(tail).not.toContain('"TEXT_IS_EMAIL"');
       expect(
-        detailed
-          .split("\n")
-          .find((line) => line.startsWith("    validation_type?:")),
-      ).toContain('"TEXT_IS_EMAIL"');
-      const values = schemaObject(
-        schemaObject(match.inputParams)?.properties,
-      )?.validation_type;
-      const literals = schemaObject(values)?.enum;
-      if (!Array.isArray(literals)) throw new Error("missing validation enum");
-      for (const value of literals)
-        expect(detailed).toContain(JSON.stringify(value));
-    }
-  });
+        detailed.slice(detailed.indexOf(`- ${match.action}`)).length,
+      ).toBeLessThanOrEqual(3300);
+      if (match.action === sheets.action) {
+        expect(tail).not.toContain('"TEXT_IS_EMAIL"');
+        expect(
+          detailed
+            .split("\n")
+            .find((line) => line.startsWith("    validation_type?:")),
+        ).toContain('"TEXT_IS_EMAIL"');
+        const values = schemaObject(
+          schemaObject(match.inputParams)?.properties,
+        )?.validation_type;
+        const literals = schemaObject(values)?.enum;
+        if (!Array.isArray(literals))
+          throw new Error("missing validation enum");
+        for (const value of literals)
+          expect(detailed).toContain(JSON.stringify(value));
+      }
+    },
+  );
 
   it("preserves Sheets mode in both tiers", () => {
     expect(renderSearchItems([sheets])).toContain('mode: "SET"|"CLEAR"');

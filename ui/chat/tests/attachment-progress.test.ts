@@ -5,12 +5,10 @@ import { win } from "./support/conversation-log-dom.ts";
 const { act, createElement: h, createRef } = await import("react");
 const { createRoot } = await import("react-dom/client");
 const { AttachmentChip } = await import("../src/attachment-chip.tsx");
-const { AttachmentProgressProvider } = await import(
-  "../src/attachment-progress.tsx"
-);
-const { ChatInputAttachments } = await import(
-  "../src/chat-input-attachments.tsx"
-);
+const { AttachmentProgressProvider } =
+  await import("../src/attachment-progress.tsx");
+const { ChatInputAttachments } =
+  await import("../src/chat-input-attachments.tsx");
 let root: ReturnType<typeof createRoot>;
 const labels = {
   uploading: "Subiendo…",

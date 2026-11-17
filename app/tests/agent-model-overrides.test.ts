@@ -251,9 +251,13 @@ describe("readAgentModelOverrides", () => {
   });
 
   it("falls back to a connected provider when the config read fails", async () => {
-    const pins = await readAgentModelOverrides("/a", async () => {
-      throw new Error("boom");
-    }, ["openai"]);
+    const pins = await readAgentModelOverrides(
+      "/a",
+      async () => {
+        throw new Error("boom");
+      },
+      ["openai"],
+    );
     strictEqual(pins.providerOverride, "openai");
   });
 });

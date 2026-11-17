@@ -2,8 +2,8 @@ import { deepStrictEqual, ok, strictEqual } from "node:assert";
 import { describe, it } from "node:test";
 import { decodeInteractionAnswersMessage } from "../../ui/chat/src/interaction-answers-message.ts";
 import { decodeTeamCard } from "../src/lib/manager-onboarding/onboarding-card-markers.ts";
-import { firstRunScript } from "../src/lib/manager-onboarding/script.ts";
 import type { ScriptLine } from "../src/lib/manager-onboarding/script-types.ts";
+import { firstRunScript } from "../src/lib/manager-onboarding/script.ts";
 import {
   TEAM_CONVERSATION_START,
   type TeamConversation,

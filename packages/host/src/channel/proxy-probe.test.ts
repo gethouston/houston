@@ -200,29 +200,28 @@ test("the deadlined probe leaves the boot running, so the client's retry lands o
   expect(rt.spawns).toBe(1); // one shared boot, never a second spawn
 });
 
-test.each([
-  "providers",
-  "providers/usage",
-  "auth/status",
-])("the read-only probe route %s fast-fails on a cold runtime", async (rest) => {
-  const rt = coldRuntime();
-  const { channel, forwarded } = channelFor(rt);
-  const out = res();
+test.each(["providers", "providers/usage", "auth/status"])(
+  "the read-only probe route %s fast-fails on a cold runtime",
+  async (rest) => {
+    const rt = coldRuntime();
+    const { channel, forwarded } = channelFor(rt);
+    const out = res();
 
-  const dispatched = channel.dispatch(
-    ctx,
-    "GET",
-    rest,
-    urlFor(rest),
-    request(),
-    asServerResponse(out),
-  );
-  await vi.advanceTimersByTimeAsync(1_500);
-  await dispatched;
+    const dispatched = channel.dispatch(
+      ctx,
+      "GET",
+      rest,
+      urlFor(rest),
+      request(),
+      asServerResponse(out),
+    );
+    await vi.advanceTimersByTimeAsync(1_500);
+    await dispatched;
 
-  expect(out.statusCode).toBe(503);
-  expect(forwarded).toEqual([]);
-});
+    expect(out.statusCode).toBe(503);
+    expect(forwarded).toEqual([]);
+  },
+);
 
 test("a warm runtime forwards a probe immediately, with no deadline in play", async () => {
   const rt = coldRuntime();

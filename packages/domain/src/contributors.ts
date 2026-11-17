@@ -1,9 +1,7 @@
 import type { Activity, ActivityContributor } from "@houston/protocol";
 
 /** Copy a contributor, keeping `name` only when it is defined. */
-export const cloneContributor = (
-  c: ActivityContributor,
-): ActivityContributor =>
+export const cloneContributor = (c: ActivityContributor): ActivityContributor =>
   c.name !== undefined
     ? { user_id: c.user_id, name: c.name }
     : { user_id: c.user_id };

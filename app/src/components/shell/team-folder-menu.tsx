@@ -48,12 +48,12 @@ export function TeamFolderMenu({
   const orgs = useOrgs(personalSpace && capabilities?.spaces === true);
   const canMove = Boolean(
     workspaceId &&
-      canMoveFolderToSpace(
-        personalSpace,
-        capabilities,
-        team.agents,
-        orgs.data?.orgs ?? [],
-      ),
+    canMoveFolderToSpace(
+      personalSpace,
+      capabilities,
+      team.agents,
+      orgs.data?.orgs ?? [],
+    ),
   );
 
   return (

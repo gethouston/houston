@@ -62,9 +62,8 @@ test("a 409 fences the claim and fires onFenced once", async () => {
 });
 
 test("claim mode changes update the same live ref and ignore unknown or fenced responses", async () => {
-  const { runWithTurnMode, currentTurnMode } = await import(
-    "../session/turn-mode-context"
-  );
+  const { runWithTurnMode, currentTurnMode } =
+    await import("../session/turn-mode-context");
   const mode = { current: "execute" as "execute" | "plan" | "auto" };
   let response = Response.json({ ok: true, mode: "plan" });
   const heartbeat = startClaimHeartbeat({

@@ -1,11 +1,11 @@
 import { deepStrictEqual, strictEqual } from "node:assert";
 import { describe, it } from "node:test";
+import { toSearchableText } from "../src/components/mission-search-text.ts";
 import {
   buildMissionHistorySearchText,
   normalizeMissionSearchQuery,
   searchMissions,
 } from "../src/components/mission-search.ts";
-import { toSearchableText } from "../src/components/mission-search-text.ts";
 
 const missions = [
   {

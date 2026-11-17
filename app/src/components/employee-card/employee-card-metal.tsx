@@ -1,9 +1,9 @@
-import { durationMs, easing } from "@houston/design-tokens";
 import {
   employeeMetalColors,
   METAL_ENGRAVING_VIEWBOX,
   metalEngravingPath,
 } from "@houston-ai/core";
+import { durationMs, easing } from "@houston/design-tokens";
 import { AnimatePresence, motion, useReducedMotion } from "framer-motion";
 import { memo, useMemo } from "react";
 import { EmployeeCardPortrait } from "./employee-card-portrait";

@@ -59,10 +59,7 @@ export type {
   MemberRoutineKind,
   MemberRoutines,
 } from "./member-routines";
-export {
-  type AddOrgMemberOutcome,
-  seatAddRefusal,
-} from "./seat-add";
+export { type AddOrgMemberOutcome, seatAddRefusal } from "./seat-add";
 export {
   type SeatAddedNote,
   type SeatAddStep,

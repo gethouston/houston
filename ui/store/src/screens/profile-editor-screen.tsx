@@ -1,6 +1,5 @@
 "use client";
 
-import { normalizeHandle } from "@houston/agentstore-contract";
 import {
   Alert,
   AlertDescription,
@@ -10,6 +9,7 @@ import {
   Spinner,
   Textarea,
 } from "@houston-ai/core";
+import { normalizeHandle } from "@houston/agentstore-contract";
 import { AlertTriangle, Check } from "lucide-react";
 import { type FormEvent, useState } from "react";
 

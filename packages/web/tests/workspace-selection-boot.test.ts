@@ -71,47 +71,45 @@ test.each([
   { legacy: team.id, account: null, failure: true, expected: team.id },
   { legacy: null, account: null, failure: true, expected: team.id },
   { legacy: "default", account: null, failure: false, expected: team.id },
-])("boot with $legacy, $account and failure $failure opens $expected without writes", async ({
-  legacy,
-  account,
-  failure,
-  expected,
-}) => {
-  const local = new Map<string, string>();
-  if (legacy) local.set("houston.pref.last_workspace_id", legacy);
-  vi.stubGlobal("localStorage", {
-    getItem: (key: string) => local.get(key) ?? null,
-    setItem: (key: string, value: string) => local.set(key, value),
-    removeItem: (key: string) => local.delete(key),
-  });
-  const answer = vi.fn(
-    async (_input: RequestInfo | URL, init?: RequestInit) => {
-      expect(init?.method ?? "GET").toBe("GET");
-      expect(new Headers(init?.headers).has("x-houston-org")).toBe(false);
-      if (failure) throw new TypeError("Failed to fetch");
-      return Response.json({ value: account });
-    },
-  );
-  vi.stubGlobal("fetch", answer);
-  const client = new HoustonClient({
-    baseUrl: "http://host",
-    token: "t",
-    controlPlane: true,
-    onPreferenceError: reportWorkspacePreferenceError,
-  });
-  client.setActiveOrg("00112233aabbccdd");
-  mocks.resolve.mockImplementation((workspaces) =>
-    client.resolveWorkspaceSelection(workspaces),
-  );
-  await useWorkspaceStore.getState().loadWorkspaces();
-  expect(useWorkspaceStore.getState().current?.id).toBe(expected);
-  expect(useWorkspaceStore.getState().loadError).toBe(false);
-  expect(mocks.pin).toHaveBeenCalledWith(
-    expected === team.id ? "00112233aabbccdd" : null,
-  );
-  expect(local.has("houston.pref.last_workspace_id")).toBe(false);
-  expect(mocks.report).not.toHaveBeenCalled();
-});
+])(
+  "boot with $legacy, $account and failure $failure opens $expected without writes",
+  async ({ legacy, account, failure, expected }) => {
+    const local = new Map<string, string>();
+    if (legacy) local.set("houston.pref.last_workspace_id", legacy);
+    vi.stubGlobal("localStorage", {
+      getItem: (key: string) => local.get(key) ?? null,
+      setItem: (key: string, value: string) => local.set(key, value),
+      removeItem: (key: string) => local.delete(key),
+    });
+    const answer = vi.fn(
+      async (_input: RequestInfo | URL, init?: RequestInit) => {
+        expect(init?.method ?? "GET").toBe("GET");
+        expect(new Headers(init?.headers).has("x-houston-org")).toBe(false);
+        if (failure) throw new TypeError("Failed to fetch");
+        return Response.json({ value: account });
+      },
+    );
+    vi.stubGlobal("fetch", answer);
+    const client = new HoustonClient({
+      baseUrl: "http://host",
+      token: "t",
+      controlPlane: true,
+      onPreferenceError: reportWorkspacePreferenceError,
+    });
+    client.setActiveOrg("00112233aabbccdd");
+    mocks.resolve.mockImplementation((workspaces) =>
+      client.resolveWorkspaceSelection(workspaces),
+    );
+    await useWorkspaceStore.getState().loadWorkspaces();
+    expect(useWorkspaceStore.getState().current?.id).toBe(expected);
+    expect(useWorkspaceStore.getState().loadError).toBe(false);
+    expect(mocks.pin).toHaveBeenCalledWith(
+      expected === team.id ? "00112233aabbccdd" : null,
+    );
+    expect(local.has("houston.pref.last_workspace_id")).toBe(false);
+    expect(mocks.report).not.toHaveBeenCalled();
+  },
+);
 
 test("a boot 503 retries and resolves without Sentry", async () => {
   vi.useFakeTimers();

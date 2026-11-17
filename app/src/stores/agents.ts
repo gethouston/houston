@@ -5,9 +5,9 @@ import { tauriAgents } from "../lib/agents-facade";
 import { analytics } from "../lib/analytics";
 import { queryClient } from "../lib/query-client";
 import { useAgentProvisioningStore } from "./agent-provisioning";
-import type { AgentState } from "./agents/state";
 import { agentLoadingActions, startAgentSideEffects } from "./agents-loading";
 import { agentWriteActions } from "./agents-writes";
+import type { AgentState } from "./agents/state";
 
 export type { CreatedAgent } from "./agents/state";
 

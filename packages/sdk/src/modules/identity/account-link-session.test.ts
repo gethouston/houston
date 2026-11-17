@@ -23,15 +23,18 @@ describe("the platform session changing under a link", () => {
   it.each([
     ["signs out in another tab", null],
     ["signs in as someone else in another tab", "uid-b"],
-  ])("ends the link when the person %s, so its success restores nothing", async (_, uid) => {
-    const { kit, verifying, succeed } = await linkInFlight();
-    kit.identity.sessionChanged(uid);
-    succeed();
-    expect(await verifying).toEqual({ kind: "not_waiting" });
-    expect(kit.calls.established).toEqual([]);
-    expect(kit.calls.signedOut).toEqual([]);
-    expect(kit.identity.getAccountLink()).toEqual({ status: "idle" });
-  });
+  ])(
+    "ends the link when the person %s, so its success restores nothing",
+    async (_, uid) => {
+      const { kit, verifying, succeed } = await linkInFlight();
+      kit.identity.sessionChanged(uid);
+      succeed();
+      expect(await verifying).toEqual({ kind: "not_waiting" });
+      expect(kit.calls.established).toEqual([]);
+      expect(kit.calls.signedOut).toEqual([]);
+      expect(kit.identity.getAccountLink()).toEqual({ status: "idle" });
+    },
+  );
 
   it("keeps the link through the minted session's own token changes", async () => {
     const { kit, verifying, succeed } = await linkInFlight();

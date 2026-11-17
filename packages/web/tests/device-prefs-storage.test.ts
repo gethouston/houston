@@ -179,9 +179,8 @@ test("a boot preference read that rejects answers unset and reports once", async
   appMocks.report.mockImplementation(() => {});
   appMocks.prefGet.mockRejectedValue(blockedRead());
 
-  const { readBootPreference } = await import(
-    "../../../app/src/lib/boot-preference"
-  );
+  const { readBootPreference } =
+    await import("../../../app/src/lib/boot-preference");
 
   await expect(readBootPreference("last_agent_id")).resolves.toBeNull();
   expect(appMocks.report).toHaveBeenCalledOnce();
@@ -194,9 +193,8 @@ test("a boot preference read the store answers is passed through unreported", as
   appMocks.report.mockImplementation(() => {});
   appMocks.prefGet.mockResolvedValue("agent-7");
 
-  const { readBootPreference } = await import(
-    "../../../app/src/lib/boot-preference"
-  );
+  const { readBootPreference } =
+    await import("../../../app/src/lib/boot-preference");
 
   await expect(readBootPreference("last_agent_id")).resolves.toBe("agent-7");
   expect(appMocks.report).not.toHaveBeenCalled();
@@ -207,9 +205,8 @@ test("loadWorkspaces still fails loudly when the LIST is what rejected", async (
   appMocks.list.mockRejectedValue(new Error("host unreachable"));
   appMocks.prefGet.mockResolvedValue(personal.id);
 
-  const { useWorkspaceStore } = await import(
-    "../../../app/src/stores/workspaces"
-  );
+  const { useWorkspaceStore } =
+    await import("../../../app/src/stores/workspaces");
   // The store is a module singleton shared with the test above.
   useWorkspaceStore.setState({ workspaces: [], current: null });
   await useWorkspaceStore.getState().loadWorkspaces();

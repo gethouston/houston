@@ -1,7 +1,7 @@
 // `.ts` extensions so the node test runner can import this module directly.
 
-import { noticeEndsTurn } from "@houston/sdk/notice-ends-turn";
 import type { FeedItem } from "@houston-ai/chat";
+import { noticeEndsTurn } from "@houston/sdk/notice-ends-turn";
 
 /**
  * How the person's goal is going, read from the manager's kickoff turn: the

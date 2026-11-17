@@ -201,13 +201,16 @@ test.each([
 test.each([
   ["with no arguments at all", {}],
   ["with the arguments it declares", { id: "led-1" }],
-])("refuses an operation with no route %s, before any request leaves the runtime", async (_l, params) => {
-  const calls = mockFetch(() => ({ body: {} }));
-  const result = await run({ operation: "exportLedger", params });
-  expect(errorCode(result)).toBe("operation_not_supported");
-  expect(text(result)).toContain("not callable in this build");
-  expect(calls).toHaveLength(0);
-});
+])(
+  "refuses an operation with no route %s, before any request leaves the runtime",
+  async (_l, params) => {
+    const calls = mockFetch(() => ({ body: {} }));
+    const result = await run({ operation: "exportLedger", params });
+    expect(errorCode(result)).toBe("operation_not_supported");
+    expect(text(result)).toContain("not callable in this build");
+    expect(calls).toHaveLength(0);
+  },
+);
 
 test.each([
   ["a missing required param", { agentPath: undefined }, "missing_param"],

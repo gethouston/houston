@@ -381,9 +381,8 @@ test("an unreadable newest pi session starts fresh with canonical replay", async
 });
 
 test("a corrupt harness marker degrades to unknown instead of failing the turn", async () => {
-  const { readTurnHarness, turnHarnessFile, writeTurnHarness } = await import(
-    "./turn-harness-state"
-  );
+  const { readTurnHarness, turnHarnessFile, writeTurnHarness } =
+    await import("./turn-harness-state");
   const { mkdtempSync, mkdirSync, writeFileSync } = await import("node:fs");
   const { tmpdir } = await import("node:os");
   const { dirname, join } = await import("node:path");
@@ -403,45 +402,45 @@ test.each([
   { role: null, timezone: undefined },
   { role: "coordinator", timezone: "America/Bogota" },
   { role: "coordinator", timezone: undefined },
-] as const)("pooled prompt appends routine guidance once for $role/$timezone, including custom prompts", async ({
-  role,
-  timezone,
-}) => {
-  const prior = config.systemPrompt;
-  try {
-    for (const systemPrompt of ["", "Custom product prompt"]) {
-      config.systemPrompt = systemPrompt;
-      let prompt = "";
-      await runTurn(
-        await directories(),
-        {
-          conversationId: "c1",
-          text: "hello",
-          provider: "anthropic",
-          role: role ?? undefined,
-          timezone,
-          emit: () => undefined,
-          signal: undefined,
-          turnId: "t-zone",
-        },
-        {
-          claudeSdk: sdk(
-            scriptedQuery((_text, options) => {
-              prompt = String(options.systemPrompt);
-            }),
-          ),
-        },
-      );
-      const line =
-        role === "coordinator"
-          ? "Each AI employee's routines run in its own time zone, shown on the employee; write the cron in that zone's local time and never add a time zone to it."
-          : "Routines run in America/Bogota. Write the cron in that local time and never add a time zone to it.";
-      expect(prompt.split(line).length - 1).toBe(role || timezone ? 1 : 0);
-      if (role === "coordinator")
-        expect(prompt).not.toContain("Routines run in America/Bogota");
-      if (systemPrompt) expect(prompt).toContain(systemPrompt);
+] as const)(
+  "pooled prompt appends routine guidance once for $role/$timezone, including custom prompts",
+  async ({ role, timezone }) => {
+    const prior = config.systemPrompt;
+    try {
+      for (const systemPrompt of ["", "Custom product prompt"]) {
+        config.systemPrompt = systemPrompt;
+        let prompt = "";
+        await runTurn(
+          await directories(),
+          {
+            conversationId: "c1",
+            text: "hello",
+            provider: "anthropic",
+            role: role ?? undefined,
+            timezone,
+            emit: () => undefined,
+            signal: undefined,
+            turnId: "t-zone",
+          },
+          {
+            claudeSdk: sdk(
+              scriptedQuery((_text, options) => {
+                prompt = String(options.systemPrompt);
+              }),
+            ),
+          },
+        );
+        const line =
+          role === "coordinator"
+            ? "Each AI employee's routines run in its own time zone, shown on the employee; write the cron in that zone's local time and never add a time zone to it."
+            : "Routines run in America/Bogota. Write the cron in that local time and never add a time zone to it.";
+        expect(prompt.split(line).length - 1).toBe(role || timezone ? 1 : 0);
+        if (role === "coordinator")
+          expect(prompt).not.toContain("Routines run in America/Bogota");
+        if (systemPrompt) expect(prompt).toContain(systemPrompt);
+      }
+    } finally {
+      config.systemPrompt = prior;
     }
-  } finally {
-    config.systemPrompt = prior;
-  }
-});
+  },
+);

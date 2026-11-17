@@ -6,15 +6,10 @@ describe("isMissionStarter", () => {
     expect(isMissionStarter(starter)).toBe(true);
   });
 
-  test.each([
-    "person",
-    "Houston",
-    "",
-    undefined,
-    null,
-    1,
-    {},
-  ])("rejects %j", (value) => {
-    expect(isMissionStarter(value)).toBe(false);
-  });
+  test.each(["person", "Houston", "", undefined, null, 1, {}])(
+    "rejects %j",
+    (value) => {
+      expect(isMissionStarter(value)).toBe(false);
+    },
+  );
 });

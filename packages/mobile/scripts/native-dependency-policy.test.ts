@@ -44,31 +44,33 @@ describe("installed native plugins", () => {
     );
   });
 
-  test.each(
-    plugins,
-  )("$id links no Facebook or analytics SDK on iOS", (plugin) => {
-    const manifestPath = `${plugin.root}/Package.swift`;
-    if (!existsSync(manifestPath)) return;
-    const manifest = readFileSync(manifestPath, "utf8");
-    expect(bannedSwiftProducts(manifest, requestedTraits[plugin.id])).toEqual(
-      [],
-    );
-    // The generated manifest is what Xcode builds; a stale one means `sync`
-    // has not run since the traits changed.
-    expect(generatedSwiftTraits(generated, swiftPackageName(manifest))).toEqual(
-      requestedTraits[plugin.id] ?? [],
-    );
-  });
+  test.each(plugins)(
+    "$id links no Facebook or analytics SDK on iOS",
+    (plugin) => {
+      const manifestPath = `${plugin.root}/Package.swift`;
+      if (!existsSync(manifestPath)) return;
+      const manifest = readFileSync(manifestPath, "utf8");
+      expect(bannedSwiftProducts(manifest, requestedTraits[plugin.id])).toEqual(
+        [],
+      );
+      // The generated manifest is what Xcode builds; a stale one means `sync`
+      // has not run since the traits changed.
+      expect(
+        generatedSwiftTraits(generated, swiftPackageName(manifest)),
+      ).toEqual(requestedTraits[plugin.id] ?? []);
+    },
+  );
 
-  test.each(
-    plugins,
-  )("$id packages no Facebook or analytics SDK on Android", (plugin) => {
-    const gradlePath = `${plugin.root}/android/build.gradle`;
-    if (!existsSync(gradlePath)) return;
-    expect(
-      bannedGradleDependencies(readFileSync(gradlePath, "utf8"), variables),
-    ).toEqual([]);
-  });
+  test.each(plugins)(
+    "$id packages no Facebook or analytics SDK on Android",
+    (plugin) => {
+      const gradlePath = `${plugin.root}/android/build.gradle`;
+      if (!existsSync(gradlePath)) return;
+      expect(
+        bannedGradleDependencies(readFileSync(gradlePath, "utf8"), variables),
+      ).toEqual([]);
+    },
+  );
 
   test("the generated manifest uses the configured Swift tools version", () => {
     expect(swiftToolsVersion(generated)).toBe(spm?.swiftToolsVersion);

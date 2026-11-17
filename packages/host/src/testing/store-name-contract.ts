@@ -14,20 +14,19 @@ export function runAgentNameContract(
   make: () => WorkspaceStore,
 ): void {
   describe(`WorkspaceStore name contract: ${name}`, () => {
-    test.each([
-      "Mia",
-      "mia",
-      "  MIA ",
-    ])("createAgent refuses %j when Mia exists, and leaves Mia alone", async (taken) => {
-      const s = make();
-      const ws = await s.getOrCreatePersonalWorkspace("user-1");
-      const mia = await s.createAgent({ workspaceId: ws.id, name: "Mia" });
+    test.each(["Mia", "mia", "  MIA "])(
+      "createAgent refuses %j when Mia exists, and leaves Mia alone",
+      async (taken) => {
+        const s = make();
+        const ws = await s.getOrCreatePersonalWorkspace("user-1");
+        const mia = await s.createAgent({ workspaceId: ws.id, name: "Mia" });
 
-      await expect(
-        s.createAgent({ workspaceId: ws.id, name: taken }),
-      ).rejects.toBeInstanceOf(AgentNameConflictError);
-      expect(await s.listAgents(ws.id)).toEqual([mia]);
-    });
+        await expect(
+          s.createAgent({ workspaceId: ws.id, name: taken }),
+        ).rejects.toBeInstanceOf(AgentNameConflictError);
+        expect(await s.listAgents(ws.id)).toEqual([mia]);
+      },
+    );
 
     test("createAgent refuses the decomposed (NFD) spelling of a composed (NFC) name", async () => {
       const s = make();

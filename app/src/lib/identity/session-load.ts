@@ -5,8 +5,8 @@
 // session-store.ts binds the real keychain/browser adapter into it.
 
 import { identityLog } from "./log.ts";
-import { deserializeSession, type Session } from "./session.ts";
 import type { ReadResult } from "./session-storage-kv.ts";
+import { deserializeSession, type Session } from "./session.ts";
 
 /**
  * The outcome of reading the persisted session, keeping a storage READ FAULT

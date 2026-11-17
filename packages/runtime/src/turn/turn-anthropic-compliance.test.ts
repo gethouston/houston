@@ -110,154 +110,157 @@ test.each([
     access: "sk-ant-api03-compliance",
     envKey: "ANTHROPIC_API_KEY",
   },
-])("$kind Anthropic turn stays inside the Claude SDK boundary", async (input) => {
-  const prefix = `ws/compliance/${input.kind}`;
-  const conversationId = `conversation-${input.kind}`;
-  seed(prefix, "data/settings.json", "{}");
-  for (const key of HOST_SECRETS) process.env[key] = `secret-${key}`;
+])(
+  "$kind Anthropic turn stays inside the Claude SDK boundary",
+  async (input) => {
+    const prefix = `ws/compliance/${input.kind}`;
+    const conversationId = `conversation-${input.kind}`;
+    seed(prefix, "data/settings.json", "{}");
+    for (const key of HOST_SECRETS) process.env[key] = `secret-${key}`;
 
-  const originalFetch = globalThis.fetch;
-  const fetchGuard = vi.fn<typeof fetch>(async (request, init) => {
-    const url = new URL(
-      typeof request === "string" || request instanceof URL
-        ? request
-        : request.url,
-    );
-    if (url.hostname === "api.anthropic.com")
-      throw new Error("Anthropic was dialed outside the Claude SDK seam");
-    return originalFetch(request, init);
-  });
-  vi.stubGlobal("fetch", fetchGuard);
-
-  const originalConnect = net.connect;
-  const dialedHosts: string[] = [];
-  vi.spyOn(net, "connect").mockImplementation(((...args: unknown[]) => {
-    const first = args[0];
-    const host =
-      typeof first === "object" && first !== null && "host" in first
-        ? String(first.host)
-        : typeof args[1] === "string"
-          ? args[1]
-          : "";
-    dialedHosts.push(host);
-    if (host === "api.anthropic.com")
-      throw new Error("Anthropic was dialed through node:net");
-    return Reflect.apply(originalConnect, net, args) as ReturnType<
-      typeof net.connect
-    >;
-  }) as typeof net.connect);
-
-  let queryCalls = 0;
-  let capturedOptions: Options | undefined;
-  const query: ClaudeQuery = async function* ({ options }) {
-    queryCalls += 1;
-    capturedOptions = options;
-    const configDir = options.env?.CLAUDE_CONFIG_DIR;
-    if (!configDir) throw new Error("query received no Claude config dir");
-    const transcript = join(
-      configDir,
-      "projects",
-      "foreign-slug",
-      `${input.kind}-session.jsonl`,
-    );
-    mkdirSync(dirname(transcript), { recursive: true });
-    writeFileSync(transcript, '{"type":"user"}\n');
-    mkdirSync(join(configDir, "statsig"), { recursive: true });
-    writeFileSync(join(configDir, "statsig", "cache.json"), "cache");
-    writeFileSync(join(configDir, ".credentials.json"), "credential-cache");
-    yield {
-      type: "stream_event",
-      event: {
-        type: "content_block_delta",
-        index: 0,
-        delta: { type: "text_delta", text: `sdk-${input.kind}-reply` },
-      },
-      session_id: `${input.kind}-session`,
-      parent_tool_use_id: null,
-    } as unknown as SDKMessage;
-    yield {
-      type: "result",
-      subtype: "success",
-      usage: { input_tokens: 12, output_tokens: 3 },
-      session_id: `${input.kind}-session`,
-    } as unknown as SDKMessage;
-  };
-  const runtime = createTurnServer({
-    store,
-    token: "",
-    poolStoreUrl: "",
-    runTurn: (directories, turn) =>
-      runTurn(directories, turn, {
-        claudeSdk: { query, createSdkMcpServer: fakeMcp() },
-      }),
-    fetchImpl: async () => new Response(null, { status: 204 }),
-  });
-  const runtimeUrl = await listen(runtime);
-  const response = await fetch(`${runtimeUrl}/turn`, {
-    method: "POST",
-    headers: { "content-type": "application/json" },
-    body: JSON.stringify({
-      workspaceId: "compliance",
-      agentId: input.kind,
-      conversationId,
-      text: "hello",
-      provider: "anthropic",
-      model: "claude-sonnet-4-6",
-      gcsPrefix: prefix,
-      hostToken: "host-token",
-      claim: {
-        id: `claim-${input.kind}`,
-        bootId: "boot-compliance",
-        token: "claim-token",
-        heartbeatUrl: "https://gateway.invalid/heartbeat",
-      },
-      credential: {
-        provider: "anthropic",
-        access: input.access,
-        expires: Date.now() + 60_000,
-        kind: input.kind,
-      },
-    }),
-  });
-  const stream = await response.text();
-  expect(response.status, stream).toBe(200);
-
-  expect(stream).toContain(`sdk-${input.kind}-reply`);
-  expect(queryCalls).toBe(1);
-  expect(pi.createBackend).not.toHaveBeenCalled();
-  expect(dialedHosts).not.toContain("api.anthropic.com");
-  expect(
-    fetchGuard.mock.calls.some(([request]) => {
-      const value =
+    const originalFetch = globalThis.fetch;
+    const fetchGuard = vi.fn<typeof fetch>(async (request, init) => {
+      const url = new URL(
         typeof request === "string" || request instanceof URL
-          ? String(request)
-          : request.url;
-      return new URL(value).hostname === "api.anthropic.com";
-    }),
-  ).toBe(false);
+          ? request
+          : request.url,
+      );
+      if (url.hostname === "api.anthropic.com")
+        throw new Error("Anthropic was dialed outside the Claude SDK seam");
+      return originalFetch(request, init);
+    });
+    vi.stubGlobal("fetch", fetchGuard);
 
-  const env = capturedOptions?.env;
-  expect(env?.[input.envKey]).toBe(input.access);
-  expect(env?.CLAUDE_CONFIG_DIR).toContain(
-    `/data/sessions/${conversationId}/claude`,
-  );
-  expect(env?.CLAUDE_SECURESTORAGE_CONFIG_DIR).not.toContain("/store/");
-  expect(env?.HOME).not.toContain("/store/");
-  for (const key of HOST_SECRETS) expect(env?.[key]).toBeUndefined();
+    const originalConnect = net.connect;
+    const dialedHosts: string[] = [];
+    vi.spyOn(net, "connect").mockImplementation(((...args: unknown[]) => {
+      const first = args[0];
+      const host =
+        typeof first === "object" && first !== null && "host" in first
+          ? String(first.host)
+          : typeof args[1] === "string"
+            ? args[1]
+            : "";
+      dialedHosts.push(host);
+      if (host === "api.anthropic.com")
+        throw new Error("Anthropic was dialed through node:net");
+      return Reflect.apply(originalConnect, net, args) as ReturnType<
+        typeof net.connect
+      >;
+    }) as typeof net.connect);
 
-  const uploaded = await store.list(prefix);
-  const relativeKeys = uploaded.map((key) => relative(prefix, key));
-  expect(relativeKeys).toContain(
-    `data/sessions/${conversationId}/claude/projects/foreign-slug/${input.kind}-session.jsonl`,
-  );
-  expect(relativeKeys).toContain(
-    `data/sessions/${conversationId}/claude/sessions.json`,
-  );
-  expect(relativeKeys).not.toContain("data/auth.json");
-  expect(relativeKeys).not.toContain(
-    `data/sessions/${conversationId}/claude/statsig/cache.json`,
-  );
-  expect(relativeKeys).not.toContain(
-    `data/sessions/${conversationId}/claude/.credentials.json`,
-  );
-});
+    let queryCalls = 0;
+    let capturedOptions: Options | undefined;
+    const query: ClaudeQuery = async function* ({ options }) {
+      queryCalls += 1;
+      capturedOptions = options;
+      const configDir = options.env?.CLAUDE_CONFIG_DIR;
+      if (!configDir) throw new Error("query received no Claude config dir");
+      const transcript = join(
+        configDir,
+        "projects",
+        "foreign-slug",
+        `${input.kind}-session.jsonl`,
+      );
+      mkdirSync(dirname(transcript), { recursive: true });
+      writeFileSync(transcript, '{"type":"user"}\n');
+      mkdirSync(join(configDir, "statsig"), { recursive: true });
+      writeFileSync(join(configDir, "statsig", "cache.json"), "cache");
+      writeFileSync(join(configDir, ".credentials.json"), "credential-cache");
+      yield {
+        type: "stream_event",
+        event: {
+          type: "content_block_delta",
+          index: 0,
+          delta: { type: "text_delta", text: `sdk-${input.kind}-reply` },
+        },
+        session_id: `${input.kind}-session`,
+        parent_tool_use_id: null,
+      } as unknown as SDKMessage;
+      yield {
+        type: "result",
+        subtype: "success",
+        usage: { input_tokens: 12, output_tokens: 3 },
+        session_id: `${input.kind}-session`,
+      } as unknown as SDKMessage;
+    };
+    const runtime = createTurnServer({
+      store,
+      token: "",
+      poolStoreUrl: "",
+      runTurn: (directories, turn) =>
+        runTurn(directories, turn, {
+          claudeSdk: { query, createSdkMcpServer: fakeMcp() },
+        }),
+      fetchImpl: async () => new Response(null, { status: 204 }),
+    });
+    const runtimeUrl = await listen(runtime);
+    const response = await fetch(`${runtimeUrl}/turn`, {
+      method: "POST",
+      headers: { "content-type": "application/json" },
+      body: JSON.stringify({
+        workspaceId: "compliance",
+        agentId: input.kind,
+        conversationId,
+        text: "hello",
+        provider: "anthropic",
+        model: "claude-sonnet-4-6",
+        gcsPrefix: prefix,
+        hostToken: "host-token",
+        claim: {
+          id: `claim-${input.kind}`,
+          bootId: "boot-compliance",
+          token: "claim-token",
+          heartbeatUrl: "https://gateway.invalid/heartbeat",
+        },
+        credential: {
+          provider: "anthropic",
+          access: input.access,
+          expires: Date.now() + 60_000,
+          kind: input.kind,
+        },
+      }),
+    });
+    const stream = await response.text();
+    expect(response.status, stream).toBe(200);
+
+    expect(stream).toContain(`sdk-${input.kind}-reply`);
+    expect(queryCalls).toBe(1);
+    expect(pi.createBackend).not.toHaveBeenCalled();
+    expect(dialedHosts).not.toContain("api.anthropic.com");
+    expect(
+      fetchGuard.mock.calls.some(([request]) => {
+        const value =
+          typeof request === "string" || request instanceof URL
+            ? String(request)
+            : request.url;
+        return new URL(value).hostname === "api.anthropic.com";
+      }),
+    ).toBe(false);
+
+    const env = capturedOptions?.env;
+    expect(env?.[input.envKey]).toBe(input.access);
+    expect(env?.CLAUDE_CONFIG_DIR).toContain(
+      `/data/sessions/${conversationId}/claude`,
+    );
+    expect(env?.CLAUDE_SECURESTORAGE_CONFIG_DIR).not.toContain("/store/");
+    expect(env?.HOME).not.toContain("/store/");
+    for (const key of HOST_SECRETS) expect(env?.[key]).toBeUndefined();
+
+    const uploaded = await store.list(prefix);
+    const relativeKeys = uploaded.map((key) => relative(prefix, key));
+    expect(relativeKeys).toContain(
+      `data/sessions/${conversationId}/claude/projects/foreign-slug/${input.kind}-session.jsonl`,
+    );
+    expect(relativeKeys).toContain(
+      `data/sessions/${conversationId}/claude/sessions.json`,
+    );
+    expect(relativeKeys).not.toContain("data/auth.json");
+    expect(relativeKeys).not.toContain(
+      `data/sessions/${conversationId}/claude/statsig/cache.json`,
+    );
+    expect(relativeKeys).not.toContain(
+      `data/sessions/${conversationId}/claude/.credentials.json`,
+    );
+  },
+);

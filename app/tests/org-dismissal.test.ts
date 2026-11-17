@@ -4,9 +4,8 @@ import { describe, it } from "node:test";
 
 const { act, createElement: h } = await import("react");
 const { createRoot } = await import("react-dom/client");
-const { useOrgDismissal } = await import(
-  "../src/components/shell/use-org-dismissal.ts"
-);
+const { useOrgDismissal } =
+  await import("../src/components/shell/use-org-dismissal.ts");
 
 let dismiss: () => void = () => {};
 

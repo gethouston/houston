@@ -21,7 +21,6 @@
 import { isIdentityError } from "./errors.ts";
 import { identityLog } from "./log.ts";
 import { mintUsableIdToken } from "./refresh-mint.ts";
-import type { Session } from "./session.ts";
 import {
   clearSession,
   loadSession,
@@ -29,6 +28,7 @@ import {
   saveSession,
   sessionEpoch,
 } from "./session-store.ts";
+import type { Session } from "./session.ts";
 
 type SessionSink = (session: Session | null) => void;
 

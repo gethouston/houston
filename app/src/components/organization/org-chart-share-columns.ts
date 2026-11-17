@@ -3,8 +3,8 @@ import {
   type CardNode,
   CHART_WIDTH,
 } from "./org-chart-share-card-geometry.ts";
-import type { OrgTree, OrgTreeAgent } from "./org-chart-tree.ts";
 import { NODE_ID } from "./org-chart-tree-paths.ts";
+import type { OrgTree, OrgTreeAgent } from "./org-chart-tree.ts";
 
 /**
  * The share image's first row: what goes in it, and where each column sits.

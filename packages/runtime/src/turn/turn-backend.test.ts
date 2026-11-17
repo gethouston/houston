@@ -43,20 +43,21 @@ function deps(credential: "oauth" | "api_key"): TurnBackendDeps {
   };
 }
 
-test.each([
-  "oauth",
-  "api_key",
-] as const)("anthropic uses the Claude backend for a %s credential", (credential) => {
-  expect(createTurnBackend("anthropic", deps(credential)).id).toBe("anthropic");
-});
+test.each(["oauth", "api_key"] as const)(
+  "anthropic uses the Claude backend for a %s credential",
+  (credential) => {
+    expect(createTurnBackend("anthropic", deps(credential)).id).toBe(
+      "anthropic",
+    );
+  },
+);
 
-test.each([
-  "openai-codex",
-  "google",
-  "openrouter",
-])("%s uses the pi backend", (provider) => {
-  expect(createTurnBackend(provider, deps("oauth")).id).toBe("pi");
-});
+test.each(["openai-codex", "google", "openrouter"])(
+  "%s uses the pi backend",
+  (provider) => {
+    expect(createTurnBackend(provider, deps("oauth")).id).toBe("pi");
+  },
+);
 
 test("an unavailable Claude SDK becomes a typed provider failure", async () => {
   const input = deps("oauth");

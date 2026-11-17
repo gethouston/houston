@@ -16,12 +16,10 @@ import {
 } from "./support/conversation-log-dom.ts";
 
 const { createElement: h } = await import("react");
-const { Conversation, ConversationContent } = await import(
-  "../src/ai-elements/conversation.tsx"
-);
-const { ConversationViewportPin } = await import(
-  "../src/ai-elements/conversation-viewport-pin.tsx"
-);
+const { Conversation, ConversationContent } =
+  await import("../src/ai-elements/conversation.tsx");
+const { ConversationViewportPin } =
+  await import("../src/ai-elements/conversation-viewport-pin.tsx");
 
 const { useStickToBottomContext } = await import("use-stick-to-bottom");
 

@@ -1,4 +1,3 @@
-import { LINKEDIN_TEXT_MAX } from "@houston/wire-types";
 import {
   Dialog,
   DialogContent,
@@ -7,6 +6,7 @@ import {
   DialogTitle,
   Textarea,
 } from "@houston-ai/core";
+import { LINKEDIN_TEXT_MAX } from "@houston/wire-types";
 import { Check, Copy, Download } from "lucide-react";
 import { useId } from "react";
 import { Trans, useTranslation } from "react-i18next";

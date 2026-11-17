@@ -1,13 +1,13 @@
-import type {
-  BrowserLiveConnection,
-  BrowserLiveConnectOptions,
-} from "@houston/engine-adapter";
 import {
   type BrowserLiveViewInput,
   type BrowserLiveViewState,
   isBrowserLiveViewEnded,
 } from "@houston-ai/chat";
 import { useIsMobile } from "@houston-ai/core";
+import type {
+  BrowserLiveConnection,
+  BrowserLiveConnectOptions,
+} from "@houston/engine-adapter";
 import { useCallback, useEffect, useRef, useState } from "react";
 import { browserLive } from "../lib/browser-live-facade";
 import {

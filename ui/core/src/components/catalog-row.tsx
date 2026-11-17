@@ -37,8 +37,10 @@ const ACTION_ATTR = "data-catalog-row-action";
  *  content starts at the same x as the row's leading art. */
 const ROW_PX = "px-3";
 
-export interface CatalogRowProps
-  extends Omit<ComponentPropsWithoutRef<"button">, "children" | "onClick"> {
+export interface CatalogRowProps extends Omit<
+  ComponentPropsWithoutRef<"button">,
+  "children" | "onClick"
+> {
   /** Leading art (~40px): a brand logo, letter avatar, or glyph tile. */
   icon: ReactNode;
   title: string;

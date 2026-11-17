@@ -1,5 +1,5 @@
-import type { UploadProgress } from "@houston/engine-adapter";
 import { AttachmentProgress } from "@houston-ai/chat";
+import type { UploadProgress } from "@houston/engine-adapter";
 import { useUploadProgressLabels } from "../../upload-progress-provider";
 
 export function MigrationUploadProgress({

@@ -52,9 +52,8 @@ await import("./conversation-cache");
 const { execTurn } = await import("./exec-turn");
 const { runTurn } = await import("./chat");
 const { subscribe } = await import("./bus");
-const { getHistory, appendUserMessage } = await import(
-  "../store/conversations"
-);
+const { getHistory, appendUserMessage } =
+  await import("../store/conversations");
 const { withWorkdirLock } = await import("./workdir-lock");
 const { setDefaultBackend } = await import("../backends/registry");
 const { config } = await import("../config");

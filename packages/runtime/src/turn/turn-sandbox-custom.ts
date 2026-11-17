@@ -31,9 +31,9 @@ export function makeTurnCustomRoutes(
       if (typeof body.url !== "string" || !body.url.trim()) {
         return Response.json({ error: "missing 'url'" }, { status: 400 });
       }
-      const result = await (await getCustom(signal)).manager.detect(
-        body.url.trim(),
-      );
+      const result = await (
+        await getCustom(signal)
+      ).manager.detect(body.url.trim());
       return result.requiresOAuth
         ? oauthDecline()
         : Response.json(result, { status: 200 });

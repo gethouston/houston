@@ -25,9 +25,8 @@ before(async () => {
     ns: ["agents", "shell"],
     resources: { en: { agents, shell } },
   });
-  const { useEmployeeNameIssueCopy } = await import(
-    "../src/components/employee-card/use-employee-name.ts"
-  );
+  const { useEmployeeNameIssueCopy } =
+    await import("../src/components/employee-card/use-employee-name.ts");
   render = (options) => {
     let copy: EmployeeNameIssueCopy | undefined;
     const Probe = () => {

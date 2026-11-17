@@ -1,5 +1,5 @@
-import { duration } from "@houston/design-tokens";
 import { Button, cn, Skeleton } from "@houston-ai/core";
+import { duration } from "@houston/design-tokens";
 import { type CSSProperties, useState } from "react";
 import { useTranslation } from "react-i18next";
 import { ENTRANCE_CURVE, PRESS_CLASS, PRESS_STYLE } from "./org-chart-motion";

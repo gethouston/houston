@@ -7,9 +7,8 @@ import { afterEach, expect, test, vi } from "vitest";
 // config.dataDir, which reads HOUSTON_DATA_DIR at import time — pin it first.
 process.env.HOUSTON_DATA_DIR = mkdtempSync(join(tmpdir(), "houston-terse-"));
 
-const { noteQuotaExhausted, resetAuthFailures } = await import(
-  "../auth/credential-health"
-);
+const { noteQuotaExhausted, resetAuthFailures } =
+  await import("../auth/credential-health");
 const {
   isCodexTerseRefusal,
   noteCodexRefusal,

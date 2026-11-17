@@ -4,13 +4,13 @@ import {
   type IdentityLogLevel,
   setIdentityLogSink,
 } from "../src/lib/identity/log.ts";
-import type { Session } from "../src/lib/identity/session.ts";
-import { serializeSession } from "../src/lib/identity/session.ts";
 import {
   createSessionLoader,
   type SessionLoadDeps,
 } from "../src/lib/identity/session-load.ts";
 import type { ReadResult } from "../src/lib/identity/session-storage-kv.ts";
+import type { Session } from "../src/lib/identity/session.ts";
+import { serializeSession } from "../src/lib/identity/session.ts";
 
 // Pure orchestration tests: createSessionLoader is dependency-injected, so the
 // read-fault / ACL-rebind logic is exercised WITHOUT Tauri or keychain mode

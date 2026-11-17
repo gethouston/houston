@@ -77,9 +77,8 @@ test("the fact count and each fact's length are bounded", () => {
 });
 
 test("only the assistant's conversation carries extraction instructions", async () => {
-  const { ASSISTANT_CONVERSATION_ID } = await import(
-    "@houston/host/src/routes/assistant"
-  );
+  const { ASSISTANT_CONVERSATION_ID } =
+    await import("@houston/host/src/routes/assistant");
   expect(durableFactsInstructions(ASSISTANT_CONVERSATION_ID)).toContain(
     DURABLE_FACTS_FENCE,
   );

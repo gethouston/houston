@@ -1,6 +1,6 @@
+import routineRunsSchema from "@houston-ai/agent-schemas/routine_runs.schema.json";
 import type { RoutineRun } from "@houston/protocol";
 import type { RoutineRun as WireRoutineRun } from "@houston/wire-types";
-import routineRunsSchema from "@houston-ai/agent-schemas/routine_runs.schema.json";
 import Ajv from "ajv";
 import { expect, test } from "vitest";
 

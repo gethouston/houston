@@ -397,33 +397,33 @@ describe("colour values", () => {
     "color",
   ]);
 
-  test.each([
-    "charcoal",
-    "UMBER",
-    "#1a2b3c",
-    "",
-  ])("accepts %s as a colour Houston can store", async (color) => {
-    expect(
-      await resolveEntityParams(setColor, { agentId: "Legal", color }, deps()),
-    ).toEqual({ ok: true, params: { agentId: "a-legal", color } });
-  });
+  test.each(["charcoal", "UMBER", "#1a2b3c", ""])(
+    "accepts %s as a colour Houston can store",
+    async (color) => {
+      expect(
+        await resolveEntityParams(
+          setColor,
+          { agentId: "Legal", color },
+          deps(),
+        ),
+      ).toEqual({ ok: true, params: { agentId: "a-legal", color } });
+    },
+  );
 
-  test.each([
-    "blurple",
-    "#12345",
-    "rgb(1,2,3)",
-    7,
-  ])("refuses %s and names the palette", async (color) => {
-    const out = await resolveEntityParams(
-      setColor,
-      { agentId: "Legal", color },
-      deps(),
-    );
-    expect(out).toMatchObject({ ok: false, code: "invalid_params" });
-    if (!out.ok) {
-      expect(out.message).toContain('"color"');
-      expect(out.message).toContain("charcoal");
-      expect(out.message).toContain("umber");
-    }
-  });
+  test.each(["blurple", "#12345", "rgb(1,2,3)", 7])(
+    "refuses %s and names the palette",
+    async (color) => {
+      const out = await resolveEntityParams(
+        setColor,
+        { agentId: "Legal", color },
+        deps(),
+      );
+      expect(out).toMatchObject({ ok: false, code: "invalid_params" });
+      if (!out.ok) {
+        expect(out.message).toContain('"color"');
+        expect(out.message).toContain("charcoal");
+        expect(out.message).toContain("umber");
+      }
+    },
+  );
 });
