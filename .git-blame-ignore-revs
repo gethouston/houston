@@ -3,3 +3,5 @@
 #   git config blame.ignoreRevsFile .git-blame-ignore-revs
 # GitHub applies this file automatically in its blame view.
 
+# chore(format): apply the oxfmt baseline
+e18ff01a7cf22b1c189544b4a5ddd874c8c001e9
