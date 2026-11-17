@@ -85,28 +85,20 @@ export const CURATED_API_KEY_OVERRIDES: Record<string, ProviderOverride> = {
     name: "MiniMax",
     subtitle: "Global API",
     description: "Fast, affordable models for agent work.",
-    // The Coding Plan key is separate from a pay-as-you-go key and they are NOT
+    // The M Plan key is separate from a pay-as-you-go key and they are NOT
     // interchangeable (HOU-1160) — the card must say which one to paste.
-    cost: "Coding Plan subscription (paste that plan's API key) or pay-as-you-go",
+    cost: "M Plan subscription (paste that plan's API key) or pay-as-you-go",
     installUrl: "https://platform.minimax.io",
     apiKeyUrl:
       "https://platform.minimax.io/user-center/basic-information/interface-key",
-    // The 1M-context tier MiniMax's Coding/Token plan bills against; also works
-    // pay-as-you-go. A subscription key run on bare MiniMax-M3 reads as
-    // "usage ran out" (HOU-1160), so this is the connect default.
+    // The connect default: the one text model both key kinds run.
     models: {
-      "MiniMax-M3[1m]": {
+      "MiniMax-M3.1-Flash": {
         description:
-          "Best default. 1M-context tier for the MiniMax coding/token plan or pay-as-you-go.",
+          "Best default. Fast 1M-context model for the MiniMax plan or pay-as-you-go.",
       },
       "MiniMax-M3": {
         description: "Long-context multimodal model, pay-as-you-go.",
-      },
-      "MiniMax-M2.7": {
-        description: "Lower cost. Text-only reasoning model.",
-      },
-      "MiniMax-M2.7-highspeed": {
-        description: "Faster M2.7 tier for latency-sensitive chats.",
       },
     },
   },

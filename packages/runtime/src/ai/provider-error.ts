@@ -206,6 +206,18 @@ const MODEL_UNAVAILABLE_PATTERNS = [
   // phrasings above match this order, so it degraded to `unknown` — the
   // report-bug card instead of switch-model (PRODUCT-1517).
   "not supported model",
+  // MiniMax's 400 for a model id its API does not serve: `invalid params,
+  // unknown model '<id>' (2013)`. Reached only after the key passed. Kept to
+  // the quoted-id form: an openai-compatible server's `unknown model parameter
+  // "foo"` is a bad request field, not a dead model.
+  "unknown model '",
+  // OpenRouter's answers for a retired or renamed id: 404 `No endpoints found
+  // for <id>.` (a free `:free` variant withdrawn while pins on it remain) and
+  // 400 `<id> is not a valid model ID`. Kept to the "for <id>" form: OpenRouter's
+  // capability misses ("No endpoints found that support tool use") are a
+  // different failure.
+  "no endpoints found for",
+  "is not a valid model id",
   // The runtime's OWN local-override guard (`localOverrideError`,
   // ai/openai-compatible.ts): a turn pinned to a model the configured custom
   // endpoint doesn't serve — a conversation pinned before the endpoint was

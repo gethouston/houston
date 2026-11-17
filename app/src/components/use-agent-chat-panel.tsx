@@ -1699,7 +1699,9 @@ export function useAgentChatPanel({
   // turn started elsewhere (another device, a member, a routine) already
   // retired this card and this window had not caught up (HOUSTON-APP-5EY).
   // Then: no clear (it would race that turn's settle write), un-abandon the key
-  // so the resync decides what shows, and say so in authored copy.
+  // so the resync decides what shows, and say so in authored copy. The same
+  // holds for `not_interaction_owner`: on a shared agent the card belongs to
+  // the member whose message raised it, so it stays for them.
   const dismissActiveInteraction = useCallback(() => {
     if (!path || !selectedSessionKey || !interactionKey) return;
     setAbandonedInteractionKey(interactionKey);
@@ -1712,6 +1714,13 @@ export function useAgentChatPanel({
       if (outcome && !outcome.ok) {
         setAbandonedInteractionKey(null);
         resyncInteraction();
+        if (outcome.refusal === "not_interaction_owner") {
+          showExpectedStateToast(
+            t("chat:errors.interactionNotYoursTitle"),
+            t("chat:errors.interactionNotYoursBody"),
+          );
+          return;
+        }
         showExpectedStateToast(
           t("chat:errors.interactionBusyTitle"),
           t("chat:errors.interactionBusyBody"),
