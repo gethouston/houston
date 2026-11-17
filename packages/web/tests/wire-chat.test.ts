@@ -132,6 +132,23 @@ test("dismissInteraction answers a running turn's 409 as a typed refusal, not a 
   expect(onlyCall().method).toBe("POST");
 });
 
+test("dismissInteraction answers a card meant for another member as a typed refusal", async () => {
+  stubRouted((call: Call) =>
+    call.url.endsWith("/dismiss-interaction")
+      ? json(403, {
+          error: "not_interaction_owner",
+          code: "not_interaction_owner",
+        })
+      : json(200, { ok: true }),
+  );
+
+  await expect(client().dismissInteraction(AGENT, SK)).resolves.toEqual({
+    ok: false,
+    refusal: "not_interaction_owner",
+  });
+  expect(onlyCall().method).toBe("POST");
+});
+
 test("truncateConversation posts the turn it cuts at", async () => {
   stubEngine({ ok: true, removed: 2 });
 
