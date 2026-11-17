@@ -22,6 +22,13 @@ concurrency:
 permissions:
   contents: read
 
+# Each job's `timeout-minutes` is its budget, about 1.5x its p95 over the last
+# 150 runs (after the visual suite moved to the prebuilt bundle and the app
+# tests to one process), so a job that gets slower goes red here instead of
+# quietly growing the PR wall clock. A budget only tightens: when a job gets
+# faster, lower its number in the same PR. Raising one needs the measured
+# reason in the PR body, never "it timed out".
+
 jobs:
   changes:
     # Decides whether the Playwright jobs below (the web shards and the
@@ -50,7 +57,7 @@ jobs:
     # would need a checkout plus `base` for the action, or to run everything.
     name: Changed paths
     runs-on: ubuntu-latest
-    timeout-minutes: 5
+    timeout-minutes: 2
     permissions:
       contents: read
       pull-requests: read
@@ -96,7 +103,7 @@ jobs:
     needs: changes
     if: needs.changes.outputs.app == 'true'
     runs-on: ubuntu-latest
-    timeout-minutes: 20
+    timeout-minutes: 5
     steps:
       - name: Checkout
         uses: actions/checkout@v6
@@ -171,7 +178,7 @@ jobs:
     needs: changes
     if: needs.changes.outputs.app == 'true'
     runs-on: ubuntu-latest
-    timeout-minutes: 15
+    timeout-minutes: 8
     strategy:
       fail-fast: false
       matrix:
@@ -224,7 +231,7 @@ jobs:
     needs: changes
     if: needs.changes.outputs.web == 'true'
     runs-on: ubuntu-latest
-    timeout-minutes: 30
+    timeout-minutes: 9
     strategy:
       fail-fast: false
       matrix:
@@ -304,7 +311,7 @@ jobs:
     needs: changes
     if: needs.changes.outputs.web == 'true'
     runs-on: ubuntu-latest
-    timeout-minutes: 20
+    timeout-minutes: 10
     container:
       image: mcr.microsoft.com/playwright:v1.64.0-noble
     steps:
@@ -349,7 +356,7 @@ jobs:
     needs: changes
     if: needs.changes.outputs.app == 'true'
     runs-on: ubuntu-latest
-    timeout-minutes: 20
+    timeout-minutes: 9
     steps:
       - uses: actions/checkout@v6
 
@@ -402,7 +409,7 @@ jobs:
     needs: changes
     if: needs.changes.outputs.site == 'true'
     runs-on: ubuntu-latest
-    timeout-minutes: 10
+    timeout-minutes: 2
     steps:
       - uses: actions/checkout@v6
         with:
