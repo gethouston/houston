@@ -1990,7 +1990,7 @@ jobs:
 
       # Keep tauri's OWN updater-artifact emission off — not because Linux is
       # unsigned (it isn't, anymore), but because the signature tauri would
-      # emit here covers the WRONG bytes: the "Restore Bun host sidecar" step
+      # emit here covers the WRONG bytes: the "Restore Bun binaries" step
       # below rebuilds the AppImage after packaging, so the updater `.sig` is
       # minted manually AFTER the repair (see "Updater-sign the repaired
       # AppImage"). Without this flip `tauri build` also dies when
@@ -2067,10 +2067,11 @@ jobs:
           SENTRY_DSN: ${{ secrets.SENTRY_DSN }}
 
       # linuxdeploy adds a RUNPATH to every dynamic ELF with patchelf. Bun's
-      # standalone executable has an appended JS payload, and that mutation
-      # makes the packaged host segfault before its listening banner. Rebuild
-      # the AppImage from its extracted tree with the pristine sidecar restored.
-      - name: Restore Bun host sidecar after AppImage packaging
+      # standalone executables carry an appended JS payload, and that mutation
+      # makes both the packaged host and the bundled `claude` segfault on
+      # start. Rebuild the AppImage from its extracted tree with both pristine
+      # binaries restored.
+      - name: Restore Bun binaries after AppImage packaging
         run: |
           set -euo pipefail
           BUNDLE="target/x86_64-unknown-linux-gnu/release/bundle/appimage"
@@ -2078,7 +2079,8 @@ jobs:
           test -f "$APPIMAGE" || { echo "::error::AppImage missing before sidecar repair"; exit 1; }
           scripts/ci/repair-linux-appimage-sidecar.sh \
             "$APPIMAGE" \
-            target/host-sidecar/houston-host-x86_64-unknown-linux-gnu
+            target/host-sidecar/houston-host-x86_64-unknown-linux-gnu \
+            target/host-sidecar/claude-x86_64-unknown-linux-gnu
 
       - name: Locate Linux artifact
         id: artifacts-linux

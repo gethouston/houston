@@ -1,4 +1,5 @@
 import type { LocalBridgeDevice } from "@houston/protocol";
+import { anySignal } from "../abort-signal";
 import { cancelPreparedBridge } from "./cancellation";
 import { openBridge, renewalDelay, renewBridge } from "./connection";
 import { BridgeStateError, cancelledBridgeOperation } from "./errors";
@@ -39,7 +40,7 @@ export class LocalModelBridgeController extends LocalBridgeLifecycle {
     const epoch = this.lifetime.invalidate();
     if (input) this.emit({ ...this.snapshot, status: "connecting" });
     const signal = external
-      ? AbortSignal.any([external, this.lifetime.abort.signal])
+      ? anySignal([external, this.lifetime.abort.signal])
       : this.lifetime.abort.signal;
     return this.lifetime.enqueue(async () => {
       await this.ports.native.stop();

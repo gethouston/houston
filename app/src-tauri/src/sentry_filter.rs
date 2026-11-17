@@ -99,8 +99,18 @@ pub fn demote_webview_creation_error(target: &str, message: &str, guard_active: 
 /// The failing request already returns `Err` and its caller owns surfacing
 /// it, so the verifier's own log line is a duplicate — one Sentry event per
 /// retry from a handful of broken machines (Sentry HOUSTON-APP-PE).
+///
+/// `tauri_plugin_deep_link::error` is the plugin's `inspect_command_error`,
+/// which logs an error for every Linux OS command it cannot spawn
+/// (`update-desktop-database` from desktop-file-utils, `xdg-mime` from
+/// xdg-utils) and then returns the same failure to the caller. A missing tool
+/// on the user's machine is not a defect. This rule keeps the plugin's line as
+/// a breadcrumb; `deep_link_register` finishes the registration and reports
+/// only the case it cannot recover from.
 pub fn demote_error_to_breadcrumb(target: &str) -> bool {
-    target.starts_with("tauri_plugin_updater") || target.starts_with("rustls_platform_verifier")
+    target.starts_with("tauri_plugin_updater")
+        || target.starts_with("rustls_platform_verifier")
+        || target == "tauri_plugin_deep_link::error"
 }
 
 #[cfg(test)]
@@ -121,6 +131,25 @@ mod tests {
             "rustls_platform_verifier::verification::windows"
         ));
         assert!(demote_error_to_breadcrumb("rustls_platform_verifier"));
+    }
+
+    #[test]
+    fn deep_link_missing_os_command_is_demoted_to_a_breadcrumb() {
+        let all = decisions(|| {
+            tracing::error!(
+                target: "tauri_plugin_deep_link::error",
+                "Failed to run OS command `update-desktop-database`: No such file or directory (os error 2)"
+            );
+        });
+        let decision = decision_for(&all, "update-desktop-database");
+        assert!(decision.contains(EventFilter::Breadcrumb));
+        assert!(!decision.contains(EventFilter::Event));
+    }
+
+    #[test]
+    fn other_deep_link_errors_still_become_sentry_events() {
+        assert!(!demote_error_to_breadcrumb("tauri_plugin_deep_link"));
+        assert!(!demote_error_to_breadcrumb("tauri_plugin_deep_link::imp"));
     }
 
     #[test]

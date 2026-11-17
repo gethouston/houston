@@ -52,6 +52,9 @@ describe("isNetworkTransportError", () => {
       isNetworkTransportError(new TypeError("Failed to fetch")),
       true,
     );
+    // Chromium's (WebView2's) answer when the connection drops while the
+    // response body streams, after the headers already arrived.
+    strictEqual(isNetworkTransportError(new TypeError("network error")), true);
     strictEqual(
       isNetworkTransportError(
         new TypeError("NetworkError when attempting to fetch resource."),
