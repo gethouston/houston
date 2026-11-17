@@ -53,8 +53,11 @@ const TOOL_ABUSE_NEEDLES = [
   "never ask",
 ];
 
+// The curl arm stops at the next `curl`: an open-ended `[^|]*` would rescan
+// the rest of the body from every `curl` on it, and `\s+` before it would
+// backtrack over a long run of spaces.
 const SUSPICIOUS_SHELL =
-  /(rm\s+-rf\s+\/|:\(\)\{\s*:\|:|chmod\s+777|sudo\s+rm|>\s*\/dev\/sda|mkfs\.|dd\s+if=|curl\s+[^|]*\|\s*(sh|bash))/i;
+  /(rm\s+-rf\s+\/|:\(\)\{\s*:\|:|chmod\s+777|sudo\s+rm|>\s*\/dev\/sda|mkfs\.|dd\s+if=|curl\s(?:(?!curl\s)[^|])*\|\s*(sh|bash))/i;
 
 const OUTBOUND_HTTP =
   /(POST\s+https?:\/\/|fetch\(\s*['"]https?:\/\/|curl\s+(-X\s+POST\s+)?https?:\/\/)/i;

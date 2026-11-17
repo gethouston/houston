@@ -121,7 +121,7 @@ const SDK_HTTP_ERROR_NAMES = new Set([
 /** The gateway `error` reason out of a raw response body (an SDK http error's
  *  message or an `EngineError` `body`); null when it isn't gateway JSON
  *  (an HTML error page, the synthetic `agents request failed: <status>`). */
-function gatewayReason(body: string): string | null {
+export function gatewayReason(body: string): string | null {
   if (!body.startsWith("{")) return null;
   try {
     const reason = (JSON.parse(body) as { error?: unknown } | null)?.error;

@@ -16,8 +16,10 @@
 import { isTransportFailure } from "@houston/sdk/transport-failure";
 
 /**
- * A transport-level network failure: the device is offline or the host is
- * unreachable, and the request never produced a response. Browsers report
+ * A transport-level network failure: the device is offline, the host is
+ * unreachable, or the connection dropped before or while the answer arrived.
+ * A match does not prove the server never acted on the request, so it must
+ * not justify replaying a non-idempotent one. Browsers report
  * every such failure as a `TypeError` with an engine-specific message
  * (HOU-1085: a sleep-wake burst fails every live gateway query at once with
  * WebKit's "Load failed"). These are an expected, explainable environment
