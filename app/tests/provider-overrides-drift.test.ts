@@ -35,13 +35,6 @@ const pi = (await import(
   getProviders(): string[];
 };
 
-// Models Houston hand-builds ON a pi provider that pi-ai's catalog does NOT ship,
-// so they are legitimately absent from `getModel` yet still valid to curate. Keyed
-// `${piProvider}/${modelId}`. Today: MiniMax's token/coding-plan SKU, injected by
-// the host catalog (`withMinimaxTokenPlan`) and the runtime (`buildMinimaxTokenPlanModel`)
-// on the `minimax` provider (same endpoint/auth, 1M-context tier — HOU-1160).
-const HOUSTON_INJECTED_MODELS = new Set(["minimax/MiniMax-M3[1m]"]);
-
 // Houston's own `qwen` extension provider is appended to /v1/catalog by the
 // host (packages/host/src/providers/qwen-dashscope.ts) — the guard validates
 // against the catalog Houston actually serves, which is pi PLUS the extension.
@@ -84,19 +77,6 @@ describe("PROVIDER_OVERRIDES stay in sync with the shipped pi-ai catalog", () =>
     });
 
     for (const modelId of Object.keys(override.models ?? {})) {
-      if (HOUSTON_INJECTED_MODELS.has(`${piId}/${modelId}`)) {
-        // Self-expiring exemption: the moment pi-ai ships this id natively, the
-        // hand-built injection (host withMinimaxTokenPlan + runtime
-        // buildMinimaxTokenPlanModel) and this exemption are dead weight —
-        // fail loudly so they get removed instead of shadowing pi's entry.
-        it(`${houstonId}/${modelId} is still absent from pi-ai (injected by Houston)`, () => {
-          ok(
-            pi.getModel(piId, modelId) == null,
-            `pi-ai now ships "${modelId}" natively for "${piId}": remove the Houston injection (host withMinimaxTokenPlan / runtime buildMinimaxTokenPlanModel) and this HOUSTON_INJECTED_MODELS exemption.`,
-          );
-        });
-        continue;
-      }
       it(`${houstonId}/${modelId} exists in the shipped catalog`, () => {
         ok(
           shippedModel(piId, modelId) != null,
@@ -137,16 +117,12 @@ describe("the domain default model is offered and visible", () => {
     const houstonId = PROVIDER_ID_RENAME[piId] ?? piId;
     // Only providers Houston actually surfaces carry a picker/visibility rule.
     if (!PROVIDER_OVERRIDES[houstonId]) continue;
-    // Houston-injected SKUs (MiniMax's token plan) are legitimately absent
-    // from pi's catalog; the overrides guard above already pins those.
-    if (!HOUSTON_INJECTED_MODELS.has(`${piId}/${modelId}`)) {
-      it(`${houstonId} default ${modelId} exists in the shipped catalog`, () => {
-        ok(
-          shippedModel(piId, modelId) != null,
-          `DEFAULT_MODEL["${piId}"] = "${modelId}" is not offered by the shipped catalog (provider "${piId}").`,
-        );
-      });
-    }
+    it(`${houstonId} default ${modelId} exists in the shipped catalog`, () => {
+      ok(
+        shippedModel(piId, modelId) != null,
+        `DEFAULT_MODEL["${piId}"] = "${modelId}" is not offered by the shipped catalog (provider "${piId}").`,
+      );
+    });
     it(`${houstonId} default ${modelId} is visible in the picker`, () => {
       ok(
         isModelVisible(houstonId, modelId),
