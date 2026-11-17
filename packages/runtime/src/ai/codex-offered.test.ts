@@ -10,15 +10,18 @@ import { ModelNotOfferedError } from "./provider-error";
 import { providerDefaultModel, safeGetModel, safeModelIds } from "./providers";
 
 /**
- * The rows OpenAI's Codex backend answered 200 for on 2026-09-23 and
- * 2026-10-22 (see codex-offered.ts for the full method) that pi 1.4.0 ships.
+ * The rows OpenAI's Codex backend answered 200 for on 2026-09-23, 2026-10-22,
+ * 2026-10-26 and 2026-11-17 (see codex-offered.ts for the full method) that
+ * pi ships or the pi-ai patch backports.
  */
 const SERVED = [
   "gpt-6-luna",
   "gpt-6.1-terra",
   "gpt-6-sol",
   "gpt-6.1-sol",
+  "gpt-6.2-sol",
   "gpt-6-astra",
+  "gpt-6.2-astra",
   "gpt-5.6-sol",
   "gpt-5.6-terra",
   "gpt-5.6-luna",

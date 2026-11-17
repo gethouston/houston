@@ -29,6 +29,14 @@
  * Re-probed 2026-10-26, same method:
  *   served  — gpt-6.1-terra (200 `response.created`, efforts none/low/max)
  *
+ * Re-probed 2026-11-17, same method, for the two rows the pi-ai 1.5.2 patch
+ * backports:
+ *   served  — gpt-6.2-sol, gpt-6.2-astra (200 `response.created` with no
+ *             effort and with efforts low, medium, high, xhigh and max)
+ *   refused — efforts none and minimal (400 `unsupported_value`, "Supported
+ *             values are: 'low', 'medium', 'high', 'xhigh', and 'max'"), and
+ *             ultra (400 `invalid_value`)
+ *
  * pi 1.4.0 ships neither refused id, so the set below filters nothing today. It
  * stays because pi has carried refused rows before, and a stored pin on either
  * id must still fail as `model_unavailable` with a served switch target.
