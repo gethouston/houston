@@ -104,21 +104,33 @@ function Carousel({
     };
   }, [api, onSelect]);
 
+  const contextValue = React.useMemo(
+    () => ({
+      carouselRef,
+      api: api,
+      opts,
+      orientation:
+        orientation || (opts?.axis === "y" ? "vertical" : "horizontal"),
+      scrollPrev,
+      scrollNext,
+      canScrollPrev,
+      canScrollNext,
+    }),
+    [
+      carouselRef,
+      api,
+      opts,
+      orientation,
+      scrollPrev,
+      scrollNext,
+      canScrollPrev,
+      canScrollNext,
+    ],
+  );
+
   return (
-    <CarouselContext.Provider
-      value={{
-        carouselRef,
-        api: api,
-        opts,
-        orientation:
-          orientation || (opts?.axis === "y" ? "vertical" : "horizontal"),
-        scrollPrev,
-        scrollNext,
-        canScrollPrev,
-        canScrollNext,
-      }}
-    >
-      {/* biome-ignore lint/a11y/useSemanticElements: <section> without an accessible name gains no implicit role, making aria-roledescription invalid; the div+role="region" pattern is the correct ARIA carousel landmark. */}
+    <CarouselContext.Provider value={contextValue}>
+      {/* <section> without an accessible name gains no implicit role, making aria-roledescription invalid; the div+role="region" pattern is the correct ARIA carousel landmark. */}
       <div
         onKeyDownCapture={handleKeyDown}
         className={cn("relative", className)}
@@ -158,7 +170,7 @@ function CarouselItem({ className, ...props }: React.ComponentProps<"div">) {
   const { orientation } = useCarousel();
 
   return (
-    // biome-ignore lint/a11y/useSemanticElements: <fieldset> is for form controls; a carousel slide is content grouping, not a form group. role="group" on a div is the correct ARIA pattern here.
+    // <fieldset> is for form controls; a carousel slide is content grouping, not a form group. role="group" on a div is the correct ARIA pattern here.
     <div
       role="group"
       aria-roledescription="slide"

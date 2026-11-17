@@ -22,7 +22,7 @@ function fakeTimers(): LatchTimers & { runAll: () => void } {
       pending.delete(handle as unknown as number);
     },
     runAll() {
-      for (const [id, fn] of [...pending]) {
+      for (const [id, fn] of Array.from(pending)) {
         pending.delete(id);
         fn();
       }

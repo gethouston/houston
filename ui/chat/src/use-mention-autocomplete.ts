@@ -10,7 +10,7 @@
  */
 
 import type { KeyboardEvent } from "react";
-import { useCallback, useEffect, useRef, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { mentionKeyAction } from "./mention-keys.ts";
 import type { MentionQuery } from "./mention-query.ts";
 import {
@@ -77,7 +77,10 @@ export function useMentionAutocomplete({
   // An empty roster (single-player, a personal space, an older gateway) filters
   // to nobody, and no candidates means "@" is just a character. Dictation owns
   // the keyboard while capturing, so the list stays shut then too.
-  const suggestions = active ? filterMentionPeople(roster, active.query) : [];
+  const suggestions = useMemo(
+    () => (active ? filterMentionPeople(roster, active.query) : []),
+    [roster, active],
+  );
   const open = isMentionListOpen({
     enabled,
     suggestionCount: suggestions.length,
@@ -120,6 +123,7 @@ export function useMentionAutocomplete({
     if (query) setDismissedStart(query.start);
   }, []);
 
+  const pendingRecord = pending.record;
   const accept = useCallback(
     (person: MentionPerson) => {
       const textarea = textareaRef.current;
@@ -131,7 +135,7 @@ export function useMentionAutocomplete({
         textarea.selectionStart ?? textarea.value.length,
         person,
       );
-      pending.record({ userId: person.userId, name: person.name });
+      pendingRecord({ userId: person.userId, name: person.name });
       caretRef.current = next.caret;
       setActiveQuery(null);
       // This token is settled. Otherwise a name accepted before a comma (which
@@ -140,7 +144,7 @@ export function useMentionAutocomplete({
       setDismissedStart(query.start);
       onTextChange(next.text);
     },
-    [onTextChange, pending.record, setActiveQuery],
+    [onTextChange, pendingRecord, setActiveQuery],
   );
 
   // Put the caret back after the accepted name once React has committed the new

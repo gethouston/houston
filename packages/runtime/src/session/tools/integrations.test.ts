@@ -430,7 +430,7 @@ test("an exact MCP lookup recovers a required parameter beyond the broad signatu
   };
   mockFetch(() => ({ body: { items: [target, target, target] } }));
   const broad = await run(search, { app: "croma", query: "lookup records" });
-  const tail = broad.content.filter((part) => part.type === "text").at(-1);
+  const tail = broad.content.findLast((part) => part.type === "text");
   expect(
     tail?.type === "text" && tail.text.split(`- ${action}`).at(-1),
   ).not.toContain("required_last");

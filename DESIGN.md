@@ -147,7 +147,7 @@ Merge the tokenized scale (§4) with these craft rules:
 1. Load THIS file first, plus the existing components of the surface it touches.
 2. **New surface/screen** → generate **3–5 genuinely distinct** design directions, judge them, pin the winner before building → `skills/frontend-design/SKILL.md`.
 3. **Never self-review the look.** Design judgment is Julian's alone — show him. No `/design-review` screenshot loops.
-4. Scoped checks only (biome + your vitest); run **`pnpm check:parity`** whenever a shared/`ui/` component changed.
+4. Scoped checks only (`pnpm lint` + your vitest); run **`pnpm check:parity`** whenever a shared/`ui/` component changed.
 
 ## Component inventory (`@houston-ai/core` — the primitive lock)
 accordion · agent-avatar · alert · alert-dialog · async-button · avatar · badge · button · button-group · card · carousel · catalog · catalog-add-button · catalog-detail-dialog · catalog-row · catalog-search-field · catalog-shell · collapsible · command · confirm-dialog · context-menu · dialog · dropdown-menu · empty · error-boundary · file-type-icons · floating-nav-bar · flow-choice-row · flow-sheet · form-dialog · highlighted-text · houston-avatar · hover-card · input · input-group · input-otp · kbd · model-picker · popover · progress · resizable · responsive-popover · scroll-area · search-clear-button · select · separator · sheet · sidebar · skeleton · sonner · spinner · status-badge · switch · tabs · textarea · toast-container · tooltip · verified-badge.

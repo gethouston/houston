@@ -230,9 +230,7 @@ test("a color pick after hydration re-pushes the full map to the account", async
   await freshClient().listAgents(WS);
   setColor("aaaa111122223333", "golden");
   await flushAgentColorPushes();
-  const put = calls
-    .filter((c) => c.method === "PUT" && c.url === prefUrl)
-    .at(-1);
+  const put = calls.findLast((c) => c.method === "PUT" && c.url === prefUrl);
   expect(JSON.parse(JSON.parse(put?.body ?? "{}").value)).toEqual({
     aaaa111122223333: "golden",
   });
@@ -248,9 +246,7 @@ test("a delete clears the agent's entry from the account copy too", async () => 
   await freshClient().listAgents(WS);
   clearColor("aaaa111122223333");
   await flushAgentColorPushes();
-  const put = calls
-    .filter((c) => c.method === "PUT" && c.url === prefUrl)
-    .at(-1);
+  const put = calls.findLast((c) => c.method === "PUT" && c.url === prefUrl);
   expect(JSON.parse(JSON.parse(put?.body ?? "{}").value)).toEqual({});
 });
 

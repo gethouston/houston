@@ -48,7 +48,7 @@ export function SidebarGroupGlyph({
       aria-hidden="true"
       focusable="false"
       className={className}
-      // biome-ignore lint/security/noDangerouslySetInnerHtml: build-generated markup from the checked-in, trusted SVG asset; generator strips fill and accepts symbol bodies only
+      // build-generated markup from the checked-in, trusted SVG asset; generator strips fill and accepts symbol bodies only
       dangerouslySetInnerHTML={{ __html: glyph.body }}
     />
   );

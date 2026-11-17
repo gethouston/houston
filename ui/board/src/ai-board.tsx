@@ -36,6 +36,13 @@ import { type ResolvedSelection, resolvePanelState } from "./panel-state";
 import { shouldDropComposerSend } from "./submit-gate";
 import type { BoardSearchSnippet, KanbanColumn, KanbanItem } from "./types";
 
+const DEFAULT_FEED_ITEMS = {};
+const DEFAULT_IS_LOADING = {};
+const DEFAULT_RUNNING_STATUSES = ["running"];
+const DEFAULT_APPROVE_STATUSES = ["needs_you"];
+const DEFAULT_ARCHIVE_STATUSES = ["done"];
+const DEFAULT_ERROR_STATUSES = ["error"];
+
 export interface NewPanelOptions {
   focusComposer?: boolean;
 }
@@ -364,14 +371,14 @@ export function AIBoard({
   onArchive,
   onCreateConversation,
   onSendMessage,
-  feedItems = {},
-  isLoading = {},
+  feedItems = DEFAULT_FEED_ITEMS,
+  isLoading = DEFAULT_IS_LOADING,
   emptyState,
   sessionKeyFor = defaultSessionKey,
-  runningStatuses = ["running"],
-  approveStatuses = ["needs_you"],
-  archiveStatuses = ["done"],
-  errorStatuses = ["error"],
+  runningStatuses = DEFAULT_RUNNING_STATUSES,
+  approveStatuses = DEFAULT_APPROVE_STATUSES,
+  archiveStatuses = DEFAULT_ARCHIVE_STATUSES,
+  errorStatuses = DEFAULT_ERROR_STATUSES,
   onLoadHistory,
   onHistoryLoaded,
   onNewPanelOpenerReady,
@@ -520,10 +527,11 @@ export function AIBoard({
   );
 
   // Hydrate on mount if there's an initial controlled selection
-  // biome-ignore lint/correctness/useExhaustiveDependencies: intentionally mount-only — a second effect (below) handles subsequent selectedId changes; adding deps here would double-hydrate on every selection
+  /* oxlint-disable react-hooks/exhaustive-deps -- intentionally mount-only — a second effect (below) handles subsequent selectedId changes; adding deps here would double-hydrate on every selection */
   useEffect(() => {
     if (selectedId) hydrateSession(selectedId);
   }, []);
+  /* oxlint-enable react-hooks/exhaustive-deps */
 
   // When a selection appears (a card click, arrow-key navigation, a
   // notification jump, or the first send creating a conversation), hydrate
@@ -751,12 +759,13 @@ export function AIBoard({
   // Ensure parent resets its "panel open" state when AIBoard unmounts
   // (e.g. tab switch). Without this, portal containers in the app layout
   // would remain visible but empty.
-  // biome-ignore lint/correctness/useExhaustiveDependencies: intentionally empty deps — this cleanup must run only on unmount with the final onPanelOpenChange ref; re-registering on every render would cause spurious false notifications
+  /* oxlint-disable react-hooks/exhaustive-deps -- intentionally empty deps — this cleanup must run only on unmount with the final onPanelOpenChange ref; re-registering on every render would cause spurious false notifications */
   useEffect(() => {
     return () => {
       onPanelOpenChange?.(false);
     };
   }, []);
+  /* oxlint-enable react-hooks/exhaustive-deps */
 
   const closePanel = useCallback(() => {
     setNewPanelOpen(false);

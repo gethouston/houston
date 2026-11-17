@@ -42,7 +42,7 @@ export function useFinishWithTranscript(
   const { handle, isLoading, failure } = useAssistant();
   const [saving, setSaving] = useState(false);
   const started = useRef(false);
-  const pending = useRef<{ then?: () => void } | null>(null);
+  const pending = useRef<{ beforeFinish?: () => void } | null>(null);
 
   /** Never rejects: every failure is reported here or by the facade. Does
    *  not settle while the SDK holds an import the page abandoned. */
@@ -79,19 +79,20 @@ export function useFinishWithTranscript(
   };
 
   // A finish that waited on discovery runs the moment it answers.
-  // biome-ignore lint/correctness/useExhaustiveDependencies: `run` reads the latest render's handle; the effect keys on discovery settling.
+  /* oxlint-disable react-hooks/exhaustive-deps -- `run` reads the latest render's handle; the effect keys on discovery settling. */
   useEffect(() => {
     if (isLoading || pending.current === null) return;
-    const { then } = pending.current;
+    const { beforeFinish } = pending.current;
     pending.current = null;
-    run(then);
+    run(beforeFinish);
   }, [isLoading]);
+  /* oxlint-enable react-hooks/exhaustive-deps */
 
   const done = (then?: () => void) => {
     if (started.current) return;
     started.current = true;
     setSaving(true);
-    if (isLoading) pending.current = { then };
+    if (isLoading) pending.current = { beforeFinish: then };
     else run(then);
   };
 

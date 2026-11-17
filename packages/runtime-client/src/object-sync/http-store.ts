@@ -115,7 +115,7 @@ export class HttpObjectStore implements ObjectStore {
     srcFile: string,
     key: string,
     opts?: WriteOptions,
-    // biome-ignore lint/suspicious/noConfusingVoidType: ObjectStore preserves void-returning adapters.
+    // ObjectStore preserves void-returning adapters.
   ): Promise<WriteResult | void> {
     const url = this.objectUrl(key);
     const headers = this.writeHeaders(opts);

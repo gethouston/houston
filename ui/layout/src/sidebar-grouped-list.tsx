@@ -29,6 +29,8 @@ import {
 import { SidebarTreeRowView } from "./sidebar-tree-row";
 import { useSidebarTreeDrag } from "./use-sidebar-tree-drag";
 
+const DEFAULT_ORDER: never[] = [];
+
 export interface SidebarGroupedListProps {
   items: SidebarItem[];
   groups: SidebarGroupView[];
@@ -51,7 +53,7 @@ export interface SidebarGroupedListProps {
 export function SidebarGroupedList({
   items,
   groups,
-  order = [],
+  order = DEFAULT_ORDER,
   rowCtx,
   onActivateGroup,
   onArrange,

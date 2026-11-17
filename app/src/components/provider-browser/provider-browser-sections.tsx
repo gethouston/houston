@@ -158,7 +158,6 @@ export function ProviderBrowserSkeleton({ count }: { count: number }) {
     <div aria-hidden="true" className="grid grid-cols-1 gap-2 sm:grid-cols-2">
       {Array.from({ length: count }, (_, i) => (
         <div
-          // biome-ignore lint/suspicious/noArrayIndexKey: fixed-length static placeholder grid, no reordering.
           key={i}
           className="flex items-center gap-3 rounded-xl bg-chip px-3 py-2.5"
         >

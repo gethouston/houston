@@ -45,7 +45,6 @@ export default function RootLayout({
       <head>
         {/* The fixed, constant script must run before paint to prevent a
             light/dark flash; it contains no user-provided content. */}
-        {/* biome-ignore lint/security/noDangerouslySetInnerHtml: constant pre-paint theme bootstrap */}
         <script dangerouslySetInnerHTML={{ __html: themeScript }} />
       </head>
       <body className="flex min-h-dvh flex-col">

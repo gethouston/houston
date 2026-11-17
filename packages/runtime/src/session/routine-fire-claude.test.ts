@@ -130,9 +130,7 @@ function seedSdkSession(
 }
 
 const lastAssistant = (id: string) =>
-  getHistory(id)
-    ?.messages.filter((m) => m.role === "assistant")
-    .at(-1);
+  getHistory(id)?.messages.findLast((m) => m.role === "assistant");
 
 /** A routine fire, as the host's firer sends it (ROUTINE_FIRE_HEADER). */
 const fireRoutine = (id: string) =>

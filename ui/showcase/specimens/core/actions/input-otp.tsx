@@ -16,13 +16,15 @@ import {
   SpecimenTokens,
 } from "../../../src/specimen";
 
+const DEFAULT_LAYOUT = [6];
+
 /**
  * Every example is live: type into one, paste a code into it, backspace back
  * out of it. `layout` is how many slots sit in each group.
  */
 function Otp({
   initial = "",
-  layout = [6],
+  layout = DEFAULT_LAYOUT,
   disabled,
   invalid,
   slotClassName,

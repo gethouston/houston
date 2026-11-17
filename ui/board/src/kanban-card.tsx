@@ -14,6 +14,11 @@ import { KanbanTime } from "./kanban-time";
 import type { MessageTimeFormatter } from "./message-time";
 import type { KanbanItem } from "./types";
 
+const DEFAULT_RUNNING_STATUSES = ["running"];
+const DEFAULT_APPROVE_STATUSES = ["needs_you"];
+const DEFAULT_ARCHIVE_STATUSES = ["done"];
+const DEFAULT_ERROR_STATUSES = ["error"];
+
 export interface KanbanCardLabels {
   /** @deprecated kept for backward-compat. Was the visible Approve pill text;
    *  the action is now an icon-only button with `approveTooltip`. */
@@ -106,10 +111,10 @@ export function KanbanCard({
   onApprove,
   onArchive,
   onRename,
-  runningStatuses = ["running"],
-  approveStatuses = ["needs_you"],
-  archiveStatuses = ["done"],
-  errorStatuses = ["error"],
+  runningStatuses = DEFAULT_RUNNING_STATUSES,
+  approveStatuses = DEFAULT_APPROVE_STATUSES,
+  archiveStatuses = DEFAULT_ARCHIVE_STATUSES,
+  errorStatuses = DEFAULT_ERROR_STATUSES,
   actions,
   avatar,
   labels,

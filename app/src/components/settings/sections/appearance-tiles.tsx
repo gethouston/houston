@@ -86,7 +86,7 @@ function PaletteTile({
 }) {
   const { base, background, ink, accent } = palette.swatch;
   return (
-    // biome-ignore lint/a11y/useSemanticElements: a tile is a painted scene of four palette colours, which an <input type="radio"> cannot carry; radio semantics come from role + aria-checked + the roving tabindex the group's arrows walk.
+    // a tile is a painted scene of four palette colours, which an <input type="radio"> cannot carry; radio semantics come from role + aria-checked + the roving tabindex the group's arrows walk.
     <button
       type="button"
       role="radio"

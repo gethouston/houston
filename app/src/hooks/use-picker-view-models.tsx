@@ -66,7 +66,7 @@ export function usePickerViewModels(opts: {
   // EMPTY constant otherwise), plus `catalogUpdatedAt` so the list rebuilds off
   // the freshly-hydrated `PROVIDERS` the moment the pi-ai catalog resolves —
   // `getVisibleProviders` reads the mutated-in-place cache, invisible to biome.
-  // biome-ignore lint/correctness/useExhaustiveDependencies: catalogUpdatedAt keys the in-place PROVIDERS hydration.
+  /* oxlint-disable react-hooks/exhaustive-deps -- catalogUpdatedAt keys the in-place PROVIDERS hydration. */
   const visibleProviders = useMemo(
     () =>
       getVisibleProviders({
@@ -76,6 +76,7 @@ export function usePickerViewModels(opts: {
       }),
     [newEngine, desktop, providerCapabilities, catalogUpdatedAt],
   );
+  /* oxlint-enable react-hooks/exhaustive-deps */
 
   // Localize a curated row's description via the same `modelDescriptions` key
   // scheme the old dropdown used, falling back to the catalog English.

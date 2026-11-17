@@ -54,7 +54,6 @@ export function ProviderDeviceCode({
   // Drop the confirmation if a fresh code arrives (e.g. a re-emit), and
   // clear any pending timer on unmount so it can't fire into an unmounted
   // component.
-  // biome-ignore lint/correctness/useExhaustiveDependencies: `code` is intentionally in deps to reset the copied state whenever a new code prop arrives; the effect body calls only the stable setCopied setter but the trigger is the prop change.
   useEffect(() => {
     setCopied(false);
   }, [code]);

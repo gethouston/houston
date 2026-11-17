@@ -65,7 +65,7 @@ const MODEL_WORK = new Set(["thinking", "thinking_streaming", "tool_call"]);
  * auth failure. A turn runs from one user message to the next.
  */
 function modelRanByRow(items: FeedItem[]): boolean[] {
-  const ran: boolean[] = new Array(items.length).fill(false);
+  const ran: boolean[] = Array.from({ length: items.length }, () => false);
   let start = 0;
   const close = (end: number) => {
     const worked = items

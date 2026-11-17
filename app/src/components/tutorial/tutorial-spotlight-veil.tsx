@@ -39,7 +39,7 @@ export function TutorialSpotlightVeil(props: {
       {!inDialog &&
         blockerPanels(hole, props.viewport).map((p, i) => (
           <div
-            // biome-ignore lint/suspicious/noArrayIndexKey: fixed 4-panel geometry, no reordering
+            // oxlint-disable-next-line react/no-array-index-key -- fixed 4-panel geometry, no reordering
             key={i}
             aria-hidden
             className="pointer-events-auto fixed z-40"

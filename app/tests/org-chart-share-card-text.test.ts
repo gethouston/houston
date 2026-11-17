@@ -28,7 +28,7 @@ describe("fitText", () => {
       const kept = graphemes(cut);
       for (const g of kept)
         ok(
-          !/^[‍\u{1f3fb}-\u{1f3ff}]/u.test(g),
+          !(g.startsWith("\u200d") || /^\p{Emoji_Modifier}/u.test(g)),
           `a dangling joiner or skin tone in "${cut}"`,
         );
       ok(cut.endsWith("…"), cut);

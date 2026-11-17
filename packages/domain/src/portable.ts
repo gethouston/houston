@@ -97,6 +97,7 @@ export function unpackAgent(bytes: Uint8Array): PortablePackage {
   } catch (err) {
     throw new Error(
       `not a valid .houstonagent archive: ${err instanceof Error ? err.message : err}`,
+      { cause: err },
     );
   }
   const manifestRaw = entries[MANIFEST];

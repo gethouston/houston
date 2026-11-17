@@ -1,9 +1,16 @@
 import { ArrowRight, Code2, Rocket, Upload } from "lucide-react";
+import type { StoreLinkComponent } from "../types";
+
+const PlainLink: StoreLinkComponent = ({ children, ...props }) => (
+  <a {...props}>{children}</a>
+);
+
+const DEFAULT_LABELS = {};
 
 export function CatalogEmpty({
   publishHref,
   apiHref,
-  labels = {},
+  labels = DEFAULT_LABELS,
 }: {
   publishHref: string;
   apiHref: string;
@@ -60,11 +67,11 @@ export function CatalogEmpty({
 
 export function FilteredEmpty({
   clearHref = "/",
-  LinkComponent = (props) => <a {...props} />,
-  labels = {},
+  LinkComponent = PlainLink,
+  labels = DEFAULT_LABELS,
 }: {
   clearHref?: string;
-  LinkComponent?: import("../types").StoreLinkComponent;
+  LinkComponent?: StoreLinkComponent;
   labels?: Partial<{ title: string; description: string; clear: string }>;
 }) {
   const text = {

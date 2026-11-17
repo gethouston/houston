@@ -65,12 +65,13 @@ export function useFilesBrowser(opts: {
   useEffect(() => {
     if (opts.createFolderRequest) startCreatingFolder();
   }, [opts.createFolderRequest, startCreatingFolder]);
+  const optsOnCreateFolder = opts.onCreateFolder;
   const createFolderAt = useCallback(
     (name: string) => {
-      opts.onCreateFolder?.(name);
+      optsOnCreateFolder?.(name);
       setCreatingFolder(false);
     },
-    [opts.onCreateFolder],
+    [optsOnCreateFolder],
   );
 
   return {

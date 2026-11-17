@@ -98,7 +98,7 @@ describe("useMissionOriginTag", () => {
     return (
       <ul>
         {rows.map((row, i) => (
-          // biome-ignore lint/suspicious/noArrayIndexKey: a fixed probe list
+          // oxlint-disable-next-line react/no-array-index-key -- a fixed probe list
           <li key={i}>{originTagOf(row) ?? "none"}</li>
         ))}
       </ul>
