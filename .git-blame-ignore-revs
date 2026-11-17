@@ -8,3 +8,6 @@
 
 # style: organize imports repo-wide
 bb5ea8a5ab53a359495a78320fe18e1729ff84f4
+
+# chore(format): apply the oxfmt baseline
+d16c3c9f7880b89ef0339a59cf234fd0e6bc8498
