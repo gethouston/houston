@@ -1,4 +1,4 @@
-import { deepStrictEqual, strictEqual } from "node:assert";
+import { deepStrictEqual, ok, strictEqual } from "node:assert";
 import { describe, it } from "node:test";
 import { classifyCommand, commandActivityOf } from "../src/command-activity.ts";
 import type { ToolEntry } from "../src/feed-to-messages.ts";
@@ -72,6 +72,22 @@ describe("classifyCommand", () => {
     deepStrictEqual(classifyCommand("cd /tmp && python run.py"), {
       kind: "python",
     });
+  });
+
+  it("strips quotes around the executable and the host", () => {
+    deepStrictEqual(classifyCommand(`"curl" -s 'api.github.com/users'`), {
+      kind: "web",
+      host: "api.github.com",
+    });
+  });
+
+  it("reads a long run of quotes inside a token without stalling", () => {
+    const token = `x${'"'.repeat(100_000)}y`;
+    const started = performance.now();
+    strictEqual(classifyCommand(`${token} ${token}`), undefined);
+    strictEqual(classifyCommand(`curl ${token}`)?.kind, "web");
+    const elapsed = performance.now() - started;
+    ok(elapsed < 250, `took ${elapsed} ms`);
   });
 
   it("returns undefined for ordinary shell work", () => {

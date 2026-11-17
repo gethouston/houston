@@ -291,6 +291,27 @@ test("only the first tag counts; a second one is text", () => {
   ]);
 });
 
+test("a long run of spaces or tag letters parses in linear time", () => {
+  const long = 100_000;
+  const started = performance.now();
+  const parsed = steps(
+    [
+      `1. Send it${" ".repeat(long)}now`,
+      `2. **Tag it** [${"a".repeat(long)}!] - Later.`,
+      "3. **Unlock it** [1password] - Today.",
+      `4. Do it${".".repeat(long)}x`,
+      `5. Wait${"\u00a0".repeat(long)}x`,
+    ].join("\n"),
+  );
+  expect(performance.now() - started).toBeLessThan(250);
+  expect(parsed).toHaveLength(5);
+  expect(parsed[1]?.integration).toBeNull();
+  expect(parsed[2]?.integration).toEqual({
+    toolkit: "1password",
+    action: null,
+  });
+});
+
 test("no workflow without the marker", () => {
   expect(parseHoustonSkillWorkflow("1. **Do it.** Now.")).toBeNull();
   expect(parseHoustonSkillWorkflow(marked("Just prose, no steps."))).toBeNull();
