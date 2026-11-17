@@ -113,7 +113,13 @@ jobs:
       - name: Install
         run: pnpm install --frozen-lockfile
 
-      - name: Biome check
+      - name: Lint timing
+        run: time pnpm lint
+
+      - name: Format timing
+        run: time pnpm format:check
+
+      - name: Repository checks
         run: pnpm check
 
       - name: Boundary check
