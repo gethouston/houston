@@ -13,6 +13,9 @@ on:
       - main
   push:
     branches: [main]
+  # The merge queue's run: never narrowed (see `changes`), so nothing reaches
+  # main without the full suite.
+  merge_group:
   workflow_dispatch:
 
 concurrency:
@@ -36,18 +39,18 @@ jobs:
     # workflow. A PR outside that set (the Tauri shell, runtime-only, docs,
     # scripts, other workflows: 19 of the 80 PRs merged before this job
     # existed) skips the 7 jobs it cannot fail.
-    # Pushes to main and manual dispatches always run everything, so the
-    # daily cut's "main is green" guard keeps seeing the full set.
+    # Pushes to main, merge queue runs and manual dispatches always run
+    # everything, so the daily cut's "main is green" guard keeps seeing the
+    # full set.
     # Two more outputs split the repo at website/, the marketing site, which
     # is its own npm project that nothing else imports: `app` is true when a
     # PR touches anything outside it (the TS checks, unit and App jobs run),
     # `site` when it touches website/ (the Website job runs). A website-only
     # PR runs just the Website job, about two minutes instead of ten to
     # eighteen.
-    # Two limits of the API path: the PR file listing stops at 3,000 files,
-    # so a PR larger than that could skip the suites; and a merge_group
-    # event (if a merge queue is ever enabled) is not a pull_request, so it
-    # would need a checkout plus `base` for the action, or to run everything.
+    # One limit of the API path: the PR file listing stops at 3,000 files,
+    # so a PR larger than that could skip the suites. A merge_group event is
+    # not a pull_request, so the merge queue always runs everything.
     name: Changed paths
     runs-on: ubuntu-latest
     timeout-minutes: 5
