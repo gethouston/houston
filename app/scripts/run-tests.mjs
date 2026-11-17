@@ -28,52 +28,61 @@ function run(args) {
   });
 }
 
-const given = process.argv.slice(2);
-if (given.length > 0) {
-  const { code, out } = await run(given);
-  process.stdout.write(out);
-  process.exit(code ?? 1);
+// Exit codes go through `process.exitCode`, never `process.exit()`: stdout to
+// a pipe (CI) is asynchronous, and exiting cut the log off at 64 KB, before
+// the failures and the summary.
+async function main() {
+  const given = process.argv.slice(2);
+  if (given.length > 0) {
+    const { code, out } = await run(given);
+    process.stdout.write(out);
+    return code ?? 1;
+  }
+
+  const ownProcess = readFileSync("tests/own-process.txt", "utf8")
+    .split("\n")
+    .map((line) => line.trim())
+    .filter((line) => line && !line.startsWith("#"));
+  const missing = ownProcess.filter((file) => !existsSync(file));
+  if (missing.length > 0) {
+    console.error(
+      `tests/own-process.txt lists files that do not exist; remove them:\n${missing.join("\n")}`,
+    );
+    return 1;
+  }
+  const listed = new Set(ownProcess);
+  const shared = readdirSync("tests")
+    .filter((name) => name.endsWith(".test.ts"))
+    .map((name) => join("tests", name))
+    .filter((file) => !listed.has(file));
+
+  const order = [];
+  if (process.allowedNodeEnvironmentFlags.has("--test-randomize")) {
+    const seed =
+      process.env.HOUSTON_TEST_SEED ??
+      String(Math.floor(Math.random() * 2 ** 31));
+    console.log(
+      `shared process: random order, seed ${seed} (HOUSTON_TEST_SEED)`,
+    );
+    order.push("--test-randomize", `--test-random-seed=${seed}`);
+  }
+
+  // Concurrent: the shared process holds one core, the per-file run the rest.
+  const results = await Promise.all([
+    run(["--experimental-test-isolation=none", ...order, ...shared]),
+    run(ownProcess),
+  ]);
+  const runs = [
+    [`${shared.length} files in one process`, results[0]],
+    [`${ownProcess.length} files in a process each`, results[1]],
+  ];
+  for (const [name, { out }] of runs) {
+    console.log(`\n=== ${name}`);
+    process.stdout.write(out);
+  }
+  for (const [name, { code }] of runs)
+    console.log(`${code === 0 ? "passed" : "FAILED"}: ${name}`);
+  return results.every(({ code }) => code === 0) ? 0 : 1;
 }
 
-const ownProcess = readFileSync("tests/own-process.txt", "utf8")
-  .split("\n")
-  .map((line) => line.trim())
-  .filter((line) => line && !line.startsWith("#"));
-const missing = ownProcess.filter((file) => !existsSync(file));
-if (missing.length > 0) {
-  console.error(
-    `tests/own-process.txt lists files that do not exist; remove them:\n${missing.join("\n")}`,
-  );
-  process.exit(1);
-}
-const listed = new Set(ownProcess);
-const shared = readdirSync("tests")
-  .filter((name) => name.endsWith(".test.ts"))
-  .map((name) => join("tests", name))
-  .filter((file) => !listed.has(file));
-
-const order = [];
-if (process.allowedNodeEnvironmentFlags.has("--test-randomize")) {
-  const seed =
-    process.env.HOUSTON_TEST_SEED ??
-    String(Math.floor(Math.random() * 2 ** 31));
-  console.log(`shared process: random order, seed ${seed} (HOUSTON_TEST_SEED)`);
-  order.push("--test-randomize", `--test-random-seed=${seed}`);
-}
-
-// Concurrent: the shared process holds one core, the per-file run the rest.
-const results = await Promise.all([
-  run(["--experimental-test-isolation=none", ...order, ...shared]),
-  run(ownProcess),
-]);
-const runs = [
-  [`${shared.length} files in one process`, results[0]],
-  [`${ownProcess.length} files in a process each`, results[1]],
-];
-for (const [name, { out }] of runs) {
-  console.log(`\n=== ${name}`);
-  process.stdout.write(out);
-}
-for (const [name, { code }] of runs)
-  console.log(`${code === 0 ? "passed" : "FAILED"}: ${name}`);
-process.exit(results.every(({ code }) => code === 0) ? 0 : 1);
+process.exitCode = await main();
