@@ -22,12 +22,18 @@ concurrency:
 permissions:
   contents: read
 
-# Each job's `timeout-minutes` is its budget, about 1.5x its p95 over the last
-# 150 runs (after the visual suite moved to the prebuilt bundle and the app
-# tests to one process), so a job that gets slower goes red here instead of
-# quietly growing the PR wall clock. A budget only tightens: when a job gets
-# faster, lower its number in the same PR. Raising one needs the measured
-# reason in the PR body, never "it timed out".
+# Job budgets use the latest 60 main runs, targeting 1.5x p95 rounded up
+# to whole minutes, with a two-minute floor. Keep an existing tighter budget
+# when measurements rise; faster jobs lower their budget in the same PR.
+# A timeout fails the job. Raising a budget needs a measured reason.
+
+# Every job runs on `vars.CI_RUNNER` (a repo variable; unset = GitHub's
+# ubuntu-latest), the same switch the cloud repo uses. Hosted jobs share the
+# org's concurrent-job limit with the cloud repo, and a full run here is 13
+# jobs, so two PRs at once queue: 2 s p50 but 6 to 12 min p95 of waiting per
+# job over the 150 runs before this. A runner label with its own capacity
+# (Blacksmith's `blacksmith-4vcpu-ubuntu-2404`, the same 4 vCPU) removes the
+# queue without touching a job; unsetting the variable rolls back.
 
 jobs:
   changes:
@@ -56,7 +62,7 @@ jobs:
     # event (if a merge queue is ever enabled) is not a pull_request, so it
     # would need a checkout plus `base` for the action, or to run everything.
     name: Changed paths
-    runs-on: ubuntu-latest
+    runs-on: ${{ vars.CI_RUNNER || 'ubuntu-latest' }}
     timeout-minutes: 2
     permissions:
       contents: read
@@ -102,7 +108,7 @@ jobs:
     name: TS checks (lint · typecheck · contract tests)
     needs: changes
     if: needs.changes.outputs.app == 'true'
-    runs-on: ubuntu-latest
+    runs-on: ${{ vars.CI_RUNNER || 'ubuntu-latest' }}
     timeout-minutes: 5
     steps:
       - name: Checkout
@@ -177,12 +183,16 @@ jobs:
     name: Unit tests (${{ matrix.package }})
     needs: changes
     if: needs.changes.outputs.app == 'true'
-    runs-on: ubuntu-latest
-    timeout-minutes: 8
+    runs-on: ${{ vars.CI_RUNNER || 'ubuntu-latest' }}
+    timeout-minutes: ${{ matrix.timeout }}
     strategy:
       fail-fast: false
       matrix:
-        package: [runtime, host]
+        include:
+          - package: runtime
+            timeout: 8
+          - package: host
+            timeout: 4
     steps:
       # Same actions the sibling jobs run, at the commits their `v4` tags
       # resolve to today, pinned. The suites never push, so the token is not
@@ -230,7 +240,7 @@ jobs:
     name: Web (UI tests)
     needs: changes
     if: needs.changes.outputs.web == 'true'
-    runs-on: ubuntu-latest
+    runs-on: ${{ vars.CI_RUNNER || 'ubuntu-latest' }}
     timeout-minutes: 9
     strategy:
       fail-fast: false
@@ -310,7 +320,7 @@ jobs:
     # packages/web/e2e/README.md → Visual regression → Platforms).
     needs: changes
     if: needs.changes.outputs.web == 'true'
-    runs-on: ubuntu-latest
+    runs-on: ${{ vars.CI_RUNNER || 'ubuntu-latest' }}
     timeout-minutes: 10
     container:
       image: mcr.microsoft.com/playwright:v1.64.0-noble
@@ -355,7 +365,7 @@ jobs:
     name: App · Web unit · Agent Store (typecheck · tests · builds)
     needs: changes
     if: needs.changes.outputs.app == 'true'
-    runs-on: ubuntu-latest
+    runs-on: ${{ vars.CI_RUNNER || 'ubuntu-latest' }}
     timeout-minutes: 9
     steps:
       - uses: actions/checkout@v6
@@ -408,7 +418,7 @@ jobs:
     name: Website (lint · tests · locales · build)
     needs: changes
     if: needs.changes.outputs.site == 'true'
-    runs-on: ubuntu-latest
+    runs-on: ${{ vars.CI_RUNNER || 'ubuntu-latest' }}
     timeout-minutes: 2
     steps:
       - uses: actions/checkout@v6
