@@ -138,8 +138,9 @@ export async function browserAvailable(): Promise<boolean> {
   try {
     await (await fixtureLaunch()).close();
     return true;
-  } catch {
-    // No Chromium-family browser here: the suites that need one skip.
+  } catch (error) {
+    if (process.env.CI) throw error;
+    // Local machines without a Chromium-family browser can skip these suites.
     return false;
   }
 }
