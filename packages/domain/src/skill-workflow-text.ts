@@ -17,8 +17,12 @@ import { takeIntegrationTag } from "./skill-workflow-tag";
 const TITLE_MAX = 80;
 const TITLE_MIN = 2;
 
-/** A spaced dash or a colon: the only separators that mean "title ends here". */
-const SEPARATOR = /\s+[-–—]\s+|:\s+/;
+/**
+ * A spaced dash or a colon: the only separators that mean "title ends here".
+ * The lookbehind starts a match only at the first space of a run; without it a
+ * long run of spaces with no dash after it is rescanned from every position.
+ */
+const SEPARATOR = /(?<!\s)\s+[-–—]\s+|:\s+/;
 /** The same characters left dangling at the head of a detail. */
 const LEADING_SEPARATOR = /^[-–—:,;]+\s*/;
 /** Sentence end that can serve as a title boundary. */
@@ -34,11 +38,15 @@ const clean = (text: string): string =>
     .replace(/[ \t]{2,}/g, " ")
     .trim();
 
-/** A title also drops its markdown leftovers and trailing punctuation. */
+/**
+ * A title also drops its markdown leftovers and trailing punctuation. The
+ * lookbehinds anchor each trailing match at the start of its run, so a long
+ * run of dots or spaces mid-title is not rescanned from every position.
+ */
 const cleanTitle = (text: string): string =>
   clean(text)
-    .replace(/^[*#\s]+|[*\s]+$/g, "")
-    .replace(/[.,;:]+$/, "")
+    .replace(/^[*#\s]+|(?<![*\s])[*\s]+$/g, "")
+    .replace(/(?<![.,;:])[.,;:]+$/, "")
     .trim();
 
 /**

@@ -8,8 +8,10 @@ trap 'rm -rf "$TMP"' EXIT
 mkdir -p "$TMP/bin" "$TMP/source-root/usr/bin"
 
 printf 'pristine bun payload\n' >"$TMP/pristine"
-chmod +x "$TMP/pristine"
+printf 'pristine claude payload\n' >"$TMP/pristine-claude"
+chmod +x "$TMP/pristine" "$TMP/pristine-claude"
 printf 'mutated by patchelf\n' >"$TMP/source-root/usr/bin/houston-engine"
+printf 'claude mutated by patchelf\n' >"$TMP/source-root/usr/bin/claude"
 printf 'keep me\n' >"$TMP/source-root/other-file"
 
 # Synthetic AppImage runtime: report a fixed SquashFS offset and materialize an
@@ -47,7 +49,7 @@ tail -c +4097 "$image" | tar -xOf - "./$path"
 EOF
 chmod +x "$TMP/bin/mksquashfs" "$TMP/bin/unsquashfs"
 
-PATH="$TMP/bin:$PATH" "$REPAIR" "$TMP/fake.AppImage" "$TMP/pristine"
+PATH="$TMP/bin:$PATH" "$REPAIR" "$TMP/fake.AppImage" "$TMP/pristine" "$TMP/pristine-claude"
 head -c 4096 "$TMP/fake.AppImage" >"$TMP/repaired-prefix"
 if command -v sha256sum >/dev/null; then
   test "$(sha256sum "$TMP/repaired-prefix" | cut -d' ' -f1)" = \
@@ -57,5 +59,6 @@ else
     "$(shasum -a 256 "$TMP/original-prefix" | cut -d' ' -f1)"
 fi
 tail -c +4097 "$TMP/fake.AppImage" | tar -xOf - ./usr/bin/houston-engine | cmp "$TMP/pristine" -
+tail -c +4097 "$TMP/fake.AppImage" | tar -xOf - ./usr/bin/claude | cmp "$TMP/pristine-claude" -
 test "$(tail -c +4097 "$TMP/fake.AppImage" | tar -xOf - ./other-file)" = "keep me"
-echo "PASS: AppImage repair preserves the runtime and restores the pristine sidecar"
+echo "PASS: AppImage repair preserves the runtime and restores both pristine Bun binaries"

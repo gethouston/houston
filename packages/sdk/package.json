@@ -95,6 +95,10 @@
       "types": "./src/transport-failure.ts",
       "import": "./src/transport-failure.ts"
     },
+    "./abort-signal": {
+      "types": "./src/abort-signal.ts",
+      "import": "./src/abort-signal.ts"
+    },
     "./quiet-error-class": {
       "types": "./src/quiet-error-class.ts",
       "import": "./src/quiet-error-class.ts"
