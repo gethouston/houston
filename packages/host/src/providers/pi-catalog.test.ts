@@ -4,7 +4,6 @@ import {
   buildProviderCatalog,
   piModelToCatalogEntry,
   piProviderToCatalog,
-  withMinimaxTokenPlan,
 } from "./pi-catalog";
 
 /**
@@ -139,22 +138,30 @@ test("buildProviderCatalog serves the full pi-ai registry", () => {
   }
 });
 
-test("catalog surfaces MiniMax's token-plan model MiniMax-M3[1m]", () => {
-  // HOU-1160: pi-ai's minimax catalog has no `[1m]` variant, so the catalog must
-  // inject it (cloned from MiniMax-M3) or the picker can't offer the token-plan SKU.
+test("catalog offers MiniMax only ids its API serves", () => {
+  // `MiniMax-M3[1m]` is Claude Code's client-side 1M marker; MiniMax answers
+  // it with `unknown model` (2013), and MiniMax retired the M2.7 line. Every
+  // row without `runsAs` is one a turn runs as itself.
   const minimax = buildProviderCatalog().find((p) => p.id === "minimax");
-  expect(minimax).toBeDefined();
-  const ids = minimax?.models.map((m) => m.id) ?? [];
-  expect(ids).toContain("MiniMax-M3[1m]");
-  expect(ids).toContain("MiniMax-M3");
-  // The clone keeps M3's 1M context window and pricing.
-  const tokenPlan = minimax?.models.find((m) => m.id === "MiniMax-M3[1m]");
-  const base = minimax?.models.find((m) => m.id === "MiniMax-M3");
-  expect(tokenPlan?.contextWindow).toBe(base?.contextWindow);
-  expect(tokenPlan?.pricing).toEqual(base?.pricing);
+  const served = (minimax?.models ?? [])
+    .filter((m) => m.runsAs === undefined)
+    .map((m) => m.id)
+    .sort();
+  expect(served).toEqual(["MiniMax-M3", "MiniMax-M3.1-Flash"]);
 });
 
-test("withMinimaxTokenPlan is a no-op without the base MiniMax-M3 model", () => {
-  const noBase: Model<Api>[] = [];
-  expect(withMinimaxTokenPlan(noBase)).toEqual([]);
+test("MiniMax's retired ids stay as rows that run as M3.1 Flash", () => {
+  // A team ceiling written with a retired id keeps admitting MiniMax: the
+  // gateway's clamp and the app map the entry through `runsAs`.
+  const minimax = buildProviderCatalog().find((p) => p.id === "minimax");
+  const runsAs = Object.fromEntries(
+    (minimax?.models ?? [])
+      .filter((m) => m.runsAs !== undefined)
+      .map((m) => [m.id, m.runsAs]),
+  );
+  expect(runsAs).toEqual({
+    "MiniMax-M3[1m]": "MiniMax-M3.1-Flash",
+    "MiniMax-M2.7": "MiniMax-M3.1-Flash",
+    "MiniMax-M2.7-highspeed": "MiniMax-M3.1-Flash",
+  });
 });

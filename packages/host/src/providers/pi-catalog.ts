@@ -24,6 +24,7 @@ import {
 } from "./anthropic-catalog";
 import { BEDROCK_PROVIDER_ID, invokableBedrockModels } from "./bedrock-catalog";
 import { withMissionPin } from "./catalog-pin";
+import { MINIMAX_PROVIDER, withMinimaxRetired } from "./minimax-catalog";
 import { piOAuthProviders } from "./pi-oauth";
 import { QWEN_PROVIDER_ID, qwenModels } from "./qwen-dashscope";
 
@@ -42,36 +43,6 @@ import { QWEN_PROVIDER_ID, qwenModels } from "./qwen-dashscope";
 
 /** A pi-ai model of any api — the mappers never look at the `TApi` specifics. */
 type PiModel = Model<Api>;
-
-/** MiniMax's token/coding-plan model id (1M-context tier); see runtime `ai/minimax.ts`. */
-const MINIMAX_TOKEN_PLAN_MODEL_ID = "MiniMax-M3[1m]";
-const MINIMAX_BASE_MODEL_ID = "MiniMax-M3";
-/**
- * Display name for the token-plan model. Deliberately bracket-FREE: the AI Models
- * hub folds models by a name-derived key that strips bracketed suffixes, so a name
- * of `MiniMax-M3[1m]` would collapse onto `MiniMax-M3` and vanish. "1M" (the tier's
- * 1M-context window) keeps the key distinct while staying honest.
- */
-const MINIMAX_TOKEN_PLAN_MODEL_NAME = "MiniMax-M3 1M";
-
-/**
- * pi-ai's `minimax` catalog ships only pay-as-you-go ids. Surface MiniMax's
- * subscription "token plan" model (`MiniMax-M3[1m]`, same endpoint/auth, 1M context)
- * so it appears in the picker — cloned from `MiniMax-M3` (its base SKU) with the wire
- * id overridden. Skips silently if pi ever drops the base model. Keep in sync with the
- * runtime's `buildMinimaxTokenPlanModel` (HOU-1160).
- */
-export function withMinimaxTokenPlan(models: PiModel[]): PiModel[] {
-  const base = models.find((m) => m.id === MINIMAX_BASE_MODEL_ID);
-  if (!base || models.some((m) => m.id === MINIMAX_TOKEN_PLAN_MODEL_ID))
-    return models;
-  const tokenPlan: PiModel = {
-    ...base,
-    id: MINIMAX_TOKEN_PLAN_MODEL_ID,
-    name: MINIMAX_TOKEN_PLAN_MODEL_NAME,
-  };
-  return [tokenPlan, ...models];
-}
 
 /** Map one pi-ai `Model` to a wire `CatalogModelEntry`. Pure and deterministic. */
 export function piModelToCatalogEntry(model: PiModel): CatalogModelEntry {
@@ -144,10 +115,11 @@ function providerDisplayName(
  * every provider's public :443 endpoint, so a hosted user sees the full catalog
  * too. Deterministic — no clock, no IO.
  *
- * Two providers are shaped. Bedrock's pi-ai list is mostly ids Bedrock itself
+ * Three providers are shaped. Bedrock's pi-ai list is mostly ids Bedrock itself
  * refuses (see ./bedrock-catalog); the catalog is the RUNNABLE set, so those
  * never reach a picker. Anthropic runs one model per Claude family, so its
- * retired rows name the lineup model they run as (see ./anthropic-catalog).
+ * retired rows name the lineup model they run as (see ./anthropic-catalog),
+ * and MiniMax's retired ids name the MiniMax default (see ./minimax-catalog).
  */
 export function buildProviderCatalog(): ProviderCatalog {
   const oauthProviders = piOAuthProviders();
@@ -164,16 +136,16 @@ export function buildProviderCatalog(): ProviderCatalog {
     if (models.length === 0) continue;
     const provider = piProviderToCatalog(
       id,
-      id === "minimax"
-        ? withMinimaxTokenPlan(models)
-        : id === BEDROCK_PROVIDER_ID
-          ? invokableBedrockModels(models)
-          : models,
+      id === BEDROCK_PROVIDER_ID ? invokableBedrockModels(models) : models,
       oauthIds.has(id),
       providerDisplayName(id, oauthNames),
     );
     catalog.push(
-      id === ANTHROPIC_PROVIDER_ID ? withAnthropicLineup(provider) : provider,
+      id === ANTHROPIC_PROVIDER_ID
+        ? withAnthropicLineup(provider)
+        : id === MINIMAX_PROVIDER
+          ? withMinimaxRetired(provider)
+          : provider,
     );
   }
   // Houston's qwen extension provider (DashScope international pay-as-you-go)
