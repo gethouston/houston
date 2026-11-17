@@ -150,9 +150,16 @@ describe("configWriteToSettings (model-pick → engine settings bridge)", () => 
     expect(
       configWriteToSettings(
         CONFIG,
+        JSON.stringify({ provider: "minimax", model: "MiniMax-M3" }),
+      ),
+    ).toEqual({ activeProvider: "minimax", model: "MiniMax-M3" });
+    // MiniMax retired the M2.7 line; a write naming it lands on M3.1 Flash.
+    expect(
+      configWriteToSettings(
+        CONFIG,
         JSON.stringify({ provider: "minimax", model: "MiniMax-M2.7" }),
       ),
-    ).toEqual({ activeProvider: "minimax", model: "MiniMax-M2.7" });
+    ).toEqual({ activeProvider: "minimax", model: "MiniMax-M3.1-Flash" });
     // A bare legacy tier name is migrated to a real pi id at the same tier.
     expect(
       configWriteToSettings(
