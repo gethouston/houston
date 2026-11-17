@@ -21,22 +21,24 @@ function fakeI18n(language: string | undefined): FakeI18n {
   };
 }
 
-let root: { lang: string };
-beforeEach(() => {
-  root = { lang: "en" };
-  globalThis.document = { documentElement: root } as unknown as Document;
-});
-afterEach(() => {
-  // @ts-expect-error — tear down the fake between tests.
-  globalThis.document = undefined;
-});
-
 const bind = (i18n: FakeI18n) =>
   bindDocumentLanguage(
     i18n as unknown as Parameters<typeof bindDocumentLanguage>[0],
   );
 
 describe("bindDocumentLanguage", () => {
+  let root: { lang: string };
+  let original: PropertyDescriptor | undefined;
+  beforeEach(() => {
+    original = Object.getOwnPropertyDescriptor(globalThis, "document");
+    root = { lang: "en" };
+    globalThis.document = { documentElement: root } as unknown as Document;
+  });
+  afterEach(() => {
+    if (original) Object.defineProperty(globalThis, "document", original);
+    else Reflect.deleteProperty(globalThis, "document");
+  });
+
   it("applies the already-resolved language on bind", () => {
     bind(fakeI18n("pt"));
     strictEqual(root.lang, "pt");

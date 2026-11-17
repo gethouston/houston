@@ -27,7 +27,6 @@ tests/connect-flow-store.test.ts
 tests/connected-providers.test.ts
 tests/copilot-models.test.ts
 tests/default-provider-model.test.ts
-tests/document-language.test.ts
 tests/employee-name-issue-copy.test.ts
 tests/file-preview-load.test.ts
 tests/file-preview-nav.test.ts
@@ -47,7 +46,6 @@ tests/last-sign-in.test.ts
 tests/learnings-refusal-restore.test.ts
 tests/linkedin-post-run.test.ts
 tests/linkedin-post-store.test.ts
-tests/message-time.test.ts
 tests/mission-chat-back.test.ts
 tests/mission-control-send.test.ts
 tests/mission-row.test.ts
@@ -96,7 +94,6 @@ tests/settings-landing.test.ts
 tests/sign-in-phone-targets.test.ts
 tests/span-org-sync.test.ts
 tests/team-agent-move.test.ts
-tests/theme-boot.test.ts
 tests/theme.test.ts
 tests/time-limit-analytics.test.ts
 tests/time-limit-notification.test.ts
