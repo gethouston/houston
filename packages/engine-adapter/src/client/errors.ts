@@ -1,3 +1,5 @@
+import { gatewayReason } from "../engine-waking-error";
+
 /**
  * The adapter's single error type. Extracted from `client.ts` so the
  * control-plane modules and the mixins can import it without pulling in the
@@ -66,11 +68,23 @@ export const SIGNED_OUT_ERROR = "signed_out";
  * True for the adapter's synthetic signed-out 401. Signed-out is an EXPECTED
  * lifecycle state — the sign-in screen is the surface — so callers use this to
  * skip the error-toast/report path a real failure would take.
+ *
+ * Two stacks carry it: `HoustonEngineError` holds the body parsed, and the
+ * per-agent runtime client's `EngineError` (`@houston/runtime-client`, matched
+ * by name so this stays dependency-free) holds the raw response text.
  */
 export function isSignedOutEngineError(e: unknown): boolean {
+  if (isHoustonEngineError(e)) {
+    return (
+      e.status === 401 &&
+      (e.body as { error?: unknown } | null)?.error === SIGNED_OUT_ERROR
+    );
+  }
+  if (!(e instanceof Error) || e.name !== "EngineError") return false;
+  const { status, body } = e as { status?: unknown; body?: unknown };
   return (
-    isHoustonEngineError(e) &&
-    e.status === 401 &&
-    (e.body as { error?: unknown } | null)?.error === SIGNED_OUT_ERROR
+    status === 401 &&
+    typeof body === "string" &&
+    gatewayReason(body) === SIGNED_OUT_ERROR
   );
 }
