@@ -35,7 +35,7 @@ export interface ComposerPrewarmPorts {
 }
 
 /**
- * The draft behind AIBoard's `onDraftChange(key, text)`. AIBoard names a new
+ * The draft behind AIBoard's `draftStore.set(key, text)`. AIBoard names a new
  * chat's composer with the plain `new-conversation` literal and an open chat's
  * by its session key, which is also its conversation id. A new chat's draft
  * goes out under the scoped slot, the same key its first send claims the id
