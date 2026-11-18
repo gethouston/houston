@@ -62,4 +62,6 @@ export interface TurnServerDeps {
   transcriptRetryDelaysMs?: number[];
   /** Test seam: transient-status retry delays for activity doc publication. */
   activityDocRetryDelaysMs?: number[];
+  /** Test seam: the wind-down marker correction's budget (default 5 s). */
+  stopMarkerTimeoutMs?: number;
 }
