@@ -1,5 +1,8 @@
 import { DEFAULT_TURN_MODE, type TurnMode } from "@houston/protocol";
-import { effectiveModelWindow } from "@houston/protocol/model-windows";
+import {
+  effectiveModelWindow,
+  modelInputLimit,
+} from "@houston/protocol/model-windows";
 import type {
   ChatMessage,
   ProviderError,
@@ -620,7 +623,9 @@ export async function execTurn(
         model.contextWindow,
         fill ?? 0,
       );
-      if (needsAutocompact(fill, window)) {
+      if (
+        needsAutocompact(fill, window, undefined, modelInputLimit(model.id))
+      ) {
         // For the ASSISTANT's conversation this also asks the summarizer for the
         // durable facts the summarized stretch revealed and saves them as
         // memories — the moment those turns stop being visible to the model is

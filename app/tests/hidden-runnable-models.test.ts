@@ -36,7 +36,8 @@ describe("Codex rows hidden from the picker", () => {
       strictEqual(validModelOrNull("openai-codex", id), id);
       deepStrictEqual(getContextWindowConfig("openai", id), {
         default: 258_400,
-        max: 950_000,
+        max: 828_400,
+        inputLimit: 922_000,
       });
       ok(getEffortLevels("openai", id).length > 0, id);
       strictEqual(validEffortOrDefault("openai", id, "high"), "high");
