@@ -46,6 +46,8 @@ const PI_MODELS: Record<string, Set<string>> = {
     "gpt-6.1-terra",
     "gpt-6-sol",
     "gpt-6.1-sol",
+    "gpt-6.2-sol",
+    "gpt-6.2-astra",
   ]),
   minimax: new Set([
     "MiniMax-M3.1-Flash",
