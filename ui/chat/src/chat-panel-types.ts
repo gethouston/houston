@@ -8,6 +8,7 @@ import type {
   QueuedMessageLabels,
 } from "./queued-message-list";
 import type { FeedItem, MentionPerson, MessageMention } from "./types";
+import type { ComposerDraftStore } from "./use-composer-draft";
 
 export type ChatStatus = "ready" | "streaming" | "submitted";
 
@@ -69,6 +70,9 @@ export interface ChatPanelProps {
   emptyState?: ReactNode;
   value?: string;
   onValueChange?: (value: string) => void;
+  /** The composer's text lives here under `sessionKey`, in place of
+   *  `value`/`onValueChange`: typing then re-renders the composer alone. */
+  draftStore?: ComposerDraftStore;
   /** Increment/change this value to focus the composer textarea. */
   composerFocusToken?: number;
   /** See `ChatMessagesProps.scrollToLatestToken`. */

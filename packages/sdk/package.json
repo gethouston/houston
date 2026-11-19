@@ -115,6 +115,10 @@
       "types": "./src/no-agent-provider-write-error.ts",
       "import": "./src/no-agent-provider-write-error.ts"
     },
+    "./refusal-code": {
+      "types": "./src/modules/refusal-code.ts",
+      "import": "./src/modules/refusal-code.ts"
+    },
     "./local-model-bridge/errors": {
       "types": "./src/local-model-bridge/errors.ts",
       "import": "./src/local-model-bridge/errors.ts"

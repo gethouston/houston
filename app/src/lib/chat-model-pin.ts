@@ -82,7 +82,7 @@ export const LIVE_PIN_CATALOG: PinCatalog = {
     if (isOpenCatalogProvider(provider)) return true;
     const info = getProvider(provider);
     if (!info || info.models.length === 0) return true;
-    return info.models.some((m) => m.id === model);
+    return getModel(provider, model) !== undefined;
   },
   offers(provider, model) {
     return getModel(provider, model) !== undefined;

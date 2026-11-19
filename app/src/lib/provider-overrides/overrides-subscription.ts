@@ -24,11 +24,18 @@ export const SUBSCRIPTION_OVERRIDES: Record<string, ProviderOverride> = {
       },
       "gpt-6.1-sol": {
         description:
-          "Newest Sol. Same tier as GPT-6 Sol, handles longer conversations.",
+          "Previous Sol. Same tier as GPT-6 Sol, handles longer conversations.",
+      },
+      "gpt-6.2-sol": {
+        description:
+          "Newest Sol. Same allowance use and conversation length as GPT-6.1 Sol.",
       },
       "gpt-6-astra": {
+        description: "Previous Astra. Uses your allowance 5x faster than Sol.",
+      },
+      "gpt-6.2-astra": {
         description:
-          "Most capable GPT-6. Uses your allowance 5x faster than Sol.",
+          "Most capable GPT-6. Uses your allowance 4x faster than Sol.",
       },
       "gpt-5.6-sol": {
         description: "Previous frontier model. Strong for complex work.",

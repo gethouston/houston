@@ -10,6 +10,7 @@ import type {
   QueuedMessageLabels,
 } from "./queued-message-list";
 import type { MentionPerson, MessageMention } from "./types";
+import type { ComposerDraftStore } from "./use-composer-draft";
 
 export type InputStatus = "ready" | "streaming" | "submitted";
 
@@ -83,4 +84,7 @@ export interface ChatInputProps {
    *  key, so switching conversations never sends one chat's picks with
    *  another's words. Omit on a composer that never switches. */
   draftKey?: string;
+  /** The text lives in this store under `draftKey`, in place of
+   *  `value`/`onValueChange`, so typing re-renders only the composer. */
+  draftStore?: ComposerDraftStore;
 }
