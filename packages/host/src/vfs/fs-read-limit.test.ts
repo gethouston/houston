@@ -42,3 +42,15 @@ test("memory and prefixed reads preserve the same byte limit", async () => {
     "office bytes",
   );
 });
+
+test("a bounded read allocates for the file, not for the cap", async () => {
+  const root = await mkdtemp(join(tmpdir(), "vfs-bounded-"));
+  try {
+    await writeFile(join(root, "note.txt"), "tiny");
+    const bytes = await new FsVfs(root).readBytes("note.txt", 50 * 1024 * 1024);
+    expect(bytes?.toString()).toBe("tiny");
+    expect(bytes?.buffer.byteLength).toBeLessThan(1024);
+  } finally {
+    await rm(root, { recursive: true, force: true });
+  }
+});
