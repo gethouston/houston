@@ -69,6 +69,10 @@ export type ChatInteractionStep =
        *  refused as expired, revoked or missing a permission): the card asks
        *  to reconnect and never counts the existing connection as done. */
       reconnect?: boolean;
+      /** With `reconnect`: ISO time the app refused the login. Only a
+       *  connection created after it counts as the reconnect, wherever the
+       *  user made it (this card or the Integrations page). */
+      refusedAt?: string;
     }
   // HOU-550: enter a custom integration's API key in a secure field (the secret
   // never lands in the transcript). `toolkit` is the custom integration's slug.

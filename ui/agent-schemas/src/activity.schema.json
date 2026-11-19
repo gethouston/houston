@@ -122,6 +122,7 @@
                 "toolkit": { "type": "string" },
                 "wantsFiles": { "type": "boolean" },
                 "reconnect": { "type": "boolean" },
+                "refusedAt": { "type": "string" },
                 "provider": { "type": "string", "minLength": 1 },
                 "surface": {
                   "type": "string",

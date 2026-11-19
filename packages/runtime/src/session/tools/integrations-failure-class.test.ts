@@ -21,10 +21,6 @@ const BODY = {
     '{"error":{"message":"Error validating access token: The session has been invalidated because the user changed their password or Facebook has changed the session for security reasons.","type":"OAuthException","code":190,"error_subcode":460,"fbtrace_id":"<id>"}}',
   googleCalendar401:
     '{\n  "error": {\n    "code": 401,\n    "message": "Request had invalid authentication credentials. Expected OAuth 2 access token, login cookie or other valid authentication credential.",\n    "status": "UNAUTHENTICATED"\n  }\n}',
-  driveScopes:
-    'Error finding files: 403. {\n  "error": {\n    "code": 403,\n    "message": "Request had insufficient authentication scopes.",\n    "errors": [{ "message": "Insufficient Permission", "domain": "global", "reason": "<id>" }],\n    "status": "PERMISSION_DENIED"\n  }\n}',
-  gmailScopes:
-    '403 Forbidden: Access denied. You may not have permission to access this user\'s profile or the required Gmail API scope is missing. Details: {"error": {"code": 403, "message": "Request had insufficient authentication scopes."}}',
   notionQuery:
     'Notion API HTTP error 404: {"object":"error","status":404,"code":"object_not_found","message":"Could not find database with ID: <uuid>. Make sure the relevant pages and databases are shared with your integration \\"Composio\\".","request_id":"<uuid>"}',
   notionPage:
@@ -68,8 +64,6 @@ describe("classifyIntegrationFailure", () => {
     ["odoo", BODY.odoo],
     ["facebook", BODY.facebook],
     ["googlecalendar", BODY.googleCalendar401],
-    ["googledrive", BODY.driveScopes],
-    ["gmail", BODY.gmailScopes],
   ])("%s dead login → needs_reconnect carrying the toolkit", (toolkit, body) => {
     expect(classifyIntegrationFailure(body, toolkit)).toEqual({
       kind: "needs_reconnect",
@@ -110,12 +104,15 @@ describe("classifyIntegrationFailure", () => {
 describe("toolkitForAction", () => {
   test("prefers the toolkit integration_search reported", () => {
     const known = new Map([["HIGHLEVEL_MCP_SEND", "highlevel_mcp"]]);
-    expect(toolkitForAction("HIGHLEVEL_MCP_SEND", known)).toBe("highlevel_mcp");
+    expect(toolkitForAction("HIGHLEVEL_MCP_SEND", known)).toEqual({
+      toolkit: "highlevel_mcp",
+      known: true,
+    });
   });
 
-  test("falls back to the slug's first segment", () => {
-    expect(toolkitForAction("APIFY_ACT_RUNS_LAST_GET", new Map())).toBe(
-      "apify",
+  test("falls back to the slug's first segment, marked as a guess", () => {
+    expect(toolkitForAction("MICROSOFT_TEAMS_SEND_MESSAGE", new Map())).toEqual(
+      { toolkit: "microsoft", known: false },
     );
   });
 });
@@ -127,8 +124,20 @@ describe("failureClassGuidance", () => {
       "APIFY_ACT_RUNS_LAST_GET",
     );
     expect(text).toContain("do not call any apify action again");
-    expect(text).toContain("reconnect step for this app was added");
+    expect(text).toContain("A reconnect step for apify was added");
     expect(text).toContain("end your turn");
+  });
+
+  test("needs_reconnect without a card: the Integrations page, never in chat", () => {
+    const text = failureClassGuidance(
+      { kind: "needs_reconnect", toolkit: "apify" },
+      "APIFY_ACT_RUNS_LAST_GET",
+      "integrations_page",
+    );
+    expect(text).toContain("do not call any apify action again");
+    expect(text).toContain("Integrations page");
+    expect(text).toContain("Do not ask to connect it in chat");
+    expect(text).not.toContain("A reconnect step");
   });
 
   test("Slack assistant search points at SLACK_SEARCH_MESSAGES", () => {
@@ -158,4 +167,13 @@ describe("failureClassGuidance", () => {
     expect(text).toContain("Do not retry the same id");
     expect(text).toContain("choose Connections and add Composio");
   });
+});
+
+test("insufficient scopes are left unclassified (a separate missing-permission hint owns them)", () => {
+  expect(
+    classifyIntegrationFailure(
+      'Error finding files: 403. {"error": {"code": 403, "message": "Request had insufficient authentication scopes."}}',
+      "googledrive",
+    ),
+  ).toBeUndefined();
 });

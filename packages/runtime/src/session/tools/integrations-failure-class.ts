@@ -12,6 +12,8 @@
  * unclassified and keeps today's generic failure text.
  */
 
+import { reconnectCardMarker } from "./integrations-reconnect-once";
+
 export type IntegrationFailureClass =
   /** The saved login or key no longer works: only a reconnect fixes it. */
   | { kind: "needs_reconnect"; toolkit: string }
@@ -29,8 +31,6 @@ const NEEDS_RECONNECT: readonly RegExp[] = [
   /error validating access token/i,
   // Google 401 UNAUTHENTICATED: the refresh token stopped working.
   /request had invalid authentication credentials/i,
-  // Google 403: the connection was granted without a scope this action needs.
-  /insufficient authentication scopes/i,
   // OAuth refresh refused outright.
   /\binvalid_grant\b/,
   /token has been expired or revoked/i,
@@ -68,18 +68,29 @@ export function classifyIntegrationFailure(
 }
 
 /**
- * The toolkit an action belongs to: the one integration_search reported for
- * it, else the slug's first segment (GMAIL_SEND_EMAIL → gmail), which is right
- * for single-word toolkits and only a display fallback for the rest.
+ * The toolkit an action belongs to. `known` = integration_search reported it,
+ * the only source a reconnect card may name: the slug's first segment
+ * (GMAIL_SEND_EMAIL → gmail) is wrong for multi-word toolkits
+ * (MICROSOFT_TEAMS_… → microsoft), so it only names the app in prose.
  */
 export function toolkitForAction(
   action: string,
   known: ReadonlyMap<string, string>,
-): string {
-  return (
-    known.get(action) ?? (action.split("_")[0] ?? action).trim().toLowerCase()
-  );
+): { toolkit: string; known: boolean } {
+  const reported = known.get(action);
+  if (reported) return { toolkit: reported, known: true };
+  return {
+    toolkit: (action.split("_")[0] ?? action).trim().toLowerCase(),
+    known: false,
+  };
 }
+
+/**
+ * How the user fixes a dead login: the in-chat reconnect card, or the
+ * Integrations page when no card can be offered (the toolkit is a guess, or
+ * this conversation already got its one card for the app).
+ */
+export type ReconnectRoute = "card" | "integrations_page";
 
 /** Slack's search that needs the Real-time Search API on the workspace. */
 const SLACK_ASSISTANT_SEARCH = "SLACK_ASSISTANT_SEARCH_CONTEXT";
@@ -91,11 +102,17 @@ const SLACK_ASSISTANT_SEARCH = "SLACK_ASSISTANT_SEARCH_CONTEXT";
 export function failureClassGuidance(
   failure: IntegrationFailureClass,
   action: string,
+  reconnect: ReconnectRoute = "card",
 ): string {
   const app = failure.toolkit;
   switch (failure.kind) {
-    case "needs_reconnect":
-      return ` The user's ${app} connection no longer works: the app refused the saved sign-in (it expired, was revoked or changed, or lacks a permission this action needs). Retrying cannot fix this, so do not call any ${app} action again until the user reconnects it. A reconnect step for this app was added to the interaction card the user sees in place of the chat input. Tell the user in plain words that this app needs to be reconnected, finish any part of the task that does not need it, then end your turn; you get a message automatically once it is reconnected. Never mention slugs or technical details to the user.`;
+    case "needs_reconnect": {
+      const head = ` The user's ${app} connection no longer works: the app refused the saved sign-in (it expired, was revoked or changed). Retrying cannot fix this, so do not call any ${app} action again until the user reconnects it.`;
+      const tail = " Never mention slugs or technical details to the user.";
+      if (reconnect === "card")
+        return `${head} ${reconnectCardMarker(app)} to the interaction card the user sees in place of the chat input. Tell the user in plain words that this app needs to be reconnected, finish any part of the task that does not need it, then end your turn; you get a message automatically once it is reconnected.${tail}`;
+      return `${head} Do not ask to connect it in chat. Tell the user in plain words to reconnect this app on Houston's Integrations page (remove it there and connect it again), finish any part of the task that does not need it, then end your turn.${tail}`;
+    }
     case "not_shared":
       return ` Notion only lets this connection see the pages and databases the user has shared with it, and this one is not shared (or the id does not exist). Do not retry the same id. If the id was guessed or remembered, search Notion for the page and use an id from those results. If the page exists, ask the user to open it in Notion, open the ... menu, choose Connections and add Composio, then continue once they confirm. Never mention ids or technical details to the user.`;
     case "not_available":

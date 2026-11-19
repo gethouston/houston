@@ -44,6 +44,9 @@ interface ChatConnectInteractionCardProps extends StepChrome, StepDraftApi {
    *  and count the step done only once a reconnect started HERE lands (the
    *  existing, dead connection must not auto-continue the sequence). */
   reconnect?: boolean;
+  /** With `reconnect`: when the app refused the old login. A connection made
+   *  after it, here or on the Integrations page, finishes the step. */
+  refusedAt?: string;
 }
 
 /**
@@ -76,6 +79,7 @@ export function ChatConnectInteractionCard({
   revisited,
   stepId,
   reconnect = false,
+  refusedAt,
   ...chrome
 }: ChatConnectInteractionCardProps) {
   const { t } = useTranslation("chat");
@@ -104,11 +108,14 @@ export function ChatConnectInteractionCard({
       : onConnected,
     autoContinueWhenConnected: connectStepAutoContinues({
       reconnect,
+      refusedAt,
       revisited,
     }),
+    ...(reconnect && refusedAt ? { connectedAfter: refusedAt } : {}),
   });
   const done = connectStepDone({
     reconnect,
+    refusedAt,
     isConnected,
     reconnectedHere: reconnected,
   });

@@ -496,9 +496,10 @@ components:
       connected; the approval step's body is its own component,
       interaction-approval-card, injected via a `renderApproval` prop the way
       signin/connect bodies are). A connect step flagged `reconnect` (the app's
-      login was refused) reads "Reconnect {app}", never counts the existing
-      connection as done or auto-continues on it, and finishes only when a
-      reconnect started from the card lands. Every step is composed in
+      login was refused at `refusedAt`) reads "Reconnect {app}" and counts only
+      a connection created after the refusal, made from the card or the
+      Integrations page; the refused one never finishes or advances it. Every
+      step is composed in
       ONE shared modal shell (InteractionModal) that owns the chrome — a white
       card with a hairline border and roomy padding (the reference "Coworker card"
       look; a card-surface same colour as the page, set apart by border + soft
