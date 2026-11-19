@@ -1,3 +1,4 @@
+import { FILE_PARAM_NOTE, presentFileParams } from "./integrations-file-params";
 import { clipSchemaText as clip, schemaSignature } from "./integrations-schema";
 import { parameterDetails } from "./integrations-schema-details";
 import { parameterLookupInstruction } from "./integrations-search-notes";
@@ -55,6 +56,7 @@ export function renderSearchItems(items: ToolMatch[]): string {
   const shown = items.slice(0, MAX_ITEMS);
   let actionsSeen = 0;
   let signatures = false;
+  let files = false;
   const lines = shown.map((m) => {
     const tag = STATUS_TAG[statusOf(m)];
     const description = clip(m.description, MAX_DESCRIPTION_CHARS);
@@ -64,23 +66,26 @@ export function renderSearchItems(items: ToolMatch[]): string {
     }
     const header = `- ${m.action} (${m.toolkit}${tag}): ${description}`;
     if (m.inputParams === undefined) return header;
+    const view = presentFileParams(m.inputParams);
+    files ||= view.hasFiles;
+    const inputParams = view.schema;
     const detailed = actionsSeen++ < DETAILED_ITEMS;
     if (detailed) {
       try {
-        const full = JSON.stringify(m.inputParams);
+        const full = JSON.stringify(inputParams);
         if (full.length <= 2000) return `${header}\n  params: ${full}`;
       } catch (error) {
         // Deep schemas can exceed the serializer's stack before the row budget.
         if (!(error instanceof RangeError)) throw error;
       }
     }
-    const signature = schemaSignature(m.inputParams);
+    const signature = schemaSignature(inputParams);
     if (!signature) return header;
     const summary = `${header}\n  params: ${signature}`;
     signatures = true;
     return detailed
       ? summary +
-          parameterDetails(m.inputParams, MAX_DETAILED_CHARS - summary.length)
+          parameterDetails(inputParams, MAX_DETAILED_CHARS - summary.length)
       : summary;
   });
   // Notes lead: both backends keep only a long result's first 8k characters.
@@ -90,6 +95,7 @@ export function renderSearchItems(items: ToolMatch[]): string {
       `(+${items.length - shown.length} more matched but are not shown - narrow the query, or set \`app\` to the one you need.)`,
     );
   }
+  if (files) notes.push(FILE_PARAM_NOTE);
   if (signatures) {
     notes.push(
       `(Some actions show only a params signature. ${parameterLookupInstruction()})`,
