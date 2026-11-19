@@ -1,4 +1,7 @@
+import { mkdirSync, mkdtempSync, writeFileSync } from "node:fs";
 import { createServer, type Server } from "node:http";
+import { tmpdir } from "node:os";
+import { join } from "node:path";
 import type { Capabilities } from "@houston/protocol";
 import { afterEach, expect, test } from "vitest";
 import { MemoryCredentialStore } from "../credentials/store";
@@ -9,7 +12,6 @@ import { IntegrationRegistry } from "../integrations/registry";
 import { LocalPaths } from "../paths";
 import { createControlPlaneServer } from "../server";
 import { MemoryWorkspaceStore } from "../store/memory";
-import { MemoryVfs } from "../vfs";
 
 /**
  * The sandbox execute route stages file arguments from the CALLING agent's
@@ -75,8 +77,8 @@ async function setup() {
   });
   const store = new MemoryWorkspaceStore({ defaultRuntime: "gke" });
   const vault = new EnvCredentialVault({ secret: "test-secret" });
-  const vfs = new MemoryVfs();
   const paths = new LocalPaths();
+  const root = mkdtempSync(join(tmpdir(), "sandbox-files-"));
   const base = await listen(
     createControlPlaneServer({
       verifier: { verify: async () => null },
@@ -86,17 +88,15 @@ async function setup() {
       channels: {},
       capabilities: CAPS,
       integrations: { registry: new IntegrationRegistry([provider]) },
-      vfs,
       paths,
+      agentDir: (_ws, a) => join(root, ...a.id.split("/")),
       corsOrigin: "*",
     }),
   );
   const ws = await store.getOrCreatePersonalWorkspace("alice");
   const agent = await store.createAgent({ workspaceId: ws.id, name: "CMO" });
-  await vfs.writeBytes(
-    `${paths.agentRoot(ws, agent)}/q3.pdf`,
-    Buffer.from("%PDF"),
-  );
+  mkdirSync(join(root, ...agent.id.split("/")), { recursive: true });
+  writeFileSync(join(root, ...agent.id.split("/"), "q3.pdf"), "%PDF");
   const execute = (params: Record<string, unknown>) =>
     fetch(`${base}/sandbox/integrations/execute`, {
       method: "POST",

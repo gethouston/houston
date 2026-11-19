@@ -1,7 +1,6 @@
 import { expect, test } from "vitest";
 import { ComposioProvider } from "./composio";
 import { RemoteIntegrationProvider } from "./remote";
-import { workspaceKeyFor } from "./workspace-file";
 
 /**
  * The file leg on both adapters, against an injected fetch: the direct adapter
@@ -141,21 +140,4 @@ test("remote: a gateway without the file leg (404) describes nothing", async () 
     body: { error: "not found" },
   }));
   expect(await provider.describeAction("u1", "GMAIL_X")).toBeNull();
-});
-
-test("workspace keys: relative, absolute under the agent root, and refusals", () => {
-  const root = "Personal/Asistente x";
-  expect(workspaceKeyFor(root, "reports/q3.pdf")).toBe(
-    `${root}/reports/q3.pdf`,
-  );
-  expect(workspaceKeyFor(root, "./a/../b.pdf")).toBe(`${root}/b.pdf`);
-  expect(
-    workspaceKeyFor(
-      root,
-      `/work/houston-turn-1/store/workspaces/${root}/c/d.pdf`,
-    ),
-  ).toBe(`${root}/c/d.pdf`);
-  for (const bad of ["/tmp/x.pdf", "../x.pdf", ".", ""]) {
-    expect(() => workspaceKeyFor(root, bad)).toThrow(/outside your workspace/);
-  }
 });

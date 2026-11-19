@@ -1,7 +1,17 @@
 import { createHash } from "node:crypto";
 import { mimeFor } from "../turn/files-mime";
-import { type FileUploadSlot, hasFileArgs, mapFileArgs } from "./file-args";
+import { ComposioApiError } from "./composio-http";
+import {
+  type FileUploadSlot,
+  fileRef,
+  hasFileArgs,
+  mapFileArgs,
+} from "./file-args";
 import type { ActingContext, IntegrationProvider } from "./provider";
+import {
+  IntegrationSigninRequiredError,
+  IntegrationUpstreamError,
+} from "./types";
 
 /**
  * Turns the workspace paths an agent passes for an action's file arguments into
@@ -11,8 +21,8 @@ import type { ActingContext, IntegrationProvider } from "./provider";
  * (or the cloud gateway behind it) only describes actions and mints slots.
  */
 
-/** Ceiling for one file argument, read whole into memory to hash and send.
- *  Composio documents none; Gmail itself refuses past 25 MB. */
+/** Ceiling for the files of one execute, read whole into memory to hash and
+ *  send. Composio documents none; Gmail itself refuses past 25 MB. */
 export const MAX_FILE_ARG_BYTES = 50 * 1024 * 1024;
 
 /** An action's schema rarely changes; looked up once per action per hour. */
@@ -46,17 +56,30 @@ export interface StageFilesInput {
   /** Reads one agent-supplied path; throws FileArgumentError when the path
    *  can never be a workspace file, null when nothing is there. */
   readFile: (path: string) => Promise<WorkspaceFile | null>;
+  /** The PUT transport for this call (a turn binds its cancellation). */
+  fetch?: typeof fetch;
 }
 
-/** A path, from the documented string form or the `{ s3key: <path> }` shape
- *  agents copy from the raw schema. A real Composio key there has no file
- *  behind it in the workspace and is forwarded untouched. */
-function fileRef(value: unknown): { path: string; name?: string } | null {
-  if (typeof value === "string") return value ? { path: value } : null;
-  if (!value || typeof value !== "object" || Array.isArray(value)) return null;
-  const { s3key, name } = value as { s3key?: unknown; name?: unknown };
-  if (typeof s3key !== "string" || !s3key) return null;
-  return { path: s3key, ...(typeof name === "string" && name ? { name } : {}) };
+/** A presigned PUT of at most MAX_FILE_ARG_BYTES; past this it is stuck. */
+const UPLOAD_TIMEOUT_MS = 5 * 60 * 1000;
+
+/** A describe failure that is the deployment refusing this user or action
+ *  (signed out, app turned off, locked org): execute would refuse the same
+ *  way, so it surfaces. Anything else (an upstream 5xx, a timeout) must not
+ *  fail an execute that may not even carry a file. */
+function isRefusal(err: unknown): boolean {
+  if (err instanceof IntegrationSigninRequiredError) return true;
+  const status =
+    err instanceof IntegrationUpstreamError || err instanceof ComposioApiError
+      ? err.status
+      : undefined;
+  return (
+    status !== undefined &&
+    status >= 400 &&
+    status < 500 &&
+    status !== 408 &&
+    status !== 429
+  );
 }
 
 export function createFileStager(fetchImpl: typeof fetch = fetch) {
@@ -71,11 +94,20 @@ export function createFileStager(fetchImpl: typeof fetch = fetch) {
     const cacheKey = `${provider.id}:${action}`;
     const hit = schemas.get(cacheKey);
     if (hit && Date.now() - hit.at < SCHEMA_TTL_MS) return hit;
-    const described = await provider.describeAction(
-      input.userId,
-      action,
-      input.acting,
-    );
+    let described: Awaited<ReturnType<typeof provider.describeAction>>;
+    try {
+      described = await provider.describeAction(
+        input.userId,
+        action,
+        input.acting,
+      );
+    } catch (err) {
+      if (isRefusal(err)) throw err;
+      console.warn(
+        `[integrations] describing ${action} failed; executing without staging files: ${String(err)}`,
+      );
+      return null;
+    }
     // Only file-bearing schemas are kept whole; the rest cache as "none".
     const entry = {
       at: Date.now(),
@@ -89,11 +121,17 @@ export function createFileStager(fetchImpl: typeof fetch = fetch) {
     return entry;
   }
 
-  async function upload(slot: FileUploadSlot, bytes: Buffer): Promise<void> {
-    const res = await fetchImpl(slot.uploadUrl, {
+  async function upload(
+    slot: FileUploadSlot,
+    bytes: Buffer,
+    put: typeof fetch,
+  ): Promise<void> {
+    const res = await put(slot.uploadUrl, {
       method: "PUT",
       headers: slot.headers,
-      body: new Uint8Array(bytes),
+      // A file read allocates its own ArrayBuffer (never shared): no copy.
+      body: bytes as Uint8Array<ArrayBuffer>,
+      signal: AbortSignal.timeout(UPLOAD_TIMEOUT_MS),
     });
     if (!res.ok) {
       throw new Error(`file upload for the app failed (HTTP ${res.status})`);
@@ -101,7 +139,9 @@ export function createFileStager(fetchImpl: typeof fetch = fetch) {
   }
 
   /** `params` with every file argument staged; untouched when the action
-   *  takes no file or the provider cannot stage one. */
+   *  takes no file or the provider cannot stage one. Files go one at a time,
+   *  at most MAX_FILE_ARG_BYTES in all, so one execute holds one file's
+   *  bytes at a time. */
   return async function stageFiles(
     input: StageFilesInput,
   ): Promise<Record<string, unknown>> {
@@ -110,27 +150,23 @@ export function createFileStager(fetchImpl: typeof fetch = fetch) {
     const { toolkit } = schema;
     const reserve = input.provider.reserveFileUpload;
     if (!reserve) return input.params;
+    let total = 0;
     const staged = await mapFileArgs(
       input.params,
       schema.inputParams,
       async (value) => {
         const ref = fileRef(value);
         if (!ref) return value;
-        // Composio keys are relative ("<project>/gmail/…"); an absolute s3key
-        // can only be the agent's own path, so it gets the same guidance.
-        const isPathForm =
-          typeof value === "string" || ref.path.startsWith("/");
-        let file: WorkspaceFile | null;
-        try {
-          file = await input.readFile(ref.path);
-        } catch (err) {
-          if (err instanceof FileArgumentError && !isPathForm) return value;
-          throw err;
-        }
+        const file = await input.readFile(ref.path);
         if (!file) {
-          if (!isPathForm) return value;
           throw new FileArgumentError(
             `The file "${ref.path}" was not found in your workspace. A file parameter takes the path of a file in your workspace (for example "reports/q3.pdf"); save or download the file there first, then retry with its path.`,
+          );
+        }
+        total += file.bytes.length;
+        if (total > MAX_FILE_ARG_BYTES) {
+          throw new FileArgumentError(
+            `The files for this action add up to more than ${MAX_FILE_ARG_BYTES / 1024 / 1024} MB, the most Houston can send to an app at once. Send fewer or smaller files.`,
           );
         }
         const name = ref.name ?? file.name;
@@ -147,7 +183,7 @@ export function createFileStager(fetchImpl: typeof fetch = fetch) {
           },
           input.acting,
         );
-        await upload(slot, file.bytes);
+        await upload(slot, file.bytes, input.fetch ?? fetchImpl);
         return { name, mimetype, s3key: slot.key };
       },
     );

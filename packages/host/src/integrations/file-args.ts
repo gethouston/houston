@@ -109,9 +109,30 @@ export async function mapFileArgs(
   }
   if (Array.isArray(value) && node.items !== undefined) {
     const items = Array.isArray(node.items) ? node.items[0] : node.items;
-    return Promise.all(
-      value.map((item) => mapFileArgs(item, items, leaf, depth + 1)),
-    );
+    // One item at a time: a file leaf holds that file's bytes while it runs.
+    const out: unknown[] = [];
+    for (const item of value) {
+      out.push(await mapFileArgs(item, items, leaf, depth + 1));
+    }
+    return out;
   }
   return value;
+}
+
+/** Keys Composio's files API hands out: upload keys under the project, and
+ *  download keys like its own schema example ("47563/gmail/GET_ATTACHMENT/…"). */
+const COMPOSIO_KEY = /^(projects\/pr_|\d+\/[a-z0-9_-]+\/[A-Z0-9_]+\/)/;
+
+/** A path, from the documented string form or the `{ s3key: <path> }` shape
+ *  agents copy from the raw schema. A real Composio key there (a file an
+ *  earlier download action stored) is forwarded untouched. */
+export function fileRef(
+  value: unknown,
+): { path: string; name?: string } | null {
+  if (typeof value === "string") return value ? { path: value } : null;
+  if (!value || typeof value !== "object" || Array.isArray(value)) return null;
+  const { s3key, name } = value as { s3key?: unknown; name?: unknown };
+  if (typeof s3key !== "string" || !s3key || COMPOSIO_KEY.test(s3key))
+    return null;
+  return { path: s3key, ...(typeof name === "string" && name ? { name } : {}) };
 }

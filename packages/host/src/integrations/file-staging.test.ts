@@ -1,6 +1,8 @@
 import { createHash } from "node:crypto";
-import { beforeEach, describe, expect, test } from "vitest";
-import { MemoryVfs } from "../vfs";
+import { mkdirSync, mkdtempSync, rmSync, writeFileSync } from "node:fs";
+import { tmpdir } from "node:os";
+import { join } from "node:path";
+import { afterEach, beforeEach, describe, expect, test } from "vitest";
 import { FakeIntegrationProvider } from "./fake";
 import type {
   ActionDescription,
@@ -12,7 +14,8 @@ import {
   FileArgumentError,
   MAX_FILE_ARG_BYTES,
 } from "./file-staging";
-import { workspaceFileReader } from "./workspace-file";
+import { IntegrationUpstreamError } from "./types";
+import { agentFileReader } from "./workspace-file";
 
 // The live shapes (Composio GET /api/v3/tools, 2026-11-18): Gmail takes one
 // file or a list, Drive exactly one.
@@ -85,15 +88,20 @@ class FileProvider extends FakeIntegrationProvider {
 const AGENT_ROOT = "Personal/CMO";
 const PDF = Buffer.from("%PDF-1.7 quarterly");
 
-let vfs: MemoryVfs;
+let root: string;
+let agentDir: string;
 let provider: FileProvider;
 let puts: { url: string; headers: unknown; body: Buffer }[];
 let stage: ReturnType<typeof createFileStager>;
 
+const reader = () => agentFileReader({ dir: agentDir, rootKey: AGENT_ROOT });
+
 beforeEach(async () => {
-  vfs = new MemoryVfs();
-  await vfs.writeBytes(`${AGENT_ROOT}/reports/q3.pdf`, PDF);
-  await vfs.writeBytes(`${AGENT_ROOT}/notes.txt`, Buffer.from("hi"));
+  root = mkdtempSync(join(tmpdir(), "file-staging-"));
+  agentDir = join(root, "Personal", "CMO");
+  mkdirSync(join(agentDir, "reports"), { recursive: true });
+  writeFileSync(join(agentDir, "reports", "q3.pdf"), PDF);
+  writeFileSync(join(agentDir, "notes.txt"), "hi");
   provider = new FileProvider();
   puts = [];
   stage = createFileStager((async (url, init) => {
@@ -106,13 +114,15 @@ beforeEach(async () => {
   }) as typeof fetch);
 });
 
+afterEach(() => rmSync(root, { recursive: true, force: true }));
+
 const run = (action: string, params: Record<string, unknown>) =>
   stage({
     provider,
     userId: "u1",
     action,
     params,
-    readFile: workspaceFileReader(vfs, AGENT_ROOT),
+    readFile: reader(),
   });
 
 describe("file staging", () => {
@@ -203,7 +213,44 @@ describe("file staging", () => {
       run("GOOGLEDRIVE_UPLOAD_FILE", {
         file_to_upload: { name: "a.pdf", mimetype: "x", s3key: "/tmp/a.pdf" },
       }),
-    ).rejects.toThrow(/outside your workspace/);
+    ).rejects.toThrow(/outside this agent's files/);
+  });
+
+  test("a relative s3key that is not a Composio key names a workspace file", async () => {
+    await expect(
+      run("GOOGLEDRIVE_UPLOAD_FILE", {
+        file_to_upload: {
+          name: "a.pdf",
+          mimetype: "x",
+          s3key: "reports/q4.pdf",
+        },
+      }),
+    ).rejects.toThrow(/"reports\/q4.pdf" was not found in your workspace/);
+  });
+
+  test("the files of one execute are capped in total", async () => {
+    const half = Buffer.alloc(MAX_FILE_ARG_BYTES / 2 + 1);
+    writeFileSync(join(agentDir, "a.bin"), half);
+    writeFileSync(join(agentDir, "b.bin"), half);
+    await expect(
+      run("GMAIL_CREATE_EMAIL_DRAFT", { attachment: ["a.bin", "b.bin"] }),
+    ).rejects.toThrow(/add up to more than 50 MB/);
+    expect(provider.reserves).toHaveLength(1);
+  });
+
+  test("a describe outage executes without staging; a refusal surfaces", async () => {
+    const params = { file_to_upload: "notes.txt" };
+    provider.describeAction = async () => {
+      throw new IntegrationUpstreamError(502, { error: "composio down" });
+    };
+    expect(await run("GOOGLEDRIVE_UPLOAD_FILE", params)).toBe(params);
+    provider.describeAction = async () => {
+      throw new IntegrationUpstreamError(403, { code: "toolkit_not_allowed" });
+    };
+    await expect(run("GOOGLEDRIVE_UPLOAD_FILE", params)).rejects.toBeInstanceOf(
+      IntegrationUpstreamError,
+    );
+    expect(provider.reserves).toEqual([]);
   });
 
   test("a missing file fails with guidance and uploads nothing", async () => {
@@ -218,15 +265,15 @@ describe("file staging", () => {
   test("a path outside the workspace is refused", async () => {
     await expect(
       run("GOOGLEDRIVE_UPLOAD_FILE", { file_to_upload: "/etc/hosts" }),
-    ).rejects.toThrow(/outside your workspace/);
+    ).rejects.toThrow(/outside this agent's files/);
     await expect(
       run("GOOGLEDRIVE_UPLOAD_FILE", { file_to_upload: "../Other/a.pdf" }),
-    ).rejects.toThrow(/outside your workspace/);
+    ).rejects.toThrow(/outside this agent's files/);
   });
 
   test("an oversize file is refused before any upload", async () => {
-    await vfs.writeBytes(
-      `${AGENT_ROOT}/big.bin`,
+    writeFileSync(
+      join(agentDir, "big.bin"),
       Buffer.alloc(MAX_FILE_ARG_BYTES + 1),
     );
     await expect(
@@ -268,7 +315,7 @@ describe("file staging", () => {
       userId: "u1",
       action: "GOOGLEDRIVE_UPLOAD_FILE",
       params,
-      readFile: workspaceFileReader(vfs, AGENT_ROOT),
+      readFile: reader(),
     });
     expect(staged).toBe(params);
   });
@@ -284,7 +331,7 @@ describe("file staging", () => {
         userId: "u1",
         action: "GOOGLEDRIVE_UPLOAD_FILE",
         params: { file_to_upload: "notes.txt" },
-        readFile: workspaceFileReader(vfs, AGENT_ROOT),
+        readFile: reader(),
       }),
     ).rejects.toThrow(/HTTP 403/);
   });

@@ -1,11 +1,10 @@
-import type { AgentId, Workspace } from "../domain/types";
+import type { Agent, AgentId, Workspace } from "../domain/types";
 import { createFileStager } from "../integrations/file-staging";
 import type { ActingContext } from "../integrations/provider";
 import type { IntegrationRegistry } from "../integrations/registry";
-import { workspaceFileReader } from "../integrations/workspace-file";
+import { agentFileReader } from "../integrations/workspace-file";
 import type { WorkspacePaths } from "../paths";
 import type { WorkspaceStore } from "../ports";
-import type { Vfs } from "../vfs";
 import { DEFAULT_PATHS } from "./agent-authz";
 import { providerForAction } from "./integrations-fanout";
 
@@ -14,14 +13,16 @@ const stageFiles = createFileStager();
 
 export interface SandboxFileDeps {
   store: WorkspaceStore;
-  vfs?: Vfs;
   paths?: WorkspacePaths;
+  /** The agent's folder on disk; absent where the host is not beside the
+   *  files, which then executes file arguments as the agent passed them. */
+  agentDir?: (ws: Workspace, agent: Agent) => string;
 }
 
 /**
  * The execute's params with every file argument uploaded from the calling
- * agent's workspace (integrations/file-staging.ts). Untouched when the host
- * has no workspace storage or the owning provider cannot stage files.
+ * agent's folder (integrations/file-staging.ts). Untouched when the host is
+ * not beside the agent's files or the owning provider cannot stage files.
  */
 export async function stageSandboxFiles(
   deps: SandboxFileDeps,
@@ -36,13 +37,13 @@ export async function stageSandboxFiles(
     provider?: Parameters<IntegrationRegistry["get"]>[0];
   },
 ): Promise<Record<string, unknown>> {
-  const { vfs } = deps;
+  const { agentDir } = deps;
   const provider = input.registry.get(
     input.provider ?? providerForAction(input.registry, input.action),
   );
-  if (!vfs || !provider.describeAction) return input.params;
+  if (!agentDir || !provider.describeAction) return input.params;
   const paths = deps.paths ?? DEFAULT_PATHS;
-  let read: ReturnType<typeof workspaceFileReader> | undefined;
+  let read: ReturnType<typeof agentFileReader> | undefined;
   return stageFiles({
     provider,
     userId: input.userId,
@@ -54,10 +55,10 @@ export async function stageSandboxFiles(
       if (!read) {
         const agent = await deps.store.getAgent(input.agentId);
         if (!agent) throw new Error(`agent ${input.agentId} not found`);
-        read = workspaceFileReader(
-          vfs,
-          paths.agentRoot(input.workspace, agent),
-        );
+        read = agentFileReader({
+          dir: agentDir(input.workspace, agent),
+          rootKey: paths.agentRoot(input.workspace, agent),
+        });
       }
       return read(path);
     },
