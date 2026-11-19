@@ -1,6 +1,7 @@
 import { afterEach, expect, test, vi } from "vitest";
 import { LocalModelBridgeController } from "./controller";
 import { BridgeDisposedError } from "./errors";
+import { bridgeQuietClass } from "./quiet";
 import type {
   LocalBridgeJournal,
   LocalBridgeNativeEvent,
@@ -479,5 +480,61 @@ test.each([
   expect(h.ports.native.start).toHaveBeenCalledTimes(
     status === "offline" ? 2 : 1,
   );
+  await h.controller.dispose();
+});
+
+// The gateway's error body as `HoustonEngineError` carries it: the top-level
+// `code` sits on `body`, and the error's own `code` getter reads only the
+// nested host shape, so it is absent here too.
+function gatewayError(status: number, code: string) {
+  return Object.assign(new Error(`${code} (engine error ${status})`), {
+    status,
+    body: { code, error: code.replace(/_/g, " ") },
+  });
+}
+// HOUSTON-APP-5DY: a renewal for a generation the relay no longer holds (a
+// relay restart, or a late timer after the session lapsed) answers 409
+// `stale_session`. The bridge used to settle `reconnect_required` and ask the
+// person to reconnect by hand; a fresh session is all it needs.
+test("a renewal the gateway calls stale opens a fresh session, quietly", async () => {
+  vi.useFakeTimers();
+  const h = harness();
+  await h.controller.connect(input);
+  const first = h.controller.getSnapshot().generation;
+  const stale = gatewayError(409, "stale_session");
+  vi.mocked(h.ports.management.session).mockRejectedValueOnce(stale);
+  await vi.advanceTimersByTimeAsync(480_000);
+  expect(h.controller.getSnapshot().status).toBe("reconnecting");
+  await vi.advanceTimersByTimeAsync(1_000);
+  expect(h.controller.getSnapshot().status).toBe("online");
+  expect(h.controller.getSnapshot().generation).toBe((first ?? 0) + 1);
+  const calls = vi.mocked(h.ports.management.session).mock.calls;
+  expect(calls.at(-1)?.[3]).toBeUndefined();
+  expect(h.ports.report).toHaveBeenCalledWith(stale);
+  expect(bridgeQuietClass(stale)).toBe("bridge_state");
+  await h.controller.dispose();
+});
+// HOUSTON-APP-5M1: the gateway could not match the old tunnel's proof, so the
+// migration can never complete on its own. The person reconnects through the
+// guided dialog (a fresh connect needs no proof); the state is expected.
+test("a migration the gateway refuses asks for a reconnect, quietly, without retrying", async () => {
+  vi.useFakeTimers();
+  const h = harness();
+  vi.mocked(h.ports.native.legacyCandidate).mockResolvedValue({
+    targetBaseUrl: "http://localhost:1234/v1",
+    proxyKey: "proxy-key",
+    appName: "LM Studio",
+  });
+  vi.mocked(h.ports.management.legacyEndpoint).mockResolvedValue({
+    baseUrl: "https://tunnel.test/v1",
+    model: "local",
+  });
+  const refusal = gatewayError(409, "migration_requires_reconnect");
+  vi.mocked(h.ports.management.register).mockRejectedValue(refusal);
+  await expect(h.controller.resume()).rejects.toBe(refusal);
+  expect(h.controller.getSnapshot().status).toBe("reconnect_required");
+  await vi.advanceTimersByTimeAsync(120_000);
+  expect(h.ports.management.register).toHaveBeenCalledTimes(1);
+  expect(bridgeQuietClass(refusal)).toBe("bridge_state");
   await h.controller.dispose();
 });

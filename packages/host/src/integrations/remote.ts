@@ -1,5 +1,10 @@
 import type { IntegrationProviderId } from "@houston/protocol";
 import type {
+  ActionDescription,
+  FileUploadRequest,
+  FileUploadSlot,
+} from "./file-args";
+import type {
   ActingContext,
   IntegrationProvider,
   ProviderSearchResult,
@@ -256,5 +261,32 @@ export class RemoteIntegrationProvider implements IntegrationProvider {
       acting,
     });
     return this.must(body, "POST /execute");
+  }
+
+  /** The gateway's file leg (cloud C1 "File arguments"). A gateway predating it
+   *  answers 404, read as "unknown": the execute then runs as it always did. */
+  async describeAction(
+    _userId: string,
+    action: string,
+    acting?: ActingContext,
+  ): Promise<ActionDescription | null> {
+    return this.call<ActionDescription>(
+      `/actions/${encodeURIComponent(action)}`,
+      { acting, nullStatuses: [404] },
+    );
+  }
+
+  async reserveFileUpload(
+    _userId: string,
+    req: FileUploadRequest,
+    acting?: ActingContext,
+  ): Promise<FileUploadSlot> {
+    const { action, filename, mimetype, md5 } = req;
+    const body = await this.call<FileUploadSlot>("/files/upload-request", {
+      method: "POST",
+      body: { action, filename, mimetype, md5 },
+      acting,
+    });
+    return this.must(body, "POST /files/upload-request");
   }
 }

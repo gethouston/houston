@@ -1,3 +1,4 @@
+import { modelInputLimit } from "@houston/protocol/model-windows";
 // Same self-contained-subpath rule as `./build-provider.ts`: the ONE
 // legacy-alias ladder, owned by `@houston/domain` and re-exported by the SDK.
 import { legacyModelAlias } from "@houston/sdk/provider-catalog";
@@ -15,12 +16,19 @@ import {
  * reasoning-effort levels it accepts.
  */
 
-/** Find the model object for a provider + model id. */
+/**
+ * Find the model object for a provider + model id: a picker row, or a hidden
+ * row the provider still runs (`ProviderInfo.hiddenModels`).
+ */
 export function getModel(
   providerId: string,
   modelId: string,
 ): ModelOption | undefined {
-  return getProvider(providerId)?.models.find((m) => m.id === modelId);
+  const provider = getProvider(providerId);
+  return (
+    provider?.models.find((m) => m.id === modelId) ??
+    provider?.hiddenModels?.find((m) => m.id === modelId)
+  );
 }
 
 /**
@@ -52,9 +60,12 @@ export function getContextWindowConfig(
   if (!providerId || !modelId) return undefined;
   const model = getModel(providerId, modelId);
   if (model?.contextWindow == null) return undefined;
+  const inputLimit = modelInputLimit(modelId);
   return {
     default: model.contextWindow,
     max: model.contextWindowMax ?? model.contextWindow,
+    // Absent, not `undefined`, when the window is the whole room.
+    ...(inputLimit === undefined ? {} : { inputLimit }),
   };
 }
 

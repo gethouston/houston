@@ -32,6 +32,25 @@ describe("needsAutocompact", () => {
     expect(needsAutocompact(975_176, 1_048_576, undefined)).toBe(true);
   });
 
+  it("compacts a 1.05M GPT-6 window at 93% of its 922k input cap, not of the window", () => {
+    // 93% of 1,050,000 is 976,500: past the 922,000 OpenAI accepts as input.
+    expect(needsAutocompact(857_459, 1_050_000, undefined, 922_000)).toBe(
+      false,
+    );
+    expect(needsAutocompact(857_460, 1_050_000, undefined, 922_000)).toBe(true);
+    expect(needsAutocompact(857_460, 1_050_000, undefined)).toBe(false);
+  });
+
+  it("leaves a sub-1M window on the 200k ceiling when it has an input cap", () => {
+    expect(needsAutocompact(199_999, 828_400, undefined, 922_000)).toBe(false);
+    expect(needsAutocompact(200_000, 828_400, undefined, 922_000)).toBe(true);
+  });
+
+  it("caps a test override at the input limit too", () => {
+    expect(needsAutocompact(92_199, 1_050_000, 10, 922_000)).toBe(false);
+    expect(needsAutocompact(92_200, 1_050_000, 10, 922_000)).toBe(true);
+  });
+
   it("keeps the ceiling right below 1M", () => {
     expect(needsAutocompact(200_000, 999_999, undefined)).toBe(true);
   });

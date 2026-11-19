@@ -1,4 +1,5 @@
 import type { IncomingMessage, ServerResponse } from "node:http";
+import { FileArgumentError } from "../integrations/file-staging";
 import { IntegrationSigninRequiredError } from "../integrations/types";
 import type { CredentialVault, WorkspaceStore } from "../ports";
 import { bearer, header, json, optionalTrimmed, readJson } from "./http";
@@ -8,17 +9,14 @@ import {
   signinRequired,
 } from "./integrations";
 import { executeIntegration, searchIntegrations } from "./integrations-fanout";
+import {
+  type SandboxFileDeps,
+  stageSandboxFiles,
+} from "./integrations-sandbox-files";
 import { defineRouteFamily } from "./registry";
 
 export { providerForAction } from "./integrations-fanout";
 
-/**
- * Which provider owns an action the runtime tool passed with no explicit
- * provider: executor addresses (`tools.<integration>....`) belong to the
- * custom provider when it is registered; everything else goes to the first
- * non-custom provider (Composio's slug convention), falling back to whatever
- * is registered.
- */
 /**
  * The RUNTIME-facing integrations proxy (`/sandbox/integrations/*`, authed by
  * the per-sandbox HMAC token): the agent's `integration_search` /
@@ -43,7 +41,7 @@ defineRouteFamily({
 });
 
 async function handleSandboxIntegrations(
-  deps: {
+  deps: SandboxFileDeps & {
     vault: CredentialVault;
     store: WorkspaceStore;
     integrations?: IntegrationDeps;
@@ -153,21 +151,33 @@ async function handleSandboxIntegrations(
     // confirmations are model-driven `ask_user` questions raised BEFORE the
     // call (Ask first mode); there is no host-side approval gate. Planner
     // blocking and the cloud gateway's toolkit allowlist live elsewhere.
+    const provider = explicit ?? undefined;
+    const target = { registry, userId: ws.ownerUserId, action, acting };
+    const staged = await stageSandboxFiles(deps, {
+      ...target,
+      workspace: ws,
+      agentId: claim.agentId,
+      params,
+      provider,
+    });
     json(
       res,
       200,
       await executeIntegration({
-        registry,
-        userId: ws.ownerUserId,
-        action,
-        params,
-        acting,
+        ...target,
+        params: staged,
         account,
-        provider: explicit ?? undefined,
+        provider,
       }),
     );
     return true;
   } catch (err) {
+    // A file argument the agent got wrong is the action's failure, phrased for
+    // the model to correct its call: the same shape a refused execute has.
+    if (err instanceof FileArgumentError) {
+      json(res, 200, { successful: false, error: err.message });
+      return true;
+    }
     if (err instanceof IntegrationSigninRequiredError) {
       signinRequired(res);
       return true;

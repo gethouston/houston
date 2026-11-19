@@ -57,11 +57,11 @@ export const config = {
    * Every id here must be one OpenAI serves a ChatGPT subscription: an id the
    * Codex backend refuses produces a turn that can only fail. The served set is
    * probed and recorded in packages/runtime/src/ai/codex-offered.ts; keep this
-   * in step with it, default first.
+   * in step with it minus `CODEX_PICKER_HIDDEN_MODEL_IDS`, default first.
    */
   codexModels: (
     process.env.CP_CODEX_MODELS ||
-    "gpt-6-luna,gpt-6.1-terra,gpt-6-sol,gpt-6.1-sol,gpt-6-astra,gpt-5.6-sol,gpt-5.6-terra,gpt-5.6-luna"
+    "gpt-6-luna,gpt-6.1-terra,gpt-6-sol,gpt-6.1-sol,gpt-6.2-sol,gpt-6-astra,gpt-6.2-astra"
   )
     .split(",")
     .map((s) => s.trim())
