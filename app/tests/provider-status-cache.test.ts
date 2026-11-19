@@ -8,6 +8,7 @@ import {
   saveCachedProviderStatuses,
 } from "../src/lib/provider-status-cache.ts";
 import type { ProviderStatus } from "../src/lib/tauri.ts";
+import { snapshotGlobals } from "./support/restore-globals.ts";
 
 function memoryStorage(initial: Record<string, string> = {}) {
   const store = new Map<string, string>(Object.entries(initial));
@@ -139,14 +140,14 @@ test("the scoped default resolves to the personal scope without a window", () =>
 
 /** Run `fn` with the active space pinned to `org` (null ⇒ personal). */
 function inSpace<T>(org: string | null, fn: () => T): T {
-  const previous = (globalThis as { window?: unknown }).window;
+  const restoreWindow = snapshotGlobals(["window"]);
   (
     globalThis as { window?: { __HOUSTON_ACTIVE_ORG__?: string | null } }
   ).window = { __HOUSTON_ACTIVE_ORG__: org };
   try {
     return fn();
   } finally {
-    (globalThis as { window?: unknown }).window = previous;
+    restoreWindow();
   }
 }
 
