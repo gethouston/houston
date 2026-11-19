@@ -19,6 +19,10 @@ import {
 } from "./integrations-failure-class";
 import { layoutJson } from "./integrations-json";
 import {
+  missingPermissionHint,
+  offerScopeReconnect,
+} from "./integrations-missing-permission";
+import {
   reconnectOfferedBefore,
   rememberReconnectOffered,
 } from "./integrations-reconnect-once";
@@ -504,7 +508,8 @@ export function makeIntegrationTools(opts: IntegrationToolOptions) {
         const failure = classifyIntegrationFailure(reason, toolkit);
         // Hint order: a classified refusal, then a missing connection (an
         // actionable state: hand the model the connect-card instruction), then
-        // the parameter-lookup hint. Anything new slots in before the last.
+        // a missing permission, then the parameter-lookup hint. Anything new
+        // slots in before the last.
         const hint = failure
           ? failureClassGuidance(
               failure,
@@ -513,7 +518,9 @@ export function makeIntegrationTools(opts: IntegrationToolOptions) {
             )
           : /connected account|not connected/i.test(reason)
             ? ` The user has not connected this app. ${REQUEST_CONNECTION_GUIDANCE}`
-            : parameterFailureHint(reason, params.action);
+            : missingPermissionHint(reason, params.action, toolkit, () =>
+                offerScopeReconnect(toolkit, known, ctx),
+              ) || parameterFailureHint(reason, params.action);
         throw new Error(`"${params.action}" did not succeed: ${reason}${hint}`);
       }
       const text = boundResultText(
