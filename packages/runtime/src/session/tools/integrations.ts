@@ -1,9 +1,27 @@
-import { defineTool } from "@earendil-works/pi-coding-agent";
+import {
+  defineTool,
+  type ExtensionContext,
+} from "@earendil-works/pi-coding-agent";
 import { type Static, Type } from "typebox";
 import { currentActingContext } from "../acting-context";
-import { recordConnection, recordSignin } from "../interaction";
+import {
+  reconnectQueued,
+  recordConnection,
+  recordSignin,
+} from "../interaction";
 import { assertNotPlanMode } from "../live-mode-gate";
+import {
+  classifyIntegrationFailure,
+  failureClassGuidance,
+  type IntegrationFailureClass,
+  type ReconnectRoute,
+  toolkitForAction,
+} from "./integrations-failure-class";
 import { layoutJson } from "./integrations-json";
+import {
+  reconnectOfferedBefore,
+  rememberReconnectOffered,
+} from "./integrations-reconnect-once";
 import type { ToolMatch } from "./integrations-render";
 import {
   parameterFailureError,
@@ -197,6 +215,9 @@ interface ActionResult {
 
 /** Search, execute and the connect hand-off, built on one host transport. */
 export function makeIntegrationTools(opts: IntegrationToolOptions) {
+  // Action → toolkit, as integration_search reported it: names the app to
+  // reconnect when an action's refusal is classified (toolkitForAction).
+  const toolkitByAction = new Map<string, string>();
   async function post<T>(
     path: "search" | "execute",
     body: unknown,
@@ -346,6 +367,8 @@ export function makeIntegrationTools(opts: IntegrationToolOptions) {
         }
         throw err;
       }
+      for (const m of items)
+        if (m.action && m.toolkit) toolkitByAction.set(m.action, m.toolkit);
       if (items.length === 0) {
         // What may be CLAIMED from an empty result depends on why it is empty
         // (a verified not-found vs a scope the deployment could not honor) —
@@ -407,6 +430,8 @@ export function makeIntegrationTools(opts: IntegrationToolOptions) {
       _id: string,
       params: ExecuteParams,
       signal: AbortSignal | undefined,
+      _onUpdate: unknown,
+      ctx: ExtensionContext | undefined,
     ) {
       // Live gate for the mid-turn Mode-pill switch: an execute/auto-built turn
       // may now be running in Plan — acting on the user's apps is off-limits.
@@ -470,11 +495,25 @@ export function makeIntegrationTools(opts: IntegrationToolOptions) {
       // The action ran but the app rejected it → surface, don't pretend success.
       if (!result.successful) {
         const reason = result.error ?? "unknown error";
-        // A missing connection is an actionable state, not a dead end: hand
-        // the model the connect-card instruction right in the error.
-        const hint = /connected account|not connected/i.test(reason)
-          ? ` The user has not connected this app. ${REQUEST_CONNECTION_GUIDANCE}`
-          : parameterFailureHint(reason, params.action);
+        // A refusal no retry can fix (dead login, missing feature, unshared
+        // Notion page) says so and names the way forward.
+        const { toolkit, known } = toolkitForAction(
+          params.action,
+          toolkitByAction,
+        );
+        const failure = classifyIntegrationFailure(reason, toolkit);
+        // Hint order: a classified refusal, then a missing connection (an
+        // actionable state: hand the model the connect-card instruction), then
+        // the parameter-lookup hint. Anything new slots in before the last.
+        const hint = failure
+          ? failureClassGuidance(
+              failure,
+              params.action,
+              reconnectRoute(failure, known, ctx),
+            )
+          : /connected account|not connected/i.test(reason)
+            ? ` The user has not connected this app. ${REQUEST_CONNECTION_GUIDANCE}`
+            : parameterFailureHint(reason, params.action);
         throw new Error(`"${params.action}" did not succeed: ${reason}${hint}`);
       }
       const text = boundResultText(
@@ -489,6 +528,29 @@ export function makeIntegrationTools(opts: IntegrationToolOptions) {
   });
 
   return [search, execute, makeRequestConnectionTool()];
+}
+
+/**
+ * Where a dead login sends the user, queueing the reconnect card when it is
+ * the card: only for a toolkit integration_search named (a guessed slug would
+ * put a card for an app that does not exist in front of the user), and once
+ * per conversation (reconnect-once.ts). Refusals of other kinds route nowhere.
+ */
+function reconnectRoute(
+  failure: IntegrationFailureClass,
+  known: boolean,
+  ctx: ExtensionContext | undefined,
+): ReconnectRoute {
+  if (failure.kind !== "needs_reconnect") return "card";
+  if (reconnectQueued(failure.toolkit)) return "card";
+  if (!known || reconnectOfferedBefore(failure.toolkit, ctx))
+    return "integrations_page";
+  recordConnection({
+    toolkit: failure.toolkit,
+    refusedAt: new Date().toISOString(),
+  });
+  rememberReconnectOffered(failure.toolkit);
+  return "card";
 }
 
 /**
