@@ -173,6 +173,24 @@ describe("message time", () => {
     }
   });
 
+  it("formats in the current time zone, not the first call's", () => {
+    const words = { now: "Now", yesterday: "Yesterday" };
+    const at = "2026-10-27T16:25:00.000Z";
+    process.env.TZ = "America/New_York";
+    try {
+      assert.equal(
+        formatLastMessageTime(at, "en", words, now).full,
+        "Tuesday, October 27, 2026 at 12:25 PM",
+      );
+    } finally {
+      process.env.TZ = "UTC";
+    }
+    assert.equal(
+      formatLastMessageTime(at, "en", words, now).full,
+      "Tuesday, October 27, 2026 at 4:25 PM",
+    );
+  });
+
   it("bounds the future clock-skew allowance at five minutes", () => {
     const words = { now: "Now", yesterday: "Yesterday" };
     for (const [iso, expected] of [
