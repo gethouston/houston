@@ -3,6 +3,13 @@
 Every `version` bump in `inventory.yaml` needs a matching entry here (enforced by
 `pnpm check:parity`). Newest first. Use `## vN` headings.
 
+## v156 - 2026-11-18
+
+The interaction card's connect step has a reconnect state for an app whose
+login stopped working: it asks to reconnect the app, ignores the existing
+connection, and finishes only once a reconnect started from the card lands.
+Same layout at both breakpoints.
+
 ## v155 - 2026-11-13
 
 Composer attachment chips show upload progress, reconnecting and saving from

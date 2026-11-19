@@ -3,6 +3,8 @@ import { readFileSync } from "node:fs";
 import { describe, it } from "node:test";
 import type { IntegrationConnection } from "@houston/engine-adapter";
 import {
+  connectStepAutoContinues,
+  connectStepDone,
   deriveConnectCardView,
   findCatalogToolkit,
   isToolkitConnected,
@@ -176,5 +178,49 @@ describe("in-chat connect card source", () => {
   it("lights up for ITS toolkit only, never for any in-flight connect", () => {
     ok(src.includes("slug in states"));
     ok(!src.includes("Object.keys(states).length"));
+  });
+});
+
+describe("reconnect step (the app's login stopped working)", () => {
+  it("never auto-continues on the dead connection it replaces", () => {
+    strictEqual(
+      connectStepAutoContinues({ reconnect: true, revisited: false }),
+      false,
+    );
+    strictEqual(
+      connectStepAutoContinues({ reconnect: false, revisited: false }),
+      true,
+    );
+    strictEqual(
+      connectStepAutoContinues({ reconnect: false, revisited: true }),
+      false,
+    );
+  });
+
+  it("is done only once a reconnect started from the card lands", () => {
+    strictEqual(
+      connectStepDone({
+        reconnect: true,
+        isConnected: true,
+        reconnectedHere: false,
+      }),
+      false,
+    );
+    strictEqual(
+      connectStepDone({
+        reconnect: true,
+        isConnected: true,
+        reconnectedHere: true,
+      }),
+      true,
+    );
+    strictEqual(
+      connectStepDone({
+        reconnect: false,
+        isConnected: true,
+        reconnectedHere: false,
+      }),
+      true,
+    );
   });
 });

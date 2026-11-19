@@ -121,6 +121,7 @@
                 },
                 "toolkit": { "type": "string" },
                 "wantsFiles": { "type": "boolean" },
+                "reconnect": { "type": "boolean" },
                 "provider": { "type": "string", "minLength": 1 },
                 "surface": {
                   "type": "string",

@@ -3,6 +3,11 @@ import { type Static, Type } from "typebox";
 import { currentActingContext } from "../acting-context";
 import { recordConnection, recordSignin } from "../interaction";
 import { assertNotPlanMode } from "../live-mode-gate";
+import {
+  classifyIntegrationFailure,
+  failureClassGuidance,
+  toolkitForAction,
+} from "./integrations-failure-class";
 import { layoutJson } from "./integrations-json";
 import type { ToolMatch } from "./integrations-render";
 import {
@@ -197,6 +202,9 @@ interface ActionResult {
 
 /** Search, execute and the connect hand-off, built on one host transport. */
 export function makeIntegrationTools(opts: IntegrationToolOptions) {
+  // Action → toolkit, as integration_search reported it: names the app to
+  // reconnect when an action's refusal is classified (toolkitForAction).
+  const toolkitByAction = new Map<string, string>();
   async function post<T>(
     path: "search" | "execute",
     body: unknown,
@@ -346,6 +354,8 @@ export function makeIntegrationTools(opts: IntegrationToolOptions) {
         }
         throw err;
       }
+      for (const m of items)
+        if (m.action && m.toolkit) toolkitByAction.set(m.action, m.toolkit);
       if (items.length === 0) {
         // What may be CLAIMED from an empty result depends on why it is empty
         // (a verified not-found vs a scope the deployment could not honor) —
@@ -470,11 +480,22 @@ export function makeIntegrationTools(opts: IntegrationToolOptions) {
       // The action ran but the app rejected it → surface, don't pretend success.
       if (!result.successful) {
         const reason = result.error ?? "unknown error";
+        // A refusal no retry can fix (dead login, missing feature, unshared
+        // Notion page) says so and names the way forward; a dead login also
+        // queues the reconnect card, the user's way to fix it.
+        const failure = classifyIntegrationFailure(
+          reason,
+          toolkitForAction(params.action, toolkitByAction),
+        );
+        if (failure?.kind === "needs_reconnect")
+          recordConnection({ toolkit: failure.toolkit, reconnect: true });
         // A missing connection is an actionable state, not a dead end: hand
         // the model the connect-card instruction right in the error.
-        const hint = /connected account|not connected/i.test(reason)
-          ? ` The user has not connected this app. ${REQUEST_CONNECTION_GUIDANCE}`
-          : parameterFailureHint(reason, params.action);
+        const hint = failure
+          ? failureClassGuidance(failure, params.action)
+          : /connected account|not connected/i.test(reason)
+            ? ` The user has not connected this app. ${REQUEST_CONNECTION_GUIDANCE}`
+            : parameterFailureHint(reason, params.action);
         throw new Error(`"${params.action}" did not succeed: ${reason}${hint}`);
       }
       const text = boundResultText(

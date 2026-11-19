@@ -1,11 +1,16 @@
 import type { StepChrome } from "@houston-ai/chat";
 import { Button } from "@houston-ai/core";
 import { CornerDownLeft, Loader2 } from "lucide-react";
+import { useState } from "react";
 import { useTranslation } from "react-i18next";
 import {
   ChatConnectStepShell,
   type StepDraftApi,
 } from "./chat-connect-step-shell";
+import {
+  connectStepAutoContinues,
+  connectStepDone,
+} from "./integration-connect-card-state";
 import { AppLogo } from "./integrations";
 import { CuratedConnectDialog } from "./integrations/curated-connect-dialog";
 import { useChatConnect } from "./use-chat-connect";
@@ -35,6 +40,10 @@ interface ChatConnectInteractionCardProps extends StepChrome, StepDraftApi {
    *  with no footer (the pager's forward chevron is the way onward); a revisited
    *  step that was SKIPPED keeps its Connect CTA so the user can reconsider. */
   revisited: boolean;
+  /** The app is connected but its login stopped working: ask to reconnect,
+   *  and count the step done only once a reconnect started HERE lands (the
+   *  existing, dead connection must not auto-continue the sequence). */
+  reconnect?: boolean;
 }
 
 /**
@@ -66,9 +75,11 @@ export function ChatConnectInteractionCard({
   onSkip,
   revisited,
   stepId,
+  reconnect = false,
   ...chrome
 }: ChatConnectInteractionCardProps) {
   const { t } = useTranslation("chat");
+  const [reconnected, setReconnected] = useState(false);
   // Auto-continue only on the LIVE frontier: a revisited completed step mounts a
   // fresh card whose already-connected self-report would otherwise re-fire,
   // bouncing the user off the step they walked Back to. On a revisit the pager's
@@ -85,8 +96,21 @@ export function ChatConnectInteractionCard({
     toolkit,
     agentId,
     accountScope,
-    onConnected,
-    autoContinueWhenConnected: !revisited,
+    onConnected: reconnect
+      ? (slug, appName) => {
+          setReconnected(true);
+          onConnected(slug, appName);
+        }
+      : onConnected,
+    autoContinueWhenConnected: connectStepAutoContinues({
+      reconnect,
+      revisited,
+    }),
+  });
+  const done = connectStepDone({
+    reconnect,
+    isConnected,
+    reconnectedHere: reconnected,
   });
 
   return (
@@ -103,7 +127,7 @@ export function ChatConnectInteractionCard({
         {...chrome}
         busy={connecting}
         cta={
-          isConnected ? undefined : (
+          done ? undefined : (
             <Button
               className="gap-1.5"
               disabled={connecting}
@@ -118,24 +142,31 @@ export function ChatConnectInteractionCard({
                 </>
               ) : (
                 <>
-                  {t("composio.connect")}
+                  {reconnect ? t("composio.reconnect") : t("composio.connect")}
                   <CornerDownLeft className="size-3.5 opacity-70" />
                 </>
               )}
             </Button>
           )
         }
-        done={isConnected}
+        done={done}
         doneLabel={t("composio.connected")}
         icon={<AppLogo className="shrink-0" display={app} size="sm" />}
         onDecline={(text) => onSkip(toolkit, app.name, text)}
         onEnter={() => void startConnect()}
         // The title names the required action; the agent's reason explains why.
         reason={
-          reason ?? t("interaction.connectReasonFallback", { app: app.name })
+          reason ??
+          (reconnect
+            ? t("interaction.reconnectReasonFallback", { app: app.name })
+            : t("interaction.connectReasonFallback", { app: app.name }))
         }
         stepId={stepId}
-        title={t("interaction.connectTitle", { app: app.name })}
+        title={
+          reconnect
+            ? t("interaction.reconnectTitle", { app: app.name })
+            : t("interaction.connectTitle", { app: app.name })
+        }
       >
         {connecting && (
           <p className="text-ink-muted text-xs">
