@@ -110,6 +110,7 @@ export function interactionStepCards(args: {
         agentId={agentId}
         reason={step.reason}
         reconnect={step.reconnect === true}
+        refusedAt={step.refusedAt}
         onConnected={(_toolkit, appName) => {
           outcomes.connects.set(step.id, { name: appName, connected: true });
           api.onConnected();

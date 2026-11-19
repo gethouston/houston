@@ -53,11 +53,21 @@ export function isToolkitConnected(
   connections: IntegrationConnection[] | undefined,
   toolkit: string,
   catalogEntry?: IntegrationToolkit,
+  connectedAfter?: string,
 ): boolean {
   if (catalogEntry?.noAuth) return true;
   const slug = normalizeToolkitSlug(toolkit);
+  // A reconnect step: only a connection made after the app refused the old
+  // login counts, wherever it was made. The refused one still reads active.
+  const after = connectedAfter ? Date.parse(connectedAfter) : Number.NaN;
+  const fresh = (c: IntegrationConnection) =>
+    Number.isNaN(after) ||
+    (c.createdAt !== undefined && Date.parse(c.createdAt) > after);
   return (connections ?? []).some(
-    (c) => c.status === "active" && normalizeToolkitSlug(c.toolkit) === slug,
+    (c) =>
+      c.status === "active" &&
+      normalizeToolkitSlug(c.toolkit) === slug &&
+      fresh(c),
   );
 }
 
@@ -121,21 +131,29 @@ export function shouldAutoContinueConnected(args: {
 }
 
 /**
- * Stepper mode, a reconnect step (the app's login stopped working): the
- * existing connection is the dead one it replaces. So the step never advances
- * on its own, and only a reconnect the user drove from the card finishes it.
+ * Stepper mode, a reconnect step (the app's login stopped working). With
+ * `refusedAt`, `isConnected` already counts only a connection made after the
+ * refusal (see {@link isToolkitConnected}), so a reconnect from the card or
+ * the Integrations page finishes the step and advances it, and a revisit reads
+ * it from that same durable state. Without one, the existing connection may be
+ * the dead one, so only a reconnect driven from this card counts.
  */
 export function connectStepAutoContinues(args: {
   reconnect: boolean;
+  refusedAt?: string;
   revisited: boolean;
 }): boolean {
-  return !args.reconnect && !args.revisited;
+  return !args.revisited && (!args.reconnect || args.refusedAt !== undefined);
 }
 
 export function connectStepDone(args: {
   reconnect: boolean;
+  refusedAt?: string;
   isConnected: boolean;
   reconnectedHere: boolean;
 }): boolean {
-  return args.reconnect ? args.reconnectedHere : args.isConnected;
+  if (!args.reconnect) return args.isConnected;
+  if (args.refusedAt !== undefined)
+    return args.isConnected || args.reconnectedHere;
+  return args.reconnectedHere;
 }

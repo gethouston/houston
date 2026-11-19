@@ -5278,6 +5278,16 @@
                                       }
                                     ]
                                   },
+                                  "refusedAt": {
+                                    "anyOf": [
+                                      {
+                                        "type": "null"
+                                      },
+                                      {
+                                        "type": "string"
+                                      }
+                                    ]
+                                  },
                                   "toolkit": {
                                     "type": "string"
                                   }
@@ -12291,6 +12301,16 @@
                                 }
                               ]
                             },
+                            "refusedAt": {
+                              "anyOf": [
+                                {
+                                  "type": "null"
+                                },
+                                {
+                                  "type": "string"
+                                }
+                              ]
+                            },
                             "toolkit": {
                               "type": "string"
                             }
@@ -13129,6 +13149,16 @@
                                   {
                                     "const": true,
                                     "type": "boolean"
+                                  }
+                                ]
+                              },
+                              "refusedAt": {
+                                "anyOf": [
+                                  {
+                                    "type": "null"
+                                  },
+                                  {
+                                    "type": "string"
                                   }
                                 ]
                               },
@@ -14030,6 +14060,16 @@
                                 }
                               ]
                             },
+                            "refusedAt": {
+                              "anyOf": [
+                                {
+                                  "type": "null"
+                                },
+                                {
+                                  "type": "string"
+                                }
+                              ]
+                            },
                             "toolkit": {
                               "type": "string"
                             }
@@ -14736,6 +14776,16 @@
                                     {
                                       "const": true,
                                       "type": "boolean"
+                                    }
+                                  ]
+                                },
+                                "refusedAt": {
+                                  "anyOf": [
+                                    {
+                                      "type": "null"
+                                    },
+                                    {
+                                      "type": "string"
                                     }
                                   ]
                                 },
@@ -15494,6 +15544,16 @@
                                 {
                                   "const": true,
                                   "type": "boolean"
+                                }
+                              ]
+                            },
+                            "refusedAt": {
+                              "anyOf": [
+                                {
+                                  "type": "null"
+                                },
+                                {
+                                  "type": "string"
                                 }
                               ]
                             },

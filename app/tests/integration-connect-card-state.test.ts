@@ -182,7 +182,57 @@ describe("in-chat connect card source", () => {
 });
 
 describe("reconnect step (the app's login stopped working)", () => {
-  it("never auto-continues on the dead connection it replaces", () => {
+  const refusedAt = "2026-11-18T21:00:00Z";
+  const conn = (createdAt?: string): IntegrationConnection => ({
+    toolkit: "apify",
+    connectionId: `ca_${createdAt ?? "none"}`,
+    status: "active",
+    ...(createdAt ? { createdAt } : {}),
+  });
+
+  it("counts only a connection made after the refusal", () => {
+    strictEqual(
+      isToolkitConnected(
+        [conn("2026-10-01T00:00:00Z")],
+        "apify",
+        undefined,
+        refusedAt,
+      ),
+      false,
+    );
+    strictEqual(
+      isToolkitConnected([conn()], "apify", undefined, refusedAt),
+      false,
+    );
+    strictEqual(
+      isToolkitConnected(
+        [conn("2026-10-01T00:00:00Z"), conn("2026-11-18T21:05:00Z")],
+        "apify",
+        undefined,
+        refusedAt,
+      ),
+      true,
+    );
+    strictEqual(
+      isToolkitConnected([conn("2026-10-01T00:00:00Z")], "apify"),
+      true,
+    );
+  });
+
+  it("advances on a fresh connection, wherever it was made", () => {
+    strictEqual(
+      connectStepAutoContinues({
+        reconnect: true,
+        refusedAt,
+        revisited: false,
+      }),
+      true,
+    );
+    strictEqual(
+      connectStepAutoContinues({ reconnect: true, refusedAt, revisited: true }),
+      false,
+    );
+    // No refusal time: the existing connection may be the dead one.
     strictEqual(
       connectStepAutoContinues({ reconnect: true, revisited: false }),
       false,
@@ -191,13 +241,27 @@ describe("reconnect step (the app's login stopped working)", () => {
       connectStepAutoContinues({ reconnect: false, revisited: false }),
       true,
     );
-    strictEqual(
-      connectStepAutoContinues({ reconnect: false, revisited: true }),
-      false,
-    );
   });
 
-  it("is done only once a reconnect started from the card lands", () => {
+  it("is done from durable state, so a revisit or a Settings reconnect reads done", () => {
+    strictEqual(
+      connectStepDone({
+        reconnect: true,
+        refusedAt,
+        isConnected: true,
+        reconnectedHere: false,
+      }),
+      true,
+    );
+    strictEqual(
+      connectStepDone({
+        reconnect: true,
+        refusedAt,
+        isConnected: false,
+        reconnectedHere: false,
+      }),
+      false,
+    );
     strictEqual(
       connectStepDone({
         reconnect: true,
@@ -211,14 +275,6 @@ describe("reconnect step (the app's login stopped working)", () => {
         reconnect: true,
         isConnected: true,
         reconnectedHere: true,
-      }),
-      true,
-    );
-    strictEqual(
-      connectStepDone({
-        reconnect: false,
-        isConnected: true,
-        reconnectedHere: false,
       }),
       true,
     );
