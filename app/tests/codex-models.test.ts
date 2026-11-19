@@ -31,6 +31,7 @@ const codex = (await import(
     .href
 )) as {
   CODEX_DEFAULT_MODEL: string;
+  CODEX_PICKER_HIDDEN_MODEL_IDS: readonly string[];
   codexOfferedModelIds(catalogIds: readonly string[]): string[];
 };
 
@@ -53,11 +54,14 @@ const served = codex
  */
 const REFUSED = ["gpt-5.3-codex-spark"];
 
+const HIDDEN_SERVED = codex.CODEX_PICKER_HIDDEN_MODEL_IDS;
+
 describe("Codex model curation matches what the subscription serves", () => {
-  it("offers exactly the served ids, no more and no fewer", () => {
+  it("offers exactly the served ids minus the deliberately hidden ones", () => {
+    for (const id of HIDDEN_SERVED) ok(served.includes(id), id);
     deepStrictEqual(
       [...VISIBLE_MODELS.openai].sort(),
-      served,
+      served.filter((id) => !HIDDEN_SERVED.includes(id)),
       "VISIBLE_MODELS.openai has drifted from codexOfferedModelIds(pi's openai-codex catalog): re-curate it (and check codex-offered.ts is still accurate).",
     );
   });

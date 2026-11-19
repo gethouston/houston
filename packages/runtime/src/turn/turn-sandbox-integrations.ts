@@ -1,3 +1,8 @@
+import type { FileUploadRequest } from "@houston/host/src/integrations/file-args";
+import {
+  createFileStager,
+  FileArgumentError,
+} from "@houston/host/src/integrations/file-staging";
 import type {
   ActingContext,
   ProviderSearchResult,
@@ -8,8 +13,10 @@ import {
   type ActionResult,
   IntegrationSigninRequiredError,
 } from "@houston/host/src/integrations/types";
+import { agentFileReader } from "@houston/host/src/integrations/workspace-file";
 import {
   executeIntegration,
+  providerForAction,
   searchIntegrations,
 } from "@houston/host/src/routes/integrations-fanout";
 import type { TurnCustomContext } from "./turn-custom-context";
@@ -19,7 +26,38 @@ import { fetchWithTurnSignal } from "./turn-sandbox-signal";
 /** The gateway no longer accepts this turn's short-lived authority. */
 export class TurnGrantExpiredError extends Error {}
 
+/** The grant ending reads as its own error, never as "sign in". */
+async function grantCall<T>(call: () => Promise<T>): Promise<T> {
+  try {
+    return await call();
+  } catch (error) {
+    if (error instanceof IntegrationSigninRequiredError) {
+      throw new TurnGrantExpiredError();
+    }
+    throw error;
+  }
+}
+
+/** One per runtime process, so its action-schema cache is shared by turns. */
+const stageFiles = createFileStager();
+
 class GrantRemoteProvider extends RemoteIntegrationProvider {
+  override describeAction(
+    userId: string,
+    action: string,
+    acting?: ActingContext,
+  ) {
+    return grantCall(() => super.describeAction(userId, action, acting));
+  }
+
+  override reserveFileUpload(
+    userId: string,
+    req: FileUploadRequest,
+    acting?: ActingContext,
+  ) {
+    return grantCall(() => super.reserveFileUpload(userId, req, acting));
+  }
+
   override async search(
     userId: string,
     query: string,
@@ -106,17 +144,46 @@ export function makeTurnIntegrationRoutes(
           ? (body.params as Record<string, unknown>)
           : {};
       const account = typeof body.account === "string" ? body.account : "";
+      const action = body.action;
+      const acting = { actingAs: deps.grant.token };
+      const { filesystem } = deps;
+      const staged = await stageFiles({
+        provider: registry.get(providerForAction(registry, action)),
+        userId: deps.workspaceId,
+        action,
+        params,
+        acting,
+        fetch: fetchWithTurnSignal(fetchImpl, signal),
+        readFile: agentFileReader({
+          dir: filesystem.workspaceDir,
+          rootKey: filesystem.workspaceRel.replace(/^workspaces\//, ""),
+          ...(filesystem.workspaceReady
+            ? { ready: filesystem.workspaceReady }
+            : {}),
+          // A lazy tree holds on disk only what this turn touched.
+          fallback: (rel, maxBytes) =>
+            filesystem.vfs.readBytes(
+              `${filesystem.workspaceRel}/${rel}`,
+              maxBytes,
+            ),
+        }),
+      });
       return Response.json(
         await executeIntegration({
           registry,
           userId: deps.workspaceId,
-          action: body.action,
-          params,
-          acting: { actingAs: deps.grant.token },
+          action,
+          params: staged,
+          acting,
           ...(account ? { account } : {}),
         }),
       );
     } catch (error) {
+      // A file argument the agent got wrong is the action's failure, phrased
+      // for the model: the same shape the host's sandbox route answers.
+      if (error instanceof FileArgumentError) {
+        return Response.json({ successful: false, error: error.message });
+      }
       if (
         error instanceof TurnGrantExpiredError &&
         deps.grant.expires > Date.now() / 1000 + 60

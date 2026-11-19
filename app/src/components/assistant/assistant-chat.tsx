@@ -53,7 +53,7 @@ export function AssistantChat({ handle }: { handle: AssistantHandle }) {
 
   const queuedLabels = useQueuedMessageLabels();
   const { labels, cardLabels, composerLabels } = useBoardLabels("assistant");
-  const { drafts, onDraftChange } = useBoardDrafts();
+  const { draftStore } = useBoardDrafts();
   const addToast = useUIStore((s) => s.addToast);
 
   const panel = useAgentChatPanel({
@@ -145,8 +145,7 @@ export function AssistantChat({ handle }: { handle: AssistantHandle }) {
         onLoadOlderMessages={onLoadOlderMessages}
         hasOlderMessages={hasOlderMessages}
         onStopSession={send.stopSession}
-        drafts={drafts}
-        onDraftChange={onDraftChange}
+        draftStore={draftStore}
         onOpenLink={panel.openHref}
         onNotice={(message) => addToast({ title: message })}
         labels={labels}
