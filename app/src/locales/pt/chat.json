@@ -306,6 +306,14 @@
       "gemma-4-31b-it": "Modelo aberto Gemma do Google. Mais capaz.",
       "mistral-large-4": "O modelo mais capaz da Mistral. Contexto longo e raciocínio."
     },
+    "providerModelDescriptions": {
+      "google": {
+        "gemini-4-neon": "O Gemini 4 equilibrado do Google, bom para agentes e programação. Precisa de uma chave de API paga."
+      },
+      "github-copilot": {
+        "gemini-4-neon": "O Gemini 4 equilibrado do Google, bom para agentes e programação. Precisa do Copilot Pro+."
+      }
+    },
     "connectMore": "Conectar outra IA…"
   },
   "reasoning": {
