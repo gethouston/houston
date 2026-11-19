@@ -456,7 +456,7 @@ export function useAgentChatPanel({
 
   // ── Dictation (desktop-only voice typing) ──────────────────────────────
   // Transcript text is appended to the SAME draft store AIBoard's
-  // `drafts`/`onDraftChange` read from (`useBoardDrafts` in mission-board.tsx)
+  // `draftStore` reads from (`useBoardDrafts` in use-board-chat-wiring.tsx)
   // — the key mirrors the board's own derivation (AIBoard's plain
   // "new-conversation" translated through `useBoardDrafts`'s scope), so
   // dictating into a fresh composer lands in the same draft the user would

@@ -1,7 +1,10 @@
 import { mkdirSync, readFileSync, renameSync, writeFileSync } from "node:fs";
 import { dirname, join } from "node:path";
 import { atomicTempPath } from "@houston/protocol";
-import { effectiveModelWindow } from "@houston/protocol/model-windows";
+import {
+  effectiveModelWindow,
+  modelInputLimit,
+} from "@houston/protocol/model-windows";
 import type { ChatMessage } from "@houston/runtime-client";
 import type { HarnessSession, ResolvedModel } from "../backends/types";
 import { needsAutocompact } from "../session/autocompact";
@@ -136,7 +139,8 @@ export async function autocompactPooledSession(input: {
     model.contextWindow,
     fill ?? 0,
   );
-  if (!needsAutocompact(fill, window)) return undefined;
+  if (!needsAutocompact(fill, window, undefined, modelInputLimit(model.id)))
+    return undefined;
   const onAbort = () => void session.abort();
   signal?.addEventListener("abort", onAbort, { once: true });
   try {

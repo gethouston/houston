@@ -1,6 +1,7 @@
 import { AdapterContext } from "@houston/engine-adapter/client/context";
 import { localModelBridgeAccess } from "@houston/engine-adapter/client/local-model-bridge";
 import { isBridgeUnsupported } from "@houston/sdk";
+import { NoAgentForProviderWriteError } from "@houston/sdk/no-agent-provider-write-error";
 import { afterEach, expect, test, vi } from "vitest";
 
 const id = "a138ce01-cf5b-4d3d-b270-eecb9be1645d";
@@ -17,7 +18,7 @@ const session = {
 };
 function context(baseUrl = "https://gateway.example", controlPlane = true) {
   const ctx = new AdapterContext({ baseUrl, token, controlPlane });
-  ctx.noteAgentList(["agent-a"]);
+  ctx.noteAgentList(["agent-a", "agent-b"]);
   return ctx;
 }
 function responses(...bodies: unknown[]) {
@@ -31,7 +32,11 @@ afterEach(() => vi.unstubAllGlobals());
 test("direct detection is limited to an explicitly local loopback engine", async () => {
   responses({ profile: "local", tunnel: false, multiplayer: false });
   await expect(
-    localModelBridgeAccess(context("http://127.0.0.1:4318", false), "owner"),
+    localModelBridgeAccess(
+      context("http://127.0.0.1:4318", false),
+      "owner",
+      "agent-a",
+    ),
   ).resolves.toBeNull();
 });
 
@@ -42,7 +47,7 @@ test.each([
   ["http://localhost:4318", { profile: "local", tunnel: true }],
 ])("refuses unsupported remote or hosted deployment %s", async (url, capabilities) => {
   responses(capabilities);
-  const refusal = localModelBridgeAccess(context(url), "owner");
+  const refusal = localModelBridgeAccess(context(url), "owner", "agent-a");
   await expect(refusal).rejects.toMatchObject({ status: 503 });
   // The SDK's discovery stops (no 30s poll) and the app files it as the quiet
   // bridge_unsupported class only if the thrown shape carries this code.
@@ -55,13 +60,17 @@ test("a capability outage does not downgrade to a direct connection", async () =
     vi.fn().mockResolvedValue(new Response("{}", { status: 503 })),
   );
   await expect(
-    localModelBridgeAccess(context("http://localhost:4318"), "owner"),
+    localModelBridgeAccess(
+      context("http://localhost:4318"),
+      "owner",
+      "agent-a",
+    ),
   ).rejects.toMatchObject({ status: 503 });
 });
 
 test("pins the account, workspace and agent and renews the same generation", async () => {
   const fetch = responses(caps, { id: "org-a" }, session);
-  const access = await localModelBridgeAccess(context(), "owner");
+  const access = await localModelBridgeAccess(context(), "owner", "agent-a");
   expect(access?.identity).toEqual({
     environment: "https://gateway.example",
     userId: "owner",
@@ -77,6 +86,23 @@ test("pins the account, workspace and agent and renews the same generation", asy
   });
 });
 
+test("binds the agent the person has open, not the provider-routing pick", async () => {
+  // Provider routing falls back to the space's first agent when the selection
+  // pref lags; the bridge belongs to the open agent, and naming another one
+  // failed every boot as "Local model identity changed" (HOUSTON-APP-5E2).
+  responses(caps, { id: "org-a" });
+  const access = await localModelBridgeAccess(context(), "owner", "agent-b");
+  expect(access?.identity.agentId).toBe("agent-b");
+});
+
+test("no open agent is the typed no-agent refusal, before any request", async () => {
+  const fetch = responses(caps);
+  await expect(
+    localModelBridgeAccess(context(), "owner", null),
+  ).rejects.toBeInstanceOf(NoAgentForProviderWriteError);
+  expect(fetch).toHaveBeenCalledTimes(1);
+});
+
 test.each([
   `wss://attacker.example/v1/local-model-bridges/${id}/connect`,
   `wss://gateway.example/other`,
@@ -85,7 +111,7 @@ test.each([
   `ws://gateway.example/v1/local-model-bridges/${id}/connect`,
 ])("rejects a session ticket destination outside its exact trusted route: %s", async (connectUrl) => {
   responses(caps, { id: "org-a" }, { ...session, connectUrl });
-  const access = await localModelBridgeAccess(context(), "owner");
+  const access = await localModelBridgeAccess(context(), "owner", "agent-a");
   await expect(access?.session(id, device)).rejects.toThrow(
     "Invalid local model session destination",
   );
@@ -107,14 +133,14 @@ test("does not accept another workspace's status descriptor", async () => {
       status: "online",
     },
   );
-  const access = await localModelBridgeAccess(context(), "owner");
+  const access = await localModelBridgeAccess(context(), "owner", "agent-a");
   await expect(access?.status(id)).rejects.toThrow("identity mismatch");
 });
 
 test("disconnect cannot clear credentials in a workspace selected mid-operation", async () => {
   const ctx = context();
   const fetch = responses(caps, { id: "org-a" });
-  const access = await localModelBridgeAccess(ctx, "owner");
+  const access = await localModelBridgeAccess(ctx, "owner", "agent-a");
   fetch.mockImplementationOnce(async () => {
     if (!ctx.cp) throw new Error("missing control plane");
     ctx.cp.activeOrgSlug = "other-workspace";
@@ -135,6 +161,6 @@ test("migration discovery rejects unexpected secret fields", async () => {
       proxyKey: "must-not-leave-native-storage",
     },
   );
-  const access = await localModelBridgeAccess(context(), "owner");
+  const access = await localModelBridgeAccess(context(), "owner", "agent-a");
   await expect(access?.legacyEndpoint()).rejects.toThrow();
 });

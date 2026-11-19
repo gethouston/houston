@@ -1,5 +1,10 @@
 import type { IntegrationProviderId } from "@houston/protocol";
 import type {
+  ActionDescription,
+  FileUploadRequest,
+  FileUploadSlot,
+} from "./file-args";
+import type {
   ActionResult,
   Connection,
   ConnectStart,
@@ -122,4 +127,19 @@ export interface IntegrationProvider {
     acting?: ActingContext,
     account?: string,
   ): Promise<ActionResult>;
+
+  // ── File arguments (file-staging.ts) — optional: a provider without them
+  //    executes file arguments exactly as the agent passed them ──────────────
+  /** One action's catalog entry with its raw input schema; null if unknown. */
+  describeAction?(
+    userId: string,
+    action: string,
+    acting?: ActingContext,
+  ): Promise<ActionDescription | null>;
+  /** Reserve a slot to PUT one file's bytes to before an execute names it. */
+  reserveFileUpload?(
+    userId: string,
+    req: FileUploadRequest,
+    acting?: ActingContext,
+  ): Promise<FileUploadSlot>;
 }
