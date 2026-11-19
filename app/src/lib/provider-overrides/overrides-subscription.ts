@@ -106,6 +106,10 @@ export const SUBSCRIPTION_OVERRIDES: Record<string, ProviderOverride> = {
       "gemini-3.8-flash": {
         description: "Google's fast model. Needs Copilot Pro.",
       },
+      "gemini-4-neon": {
+        description:
+          "Google's balanced Gemini 4, strong for agents and coding. Needs Copilot Pro+.",
+      },
     },
   },
 };
