@@ -5263,6 +5263,21 @@
                                       }
                                     ]
                                   },
+                                  "reconnect": {
+                                    "anyOf": [
+                                      {
+                                        "type": "null"
+                                      },
+                                      {
+                                        "const": false,
+                                        "type": "boolean"
+                                      },
+                                      {
+                                        "const": true,
+                                        "type": "boolean"
+                                      }
+                                    ]
+                                  },
                                   "toolkit": {
                                     "type": "string"
                                   }
@@ -12261,6 +12276,21 @@
                                 }
                               ]
                             },
+                            "reconnect": {
+                              "anyOf": [
+                                {
+                                  "type": "null"
+                                },
+                                {
+                                  "const": false,
+                                  "type": "boolean"
+                                },
+                                {
+                                  "const": true,
+                                  "type": "boolean"
+                                }
+                              ]
+                            },
                             "toolkit": {
                               "type": "string"
                             }
@@ -13084,6 +13114,21 @@
                                   },
                                   {
                                     "type": "string"
+                                  }
+                                ]
+                              },
+                              "reconnect": {
+                                "anyOf": [
+                                  {
+                                    "type": "null"
+                                  },
+                                  {
+                                    "const": false,
+                                    "type": "boolean"
+                                  },
+                                  {
+                                    "const": true,
+                                    "type": "boolean"
                                   }
                                 ]
                               },
@@ -13970,6 +14015,21 @@
                                 }
                               ]
                             },
+                            "reconnect": {
+                              "anyOf": [
+                                {
+                                  "type": "null"
+                                },
+                                {
+                                  "const": false,
+                                  "type": "boolean"
+                                },
+                                {
+                                  "const": true,
+                                  "type": "boolean"
+                                }
+                              ]
+                            },
                             "toolkit": {
                               "type": "string"
                             }
@@ -14661,6 +14721,21 @@
                                     },
                                     {
                                       "type": "string"
+                                    }
+                                  ]
+                                },
+                                "reconnect": {
+                                  "anyOf": [
+                                    {
+                                      "type": "null"
+                                    },
+                                    {
+                                      "const": false,
+                                      "type": "boolean"
+                                    },
+                                    {
+                                      "const": true,
+                                      "type": "boolean"
                                     }
                                   ]
                                 },
@@ -15404,6 +15479,21 @@
                                 },
                                 {
                                   "type": "string"
+                                }
+                              ]
+                            },
+                            "reconnect": {
+                              "anyOf": [
+                                {
+                                  "type": "null"
+                                },
+                                {
+                                  "const": false,
+                                  "type": "boolean"
+                                },
+                                {
+                                  "const": true,
+                                  "type": "boolean"
                                 }
                               ]
                             },

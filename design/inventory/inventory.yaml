@@ -36,7 +36,7 @@
 #   a11y     roles / labels / focus expectations the surface must honor
 #   since    inventory version this component first appeared in
 
-version: 155
+version: 156
 
 components:
   - id: agent-delegation-settings
@@ -487,7 +487,7 @@ components:
     title: Interaction card
     purpose: In-chat surface shown when the agent pauses mid-turn to gather what it needs before continuing; a stepper that walks the user through one step at a time (questions, then sign-in, then connections, then action approvals), replacing the composer while pending.
     anatomy: [modal-shell, modal-header, step-title, step-title-icon, pager, collapse-chevron, dismiss-action, bounded-scroll-body, option-row, number-badge, recommended-chip, selected-arrow, free-text-escape-field, pencil-adornment, attach-action, attachment-chips, upload-area, footer-row, unified-decline, decline-esc-hint, step-cta, return-key-glyph, trailing-free-text-row, app-logo, integration-name, reason-line, explainer-line, connected-check, waiting-note, hire-color-dot, hire-role, hire-instructions-disclosure]
-    states: [single-step, multi-step, collapsed, with-options, single-option, recommended-option, free-text-only, with-attachments, wants-files, upload-drag-over, signin-step, connect-step, connecting, connected, skipped, revisited, reconsider, abandoned, disabled, hire-instructions-collapsed, hire-instructions-expanded]
+    states: [single-step, multi-step, collapsed, with-options, single-option, recommended-option, free-text-only, with-attachments, wants-files, upload-drag-over, signin-step, connect-step, reconnect-step, connecting, connected, skipped, revisited, reconsider, abandoned, disabled, hire-instructions-collapsed, hire-instructions-expanded]
     variants: [choice, open-ended, signin, connect, provider-connect, hands-on, hire-approval, mixed-sequence]
     behavior: >-
       Rendered from the turn's pending interaction (steps[]: 1-3 question steps,
@@ -495,7 +495,10 @@ components:
       approvals land LAST, since approving an action happens after its toolkit is
       connected; the approval step's body is its own component,
       interaction-approval-card, injected via a `renderApproval` prop the way
-      signin/connect bodies are). Every step is composed in
+      signin/connect bodies are). A connect step flagged `reconnect` (the app's
+      login was refused) reads "Reconnect {app}", never counts the existing
+      connection as done or auto-continues on it, and finishes only when a
+      reconnect started from the card lands. Every step is composed in
       ONE shared modal shell (InteractionModal) that owns the chrome — a white
       card with a hairline border and roomy padding (the reference "Coworker card"
       look; a card-surface same colour as the page, set apart by border + soft

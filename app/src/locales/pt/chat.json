@@ -120,6 +120,8 @@
     "signin": "Entrar",
     "connectTitle": "Conectar o {{app}}",
     "connectReasonFallback": "O funcionário de IA precisa do {{app}} para continuar.",
+    "reconnectTitle": "Reconectar o {{app}}",
+    "reconnectReasonFallback": "O {{app}} parou de funcionar. Conecte de novo para o funcionário de IA continuar.",
     "declinePlaceholder": "Ou diga o que fazer em vez disso...",
     "recommended": "Recomendado",
     "skip": "Pular",

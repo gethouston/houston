@@ -120,6 +120,8 @@
     "signin": "Sign in",
     "connectTitle": "Connect {{app}}",
     "connectReasonFallback": "The AI Employee needs {{app}} to continue.",
+    "reconnectTitle": "Reconnect {{app}}",
+    "reconnectReasonFallback": "{{app}} stopped working. Reconnect it so the AI Employee can continue.",
     "declinePlaceholder": "Or tell it what to do instead...",
     "recommended": "Recommended",
     "skip": "Skip",

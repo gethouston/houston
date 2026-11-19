@@ -119,3 +119,23 @@ export function shouldAutoContinueConnected(args: {
     !args.alreadyFired
   );
 }
+
+/**
+ * Stepper mode, a reconnect step (the app's login stopped working): the
+ * existing connection is the dead one it replaces. So the step never advances
+ * on its own, and only a reconnect the user drove from the card finishes it.
+ */
+export function connectStepAutoContinues(args: {
+  reconnect: boolean;
+  revisited: boolean;
+}): boolean {
+  return !args.reconnect && !args.revisited;
+}
+
+export function connectStepDone(args: {
+  reconnect: boolean;
+  isConnected: boolean;
+  reconnectedHere: boolean;
+}): boolean {
+  return args.reconnect ? args.reconnectedHere : args.isConnected;
+}
