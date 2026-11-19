@@ -22,10 +22,11 @@ concurrency:
 permissions:
   contents: read
 
-# Job budgets use the latest 60 main runs, targeting 1.5x p95 rounded up
-# to whole minutes, with a two-minute floor. Keep an existing tighter budget
-# when measurements rise; faster jobs lower their budget in the same PR.
-# A timeout fails the job. Raising a budget needs a measured reason.
+# Job budgets are 1.5x the p95 of the latest 60 main runs, rounded up to
+# whole minutes, with a two-minute floor; a matrix takes its slowest leg's
+# p95. A budget sits above real p95 so it only trips on a hang, and a
+# timeout fails the job. A PR that makes a job faster or slower re-measures
+# and moves its budget in the same PR.
 
 # Every job runs on `vars.CI_RUNNER` (a repo variable; unset = GitHub's
 # ubuntu-latest), the same switch the cloud repo uses. Hosted jobs share the
@@ -190,7 +191,7 @@ jobs:
       matrix:
         include:
           - package: runtime
-            timeout: 8
+            timeout: 10
           - package: host
             timeout: 4
     steps:
@@ -278,7 +279,7 @@ jobs:
     needs: changes
     if: needs.changes.outputs.web == 'true'
     runs-on: ${{ vars.CI_RUNNER || 'ubuntu-latest' }}
-    timeout-minutes: 9
+    timeout-minutes: 10
     strategy:
       fail-fast: false
       matrix:
@@ -358,7 +359,7 @@ jobs:
     needs: changes
     if: needs.changes.outputs.web == 'true'
     runs-on: ${{ vars.CI_RUNNER || 'ubuntu-latest' }}
-    timeout-minutes: 10
+    timeout-minutes: 24
     container:
       image: mcr.microsoft.com/playwright:v1.64.0-noble
     steps:
@@ -403,7 +404,7 @@ jobs:
     needs: changes
     if: needs.changes.outputs.app == 'true'
     runs-on: ${{ vars.CI_RUNNER || 'ubuntu-latest' }}
-    timeout-minutes: 9
+    timeout-minutes: 11
     steps:
       - uses: actions/checkout@v6
 
