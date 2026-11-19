@@ -447,6 +447,7 @@ export type {
 } from "./types";
 // === Utilities ===
 export { Typewriter } from "./typewriter";
+export type { ComposerDraftStore } from "./use-composer-draft";
 export type { ProgressStep, StepStatus } from "./use-progress-steps";
 // === Progress ===
 export { useProgressSteps } from "./use-progress-steps";

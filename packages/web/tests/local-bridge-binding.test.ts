@@ -7,6 +7,7 @@ const mocks = vi.hoisted(() => ({
   dispose: vi.fn(),
   subscribe: vi.fn(),
   constructed: vi.fn(),
+  current: { id: "agent" } as { id: string } | null,
 }));
 vi.mock("@houston/sdk", () => ({
   LocalModelBridgeController: class {
@@ -18,7 +19,7 @@ vi.mock("@houston/sdk", () => ({
   },
 }));
 vi.mock("../../../app/src/stores/agents", () => ({
-  useAgentStore: { getState: () => ({ current: { id: "agent" } }) },
+  useAgentStore: { getState: () => ({ current: mocks.current }) },
 }));
 vi.mock("../../../app/src/lib/engine", () => ({
   getEngine: () => ({ getLocalModelBridgeAccess: mocks.access }),
@@ -54,6 +55,7 @@ beforeEach(() => {
   });
   mocks.access.mockResolvedValue(access);
   mocks.dispose.mockResolvedValue(undefined);
+  mocks.current = { id: "agent" };
 });
 afterEach(() => vi.unstubAllGlobals());
 
@@ -117,4 +119,12 @@ test("a teardown failure is reported and retried before starting another scope",
   expect(mocks.report).toHaveBeenCalledWith(failure);
   expect(mocks.dispose).toHaveBeenCalledTimes(2);
   expect(mocks.constructed).toHaveBeenCalledTimes(2);
+});
+
+test("discovery is asked for the agent the person has open", async () => {
+  // The bridge used to let the adapter pick its agent and then refuse when the
+  // pick differed from the open one (HOUSTON-APP-5E2).
+  const binding = await import("../../../app/src/lib/local-bridge-binding");
+  await expect(binding.localBridgeController("owner")).resolves.not.toBeNull();
+  expect(mocks.access).toHaveBeenCalledWith("owner", "agent");
 });

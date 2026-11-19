@@ -41,20 +41,10 @@ export function newConversationDraftKey(scope?: string | null): string {
   return scope ? `${NEW_CONVERSATION_KEY}:${scope}` : NEW_CONVERSATION_KEY;
 }
 
-/** The text-only view AIBoard consumes: the view's scoped new-conversation
- *  draft surfaces under the plain key; every other view's stays hidden. */
-export function boardDraftsView(
-  rawDrafts: Record<string, { text: string }>,
-  scopedKey: string,
-): Record<string, string> {
-  const out: Record<string, string> = {};
-  for (const [key, value] of Object.entries(rawDrafts)) {
-    if (!value.text) continue;
-    if (key === scopedKey) out[NEW_CONVERSATION_KEY] = value.text;
-    // Another surface's new-conversation draft: never expose it here.
-    else if (!key.startsWith(NEW_CONVERSATION_KEY)) out[key] = value.text;
-  }
-  return out;
+/** The store key behind AIBoard's draft `key`: the plain new-conversation
+ *  key is this view's scoped slot; a session key is its own. */
+export function boardDraftKey(key: string, scopedKey: string): string {
+  return key === NEW_CONVERSATION_KEY ? scopedKey : key;
 }
 
 const EMPTY_DRAFT: DraftEntry = { text: "", files: [] };

@@ -549,10 +549,11 @@ test("hydrateProviderCatalog([]) keeps the seed instead of wiping it", () => {
 test("model contextWindow: an override default wins over pi's raw window", () => {
   // Codex reports a raw 272000 window (SAMPLE_CATALOG), but its `/status` shows
   // the 95%-effective 258400 — the override supplies that as the indicator's
-  // starting denominator, while the snap-up ceiling stays the opt-in-1M window.
+  // starting denominator, while the snap-up ceiling is Codex's 872k
+  // max_context_window (× 95%).
   assert.deepEqual(getContextWindowConfig("openai", "gpt-5.5"), {
     default: 258_400,
-    max: 950_000,
+    max: 828_400,
   });
   assert.deepEqual(getContextWindowConfig("openai", "gpt-5.3-codex-spark"), {
     default: 121_600,

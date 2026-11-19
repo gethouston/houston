@@ -69,12 +69,10 @@ export function localBridgeController(
     }
     if (captured !== epoch)
       throw new DOMException("Workspace changed", "AbortError");
-    const access = await getEngine().getLocalModelBridgeAccess(userId);
+    const access = await getEngine().getLocalModelBridgeAccess(userId, agent);
     if (captured !== epoch)
       throw new DOMException("Workspace changed", "AbortError");
     if (!access) return null;
-    if (access.identity.userId !== userId || access.identity.agentId !== agent)
-      throw new Error("Local model identity changed");
     const controller = new LocalModelBridgeController(
       desktopBridgePorts(access),
     );

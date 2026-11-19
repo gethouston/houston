@@ -1,7 +1,8 @@
 import { readFileSync } from "node:fs";
 import { join } from "node:path";
 import type { BrowserLiveEvent } from "@houston/wire-types";
-import { afterAll, describe, expect, test } from "vitest";
+import { afterAll, afterEach, describe, expect, test } from "vitest";
+import type { BrowserParams } from "./actions";
 import {
   agentWorkspace,
   browserAvailable,
@@ -42,6 +43,16 @@ async function until<T>(probe: () => T | undefined | false): Promise<T> {
   throw new Error("timed out waiting");
 }
 
+// A test that fails mid hand-off leaves its run waiting on the person, and
+// that run holds its pool's queue: shutdown() would wait behind it and turn
+// one failure into a hook timeout that hides it. Stopping the test's turn
+// ends the hand-off whether or not it has opened yet.
+let stopTurn = new AbortController();
+afterEach(() => {
+  stopTurn.abort();
+  stopTurn = new AbortController();
+});
+
 afterAll(async () => {
   await Promise.all(pools.map((pool) => pool.shutdown()));
   server.closeAllConnections();
@@ -70,7 +81,10 @@ function start(
   const registry = new HandoffRegistry();
   const ws = workspace();
   const pool = options.pool ?? newPool();
-  const run = handoffTool(ws, pool, registry, options);
+  const live = handoffTool(ws, pool, registry, options);
+  const { signal: stopped } = stopTurn;
+  const run = (params: BrowserParams, signal?: AbortSignal) =>
+    live(params, signal ? AbortSignal.any([signal, stopped]) : stopped);
   return { registry, ws, pool, run };
 }
 

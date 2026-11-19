@@ -108,7 +108,7 @@ pub async fn connect(
     )
     .await
     .map_err(|_| BridgeError::Timeout)?
-    .map_err(|_| BridgeError::Connection)?;
+    .map_err(BridgeError::handshake)?;
     if response
         .headers()
         .get("Sec-WebSocket-Protocol")

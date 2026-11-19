@@ -39,10 +39,47 @@ describe("planLocalBridgeReport", () => {
     );
   });
 
-  it("keeps every other rejection loud, with its name and message as the cause", () => {
+  // HOUSTON-APP-5E4 / 5DY / 5M1: the expected states report as their quiet
+  // class, and the cause still rides along (a native string rejection has no
+  // body for the quiet event to carry).
+  it("reports the SDK's expected bridge states as their quiet class, with the cause", () => {
+    deepStrictEqual(planLocalBridgeReport("Bridge connection failed"), {
+      kind: "quiet",
+      quiet: "bridge_state",
+      cause: "Bridge connection failed",
+    });
     deepStrictEqual(
       planLocalBridgeReport(new BridgeStateError("reconnecting")),
-      { kind: "failed", cause: "BridgeStateError: reconnecting" },
+      {
+        kind: "quiet",
+        quiet: "bridge_state",
+        cause: "BridgeStateError: reconnecting",
+      },
+    );
+    deepStrictEqual(
+      planLocalBridgeReport(
+        Object.assign(new Error("stale session (engine error 409)"), {
+          status: 409,
+          body: { code: "stale_session", error: "stale session" },
+        }),
+      ),
+      {
+        kind: "quiet",
+        quiet: "bridge_state",
+        cause: "Error: stale session (engine error 409)",
+      },
+    );
+  });
+
+  it("keeps every other rejection loud, with its name and message as the cause", () => {
+    deepStrictEqual(
+      planLocalBridgeReport(
+        Object.assign(new Error("bridge unavailable (engine error 503)"), {
+          status: 503,
+          body: { code: "bridge_unavailable", error: "bridge unavailable" },
+        }),
+      ),
+      { kind: "failed", cause: "Error: bridge unavailable (engine error 503)" },
     );
     deepStrictEqual(
       planLocalBridgeReport(
@@ -50,6 +87,12 @@ describe("planLocalBridgeReport", () => {
       ),
       { kind: "failed", cause: "TypeError: Load failed" },
     );
+    // The relay answered the handshake with a status: our side refused, so
+    // it is never the quiet relay-unreachable class.
+    deepStrictEqual(planLocalBridgeReport("Bridge connection refused (401)"), {
+      kind: "failed",
+      cause: "Bridge connection refused (401)",
+    });
     deepStrictEqual(planLocalBridgeReport("boom"), {
       kind: "failed",
       cause: "boom",
