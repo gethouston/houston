@@ -14,8 +14,8 @@ import { viaSdk } from "./sdk-error";
 
 export function ProviderCredentialsMixin<TBase extends BaseCtor>(Base: TBase) {
   class ProviderCredentials extends Base {
-    getLocalModelBridgeAccess(userId: string) {
-      return localModelBridgeAccess(this.ctx, userId);
+    getLocalModelBridgeAccess(userId: string, agentId: string | null) {
+      return localModelBridgeAccess(this.ctx, userId, agentId);
     }
     /**
      * Signs the workspace out of an AI provider.

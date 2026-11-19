@@ -29,16 +29,21 @@ export function resolveAutocompactOverride(
  * Whether this turn should compact before prompting. `tokens` is the session's
  * current context fill (null when the provider never reported usage — a fresh
  * conversation, or a provider without usage frames — which never compacts).
+ * `inputLimit` is the model's input cap when it sits below the window
+ * (`modelInputLimit`); compaction never waits past it.
  */
 export function needsAutocompact(
   tokens: number | null,
   contextWindow: number,
   overridePercent: number | undefined = resolveAutocompactOverride(),
+  inputLimit?: number,
 ): boolean {
   if (tokens == null || contextWindow <= 0) return false;
   const point =
     overridePercent === undefined
-      ? autocompactPoint(contextWindow)
-      : (contextWindow * overridePercent) / 100;
+      ? autocompactPoint(contextWindow, inputLimit)
+      : (Math.min(contextWindow, inputLimit ?? contextWindow) *
+          overridePercent) /
+        100;
   return tokens >= point;
 }

@@ -30,6 +30,7 @@ export function ChatPanel(props: ChatPanelProps) {
     status: statusProp,
     value,
     onValueChange,
+    draftStore,
     composerFocusToken,
     onNotice,
     prepareAttachments,
@@ -166,6 +167,7 @@ export function ChatPanel(props: ChatPanelProps) {
           // draft store, so a switch never crosses one chat's picks with
           // another's words.
           draftKey={sessionKey}
+          draftStore={draftStore}
         />
       )}
     </div>

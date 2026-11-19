@@ -2,6 +2,7 @@
 // module directly (app/tests/local-bridge-report-plan.test.ts) and cannot load
 // the SDK root.
 import { isBridgeCancellation } from "@houston/sdk/local-model-bridge/errors";
+import { bridgeQuietClass } from "@houston/sdk/local-model-bridge/quiet";
 import { isBridgeUnsupported } from "@houston/sdk/local-model-bridge/unsupported";
 
 /**
@@ -16,6 +17,9 @@ import { isBridgeUnsupported } from "@houston/sdk/local-model-bridge/unsupported
  *   only (HOUSTON-APP-5HX).
  * - `unsupported`: the deployment offers no bridge, the quiet
  *   `bridge_unsupported` class.
+ * - `quiet`: the SDK's other expected bridge states (`bridgeQuietClass`): one
+ *   fingerprinted warning, nothing red. `cause` rides as `extra`, since a
+ *   native string rejection leaves the quiet event no body to carry.
  * - `failed`: everything else stays loud. `cause` (error name + message) rides
  *   as `extra` beside the status and body, because the report error carries
  *   only the stack (PRODUCT-1833).
@@ -23,6 +27,7 @@ import { isBridgeUnsupported } from "@houston/sdk/local-model-bridge/unsupported
 export type LocalBridgeReportPlan =
   | { kind: "cancelled"; cause: string }
   | { kind: "unsupported" }
+  | { kind: "quiet"; quiet: "bridge_no_agent" | "bridge_state"; cause: string }
   | { kind: "failed"; cause: string };
 
 export function planLocalBridgeReport(error: unknown): LocalBridgeReportPlan {
@@ -30,5 +35,8 @@ export function planLocalBridgeReport(error: unknown): LocalBridgeReportPlan {
     error instanceof Error ? `${error.name}: ${error.message}` : String(error);
   if (isBridgeCancellation(error)) return { kind: "cancelled", cause };
   if (isBridgeUnsupported(error)) return { kind: "unsupported" };
+  const quiet = bridgeQuietClass(error);
+  if (quiet === "bridge_no_agent" || quiet === "bridge_state")
+    return { kind: "quiet", quiet, cause };
   return { kind: "failed", cause };
 }

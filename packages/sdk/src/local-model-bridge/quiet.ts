@@ -1,7 +1,12 @@
 // Package self-references, not relative paths: the app's node:test runner
 // loads this module through a package subpath, and node resolves no
 // extensionless relative import.
-import { BridgeStateError } from "@houston/sdk/local-model-bridge/errors";
+import {
+  BridgeStateError,
+  isBridgeRelayUnreachable,
+  isMigrationReconnect,
+  isStaleBridgeSession,
+} from "@houston/sdk/local-model-bridge/errors";
 import { isBridgeUnsupported } from "@houston/sdk/local-model-bridge/unsupported";
 import { NoAgentForProviderWriteError } from "@houston/sdk/no-agent-provider-write-error";
 
@@ -19,6 +24,10 @@ import { NoAgentForProviderWriteError } from "@houston/sdk/no-agent-provider-wri
  *   server does not serve the model; `reconnecting`: the native session
  *   dropped); the bridge status surface shows it inline and the SDK retries
  *   on its own curve (HOUSTON-APP-5E1). The state is the error's message.
+ *   The raw answers that lead to those states share the class: the native
+ *   bridge failing to reach the relay (HOUSTON-APP-5E4), a stale renewal the
+ *   SDK answers with a fresh session (HOUSTON-APP-5DY), and a migration the
+ *   gateway sends back for a reconnect (HOUSTON-APP-5M1).
  *
  * Erasable syntax only: the app's node:test runner loads this module through
  * the `@houston/sdk/local-model-bridge/quiet` subpath.
@@ -31,6 +40,12 @@ export type BridgeQuietClass =
 export function bridgeQuietClass(error: unknown): BridgeQuietClass | null {
   if (isBridgeUnsupported(error)) return "bridge_unsupported";
   if (error instanceof NoAgentForProviderWriteError) return "bridge_no_agent";
-  if (error instanceof BridgeStateError) return "bridge_state";
+  if (
+    error instanceof BridgeStateError ||
+    isBridgeRelayUnreachable(error) ||
+    isStaleBridgeSession(error) ||
+    isMigrationReconnect(error)
+  )
+    return "bridge_state";
   return null;
 }

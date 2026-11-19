@@ -95,11 +95,45 @@ test("GET /v1/catalog advertises the GPT-6 line under azure-openai-responses", (
   const azure = buildProviderCatalog().find(
     (p) => p.id === "azure-openai-responses",
   );
-  for (const id of ["gpt-6-luna", "gpt-6-sol", "gpt-6-astra"]) {
+  for (const id of [
+    "gpt-6-luna",
+    "gpt-6-sol",
+    "gpt-6.2-sol",
+    "gpt-6-astra",
+    "gpt-6.2-astra",
+  ]) {
     const m = azure?.models.find((row) => row.id === id);
     expect(m, id).toBeDefined();
     expect(m?.reasoning, id).toBe(true);
     expect(m?.maxTokens, id).toBe(128_000);
     expect(m?.thinkingLevels, id).toContain("max");
+  }
+});
+
+test("GET /v1/catalog advertises GPT-6.2 Sol and Astra's Codex shapes", () => {
+  const codex = buildProviderCatalog().find((p) => p.id === "openai-codex");
+  const sol = codex?.models.find((m) => m.id === "gpt-6.2-sol");
+  const astra = codex?.models.find((m) => m.id === "gpt-6.2-astra");
+  expect(sol).toMatchObject({
+    name: "GPT-6.2 Sol",
+    contextWindow: 500_000,
+    maxTokens: 128_000,
+    reasoning: true,
+    vision: true,
+    pricing: { input: 2, output: 10, cacheRead: 0.1, cacheWrite: 2.5 },
+  });
+  expect(astra).toMatchObject({
+    name: "GPT-6.2 Astra",
+    contextWindow: 272_000,
+    maxTokens: 128_000,
+    reasoning: true,
+    vision: true,
+    pricing: { input: 8, output: 40, cacheRead: 0.4, cacheWrite: 10 },
+  });
+  for (const m of [sol, astra]) {
+    expect(m?.runsAs, m?.id).toBeUndefined();
+    expect(m?.thinkingLevels, m?.id).not.toContain("off");
+    expect(m?.thinkingLevels, m?.id).toContain("xhigh");
+    expect(m?.thinkingLevels, m?.id).toContain("max");
   }
 });

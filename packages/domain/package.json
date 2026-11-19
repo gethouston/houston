@@ -63,6 +63,10 @@
       "types": "./src/provider-default-models.ts",
       "import": "./src/provider-default-models.ts"
     },
+    "./provider-valid-models": {
+      "types": "./src/provider-valid-models.ts",
+      "import": "./src/provider-valid-models.ts"
+    },
     "./provider-visibility": {
       "types": "./src/provider-visibility.ts",
       "import": "./src/provider-visibility.ts"

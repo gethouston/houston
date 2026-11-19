@@ -18,13 +18,22 @@ vi.mock("../../session/resource-loader", () => ({
 vi.mock("./session-files", () => ({ resumeSessionManager: vi.fn() }));
 vi.mock("./transport-settings", () => ({ piTransportSettings: () => ({}) }));
 
+type ModelId = Parameters<typeof getModel>[1];
+
 const terra = getModel("openai-codex", "gpt-6.1-terra");
 const astra = getModel("openai-codex", "gpt-6-astra");
+// Backported by the pi-ai 1.5.2 patch, so absent from pi's typed id union.
+const sol62 = getModel("openai-codex", "gpt-6.2-sol" as ModelId);
+const astra62 = getModel("openai-codex", "gpt-6.2-astra" as ModelId);
 
 test.each([
   ["Terra max", terra, "max", "max"],
   ["Terra low", terra, "low", "low"],
   ["Astra max", astra, "max", "xhigh"],
+  // The 2026-11-17 Codex probe served xhigh and max for both GPT-6.2 rows.
+  ["GPT-6.2 Sol max", sol62, "max", "xhigh"],
+  ["GPT-6.2 Sol low", sol62, "low", "low"],
+  ["GPT-6.2 Astra max", astra62, "max", "xhigh"],
   [
     "max-only catalog model",
     { ...astra, thinkingLevelMap: { xhigh: null, max: "max" } },
