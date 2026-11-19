@@ -513,18 +513,42 @@ test("a no-connected-account failure hands off to request_connection", async () 
   ).rejects.toThrow(/did not succeed: quota exceeded$/);
 });
 
+// The prod shape: Composio relays Google's 403 body verbatim.
+const GOOGLE_SCOPE_403 = `{"error":{"code":403,"message":"Request had insufficient authentication scopes.","status":"PERMISSION_DENIED","details":[{"reason":"ACCESS_TOKEN_SCOPE_INSUFFICIENT"}]}}`;
+
 test.each([
-  // The prod shape: Composio relays Google's 403 body verbatim.
-  `{"error":{"code":403,"message":"Request had insufficient authentication scopes.","status":"PERMISSION_DENIED","details":[{"reason":"ACCESS_TOKEN_SCOPE_INSUFFICIENT"}]}}`,
-  `{"ok":false,"error":"missing_scope","needed":"reactions:write"}`,
-])("a missing-permission failure says reconnecting will not help: %s", async (error) => {
-  mockFetch(() => ({ body: { successful: false, error } }));
-  const failure = run(execute, { action: "GMAIL_CREATE_FILTER", params: {} });
+  "GMAIL_CREATE_FILTER",
+  "GMAIL_UPDATE_VACATION_SETTINGS",
+])("%s missing its settings permission says reconnecting will not help", async (action) => {
+  mockFetch(() => ({ body: { successful: false, error: GOOGLE_SCOPE_403 } }));
+  const failure = run(execute, { action, params: {} });
   await expect(failure).rejects.toThrow(
-    /does not include the permission this action needs/,
+    /can never include the permission this action needs/,
   );
   await expect(failure).rejects.toThrow(/do not ask the user to reconnect/);
   await expect(failure).rejects.not.toThrow(/request_connection/);
+  await expect(failure).rejects.not.toThrow(/integration_search/);
+});
+
+test.each([
+  ["GMAIL_FETCH_EMAILS", GOOGLE_SCOPE_403],
+  // Settings reads also accept the full-mail permission, so a refusal there is
+  // an unticked box like any other.
+  ["GMAIL_LIST_FILTERS", GOOGLE_SCOPE_403],
+  ["GOOGLEDRIVE_FIND_FILE", GOOGLE_SCOPE_403],
+  [
+    "SLACK_ADD_REACTION_TO_AN_ITEM",
+    `{"ok":false,"error":"missing_scope","needed":"reactions:write"}`,
+  ],
+])("%s missing a permission offers one reconnect, then manual steps", async (action, error) => {
+  mockFetch(() => ({ body: { successful: false, error } }));
+  const failure = run(execute, { action, params: {} });
+  await expect(failure).rejects.toThrow(/reconnect the app in Integrations/);
+  await expect(failure).rejects.toThrow(/tick every permission box/);
+  await expect(failure).rejects.toThrow(/retry this action once/);
+  await expect(failure).rejects.toThrow(/do not ask for another reconnect/);
+  await expect(failure).rejects.toThrow(/Do not call request_connection/);
+  await expect(failure).rejects.not.toThrow(/can never include/);
   await expect(failure).rejects.not.toThrow(/integration_search/);
 });
 

@@ -48,20 +48,42 @@ export function searchLeadNote(
 }
 
 /**
- * The app refused because the connection was never granted the permission this
- * action needs: Google's ACCESS_TOKEN_SCOPE_INSUFFICIENT (GMAIL_CREATE_FILTER
- * needs gmail.settings.basic) or Slack's missing_scope. OAuth connections run
- * on Composio-managed apps whose permission set Houston does not choose, so a
- * reconnect grants the same set again and a retry fails the same way.
+ * Gmail actions whose Gmail API method accepts ONLY gmail.settings.basic (or
+ * gmail.settings.sharing). Composio's managed Gmail app never requests those
+ * Restricted scopes, so no reconnect can grant them. Settings READS also accept
+ * https://mail.google.com/, which the app does request, so they stay out.
  */
-export function missingPermissionHint(reason: string): string {
+const NEVER_GRANTED_ACTIONS = new Set([
+  "GMAIL_CREATE_FILTER",
+  "GMAIL_DELETE_FILTER",
+  "GMAIL_UPDATE_VACATION_SETTINGS",
+  "GMAIL_UPDATE_IMAP_SETTINGS",
+  "GMAIL_UPDATE_POP_SETTINGS",
+  "GMAIL_UPDATE_LANGUAGE_SETTINGS",
+  "GMAIL_PATCH_SEND_AS",
+  "GMAIL_UPDATE_SEND_AS",
+]);
+
+/**
+ * The app refused because the connection lacks a permission the action needs:
+ * Google's ACCESS_TOKEN_SCOPE_INSUFFICIENT or Slack's missing_scope. For the
+ * actions above no reconnect helps. Anywhere else one usually does: Google lets
+ * the person untick permission boxes at sign-in, and a Slack connection made
+ * before the app requested a scope lacks it (Slack's consent is all-or-nothing,
+ * so a fresh connection carries every scope the app asks for). The connect card
+ * cannot reconnect an app that already shows as connected, so the person does it
+ * in Integrations.
+ */
+export function missingPermissionHint(reason: string, action: string): string {
   if (
     !/ACCESS_TOKEN_SCOPE_INSUFFICIENT|insufficient authentication scopes|\bmissing_scope\b/i.test(
       reason,
     )
   )
     return "";
-  return " The user's connection to this app does not include the permission this action needs, and reconnecting the app will not add it. Do not retry this action and do not ask the user to reconnect. Tell the user plainly that this step can't be done in their app from here, and offer to walk them through doing it themselves in the app (for example, creating a Gmail filter in Gmail's settings). Never mention permissions, scopes, codes, or other technical details to the user.";
+  if (NEVER_GRANTED_ACTIONS.has(action.toUpperCase()))
+    return " The user's connection to this app can never include the permission this action needs, and reconnecting the app will not add it. Do not retry this action and do not ask the user to reconnect. Tell the user plainly that this step can't be done in their app from here, and offer to walk them through doing it themselves in the app (for example, creating a Gmail filter in Gmail's settings). Never mention permissions, scopes, codes, or other technical details to the user.";
+  return " The user's connection to this app is missing a permission this action needs, usually because a permission box was left unticked when they connected it. Ask the user to reconnect the app in Integrations: disconnect it, connect it again, and tick every permission box on the sign-in screen. Do not call request_connection, because the app already shows as connected. After they confirm, retry this action once. If it fails the same way again, do not ask for another reconnect: tell the user plainly that this step can't be done from here and offer to walk them through doing it themselves in the app. Never mention permissions, scopes, codes, or other technical details to the user.";
 }
 
 export function parameterFailureHint(reason: string, action: string): string {

@@ -475,7 +475,7 @@ export function makeIntegrationTools(opts: IntegrationToolOptions) {
         // the model the connect-card instruction right in the error.
         const hint = /connected account|not connected/i.test(reason)
           ? ` The user has not connected this app. ${REQUEST_CONNECTION_GUIDANCE}`
-          : missingPermissionHint(reason) ||
+          : missingPermissionHint(reason, params.action) ||
             parameterFailureHint(reason, params.action);
         throw new Error(`"${params.action}" did not succeed: ${reason}${hint}`);
       }
