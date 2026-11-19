@@ -32,11 +32,16 @@ const outside = (path: string) =>
 export function workspaceRelFor(files: AgentFiles, path: string): string {
   const given = path.trim().replace(/\\/g, "/");
   let rel = given;
-  if (given.startsWith("/")) {
+  // POSIX "/…", UNC "//server/share/…" (from "\\server\share") and a
+  // Windows drive "C:/…" are all absolute.
+  const drive = /^[A-Za-z]:\//.test(given);
+  if (given.startsWith("/") || drive) {
     const dir = files.dir.replace(/\\/g, "/").replace(/\/+$/, "");
     const marker = `/${files.rootKey}/`;
     const at = given.indexOf(marker);
-    rel = given.startsWith(`${dir}/`)
+    // Windows paths compare without case, as the filesystem does.
+    const fold = (p: string) => (drive ? p.toLowerCase() : p);
+    rel = fold(given).startsWith(fold(`${dir}/`))
       ? given.slice(dir.length + 1)
       : at < 0
         ? ""

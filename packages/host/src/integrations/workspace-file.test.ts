@@ -49,6 +49,24 @@ describe("agent file paths", () => {
     ).toBe("c/d.pdf");
   });
 
+  test("Windows drive and UNC paths are absolute", () => {
+    const files = {
+      dir: "C:\\Users\\ana\\.houston\\workspaces\\Personal\\Bob",
+      rootKey: "Personal/Bob",
+    };
+    expect(
+      workspaceRelFor(
+        files,
+        "c:\\users\\ana\\.houston\\workspaces\\Personal\\Bob\\r\\q3.pdf",
+      ),
+    ).toBe("r/q3.pdf");
+    for (const bad of ["D:\\other\\q3.pdf", "\\\\server\\share\\q3.pdf"]) {
+      expect(() => workspaceRelFor(files, bad)).toThrow(
+        /outside this agent's files/,
+      );
+    }
+  });
+
   test("traversal and paths elsewhere are refused", () => {
     const files = { dir, rootKey: ROOT_KEY };
     for (const bad of ["/tmp/x.pdf", "../x.pdf", "a/../../x.pdf", ".", ""]) {
