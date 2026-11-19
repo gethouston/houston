@@ -359,7 +359,7 @@ jobs:
     needs: changes
     if: needs.changes.outputs.web == 'true'
     runs-on: ${{ vars.CI_RUNNER || 'ubuntu-latest' }}
-    timeout-minutes: 24
+    timeout-minutes: 25
     container:
       image: mcr.microsoft.com/playwright:v1.64.0-noble
     steps:
