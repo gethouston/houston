@@ -6,6 +6,7 @@ import { assertNotPlanMode } from "../live-mode-gate";
 import { layoutJson } from "./integrations-json";
 import type { ToolMatch } from "./integrations-render";
 import {
+  missingPermissionHint,
   parameterFailureError,
   parameterFailureHint,
   searchEmptyText,
@@ -474,7 +475,8 @@ export function makeIntegrationTools(opts: IntegrationToolOptions) {
         // the model the connect-card instruction right in the error.
         const hint = /connected account|not connected/i.test(reason)
           ? ` The user has not connected this app. ${REQUEST_CONNECTION_GUIDANCE}`
-          : parameterFailureHint(reason, params.action);
+          : missingPermissionHint(reason) ||
+            parameterFailureHint(reason, params.action);
         throw new Error(`"${params.action}" did not succeed: ${reason}${hint}`);
       }
       const text = boundResultText(

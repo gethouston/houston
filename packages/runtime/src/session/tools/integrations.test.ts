@@ -513,6 +513,21 @@ test("a no-connected-account failure hands off to request_connection", async () 
   ).rejects.toThrow(/did not succeed: quota exceeded$/);
 });
 
+test.each([
+  // The prod shape: Composio relays Google's 403 body verbatim.
+  `{"error":{"code":403,"message":"Request had insufficient authentication scopes.","status":"PERMISSION_DENIED","details":[{"reason":"ACCESS_TOKEN_SCOPE_INSUFFICIENT"}]}}`,
+  `{"ok":false,"error":"missing_scope","needed":"reactions:write"}`,
+])("a missing-permission failure says reconnecting will not help: %s", async (error) => {
+  mockFetch(() => ({ body: { successful: false, error } }));
+  const failure = run(execute, { action: "GMAIL_CREATE_FILTER", params: {} });
+  await expect(failure).rejects.toThrow(
+    /does not include the permission this action needs/,
+  );
+  await expect(failure).rejects.toThrow(/do not ask the user to reconnect/);
+  await expect(failure).rejects.not.toThrow(/request_connection/);
+  await expect(failure).rejects.not.toThrow(/integration_search/);
+});
+
 test("request_connection records a connect interaction with a normalized slug", async () => {
   const holder = newInteractionHolder();
   const out = await runWithInteractionCapture(holder, () =>

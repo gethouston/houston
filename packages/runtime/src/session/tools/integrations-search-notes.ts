@@ -47,6 +47,23 @@ export function searchLeadNote(
   return "";
 }
 
+/**
+ * The app refused because the connection was never granted the permission this
+ * action needs: Google's ACCESS_TOKEN_SCOPE_INSUFFICIENT (GMAIL_CREATE_FILTER
+ * needs gmail.settings.basic) or Slack's missing_scope. OAuth connections run
+ * on Composio-managed apps whose permission set Houston does not choose, so a
+ * reconnect grants the same set again and a retry fails the same way.
+ */
+export function missingPermissionHint(reason: string): string {
+  if (
+    !/ACCESS_TOKEN_SCOPE_INSUFFICIENT|insufficient authentication scopes|\bmissing_scope\b/i.test(
+      reason,
+    )
+  )
+    return "";
+  return " The user's connection to this app does not include the permission this action needs, and reconnecting the app will not add it. Do not retry this action and do not ask the user to reconnect. Tell the user plainly that this step can't be done in their app from here, and offer to walk them through doing it themselves in the app (for example, creating a Gmail filter in Gmail's settings). Never mention permissions, scopes, codes, or other technical details to the user.";
+}
+
 export function parameterFailureHint(reason: string, action: string): string {
   if (
     /connected account|not connected/i.test(reason) ||
