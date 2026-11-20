@@ -57,6 +57,8 @@ export interface ProviderStatusesState extends ProviderStatusScan {
    * never a fabricated empty set.
    */
   refetch: () => Promise<ProviderStatusScan>;
+  /** The probe's last failed attempt's error, while it retries too. */
+  failureReason: unknown;
 }
 
 /**
@@ -180,5 +182,6 @@ export function useProviderStatuses(): ProviderStatusesState {
     }),
     isError: query.isError,
     refetch,
+    failureReason: query.failureReason,
   };
 }

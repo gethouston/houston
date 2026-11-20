@@ -2,8 +2,10 @@ import { deepStrictEqual, strictEqual } from "node:assert";
 import { describe, it } from "node:test";
 import {
   createSendPinGate,
+  pinStallQuietClass,
   type SendPinSignals,
   sendPinSettled,
+  unsettledPinInputs,
 } from "../src/lib/send-pin-gate.ts";
 
 const allSettled: SendPinSignals = {
@@ -145,5 +147,87 @@ describe("createSendPinGate", () => {
     gate.update({ provider: "b", model: "2" }, true);
     await waiting;
     strictEqual(released, true);
+  });
+});
+
+describe("unsettledPinInputs (HOUSTON-APP-5EX)", () => {
+  it("names exactly the inputs still pending, in a fixed order", () => {
+    deepStrictEqual(unsettledPinInputs(allSettled), []);
+    deepStrictEqual(
+      unsettledPinInputs({
+        ...allSettled,
+        statusesSettled: false,
+        agentConfigSettled: false,
+      }),
+      ["agentConfig", "statuses"],
+    );
+    deepStrictEqual(
+      unsettledPinInputs({ ...allSettled, choiceSettled: false }),
+      ["choice"],
+    );
+  });
+});
+
+describe("pinStallQuietClass", () => {
+  const calm = { online: true, engineWarming: false, failures: {} };
+  const stalled: SendPinSignals = { ...allSettled, statusesSettled: false };
+  const waking = Object.assign(
+    new Error("engine unavailable (engine error 503)"),
+    { name: "HoustonEngineError", status: 503 },
+  );
+
+  it("is a real report when nothing explains the stall", () => {
+    strictEqual(pinStallQuietClass(stalled, calm), null);
+    strictEqual(
+      pinStallQuietClass(stalled, {
+        ...calm,
+        failures: { statusesSettled: new Error("boom") },
+      }),
+      null,
+    );
+  });
+
+  it("is offline when the device is offline", () => {
+    strictEqual(
+      pinStallQuietClass(stalled, { ...calm, online: false }),
+      "offline",
+    );
+  });
+
+  it("is engine_waking while the agent's engine warms up", () => {
+    strictEqual(
+      pinStallQuietClass(stalled, { ...calm, engineWarming: true }),
+      "engine_waking",
+    );
+  });
+
+  it("reads the last failure of an input still unsettled", () => {
+    strictEqual(
+      pinStallQuietClass(stalled, {
+        ...calm,
+        failures: { statusesSettled: new TypeError("Failed to fetch") },
+      }),
+      "offline",
+    );
+    strictEqual(
+      pinStallQuietClass(stalled, {
+        ...calm,
+        failures: { statusesSettled: waking },
+      }),
+      "engine_waking",
+    );
+  });
+
+  it("ignores a stale failure on an input that has since settled", () => {
+    strictEqual(
+      pinStallQuietClass(stalled, {
+        ...calm,
+        failures: {
+          agentConfigSettled: waking,
+          activitySettled: new TypeError("Failed to fetch"),
+        },
+      }),
+      null,
+    );
   });
 });
