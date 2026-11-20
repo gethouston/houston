@@ -180,7 +180,7 @@ test("turn tool mutations publish the custom definition view", async () => {
 
   const viewPuts = requests.filter(
     (request) =>
-      request.method === "PUT" && /\/custom_definitions$/.test(request.url),
+      request.method === "PUT" && request.url.endsWith("/custom_definitions"),
   );
   expect(viewPuts).toEqual([
     {
@@ -209,7 +209,7 @@ test("a routines write republishes the routines doc the asleep Routines tab read
   });
 
   const puts = requests.filter(
-    (request) => request.method === "PUT" && /\/routines$/.test(request.url),
+    (request) => request.method === "PUT" && request.url.endsWith("/routines"),
   );
   expect(puts).toHaveLength(1);
   expect(puts[0]?.url).toBe(

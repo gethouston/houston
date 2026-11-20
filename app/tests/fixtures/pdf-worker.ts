@@ -74,7 +74,8 @@ export default class LoopbackWorker {
     };
     const deliver = () =>
       queueMicrotask(() => {
-        for (const listener of [...this.#listeners.keys()]) listener(event);
+        for (const listener of Array.from(this.#listeners.keys()))
+          listener(event);
       });
     if (held) held.push(deliver);
     else deliver();

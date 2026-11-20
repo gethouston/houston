@@ -91,7 +91,7 @@ export function OptionRow({
   onSelect: () => void;
 }) {
   return (
-    // biome-ignore lint/a11y/useSemanticElements: a full-width single-select row needs a native <button> (focus + Enter/Space activation) with role="radio" for the radiogroup semantics; <input type="radio"> can't carry this layout/content.
+    // a full-width single-select row needs a native <button> (focus + Enter/Space activation) with role="radio" for the radiogroup semantics; <input type="radio"> can't carry this layout/content.
     <button
       aria-checked={selected}
       className={cn(

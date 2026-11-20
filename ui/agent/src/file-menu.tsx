@@ -58,7 +58,6 @@ export function FileMenu({
   useEscapeDismiss(onClose);
   return createPortal(
     <>
-      {/* biome-ignore lint/a11y/noStaticElementInteractions: backdrop overlay for click-outside dismissal; adding an interactive role (button/link) here would confuse screen readers — the menu itself has role="menu", and Escape is handled on the document (useEscapeDismiss) */}
       <div
         role="presentation"
         className="fixed inset-0 z-40"

@@ -105,8 +105,7 @@ describe("fetchCodexUsage", () => {
     let sawAccountHeader = false;
     const fetchImpl: typeof fetch = async (_url, init) => {
       sawAccountHeader =
-        (init?.headers as Record<string, string>)["ChatGPT-Account-Id"] ===
-        "acc-1";
+        new Headers(init?.headers).get("ChatGPT-Account-Id") === "acc-1";
       return new Response(
         JSON.stringify({
           plan_type: "pro",
@@ -292,7 +291,7 @@ describe("fetchCopilotUsage", () => {
     let auth = "";
     const fetchImpl: typeof fetch = async (input, init) => {
       url = String(input);
-      auth = (init?.headers as Record<string, string>).Authorization;
+      auth = new Headers(init?.headers).get("Authorization") ?? "";
       return new Response(
         JSON.stringify({
           copilot_plan: "pro",

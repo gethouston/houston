@@ -26,10 +26,12 @@ const sql = readdirSync(migrations)
 const granted = [
   ...sql.matchAll(/grant insert \(([^)]*)\) on public\.data_referrals/g),
 ].flatMap((m) => m[1].split(",").map((c) => c.trim()));
-const statuses = /status in \(([^)]*)\)/
-  .exec(sql)[1]
-  .split(",")
-  .map((v) => v.trim().replace(/'/g, ""));
+const statuses = new Set(
+  /status in \(([^)]*)\)/
+    .exec(sql)[1]
+    .split(",")
+    .map((v) => v.trim().replace(/'/g, "")),
+);
 
 const input = {
   yourName: " Ana Ruiz ",
@@ -79,7 +81,7 @@ test("the table takes every phone number the form lets through", () => {
 });
 
 test("the table allows every state the referral tracker shows", () => {
-  for (const state of refer.states) assert.ok(statuses.includes(state), state);
+  for (const state of refer.states) assert.ok(statuses.has(state), state);
 });
 
 test("the row is trimmed, the website is its host, empty optionals are null", () => {

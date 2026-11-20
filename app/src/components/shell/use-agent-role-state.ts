@@ -105,7 +105,7 @@ export function useAgentRoleState(
 
   // Only an open resets: a start that settles while the questions are on
   // screen must never overwrite an answer the user already changed.
-  // biome-ignore lint/correctness/useExhaustiveDependencies: `open` is the whole trigger.
+  /* oxlint-disable react-hooks/exhaustive-deps -- `open` is the whole trigger. */
   useEffect(() => {
     if (!open) return;
     setContextId(start.contextId);
@@ -115,6 +115,7 @@ export function useAgentRoleState(
     setRoleIsCustom(startsCustom(start.roleId, start.customRole));
     setCustomRole(capRolePart(start.customRole));
   }, [open]);
+  /* oxlint-enable react-hooks/exhaustive-deps */
 
   const contextLabel = contextIsCustom
     ? customContext

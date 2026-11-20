@@ -37,7 +37,7 @@ export function notifyAnalytics(
   name: AnalyticsEventName,
   props?: Record<string, unknown>,
 ): void {
-  for (const listener of [...listeners]) {
+  for (const listener of Array.from(listeners)) {
     try {
       listener(name, props);
     } catch (e) {

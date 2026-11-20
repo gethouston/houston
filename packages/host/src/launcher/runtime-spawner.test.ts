@@ -288,9 +288,13 @@ test.each([
     token: "runtime",
     port: 4317,
   });
-  const env = (spawnMock.mock.calls[0]?.[2] as { env: NodeJS.ProcessEnv }).env;
+  const options = spawnMock.mock.calls[0]?.[2] as
+    | { env: NodeJS.ProcessEnv }
+    | undefined;
+  expect(options).toBeDefined();
+  const env = options?.env;
   for (const key of secrets) expect(env).not.toHaveProperty(key);
-  expect(env.HOUSTON_ASSISTANT_ROLE).toBe(role ?? undefined);
+  expect(env?.HOUSTON_ASSISTANT_ROLE).toBe(role ?? undefined);
 });
 
 test("the unserved stamp is the HOST's answer, never the parent's", async () => {
@@ -348,7 +352,11 @@ test("spawn still hands the runtime the shared Houston home it authenticates fro
     token: "runtime",
     port: 4317,
   });
-  const env = (spawnMock.mock.calls[0]?.[2] as { env: NodeJS.ProcessEnv }).env;
-  expect(env.HOUSTON_HOME).toBe("/houston-home");
+  const options = spawnMock.mock.calls[0]?.[2] as
+    | { env: NodeJS.ProcessEnv }
+    | undefined;
+  expect(options).toBeDefined();
+  const env = options?.env;
+  expect(env?.HOUSTON_HOME).toBe("/houston-home");
   expect(env).not.toHaveProperty("HOUSTON_ASSISTANT_TOKEN");
 });

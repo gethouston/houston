@@ -22,7 +22,10 @@ export interface ProviderRefusal {
   provider?: string;
 }
 
-const CODES: readonly string[] = ["no_provider", "provider_account_blocked"];
+const CODES: ReadonlySet<string> = new Set([
+  "no_provider",
+  "provider_account_blocked",
+]);
 
 /** Parse only a typed provider refusal body; anything else is null. */
 export function parseProviderRefusal(body: unknown): ProviderRefusal | null {
@@ -30,7 +33,7 @@ export function parseProviderRefusal(body: unknown): ProviderRefusal | null {
   const value = body as Record<string, unknown>;
   if (
     typeof value.code !== "string" ||
-    !CODES.includes(value.code) ||
+    !CODES.has(value.code) ||
     typeof value.error !== "string"
   )
     return null;

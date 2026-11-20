@@ -663,10 +663,10 @@ test("observer mode surfaces a running turn (spinner + partial) and settles on d
 
   // The spinner flipped on for the observed turn, then completed.
   expect(sessionStatuses).toEqual(["running", "completed"]);
-  const streaming = items.filter(
+  const streaming = items.find(
     (i) => i.feed_type === "assistant_text_streaming",
   );
-  expect(streaming[0]?.data).toBe("Hi the"); // the sync partial seeded the bubble
+  expect(streaming?.data).toBe("Hi the"); // the sync partial seeded the bubble
   const texts = items.filter((i) => i.feed_type === "assistant_text");
   expect(texts).toEqual([{ feed_type: "assistant_text", data: "Hi there" }]);
   // Clean observed done, no interaction → `needs_you`; an observer never
@@ -2309,10 +2309,8 @@ test("HOU-1214: observing a turn already seeded from history duplicates nothing"
   expect(texts.map((f) => f.data)).toEqual([reply]);
   // The seeded final_result kept its persisted usage (the context indicator).
   const final = feedOf().find((f) => f.feed_type === "final_result");
-  expect((final?.data as { usage: unknown }).usage).toEqual({
-    context_tokens: 10,
-    output_tokens: 5,
-    cached_tokens: 0,
+  expect(final?.data).toMatchObject({
+    usage: { context_tokens: 10, output_tokens: 5, cached_tokens: 0 },
   });
 });
 

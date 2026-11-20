@@ -1,5 +1,3 @@
-// biome-ignore-all lint/a11y/noRedundantRoles: the explicit searchbox role is a cross-surface selector contract.
-
 "use client";
 
 import { Loader2, Search } from "lucide-react";
@@ -76,6 +74,7 @@ export function CatalogSearchField({
       <input
         ref={inputRef}
         type="search"
+        // oxlint-disable-next-line jsx-a11y/no-redundant-roles -- The explicit role is a cross-surface selector contract.
         role="searchbox"
         value={value}
         onChange={(event) => onChange(event.target.value)}

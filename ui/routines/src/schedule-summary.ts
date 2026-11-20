@@ -76,7 +76,7 @@ export function presetSummary(
  * Human-readable summary of any schedule (cron or an `@every` interval),
  * written for non-technical users. Recognizes the presets and the common
  * interval patterns (every N minutes / hours / days, weekly on chosen days,
- * every N months) so a `*​/5 * * * *` reads as "Runs every 5 minutes"
+ * every N months) so a `star/5 * * * *` reads as "Runs every 5 minutes"
  * instead of raw cron, and otherwise falls back to a generic label.
  */
 export function cronSummary(

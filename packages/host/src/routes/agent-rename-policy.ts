@@ -62,6 +62,7 @@ export function renameWithDelegation({
             throw new AggregateError(
               [error, rollbackError],
               "rename and delegation rollback failed",
+              { cause: rollbackError },
             );
           }
         }

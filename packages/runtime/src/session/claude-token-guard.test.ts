@@ -86,7 +86,8 @@ class FakeClaudeSession implements HarnessSession {
     };
   }
   async prompt(): Promise<void> {
-    for (const e of this.script) for (const l of [...this.listeners]) l(e);
+    for (const e of this.script)
+      for (const l of Array.from(this.listeners)) l(e);
   }
   async abort(): Promise<void> {}
   dispose(): void {

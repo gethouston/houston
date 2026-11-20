@@ -16,8 +16,10 @@ function bridgedActions(liveView: boolean): unknown[] {
   const schema = tool?.parameters as {
     properties: { action: { anyOf: { const: unknown }[] } };
   };
-  const offered = schema.properties.action.anyOf.map((option) => option.const);
-  return ["open", "close", "handoff"].filter((name) => offered.includes(name));
+  const offered = new Set(
+    schema.properties.action.anyOf.map((option) => option.const),
+  );
+  return ["open", "close", "handoff"].filter((name) => offered.has(name));
 }
 
 const savedTimeout = process.env.MCP_TOOL_TIMEOUT;

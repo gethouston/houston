@@ -127,7 +127,7 @@ export function useRoutineChatSetup(
         setPending(false);
       }
     },
-    [agent, path, pending, queryClient, eventsAvailable, missionTitle],
+    [agent, path, pending, queryClient, eventsAvailable, missionTitle, mode],
   );
 
   /**
@@ -174,7 +174,7 @@ export function useRoutineChatSetup(
         setPending(false);
       }
     },
-    [agent, path, pending, queryClient],
+    [agent, path, pending, queryClient, mode],
   );
 
   return {

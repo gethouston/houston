@@ -167,7 +167,7 @@ export async function syncSharedMirror(
   if (options.mode === "push-only") {
     return {
       state: stateFromFiles({
-        ...(options.state?.files ?? {}),
+        ...options.state?.files,
         ...uploadedMetadata,
       }),
       uploaded,

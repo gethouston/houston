@@ -1,4 +1,4 @@
-import { deepStrictEqual, strictEqual } from "node:assert";
+import { deepStrictEqual, ok, strictEqual } from "node:assert";
 import { describe, it } from "node:test";
 import { QueryClient } from "@tanstack/react-query";
 import {
@@ -316,7 +316,8 @@ describe("refused mission writes", () => {
     const old = {
       steps: [{ kind: "question", id: "q1", question: "Before?" }],
     };
-    const [kept] = own.revert?.(
+    ok(own.revert);
+    const [kept] = own.revert(
       [activity("a1", { status: "done", pending_interaction: raised })],
       [activity("a1", { pending_interaction: old })],
     ) as Record<string, unknown>[];
@@ -324,7 +325,7 @@ describe("refused mission writes", () => {
       [kept.status, kept.pending_interaction],
       ["needs_you", raised],
     );
-    const [restored] = own.revert?.(
+    const [restored] = own.revert(
       [activity("a1", { status: "done" })],
       [activity("a1", { pending_interaction: old })],
     ) as Record<string, unknown>[];

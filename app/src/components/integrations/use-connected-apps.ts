@@ -11,6 +11,9 @@ import { type AppDisplay, appDisplay } from "./app-display";
 import { groupAccounts, partitionConnections } from "./connected-apps-model";
 import { INTEGRATION_PROVIDER } from "./model";
 
+const NO_CONNECTIONS: IntegrationConnection[] = [];
+const NO_TOOLKITS: IntegrationToolkit[] = [];
+
 /** An active (usable) app with its display — ONE row per toolkit, carrying
  *  every active account behind it (a toolkit can hold two Gmail logins). */
 export interface ActiveAppRow {
@@ -43,12 +46,12 @@ export function useConnectedApps(
    *  catalog so they list, search, and filter exactly like provider apps. The
    *  caller derives them (they depend on the custom-integration list + `t()`);
    *  connecting one routes through `onCuratedConnect`, never the provider. */
-  curatedExtras: IntegrationToolkit[] = [],
+  curatedExtras: IntegrationToolkit[] = NO_TOOLKITS,
 ): ConnectedApps {
   const connections = useIntegrationConnections(INTEGRATION_PROVIDER, true);
   const catalog = useIntegrationToolkits(INTEGRATION_PROVIDER, true);
 
-  const connData = connections.data ?? [];
+  const connData = connections.data ?? NO_CONNECTIONS;
   const catalogData = useMemo(
     () => [...(catalog.data ?? []), ...curatedExtras],
     [catalog.data, curatedExtras],

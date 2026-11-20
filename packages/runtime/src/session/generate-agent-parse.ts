@@ -75,6 +75,7 @@ export function parseGenerateResult(raw: string): GenerateAgentResponse {
   } catch (e) {
     throw new Error(
       `JSON parse failed: ${e instanceof Error ? e.message : String(e)}`,
+      { cause: e },
     );
   }
   if (!v || typeof v !== "object") {

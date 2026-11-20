@@ -36,11 +36,7 @@ function bundle(over: Partial<CustomOAuthBundle> = {}): CustomOAuthBundle {
 const refreshServer = (calls: URLSearchParams[]) =>
   (async (input: RequestInfo | URL, init?: RequestInit) => {
     expect(String(input)).toBe(`${AS}/token`);
-    const params = new URLSearchParams(
-      typeof init?.body === "string"
-        ? init.body
-        : (init?.body as URLSearchParams).toString(),
-    );
+    const params = new URLSearchParams(String(init?.body ?? ""));
     calls.push(params);
     return new Response(
       JSON.stringify({

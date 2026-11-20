@@ -2,11 +2,13 @@
 
 import * as React from "react";
 
+const DEFAULT_LABELS = {};
+
 export function BioSection({
   tagline,
   description,
   renderContent,
-  labels = {},
+  labels = DEFAULT_LABELS,
 }: {
   tagline?: string | null;
   description: string;

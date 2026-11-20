@@ -20,13 +20,13 @@ export interface ManifestObjectStore {
   download(
     key: string,
     destFile: string,
-    // biome-ignore lint/suspicious/noConfusingVoidType: additive port widening must accept existing void-returning stores.
+    // additive port widening must accept existing void-returning stores.
   ): Promise<import("./object-store").ReadResult | void>;
   upload(
     srcFile: string,
     key: string,
     opts?: import("./object-store").WriteOptions,
-    // biome-ignore lint/suspicious/noConfusingVoidType: additive port widening must accept existing void-returning stores.
+    // additive port widening must accept existing void-returning stores.
   ): Promise<import("./object-store").WriteResult | void>;
 }
 

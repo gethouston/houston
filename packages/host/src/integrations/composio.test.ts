@@ -1129,9 +1129,7 @@ test("execute targets one connected account when asked, none when not", async ()
     body: { successful: true, data: {} },
   }));
   await provider.execute(USER, "GMAIL_SEND_EMAIL", { to: "x@y.z" });
-  expect(
-    (calls[0]?.body as Record<string, unknown>).connected_account_id,
-  ).toBeUndefined();
+  expect(calls[0]?.body).not.toHaveProperty("connected_account_id");
   await provider.execute(
     USER,
     "GMAIL_SEND_EMAIL",

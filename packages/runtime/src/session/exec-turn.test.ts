@@ -146,7 +146,7 @@ function fakeConv(
     async prompt(text) {
       opts.onPrompt?.(text);
       await script((e) => {
-        for (const l of [...listeners]) l(e);
+        for (const l of Array.from(listeners)) l(e);
       });
     },
     async abort() {},
