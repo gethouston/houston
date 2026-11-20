@@ -357,12 +357,14 @@ jobs:
       - run: pnpm install --frozen-lockfile
 
       # Browsers ship in the image (PLAYWRIGHT_BROWSERS_PATH) — no install step.
-      # The committed `-linux` baselines were recorded against the vite dev
-      # server, so this job keeps serving from it (the functional shards
-      # moved to the prebuilt bundle; packages/web/e2e/support/serve-mode.ts).
+      # Served from the prebuilt development-mode bundle, like the functional
+      # shards (packages/web/e2e/support/serve-mode.ts): the same CSS and
+      # React tree the dev server produces, without one vite process
+      # transforming every module for every page boot.
+      - name: Build web bundles (e2e)
+        run: pnpm --filter houston-web e2e:build
+
       - name: Visual tests (Playwright)
-        env:
-          HOUSTON_E2E_SERVE: dev
         run: pnpm --filter houston-web test:visual
 
       - name: Upload Playwright report
