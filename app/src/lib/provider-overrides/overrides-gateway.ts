@@ -44,7 +44,7 @@ export const GATEWAY_OVERRIDES: Record<string, ProviderOverride> = {
     installUrl: "https://opencode.ai/auth",
     apiKeyUrl: "https://opencode.ai/auth",
     models: {
-      "glm-5.2": {
+      "glm-5.3": {
         description: "Strong open coding model.",
       },
       "kimi-k2.7-code": {

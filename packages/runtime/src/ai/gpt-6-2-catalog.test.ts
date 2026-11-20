@@ -40,7 +40,7 @@ const ASTRA_COST = {
   ],
 };
 
-/** The rows the pi-ai 1.5.2 patch backports, with the window each path serves. */
+/** pi's GPT-6.2 rows (native since pi 1.6.0), with the window each path serves. */
 const ROWS: ReadonlyArray<{
   provider: ProviderId;
   id: string;

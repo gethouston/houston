@@ -17,7 +17,7 @@ const NEON_COST = { input: 3, output: 15, cacheRead: 0.15 };
 // Low to xhigh, high by default. Google answers 400 to MINIMAL and has no off.
 const GOOGLE_LEVELS = ["low", "medium", "high", "xhigh"];
 
-/** The rows the pi-ai 1.5.2 patch backports, each cloned from its Argon row. */
+/** pi's Gemini 4 Neon rows (native since pi 1.6.0), checked against Argon. */
 const ROWS: ReadonlyArray<{
   provider: ProviderId;
   id: string;
@@ -64,6 +64,8 @@ const ROWS: ReadonlyArray<{
     sibling: "gemini-4-argon",
     contextWindow: 1_048_576,
     maxTokens: 65_536,
+    // pi 1.6.0 sends Copilot's Gemini rows the thinking level.
+    levels: GOOGLE_LEVELS,
   },
   {
     provider: "vercel-ai-gateway",
@@ -111,8 +113,8 @@ test("Argon still stops at high: Google answers 400 to XHIGH on it", () => {
   ).toEqual(["low", "medium", "high"]);
 });
 
-// The Google adapter refuses a custom `fetch`, so the request is captured off
-// the global one. A 400 reply is enough: only the outgoing body matters.
+// The request is captured off the global `fetch`, which the Google adapter
+// uses when the call passes none. A 400 reply is enough: only the body matters.
 let captured: { thinkingLevel?: string } | undefined;
 const realFetch = globalThis.fetch;
 
@@ -138,7 +140,7 @@ afterEach(() => {
 
 async function sentLevel(reasoning?: "minimal" | "xhigh") {
   await completeSimple(
-    getModel("google", "gemini-4-neon" as ModelId),
+    getModel("google", "gemini-4-neon"),
     { messages: [{ role: "user", content: "ping", timestamp: Date.now() }] },
     { apiKey: "test-key", maxTokens: 1, ...(reasoning ? { reasoning } : {}) },
   );
