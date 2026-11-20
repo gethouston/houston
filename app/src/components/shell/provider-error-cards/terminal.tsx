@@ -5,6 +5,7 @@
  * All render on the unified `RowCard` (HOU-467).
  */
 
+import { providerErrorReportTags } from "@houston/sdk/turns/provider-error-report";
 import type { ProviderError } from "@houston-ai/chat";
 import { CloudOffIcon, RefreshCwIcon, WrenchIcon } from "lucide-react";
 import { useTranslation } from "react-i18next";
@@ -59,6 +60,7 @@ export function SpawnFailedCard({
           <ReportBugButton
             command={`provider_error:spawn_failed:${error.provider}`}
             details={error.message}
+            tags={providerErrorReportTags(error)}
             label={t("providerError.spawnFailed.reportBug")}
           />
         }
@@ -100,6 +102,7 @@ export function UnknownErrorCard({
           <ReportBugButton
             command={`provider_error:unknown:${error.provider}`}
             details={error.raw_excerpt}
+            tags={providerErrorReportTags(error)}
             label={t("providerError.unknown.reportBug")}
           />
         }

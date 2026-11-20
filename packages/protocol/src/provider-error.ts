@@ -184,6 +184,18 @@ export type ProviderError =
       kind: "unknown";
       provider: string;
       raw_excerpt: string;
+      /**
+       * What the failed request ran on and how the provider answered, so a bug
+       * report on an unclassified failure can be traced without the person's
+       * words: the model id, the reasoning effort, the HTTP status and the
+       * provider's own request id (a response header such as
+       * `x-oai-request-id`, or a `request_id` in the body). Each is absent
+       * when the failure path never saw it.
+       */
+      model?: string;
+      effort?: string;
+      http_status?: number;
+      request_id?: string;
       /** WHOSE credential ran this turn (HOU-976); absent without an acting identity. */
       credential?: ProviderErrorCredential;
     };

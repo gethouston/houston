@@ -326,6 +326,11 @@ export type ProviderError =
       kind: "unknown";
       provider: string;
       raw_excerpt: string;
+      /** What the failed request ran on; mirrors `@houston/protocol`. */
+      model?: string;
+      effort?: string;
+      http_status?: number;
+      request_id?: string;
       credential?: ProviderErrorCredential;
     };
 

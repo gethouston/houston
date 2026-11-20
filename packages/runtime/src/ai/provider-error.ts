@@ -4,6 +4,7 @@ import type { AuthFailureCause, ProviderError } from "@houston/runtime-client";
 import { servedScopeFor } from "../auth/served-scope";
 import { AZURE_OPENAI } from "./azure-openai";
 import { isRetriedServerFailure } from "./provider-error-busy";
+import { requestIdFromBody } from "./provider-response";
 
 /**
  * Classify a failed model request into a typed `ProviderError` so the chat can
@@ -474,7 +475,17 @@ export class ModelNotOfferedError extends Error {
 export function classifyProviderError(
   input: ProviderErrorInput,
 ): ProviderError {
-  return stampCredentialScope(classify(input));
+  const classified = classify(input);
+  if (classified.kind !== "unknown") return stampCredentialScope(classified);
+  // An unclassified failure is one we have not triaged yet: keep what its
+  // request ran on and the provider's request id for the bug report.
+  const requestId = requestIdFromBody(input.message);
+  return stampCredentialScope({
+    ...classified,
+    ...(input.model && { model: input.model }),
+    ...(input.status && { http_status: input.status }),
+    ...(requestId && { request_id: requestId }),
+  });
 }
 
 /**
