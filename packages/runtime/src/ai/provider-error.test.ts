@@ -183,6 +183,45 @@ test("a known non-auth status ignores loose auth words in the body (no false rec
   expect(err.kind).not.toBe("unauthenticated");
 });
 
+test("xAI's 400 'Incorrect API key' → unauthenticated / invalid_api_key", () => {
+  // xAI answers a wrong key with 400, not 401. The key wording is specific to
+  // credentials, so the status alone must not hide it: unread, a mistyped key
+  // read as "could not verify, try again" and filed a Sentry error per paste.
+  const err = classifyProviderError({
+    provider: "xai",
+    model: "grok-4",
+    message:
+      'xai API error (400): 400 "Incorrect API key provided. You can obtain an API key from https://console.x.ai."',
+  });
+  expect(err.kind).toBe("unauthenticated");
+  if (err.kind === "unauthenticated") expect(err.cause).toBe("invalid_api_key");
+});
+
+test("a 400 naming PERMISSION_DENIED is not read as a wrong key", () => {
+  // Only key-specific wording overrides a 400; PERMISSION_DENIED names the
+  // 403 family (an authorization verdict), never a mistyped credential.
+  const err = classifyProviderError({
+    provider: "google",
+    model: "gemini-2.5-pro",
+    message:
+      '400: {"error":{"code":400,"message":"Request had insufficient scopes.","status":"PERMISSION_DENIED"}}',
+  });
+  expect(err.kind).not.toBe("unauthenticated");
+});
+
+test("Alibaba Model Studio 'AccessDenied.Unpurchased' 403 → model_unavailable", () => {
+  // The key authenticated (a bad key answers 401 invalid_api_key); the account
+  // has not activated this model, so the switch-model card fits, and at
+  // connect time the key counts as verified.
+  const err = classifyProviderError({
+    provider: "qwen",
+    model: "qwen3-max",
+    message:
+      '403: {"message":"Access to model denied. Please make sure you are eligible for using the model.","type":"AccessDenied.Unpurchased","param":null,"code":"AccessDenied.Unpurchased"}',
+  });
+  expect(err.kind).toBe("model_unavailable");
+});
+
 test("OpenAI 429 with the standard fractional 'try again in N.Ns' window → retry parsed", () => {
   // The most common real 429 phrasing: a bare 's' suffix with a fractional value.
   const err = classifyProviderError({
