@@ -145,14 +145,18 @@ test("an open-catalog gateway carries only its renames", () => {
   expect(opencode["claude-sonnet-4"]).toBe("claude-sonnet-4-6");
   expect(opencode["nemotron-3-ultra-free"]).toBe("nemotron-3.5-super-vl-free");
   expect(opencode["deepseek-v4-flash"]).toBeUndefined();
+  expect(opencode["glm-5"]).toBeUndefined();
   expect(Object.keys(opencode)).toEqual([
     "mimo-v2.5-free",
     "claude-sonnet-4",
     "nemotron-3-ultra-free",
+    "glm-5.1",
+    "glm-5.2",
   ]);
   // Each OpenCode Go row is a model pi dropped, mapped to its successor.
   expect(MODEL_ALIASES["opencode-go"]).toEqual({
-    "glm-5.1": "glm-5.2",
+    "glm-5.1": "glm-5.3",
+    "glm-5.2": "glm-5.3",
     "kimi-k2.6": "kimi-k2.7-code",
     "qwen3.7-max": "qwen3.8-max",
     "space-bunny-free": "deepseek-v4.1-flash",

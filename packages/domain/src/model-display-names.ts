@@ -87,7 +87,7 @@ export const MODEL_DISPLAY: Partial<
     "nemotron-3.5-super-vl-free": "Nemotron 3.5 Super VL (Free)",
   },
   "opencode-go": {
-    "glm-5.2": "GLM-5.2",
+    "glm-5.3": "GLM-5.3",
     "kimi-k2.7-code": "Kimi K2.7 Code",
     "minimax-m3": "MiniMax M3",
     "qwen3.8-max": "Qwen3.8 Max",

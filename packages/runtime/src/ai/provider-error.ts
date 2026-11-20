@@ -357,12 +357,13 @@ export function isNvidiaFunctionGated(
 /**
  * The NVIDIA model offered as the one-click switch target on a gated model's
  * `model_unavailable` card — served to every account we have evidence from
- * (including the partially-gated one above; llama, then gpt-oss-120b, the
- * previous picks, were retired from pi's NVIDIA catalog in 0.84.4 / 0.85.0). Duplicated from the runtime's
+ * (including the partially-gated one above; llama, gpt-oss-120b and
+ * gpt-oss-20b, the previous picks, were retired from pi's NVIDIA catalog in
+ * 0.84.4 / 0.85.0 / 1.6.0). Duplicated from the runtime's
  * NVIDIA default on purpose, like COPILOT_BASE_FALLBACK, so this classifier
  * stays pure.
  */
-const NVIDIA_BROAD_FALLBACK = "openai/gpt-oss-20b";
+const NVIDIA_BROAD_FALLBACK = "minimaxai/minimax-m3.1-flash";
 
 /**
  * The Moonshot model offered as the one-click switch target when a pinned

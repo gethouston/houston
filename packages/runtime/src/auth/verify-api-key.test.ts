@@ -191,7 +191,7 @@ test("nvidia: a gated probe model retries a broadly-served fallback — key veri
   expect(completeSimple).toHaveBeenCalledTimes(2);
   // The fallback probe ran against a model NVIDIA serves broadly.
   const fallbackModel = completeSimple.mock.calls[1][0] as { id: string };
-  expect(fallbackModel.id).toBe("openai/gpt-oss-20b");
+  expect(fallbackModel.id).toBe("minimaxai/minimax-m3.1-flash");
 });
 
 test("nvidia: every probe gated rejects as key_restricted", async () => {
