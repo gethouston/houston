@@ -174,6 +174,12 @@ export function showErrorToast(
     showEngineWakingToast(command, message, originalError);
     return true;
   }
+  // Report-only: nothing woke, so nothing to show (HOUSTON-APP-5HP).
+  if (quiet === "agent_data_busy") {
+    console.error(`[toast:${command}] ${message}`);
+    reportQuietError(quiet, command, message, originalError);
+    return false;
+  }
   if (quiet && surfaceQuietState(quiet, command, message, originalError))
     return true;
 

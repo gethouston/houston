@@ -512,3 +512,27 @@ describe("isEngineWakingError (SDK activity-write shape)", () => {
     strictEqual(isEngineWakingError(err), false);
   });
 });
+
+// HOUSTON-APP-5HP: the read-only `503 {"error":"agent data temporarily
+// unavailable; retrying"}` arrives only on reads, which never wake the agent,
+// so it must not read as waking (it would show the "waking up" notice). Its
+// own quiet class is pinned in agent-data-busy.test.ts.
+const AGENT_DATA_BUSY = "agent data temporarily unavailable; retrying";
+
+describe("isEngineWakingError (agent data busy)", () => {
+  it("never matches on any client shape", () => {
+    strictEqual(isEngineWakingError(engineError(503, AGENT_DATA_BUSY)), false);
+    strictEqual(
+      isEngineWakingError(
+        agentsHttpError(503, `{"error":"${AGENT_DATA_BUSY}"}`),
+      ),
+      false,
+    );
+    strictEqual(
+      isEngineWakingError(
+        runtimeEngineError(503, `{"error":"${AGENT_DATA_BUSY}"}`),
+      ),
+      false,
+    );
+  });
+});

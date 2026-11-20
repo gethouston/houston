@@ -74,7 +74,10 @@ import {
   isLoopbackHostUrl,
   providerLoginUsesDeviceAuthByDefault,
 } from "./engine-mode";
-import { isEngineWakingError } from "./engine-waking-error";
+import {
+  isAgentDataBusyError,
+  isEngineWakingError,
+} from "./engine-waking-error";
 import { isNameTakenError } from "./file-conflicts";
 import { isFileGoneError } from "./file-gone";
 import { isUploadTooLargeError } from "./files-upload-limits";
@@ -355,6 +358,16 @@ async function surfaceError(
     const { showConnectivityErrorToast } = await import("./error-toast");
     showConnectivityErrorToast(label, message, err);
     return true;
+  }
+
+  // A read of a sleeping agent's data the gateway cannot serve yet, past the
+  // read's retries (HOUSTON-APP-5HP). Reads never wake the agent, so the
+  // waking notice would be wrong: the user sees nothing, and Sentry gets one
+  // burst-collapsed warning in the fixed `agent_data_busy` issue.
+  if (isAgentDataBusyError(err)) {
+    const { reportQuietError } = await import("./quiet-error-report");
+    reportQuietError("agent_data_busy", label, message, err, context);
+    return false;
   }
 
   // Expected environment state, not a bug: the gateway's "engine unavailable"

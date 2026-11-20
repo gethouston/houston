@@ -23,7 +23,10 @@ import { isPlanMinIntervalRefusal } from "@houston/sdk/routines/plan-floor-quiet
 import { isRoutineGone } from "@houston/sdk/routines/routine-gone";
 import { isWebhookKeyNotCreatorRefusal } from "@houston/sdk/routines/webhook-key-access";
 import { isBugIntakeUnavailable } from "./bug-report-failure.ts";
-import { isEngineWakingError } from "./engine-waking-error.ts";
+import {
+  isAgentDataBusyError,
+  isEngineWakingError,
+} from "./engine-waking-error.ts";
 import { isNetworkTransportError } from "./network-transport-error.ts";
 import { isNoBrowserFailure } from "./url-open-failure.ts";
 
@@ -71,6 +74,10 @@ export type { QuietErrorClass } from "@houston/sdk/quiet-error-class";
  * SDK's `isUploadInterruptedError`). It used to read as offline while the
  * rest of the app answered fine (HOUSTON-APP-5CG: the edge proxy cut slow
  * uploads at 60 s), so it is checked before the offline class.
+ *
+ * `agent_data_busy` is a read of a sleeping agent's data the gateway cannot
+ * serve yet (HOUSTON-APP-5HP). Reads never wake the agent, so it is report-only:
+ * no waking notice, one fingerprinted warning per burst.
  */
 export function classifyQuietError(err: unknown): QuietErrorClass | null {
   if (isNoBrowserFailure(err)) return "no_url_handler";
@@ -81,6 +88,7 @@ export function classifyQuietError(err: unknown): QuietErrorClass | null {
   if (isBugIntakeUnavailable(err)) return "bug_intake_unavailable";
   const bridge = bridgeQuietClass(err);
   if (bridge) return bridge;
+  if (isAgentDataBusyError(err)) return "agent_data_busy";
   if (isEngineWakingError(err)) return "engine_waking";
   if (isUploadInterruptedError(err)) return "upload_interrupted";
   if (isNetworkTransportError(err)) return "offline";
