@@ -145,9 +145,9 @@ export function buildClaudeEnv(
   // gate, plus the Bash tool's commit and PR guidance) is ~1.9k tokens on
   // every request, and Houston's agents are not coding agents.
   env.CLAUDE_CODE_DISABLE_GIT_INSTRUCTIONS = "1";
-  // Undocumented CLI flag, checked on SDK 0.3.321: after the CLI compacts, it
-  // rewrites the transcript from its last compact_boundary on, the only part a
-  // resume reads, so the file each turn downloads stops growing without bound.
+  // Undocumented CLI flag (cli-transcript-gc.test.ts catches an SDK that drops
+  // it): after compacting, the CLI rewrites the transcript from its last
+  // compact_boundary on, all a resume reads, so the file stays bounded.
   env.CLAUDE_CODE_TRANSCRIPT_LOCAL_GC = "1";
   // The CLI's own compaction stays on (no DISABLE_AUTO_COMPACT): the same
   // switch turns off its recovery from a request that overflows the window,
